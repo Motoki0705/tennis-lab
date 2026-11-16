@@ -85,6 +85,7 @@ def test_live_adapter_resumes_creating_session_and_consumes_strict_report(
         "id": "repair-1",
         "details": {"reason": "ci_failure", "job": "tests", "log": "import failed"},
     }
+    before_reads = len(p.calls())
     returned = backend.repair(state, state["targets"]["42"], attempt)
     assert returned == report
     assert backend.recover_repair(state, state["targets"]["42"], attempt) == report
@@ -96,6 +97,11 @@ def test_live_adapter_resumes_creating_session_and_consumes_strict_report(
     )
     assert after["contract"]["settings"]["selected"]["effort"] == "high"
     assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2
+    assert not any(
+        arg.partition("?")[0] in {"repos/o/r/issues", "repos/o/r/pulls"}
+        for call in p.calls()[before_reads:]
+        for arg in call
+    )
 
 
 def test_repair_failure_details_include_attempt_and_unavailable_log_reason(

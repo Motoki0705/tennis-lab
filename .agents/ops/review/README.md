@@ -98,3 +98,6 @@ merge commitの存在、default branchへのmerge、対象Issueのclosed/complet
 `test_progression_cli.py` は実CLI・切離しプロセス・実gitとfake HTTP/agentを通し、通知・人間の制御・完了を検証する。
 `tests/benchmarks/agents_ops/merge_gate_reads.py` は対象PR数と無関係Issue数を変えてGETを計測する。
 自動進行では保存済み証拠Issueを番号指定で取得し、repo全体一覧へfallbackしない。bindingがなければ `parent evidence --create` で先に確定する。
+この取得方針はdispatcherのjobへ保存し、別プロセスのworkerがclaim・launchする際にも維持する。
+修正jobの履歴と自動進行の通知を受けたsupervisorは、親の再開予約・認可も番号限定で行う。手動の修正起動も同じ制約を使い、保存番号の欠落・取得不能は診断付きで起動前に停止する。
+`test_progression_process_reads.py` は実 `Runtime.spawn` と `worker.py` を通して一覧GETゼロを検査し、無関係な証拠Issue数を変えてworker起動時のGET数を比較する。

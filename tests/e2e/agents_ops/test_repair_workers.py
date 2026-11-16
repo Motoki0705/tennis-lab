@@ -144,6 +144,7 @@ def test_same_repair_reservation_before_during_and_after_launch(
 def test_repair_popen_rejection_reuses_reservation(reserved: ParentEnv) -> None:
     p = reserved
     creating_worker(p)
+    before = len(p.calls())
     args = ("--resume", "--repair-id", "ci-2", "--repair-pr", "42")
     failed = run(p, *args, ok=False, MANUAL_ADMISSION_FAILURE="1")
     assert json.loads(failed.stdout)["launch_state"] == "rejected_before_start"
@@ -153,6 +154,11 @@ def test_repair_popen_rejection_reuses_reservation(reserved: ParentEnv) -> None:
     assert latest(p) == directory
     assert len(task(p)["worker_runs"]) == 2
     assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2
+    assert not any(
+        arg.partition("?")[0] in {"repos/o/r/issues", "repos/o/r/pulls"}
+        for call in p.calls()[before:]
+        for arg in call
+    )
 
 
 def test_rejected_caller_cannot_reset_a_competing_repair_launch(

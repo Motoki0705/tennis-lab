@@ -13,9 +13,6 @@ from typing import Any
 import pytest
 
 from tests.e2e.agents_ops.test_dispatcher_supervisor import d as d
-from tests.e2e.agents_ops.test_dispatcher_supervisor import (
-    registered_repair as registered_repair,
-)
 from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
@@ -258,115 +255,6 @@ def test_review_context_and_mcp_include_bound_evidence_and_dependency_pr(
     assert (
         server.call("github_item", {"kind": "issue", "number": 999})["error"]["code"]
         == "FORBIDDEN_SCOPE"
-    )
-
-
-def test_progression_dispatcher_adapter_starts_repair_without_repository_listing(
-    registered_repair: tuple[Any, Any],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import sys
-
-    d, runtime_type = registered_repair
-    with d.h.store.locked():
-        d.h.gh.evidence_issues().ensure(10, "operator", store=d.h.store)
-    d.publish_github(monkeypatch)
-    endpoints = d.h.root / "repair-http.jsonl"
-    monkeypatch.setenv("FAKE_DISPATCH_HTTP_CALLS", str(endpoints))
-    row = d.row()
-    saved = row["repair_progressions"]["pipeline-1"]
-    request_value = {
-        "schema_version": 4,
-        "review_run_id": "parent-1-" + "a" * 32,
-        "repo": "o/r",
-        "parent_issue": 1,
-        "authorization": saved["authorization"],
-        "prs": [
-            {
-                "number": 42,
-                "issues": [10],
-                "worker": {
-                    "kind": "dispatcher",
-                    "child": 10,
-                    "delegation_id": saved["delegation_id"],
-                    "progression_id": "pipeline-1",
-                },
-            }
-        ],
-    }
-    state = importlib.import_module("review.progression").new_state(
-        request_value, owner=row["session"], generation=row["generation"]
-    )
-    state["options"] = {"dispatcher_state_dir": str(d.schedule.directory)}
-    backend = importlib.import_module("review.progression_backend").LiveBackend(
-        state, d.h.store
-    )
-    assert backend.repair(
-        state,
-        state["targets"]["42"],
-        {
-            "id": "repair-through-progression",
-            "details": {"reason": "ci_failure", "log": "failure"},
-        },
-    ) == {"outcome": "running"}
-    job = next(
-        j
-        for j in d.row()["dispatch"]["jobs"].values()
-        if j.get("repair", {}).get("repair_id") == "repair-through-progression"
-    )
-    control = backend.dispatcher()
-    claimed = control.claim("o/r#1", job["id"])
-    assert claimed is not None
-    captured = d.h.root / "actual-repair-command.json"
-    runner = d.h.root / "actual-repair-runner"
-    runner.write_text(
-        f"#!{sys.executable}\nimport json,sys\nfrom pathlib import Path\nPath({str(captured)!r}).write_text(json.dumps(sys.argv[1:]))\n"
-    )
-    runner.chmod(0o700)
-    with (d.h.root / "repair-execute.lock").open("a") as lock:
-        assert runtime_type(runner).execute(claimed, lock.fileno()) == 0
-    argv = json.loads(captured.read_text())
-    assert argv[0] == "resume" and argv[argv.index("--effort") + 1] == "high"
-    assert argv[argv.index("--resume-from") + 1] == job["resume_from"]
-    d.runtime(job)
-    record_path = Path(job["directory"]) / "runtime/result.json"
-    record = json.loads(record_path.read_text())
-    settings = importlib.import_module("lib.agent_settings")
-    record["contract"]["settings"] = settings.resolve(
-        settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
-    )
-    record["contract"]["settings"]["selected"]["effort"] = "high"
-    record["contract"]["repair"] = job["repair"]
-    record_path.write_text(json.dumps(record))
-    report = {
-        "schema_version": 1,
-        "repair_id": "repair-through-progression",
-        "pr": 42,
-        "outcome": "repaired",
-        "head_sha": "b" * 40,
-        "summary": "Fixed failing import",
-        "verification": ["fixture check passed"],
-        "parent_request": None,
-    }
-    (record_path.parent / "final.md").write_text(json.dumps(report))
-    remote_file = d.h.root / "github.json"
-    remote = json.loads(remote_file.read_text())
-    remote["prs"][0]["head"]["sha"] = report["head_sha"]
-    remote_file.write_text(json.dumps(remote))
-    row = d.row()
-    row["dispatch"]["jobs"][job["id"]]["worker"] = None
-    d.update(row)
-    control.reconcile()
-    assert d.row()["dispatch"]["jobs"][job["id"]]["phase"] == "ended"
-    assert (
-        backend.recover_repair(
-            state, state["targets"]["42"], {"id": "repair-through-progression"}
-        )
-        == report
-    )
-    requests = [json.loads(line) for line in endpoints.read_text().splitlines()]
-    assert requests and not any(
-        r.partition("?")[0] in {"repos/o/r/issues", "repos/o/r/pulls"} for r in requests
     )
 
 

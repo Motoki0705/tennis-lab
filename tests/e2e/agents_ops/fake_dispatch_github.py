@@ -28,7 +28,9 @@ def main() -> None:
 
     result: Any
     code = 200
-    if path == "user":
+    if path == os.environ.get("FAKE_DISPATCH_FAIL_GET"):
+        result, code = {"message": "injected unavailable resource"}, 503
+    elif path == "user":
         result = {"login": "operator"}
     elif path == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
         result, code = {"message": "Not Found"}, 404
