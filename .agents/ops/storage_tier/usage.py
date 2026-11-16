@@ -6,10 +6,22 @@ import errno
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 from .filesystem import Snapshot, StorageError, names, read_bytes
 from .mountinfo import filesystem_unit, mount_path, mounts
+
+RECHECKS = 3
+RECHECK_INTERVAL = 0.05
+
+
+class ProcessExited(Exception):
+    """The pinned process disappeared or its thread group is proven closed."""
+
+
+class ProcessReplaced(StorageError):
+    """A successor needs its own inspection; observed references remain busy."""
 
 
 @dataclass
@@ -22,6 +34,16 @@ class Usage:
     excluded_nondumpable: list[dict[str, Any]] = field(default_factory=list)
     excluded_capabilities: list[dict[str, Any]] = field(default_factory=list)
     exited_processes: int = 0
+    rechecks: dict[str, Any] = field(
+        default_factory=lambda: {
+            "max_rechecks_per_process": RECHECKS,
+            "interval_seconds": RECHECK_INTERVAL,
+            "attempts": 0,
+            "wait_seconds": 0.0,
+            "resolved_processes": 0,
+            "processes": [],
+        }
+    )
     mount_scope: dict[str, Any] = field(
         default_factory=lambda: {
             "filesystem_unit": None,
@@ -42,6 +64,7 @@ class Usage:
             "excluded_capabilities_count": len(self.excluded_capabilities),
             "excluded_capabilities": self.excluded_capabilities,
             "exited_processes": self.exited_processes,
+            "rechecks": self.rechecks,
             "mount_scope": self.mount_scope,
         }
 
@@ -340,6 +363,46 @@ class Inspector:
             result.append(f"mount-reference: pid={process.name} mount-id={record.id}")
         return result
 
+    def resources(
+        self,
+        process: Path,
+        paths: tuple[Path, ...],
+        inodes: set[tuple[int, int]],
+        location: tuple[int, Path] | None,
+        result: Usage,
+    ) -> None:
+        """Always inspect every reference kind after a permission denial clears."""
+        for descriptor_name in self.descriptors(process):
+            descriptor = process / "fd" / descriptor_name
+            try:
+                info = descriptor.stat()
+                if (info.st_dev, info.st_ino) in inodes:
+                    result.busy.append(
+                        f"open-fd: pid={process.name} fd={descriptor.name}"
+                    )
+            except FileNotFoundError:
+                continue
+        for name in ("cwd", "root"):
+            target = Path(os.readlink(process / name).removesuffix(" (deleted)"))
+            if any(target.is_relative_to(path) for path in paths):
+                result.busy.append(f"process-{name}: pid={process.name}")
+        # A process may close its fd while retaining an mmap, including
+        # a mapping reached through a hardlink outside this unit.
+        for line in (
+            self.metadata(process, "maps").decode(errors="surrogateescape").splitlines()
+        ):
+            columns = line.split(maxsplit=5)
+            if len(columns) < 5:
+                raise StorageError(f"malformed maps: {process}")
+            major, minor = columns[3].split(":")
+            key = (os.makedev(int(major, 16), int(minor, 16)), int(columns[4]))
+            if key in inodes:
+                result.busy.append(f"open-mmap: pid={process.name}")
+        if location is not None:
+            result.busy.extend(
+                self.mount_references(process, inodes, location, result.mount_scope)
+            )
+
     def inspect(
         self, paths: tuple[Path, ...], tree: Snapshot, *, check_mounts: bool = True
     ) -> Usage:
@@ -362,89 +425,137 @@ class Inspector:
             process = self.proc / process_name
             if not process.name.isdecimal():
                 continue
-            busy_start = len(result.busy)
-            inspecting = False
-            try:
-                status = self.status(process)
-                uid = self.uids(process, status)[1]
-                if uid != result.uid:
-                    uid_key = str(uid)
-                    result.excluded_uids[uid_key] = (
-                        result.excluded_uids.get(uid_key, 0) + 1
-                    )
-                    continue
-                if self.exited(process, status):
-                    result.exited_processes += 1
-                    continue
-                result.inspected_processes += 1
-                inspecting = True
-                for descriptor_name in self.descriptors(process):
-                    descriptor = process / "fd" / descriptor_name
-                    try:
-                        info = descriptor.stat()
-                        if (info.st_dev, info.st_ino) in inodes:
-                            result.busy.append(
-                                f"open-fd: pid={process.name} fd={descriptor.name}"
+            self.inspect_process(process, paths, inodes, location, result)
+        return result
+
+    def inspect_process(
+        self,
+        process: Path,
+        paths: tuple[Path, ...],
+        inodes: set[tuple[int, int]],
+        location: tuple[int, Path] | None,
+        result: Usage,
+    ) -> None:
+        busy_start = len(result.busy)
+        inspecting = False
+        recheck: dict[str, Any] | None = None
+        try:
+            status = self.status(process)
+            identities = self.uids(process, status)
+            if identities[1] != result.uid:
+                uid_key = str(identities[1])
+                result.excluded_uids[uid_key] = result.excluded_uids.get(uid_key, 0) + 1
+                return
+            if self.exited(process, status):
+                raise ProcessExited("closed thread group")
+            generation = self.starttime(process)
+            # Establish a stable identity before resources can be mixed across
+            # generations. Unstable initial metadata is never an exclusion proof.
+            if self.starttime(process) != generation:
+                raise StorageError("process identity changed before inspection")
+            result.inspected_processes += 1
+            inspecting = True
+            for attempt in range(RECHECKS + 1):
+                try:
+                    if attempt:
+                        if self.starttime(process) != generation:
+                            raise ProcessReplaced("PID replaced before recheck")
+                        current = self.status(process)
+                        if self.uids(process, current) != identities:
+                            raise StorageError(
+                                "process credentials changed during recheck"
                             )
-                    except FileNotFoundError:
-                        continue
-                for name in ("cwd", "root"):
-                    target = Path(
-                        os.readlink(process / name).removesuffix(" (deleted)")
-                    )
-                    if any(target.is_relative_to(path) for path in paths):
-                        result.busy.append(f"process-{name}: pid={process.name}")
-                # A process may close its fd while retaining an mmap, including
-                # a mapping reached through a hardlink outside this unit.
-                for line in (
-                    self.metadata(process, "maps")
-                    .decode(errors="surrogateescape")
-                    .splitlines()
-                ):
-                    columns = line.split(maxsplit=5)
-                    if len(columns) < 5:
-                        raise StorageError(f"malformed maps: {process}")
-                    major, minor = columns[3].split(":")
-                    key = (os.makedev(int(major, 16), int(minor, 16)), int(columns[4]))
-                    if key in inodes:
-                        result.busy.append(f"open-mmap: pid={process.name}")
-                if location is not None:
-                    result.busy.extend(
-                        self.mount_references(
-                            process, inodes, location, result.mount_scope
+                        closed = self.exited(process, current)
+                        if self.starttime(process) != generation:
+                            raise ProcessReplaced(
+                                "PID replaced during thread-group proof"
+                            )
+                        if closed:
+                            raise ProcessExited("closed thread group during recheck")
+                    self.resources(process, paths, inodes, location, result)
+                    if self.starttime(process) != generation:
+                        raise ProcessReplaced("PID replaced during inspection")
+                    if recheck is not None:
+                        recheck["outcome"] = (
+                            "busy" if len(result.busy) > busy_start else "inspected"
                         )
-                    )
-            except (FileNotFoundError, ProcessLookupError) as exc:
-                if process.exists():
-                    result.unknown.append(
-                        f"pid={process.name}: process metadata unavailable: {exc}"
-                    )
-                else:
-                    result.exited_processes += 1
-                    result.inspected_processes -= int(inspecting)
-                    del result.busy[busy_start:]
-                continue
-            except (OSError, ValueError, StorageError) as exc:
-                if process.exists():
-                    if isinstance(exc, OSError) and exc.errno in {
-                        errno.EACCES,
-                        errno.EPERM,
-                    }:
-                        try:
-                            evidence = self.exclusion_evidence(process)
-                        except (OSError, ValueError, StorageError) as proof_error:
-                            result.unknown.append(
-                                f"pid={process.name}: {exc}; {proof_error}"
-                            )
-                            continue
+                    return
+                except OSError as exc:
+                    if exc.errno not in {errno.EACCES, errno.EPERM}:
+                        raise
+                    try:
+                        evidence = self.exclusion_evidence(process)
+                    except (OSError, ValueError, StorageError) as proof_error:
+                        reason = f"{exc}; {proof_error}"
+                        if recheck is None:
+                            recheck = {
+                                "pid": int(process.name),
+                                "starttime_ticks": generation,
+                                "comm": status.get("Name"),
+                                "initial_error": reason,
+                                "attempts": 0,
+                                "wait_seconds": 0.0,
+                                "outcome": "unknown",
+                            }
+                            result.rechecks["processes"].append(recheck)
+                        recheck["last_error"] = reason
+                        if attempt == RECHECKS:
+                            raise StorageError(reason) from proof_error
+                        # Only a bounded wait followed by a new full inspection
+                        # can clear unknown. The denial itself proves no absence.
+                        recheck["attempts"] += 1
+                        recheck["wait_seconds"] += RECHECK_INTERVAL
+                        result.rechecks["attempts"] += 1
+                        result.rechecks["wait_seconds"] += RECHECK_INTERVAL
+                        sleep(RECHECK_INTERVAL)
+                    else:
+                        if evidence["starttime_ticks"] != generation:
+                            raise ProcessReplaced("PID replaced during exclusion")
                         excluded = (
                             result.excluded_nondumpable
                             if evidence["kind"] == "nondumpable"
                             else result.excluded_capabilities
                         )
                         excluded.append(evidence)
-                        result.inspected_processes -= int(inspecting)
+                        result.inspected_processes -= 1
+                        inspecting = False
                         del result.busy[busy_start:]
-                        continue
-                    result.unknown.append(f"pid={process.name}: {exc}")
-        return result
+                        if recheck is not None:
+                            recheck["outcome"] = f"excluded-{evidence['kind']}"
+                        return
+        except ProcessReplaced as exc:
+            # The successor may own any of the references already observed.
+            # Neither an old identity's exit nor a successor's exclusion proof
+            # certifies this mixed observation. Never erase busy on replacement,
+            # even if the successor disappears before this handler runs.
+            result.unknown.append(
+                f"pid={process.name}: {exc}; successor usage is unverified"
+            )
+            if recheck is not None:
+                recheck["last_error"] = str(exc)
+        except (FileNotFoundError, ProcessLookupError, ProcessExited) as exc:
+            if isinstance(exc, ProcessExited) or not process.exists():
+                result.exited_processes += 1
+                result.inspected_processes -= int(inspecting)
+                del result.busy[busy_start:]
+                if recheck is not None:
+                    recheck["outcome"] = "exited"
+                    recheck["exit_reason"] = str(exc)
+            else:
+                result.unknown.append(
+                    f"pid={process.name}: process metadata unavailable: {exc}"
+                )
+        except (OSError, ValueError, StorageError) as exc:
+            if not process.exists():
+                result.exited_processes += 1
+                result.inspected_processes -= int(inspecting)
+                del result.busy[busy_start:]
+                if recheck is not None:
+                    recheck["outcome"] = "exited"
+            else:
+                result.unknown.append(f"pid={process.name}: {exc}")
+        finally:
+            if recheck is not None:
+                result.rechecks["resolved_processes"] += int(
+                    recheck["outcome"] != "unknown"
+                )
