@@ -613,6 +613,10 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     repo = tmp_path / "repo"
     repo.mkdir()
     run_git(repo, "init", "--initial-branch=main")
+    # Seed capture/restore may copy or delete this repo immediately after Git
+    # returns. Keep automatic maintenance inside the command's lifetime.
+    run_git(repo, "config", "maintenance.autoDetach", "false")
+    run_git(repo, "config", "gc.autoDetach", "false")
     run_git(repo, "config", "user.name", "Test Operator")
     run_git(repo, "config", "user.email", "test@example.invalid")
     (repo / "input.txt").write_text("base\n")
