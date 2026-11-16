@@ -58,13 +58,24 @@ drvfs/9pは複数のWindows volumeへ同じfsidを返す場合があり、安定
 隔離済みなら保存された `.expired-<id>` の実体を調べる。旧実体にbirth timeが保存されていない形式は、
 管理ディレクトリの保存済みbirth timeと双方向登録を根拠に照合し、実体のbirth timeを追加保存する。
 移行後も記録ID・隔離パス・作成日時を引き継ぎ、schema v2のstateをatomicに保存してから再開する。
-再実行は移行済み記録を再解釈せず、保存の中断では旧stateか新stateのどちらからも再開できる。
-一致を確認できない旧intentは `superseded` として閉じ、`filesystem_migration` に理由・旧identityを残す。
-現在の登録は新規個体としてbirth time由来の通常の期限判定を受ける。
-ただし、旧 `unregistered` 記録の隔離実体が残る場合は削除義務を閉じない。登録解除後は双方向登録による
-世代照合ができないため、移行を `blocked` として保存し、cleanup/dry-runは理由付きで失敗する。
-実体の消失を確認できた再実行で終了する。同じ元パスへ作られた新規個体の期限判定は独立して行う。
-`filesystem_migrations` に移行・終了理由を表示し、終了済みの旧履歴もstateに保持する。
+保存の中断では旧stateか新stateのどちらからも再開できる。
+隔離実体が残る `stopping`・`quarantined`・`unregistered`・`quarantine_conflict` の削除義務を保持する。
+Git登録が消失・再作成されていても、保存された隔離パス・filesystem ID・inode・birth timeと `.git` の旧登録先が
+一致すれば実体のidentityを移行し、登録への操作権限を失効させて停止・参照ゲート・FDベース削除を再開する。
+旧device番号のfilesystem IDへの対応は、同じstateの記録または保存済み移行前identityと現在の別のGit登録を
+管理inode・birth time・UUID・保存パス・双方向登録・実体inodeで照合し、一意に確認できたものを使う。
+終了済み記録もこの照合の証拠に使える。旧device番号が現在と同じという理由だけでは対応を確定しない。
+実体のbirth timeが未保存の最古形式は、保存済み管理ディレクトリのbirth timeと実体のbirth timeが
+ナノ秒単位で一致する場合に限り、その値と保存inodeで個体を照合する。作成日時・期限は変更しない。
+照合できない残存は `filesystem_migration.result=blocked` として保持し、cleanup/dry-runは理由付きで失敗する。
+隔離実体が消失した旧intentは `superseded` として閉じ、理由・旧identityを残す。
+同じ元パスへ作られた新規個体の期限判定は独立して行う。
+
+移行済み記録の再実行は保存されたidentityを使う。旧移行による `superseded` だけは、移行結果が `retired`、
+`previous_phase` が上記未完了phase、保存された移行前identityが現記録と等しく、`superseded_at` が
+移行の `checked_at` と一致し、隔離実体が残るか検査不能の場合に再解釈する。
+元の移行結果を `recovered_retirement` に残してphaseを復元する。成功した再移行は繰り返さない。
+`filesystem_migrations` に移行・終了理由と現phase・隔離パスを表示し、終了済みの旧履歴もstateに保持する。
 scanで登録消失を観測した記録は再利用せず、同じ管理名・inodeが現れても新しい初観測として扱う。
 削除途中の実体の復旧記録は残し、消失した登録への操作権限だけを失効させる。
 scan/dry-runは初観測記録・レポートと対象のGit管理UUIDを永続化する。作業内容・Git参照・稼働jobは変更しない。
