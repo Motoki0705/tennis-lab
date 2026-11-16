@@ -1,0 +1,8 @@
+{
+  "references.json": "a53b250de0faa40a8ca005beda578099ae518997dd150bb4c57dac21c9d40b29",
+  "frames.json": "d9e1000fe6a6a063bd8720ee5e9c3db7840f35f6674cd55a6355c9cffdd2e3e5",
+  "net-exclusions.json": "9597be8c801c61d9fbe439d67b4c452b28aa36c485153d4045510a2aa3217eb1",
+  "fit_reference.py": "bcb1069e01c43a4409177d41e3e192e54551fd7fb4a2b673218c85e3ec9207f3",
+  "balance_reference.py": "1842625827c700ffaac4812dba46f2a5dac08e34e07d3d8df99f24b52b3da2e1",
+  "aggregate_reference.py": "67010095b64f127e2c27ecabf0639bf24ce3265f71307ac610d0ba7380965fd1"
+}

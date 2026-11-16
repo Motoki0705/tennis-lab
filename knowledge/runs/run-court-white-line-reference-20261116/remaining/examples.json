@@ -1,0 +1,70 @@
+{
+  "cam0": {
+    "key": "meiji_4cam/video_000/clip_022/cam0",
+    "camera": "cam0",
+    "condition": "postprocess_and_acceptance",
+    "mean_error_px": 19.753146025561588,
+    "max_error_px": 84.63254719949637,
+    "max_supported_visible_point_index": 2,
+    "supported_point_error_px": 84.63254719949637,
+    "bbox_xyxy": [
+      0,
+      485,
+      512,
+      677
+    ],
+    "image": "meiji_4cam-video_000-clip_022-cam0-postprocess_and_acceptance.png",
+    "status": "provisional_reference_requires_human_reapproval"
+  },
+  "cam1": {
+    "key": "meiji_4cam/video_000/clip_047/cam1",
+    "camera": "cam1",
+    "condition": "postprocess_and_acceptance",
+    "mean_error_px": 10.910273616283295,
+    "max_error_px": 16.579636964343884,
+    "max_supported_visible_point_index": 2,
+    "supported_point_error_px": 16.579636964343884,
+    "bbox_xyxy": [
+      374,
+      707,
+      886,
+      899
+    ],
+    "image": "meiji_4cam-video_000-clip_047-cam1-postprocess_and_acceptance.png",
+    "status": "provisional_reference_requires_human_reapproval"
+  },
+  "cam2": {
+    "key": "meiji_4cam/video_000/clip_054/cam2",
+    "camera": "cam2",
+    "condition": "postprocess_and_acceptance",
+    "mean_error_px": 16.609504046839984,
+    "max_error_px": 60.81416215353361,
+    "max_supported_visible_point_index": 2,
+    "supported_point_error_px": 60.81416215353361,
+    "bbox_xyxy": [
+      16,
+      509,
+      528,
+      701
+    ],
+    "image": "meiji_4cam-video_000-clip_054-cam2-postprocess_and_acceptance.png",
+    "status": "provisional_reference_requires_human_reapproval"
+  },
+  "cam3": {
+    "key": "meiji_4cam/video_000/clip_031/cam3",
+    "camera": "cam3",
+    "condition": "postprocess_and_acceptance",
+    "mean_error_px": 10.431031419842553,
+    "max_error_px": 23.195095756031755,
+    "max_supported_visible_point_index": 2,
+    "supported_point_error_px": 21.910353381682853,
+    "bbox_xyxy": [
+      820,
+      450,
+      1332,
+      642
+    ],
+    "image": "meiji_4cam-video_000-clip_031-cam3-postprocess_and_acceptance.png",
+    "status": "provisional_reference_requires_human_reapproval"
+  }
+}
