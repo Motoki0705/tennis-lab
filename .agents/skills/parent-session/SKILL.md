@@ -84,6 +84,8 @@ event名や単語からCLIへ通知判断をさせず、通常コメントの人
 子を作る場合は [issues API](../../ops/issues/README.md#共通apiと下流の契約)を使い、対象範囲・受入条件・依存を具体化する。
 委任前は[依存・参照PR](../../ops/parent/README.md#子の作成委任再開)と `launch_plan` を確認し、並列数・stacked branchを選ぶ。
 コード変更は専用worktreeへ置き、共通ランナー・モデル選択はAGENTS.mdに従う。
+自動進行でCI失敗・軽いgate停止を直す場合は、[修正ターン](../../ops/parent/README.md#自動進行の修正ターン)の専用契約を使う。
+同じモデル・同じsessionをhighで再開し、workerのpush後の終了からCLIへ処理を戻す。
 
 | 目的 | 入口 |
 |---|---|
@@ -93,6 +95,7 @@ event名や単語からCLIへ通知判断をさせず、通常コメントの人
 | 今回は調査して報告させる | 起動・継続に `--planning` を指定し、判断してほしい点を指示する。 |
 | 調査報告を受けて次を指示 | [回答の保存・同じworkerの継続](../../ops/parent/README.md#workerの調査親判断実装フェーズ) |
 | 自律親から起動・継続 | `start-worker` / `continue-worker`。実行の予約と同一sessionの照合は開発workflowを参照する。 |
+| 自動進行のCI失敗・gate停止を修正 | [修正ターンの予約・報告契約](../../ops/parent/README.md#自動進行の修正ターン) |
 | 実行や公開の状況を調べる | `status`・[worker_status](../../ops/worker_status/README.md)・`worker-log-status` |
 
 workerへの具体指示は、担当範囲・成果・受入条件・確認したい不具合・必要な資源と制約を中心にする。

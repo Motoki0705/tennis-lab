@@ -1461,6 +1461,97 @@ def test_new_child_delegation_resumes_previous_child_session(
     )
 
 
+def test_registered_progression_reserves_repair_without_parent_runtime_environment(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture_runtime(d, monkeypatch)
+    runtime_module = importlib.import_module("dispatcher.runtime")
+    runtime_type = runtime_module.Runtime
+    monkeypatch.setattr(runtime_module, "Runtime", FixtureRuntime)
+    repairs = importlib.import_module("dispatcher.repairs")
+    settings = importlib.import_module("lib.agent_settings")
+    d.prepare_family(10)
+    d.control.assign()
+    env = d.accepted()
+    row = d.row()
+    row["tasks"]["10"] = d.child_task(10, "creator")
+    d.update(row)
+    creator_id = d.control.start_child(1, 10, "creator", "initial", env)
+    creator = d.row()["dispatch"]["jobs"][creator_id]
+    creator["phase"] = "starting"
+    row = d.row()
+    row["dispatch"]["jobs"][creator_id] = creator
+    d.update(row)
+    d.runtime(creator)
+    record_path = Path(creator["directory"]) / "runtime/result.json"
+    record = json.loads(record_path.read_text())
+    record["contract"].update(
+        branch="test",
+        settings=settings.resolve(
+            settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
+        ),
+    )
+    record_path.write_text(json.dumps(record))
+    d.control.reconcile()
+    d.h.gh.prs = [
+        {
+            "number": 42,
+            "body": "Closes #10",
+            "state": "open",
+            "merged_at": None,
+            "draft": False,
+            "head": {"ref": "test", "sha": "a" * 40, "repo": {"full_name": "o/r"}},
+        }
+    ]
+    with pytest.raises(ValueError, match="owner-registered"):
+        d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.")
+    with d.h.store.locked():
+        row = d.h.store.parents["o/r#1"]
+        session = d.control._session("o/r#1", row)
+        repairs.register_progression(session, "pipeline-1", child=10, pr=42)
+    # The detached caller has no parent runtime environment to impersonate.
+    for key in (
+        "CLAUDE_CODE_SESSION_ID",
+        "CODEX_THREAD_ID",
+        "AGENT_RUNTIME_RUN_DIR",
+        "AGENT_RUNTIME_TASK_ID",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    repair_id = d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.")
+    assert (
+        d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.") == repair_id
+    )
+    job = d.row()["dispatch"]["jobs"][repair_id]
+    assert job["resume_from"] == str(record_path.parent)
+    assert job["model"] == "gpt-6-astra"
+    assert job["task_id"] == creator["task_id"]
+    assert job["repair"] == {"schema_version": 1, "repair_id": "ci-1", "pr": 42}
+    with pytest.raises(ValueError, match="another request"):
+        d.control.start_repair(1, "pipeline-1", "ci-1", "Different failure.")
+    claimed = d.control.claim("o/r#1", repair_id)
+    assert claimed is not None
+    assert d.control.claim("o/r#1", repair_id) is None
+    captured = d.h.root / "repair-argv.json"
+    runner = d.h.root / "repair-runner"
+    runner.write_text(
+        f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\nPath({str(captured)!r}).write_text(json.dumps(sys.argv[1:]))\n"
+    )
+    runner.chmod(0o700)
+    with (d.h.root / "repair-execute.lock").open("a") as lock:
+        assert runtime_type(runner).execute(claimed, lock.fileno()) == 0
+    argv = json.loads(captured.read_text())
+    assert argv[:3] == ["resume", "--resume-from", str(record_path.parent)]
+    assert argv[argv.index("--effort") + 1] == "high"
+    assert argv[argv.index("--model") + 1] == "gpt-6-astra"
+    assert argv[argv.index("--repair-id") + 1] == "ci-1"
+    # Registration is checked again at admission, before another runtime starts.
+    row = d.row()
+    row["generation"] += 1
+    d.update(row)
+    with pytest.raises(ValueError, match="owner/authority/delegation"):
+        d.control.start_repair(1, "pipeline-1", "ci-2", "Failed import.")
+
+
 def test_cancelled_resume_reservation_reuses_original_session(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:

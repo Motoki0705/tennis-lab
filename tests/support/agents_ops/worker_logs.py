@@ -227,6 +227,7 @@ class LogEnv:
         child: int = 10,
         instruction: str = "\n実際に送った指示\r\n",
         phase: str = "planning",
+        repair: dict[str, Any] | None = None,
     ) -> tuple[Path, dict[str, Any]]:
         tree = self.root / f".claude/worktrees/worker-{parent}-{child}"
         branch = f"codex/worker-{parent}-{child}"
@@ -239,7 +240,7 @@ class LogEnv:
             "previous_turn_id": None,
             "decision_id": None,
         }
-        turn = {
+        turn: dict[str, Any] = {
             "snapshot": snapshot,
             "source": str(directory),
             "head_at_start": self.base,
@@ -251,7 +252,7 @@ class LogEnv:
                 "issue_sha256": schema.sha(b"issue body"),
             },
         }
-        task = {
+        task: dict[str, Any] = {
             "worktree": str(tree),
             "branch": branch,
             "delegation_id": turn["delegation_id"],
@@ -261,6 +262,15 @@ class LogEnv:
                 "decisions": [],
             },
         }
+        if repair is not None:
+            previous = copy.deepcopy(turn)
+            previous["snapshot"]["turn_id"] = "private-previous-turn"
+            previous["snapshot"]["phase"] = "implementing"
+            snapshot.update(
+                phase="implementing", previous_turn_id="private-previous-turn"
+            )
+            turn["repair"] = repair
+            task["preflight"]["turns"] = [previous, turn]
         session = SimpleNamespace(
             row={
                 "session": "codex:private-parent-session",
@@ -281,6 +291,11 @@ class LogEnv:
         record["contract"].update(
             task_id=task["delegation_id"], cwd=str(tree), branch=branch, mode="write"
         )
+        if repair is not None:
+            record["contract"]["repair"] = repair
+            record["contract"]["settings"]["role"] = "implementation"
+            record["contract"]["settings"]["selected"]["effort"] = "high"
+            record["runtime"]["effective"]["effort"]["value"] = "high"
         record["prompt_sha256"] = schema.sha(prompt.encode())
         record["run_id"] = directory.name
         directory.mkdir(parents=True)

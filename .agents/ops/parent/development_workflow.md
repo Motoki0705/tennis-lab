@@ -37,7 +37,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 親は子のscope・対象外・受入条件・依存・テスト条件・PR作成時点を指示ファイルへ書く。
 モデル選択は [AGENTS.md](../../../AGENTS.md#開発ルール) に従い、通常はSol/max、未解決の数理・幾何アルゴリズムや
 広範囲の統合設計などの高難度の委任では親がAstra/maxを選べる。人間との合意によるモデル指定を優先する。
-選択肢は `agents.conf` の既定・代替の2種で、effortはmax固定。理由は `note`（証拠用Issue）と具体指示へ残す。
+選択肢は `agents.conf` の既定・代替の2種で、通常のeffortはmax固定。[自動進行の修正ターン](README.md#自動進行の修正ターン)はhighを使う。理由は `note`（証拠用Issue）と具体指示へ残す。
 同一委任・sessionの途中では変更せず、利用不可・実効値不一致を別モデルへ振り替えない。
 GPU・Blenderはtraining queueを使い、未指定の資源予算を作らない。
 

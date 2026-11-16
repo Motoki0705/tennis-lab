@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues import Issue
-from lib.agent_settings import execution_contract
+from lib.agent_settings import session_contract
 from worker_logs.sources import original as original_text
 
 from .execution import ExecutionBasisStale, observed_authorization, requirement_body
@@ -290,7 +290,7 @@ def summary(task: dict[str, Any], *, stale: bool = False) -> dict[str, Any]:
 def runtime_binding(record: dict[str, Any]) -> dict[str, str]:
     contract = record["contract"]
     return {
-        "contract_sha256": digest(execution_contract(contract)),
+        "contract_sha256": digest(session_contract(contract)),
         "session_id": nonempty(
             record.get("runtime", {}).get("session_id"), "saved worker session"
         ),

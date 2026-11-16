@@ -111,6 +111,7 @@ def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any
             "preflight",
             "launch_failures",
             "manual_launcher",
+            "repair_attempts",
         }
     } | (
         {"worker_phase": worker_preflight.summary(task)}

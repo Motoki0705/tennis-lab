@@ -17,9 +17,14 @@ from lib.agent_settings import (
     execution_contract,
     implementation_model,
     resolve,
+    session_contract,
 )
+from lib.repair_turn import instruction as repair_instruction
+from lib.repair_turn import validate_contract as validate_repair_contract
+from lib.repair_turn import validate_request as validate_repair_request
 from worker_logs import service as worker_logs
 from worker_logs.ownership import publication_owner
+from worker_logs.sources import original as original_text
 from worker_logs.sources import read_original
 
 from . import worker_preflight
@@ -161,12 +166,14 @@ def model_settings(task: dict[str, Any], record: dict[str, Any]) -> dict[str, An
     overrides = object_value(settings.get("overrides"))
     model = nonempty(selected.get("model"), "saved worker model")
     implementation_model(model)
+    if "repair" in contract:
+        validate_repair_contract(contract)
     if (
         contract.get("mode") != "write"
         or settings.get("agent") != "codex"
         or settings.get("role") != "implementation"
         or settings.get("profile") is not None
-        or selected.get("effort") != "max"
+        or selected.get("effort") != ("high" if "repair" in contract else "max")
         or overrides.get("model", model) != model
         or (task.get("model") is not None and task["model"] != model)
     ):
@@ -370,7 +377,7 @@ def replacement_evidence(
     if session_id is not None and saved["session_id"] not in (None, session_id):
         raise ValueError("saved worker session metadata conflicts with its runtime")
     binding = {
-        "contract_sha256": digest(execution_contract(record["contract"])),
+        "contract_sha256": digest(session_contract(record["contract"])),
         "session_id": session_id or saved["session_id"],
     }
     if binding["session_id"] is None and value["runtime"] is not None:
@@ -412,7 +419,7 @@ def replacement_evidence(
             raise ValueError(
                 "registered takeover session metadata conflicts with its runtime"
             )
-        if execution_contract(registered["contract"]) != execution_contract(
+        if session_contract(registered["contract"]) != session_contract(
             record["contract"]
         ):
             raise ValueError(
@@ -453,8 +460,32 @@ def prepare_run(
     additional: str | None = None,
     planning: bool = False,
     replace_session: bool = False,
+    repair: dict[str, Any] | None = None,
 ) -> tuple[list[str], str, str]:
     task = current_task(session, child)
+    if repair is not None:
+        validate_repair_request(repair)
+        if (
+            not resume
+            or planning
+            or replace_session
+            or prompt is None
+            or additional is not None
+        ):
+            raise ValueError("repair requires resume and a failure/gate prompt only")
+        saved = task.get("repair_attempts", {}).get(repair["repair_id"])
+        if saved is not None:
+            if (
+                saved["request"] != repair
+                or saved["delegation_id"] != task["delegation_id"]
+                or saved["details_sha256"]
+                != hashlib.sha256(read_original(prompt).encode("utf-8")).hexdigest()
+            ):
+                raise ValueError(
+                    "repair ID is already bound to another request/delegation"
+                )
+            implementation_model(model, previous=task["model"])
+            return list(saved["command"]), task["delegation_id"], saved["instruction"]
     if replace_session and resume:
         raise ValueError("--replace-session and --resume are mutually exclusive")
     if replace_session:
@@ -477,6 +508,11 @@ def prepare_run(
         instruction = read_original(prompt) if prompt is not None else None
     except OSError:
         raise ValueError("worker instruction file unavailable") from None
+    instruction_digest = (
+        hashlib.sha256(instruction.encode("utf-8")).hexdigest()
+        if instruction is not None
+        else None
+    )
     ended = task.get("worker_ended")
     retry_unstarted = bool(task.get("launch_failures")) and not any(
         r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)
@@ -516,6 +552,12 @@ def prepare_run(
             raise ValueError(
                 "worker continuation requires a unique open or merged PR on the reserved branch"
             )
+        if repair is not None and (
+            len(prs) != 1
+            or prs[0]["number"] != repair["pr"]
+            or prs[0]["state"] != "open"
+        ):
+            raise ValueError("repair requires the creating worker's open PR")
     with session.gh.io_scope():
         validate_worktree(Path(task["worktree"]), task["branch"])
         for base in planned["stacked_on"]:
@@ -575,8 +617,9 @@ def prepare_run(
             current_settings = resolve(
                 DEFAULT_CONFIG, "codex", None, runner_model, None, "write"
             )
-            if execution_contract({"settings": current_settings}) != execution_contract(
-                {"settings": settings}
+            if (
+                execution_contract({"settings": current_settings})["settings"]
+                != session_contract(previous_record["contract"])["settings"]
             ):
                 raise ValueError(
                     "current worker settings differ from the saved replacement contract"
@@ -611,6 +654,18 @@ def prepare_run(
     ]
     if runner_model is not None:
         command += ["--model", runner_model]
+    if repair is not None:
+        if previous is None:
+            raise ValueError("repair requires the creating worker's existing runtime")
+        command += [
+            "--repair-id",
+            repair["repair_id"],
+            "--repair-pr",
+            str(repair["pr"]),
+            "--effort",
+            "high",
+        ]
+        instruction = repair_instruction(repair, original_text(instruction))
     if model_reason is not None:
         model_reason = nonempty(model_reason, "model selection reason")
     if replacement is not None:
@@ -626,6 +681,10 @@ def prepare_run(
         replacement=replacement,
         previous_directory=previous,
     )
+    if repair is not None:
+        if phase["phase"] != "implementing":
+            raise ValueError("repair requires an implementation turn")
+        phase["turns"][-1]["repair"] = dict(repair)
     with session.gh.io_scope():
         turn = worker_preflight.commit_turn(task, phase, directory)
     prepared_instruction = prepare_instruction(
@@ -660,6 +719,15 @@ def prepare_run(
         authorization=authorization(session),
         requirements_sha256=phase["context"]["requirements"],
     )
+    if repair is not None:
+        task.setdefault("repair_attempts", {})[repair["repair_id"]] = {
+            "request": dict(repair),
+            "delegation_id": task["delegation_id"],
+            "command": command,
+            "instruction": text,
+            "details_sha256": instruction_digest,
+            "launch_state": "reserved",
+        }
     append_run(
         session,
         task,
@@ -691,6 +759,7 @@ def run_worker(
     additional: str | None = None,
     planning: bool = False,
     replace_session: bool = False,
+    repair: dict[str, Any] | None = None,
 ) -> tuple[int, dict[str, Any]]:
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
@@ -710,7 +779,14 @@ def run_worker(
             additional,
             planning,
             replace_session,
+            repair,
         )
+        if repair is not None:
+            attempt = current_task(session, child)["repair_attempts"][
+                repair["repair_id"]
+            ]
+            if attempt["launch_state"] != "reserved":
+                return 0, repair_receipt(child, delegation, command, attempt)
         log_path = (
             session.row["tasks"][str(child)]["preflight"]["turns"][-1]
             .get("log", {})
@@ -750,7 +826,47 @@ def run_worker(
     proc = admission.completed
     code = proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
     directory = Path(command[command.index("--run-dir") + 1])
+    if repair is not None and admission.reused:
+        with store.locked():
+            session = ParentSession(gh, store, parent, identity)
+            attempt = current_task(session, child)["repair_attempts"][
+                repair["repair_id"]
+            ]
+            return 0, repair_receipt(child, delegation, command, attempt)
     if not admission.spawned:
+        if repair is not None:
+            with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
+                store.focus(session.key)
+                row = store.parents.get(session.key, {})
+                current = row.get("tasks", {}).get(str(child), {})
+                attempt = current["repair_attempts"][repair["repair_id"]]
+                if (
+                    any(row.get(k) != reserved_owner[k] for k in reserved_owner)
+                    or current.get("delegation_id") != delegation
+                    or worker_runs(current)[-1] != reserved_run
+                    or current["preflight"]["turns"][-1] != reserved_turn
+                ):
+                    raise RegistryConflict(
+                        "repair reservation changed after rejected launch"
+                    )
+                if (
+                    admission.repair_claim is not None
+                    and attempt.get("launch_claim") == admission.repair_claim
+                ):
+                    attempt["launch_state"] = "reserved"
+                    attempt.pop("launch_claim")
+                elif attempt["launch_state"] != "reserved":
+                    return 0, repair_receipt(child, delegation, command, attempt)
+                store.save()
+            failure = directory.parent / "rejected" / directory.name
+            failure.mkdir(parents=True, exist_ok=True, mode=0o700)
+            (failure / "stderr.txt").write_bytes(proc.stderr)
+            return code, {
+                **repair_receipt(child, delegation, command, attempt),
+                "exit_code": code,
+                "launch_state": "rejected_before_start",
+                "next_action": "retry_same_operation",
+            }
         failure = directory.parent / "rejected" / directory.name
         with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
             # Roll back locally even when every GitHub request is failing. Never
@@ -873,6 +989,10 @@ def run_worker(
                         current["preflight"], proof["record"], directory=directory
                     )
             current.pop("manual_launcher", None)
+            if repair is not None:
+                current["repair_attempts"][repair["repair_id"]]["launch_state"] = (
+                    "ended"
+                )
             store.save()
     log_result = worker_logs.finish_manual(
         log_path,
@@ -888,7 +1008,31 @@ def run_worker(
         "exit_code": code,
         "runner_summary": summary,
         "log_publication": log_result,
+        **(
+            {"repair": dict(repair), "run_dir": str(directory)}
+            if repair is not None
+            else {}
+        ),
         "final_file": str(directory / "final.md")
         if (directory / "final.md").exists()
+        else None,
+    }
+
+
+def repair_receipt(
+    child: int, delegation: str, command: list[str], attempt: dict[str, Any]
+) -> dict[str, Any]:
+    directory = Path(command[command.index("--run-dir") + 1])
+    return {
+        "child": child,
+        "delegation_id": delegation,
+        "repair": dict(attempt["request"]),
+        "run_dir": str(directory),
+        "launch_state": attempt["launch_state"],
+        "next_action": "read_repair_report"
+        if attempt["launch_state"] == "ended"
+        else "inspect_reserved_runtime",
+        "final_file": str(directory / "final.md")
+        if (directory / "final.md").is_file()
         else None,
     }

@@ -148,6 +148,92 @@ def h(tmp_path: Path) -> Harness:
     return Harness(tmp_path)
 
 
+def test_repair_resumes_same_model_session_then_returns_to_max(h: Harness) -> None:
+    assert h.run(extra=("--mode", "write", "--model", "gpt-6-astra")).returncode == 0
+    initial = h.result()
+    proc = h.run(
+        "repair",
+        action="resume",
+        extra=(
+            "--mode",
+            "write",
+            "--resume-from",
+            str(h.root / "initial"),
+            "--repair-id",
+            "ci-1",
+            "--repair-pr",
+            "42",
+            "--effort",
+            "high",
+        ),
+    )
+    assert proc.returncode == 0, proc.stderr
+    repaired = h.result("repair")
+    assert repaired["contract"]["settings"]["selected"]["model"] == "gpt-6-astra"
+    assert repaired["runtime"]["session_id"] == initial["runtime"]["session_id"]
+    assert repaired["runtime"]["effective"]["effort"]["value"] == "high"
+    assert repaired["contract"]["repair"] == {
+        "schema_version": 1,
+        "repair_id": "ci-1",
+        "pr": 42,
+    }
+    proc = h.run(
+        "normal",
+        action="resume",
+        extra=("--mode", "write", "--resume-from", str(h.root / "repair")),
+    )
+    assert proc.returncode == 0, proc.stderr
+    normal = h.result("normal")
+    assert normal["runtime"]["session_id"] == initial["runtime"]["session_id"]
+    assert normal["runtime"]["effective"]["effort"]["value"] == "max"
+    duplicate = h.run(
+        "duplicate",
+        action="resume",
+        extra=(
+            "--mode",
+            "write",
+            "--resume-from",
+            str(h.root / "normal"),
+            "--repair-id",
+            "ci-1",
+            "--repair-pr",
+            "42",
+        ),
+    )
+    assert duplicate.returncode == 2 and "already has" in duplicate.stderr
+    assert not (h.root / "duplicate").exists()
+
+
+@pytest.mark.parametrize(
+    "mutation", ["initial", "readonly", "model", "effort", "missing_pr", "no_marker"]
+)
+def test_repair_exception_cannot_change_other_contracts(
+    h: Harness, mutation: str
+) -> None:
+    assert h.run(extra=("--mode", "write")).returncode == 0
+    options = ["--mode", "write", "--repair-id", "ci-1", "--repair-pr", "42"]
+    action = "resume"
+    if mutation == "initial":
+        action = "run"
+    else:
+        options += ["--resume-from", str(h.root / "initial")]
+    if mutation == "readonly":
+        options[1] = "read-only"
+    elif mutation == "model":
+        options += ["--model", "gpt-6-astra"]
+    elif mutation == "effort":
+        options += ["--effort", "max"]
+    elif mutation == "missing_pr":
+        options[4:6] = []
+    elif mutation == "no_marker":
+        options[2:6] = ["--effort", "high"]
+    before = (h.root / "args.txt").read_bytes()
+    proc = h.run("invalid-repair", action=action, extra=tuple(options))
+    assert proc.returncode == 2, proc.stderr
+    assert (h.root / "args.txt").read_bytes() == before
+    assert not (h.root / "invalid-repair").exists()
+
+
 @pytest.mark.parametrize("scenario", ["success", "web_search", "malformed"])
 def test_event_receipts_match_exact_cli_bytes_and_utc_receive_times(
     h: Harness, scenario: str
