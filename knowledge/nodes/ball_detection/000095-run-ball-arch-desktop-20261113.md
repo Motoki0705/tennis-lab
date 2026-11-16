@@ -3,7 +3,7 @@ id: run-ball-arch-desktop-20261113
 type: run
 task: ball_detection
 sequence: 95
-recorded_at: '2026-11-15'
+recorded_at: '2026-11-16'
 title: RTX 5060 Tiへの本学習移管とactivation checkpointing検証
 issue: 1859
 provider: codex
@@ -53,9 +53,13 @@ metrics:
   attempt6_c1_warm_median_data_wait_seconds: 0.0010403244998542505
   attempt6_peak_allocated_bytes: 9786588672
   attempt6_peak_reserved_bytes: 10810818560
+  attempt7_c3_warm_median_update_seconds: 1.9371470205078367
+  attempt7_c3_warm_median_data_wait_seconds: 0.0006467854982474819
+  attempt7_peak_allocated_bytes: 9746104832
+  attempt7_peak_reserved_bytes: 10777264128
 artifacts:
   run_dir: knowledge/runs/run-ball-arch-desktop-20261113
-  output_dir: outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme
+  output_dir: /mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261116-a7-nvme
   drive_outputs: outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1
 repro:
   commit: 7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0
@@ -139,3 +143,15 @@ DriveのC1 `checkpoint-00006500-1b54ed05`をmarker固定で独立復元した。
 C1の6,501〜6,511更新（compile初回＋後続10回）はloss/勾配/LRが有限、update/sample位置が連続で、data draw/augmentation/LRがa5の同prefixと一致した。warm10回のmedianはupdate 1.817398秒、data_wait 0.001040324秒。両方ともD copyを読む短い観測であり、HDD移行の効果やL4比較にはしない。peak allocated/reservedは9786588672 / 10810818560 bytesでallocator内、RAM/D/Eも各下限内だった。
 
 引継ぎ正本はmonitoring-handoff.jsonとattempt-6-recovery.json / attempt-6-startup-acceptance.json。unit/queue/root、terminal event、wait/capacity log、次の未使用attempt7復旧コマンドを更新した。workerはこのprefix以後の学習進捗を監視せず、C1〜C3の完走・評価と統合判断を親へ返す。summaryの採用判断は変わらない（summary_impact: none）。
+
+# 人間の停止指示後のC3再開（attempt 7、2026-11-16）
+
+親のsystemctl stopでattempt6のC3は45更新で止まり、external_signalとterminal uploadが保存された。旧writerの停止とGPU空きを確認し、既存のqueue履歴を保持した。別UIDのsystem-wide queue serviceと、worker不在のrepository queueを確認して、新しいkey/unitで後者を起動した。
+
+mainのdata/outputs/ckpt切替後、今回のrootはE data volumeの絶対パスへ作った。D hot copy全2,925 payload・157,028,755,547 bytesを再びサイズ/SHA照合し、追加コピー0だった。167 package、native binary SHA/import、cache、55入力資産のhardlink/SHAを照合した。C3は初期artifactを持たずseed42で全体を初期化するrecipeであり、ckpt切替の影響を受ける重み参照はない。準備C0等の入力は検証済みE絶対パスで読めた。
+
+T1後半・T2前後半・C1・C2のcompleted snapshotを独立復元し、各validationのobserved85,473・identity・per-frame予測を確認した。C3のverified initialized-00000000-098b9bb7はrecipe/manifestと空ログの4ファイルを持つ。marker固定の独立復元後、既存のseed42直接初期化を使って0から再開した。45更新の未保存状態は旧attemptへ保持した。
+
+新しい1〜11更新（compile初回＋後続10回）はloss/勾配/LRが有限、update/sample位置が連続だった。recipe/sourceとdata draw/augmentation/LRが旧初期化・同prefixに一致した。warm10回のmedianはupdate 1.937147秒、data_wait 0.000646785秒。peak allocated/reservedは9746104832 / 10777264128 bytesでallocator内、RAM/D/Eも各下限内だった。
+
+実行commitは7d7a2e4fa。引継ぎはmonitoring-handoff.json、attempt-7-recovery.json、attempt-7-startup-acceptance.jsonにある。workerの進捗観測はこのprefixで終え、C3の完走・固定validation・統合報告は親へ返す。summaryの採用判断は継続する（summary_impact: none）。

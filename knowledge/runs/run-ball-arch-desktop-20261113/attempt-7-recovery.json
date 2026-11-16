@@ -1,0 +1,328 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "checked_at": 1794836047.4245265,
+  "attempt": 7,
+  "execution_commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+  "code_guard_recipe_fixed": true,
+  "old_writer": {
+    "schema_version": 1,
+    "checked_at": 1794835270.4888604,
+    "reason": "Parent reports intentional human-requested systemctl stop",
+    "old_root": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme",
+    "new_root": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261116-a7-nvme",
+    "old_unit": "tennis-ball-arch-desktop-production-20261113-a6.service",
+    "old_service_state": "inactive",
+    "old_queue_id": "0-8205296550702081252_2026-11-15T00-44-09-297918747Z_280792_ball-arch-desktop-production-a6",
+    "old_training_pid_absent": 3504875,
+    "old_serial_pid_absent": 282944,
+    "gpu_empty": true,
+    "own_queue_worker_absent": true,
+    "other_queue_serve_pid": 1962,
+    "other_serve_process": "    PID  EUID UNIT                            COMMAND\n   1962   997 tennis-lab-training-queue.service bash /opt/tennis-lab-actions/bin/training_queue.sh serve --idle-timeout 2147483647\n",
+    "old_running_records_preserved": [
+      {
+        "name": "0-8205359605821449085_2026-11-14T07-13-14-178550914Z_1105362_ball-arch-desktop-production-a5.job",
+        "sha256": "1078cb50ab5e7a90b10143535a7f2ed3d6f317b3515f00df1f5f5268ab580406"
+      },
+      {
+        "name": "1789724293184410322_291867_slcs-plcs-meiji-foot-e60-resume-v2.job",
+        "sha256": "b7b425f2e2347c6c8e8f161bab11d858011847df6dd564c819b1b8f6d0e330e8"
+      },
+      {
+        "name": "1789719745232611618_3936527_slcs-real-observe-meiji-interleaved-v2.job",
+        "sha256": "867bf326869477349a21aae762eaa8f231d578d17b16af920726c2b473d559b6"
+      },
+      {
+        "name": "1789390400503782948_285873_court-ms5-depth3-local-rtx.job",
+        "sha256": "107987508b26077da30f5c43726113108f603a2d939fa3c2dce2f2286c163ded"
+      },
+      {
+        "name": "1789717410321992570_3608255_slcs-plcs-meiji-foot-e60-v1.job",
+        "sha256": "f969c1e2a4014a101470c367148da3582c9cb8d0a9d4fbc817058fb59a4bded8"
+      },
+      {
+        "name": "1789786633911066387_434117_slcs-full-real-rgb-no-ball-smooth-e60-takeover-v2.job",
+        "sha256": "fa9b27c55f1fc4005369ff8ba00b77ef0814d43c5f4847d13b99837bb83815fe"
+      },
+      {
+        "name": "1790133878297882987_3759257_plcs-association-v4-curriculum-smoke-20260923.job",
+        "sha256": "ceee56bad15d48d4fb22fa60af7a4e838bc6601397841d88694a5cb7000fa884"
+      },
+      {
+        "name": "1792306989216762220_4025939_i1231-hybrid-720p-e333-20261018.job",
+        "sha256": "244a9d50f48ec0e014e182535e410e463530eb1b1530120f286d4f5acbb9b412"
+      }
+    ],
+    "pending_jobs": [],
+    "source_commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+    "source_clean": true,
+    "unused_attempt": 7,
+    "worktree_outputs_new_target": "/home/kamimura/projects/tennis-lab/.worktree-outputs/ball-arch-desktop",
+    "explicit_e_output_root": true,
+    "old_c3_rows": 46,
+    "discarded_unverified_updates": [
+      1,
+      45
+    ],
+    "c3_initialization_rule": "torch_manual_seed; direct_complete_architecture; no_pretrained_modules",
+    "c3_initial_artifact": null,
+    "main_ckpt": "/home/kamimura/projects/tennis-lab/ckpt",
+    "frozen_ckpt_exists": false
+  },
+  "dataset": {
+    "schema_version": 1,
+    "complete": true,
+    "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/dataset",
+    "destination": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+    "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+    "verified_files": 2925,
+    "verified_bytes": 157028755547,
+    "copied_files": 0,
+    "copied_bytes": 0,
+    "reused_files": 2925,
+    "root_device": 2096,
+    "canonical_device": 2112,
+    "hardlinks_only": false,
+    "elapsed_seconds": 187.59885314997518,
+    "all_sha256_verified": true,
+    "independent_copy": true,
+    "additional_payload_bytes": 0,
+    "finished_at": 1794835422.9747658
+  },
+  "relocation": {
+    "report": "relocation-verification.json",
+    "packages": 167,
+    "input_assets": 55,
+    "native_binary_and_caches_verified": true
+  },
+  "checkpoint_path_audit": {
+    "c3_initialization": null,
+    "c3_initialization_rule": "torch_manual_seed; direct_complete_architecture; no_pretrained_modules",
+    "c3_external_ckpt_references": [],
+    "file_references": [
+      {
+        "key": "directory",
+        "value": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1"
+      }
+    ],
+    "frozen_source_ckpt_exists": false,
+    "common_dpt_checkpoint": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261116-a7-nvme/inputs/common-dpt-T32/checkpoint-update-00010000.pt",
+    "common_dpt_sha256": "8a10a5a856703946d36df4a9490a62f68e05522b96bde0730f648f3e7c9b053e",
+    "source_commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+    "main_ckpt_path": "/home/kamimura/projects/tennis-lab/ckpt"
+  },
+  "completed_validation_contracts": [
+    {
+      "stage": "T1-q06000-q12000",
+      "generation": "completed-00006000-f95d9b90",
+      "fixed_observed": 85473,
+      "identity_contract_matches": true,
+      "predictions_restored": true
+    },
+    {
+      "stage": "T2-q00000-q06000",
+      "generation": "completed-00006000-094abdfa",
+      "fixed_observed": 85473,
+      "identity_contract_matches": true,
+      "predictions_restored": true
+    },
+    {
+      "stage": "T2-q06000-q12000",
+      "generation": "completed-00006000-8c06130e",
+      "fixed_observed": 85473,
+      "identity_contract_matches": true,
+      "predictions_restored": true
+    },
+    {
+      "stage": "C1-dpt-10000",
+      "generation": "completed-00010000-8a82cefb",
+      "fixed_observed": 85473,
+      "identity_contract_matches": true,
+      "predictions_restored": true
+    },
+    {
+      "stage": "C2-dpt-10000",
+      "generation": "completed-00010000-dbd0489b",
+      "fixed_observed": 85473,
+      "identity_contract_matches": true,
+      "predictions_restored": true
+    }
+  ],
+  "recovery": {
+    "complete": true,
+    "stages": [
+      {
+        "stage": "T1-q06000-q12000",
+        "update": 6000,
+        "completed": true,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "completed-00006000-f95d9b90",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/completed-00006000-f95d9b90",
+          "manifest_sha256": "87f7b0fe576eb81a3354eb645a7f0683e5e5634407e8034684a5d47bc7203727",
+          "manifest_md5": "d856b48746aeeacd69d8476198528557",
+          "files": 12,
+          "size_bytes": 550949797,
+          "marker_id": "1HA30gpWwNEyU9tGev-1Vkuz3Q5RqvkVI",
+          "seconds": 100.26304868899751,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "a5e25941814bc5d69b9ccf702c68dfa050607b1a290c2fd3b1b0318c3ae33547",
+        "tensor_cache_retired": true
+      },
+      {
+        "stage": "T2-q00000-q06000",
+        "update": 6000,
+        "completed": true,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "completed-00006000-094abdfa",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T2-q00000-q06000/completed-00006000-094abdfa",
+          "manifest_sha256": "023309f265ad077832f51228af948939e69c3942216325d58653c475f03c01e3",
+          "manifest_md5": "a793f4ff783db73ea6914612b1c67de2",
+          "files": 13,
+          "size_bytes": 552413663,
+          "marker_id": "1iEULVDumnl0lcAem9svHGT0tm0PmK75w",
+          "seconds": 94.05624733799777,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "f0007ab9cc5e8544fcff6138fd142fe0650880a06cf8663e85e7e9a43d919af3",
+        "tensor_cache_retired": true
+      },
+      {
+        "stage": "T2-q06000-q12000",
+        "update": 6000,
+        "completed": true,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "completed-00006000-8c06130e",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T2-q06000-q12000/completed-00006000-8c06130e",
+          "manifest_sha256": "ae3f3fc272d9d2da8cfcc47eeb365164d93c169daa478be696f014787570ef23",
+          "manifest_md5": "89d88df71b73ecf746a1ddd8c4c8abae",
+          "files": 11,
+          "size_bytes": 553910876,
+          "marker_id": "1Nfmryp2mgILxSddVsUGyjQczxBq1z1Kc",
+          "seconds": 92.21879825100041,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "be2dc646546ebd322ca9116d28d84026099889125093fcc1efccf3ad1c2c8a18",
+        "tensor_cache_retired": true
+      },
+      {
+        "stage": "C1-dpt-10000",
+        "update": 10000,
+        "completed": true,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "completed-00010000-8a82cefb",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/C1-dpt-10000/completed-00010000-8a82cefb",
+          "manifest_sha256": "d7843503b7bb97447bc03bf77ed7ed7fd6163c9f79efe1020e812277d45de951",
+          "manifest_md5": "39f7591dec757f844c0a513ecdec7a96",
+          "files": 13,
+          "size_bytes": 186047112,
+          "marker_id": "1KWoEjeR6Z2A18iZ00JBeMpHrGJzxuU1d",
+          "seconds": 59.390931730999,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "90c662e7ec584bdc9d92473437f36c4310b19fc292751582eefaa28ebbd55b53",
+        "tensor_cache_retired": true
+      },
+      {
+        "stage": "C2-dpt-10000",
+        "update": 10000,
+        "completed": true,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "completed-00010000-dbd0489b",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/C2-dpt-10000/completed-00010000-dbd0489b",
+          "manifest_sha256": "641bd0dcdc6cf26e721713e97e57a27177bda6b93d590414967c90dfa9c62ee0",
+          "manifest_md5": "0c279d384a64ba593988be61da5eb1df",
+          "files": 11,
+          "size_bytes": 196935802,
+          "marker_id": "18KwdOJjIr5PRdDT-Ldx6WzLEUV3LD0kE",
+          "seconds": 56.52367493000202,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "97d8594fe8e37dc14129342a408e10fafda5ea785c4917ca9656c5274c3accc1",
+        "tensor_cache_retired": true
+      }
+    ],
+    "policy": {
+      "schema_version": 1,
+      "confirmed": true,
+      "scope": "encoder_msda",
+      "t1_t2_identical": true,
+      "production_mutable": false,
+      "selected_by": "minimum summed warm median update seconds among common passing scopes",
+      "allocator_fraction": 0.8,
+      "scientific_shape_unchanged": true,
+      "cnn_cases_checkpointing": false,
+      "evidence": "probe-matrix.json"
+    },
+    "old_writer_confirmed_stopped": true,
+    "scientific_state_exact": true,
+    "finished_at": 1794836001.5556724
+  },
+  "zero_initialization": {
+    "schema_version": 1,
+    "complete": true,
+    "checked_at": 1794835522.0630243,
+    "stage": "C3-dpt-10000",
+    "resume_update": 0,
+    "saved_pointer": {
+      "schema_version": 1,
+      "case": "C3",
+      "stage": "C3-dpt-10000",
+      "event": "initialized",
+      "update": 0,
+      "rows": 0,
+      "updated_at": 1794736531.6410928,
+      "mode": "production",
+      "execution_commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+      "receipt": {
+        "schema": "verified_artifact_snapshot.v1",
+        "generation": "initialized-00000000-098b9bb7",
+        "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/C3-dpt-10000/initialized-00000000-098b9bb7",
+        "manifest_sha256": "79592dd0da88753a4986dcb2c7b8d5b1e8724a06ae5875a8ca32a8fdb122da31",
+        "manifest_md5": "9732548fb1901099297a452a525e127b",
+        "files": 4,
+        "size_bytes": 18750704,
+        "marker_id": "18_wxECDFajKtqtN2x00DstY6fcdxSw0F",
+        "seconds": 44.701407513995946,
+        "status": "verified"
+      },
+      "readback": {
+        "schema": "verified_artifact_snapshot.v1",
+        "generation": "initialized-00000000-098b9bb7",
+        "status": "verified",
+        "files": 4,
+        "manifest_sha256": "79592dd0da88753a4986dcb2c7b8d5b1e8724a06ae5875a8ca32a8fdb122da31",
+        "seconds": 21.024838564000675
+      }
+    },
+    "independent_restore": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "initialized-00000000-098b9bb7",
+      "status": "verified",
+      "files": 4,
+      "manifest_sha256": "79592dd0da88753a4986dcb2c7b8d5b1e8724a06ae5875a8ca32a8fdb122da31",
+      "seconds": 27.387893325008918
+    },
+    "zero_log_verified": true,
+    "seed": 42,
+    "initialization_rule": "torch_manual_seed; direct_complete_architecture; no_pretrained_modules",
+    "initial_artifact": null,
+    "activation_checkpointing": false,
+    "prepared_manifest_hashes_match": true,
+    "source_hashes_match": true,
+    "checkpoint_path_audit": "checkpoint-path-audit.json",
+    "unverified_updates_discarded": [
+      1,
+      45
+    ],
+    "zero_state_semantics": "The verified zero-update generation contains recipe/manifests and an empty log. Existing recover.py reproduces it through the pinned seeded direct initializer."
+  },
+  "old_45_unverified_updates_preserved_at": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme/production/C3-dpt-10000",
+  "verified_resume_update": 0
+}

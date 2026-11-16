@@ -1,36 +1,35 @@
 # RTX 5060 Ti continuation of the architecture campaign
 
-Current state: **attempt 6 is running from independently verified C1 update
-6,500**, after the external WSL shutdown on 2026-11-15. C1 updates 6,501–6,511
-(the first compiled update plus ten subsequent updates) passed finite-value,
-continuity and resource acceptance. T1 tail and both T2 stages were independently
-restored as completed with their fixed validation contracts/predictions; they
-are skipped. C1 continues to 10,000, then C2 and C3 run in the existing order.
-The frozen execution commit remains `7d7a2e4fa`; code, guards and recipes are unchanged.
+**Attempt 7 is running C3 from its verified zero-update
+initialization generation** after the human-requested attempt-6 stop. Updates
+1–11 (the first compiled update plus ten subsequent updates) passed finite-value,
+continuity and resource acceptance. T1 tail, both T2 stages, C1 and C2 were
+independently restored as completed with their fixed validation/predictions.
+C3 continues to its original 10,000-update budget.
 
-The D hot dataset at
-`/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1` was fully SHA-verified
-again (2,925 payloads / 157,028,755,547 bytes; 270.940 seconds, no copied bytes).
-It remains an independent copy on the WSL root filesystem. Inputs, outputs,
-private environment and caches remain on the mounted E ext4 data volume.
-The current [monitoring-handoff.json](monitoring-handoff.json) identifies the
-unit/queue/PID identities, terminal event, wait/capacity records and unused
-attempt-7 recovery commands. The parent owns monitoring after this acceptance;
-the worker registers no periodic follow-up and does not wait for C1 completion.
+The active output root is the explicit E data-volume path recorded in
+[monitoring-handoff.json](monitoring-handoff.json). On 2026-11-16 the worktree's
+`outputs` alias changed to the main repository's D `.worktree-outputs` directory.
+All commands for this attempt use the physical E root. The D hot dataset remains
+`/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1` and received another
+full size/SHA scan of 2,925 payloads / 157,028,755,547 bytes.
 
-Attempt 5's interrupted 6,501–6,605 suffix is retained but not adopted.
-Its inactive service, absent process identities and empty GPU were verified;
-the stale `running` queue record is preserved as history. Abrupt WSL shutdown
-can prevent both normal notifications and ExecStopPost: absence of a terminal
-event is not completion. [attempt-6-recovery.json](attempt-6-recovery.json) and
-[attempt-6-startup-acceptance.json](attempt-6-startup-acceptance.json) hold the
-closed recovery/acceptance proof. Earlier failures and attempts remain retained.
+[attempt-7-recovery.json](attempt-7-recovery.json) records the old writer's stop,
+completed-generation restoration, zero-generation verification and input-path
+audit. [attempt-7-startup-acceptance.json](attempt-7-startup-acceptance.json)
+records the accepted real updates. The C3 zero generation contains its recipe,
+manifests and empty log. The existing seeded direct initializer reproduces it,
+with seed 42 and no initial weight artifact. The old 45-update suffix remains in
+the stopped attempt. Its external-signal failure and terminal upload are retained.
+
+The current handoff identifies the new unit/queue/processes, terminal event,
+wait/capacity records and future unused attempt-8 commands. Parent monitoring
+continues from this startup acceptance. Earlier attempts retain their evidence.
 
 Refs #1859. The [2026-11-13 agreement](https://github.com/Motoki0705/tennis-lab/issues/1859#issuecomment-6840801232)
 supersedes the original prohibition on checkpointing for T1/T2. The initial desktop migration started
 T1 from tail update 5,500 (query cumulative 11,500). T1 has since completed with
-verified validation and predictions. The current attempt resumes C1 update 6,500 after the completed query stages,
-then continues C1, C2 and C3.
+verified validation and predictions. The current attempt follows the completed query, C1 and C2 stages and runs C3.
 No completed stage is repeated. C1/C2/C3 retain their original recipe and do not
 checkpoint activations. A different GPU cannot promise bitwise continuation.
 Its timing/memory must not be compared with the historical untrained L4 benchmark.
@@ -41,8 +40,8 @@ qualification, lifecycle and evidence; it does not replace historical generation
 
 ## Inputs and safety
 
-`$ROOT` is the recovery output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme`
-below the implementation worktree. `$SOURCE` is the immutable pushed runtime checkout.
+`$ROOT` is the physical E recovery output
+`/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261116-a7-nvme`. `$SOURCE` is the immutable pushed runtime checkout.
 `$ADAPTER` is this directory in that checkout. `$PY` is `$ROOT/env-original/bin/python`.
 `$QUEUE` is the main repository's shared `.training_queue`; set `$RCLONE_CONFIG`
 to the authenticated private config. Never print its contents.
@@ -241,7 +240,7 @@ verified copy of these reporting files.
 | T1 tail 6,000 / query 12k | `stage-status/T1-q06000-q12000/state.json`: event completed, update 6000, receipt/readback verified, checkpoint_state_equal true. `validation-update-00006000.json`: observed 85473 and matching target/teacher/frame identities; its `.frames.jsonl` must be in that verified snapshot. |
 | T2 first 500 checkpoint (historical) | Verified in attempt 3; its retained `persistence/T2-q00000-q06000/*.json` entry has event checkpoint, update 500, verified receipt/readback and checkpoint_state_equal true. The active root now restores the completed stage. |
 | T2 CNN unfreeze | Its `train.jsonl` row 600 has encoder_frozen true, row 601 false, subsequent updates/samples continuous with finite loss/gradient/LR. |
-| C1 next checkpoint 7,000 | `persistence/C1-dpt-10000/*.json` entry with update 7000, receipt/readback verified and checkpoint_state_equal true. The mutable latest pointer may already be later. |
+| C3 first full checkpoint 500 | `persistence/C3-dpt-10000/*.json` entry with update 500, receipt/readback verified and checkpoint_state_equal true. The mutable latest pointer may already be later. |
 | Each condition completed | Matching stage completed pointer and local COMPLETED marker, exact budget (T 6000 per stage, C 10000), fixed validation/prediction readback; controller moves on only afterward. |
 | Whole serial process ended | Root COMPLETED.json plus every completed stage, queue done, and the recorded terminal event state done / returncode 0. A service exit alone does not prove completion. |
 
@@ -502,3 +501,13 @@ accepted prefix had no admission wait. Peak allocated/reserved was
 Minimum host available was 29,083,549,696, D: 306,770,300,928 and E:
 3,772,008,771,584 bytes, all inside their floors. Parent/children RSS peaked at
 8,524,324,864 bytes. See the small attempt-6 proof JSON for complete samples.
+
+## Human-requested stop and attempt-7 recovery
+
+The stopped attempt-6 service was inactive, its serial/C3 process identities were absent and the GPU was empty. The separate system-wide queue service runs under another UID and stays active. The repository queue had no worker and no pending job. Historical running records, including attempt 5, were preserved.
+
+The switch of the main `ckpt/` directory leaves C3's direct seed initialization applicable. Its only recipe file-directory reference is the absolute D hot root. The preparation C0 checkpoint and all 55 immutable input assets were verified at absolute E paths. The private 167-package environment, native binary SHA/import and compiler caches were verified through their retained E paths.
+
+The full dataset size/SHA scan took 187.599 seconds and copied zero payload bytes. C3's old `initialized-00000000-098b9bb7` snapshot was independently restored with its pinned marker. New run recipe/source, data draws, augmentation and learning rates matched that initialization and the old first-update prefix.
+
+After the first update, median update time over ten updates was 1.937147 seconds and median data wait was 0.000646785 seconds. Peak allocated/reserved was 9,746,104,832 / 10,777,264,128 bytes, within the 13,682,291,507-byte allocator limit. RAM and both volume capacities remained above their floors. Full samples and resource minima are in the attempt-7 acceptance JSON.

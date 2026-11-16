@@ -1,10 +1,9 @@
 # Resume a stopped desktop attempt
 
-Attempt 6 is active after resuming the Drive-verified C1 update-6,500
-generation on 2026-11-15. Do not recover while its unit/job is live. Attempt 5
-ended in an externally reported WSL shutdown without a terminal event; its
-uncommitted 6,501–6,605 suffix and stale running history remain preserved.
-The commands below are for a future stopped attempt, using unused attempt 7.
+Attempt 7 is active from the verified C3 zero-update generation after the
+human-requested attempt-6 stop. Its output root is on the E data volume.
+T1/T2/C1/C2 completion and fixed validation were restored. The commands below
+describe a future stopped attempt using unused attempt 8.
 
 First inspect the unit/job in `monitoring-handoff.json`, queue state, GPU processes,
 `production-FAILED.json`, `production-FAILED-<case>-encoder_msda.json` and the terminal event. Diagnose the
@@ -24,8 +23,8 @@ configuration. Choose a fresh root suffix, never delete or reuse a failed root.
 cd "$SOURCE"
 export RCLONE_CONFIG=/home/kamimura/.config/tennis-lab/rclone-drive.conf
 export PYTHONDONTWRITEBYTECODE=1
-OLD_ROOT=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme
-NEW_ROOT=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a7-nvme
+OLD_ROOT=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261116-a7-nvme
+NEW_ROOT=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-$(date +%Y%m%d)-a8-nvme
 HOT_ROOT=/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1
 CANONICAL_DATA=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/dataset
 ADAPTER="$SOURCE/knowledge/runs/run-ball-arch-desktop-20261113"
@@ -121,3 +120,12 @@ for a later reuse decision. The unchanged bootstrap still performs a full SHA
 scan. The total host RAM observed after restart was about 39.17 GiB; admission
 6 GiB, emergency 2 GiB, service MemoryHigh/Max 18/20 GiB, allocator 80% and both
 10-GiB capacity floors are unchanged. No WSL configuration was edited.
+
+Since 2026-11-16 the worktree outputs alias resolves to D. Use physical E paths
+for OLD_ROOT and NEW_ROOT, as above. The E canonical dataset and D hot copy are
+the pinned dataset inputs. The unchanged bootstrap performs the full SHA scan.
+Input preparation uses its retained absolute E assets. C3 starts through the
+verified recipe's direct seed42 initializer and has no initial checkpoint path.
+If a future run does reference a changed input path, resolve and verify its
+content before starting it. Preserve the old external-signal stop and terminal
+receipt, and inspect the latest verified pointer for the next restart point.
