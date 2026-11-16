@@ -120,3 +120,16 @@ def test_essential_verified_lines_do_not_require_an_unidentifiable_leave_out_fit
     uncertain = refine_paint(image, matrix)
     assert uncertain.matrix is None
     assert "uncertain_paint_extrapolation" in uncertain.quality.reasons
+
+
+def test_coarse_primary_stripe_can_remain_a_semantic_alternative():
+    # With only two transverse markings, an alternative baseline can define a
+    # different projective court. A model-local match alone cannot disambiguate.
+    image, matrix, truth = painted_court(lines=[0, 1, 2, 3, 4])
+    a, b = truth[[0, 1]] + [0, 10]
+    cv2.line(image, tuple(a.round().astype(int)), tuple(b.round().astype(int)), (255, 255, 255), 3, cv2.LINE_AA)
+    result = refine_paint(image, matrix)
+    assert result.fitted_matrix is not None
+    assert result.matrix is None
+    assert "ambiguous_paint_correspondence" in result.quality.reasons
+    assert "far_baseline" in result.quality.metrics["unresolved_semantic_alternatives"]
