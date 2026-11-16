@@ -1,8 +1,8 @@
 {
   "schema": "court_paint_reference_v2",
-  "human_reviewed": false,
-  "approved_for_evaluation": false,
-  "evaluation_status": "provisional_parent_authorized",
+  "human_reviewed": true,
+  "approved_for_evaluation": true,
+  "evaluation_status": "human_approved",
   "source_reference_sha256": "2604bf0b70b1bc755f51a3f1b08c48cd6b98a4a7d6b0939037eb4eb85e77c6f4",
   "net_exclusion_sha256": "9597be8c801c61d9fbe439d67b4c452b28aa36c485153d4045510a2aa3217eb1",
   "config": {
@@ -42,9 +42,9 @@
   "cameras": [
     {
       "camera": "cam0",
-      "human_reviewed": false,
-      "approved_for_evaluation": false,
-      "evaluation_status": "provisional_parent_authorized",
+      "human_reviewed": true,
+      "approved_for_evaluation": true,
+      "evaluation_status": "human_approved",
       "matrix_court_metres_to_image_pixels": [
         [
           24.403633620059832,
@@ -294,13 +294,29 @@
         11,
         12,
         13
-      ]
+      ],
+      "approval": {
+        "date": "2026-11-16",
+        "evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209",
+        "reviewed_commit": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+        "review_method": "Human inspected original-resolution RGB crops and selected \u627f\u8a8d\u3059\u308b.",
+        "accepted_limitations": [
+          "far_baseline extrapolated from other painted lines",
+          "approximately 5px temporal change in cam1 and cam3"
+        ],
+        "temporal_segmentation": false,
+        "mean_tolerance_px": 10,
+        "max_tolerance_px": 25,
+        "false_accept_target": 0,
+        "correct_acceptance_target": 0.9,
+        "instruction_turn": "c101f6257cd34cbaa260dc537a3e2438"
+      }
     },
     {
       "camera": "cam1",
-      "human_reviewed": false,
-      "approved_for_evaluation": false,
-      "evaluation_status": "provisional_parent_authorized",
+      "human_reviewed": true,
+      "approved_for_evaluation": true,
+      "evaluation_status": "human_approved",
       "matrix_court_metres_to_image_pixels": [
         [
           68.41990834916449,
@@ -550,13 +566,29 @@
         11,
         12,
         13
-      ]
+      ],
+      "approval": {
+        "date": "2026-11-16",
+        "evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209",
+        "reviewed_commit": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+        "review_method": "Human inspected original-resolution RGB crops and selected \u627f\u8a8d\u3059\u308b.",
+        "accepted_limitations": [
+          "far_baseline extrapolated from other painted lines",
+          "approximately 5px temporal change in cam1 and cam3"
+        ],
+        "temporal_segmentation": false,
+        "mean_tolerance_px": 10,
+        "max_tolerance_px": 25,
+        "false_accept_target": 0,
+        "correct_acceptance_target": 0.9,
+        "instruction_turn": "c101f6257cd34cbaa260dc537a3e2438"
+      }
     },
     {
       "camera": "cam2",
-      "human_reviewed": false,
-      "approved_for_evaluation": false,
-      "evaluation_status": "provisional_parent_authorized",
+      "human_reviewed": true,
+      "approved_for_evaluation": true,
+      "evaluation_status": "human_approved",
       "matrix_court_metres_to_image_pixels": [
         [
           20.815374536357528,
@@ -806,13 +838,29 @@
         11,
         12,
         13
-      ]
+      ],
+      "approval": {
+        "date": "2026-11-16",
+        "evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209",
+        "reviewed_commit": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+        "review_method": "Human inspected original-resolution RGB crops and selected \u627f\u8a8d\u3059\u308b.",
+        "accepted_limitations": [
+          "far_baseline extrapolated from other painted lines",
+          "approximately 5px temporal change in cam1 and cam3"
+        ],
+        "temporal_segmentation": false,
+        "mean_tolerance_px": 10,
+        "max_tolerance_px": 25,
+        "false_accept_target": 0,
+        "correct_acceptance_target": 0.9,
+        "instruction_turn": "c101f6257cd34cbaa260dc537a3e2438"
+      }
     },
     {
       "camera": "cam3",
-      "human_reviewed": false,
-      "approved_for_evaluation": false,
-      "evaluation_status": "provisional_parent_authorized",
+      "human_reviewed": true,
+      "approved_for_evaluation": true,
+      "evaluation_status": "human_approved",
       "matrix_court_metres_to_image_pixels": [
         [
           63.75478374347608,
@@ -1067,7 +1115,39 @@
         11,
         12,
         13
-      ]
+      ],
+      "approval": {
+        "date": "2026-11-16",
+        "evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209",
+        "reviewed_commit": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+        "review_method": "Human inspected original-resolution RGB crops and selected \u627f\u8a8d\u3059\u308b.",
+        "accepted_limitations": [
+          "far_baseline extrapolated from other painted lines",
+          "approximately 5px temporal change in cam1 and cam3"
+        ],
+        "temporal_segmentation": false,
+        "mean_tolerance_px": 10,
+        "max_tolerance_px": 25,
+        "false_accept_target": 0,
+        "correct_acceptance_target": 0.9,
+        "instruction_turn": "c101f6257cd34cbaa260dc537a3e2438"
+      }
     }
-  ]
+  ],
+  "approval": {
+    "date": "2026-11-16",
+    "evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209",
+    "reviewed_commit": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+    "review_method": "Human inspected original-resolution RGB crops and selected \u627f\u8a8d\u3059\u308b.",
+    "accepted_limitations": [
+      "far_baseline extrapolated from other painted lines",
+      "approximately 5px temporal change in cam1 and cam3"
+    ],
+    "temporal_segmentation": false,
+    "mean_tolerance_px": 10,
+    "max_tolerance_px": 25,
+    "false_accept_target": 0,
+    "correct_acceptance_target": 0.9,
+    "instruction_turn": "c101f6257cd34cbaa260dc537a3e2438"
+  }
 }

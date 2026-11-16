@@ -4,17 +4,17 @@ type: run
 task: court_detection
 sequence: 71
 recorded_at: '2026-11-16'
-title: 元解像度の白線中心による仮参照とCourt3条件の再評価（未再承認）
+title: 承認済み白線参照によるCourt3条件の再評価（受入未達）
 issue: 2190
 provider: codex
 date: '2026-11-16'
 status: done
 config:
-  evaluation_status: provisional_parent_authorized
-  human_reviewed: false
-  approved_for_evaluation: false
+  evaluation_status: human_approved
+  human_reviewed: true
+  approved_for_evaluation: true
   reference_schema: court_paint_reference_v2
-  reference_sha256: a53b250de0faa40a8ca005beda578099ae518997dd150bb4c57dac21c9d40b29
+  reference_sha256: 90ed3bbdeae4a553cf82c9fb13c49ee56cf45e17f0436b0c30ae83929de08e4b
   mean_tolerance_px: 10
   max_tolerance_px: 25
   false_accept_target: 0
@@ -29,15 +29,17 @@ config:
   sampled_frames_per_camera: 15
   production_implementation_changed_this_turn: false
   gpu_used_this_turn: false
+  reference_geometry_sha256: 1b9c48abe5578a69d99d6a1253a3842f264d46a2af898f1a632ae1c1c7f8ba7e
+  approval_evidence: https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209
 metrics:
   reference_successful_frames: 59
   reference_failed_frames: 1
   meiji4_cases: 276
-  legacy_false_accepts_provisional: 105
-  acceptance_only_false_accepts_provisional: 116
-  new_false_accepts_provisional: 116
-  new_correct_acceptance_rate_provisional: 0.810126582278481
-  new_correct_available_recovery_rate_provisional: 0.35359116022099446
+  legacy_false_accepts: 105
+  acceptance_only_false_accepts: 116
+  new_false_accepts: 116
+  new_correct_acceptance_rate: 0.810126582278481
+  new_correct_available_recovery_rate: 0.35359116022099446
   offline_numerical_tests_passed: 3
 artifacts:
   run_dir: knowledge/runs/run-court-white-line-reference-20261116
@@ -48,7 +50,7 @@ relations: []
 papers: []
 tags:
 - reference-correction
-- provisional-evaluation
+- approved-evaluation
 - white-line
 - negative-result
 summary_impact: updated
@@ -60,9 +62,12 @@ repro:
     aggregate_reference, rescore, render_review, render_remaining, report_details.
 ---
 
-旧参照には数px〜数十pxのずれがあった。白線中心から独立に作った仮参照では、誤採用は旧処理144→105件、採否のみ175→116件、後処理込み176→116件に変わった。したがって旧参照の144〜176件をそのまま推定誤りとは呼べない。一方、白線から大きく離れた推定も残り、仮集計でも誤採用0・正しい推定の採用90%以上には届かない。
+旧参照には数px〜数十pxのずれがあった。白線中心から独立に作った白線参照では、誤採用は旧処理144→105件、採否のみ175→116件、後処理込み176→116件に変わった。したがって旧参照の144〜176件をそのまま推定誤りとは呼べない。一方、白線から大きく離れた推定も残り、白線参照の集計でも誤採用0・正しい推定の採用90%以上には届かない。
 
-**新参照は未再承認。`human_reviewed=false`、`approved_for_evaluation=false`のまま。** 親から許可された仮評価であり、人間承認後の受入結果ではない。`status: done`はこの再評価の実行完了を表す。全cameraの奥ベースラインは直接測定できず、cam1/3の数pxの時間変化もある。参照誤差と推定誤りを区別する必要が生じたため`summary_impact: updated`。
+**白線参照は2026-11-16に人間が承認済み。** [親note](https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209)に、元解像度cropを確認して「承認する」を選んだ根拠がある。奥ベースラインの外挿とcam1/3の約5pxの時間変化を承知の上で、区間分割はしない。`human_reviewed=true`、`approved_for_evaluation=true`へ承認metadataだけを更新し、H・座標・許容差・目標・以下の数値は変えていない。`reference/approval.json`に承認前後のH一致と承認根拠を保存した。
+
+`reference/freeze.json`は作成時の履歴として保持し、その参照hashは保存した`preapproval-reference.json`と一致する。JSON/CSVの`provisional`は初回集計時の固定キーで、現在は同じHの承認済み白線参照を指す。図中のPROVISIONALも作成時の表示を保持した。`status: done`は評価の実行完了であり、受入合格を意味しない。参照の承認状態が変わったため`summary_impact: updated`。
+
 
 ## 参照の作成と固定
 
@@ -87,7 +92,7 @@ repro:
 | cam2 | 15/15 | far_baseline(0/15), far_service(4/15) | 22.33 / 47.68 |
 | cam3 | 14/15 | far_baseline(0/15), far_service(1/15) | 10.63 / 37.85 |
 
-cam3/clip_068/frame 0は`insufficient_consistent_court_lines`。同clipの中央・末尾は成功したため、宣言した2frame/clipの条件を満たす14frameのHを仮固定した。失敗frameのHはnullのまま。
+cam3/clip_068/frame 0は`insufficient_consistent_court_lines`。同clipの中央・末尾は成功したため、宣言した2frame/clipの条件を満たす14frameのHを作成時に仮固定し、今回そのHを承認した。失敗frameのHはnullのまま。
 
 次は**同じ測定中心**への垂直距離の絶対値p95（旧→新、px）。sample点・frameごとの中央値/p95は`reference/cam*-measured-centres.csv`、`line-frame-residuals.csv`、`references.json`に保存した。Hに利用した観測へのfit残差であり、独立な正解精度ではない。支持不足の線も残差だけは診断用に保持する。
 
@@ -111,11 +116,11 @@ near_baseline / left_singles / near_serviceのframe中央値の最大幅は、ca
 
 推定と同じframe 0のHが得られた19画像で補助比較すると、3条件57判定中6判定が共通Hとの比較から変わる（`framewise-sensitivity.csv`）。これは不確かさの診断だけで、全276件の表をframe別Hや有利なHで置き換えていない。
 
-## 人間の確認資料
+## 人間が承認した確認資料
 
 worktreeの`outputs/tennis_scene/evaluate/court-reference-white-lines-20261116/review/index.html`を開く。4camera×clip000/034/068×4領域（手前ベースライン・ネット側・左右サイドライン）の48crop。元画像の512×160pxをそのまま保存し、原画／旧参照青／新参照橙／両方を切替可能。100/200/400%表示で確認でき、明るさ調整は表示だけ。12枚の`camN-clipXXX-native-comparison.png`も原解像度のまま保存した。描画の下にある白線を原画表示で確認する。
 
-Git内の次の概要図は一覧用の縮小・減色版で、再承認には上記の元解像度PNGを使う。
+Git内の次の概要図は一覧用の縮小・減色版で、承認に用いた元解像度PNGを正本とする。
 
 ![cam0旧青・新橙の概要](../../runs/run-court-white-line-reference-20261116/review/cam0-overview.png)
 
@@ -125,13 +130,13 @@ Git内の次の概要図は一覧用の縮小・減色版で、再承認には�
 
 ![cam3旧青・新橙の概要](../../runs/run-court-white-line-reference-20261116/review/cam3-overview.png)
 
-## 凍結した3条件の再評価（仮）
+## 凍結した3条件の再評価（承認済み）
 
 A=旧処理、B=採否のみ変更、C=後処理も変更。元の`court-acceptance-implementation-20261116/meiji4-evaluation/meiji_4cam/`276件を使った。別の`scene-evaluation`にはclip033/cam0のB/Cの選択候補が2件だけ異なるsnapshotがあり、前回の主報告を再現する`meiji4-evaluation`を正本にした。その2件の相違原因は未調査。副snapshotでの初回集計はoutputsの`evaluation-secondary-snapshot`に保存し、主表には混在させていない。
 
 推定点・採否・region index・qualityが旧新参照で完全一致することと、旧参照の平均誤差・正誤が前回保存値に一致することを全件assertした。元推定ファイル集合のhashは`evaluation/summary.json`。正解は変更せず**参照の画像内KPの平均10px以下かつ最大25px以下**。TP=正しい採用、FN=正しい診断候補の拒否、FP=誤った採用、TN=誤った診断候補の拒否。拒否時の診断候補は下流へ流さない。
 
-| camera | 条件 | 旧参照 TP/FN/FP/TN | 仮参照 TP/FN/FP/TN | 正しい推定の採用率 旧→仮 | 誤った推定の拒否率 旧→仮 |
+| camera | 条件 | 旧参照 TP/FN/FP/TN | 白線参照 TP/FN/FP/TN | 正しい推定の採用率 旧→白線 | 誤った推定の拒否率 旧→白線 |
 |---|---|---|---|---:|---:|
 | cam0 | A | 1/3/28/37 | 9/6/20/34 | 25.0%→60.0% | 56.9%→63.0% |
 | cam0 | B | 4/0/38/27 | 9/2/33/25 | 100.0%→81.8% | 41.5%→43.1% |
@@ -153,7 +158,7 @@ A=旧処理、B=採否のみ変更、C=後処理も変更。元の`court-accepta
 
 選択候補の正しさの分母も参照で変わるため、**全候補中に正解がある画像**を分母にした救済率も報告する。下表は「正しく採用できた画像数 / 正解候補が存在する画像数」。
 
-| camera | A 旧→仮 | B 旧→仮 | C 旧→仮 |
+| camera | A 旧→白線 | B 旧→白線 | C 旧→白線 |
 |---|---:|---:|---:|
 | cam0 | 1/19 (5.3%) → 9/44 (20.5%) | 4/19 (21.1%) → 9/44 (20.5%) | 2/17 (11.8%) → 8/44 (18.2%) |
 | cam1 | 4/14 (28.6%) → 4/37 (10.8%) | 3/14 (21.4%) → 13/37 (35.1%) | 2/14 (14.3%) → 13/35 (37.1%) |
@@ -165,7 +170,7 @@ A=旧処理、B=採否のみ変更、C=後処理も変更。元の`court-accepta
 
 誤差は各画像の可視KP平均誤差の中央値。拒否された診断候補も含む。clipばらつきは全14点のclip中央値からの距離p95で、画像外外挿も含む。参照だけを変えたため、**推定のclipばらつきは不変**。cam3の裾がCで小さいことを、今回参照を直した効果とは呼ばない。
 
-| camera | A 誤差 旧→仮px | B 誤差 旧→仮px | C 誤差 旧→仮px | ばらつきp95 A/B/C px |
+| camera | A 誤差 旧→白線px | B 誤差 旧→白線px | C 誤差 旧→白線px | ばらつきp95 A/B/C px |
 |---|---:|---:|---:|---:|
 | cam0 | 16.73→13.15 | 18.02→14.99 | 18.19→15.81 | 34.68 / 42.94 / 42.84 |
 | cam1 | 14.15→13.40 | 15.10→12.09 | 14.93→11.86 | 14.69 / 14.30 / 13.71 |
@@ -176,31 +181,31 @@ A=旧処理、B=採否のみ変更、C=後処理も変更。元の`court-accepta
 
 ## 参照のずれと残る推定誤り
 
-採用済み画像で旧FP→仮TPになったのはA/B/C=47/63/63件、逆の旧TP→仮FPは8/4/3件。単に全例の誤差が小さくなる補正ではない。特に旧AのTP8件は全て仮FPに変わった。参照変更後のラベルを人間の承認済み正解として扱わない。
+採用済み画像で旧FP→白線TPになったのはA/B/C=47/63/63件、逆の旧TP→白線FPは8/4/3件。単に全例の誤差が小さくなる補正ではない。特に旧AのTP8件は全て白線FPに変わった。このラベルは当初は仮の結果だったが、Hを変えずに参照が承認されたため、現在は承認済み基準による判定である。
 
-![同じ推定を旧参照と仮参照で比較](../../runs/run-court-white-line-reference-20261116/report/reference-error.png)
+![同じ推定を旧参照と白線参照で比較](../../runs/run-court-white-line-reference-20261116/report/reference-error.png)
 
-cam2/clip000の旧処理は、同じ採用・同じ推定で平均23.88→6.25px、FP→TP。左は原画、中央は旧参照青と推定マゼンタ、右は仮参照橙と同じ推定。旧参照のずれが大きかった代表例。
+cam2/clip000の旧処理は、同じ採用・同じ推定で平均23.88→6.25px、FP→TP。左は原画、中央は旧参照青と推定マゼンタ、右は白線参照橙と同じ推定。旧参照のずれが大きかった代表例。
 
-残る仮FPはA105/B116/C116件。**337件すべて**の原解像度cropを`remaining/index.html`に保存した。推定入力と同じframe 0を動画から読み、保存済みrawのRGB hashと照合した。モデル出力は参照固定後の採点・比較画像にのみ用いた。
+残る白線FPはA105/B116/C116件。**337件すべて**の原解像度cropを`remaining/index.html`に保存した。推定入力と同じframe 0を動画から読み、保存済みrawのRGB hashと照合した。モデル出力は参照固定後の採点・比較画像にのみ用いた。
 
-![cam0の残る仮誤採用](../../runs/run-court-white-line-reference-20261116/remaining/cam0-remaining-example.png)
+![cam0の残る誤採用](../../runs/run-court-white-line-reference-20261116/remaining/cam0-remaining-example.png)
 
-meiji_4cam/video_000/clip_022/cam0、C：可視KP平均19.75px、最大84.63px。独立に測れた2本の線の交点KP2で84.63px。左=原画、中=仮参照橙、右=仮参照と推定マゼンタ。
+meiji_4cam/video_000/clip_022/cam0、C：可視KP平均19.75px、最大84.63px。独立に測れた2本の線の交点KP2で84.63px。左=原画、中=白線参照橙、右=白線参照と推定マゼンタ。
 
-![cam1の残る仮誤採用](../../runs/run-court-white-line-reference-20261116/remaining/cam1-remaining-example.png)
+![cam1の残る誤採用](../../runs/run-court-white-line-reference-20261116/remaining/cam1-remaining-example.png)
 
-meiji_4cam/video_000/clip_047/cam1、C：可視KP平均10.91px、最大16.58px。独立に測れた2本の線の交点KP2で16.58px。左=原画、中=仮参照橙、右=仮参照と推定マゼンタ。
+meiji_4cam/video_000/clip_047/cam1、C：可視KP平均10.91px、最大16.58px。独立に測れた2本の線の交点KP2で16.58px。左=原画、中=白線参照橙、右=白線参照と推定マゼンタ。
 
-![cam2の残る仮誤採用](../../runs/run-court-white-line-reference-20261116/remaining/cam2-remaining-example.png)
+![cam2の残る誤採用](../../runs/run-court-white-line-reference-20261116/remaining/cam2-remaining-example.png)
 
-meiji_4cam/video_000/clip_054/cam2、C：可視KP平均16.61px、最大60.81px。独立に測れた2本の線の交点KP2で60.81px。左=原画、中=仮参照橙、右=仮参照と推定マゼンタ。
+meiji_4cam/video_000/clip_054/cam2、C：可視KP平均16.61px、最大60.81px。独立に測れた2本の線の交点KP2で60.81px。左=原画、中=白線参照橙、右=白線参照と推定マゼンタ。
 
-![cam3の残る仮誤採用](../../runs/run-court-white-line-reference-20261116/remaining/cam3-remaining-example.png)
+![cam3の残る誤採用](../../runs/run-court-white-line-reference-20261116/remaining/cam3-remaining-example.png)
 
-meiji_4cam/video_000/clip_031/cam3、C：可視KP平均10.43px、最大23.20px。独立に測れた2本の線の交点KP2で21.91px。左=原画、中=仮参照橙、右=仮参照と推定マゼンタ。
+meiji_4cam/video_000/clip_031/cam3、C：可視KP平均10.43px、最大23.20px。独立に測れた2本の線の交点KP2で21.91px。左=原画、中=白線参照橙、右=白線参照と推定マゼンタ。
 
-cam0/clip022の約85pxとcam2/clip054の約61pxは、白線交点から明らかに離れており、参照の数pxの不確かさだけでは説明できない推定誤り。cam1/clip047とcam3/clip031は平均10px境界に近く、時間変化・線の測定誤差の影響がある。337件全てを画像だけで確定した推定誤りとは断定しない。各cameraの代表例は「直接測れた線の可視交点での差が大きいCの採用例」で、平均的な性能を表す標本ではない。
+cam0/clip022の約85pxとcam2/clip054の約61pxは、白線交点から明らかに離れており、参照の数pxの不確かさだけでは説明できない推定誤り。cam1/clip047とcam3/clip031は平均10px境界に近く、時間変化・線の測定誤差の影響がある。承認された基準では337件が誤採用である。ただし、全件の物理的な原因を画像だけで確定したものではない。各cameraの代表例は「直接測れた線の可視交点での差が大きいCの採用例」で、平均的な性能を表す標本ではない。
 
 ## 参照に依存しない回帰結果（再掲）
 
@@ -219,4 +224,4 @@ cam0/clip022の約85pxとcam2/clip054の約61pxは、白線交点から明らか
 
 knowledge検証は683 nodes、0 error・0 warning。再現script検査は427 repro.sh / 528参照、欠損・検証不能0件。凍結hash・未承認flag・1,656行からの混同行列再集計・src/tests無変更も確認した。独立validatorの指定なし、実施0回。pre-commit・対象HEADのCI結果はPR #2200へ記録する。前回の209件などのcodeテスト結果を今回の追加検証として数え直さない。
 
-親には元解像度cropでの参照再承認と、cam1/3の時間変化・未測定の奥線をどう扱うかの判断を返す。現状は全276件の「承認済み参照による」目標達成を認定できない。仮評価でもFP0・正しい採用90%の目標は未達で、Court valの非劣化条件も未達のまま。閾値・実装を仮参照に合わせて調整せず、merge・issue closeは行わない。
+人間による参照の承認は完了した。時間変化・外挿の限界を承知の上で、区間分割なしという判断である。承認済み参照でもFP0・正しい採用90%の目標は未達で、Court valの非劣化条件も未達のまま。次は残る誤採用・raw出力・回帰原因を分析し、推定改善の計画を親へ返す。参照に合わせた閾値・実装の調整、merge・issue closeはこの承認記録では行っていない。

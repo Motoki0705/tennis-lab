@@ -1,6 +1,6 @@
 {
-  "evaluation_status": "PROVISIONAL / \u672a\u518d\u627f\u8a8d",
-  "approved_for_evaluation": false,
+  "evaluation_status": "human_approved / 承認済み",
+  "approved_for_evaluation": true,
   "targets": {
     "false_accepts": 0,
     "correct_acceptance_rate_min": 0.9
@@ -9,7 +9,7 @@
     "mean_error_px": 10,
     "max_error_px": 25
   },
-  "reference_sha256": "a53b250de0faa40a8ca005beda578099ae518997dd150bb4c57dac21c9d40b29",
+  "reference_sha256": "90ed3bbdeae4a553cf82c9fb13c49ee56cf45e17f0436b0c30ae83929de08e4b",
   "frozen_prediction_files_sha256": "b5bc8300fffe24b20dda8e1ee903f24907f648200a218aa9c736c8c708dec5e2",
   "predictions_acceptance_and_ranks_unchanged": true,
   "summary": {
@@ -1193,5 +1193,7 @@
         }
       }
     }
-  }
+  },
+  "reference_geometry_sha256": "1b9c48abe5578a69d99d6a1253a3842f264d46a2af898f1a632ae1c1c7f8ba7e",
+  "approval_evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209"
 }

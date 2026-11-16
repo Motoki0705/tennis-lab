@@ -1,5 +1,5 @@
 {
-  "evaluation_status": "provisional / \u672a\u518d\u627f\u8a8d",
+  "evaluation_status": "human_approved / 承認済み",
   "prediction_selection_source": "original primary meiji4-evaluation snapshot; later scene-evaluation has different selections in two conditions at clip_033/cam0 and was not used",
   "label_changes": {
     "legacy": {
@@ -204,5 +204,6 @@
     "old_mean_px": 23.884630732754527,
     "new_mean_px": 6.249840588254649,
     "same_prediction_and_gate": true
-  }
+  },
+  "approval_evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209"
 }
