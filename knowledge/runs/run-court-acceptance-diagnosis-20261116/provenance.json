@@ -1,0 +1,22 @@
+{
+  "head": "2736a24a3fa643254f441f318ed9241bc2c73724",
+  "source_summary": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji4cam-court-review-20261116/summary.json",
+  "source_summary_sha256": "ebc75091cec7aa757e1f3b54fe16228190dd0a138f84b52e521d0c744ebcbcfa",
+  "source_script_sha256": "d343e94d0a168f276f9b23e107271b2a93b2cb61d82e5d3b1638a1f850a5a6a8",
+  "dataset_manifest_sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099",
+  "no_model_inference": false,
+  "no_reference_evaluation": true,
+  "visual_review_is_provisional": true,
+  "original_review_commit": "0f6b44b39152abbd10863999f7af29754e0da780",
+  "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+  "recapture_model_runs": 11,
+  "selected_region_status_count_agreement": 10,
+  "reference_approved": false,
+  "hashes": {
+    "capture_stages.py": "bf39cf5be5de84a5ecb8279b4faaff2c174dc6ceb82d967b4d729fbacbd5608f",
+    "prepare_review.py": "3049872c9c31307daa3d7961bbe90b8d2b4e21c092eef561868231731aba7c58",
+    "reference_draft.py": "cc2da411fbf3c38ec2df0656bb85d5a6ee1264948d3647c3bec47f8d874fe8e8",
+    "visual_review.csv": "3ed000975e363d03f7ffb620eb7a8e7a7251bce11a908d61d5191d010a4dbbd0",
+    "reference_draft/references.json": "9578da6dc1a6fab49d6809ec8ab6bdaf0b9ccd4c567b1fb0421c9231beda42ca"
+  }
+}
