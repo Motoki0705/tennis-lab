@@ -2,6 +2,10 @@
 
 clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult v2と品質maskを
 保存します。モデル・座標・欠測契約は[tennis_scene README](../README.md)が正本です。
+`generate_pseudo_annotations`は対象clipの列挙、runnerの呼出し、成功/skip/失敗の集約、
+`continue_on_error`による継続を担当します。実行計画・cache/load・scene exportと
+入力検証・marker公開の共通関数は[pipeline](../pipeline/README.md#実行計画と入口)が所有します。
+この入口は各clipについて1clipの計画を使い、既存の呼出し方と成果物layoutを維持します。
 生成設定は[generate_dataset.yaml](../configs/generate_dataset.yaml)、stage設定は
 [pipeline.yaml](../configs/pipeline.yaml)を使います。
 
@@ -23,6 +27,11 @@ clip.json・動画・設定/重みの識別情報（publication identity）を�
 展開済みpipeline設定は`configs/<SHA-256>.yaml`に内容アドレスで保存し、exportには書き込みません。
 同一入力・同一設定の完成結果だけをskipし、変更時や識別情報の無い旧markerではoverwrite=trueが必要です。
 公開時にcomponent storeを削除・置換しません。
+共通の`resolve_dataset_clip`でmanifestとdataset recordのcamera数・frame数・FPS・解像度を照合し、
+mediaとmanifestのhashを固定します。実mediaの同期条件はorchestratorの`prepare_clip_source`で検証します。
+`completed_annotation`で再利用を判定し、実行後に`publish_annotation`がscene契約と入力の未改変を
+確認してから完成markerを公開します。公開成功時に同じclipの失敗markerを削除し、
+例外時は`record_annotation_failure`がそのclipだけに失敗を記録します。
 datasetのreader（SLCS・SLCS review・PLCS residual）は`scene_index`を持つこのlayoutのscene v2だけを読みます。
 markerが`scene.npz`を直接指す旧layout（v1）は読めないため、この入口で新しい出力先へ再生成してください。
 

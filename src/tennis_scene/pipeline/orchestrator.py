@@ -11,6 +11,7 @@ from src.tennis_scene.pipeline.artifacts import (
     json_value,
     write_json_atomic,
 )
+from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     file_identity,
@@ -20,9 +21,7 @@ from src.tennis_scene.pipeline.direct_annotation import saved_scene, scene_recei
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.imports import BallAnnotationImporter
 from src.tennis_scene.pipeline.runner import ComponentRunner
-from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
-from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
@@ -75,7 +74,8 @@ class TennisSceneOrchestrator:
         the shape of the video paths.
         """
         paths = tuple(self.config.resolver.validate(video_role, Path(p)) for p in video_paths)
-        source = build_clip_source(paths, camera_ids, max_frames=max_frames, clip_id=clip_id or self.config.clip_id)
+        inputs = prepare_clip_source(paths, camera_ids, max_frames=max_frames, clip_id=clip_id or self.config.clip_id)
+        source = inputs.source
         if self.config.camera_geometry.reference_camera is not None and self.config.camera_geometry.reference_camera not in source.camera_ids:
             raise ValueError("Reference camera is not a source camera")
         source_document = json_value(source)
@@ -134,8 +134,8 @@ class TennisSceneOrchestrator:
                 runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite)
                 self.last_runner = runner
                 runner.run()
-                scene = runner.output("scene_assembly")
-                archive = export_scene(store, scene, runner.references["scene_assembly"])
+                inputs.snapshot.assert_unchanged()
+                scene, archive = runner.finalize_clip()
                 if direct is not None and workflow is not None:
                     self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive)
             if workflow is not None:
