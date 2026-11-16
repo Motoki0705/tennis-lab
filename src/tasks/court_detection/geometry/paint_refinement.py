@@ -141,7 +141,19 @@ def _semantic_alternatives(matrix: FloatArray, coarse: tuple[PaintLine, ...], fi
     base = project_candidate(matrix, court_template_xy().astype(np.float64))
     assert base is not None
     for line in coarse:
-        for points in line.alternatives:
+        measured = next(other for other in fine if other.index == line.index)
+        if measured.status != "ok":
+            continue
+        proposals = line.alternatives
+        if config.version == "semantic_consensus_v2" and line.status == "ok":
+            # A model-local stripe can beat the coarse detector's first choice.
+            # That first choice is then an alternative, not exempt evidence.
+            proposals = (line.points, *proposals)
+        for points in proposals:
+            if config.version == "semantic_consensus_v2" and float(np.percentile(
+                np.abs(np.c_[points, np.ones(len(points))] @ image_lines(matrix)[line.index]), 95
+            )) < config.ambiguity_separation_px:
+                continue
             changed = tuple(replace(other, points=points) if other.index == line.index else other for other in fine)
             alternate, _ = _fit(matrix, changed, chart, config)
             if alternate is None:
@@ -189,6 +201,7 @@ def refine_paint(image: NDArray[np.uint8], initial: FloatArray | None,
     coarse_observations = coarse
     if config.version == "semantic_consensus_v2":
         near = extract_paint_lines(brightness, projected, config.fine_radius_px, config)
+        initial_stripes |= {line.index for line in near if line.status == "ok"}
         coarse_start, coarse_observations, consensus = court_consensus(initial, coarse, config, near)
         metrics["initial_correspondence"] = consensus
         # The fine-search band is the existing localization capture range. A
