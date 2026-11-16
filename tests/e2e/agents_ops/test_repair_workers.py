@@ -197,3 +197,47 @@ def test_rejected_caller_cannot_reset_a_competing_repair_launch(
     replay = run(p, "--resume", "--repair-id", "ci-race", "--repair-pr", "42")
     assert json.loads(replay.stdout)["launch_state"] == "starting"
     assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2
+
+
+@pytest.mark.parametrize(
+    "failure", [KeyboardInterrupt(), RuntimeError("launch response lost")]
+)
+def test_uncertain_popen_keeps_the_claim_and_never_resends(
+    reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch, failure: BaseException
+) -> None:
+    p = reserved
+    creating_worker(p)
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    api = importlib.import_module("parent.manual_workers")
+    admission = importlib.import_module("parent.improvement_runtime")
+    runner = p.root / "fake-runner"
+    monkeypatch.setattr(api, "RUNNER", runner)
+    registry = store(p)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    original = admission.subprocess.Popen
+
+    def uncertain(command: list[str], *args: Any, **kwargs: Any) -> Any:
+        if command[0] == str(runner) and "--prompt-file" in command:
+            raise failure
+        return original(command, *args, **kwargs)
+
+    monkeypatch.setattr(admission.subprocess, "Popen", uncertain)
+    with pytest.raises(ValueError, match="repair launch is unconfirmed"):
+        api.run_worker(
+            gh,
+            registry,
+            1,
+            "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+            child=10,
+            prompt=Path(p.note()),
+            resume=True,
+            restart_evidence=None,
+            repair={"schema_version": 1, "repair_id": "ci-uncertain", "pr": 42},
+        )
+    attempt = task(p)["repair_attempts"]["ci-uncertain"]
+    assert attempt["launch_state"] == "starting"
+    replay = run(p, "--resume", "--repair-id", "ci-uncertain", "--repair-pr", "42")
+    assert json.loads(replay.stdout)["launch_state"] == "starting"
+    assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 1

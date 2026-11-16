@@ -129,6 +129,12 @@ def execute_manual(
             raise ValueError(
                 "manual launcher started but admission persistence failed; inspect its runtime and cleanup before retrying"
             ) from exc
+        if repair_claim is not None and not isinstance(exc, (OSError, ValueError)):
+            # An interruption inside Popen can leave a child even though its
+            # constructor never returned. Retain the durable starting claim.
+            raise ValueError(
+                "repair launch is unconfirmed; inspect the saved reservation and cleanup"
+            ) from exc
         return ManualExecution(
             subprocess.CompletedProcess(
                 command, 127 if isinstance(exc, OSError) else 2, b"", str(exc).encode()
