@@ -18,5 +18,11 @@
     "reference_draft.py": "cc2da411fbf3c38ec2df0656bb85d5a6ee1264948d3647c3bec47f8d874fe8e8",
     "visual_review.csv": "3ed000975e363d03f7ffb620eb7a8e7a7251bce11a908d61d5191d010a4dbbd0",
     "reference_draft/references.json": "9578da6dc1a6fab49d6809ec8ab6bdaf0b9ccd4c567b1fb0421c9231beda42ca"
+  },
+  "archived_text_normalization": {
+    "visual_review.csv": {
+      "change": "CRLF to LF only; source outputs retained unchanged",
+      "archived_sha256": "ccee04b24bbc71beea1320bb488dbb3c13319478a9d0c2c0666892a8704baf57"
+    }
   }
 }
