@@ -128,10 +128,22 @@ class CourtRegionPrediction:
             native_size_hw=list(self.cropped.native_size_hw),
         )
         diagnostic["quality"] = self.quality.diagnostics()
+        diagnostic["fit_source"] = "model_kp_line"
         if self.paint is not None:
+            # The model's selected KP and residuals describe the initializer,
+            # not the final RGB-only objective. Preserve both stages explicitly.
+            diagnostic["model_geometry"] = {key: value for key, value in diagnostic.items() if key != "quality"}
             diagnostic["model_homography"] = diagnostic["homography_court_metres_to_image_pixels"]
             diagnostic["rgb_fitted_homography"] = None if self.paint.fitted_matrix is None else self.paint.fitted_matrix.tolist()
             diagnostic["homography_court_metres_to_image_pixels"] = None if self.paint.matrix is None else self.paint.matrix.tolist()
+            diagnostic["fit_source"] = "rgb_paint_lines"
+            diagnostic["selected_keypoints"] = []
+            diagnostic["support_solves"] = []
+            diagnostic["line_support"] = None
+            diagnostic["candidate_count"] = int(self.paint.initial_matrix is not None)
+            final_residuals = (np.full(14, np.nan) if self.paint.matrix is None else
+                               np.linalg.norm(self.paint.projected - (raw.keypoints[:, 0].numpy() + offset), axis=1))
+            diagnostic["residuals_px"] = [float(value) if np.isfinite(value) else None for value in final_residuals]
         if geometry is not None and geometry.status == "ok" and not self.quality.accepted:
             diagnostic["hybrid_status"] = "ok"
             diagnostic["status"] = "quality_rejected"
@@ -249,12 +261,18 @@ def select_court_region(
         if area < config.min_area_ratio:
             reasons.append("insufficient_visible_area")
         qualifies = status == "ok" and quality.accepted and not reasons
+        diagnostic = prediction.geometry_diagnostics()
+        model_support_count = 0 if geometry is None else int(geometry.selected.sum())
+        rgb_fit = None if prediction.paint is None else prediction.paint.quality.metrics.get("fine_fit")
+        rgb_lines = rgb_fit.get("fitted_line_names", []) if isinstance(rgb_fit, dict) else []
         candidates.append({
-            "region_xyxy": list(region), "status": status, "accepted": qualifies,
+            "region_xyxy": list(region), "status": diagnostic["status"], "accepted": qualifies,
             "inliers": count, "inlier_score": confidence_sum, "area_ratio": area,
-            "fit_support_count": quality.metrics.get("supported_keypoints", 0),
+            "fit_support_count": model_support_count if prediction.paint is None else 0,
+            "model_fit_support_count": model_support_count, "rgb_fit_line_count": len(rgb_lines),
             "convex": convex, "inside_content": inside_content,
             "quality": quality.diagnostics(), "rejection_reasons": list(dict.fromkeys(reasons)),
+            "geometry": diagnostic,
         })
         if qualifies:
             assert quality.score is not None

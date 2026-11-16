@@ -262,6 +262,10 @@ RGB方式の`quality.schema=court_quality_v2`は、`model_consistency`（従来v
 順位用`score`は線別p95残差の平均、可視点の最大標準偏差、線除去の最大変位を
 各設定上限で割った和（`dimensionless_paint_cost`、小さいほど良い）です。
 旧Hは`model_homography`、精密化を試したHは`rgb_fitted_homography`に残ります。
+`fit_source=rgb_paint_lines`の最終HはKP等式を使わず、`selected_keypoints`は空です。
+初期モデルHの支持集合・残差・solver履歴は`model_geometry`へ分離し、最終Hのraw KPに対する
+再投影誤差を`residuals_px`へ記録します（不合格時はnull）。全領域が不合格の場合も
+`CourtRegionUnavailable.candidates[*].geometry`に両段階の診断を保持します。
 RGB不合格時に旧Hを採用Hへ戻すことはありません。品質を利用する側はschemaとmethodを
 確認し、異なる方式のscoreを混ぜず、`accepted`を満たす推定だけを選んでください。
 

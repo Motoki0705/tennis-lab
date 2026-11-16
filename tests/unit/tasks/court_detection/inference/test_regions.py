@@ -79,6 +79,50 @@ def test_rgb_rejection_keeps_model_evidence_but_never_publishes_its_h(monkeypatc
     assert quality["schema"] == "court_quality_v2"
     assert quality["model_consistency"]["accepted"] is True
     assert quality["rgb_paint"]["accepted"] is False
+    model = cast(dict[str, Any], diagnostic["model_geometry"])
+    assert model["selected_keypoints"] == [3, 4, 8, 9]
+    assert diagnostic["selected_keypoints"] == []
+    assert diagnostic["residuals_px"] == [None] * 14
+
+    monkeypatch.setattr(module, "region_proposals", lambda _: ((5, 4, 17, 12),))
+    monkeypatch.setattr(module, "predict_court_region", lambda *_, **__: result)
+    with pytest.raises(module.CourtRegionUnavailable) as error:
+        select_court_region(cast(Any, object()), np.full((80, 120, 3), 80, np.uint8), CourtRegionSearchConfig())
+    candidate = error.value.candidates[0]
+    assert candidate["status"] == "quality_rejected"
+    assert candidate["model_fit_support_count"] == 4
+    assert candidate["fit_support_count"] == candidate["rgb_fit_line_count"] == 0
+    assert cast(dict[str, Any], candidate["geometry"])["model_homography"] is not None
+
+
+def test_rgb_result_uses_full_frame_pixels_without_applying_crop_offset_twice(monkeypatch):
+    import src.tasks.court_detection.inference.regions as module
+    from tests.unit.tasks.court_detection.geometry.test_paint_refinement import (
+        painted_court,
+    )
+
+    image, matrix, truth = painted_court()
+    cropped = geometry_prediction()
+    assert cropped.homography is not None
+    translation = np.array([[1., 0, -70.], [0, 1., -40.], [0, 0, 1.]])
+    cropped = replace(cropped, homography=replace(cropped.homography, matrix=translation @ matrix, projected=truth-[70, 40]))
+    # Model self-consistency can reject a correct partial observation. RGB has
+    # its own measured support and acceptance; the two scores are kept separate.
+    monkeypatch.setattr(module, "assess_prediction_quality", lambda *_: CourtQuality(False, 3., ("unstable_projection",), {}))
+    result = assess_region_prediction(cropped, image, (70, 40, 600, 470), CourtRegionSearchConfig(refinement_method="rgb_paint"))
+    assert result.quality.accepted
+    points, valid = result.downstream_keypoints()
+    assert valid.all()
+    assert np.max(np.linalg.norm(points-truth, axis=1)) < 1.5
+    diagnostic = result.geometry_diagnostics()
+    np.testing.assert_allclose(diagnostic["model_homography"], matrix)
+    assert diagnostic["homography_court_metres_to_image_pixels"] is not None
+    assert diagnostic["fit_source"] == "rgb_paint_lines"
+    assert diagnostic["selected_keypoints"] == []  # RGB H has no KP equality terms.
+    model = cast(dict[str, Any], diagnostic["model_geometry"])
+    assert model["selected_keypoints"] == [3, 4, 8, 9]
+    assert result.paint is not None
+    np.testing.assert_allclose(diagnostic["residuals_px"], np.linalg.norm(result.paint.projected-np.tile([76, 46], (14, 1)), axis=1))
 
 
 def test_crop_outside_image_fails_before_inference() -> None:
