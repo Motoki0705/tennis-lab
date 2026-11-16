@@ -73,13 +73,17 @@ class CourtRegionPrediction:
     cropped: CourtPrediction
     region: Region
     original_size_hw: tuple[int, int]
-    quality: CourtQuality | None = None
+    quality: CourtQuality
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.quality, CourtQuality):
+            raise ValueError("Region predictions require assessed court quality")
 
     def downstream_keypoints(self) -> tuple[NDArray[np.float32], NDArray[np.bool_]]:
         geometry = self.cropped.homography
         if geometry is None:
             raise ValueError("Region geometry requires hybrid postprocessing")
-        if geometry.status != "ok" or geometry.matrix is None or (self.quality is not None and not self.quality.accepted):
+        if geometry.status != "ok" or geometry.matrix is None or not self.quality.accepted:
             return np.zeros((14, 2), np.float32), np.zeros(14, dtype=bool)
         points = np.asarray(geometry.projected, dtype=np.float32) + np.asarray(self.region[:2], dtype=np.float32)
         height, width = self.original_size_hw
@@ -110,13 +114,12 @@ class CourtRegionPrediction:
             postprocess_image_size_hw=list(self.cropped.original_size_hw),
             native_size_hw=list(self.cropped.native_size_hw),
         )
-        if self.quality is not None:
-            diagnostic["quality"] = self.quality.diagnostics()
-            if geometry is not None and geometry.status == "ok" and not self.quality.accepted:
-                diagnostic["hybrid_status"] = "ok"
-                diagnostic["status"] = "quality_rejected"
-                diagnostic["rejected_homography"] = diagnostic["homography_court_metres_to_image_pixels"]
-                diagnostic["homography_court_metres_to_image_pixels"] = None
+        diagnostic["quality"] = self.quality.diagnostics()
+        if geometry is not None and geometry.status == "ok" and not self.quality.accepted:
+            diagnostic["hybrid_status"] = "ok"
+            diagnostic["status"] = "quality_rejected"
+            diagnostic["rejected_homography"] = diagnostic["homography_court_metres_to_image_pixels"]
+            diagnostic["homography_court_metres_to_image_pixels"] = None
         return diagnostic
 
 

@@ -40,7 +40,7 @@ def test_proposals_use_only_image_extent_and_exact_black_padding() -> None:
 
 def test_crop_geometry_maps_to_full_image_without_relabeling_rasters() -> None:
     cropped = geometry_prediction()
-    result = CourtRegionPrediction(cropped, (5, 4, 17, 12), (20, 30))
+    result = CourtRegionPrediction(cropped, (5, 4, 17, 12), (20, 30), CourtQuality(True, .1, (), {}))
     points, valid = result.downstream_keypoints()
     np.testing.assert_allclose(points[:2], [[3, 7], [20, 7]])
     assert valid.all()  # The court may extend beyond the input crop.
@@ -55,7 +55,8 @@ def test_crop_geometry_maps_to_full_image_without_relabeling_rasters() -> None:
 
 def test_failed_crop_has_zero_placeholders_without_offset_or_fallback() -> None:
     result = CourtRegionPrediction(
-        geometry_prediction(status="joint_optimization_failed"), (5, 4, 17, 12), (20, 30)
+        geometry_prediction(status="joint_optimization_failed"), (5, 4, 17, 12), (20, 30),
+        CourtQuality(False, None, ("no_homography",), {}),
     )
     points, valid = result.downstream_keypoints()
     assert not points.any() and not valid.any()
@@ -65,6 +66,11 @@ def test_failed_crop_has_zero_placeholders_without_offset_or_fallback() -> None:
 def test_crop_outside_image_fails_before_inference() -> None:
     with pytest.raises(ValueError, match="outside image"):
         predict_court_region(cast(Any, object()), np.ones((10, 10, 3), np.uint8), (0, 0, 11, 10))
+
+
+def test_unassessed_region_cannot_bypass_quality_gate() -> None:
+    with pytest.raises(ValueError, match="require assessed court quality"):
+        CourtRegionPrediction(geometry_prediction(), (0, 0, 12, 8), (8, 12), cast(Any, None))
 
 
 @pytest.mark.parametrize("failure", ["geometry", "support", "outside", "degenerate", None])
