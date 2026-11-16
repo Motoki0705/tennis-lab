@@ -250,6 +250,7 @@ class InferenceRuntime:
             try:
                 self._release(key)
             except BaseException as error:
+                traceback.clear_frames(error.__traceback__)
                 errors.append(error)
         self._remaining.clear()
         self._keys.clear()

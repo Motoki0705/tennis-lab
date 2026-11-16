@@ -142,19 +142,27 @@ def test_partial_initialization_is_owned_and_released(tmp_path: Path, failure: t
 
 def test_cleanup_failure_still_releases_other_models(tmp_path: Path) -> None:
     releases: list[str] = []
+    references: list[weakref.ReferenceType[Resource]] = []
+    def create() -> Resource:
+        resource = Resource()
+        references.append(weakref.ref(resource))
+        return resource
+
     def broken(resource: object) -> None:
         releases.append("first")
         raise RuntimeError("cannot unload")
-    first = spec(tmp_path, release=broken)
+    first = spec(tmp_path, factory=create, release=broken)
     second = replace(first, kind="other", release=lambda _: releases.append("second"))
     key, later = ("clip", "node"), ("clip", "later")
     runtime = InferenceRuntime({key: {"a": first, "b": second}, later: {"a": first, "b": second}}, cleanup=lambda _: None)
     with runtime.node(key) as models:
         models.borrow("a")
         models.borrow("b")
-    with pytest.raises(BaseExceptionGroup, match="cleanup failed"):
+    with pytest.raises(BaseExceptionGroup, match="cleanup failed") as caught:
         runtime.close()
+    assert len(caught.value.exceptions) == 1
     assert releases == ["first", "second"] and not runtime.loaded_keys
+    assert all(reference() is None for reference in references)
     runtime.close()
 
 
