@@ -327,6 +327,8 @@ fd, cwd, root, mmap and applicable mount references again**. Prior busy observat
 are retained. Changed credentials, unexpected I/O errors, or an uninspectable
 survivor after the limit remain unknown and prevent certification/deletion.
 Neither a permission denial nor a readable maps file proves that a process is idle.
+The final identity checks after resource inspection or exclusion evidence also
+recognize a different starttime as the original process's exit.
 
 `process_scope.rechecks` records the limit/interval, total attempts, requested
 `wait_seconds` (not measured wall time), and `resolved_processes` (distinct

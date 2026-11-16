@@ -561,6 +561,54 @@ def test_recheck_never_retries_io_errors_or_unpinned_identity(
     assert observed.rechecks["attempts"] == 0
 
 
+@pytest.mark.parametrize("replacement", ["after-resources", "during-exclusion"])
+def test_recheck_recognizes_pid_reuse_at_the_final_identity_check(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    replacement: str,
+) -> None:
+    unit = lab.unit()
+    directory = lab.config.repo / unit.path
+    process = private_process["path"]
+    inspector = lab.engine.inspector
+    private_process["denied"] = {"fd"}
+    resumed = False
+
+    def replace() -> None:
+        path = process / "stat"
+        path.write_bytes(path.read_bytes().replace(b"314159", b"314160"))
+
+    def resume(delay: float) -> None:
+        nonlocal resumed
+        resumed = True
+        private_process["denied"] = (
+            set() if replacement == "after-resources" else {"fd", "maps", "cwd"}
+        )
+
+    original_resources = inspector.resources
+    original_evidence = inspector.exclusion_evidence
+
+    def resources(*args: Any, **kwargs: Any) -> None:
+        original_resources(*args, **kwargs)
+        if resumed and replacement == "after-resources":
+            replace()
+
+    def evidence(target: Path) -> dict[str, Any]:
+        if resumed and replacement == "during-exclusion":
+            replace()
+        return cast(dict[str, Any], original_evidence(target))
+
+    monkeypatch.setattr(lab.usage, "sleep", resume)
+    monkeypatch.setattr(inspector, "resources", resources)
+    monkeypatch.setattr(inspector, "exclusion_evidence", evidence)
+    observed = inspector.inspect((directory,), lab.filesystem.snapshot(directory))
+    assert observed.exited_processes == 1 and not observed.unknown
+    assert not observed.busy and observed.inspected_processes == 0
+    assert not observed.excluded_nondumpable and not observed.excluded_capabilities
+    assert observed.rechecks["processes"][0]["outcome"] == "exited"
+
+
 def test_recheck_evidence_survives_later_inspections_and_is_audited(
     lab: Lab, private_process: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:

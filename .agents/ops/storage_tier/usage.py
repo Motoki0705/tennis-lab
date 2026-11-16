@@ -17,7 +17,7 @@ RECHECK_INTERVAL = 0.05
 
 
 class ProcessExited(Exception):
-    """The pinned process disappeared or its PID was reused before a recheck."""
+    """The pinned process disappeared or was replaced during inspection."""
 
 
 @dataclass
@@ -465,7 +465,7 @@ class Inspector:
                             raise ProcessExited("closed thread group during recheck")
                     self.resources(process, paths, inodes, location, result)
                     if self.starttime(process) != generation:
-                        raise StorageError("process identity changed during inspection")
+                        raise ProcessExited("PID replaced during inspection")
                     if recheck is not None:
                         recheck["outcome"] = (
                             "busy" if len(result.busy) > busy_start else "inspected"
@@ -501,9 +501,7 @@ class Inspector:
                         sleep(RECHECK_INTERVAL)
                     else:
                         if evidence["starttime_ticks"] != generation:
-                            raise StorageError(
-                                "process identity changed during exclusion"
-                            )
+                            raise ProcessExited("PID replaced during exclusion")
                         excluded = (
                             result.excluded_nondumpable
                             if evidence["kind"] == "nondumpable"

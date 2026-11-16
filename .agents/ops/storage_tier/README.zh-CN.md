@@ -219,6 +219,7 @@ Z/X 仅在 `Threads: 1` 且 task 列表只有该 PID 时视为退出并单独计
 同一个体必须保持UID不变，并重新验证现有thread-group退出证据，再**完整检查fd、cwd、root、mmap及适用的mount参照**。
 此前观察到的使用中证据仍保留。UID改变、意外I/O错误、达到上限仍不可检查的存活个体保持unknown，阻止认证或删除。
 读取被拒或maps可读本身都不能证明未使用。
+资源检查后及排除证据的最终身份核对若确认启动时间变化，也按原个体退出处理。
 
 `process_scope.rechecks` 记录上限、间隔、复查总次数、请求等待总量 `wait_seconds`（非实测经过时间），
 及通过重新检查、退出或既有排除证据得到解决的个体数 `resolved_processes`（按PID/启动时间去重）。
