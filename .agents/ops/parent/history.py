@@ -231,7 +231,11 @@ def _parse_history(
             record = Record(family, data, source, cid, url, publisher, verified, body)
             key = _logical_key(family, data)
             previous = keys.get(key)
-            if previous is not None:
+            if (
+                previous is not None
+                and family != "parent-review"
+                and not (family == "parent-session" and data.get("event") == "review")
+            ):
                 if previous.payload != data:
                     raise ValueError(
                         f"conflicting parent evidence record: {previous.url} / {url}"
@@ -326,12 +330,21 @@ def read_history(
     login: str,
     *,
     parent_comments: Sequence[Mapping[str, Any]] | None = None,
+    unregistered_subject: bool = False,
 ) -> History:
     from .comment_journal import verify
 
     manager = gh.evidence_issues()
-    evidence = manager.find(parent, login)
-    legacy = gh.comments(parent) if parent_comments is None else list(parent_comments)
+    evidence = (
+        manager.find_bound(parent, login, required=False)
+        if unregistered_subject and gh.targeted_history
+        else manager.find(parent, login)
+    )
+    legacy = (
+        gh.comments(parent)
+        if parent_comments is None
+        else [dict(c) for c in parent_comments]
+    )
     machine = gh.comments(evidence.number) if evidence else []
     history = parse_history(
         gh.repo,

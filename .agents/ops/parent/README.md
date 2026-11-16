@@ -4,7 +4,7 @@
 会話の解釈・質問・委任・完了確認は [parent-session skill](../../skills/parent-session/SKILL.md)、
 親子issueの書式・ラベル・段階移行は [issues](../issues/README.md) が正本。
 `start-worker` / `continue-worker` は委任予約をdispatcherへ渡す。実agentの起動はsupervisor、
-レビュー・mergeは親が明示する既存入口で行う。timer・poll・hookへの登録は行わない。
+レビューからmerge後確認までは親の明示要求で自動進行する。timer・hookへの登録は行わない。
 手動親は [run-worker](#手動workerの起動継続とrun記録) で委任と共通ランナーのrunを結び付けて起動する。
 自律親の開発手順とworker/reportコマンドの契約は [development workflow](development_workflow.md) が正本。
 
@@ -29,7 +29,7 @@ CLIは現在の担当、対象repo/issue/PR/branch、runとsession、終了と�
 
 レビューの出典は作成時のrequest・実行記録・公開結果として保持する。
 担当や合意revisionの変化でその証拠を捨てず、親が現在の対象との関係を確認する。
-実際のコード差分・CI・指摘解消はreview/merge入口が引き続き照合する。
+自動進行が最新headのCIと軽いgateを確認し、majorの修正方針は親が判断する。
 
 ## 責務と状態の正本
 
@@ -42,9 +42,9 @@ CLIは現在の担当、対象repo/issue/PR/branch、runとsession、終了と�
 | 子の具体的な停止理由・根拠・再開条件・次の対応 | 子issue本文 |
 | 改善候補・切り出し判断・後継への人間判断 | 元親の証拠用Issueの構造化コメント（旧親コメントも読取）。子の欄は参照 |
 | 子の一覧と全体進捗・判断待ち・成果/残件 | 親issue本文の進捗概要（証拠・通知へのリンク） |
-| レビュー対象・指示・状態・結果・修正確認 | 証拠用Issue、各PRのprojection/followup |
+| レビュー対象・指示・状態・結果・修正・merge後確認 | privateな `progressions/`。PRコメントは結果の表示用コピー |
 | 親AIが意味を判断して選んだ人間向け通知 | 親Issueの `notification` と証拠用Issueの `notification_record` |
-| レビュー対象のバイト列 | ローカル `reviews/<run ID>/pr-<N>.diff` と `request.json` |
+| レビューの資料 | 自動進行のrun配下のcontext、diff、request。旧 `reviews/` は履歴 |
 
 stateは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/parent-sessions/`。
 同じホストの全worktree・Claude/Codexで共有する。更新操作は親ごとの操作ロックを先に取り、
@@ -140,12 +140,12 @@ fresh照合は新しいfamily・履歴・PR一覧を各1回取得して同じ照
 改善承認の照合が別のfresh観測を行う場合、実行根拠はその後に改めて読み、古い計画入力を使わない。
 委任直前のfresh照合ではfamilyとtimelineを改めて取得する。
 親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
-sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
+sub-issue一覧に含まれる完全なissue本文も再利用する。書込み直前の本文は再取得する。
 ページ内・ページ間の重複は最大3回取り直し、解消しなければ失敗する。空結果への変換はしない。
 
 `PARENT_METRICS_FILE` にローカルJSONLの保存先を指定すると、コマンド・経過秒・lock待機秒・
 GitHub要求数/ページ数/通信秒・cache hit・処理秒・競合数・終了値を記録する。
-merge gateの明示実行も同じ計測に対応する。
+自動進行の取得量はreview READMEのbenchmarkで計測する。
 再実行時は `PARENT_METRICS_ATTEMPT=2` などで試行番号を渡し、retry_countを記録できる。
 本文・取得URL・識別子・資格情報は記録しない。未指定ならファイルを作らない。
 
@@ -305,16 +305,17 @@ POST前に送信intentをfsyncして保存し、応答とGitHub再取得を照�
 通常の読取・status・inspectionはIssueもローカルjournalも作成しない。
 
 履歴は媒体に優先順位を付けず、GitHub comment IDの昇順で結合する。作成/編集時刻では並べ替えない。
-同じIDの重複、媒体をまたぐ同じ論理key、同じkeyで異なるpayloadはエラー。
-keyは合意/根拠のrevision、レビューのrun＋state/kind、提案のsource、停止のoperation、
+合意・根拠などの制御記録では、同じIDの重複、媒体をまたぐ同じ論理key、同じkeyで異なるpayloadはエラー。
+keyは合意/根拠のrevision、提案のsource、停止のoperation、
 noteのgeneration＋body digest等の保存済み識別子から作る。
-修正確認・証拠確認は対象PR・指摘/wait・固定snapshotも含む。
+旧レビューの記録は媒体ごとの履歴として読み、コピー間の内容や順序をmerge条件にしない。
 識別子のない旧形式では原payload自体をkeyに使い、欠けたfieldを現在値で補わない。
 同一媒体内の同一payloadの再掲は、従来どおり履歴として保持する。
 片方の取得・検証が失敗したとき、他方の過去の成功記録だけを使って続けない。
 
 liveな共通readerは、選択したstateの `comment-outbox/` と `comment-updates/` に送信・照合済みとして
-残る全コメントを、記録種別の許可リストを使わず照合する。親・証拠用Issue・PR投影の保存先、
+残る制御記録を照合する。保存済みの旧レビュー成果で識別できる廃止済みreceiptとPRへの表示コピーは対象外。
+remoteのマーカーだけで制御記録を除外しない。親・証拠用Issueの保存先、
 comment ID、認証publisher、本文全体のdigestが一致しなければ明示エラーにする。
 旧version 1のoutboxは親または検証済み証拠用Issueの番号で、新version 2は保存した親番号と媒体でも照合する。
 取得済みsnapshotの純粋parserにはこのI/Oを混ぜず、収集時・実行直前のlive読取で検査する。
@@ -405,12 +406,6 @@ completionは親ごとに固定key `completion`。手動の全体完了報告も
 再試行で同一publisher/本文が1件なら照合して再利用する。複数・改変・削除はエラー。
 送信済みでGitHub上に一致が無ければ `publication uncertain` として再POSTせず、運用者による明示照合まで止める。
 送信前中断と応答喪失を「失敗したから再送」で区別しない。共有stateの保全・別ホスト同時作成禁止は上記Issue作成と共通。
-唯一の本文更新であるレビューpending→result/adoptionは、同じcomment IDの更新前・更新後digestを
-`comment-updates/` にPATCH前に保存し、再取得が一致してからboundとする。
-sent中は保存した更新前または更新後の本文だけを許し、bound後は更新後だけを許す。
-PATCH応答喪失からの再開でも、確認した確定本文をoutboxへ記録し、以後pendingへ戻った場合は拒否する。
-pendingは成功結果として扱わない。旧outboxがpendingを記録したまま更新意図の証拠が無く別本文になっている場合も、
-現在値を補って通さず不一致として停止する。
 
 `sync` は進捗概要の `parent-progress:v1` ブロックを保存済み履歴と作業状態から生成する。
 段階・未解消の質問とリンク・継続/停止/依存保留・主要成果/残件・最新通知/合意・証拠用Issueへ辿れる。
@@ -438,9 +433,7 @@ workflow reportもある場合だけworkflow完了を表示する。再合意や
 | assigned、checking、handoff_pending/handoff、released/ended | 証拠＋担当registry | 現在の段階・担当状態 |
 | agreed、proposal_agreed、execution_basis、basis_revoked、agreement_comments | 証拠 | 最新の合意/原引用・自律根拠、保留の状態 |
 | proposal_pending/received、note | 証拠（noteはreason_refの実URL） | 証拠用Issueの詳細、採用/受領の現在地 |
-| review targets_fixed/instructed/result_received/fixes_verified/complete | 証拠＋run | レビュー段階・対象・固定証拠 |
-| parent-review pending/result/adoption | 証拠。PR側のpr projectionは各PR | 公開済み結果とPRへの参照。pendingは未完了 |
-| parent-review resolution/evidence | 証拠＋該当PRのコピー | 解消/証拠待ちと確認先 |
+| review-request / merge-continue | private progression state、判断ログ、PRへの結果コピー | [自動進行](../review/README.md)の状態・結果・通知 |
 | parent-improvement candidate/published/decision | 証拠（旧親コメントも読取）＋子の参照 | 改善候補・起票・人間判断の詳細への参照 |
 | completion（構造化finish） | 証拠＋受入receipt | 各受入条件の確認先。人間向け成果は固定completion通知 |
 | issue-start-judgement | 証拠、revision付きで追記 | 判定理由・不足・再開条件。既存判定をPATCHで消さない |
@@ -496,7 +489,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
 読み替える。合意原文・agreement digest・公開マーカーは保持し、自律判断からagreedを作らない。
 本文digestを持つ人間合意の `input_sha256` は `{agreement_sha256, requirements_sha256}` のcanonical JSON digestとする。
 本文digestのない旧合意も元の合意として保持し、現在への適用可能性は親が確認する。
-旧review schema version=1のauthorizationは従来どおりagreement digestと照合する。
+旧review schema version=1〜3は履歴表示に限り、現在のmerge権限へ変換しない。
 
 `inputs` はrepo・親番号・タイトル・要件本文digest・needs-human・指示コメントのID/login/digest・contextを含む。
 長い本文・議論を公開マーカーへ複製せず、元の判断入力は収集側が保存する。contextにも小さな参照/digestを渡す。
@@ -584,7 +577,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-result --
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
   --prs 1250 --instruction-file tmp/review.md --evidence-file tmp/tests.md \
   --review-model gpt-6-astra --review-effort xhigh \
-  --model-reason-file tmp/review-model-reason.md > tmp/review-request.json
+  --model-reason-file tmp/review-model-reason.md --wait
 ```
 
 直接実装にはdelegate・架空のworker・終了記録は不要。
@@ -596,8 +589,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 delegate --child
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --child 1216 --prompt-file tmp/task.md
 ```
 
-以後は両経路とも同じ [正式レビュー要求](#レビュー要求契約schema-version-3version-1と2の読取互換) と
-[merge gate](../review/README.md#merge-gate)、全体受入・[終了照合](development_workflow.md#待機完了担当終了)を使う。
+以後は両経路とも同じ [正式レビュー要求](#レビュー要求と自動進行) と
+[merge gate](../review/README.md#軽いgate)、全体受入・[終了照合](development_workflow.md#待機完了担当終了)を使う。
 レビュー指摘や必要なmerge後確認は同じworkerへの継続で扱い、確認専用Issueや必須planningを追加しない。
 `sync` は自身の状態を返し、進捗概要だけを更新する。親ラベルや自身のチェック行、子用要件を作らない。
 空の子一覧・PRのclose・runner終了だけでは完了せず、成果受理、正式レビュー、対象HEADのCI、実merge/closeと実行終了を照合する。
@@ -1002,8 +995,8 @@ git -C .claude/worktrees/downstream diff origin/main...HEAD
 
 全先行PRのmergeを確認してから子のPR baseをmainへ変更し、差分・テスト・依存を再確認する。
 独立した複数依存の統合branchでは、全先行headを取り込んだ統合commitを境界に保存して同じ `--onto` を使う。
-競合は親が解消・検証し、判断が必要ならその子を停止する。head/base/diff変更は既存review coverageで承認済みにせず、
-rebase後にレビュー対象を固定する。既にレビューした対象の変更には理由付きの新しい明示要求が必要で、自動再レビューしない。
+競合は作成workerが修正ターンで解消・検証し、判断が必要なら親へ返す。headの変更後は新headのCIを確認し、
+CLIが自動進行を続ける。追加レビューは親が必要と判断した場合だけ続行時に指定する。
 
 ### pytestの並列実行
 
@@ -1087,264 +1080,60 @@ privateな終了checkpointの型・保存先は [workerログ契約](../worker_l
 
 ## レビュー証拠の照合表示
 
-```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-inspect --prs 1250 1251
-```
-
-prepare前に、既存の証拠・不足・現在との差をPRごとにJSONで読む。
-requestやstate・GitHubを書き換えず、agentを起動しない。担当セッションIDなしでも使える。
-出力・不明範囲・公開とcoverageの検査・終了値の正本は
-[reviewの照合表示契約](../review/README.md#既存証拠の照合表示) を参照する。
-意味の判断と次の行動は親が記録し、追加レビューが必要なPRだけを以下の入口へ渡す。
+`review-inspect --prs 1250 1251` はレビュー時headと現在headの変更量、major、保存段階、修正回数、旧記録を読み取る。
+agent起動やGitHub変更を行わず、セッションIDなしでも使える。過去の記録は履歴として表示し、新しい承認へ読み替えない。
 
 ## 正式レビューのモデル選択
 
-通常設定は [`agents.conf`](../lib/agents.conf) の `REVIEW_SELECTION_MODE="select"`。
-手動・自律の担当親が、差分・受入条件・呼び出し元やデータなどの影響先を確認して選ぶ。
-行数・パスによる自動選択は行わない。選択理由は1文のファイルに残す。
+[`agents.conf`](../lib/agents.conf) の通常設定は `REVIEW_SELECTION_MODE="select"`。
+親が差分・受入条件・影響先を読み、モデルと1文の理由を指定する。行数やパスによる自動選択、失敗時の別モデルへの振替はしない。
 
-| 確認した変更の性質 | 選ぶmodel / effort | 理由の例 |
-|---|---|---|
-| 影響が局所的で、期待する挙動と確認方法が明確 | `gpt-6.1-sol / xhigh` | 表示文言だけの修正で、呼び出し元や永続データへの影響がなく該当画面で確認できるためSolを選ぶ。 |
-| 公開範囲・権限・永続状態・並行処理・merge gate等に影響する、または影響範囲が不明 | `gpt-6-astra / xhigh` | 1行の条件変更でも復旧後に採用する結果が変わるためAstraを選ぶ。 |
+| 変更の性質 | model / effort |
+|---|---|
+| 影響が局所的で期待動作と確認方法が明確 | `gpt-6.1-sol / xhigh` |
+| 公開範囲・権限・永続状態・並行処理・merge等に影響する、または影響が不明 | `gpt-6-astra / xhigh` |
 
-追加のAIレビューが必要な対象だけを、既存証拠の照合後に選ぶ。
-簡易な案件の例は次のとおり。Astraを選ぶ案件も理由とモデルを置き換えて同じ入口を使う。
+人間の明示指定を優先する。`--review-model-source human_instruction --human-model-reference '元発言の参照'`、必要なら `--human-review-model` / `--human-review-effort` を渡す。
+許可外の組や人間の拘束との矛盾はエラーにする。fixedへ戻す場合は `REVIEW_SELECTION_MODE="fixed"` とreviewの固定値を設定し、指定値がある場合も固定値に従う。
+観測されたモデル・effort・使用量は保存runtimeから確認する。実効値と選択値の差をmergeの照合条件にはしない。
+
+## レビュー要求と自動進行
 
 ```bash
-printf '%s\n' '表示文言だけの修正で、呼び出し元や永続データへの影響がなく該当画面で確認できるためSolを選ぶ。' > tmp/review-model-reason.md
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
-  --prs 1250 --instruction-file tmp/instruction.md --evidence-file tmp/result.md \
-  --review-model gpt-6.1-sol --review-effort xhigh \
-  --model-reason-file tmp/review-model-reason.md > tmp/review-request.json
-```
-
-分離操作では同じ選択引数を `review-prepare` に渡し、`review-request --run-id` は保存選択を使う。
-指定漏れはエラーになり、モデル・理由を補って要求を作り直す。固定値への振替はしない。
-人間の明示指定を確認した場合は、同じモデル・理由に加えて
-`--review-model-source human_instruction --human-model-reference '元の人間の発言への参照'` を渡す。
-拘束・許可外の組・固定設定との矛盾は[レビュー要求契約](#レビュー要求契約schema-version-3version-1と2の読取互換)に従い解消する。
-
-Solで判断しきれない重大な論点が残ったら、親が追加レビューの必要性と範囲を判断する。
-`tmp/handoff-scope.md` に元runの未解決事項・再利用する証拠・追加確認範囲、
-`tmp/additional-review-reason.md` に追加レビューが必要な理由を記す。
-元runの結果を `decide` の入力へ結ぶ場合は[レビューの因果リンク](../decision_logs/README.ja.md#レビューの因果リンク)も使う。
-
-```bash
-printf '%s\n' 'Solで永続状態の復旧条件を判断しきれなかったためAstraを選ぶ。' > tmp/review-model-reason.md
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-prepare \
-  --prs 1250 --reason-file tmp/additional-review-reason.md \
+  --prs 1250 1251 --instruction-file tmp/review.md --evidence-file tmp/result.md \
   --review-model gpt-6-astra --review-effort xhigh \
-  --model-reason-file tmp/review-model-reason.md \
-  --handoff-from-run "$source_run" --handoff-scope-file tmp/handoff-scope.md > tmp/prepared.json
-next_run=$(jq -r .review_run_id tmp/prepared.json)
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
-  --run-id "$next_run" --instruction-file tmp/instruction.md > tmp/review-request.json
-.venv/bin/python .agents/ops/review/parent_review.py run --request tmp/review-request.json
+  --model-reason-file tmp/review-model-reason.md --wait
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 merge-status
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 wait-merge --after 1
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 merge-continue \
+  --instruction-file tmp/continue.md --wait
 ```
 
-`source_run` は元Solレビューのrun ID。引継ぎは旧指摘の解消・coverageの合成ではなく、
-[保存候補の引継ぎ契約](../review/README.md#保存候補を含む別runへの引継ぎ)を維持する。
-部分確認だけなら `not_reviewed` を使い、正式なcoverageと親による解消確認を省略しない。
+`review-request` は作成workerの終了・cleanupと成果を確認して対象PR全体を登録し、プロセスを切り離して起動する。
+`--wait` は最初の通知まで待つ。省略時はrun IDを返す。手動親の背景待機は [wait-workerと同じ方法](#会話の背景実行で終了を待つ) を使う。
+各入口の `--run-id` 省略時は最新の自動進行を対象にする。`merge-continue --prs` は親待ちになった一部のPRだけを続行できる。
+majorを直した後は親が判断と確認内容をinstructionへ書いて続行する。変更が大きいと判断した場合だけ `--rereview` を付ける。
+同じworkerの継続来歴と終了を確認して委任ID・修正登録を更新するので、dispatcherの `continue-worker` 後も同じrunを続行できる。
+その際にモデルを変えるなら、同じモデル選択引数と理由を付ける。既存の人間指定は維持する。
 
-### 使ったモデルと使用量を確認する
+要求schema 4はrepo・親・対象PRとhead・Issue・依存・作成worker・実行根拠・モデル選択・親の指示を保存する。
+private state、段階、待機・修正上限・復旧・通知・merge条件の正本は [自動進行](../review/README.md)。このREADMEに状態表を複製しない。
+担当・実行根拠・作成workerが変わった場合は自動で付け替えず親へ返す。
 
-`review-inspect --prs` で既存証拠の `review_selection` と `runtime_settings` を確認できる。
-ローカルでは保存manifestの選択と、runnerの要求値・実効値・使用量を照合する。
-`review-selection.json` はrunnerの `contract.review_selection` と同じ選択を保存したもの。
-
-```bash
-parent_state="${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/parent-sessions"
-review_dir="$parent_state/reviews/$review_run"
-jq '{review_selection}' "$review_dir/request.json"
-jq '{choice: .contract.review_selection, requested: .contract.settings.selected,
-     effective: .runtime.effective, usage: .runtime.usage,
-     agent_spawned, result, started_at, finished_at}' "$review_dir/agent-runtime/result.json"
-```
-
-`review_run` は確認するrun ID。要求モデル・理由・指定元は `review_selection`、
-実際のmodel/effortは `runtime.effective` の `status=observed` と `value` で確認する。
-select時の `REVIEW_CODEX_MODEL` は設定上の固定値として `policy.fixed` やrunnerの `defaults` に残るが、
-実行モデルは親が選んだ `selected`。select時の省略用モデルには使わない。
-`REVIEW_CODEX_EFFORT` はfixed時のeffort、`REVIEW_CODEX_SERVICE_TIER` は両モードで共通のtierを定める。
-
-モデル別の起動件数・トークン・実行秒数は、同じstate内の物理的なrunner記録を1つずつ集計する。
-失敗した起動も含め、起動前失敗・AIを起動しないrecover・公開再送は起動件数へ加えない。
-次の `jq` は要求モデルと実効モデル/effortごとに分け、未取得件数を併記する。
-
-```bash
-jq -s '
-  [.[] | select(.agent_spawned == true and .contract.settings.profile == "review")
-   | {requested: .contract.settings.selected.model,
-      effective: .runtime.effective.model.value,
-      effort: .runtime.effective.effort.value,
-      usage: .runtime.usage,
-      seconds: (if (.started_at != null and .finished_at != null)
-                then .finished_at - .started_at else null end)}]
-  | group_by([.requested, .effective, .effort])
-  | map({requested: .[0].requested, effective: .[0].effective, effort: .[0].effort,
-         launches: length,
-         input_tokens_observed_sum: ([.[] | select(.usage.status == "observed") | .usage.value.input_tokens] | add),
-         output_tokens_observed_sum: ([.[] | select(.usage.status == "observed") | .usage.value.output_tokens] | add),
-         usage_unavailable: ([.[] | select(.usage.status != "observed")] | length),
-         runtime_seconds_observed_sum: ([.[].seconds | select(. != null)] | add),
-         runtime_seconds_unavailable: ([.[] | select(.seconds == null)] | length)})
-' "$parent_state"/reviews/*/agent-runtime/result.json
-```
-
-トークンは `runtime.usage` の観測値、秒数はrunnerの `finished_at - started_at`（CLI準備・cleanupを含む経過時間）。
-未取得を0で補わず、全件未取得の合計はnullとする。モデル時間の厳密な内訳・請求額・利用枠の差は推定しない。
-この集計は記録が残る起動の範囲であり、欠落したrunを補作しない。
-過去の[比較レポート](../../../knowledge/reports/review-model-comparison-20261111/README.md)は当時の記録として保持する。
-
-### Astra固定へ戻す
-
-`agents.conf` の `REVIEW_SELECTION_MODE="fixed"` に戻す。
-`REVIEW_CODEX_MODEL="gpt-6-astra"`、`REVIEW_CODEX_EFFORT="xhigh"` を維持すれば、
-選択を省略した新規要求もAstra固定になる。Sol指定は明示エラーになる。
-保存済みrun/manifestは変更しない。設定変更前にprepareした未起動runは方針の不一致で拒否するため、
-現在の設定で新しい要求を作る。実行済み証拠の再利用・公開再開・recoverは元の契約で検証する。
-
-## レビュー要求契約（schema version 3、version 1と2の読取互換）
-
-```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
-  --prs 1250 1251 --instruction-file tmp/instruction.md \
-  --evidence-file tmp/result.md --review-model gpt-6-astra --review-effort xhigh \
-  --model-reason-file tmp/review-model-reason.md > tmp/review-request.json
-```
-
-`review-request --prs` は成果の登録・対象固定・明示指示を1コマンドで行う。
-子の終了は共通ランナーの記録から検査する。自律workerはdispatcherの現在のjob、
-手動workerはregistryの `worker_runs` から現在の委任の登録runをすべて照合する。
-手動の終了記録があっても契約と終了を再照合し、記録なし・不一致・未終了なら拒否する。
-未委任の子はrunの検査対象外。runの導入前のworkerは `record-worker-run` で紐付けてから要求する。
-終了・cleanup・worktree・branch・task IDの一致なしに予約を解放しない。
-従来の分離操作 `record-result` → `review-prepare` → `review-request --run-id` も使える。
-
-対象は直属子にclosing指示があるopen PRの任意の部分集合。
-PR未取得・重複・closed・draft・fork・親と無関係をエラーにする。
-他のopen PRの追加・更新・closeは選択した対象のcoverageを失効させない。
-分割していないIssueでは親ラベル付きでもそのissueを閉じるPRを同じ方法で扱う。
-GitHub取得・git差分取得後にPR集合とhead/baseを再取得し、途中更新を拒否する。
-不足オブジェクトだけ `origin` からSHAをfetchする。
-
-prepareはversion 3を作成する。従来のversion 2のJSONは次の形で、読取時に書き換えない:
-
-```json
-{
-  "schema_version": 2,
-  "authorization": {
-    "generation": 1,
-    "execution_basis_kind": "autonomous_decision",
-    "execution_basis_sha256": "basis全体の64桁hex SHA-256"
-  },
-  "requirements": {"1216": "親の要件本文の64桁hex digest", "1217": "対象子の要件本文の64桁hex digest"},
-  "review_run_id": "parent-1216-32桁のhex UUID",
-  "repo": "Motoki0705/tennis-lab",
-  "parent_issue": 1216,
-  "reason": "親が対象PR群を確定した理由",
-  "prs": [{
-    "number": 1250,
-    "head_sha": "40桁のhex SHA",
-    "base_sha": "GitHubで取得したbase先端の40桁SHA",
-    "base_ref": "main",
-    "merge_base_sha": "baseとheadのmerge-baseの40桁SHA",
-    "diff_sha256": "64桁hex SHA-256",
-    "branch": "codex/issue-format"
-  }]
-}
-```
-
-`prs` は番号昇順。diffは以下の**生バイト列**のSHA-256（文字列への変換・切詰めなし）。
-
-```bash
-git diff --no-ext-diff --no-textconv --binary --full-index --no-renames --no-color MERGE_BASE HEAD --
-```
-
-version 3は上のversion 2へ`review_selection`を追加してdigestに含める。
-選択JSONの定義は[共通ランナー](../lib/README.md#レビュー専用の選択入力)を参照。
-通常設定selectでは`--review-model`と`--model-reason-file`を必須とし、必要なら`--review-effort`も指定する。
-選択手順・使用量の確認・fixedへの復帰は[正式レビューのモデル選択](#正式レビューのモデル選択)を参照。
-fixedでは引数を省略すると設定の固定値を使用する。明示指定は固定値と一致する場合だけ許可する。
-
-これらの引数は`review-prepare`と`review-request --prs`の両方で使える。
-`review-request --run-id`は保存選択を使用し、指定を加えた場合も完全一致を要求する。
-理由・モデル・選択元の変更は、新しい理由付きprepareで別runにする。prepare済みmanifestを変更しない。
-設定の正本は[lib/agents.conf](../lib/agents.conf)で、明示設定の検証には`--review-config-file FILE`を使える。
-実行側の`parent_review.py run`にも同じ内容の設定ファイルを指定する。
-
-人間の指定を親が確認した場合は`--review-model-source human_instruction`と`--human-model-reference`を使う。
-別の親候補との矛盾も検査する場合は`--human-review-model`、必要なら`--human-review-effort`で拘束を渡す。
-人間の発言であることと元指示の意味は親が確認し、CLIは拘束との矛盾・許可外の組を拒否する。
-人間指定がfixedと矛盾しても固定モデルへの振替は行わない。
-
-保存finalの復旧を指示するときは、prepare時に`--recover-source-run ID`で元runを固定する。
-この選択は`{kind:recover,source_run,source_request_sha256,candidates}`となり、新しいモデル選択とは併用しない。
-`candidates`には元requestが継承していた未採用候補を保持し、recoverを経由して指摘・証拠待ちが消えることも防ぐ。
-復旧要求を`run`へ渡すことも拒否する。実効モデルはrecoverが検証する元runの値である。
-別モデルの追加レビューには`--handoff-from-run ID --handoff-scope-file FILE`を使う。
-元request/resultのdigestとPRの対応を固定し、元run・未解決事項・追加確認範囲をcontextへ渡す。
-検証済みの未採用候補があれば、その指摘・証拠待ちと検証来歴もrequestへ固定する。
-連続する引継ぎでも候補を保持し、不正な候補や固定後の改変は明示エラーにする。
-追加レビューの理由は従来の`--reason-file`、モデルを選ぶ理由は`--model-reason-file`に分ける。
-引継ぎはcoverageの合成でも旧指摘の解消でもない。部分確認だけならnot_reviewedのままにする。
-候補が残るPRのgate解除には、[保存候補の引継ぎ契約](../review/README.md#保存候補を含む別runへの引継ぎ)に従う親の明示確認も必要になる。
-
-旧version 1/2には要求時の選択を補作しない。既存証拠の復旧・公開再開・gateは旧契約として検証する。
-未起動の旧requestは従来のfixed設定でだけ起動でき、selectや固定値変更時は新版requestを要求する。
-手動親と自律親は同じ入口・検証を使う。選択元は判断記録の既存の3分類へ接続する。
-
-### レビュー要求の記録と再実行
-
-証拠用Issueの `event:review, state:targets_fixed` にrun ID・requestのcanonical JSON SHA-256を記録し、
-本文のJSONコードブロックにmanifest全体を載せる。この時点ではレビュー未指示。
-`review-request` は同じ対象が現在も有効なことを再検査して、親の明示指示を証拠用Issueへ記録する。
-出力は上記manifestに `"review_state":"instructed"` を追加したJSON。
-reviewイベントには操作時のauthorizationを記録し、manifestは作成時の来歴を保持する。
-requirementsは親・対象子の本文の観測記録。文字列変化による自動失効には使わない。
-prepare中の再取得・指示・収集時はPRとclosing対象の同一性を照合する。
-実際のコード・CI・指摘解消はreview/mergeで照合し、要件の意味と変更の影響は親が判断する。
-保存済みmanifestと過去のrunを新しい承認へ書き換えない。
-`request_sha256` は `review_state` 追加前のprepare manifestのcanonical JSONに対して計算する。
-**#1218はこのJSONだけで起動せず、共通readerの同じrun ID/request digest/指示済み記録と最新対象を照合し、
-run IDごとの実行を一度だけ受理する責任を持つ。** prepareだけのJSONは実行指示にしない。
-受理・実行・修正確認・結果スキーマは [親レビュー入口](../review/README.md) を参照する。
-同じprepareの再実行は同じrun ID、同じrequestの再送は同じ指示を使う。
-既にレビュー対象となったPRの再レビューには `--reason-file` を付ける。別PRの初回レビューには不要。
-PR open/push/CI完了ではこの入口もレビューも起動しない。
+切替前にmerge済みの成果は、`merge-confirm --prs N... --wait` で[後確認](../review/README.md#切替前にmerge済みの成果)を登録してから親の完了判定へ進む。
+この入口は既存のmergeを確認するもので、旧レビューを新しいmerge許可へ変換しない。
 
 ### レビュー指示へ渡す証拠
 
-`--instruction-file` に目的・確認点と利用可能な証拠を渡す。取得できない証拠がある場合は、確認した事実で次の文例を埋める。
+instructionには親の受入条件、対象PR間の依存・影響先、実施したテストと未確認事項を記す。
+CPU隔離やCIログ取得に制約がある場合は、その事実と判断に必要な証拠を示す。
+`--cpu-tests-file` はcommitごとの既存CPUテストnode、`--isolation-proof` は隔離probeを指定する。
+`--agent-exec` と `--agent-timeout` は実行環境・テスト用の明示設定。既定は共通ランナーと1800秒。
 
-```text
-対象: PR <番号>、HEAD <commit>。確認点: <要件・境界・検出したい不具合>。
-利用できない証拠: <CIログ・隔離CPUテスト等と、確認した取得不能の理由>。
-代替の証拠: <対象HEADのCI結論へのリンク、親/workerが実行したテストのコマンド・結果と出典>。
-固定diffを確認できた範囲でcoverageを判断し、上記の取得不能だけでnot_reviewedにしない。
-判断に必須の証拠がなお不足する論点は、対象・不足・必要な確認をevidence_waitsへ具体化する。
-```
-
-親の検証とworkerの自己報告を区別し、未実施を成功として埋めない。
-coverage・verdictと証拠待ちの境界は[レビューの証拠待ち](../review/README.md#証拠待ちの完了)が正本。
-
-### レビュー結果の受領と確認
-
-未指示 → `targets_fixed`（対象確定）→ `instructed`（指示済み）→ `result_received`（結果受領）→
-`fixes_verified`（修正確認）→ `complete`（完了）の順。
-後半は `review-state --run-id ID --state 状態 --evidence-file tmp/evidence.md` で証拠を残す。
-受領と確認が同時なら `instructed` から `fixes_verified` へ直接進めてよい。指示前の確認や状態の後退は拒否する。
-結果受領は成功判定ではなく、失敗・阻害指摘も受領して記録する。親が指摘と修正を照合し、
-各PRのCIなどを確認した証拠が揃うまで完了へ進めない。指摘なしのapproveでも、親が対象・差分・受入証拠を確認して記録する。
-
-```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  review-state --run-id "$review_run_id" --state fixes_verified --evidence-file tmp/parent-verification.md
-```
-
-指摘の解消は[reviewの実行・修正確認](../review/README.md#実行)に従う。
-この記録を揃えてから[merge gateのdry-run](../review/README.md#merge-gate)へ進む。CLIはgateの代用ではない。
+dispatcher親は同じ `--state-dir` と `--dispatcher-state-dir` で要求する。
+作成workerの修正ターンは登録済みdispatcherの予約へ渡し、通常のworker終了による親再開と区別する。
+旧要求・公開結果は履歴表示のために読める。新規操作は上の入口だけを使う。
 
 ## 結果捕捉と親の判断
 

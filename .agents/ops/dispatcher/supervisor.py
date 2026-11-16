@@ -41,7 +41,7 @@ from .collect import (
 from .outcomes import read_result
 from .runtime import Runtime, alive, gate, load, process_identity
 from .schedule import Schedule, latest_slot, next_slot
-from .state import DispatchStore, client_for, require_client
+from .state import DispatchStore, client_for, progression_reads, require_client
 
 PHASES = {
     "reserved",
@@ -271,7 +271,7 @@ class Supervisor:
         if key.rpartition("#")[0] != self.gh.repo.casefold():
             raise ValueError("managed repository mismatch")
         return ParentSession(
-            client_for(self.gh, self.store),
+            client_for(self.gh, self.store, targeted_history=progression_reads(row)),
             self.store,
             number(int(key.rpartition("#")[2])),
             row["session"],
@@ -718,6 +718,7 @@ class Supervisor:
     ) -> dict[str, Any]:
         dispatch = row["dispatch"]
         config = self.schedule.read()["config"]
+        gh = client_for(self.gh, self.store, targeted_history=progression_reads(row))
         task = row["tasks"][str(child)] if child is not None else {}
         cwd = (
             config["cwd"]
@@ -743,7 +744,7 @@ class Supervisor:
             snapshot = load(Path(previous["directory"]) / "start-input.json")
             cited_issues, _, _ = source_references(self.gh.repo.casefold(), sources)
             snapshot = collect(
-                self.gh,
+                gh,
                 self.store,
                 Path(config["cwd"]),
                 [parent, *(history_owner(snapshot, n) for n in cited_issues)],
@@ -772,6 +773,7 @@ class Supervisor:
             "worker": None,
             "runner_exit": None,
             "diagnostic": None,
+            "targeted_history": gh.targeted_history,
             "authorization": dict(dispatch["authorization"]),
             "assignment_id": dispatch["assignment_id"],
             "candidate_sha256": digest(dispatch["candidate"]),
@@ -1085,7 +1087,12 @@ class Supervisor:
     ) -> str:
         from .repairs import reserve
 
-        return reserve(self, parent, progression_id, repair_id, details)
+        bounded = Supervisor(
+            client_for(self.gh, self.store, targeted_history=True),
+            self.store,
+            self.schedule,
+        )
+        return reserve(bounded, parent, progression_id, repair_id, details)
 
     def start_child(
         self,
@@ -1303,6 +1310,10 @@ class Supervisor:
                     "delegation_id": job["delegation_id"],
                     "evidence": f"dispatcher runtime {record['run_id']}: terminal result, cleanup_complete, no live runner/CLI/group",
                 }
+            if job.get("repair") and job.get("progression_id"):
+                # The progression consumes the repair report; it wakes the
+                # parent only for a decision or final notification.
+                return
             dispatch["wake_requested"] = True
             if dispatch.get("controller_mode") == "handoff":
                 dispatch["wake_requested"] = False

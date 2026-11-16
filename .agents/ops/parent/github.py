@@ -37,6 +37,7 @@ class GitHub(IssueGitHub):
         super().__init__(repo)
         self._store = store
         self._outside_store: Store | None = None
+        self.targeted_history = False
         self.parent: int | None = None
         self._cache: dict[tuple[str, bool], object] = {}
         self._fresh = False
@@ -51,6 +52,13 @@ class GitHub(IssueGitHub):
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         self._require_scope()
+        if self.targeted_history and endpoint.partition("?")[0] in {
+            f"repos/{self.repo}/issues",
+            f"repos/{self.repo}/pulls",
+        }:
+            raise ValueError(
+                "targeted history cannot enumerate repository issues or PRs"
+            )
         if (
             self._store is not None
             and self._cache_epoch != self._store.transaction_epoch

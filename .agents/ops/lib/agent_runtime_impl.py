@@ -505,7 +505,13 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         state["latest_run"] = str(run_dir)
         if review_selection is not None:
             write_json(run_dir / "review-selection.json", review_selection)
-        events = Events(agent, settings["selected"], state["session_id"], output_schema)
+        events = Events(
+            agent,
+            settings["selected"],
+            state["session_id"],
+            output_schema,
+            verify_settings=settings.get("profile") != "review",
+        )
         previous_turn = state["last_turn_id"]
         result: dict[str, Any] = {
             "schema_version": VERSION,
@@ -691,6 +697,7 @@ def recover_lost_turn(result: dict[str, Any], state: dict[str, Any]) -> None:
         agent,
         contract["settings"]["selected"],
         saved["requested_session_id"] or saved["session_id"] or state["session_id"],
+        verify_settings=contract["settings"].get("profile") != "review",
     )
     run_dir = Path(result["run_dir"])
     started_turns = 0

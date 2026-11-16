@@ -40,6 +40,7 @@ from .policy import (
     closing_issues,
     dependencies,
     digest,
+    legacy_review_state,
     marker,
     next_agreement_revision,
     nonempty,
@@ -50,7 +51,6 @@ from .policy import (
     raw_section,
     registration,
     replace_section,
-    review_state,
 )
 from .state import Store
 
@@ -289,7 +289,7 @@ class ParentSession:
         previous = self.row.pop("owner_runtime", None)
         if bound is not None:
             self.row["owner_runtime"] = bound
-        return previous != bound
+        return bool(previous != bound)
 
     def set_summary(self, text: str) -> dict[str, Any]:
         """Save the parent's own sidebar summary; display sync projects it."""
@@ -370,12 +370,17 @@ class ParentSession:
         if not self.row.get("reviews"):
             return "未指示"
         run = self.row["reviews"][-1]
-        public_state = review_state(history, run["request"])
+        if run["request"].get("schema_version") == 4:
+            from lib.ops_review.merge_gate_impl import state_path, view
+
+            return [view(state_path(self.store, run["request"]["review_run_id"]))]
+        public_state = legacy_review_state(history, run["request"])
         return [
             {
                 **run,
                 "state": public_state or run["state"],
                 "public_recorded": public_state is not None,
+                "historical_only": True,
             }
         ]
 
@@ -706,6 +711,11 @@ class ParentSession:
     def reviewed_targets(self) -> set[int]:
         reviewed_targets: set[int] = set()
         for review in self.row.get("reviews", []):
+            if review["request"].get("schema_version") == 4:
+                reviewed_targets.update(
+                    n for pr in review["request"]["prs"] for n in pr["issues"]
+                )
+                continue
             requirements = {int(n) for n in review["request"].get("requirements", {})}
             if requirements:
                 reviewed_targets.update(requirements - {self.parent} or {self.parent})
@@ -894,7 +904,7 @@ class ParentSession:
             parent.body, is_parent=True, is_child=parent.parent is not None
         ):
             raise ValueError("migrate the parent using issues before splitting")
-        draft = render_spec(spec)
+        draft = object_value(render_spec(spec))
         deps = value.get("dependencies", dependencies(draft["body"]))
         if not isinstance(deps, list) or len(deps) != len(set(deps)):
             raise ValueError("dependencies must be unique issue numbers")
@@ -1512,9 +1522,18 @@ class ParentSession:
         return record(self, child, value, key)
 
     def record_result(self, child: int, evidence: str) -> dict[str, Any]:
+        return self.record_results([child], evidence)[0]
+
+    def record_results(
+        self, selected: list[int], evidence: str
+    ) -> list[dict[str, Any]]:
+        """Accept a group with one family/PR observation and one progress update."""
         self.owner()
         nonempty(evidence, "verification evidence")
-        accepted_turn_id = worker_preflight.require_implementation(self, child)
+        accepted_turns = {
+            child: worker_preflight.require_implementation(self, child)
+            for child in selected
+        }
         # During checking this remains a factual record, without implementation
         # authorization. In an execution phase, stale inputs are an explicit error.
         auth = (
@@ -1523,60 +1542,60 @@ class ParentSession:
             else None
         )
         parent, children = self.work_items()
-        if child not in children:
+        if not selected or not set(selected) <= set(children):
             raise ValueError("result requires a direct child or the standalone issue")
         from .policy import closing_issues
 
         pulls = self.gh.pulls()
         work_targets.require_separate_self_prs(parent, pulls, self.gh.repo)
-        prs = [
-            p
-            for p in pulls
-            if child in closing_issues(p.get("body") or "", self.gh.repo)
-        ]
-        if not prs:
-            raise ValueError("no related PR; record a PR closing this child first")
-        task = self.row["tasks"].get(str(child), {})
-        if task.get("branch") and any(
-            p["head"]["ref"] != task["branch"] for p in prs if p["state"] == "open"
-        ):
-            raise ValueError("result PR branch differs from delegated branch")
-        refs = ", ".join(
-            f"#{p['number']} ({p['state']})"
-            for p in sorted(prs, key=lambda p: p["number"])
-        )
-        quoted = "\n".join("> " + line for line in evidence.splitlines())
-        text = f"成果PR: {refs}\n\n検証結果:\n{quoted}"
-        body = children[child].body
-        current = raw_section(body, "成果物・関連PR")
         with self.gh.fresh_reads():
             if set(self.work_items()[1]) != set(children):
                 raise work_targets.WorkTargetsChanged(
                     "work targets changed before result registration"
                 )
-        if not current.endswith(text):
-            self.update_body(
-                child,
-                replace_section(
-                    body, "成果物・関連PR", (current + "\n\n" + text).strip()
-                ),
-                body,
+        results = []
+        for child in selected:
+            prs = [
+                p
+                for p in pulls
+                if child in closing_issues(p.get("body") or "", self.gh.repo)
+            ]
+            if not prs:
+                raise ValueError("no related PR; record a PR closing this child first")
+            task = self.row["tasks"].get(str(child), {})
+            if task.get("branch") and any(
+                p["head"]["ref"] != task["branch"] for p in prs if p["state"] == "open"
+            ):
+                raise ValueError("result PR branch differs from delegated branch")
+            refs = ", ".join(
+                f"#{p['number']} ({p['state']})"
+                for p in sorted(prs, key=lambda p: p["number"])
             )
-        self.row["tasks"].setdefault(str(child), {})["verification"] = {
-            "prs": [p["number"] for p in prs],
-            "evidence": evidence,
-            "authorization": auth,
-            "requirements_sha256": digest(execution.requirement_body(body)),
-        }
-        recorded = self.row["tasks"][str(child)]
-        if recorded.get("delegated") and "preflight" in recorded:
-            recorded["preflight"]["accepted_turn_id"] = accepted_turn_id
-        self.store.save()
-        from decision_logs.parent_sources import verification
+            quoted = "\n".join("> " + line for line in evidence.splitlines())
+            text = f"成果PR: {refs}\n\n検証結果:\n{quoted}"
+            body = children[child].body
+            current = raw_section(body, "成果物・関連PR")
+            if not current.endswith(text):
+                self.update_body(
+                    child,
+                    replace_section(
+                        body, "成果物・関連PR", (current + "\n\n" + text).strip()
+                    ),
+                    body,
+                )
+            self.row["tasks"].setdefault(str(child), {})["verification"] = {
+                "prs": [p["number"] for p in prs],
+                "evidence": evidence,
+                "authorization": auth,
+                "requirements_sha256": digest(execution.requirement_body(body)),
+            }
+            recorded = self.row["tasks"][str(child)]
+            if recorded.get("delegated") and "preflight" in recorded:
+                recorded["preflight"]["accepted_turn_id"] = accepted_turns[child]
+            self.store.save()
+            from decision_logs.parent_sources import verification
 
-        verification(self, child)
-        return {
-            "child": child,
-            "prs": [p["number"] for p in prs],
-            "progress": self.sync_progress(),
-        }
+            verification(self, child)
+            results.append({"child": child, "prs": [p["number"] for p in prs]})
+        progress = self.sync_progress()
+        return [{**result, "progress": progress} for result in results]

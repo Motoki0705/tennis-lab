@@ -36,6 +36,11 @@ sys.path.insert(0, sys.argv[1])
 import review
 sys.path.insert(0, sys.argv[2])
 from parent.history import HistoryValidationError, parse_history
+from lib.ops_review.parent_review_impl import run_review
+from lib.ops_review.merge_gate_impl import completion
+from lib.ops_review.progression import Engine
+from parent.cli_impl import parser
+assert all(callable(api) for api in (run_review, completion, Engine, parser))
 comment = {'id': 1, 'user': {'login': 'publisher'}, 'body': '<!-- parent-review:v2 {} -->'}
 try:
     parse_history('o/r', 1, 'publisher', [comment], [], evidence_issue=None)

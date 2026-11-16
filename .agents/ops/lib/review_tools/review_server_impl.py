@@ -58,6 +58,34 @@ class ReviewRetrieval(Retrieval):
                     _name, revision, **args
                 ),
             )
+        scope = config.get("github_scope")
+        if scope is not None:
+            allowed = set(scope["issues"]) | set(scope["prs"])
+            ci_heads = self.revisions | set(scope.get("ci_heads", []))
+            self.tools.pop("github_items", None)
+            for name in (
+                "github_item",
+                "github_comments",
+                "github_comment",
+                "pr_diff",
+                "ci_runs",
+            ):
+                tool = self.tools[name]
+
+                def scoped(_tool: Tool = tool, **arguments: Any) -> Retrieved:
+                    if _tool.name == "ci_runs":
+                        if arguments.get("head_sha") not in ci_heads:
+                            raise RetrievalError(
+                                "FORBIDDEN_SCOPE",
+                                "CI reads require a reviewed or dependency PR head_sha",
+                            )
+                    elif arguments.get("number") not in allowed:
+                        raise RetrievalError(
+                            "FORBIDDEN_SCOPE", "Issue/PR is outside this review"
+                        )
+                    return _tool.handler(**arguments)
+
+                self.tools[name] = replace(tool, handler=scoped)
         self.executors = {}
         for sha, nodes in config.get("cpu_tests", {}).items():
             if sha not in readers:

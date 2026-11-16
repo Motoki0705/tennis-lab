@@ -102,12 +102,37 @@ def verify(
         if r["repo"] == repo
         and (r.get("parent") == parent if r["version"] == 2 else r["issue"] in rows)
     ]
-    updates = {
-        (r["issue"], r["comment_id"]): r
+    # Old review publication updates are read only to identify retired receipts.
+    # They do not authorize work and their content/digest chain is not replayed.
+    retired = {
+        (r["issue"], r["comment_id"])
         for r in entries(directory / "comment-updates", update=True)
         if r["repo"] == repo and r["parent"] == parent
     }
-    for r in [*posts, *updates.values()]:
+    archived_bodies: set[str] = set()
+    for run in (directory / "reviews").glob(f"parent-{parent}-*"):
+        request_path = run / "request.json"
+        if not request_path.is_file():
+            continue
+        request = object_value(read_json(request_path.read_text()))
+        if (
+            request.get("repo", "").casefold() != repo
+            or request.get("parent_issue") != parent
+        ):
+            continue
+        archived_bodies.update(
+            digest(path.read_text()) for path in run.glob("*-comment.md")
+        )
+    # Classify retirement from local producer artifacts, never from the mutable
+    # remote body: relabelling a revoked basis as a review must not hide it.
+    posts = [
+        r
+        for r in posts
+        if r.get("source") != "pr"
+        and (r["issue"], r["comment_id"]) not in retired
+        and r["body_sha256"] not in archived_bodies
+    ]
+    for r in posts:
         if r["publisher"] != login:
             raise ValueError(
                 "comment journal publisher differs from authenticated publisher"
@@ -119,8 +144,6 @@ def verify(
             or (r["source"] == "pr" and issue in {parent, evidence_issue})
         ):
             raise ValueError("comment journal destination binding changed")
-        if "from_sha256" in r and issue not in {parent, evidence_issue}:
-            raise ValueError("comment update destination binding changed")
         if issue not in rows:
             rows[issue] = gh.comments(issue)
 
@@ -128,23 +151,9 @@ def verify(
         if c.get("user", {}).get("login") != r["publisher"]:
             return False
         sha = digest(c.get("body") or "")
-        u = updates.get((r["issue"], c["id"]))
-        if u is None:
-            return sha == r["body_sha256"]
-        if "body_sha256" in r and r["body_sha256"] not in {
-            u["from_sha256"],
-            u["to_sha256"],
-        }:
-            return False
-        if r.get("body_sha256") == u["to_sha256"]:
-            return sha == u["to_sha256"]
-        return sha in (
-            {u["to_sha256"]}
-            if u["state"] == "bound"
-            else {u["from_sha256"], u["to_sha256"]}
-        )
+        return bool(sha == r["body_sha256"])
 
-    for r in [*posts, *updates.values()]:
+    for r in posts:
         comments = rows[r["issue"]]
         candidates = [
             c

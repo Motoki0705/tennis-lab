@@ -113,16 +113,14 @@ workerの終了、実装の完了、PRのmerge、受入確認、ログの公開�
 まとまった結果と判断は [Git公開と閲覧](../../ops/decision_logs/README.ja.md#git公開と閲覧)に従い、
 初回も `publish-decision-log --dry-run` の内容を確認してから公開する。
 
-通常設定selectでは、[モデル選択手順](../../ops/parent/README.md#正式レビューのモデル選択)に従い
-`--review-model` と `--model-reason-file` を渡す。具体例・引継ぎ・使用量確認・fixedへの復帰は同節を正本とする。
-正式レビューは対象PRごとに1回だけ行う。blocker・majorを含む指摘があっても、修正後に再レビューしない。
-再レビューするのは、人間が指示した場合と、結果を出さずに終わったrun（準備失敗・中断・`incomplete`）のやり直しだけで、理由を付ける。
+[モデル選択手順](../../ops/parent/README.md#正式レビューのモデル選択)に従い、親が `review-request --prs` を1回呼ぶ。
+`--wait` または `wait-merge` を背景実行へ置き、CLIからの通知を待つ。状態・続行の入口は [親CLI](../../ops/parent/README.md#レビュー要求と自動進行)。
+approveならCLIがCI待機・gate・merge・merge後確認を進める。majorは親が作成workerへ修正を依頼し、確認後に `merge-continue` する。
+追加レビューが必要な規模の変更と親が判断した場合だけ、続行に `--rereview` を付ける。CI修正や競合解消では付けない。
+CLIの修正上限・人間の制御・中断復旧・通知の正本は [自動進行の契約](../../ops/review/README.md)。
+CLI変更のmerge後は [呼出元と既存worker](../../ops/parent/README.md#cli更新後の既存worker) を確認する。
 
-- 要求前: `review-request --prs` の[再実行理由](../../ops/parent/README.md#レビュー要求の記録と再実行)と[証拠の指示文例](../../ops/parent/README.md#レビュー指示へ渡す証拠)。
-- 結果受領後: 指摘はworkerへ修正を依頼し、[指摘の解消・親の確認を記録](../../ops/parent/README.md#レビュー結果の受領と確認)する。指摘なしでも確認は必要。
-- merge前: [dry-run・実mergeの条件](../../ops/review/README.md#merge-gate)、[merge後の受入確認](../../ops/parent/README.md#workerの調査親判断実装フェーズ)。条件不足のmergeだけを保留する。
-- CLI変更のmerge後: [呼出元と既存worker](../../ops/parent/README.md#cli更新後の既存worker)。
-
+切替前のmerge済み成果が混ざる場合は[番号指定の後確認](../../ops/review/README.md#切替前にmerge済みの成果)を先に行う。
 merge後のCIと全体の受入条件を確認する。今回の受入結果と次回改善を分け、
 [構造化finish](../../ops/parent/improvements.md#今回の受入と候補整理)を手動の `release --ended --spec` または自律の `workflow-report` へ渡す。
 未達の受入条件を改善へ移してcompletedにしない。候補なしも明示し、noteだけの担当終了を受入済みと報告しない。

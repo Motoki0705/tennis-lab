@@ -39,7 +39,6 @@ class Entry:
 ENTRIES = (
     Entry("parent", "parent/__main__.py", "parent/cli_impl.py", "parent"),
     Entry("parent-cli", "parent/cli.py", "parent/cli_impl.py", "parent.cli"),
-    Entry("parent-review", "review/parent_review.py", "review/parent_review_impl.py"),
     Entry("merge-gate", "review/merge_gate.py", "review/merge_gate_impl.py"),
     Entry("agent-exec", "lib/agent_exec.sh", "lib/agent_runtime_impl.py"),
     Entry("agent-runtime", "lib/agent_runtime.py", "lib/agent_runtime_impl.py"),

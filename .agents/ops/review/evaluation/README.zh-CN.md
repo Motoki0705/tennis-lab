@@ -9,6 +9,9 @@
 保留实测与父任务完成的问题判定。采用判断已记录于结果报告，正式审查实机验收仍待父任务完成。
 常规 pytest 只运行离线契约测试，不启动比较。
 
+历史请求、输出与测量保持不变。当前执行使用approve/major整体审查输出，历史输出按其保存的schema读取。比较观察不授予生产merge权限。
+
+
 ## 固定资料与隔离
 
 [manifest.json](cases/manifest.json) 固定每个案例的完整 head、base、merge-base、

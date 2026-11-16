@@ -15,7 +15,7 @@ from parent.github import GitHub  # noqa: E402
 
 from dispatcher.runtime import Runtime, gate  # noqa: E402
 from dispatcher.schedule import Schedule  # noqa: E402
-from dispatcher.state import DispatchStore  # noqa: E402
+from dispatcher.state import DispatchStore, progression_reads  # noqa: E402
 from dispatcher.supervisor import Supervisor, event, managed  # noqa: E402
 
 
@@ -29,15 +29,18 @@ def main() -> int:
     os.umask(0o077)
     store = DispatchStore(args.store, Schedule(args.state_dir))
     with store.locked():
-        dispatch = store.parents[args.key]["dispatch"]
+        row = store.parents[args.key]
+        dispatch = row["dispatch"]
         job = dispatch["jobs"][args.job]
         directory = Path(job["directory"])
+        targeted = progression_reads(row)
     with gate(directory / "lifetime.lock") as fd:
         if fd is None:
             return 0
-        supervisor = Supervisor(
-            GitHub(args.key.rpartition("#")[0], store=store), store, store.schedule
-        )
+        repo = args.key.rpartition("#")[0]
+        gh = GitHub(repo, store=store)
+        gh.targeted_history = targeted
+        supervisor = Supervisor(gh, store, store.schedule)
         job = supervisor.claim(args.key, args.job)
         if job is None:
             return 0

@@ -98,17 +98,34 @@ def test_all_entries_contain_only_checkout_bootstrap(entry: Entry) -> None:
 
 
 @pytest.mark.parametrize(
-    "name", ["parent", "agent-exec", "agent-runtime", "parent-review", "merge-gate"]
+    "name", ["parent", "agent-exec", "agent-runtime", "review-api", "merge-gate"]
 )
 def test_waiting_cli_loads_new_entry_implementation_and_new_dependency(
     repo: Path,
     name: str,
 ) -> None:
-    entry = next(entry for entry in ENTRIES if entry.name == name)
-    old = "from bootstrap_dependency import call\ndef main():\n    print('old-body', call(old=True), flush=True)\n    return 0\n"
-    new = "from bootstrap_dependency import call\ndef main():\n    print('new-body', call(new=True), flush=True)\n    return 0\n"
+    entry = next(
+        entry
+        for entry in ENTRIES
+        if entry.name == ("merge-gate" if name == "review-api" else name)
+    )
+    module = (
+        "lib.ops_review.parent_review_impl"
+        if name == "review-api"
+        else "bootstrap_dependency"
+    )
+    old = f"from {module} import call\ndef main():\n    print('old-body', call(old=True), flush=True)\n    return 0\n"
+    new = f"from {module} import call\ndef main():\n    print('new-body', call(new=True), flush=True)\n    return 0\n"
     install_cli(repo, entry, project=old)
-    dependency = repo / ".agents/ops/bootstrap_dependency.py"
+    dependency = (
+        repo
+        / ".agents/ops"
+        / (
+            "review/parent_review_impl.py"
+            if name == "review-api"
+            else "bootstrap_dependency.py"
+        )
+    )
     dependency.write_text("def call(*, old):\n    return 'old-dependency'\n")
     with (repo / ".git/ops-code.lock").open("a") as updater:
         fcntl.flock(updater, fcntl.LOCK_EX)

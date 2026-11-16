@@ -761,6 +761,8 @@ def run_worker(
     replace_session: bool = False,
     repair: dict[str, Any] | None = None,
 ) -> tuple[int, dict[str, Any]]:
+    if repair is not None:
+        gh.targeted_history = True
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
         session.agreed()

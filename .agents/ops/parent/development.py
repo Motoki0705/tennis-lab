@@ -5,10 +5,8 @@ from __future__ import annotations
 import copy
 import fcntl
 import hashlib
-import importlib
 import os
 import signal
-import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -35,7 +33,6 @@ from . import work_targets, worker_preflight
 from .adopted_tasks import check_task_adoptions
 from .execution import (
     authorization,
-    require_request_authorization,
     task_errors,
 )
 from .github import GitHub
@@ -569,7 +566,7 @@ def verify_cancellation(
 
 
 def verify_completion(session: ParentSession) -> list[int]:
-    """Confirm gate journals against remote merges, closes and parent evidence."""
+    """Confirm implementation acceptance and the saved automatic post-merge result."""
     auth = authorization(session)  # Also works after a standalone issue was closed.
     parent, items = session.work_items()
     if not items:
@@ -586,8 +583,8 @@ def verify_completion(session: ParentSession) -> list[int]:
                 with session.gh.io_scope():
                     ended(job)
     check_task_adoptions(session.gh, parent.body)
-    sys.path.insert(0, str(OPS / "review"))
-    merge_gate = importlib.import_module("merge_gate_impl")
+    from lib.ops_review.merge_gate_impl import completion as merge_completion
+
     merged: set[int] = set()
     pulls = session.gh.pulls()
     work_targets.require_separate_self_prs(parent, pulls, session.gh.repo)
@@ -612,6 +609,7 @@ def verify_completion(session: ParentSession) -> list[int]:
                 and latest_turn is not None
                 and preflight.get("accepted_turn_id")
                 != latest_turn["snapshot"]["turn_id"]
+                and not latest_turn.get("repair")
             )
         ):
             raise ValueError(
@@ -640,40 +638,18 @@ def verify_completion(session: ParentSession) -> list[int]:
             or task.get("branch", pr["head"]["ref"]) != pr["head"]["ref"]
             or pr.get("merged") is not True
             or not pr.get("merged_at")
-            or merge_gate.completion(session, pr, write=False)
         ):
             raise ValueError(f"#{n}: GitHub merge/close is not confirmed")
-        journal = load(
-            merge_gate.attempt_path(session, pr["number"], pr["head"]["sha"])
+        confirmed = merge_completion(
+            session.store, session.gh.repo, session.parent, pr["number"]
         )
-        snapshot = journal["snapshot"]
         if (
-            journal["pr"] != pr["number"]
-            or journal["head_sha"] != pr["head"]["sha"]
-            or snapshot["head_sha"] != pr["head"]["sha"]
-            or snapshot["branch"] != pr["head"]["ref"]
-            or snapshot["base_ref"] != pr["base"]["ref"]
-            or pr["head"]["repo"]["full_name"].casefold() != session.gh.repo.casefold()
-            or pr["base"]["repo"]["full_name"].casefold() != session.gh.repo.casefold()
-            or journal["status"] not in {"merged", "attempting", "unconfirmed"}
-        ):
-            raise ValueError("merged PR differs from the gate's checked snapshot")
-        request = load(
-            session.store.directory
-            / "reviews"
-            / journal["review_run_id"]
-            / "request.json"
-        )
-        require_request_authorization(session, request, required_issues={n})
-        view = merge_gate.collect(session, request)
-        _, _, state, errors = merge_gate.load_evidence(session, request, view)
-        if (
-            errors
-            or view.errors[pr["number"]]
-            or state not in {"fixes_verified", "complete"}
+            confirmed["merge_commit"] != pr["merge_commit_sha"]
+            or confirmed["merge_head"] != pr["head"]["sha"]
+            or n not in confirmed["issues"]
         ):
             raise ValueError(
-                "merged PR's parent review is missing, stale or unconfirmed"
+                "merged PR differs from its automatic post-merge confirmation"
             )
         merged.add(pr["number"])
     if not merged:

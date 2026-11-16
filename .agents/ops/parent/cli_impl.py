@@ -26,7 +26,6 @@ from .log_publication import BEFORE_WORKER, Continuation, read_only
 from .policy import issue_number, nonempty, number, object_value
 from .proposals import receive
 from .session import ParentSession
-from .snapshot import prepare, transition
 from .state import Store, state_directory, unique_object
 
 
@@ -286,30 +285,37 @@ def parser() -> argparse.ArgumentParser:
         "--action", choices=("approve", "hold", "decline", "revoke"), required=True
     )
     decide.add_argument("--spec", required=True)
-    review = commands.add_parser("review-prepare")
-    review.add_argument("--prs", type=int, nargs="+", required=True)
-    review.add_argument("--reason-file")
     from .review_choice import add_arguments as review_choice_arguments
 
-    review_choice_arguments(review)
     inspection = commands.add_parser("review-inspect")
     inspection.add_argument("--prs", type=int, nargs="+", required=True)
     request = commands.add_parser("review-request")
-    selection = request.add_mutually_exclusive_group(required=True)
-    selection.add_argument("--run-id")
-    selection.add_argument("--prs", type=int, nargs="+")
-    request.add_argument("--evidence-file")
+    request.add_argument("--prs", type=int, nargs="+", required=True)
+    request.add_argument("--evidence-file", required=True)
     request.add_argument("--reason-file")
     request.add_argument("--instruction-file", required=True)
+    request.add_argument("--wait", action="store_true")
+    request.add_argument("--agent-exec", type=Path)
+    request.add_argument("--agent-timeout", type=float, default=1800)
+    request.add_argument("--cpu-tests-file", type=Path)
+    request.add_argument("--isolation-proof", type=Path)
     review_choice_arguments(request)
-    state = commands.add_parser("review-state")
-    state.add_argument("--run-id", required=True)
-    state.add_argument(
-        "--state",
-        choices=("result_received", "fixes_verified", "complete"),
-        required=True,
-    )
-    state.add_argument("--evidence-file", required=True)
+    status = commands.add_parser("merge-status")
+    status.add_argument("--run-id")
+    confirmation = commands.add_parser("merge-confirm")
+    confirmation.add_argument("--prs", nargs="+", type=int, required=True)
+    confirmation.add_argument("--wait", action="store_true")
+    resume = commands.add_parser("merge-continue")
+    resume.add_argument("--run-id")
+    resume.add_argument("--instruction-file", required=True)
+    resume.add_argument("--rereview", action="store_true")
+    resume.add_argument("--prs", nargs="+", type=int)
+    resume.add_argument("--wait", action="store_true")
+    review_choice_arguments(resume)
+    waiting = commands.add_parser("wait-merge")
+    waiting.add_argument("--run-id")
+    waiting.add_argument("--after", type=int, default=0)
+    waiting.add_argument("--timeout", type=float)
     decision_capture.add_parsers(commands)
     return root
 
@@ -362,6 +368,8 @@ def _main(argv: list[str] | None = None) -> int:
                 "basis-check",
                 "wait-supplement",
                 "wait-worker",
+                "wait-merge",
+                "merge-status",
                 "worker-log-status",
                 "review-inspect",
                 "decision-log-status",
@@ -413,6 +421,17 @@ def _main(argv: list[str] | None = None) -> int:
         if args.parent is None:
             raise ValueError("--parent is required for this command")
         parent = issue_number(args.parent, gh.repo)
+        if args.command in {"merge-status", "wait-merge"}:
+            from lib.ops_review.merge_gate_impl import latest, view, wait
+
+            path = latest(store, gh.repo, parent, args.run_id)
+            value = (
+                wait(path, after=args.after, timeout=args.timeout)
+                if args.command == "wait-merge"
+                else view(path)
+            )
+            print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
         if args.command == "wait-worker":
             from .worker_wait import wait_worker
 
@@ -474,9 +493,9 @@ def _main(argv: list[str] | None = None) -> int:
         if args.command == "review-inspect":
             import importlib
 
-            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "review"))
-            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
-            inspection_module = importlib.import_module("review_inspection")
+            inspection_module = importlib.import_module(
+                "lib.ops_review.review_inspection"
+            )
             inspection = inspection_module.inspect_reviews(gh, store, parent, args.prs)
             print(json.dumps(inspection, ensure_ascii=False, indent=2, sort_keys=True))
             return (
@@ -540,6 +559,69 @@ def _main(argv: list[str] | None = None) -> int:
             if capture_source
             else None
         )
+        if args.command == "merge-continue":
+            from lib.ops_review.merge_gate_impl import (
+                continue_progression,
+                latest,
+                view,
+                wait,
+            )
+
+            path = latest(store, gh.repo, parent, args.run_id)
+            after = len(view(path)["events"])
+            chosen = None
+            if any(
+                getattr(args, name) is not None
+                for name in (
+                    "review_model",
+                    "review_effort",
+                    "model_reason_file",
+                    "review_model_source",
+                    "human_review_model",
+                    "human_review_effort",
+                    "human_model_reference",
+                    "review_config_file",
+                )
+            ):
+                if not args.rereview:
+                    raise ValueError("a model choice requires --rereview")
+                from lib.ops_review.progression import read as read_progression
+
+                from .review_choice import selection as review_choice
+
+                current_progression = read_progression(path)
+                saved = (
+                    current_progression["review"].get("selection")
+                    or current_progression["request"]["review_selection"]
+                )
+                human = saved.get("human")
+                if human:
+                    args.human_review_model = args.human_review_model or human.get(
+                        "model"
+                    )
+                    args.human_review_effort = args.human_review_effort or human.get(
+                        "effort"
+                    )
+                    args.human_model_reference = (
+                        args.human_model_reference or human["reference"]
+                    )
+                chosen = review_choice(None, args)
+            continue_progression(
+                path,
+                store,
+                nonempty(identity, "parent identity"),
+                read_text(args.instruction_file),
+                rereview=args.rereview,
+                prs=args.prs,
+                review_selection=chosen,
+                review_config_file=str(args.review_config_file.resolve())
+                if args.review_config_file
+                else None,
+            )
+            value = wait(path, after=after) if args.wait else view(path)
+            value = continuation.complete(args, value)
+            print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
         if args.command in {"worker-log-status", "publish-worker-log"}:
             from worker_logs.service import command as log_command
 
@@ -862,55 +944,50 @@ def _main(argv: list[str] | None = None) -> int:
                 result = session.record_result(
                     number(args.child), read_text(args.evidence_file)
                 )
-            elif command == "review-prepare":
-                from .review_choice import selection as review_choice
-
-                result = prepare(
-                    session,
-                    [number(n) for n in args.prs],
-                    read_text(args.reason_file) if args.reason_file else None,
-                    review_selection=review_choice(session, args),
-                )
             elif command == "review-request":
                 from .review_choice import selection as review_choice
+                from .review_handoff import request as handoff_review
 
-                chosen_review = review_choice(session, args)
-                if args.prs:
-                    from .review_handoff import request as handoff_review
-
-                    if not args.evidence_file:
-                        raise ValueError(
-                            "--prs requires --evidence-file with verified results"
-                        )
-                    result = handoff_review(
-                        session,
-                        args.prs,
-                        read_text(args.instruction_file),
-                        read_text(args.evidence_file),
-                        read_text(args.reason_file) if args.reason_file else None,
-                        review_selection=chosen_review,
-                    )
-                else:
-                    result = transition(
-                        session,
-                        args.run_id,
-                        "instructed",
-                        read_text(args.instruction_file),
-                        review_selection=chosen_review,
-                    )
-            else:
-                result = transition(
-                    session, args.run_id, args.state, read_text(args.evidence_file)
+                options = {"agent_timeout": args.agent_timeout}
+                for name in (
+                    "agent_exec",
+                    "review_config_file",
+                    "isolation_proof",
+                    "dispatcher_state_dir",
+                ):
+                    if getattr(args, name) is not None:
+                        options[name] = str(getattr(args, name).resolve())
+                if args.cpu_tests_file:
+                    options["cpu_tests"] = read_object(str(args.cpu_tests_file))
+                result = handoff_review(
+                    session,
+                    args.prs,
+                    read_text(args.instruction_file),
+                    read_text(args.evidence_file),
+                    read_text(args.reason_file) if args.reason_file else None,
+                    review_selection=review_choice(session, args),
+                    options=options,
                 )
+            elif command == "merge-confirm":
+                from lib.ops_review.post_merge import register as confirm_merged
+
+                result = confirm_merged(session, args.prs)
+            else:
+                raise ValueError("unknown parent command")
             if command in {
                 "checking",
                 "agree",
                 "basis-revoke",
-                "review-prepare",
-                "review-request",
-                "review-state",
             }:
                 session.sync_progress()
+        if command in {"review-request", "merge-confirm"}:
+            from lib.ops_review.merge_gate_impl import start, state_path, wait
+
+            path = state_path(store, result["review_run_id"])
+            if not result["reused"]:
+                start(path)
+            if args.wait:
+                result = wait(path)
         integration_failed = False
         if command == "improvement-decide":
             from .improvement_runtime import reconcile_stop

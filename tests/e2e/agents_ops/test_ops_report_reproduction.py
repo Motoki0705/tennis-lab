@@ -23,6 +23,8 @@ from typing import Any
 
 import pytest
 
+from tests.e2e.agents_ops.fake_managed_audit_cli import pidfd_open
+
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = ROOT / ".agents/ops/ops-report"
 sys.path.insert(0, str(PACKAGE))
@@ -626,7 +628,7 @@ def test_timeout_reaps_group_when_output_is_open_or_closed(
     pid = int(child.read_text())
     # Waiting for the leader does not wait for this child's pending SIGKILL.
     try:
-        descriptor = os.pidfd_open(pid)
+        descriptor = pidfd_open(pid)
     except ProcessLookupError:
         return
     try:
