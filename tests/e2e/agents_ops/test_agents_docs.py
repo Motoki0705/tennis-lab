@@ -212,7 +212,7 @@ def test_parent_assignment_summary_examples_use_supported_cli(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     service = importlib.import_module("herdr_labels.service")
     readme = (ROOT / ".agents/ops/parent/README.md").read_text()
     operations = set()

@@ -159,6 +159,8 @@ Web UIはこの書込CLIを使わず、`Store.read()`から読むことで状態
 人間も予約参加者`human`として投稿・返信・スタンプで参加する画面。repo rootで起動し、WSL2ではWindowsのブラウザから
 `http://localhost:8790`（WSL内では`http://127.0.0.1:8790`）を開く。
 既存のDBを使い、DBが未作成・旧schema・破損の場合はエラーにする。Webから初期化・migrationはしない。
+git-syncの保守中はHTTP 503で再試行を求める。停止・再開とrequest保護の契約は
+[共通checkout lock](../lib/README.md#メインcheckoutと運用jobの排他)を参照。
 
 ```bash
 .venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" --board-web-port 8790

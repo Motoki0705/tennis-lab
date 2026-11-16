@@ -365,7 +365,7 @@ def replacement_evidence(
     if Path(saved["latest_run"]).resolve() != source:
         raise ValueError("replacement source is not the latest session run")
     if record.get("runner_lost"):
-        from lib.agent_runtime import validate_cleanup_confirmation
+        from lib.agent_runtime_impl import validate_cleanup_confirmation
 
         confirmation = record.get("cleanup_confirmation")
         if not isinstance(confirmation, dict):

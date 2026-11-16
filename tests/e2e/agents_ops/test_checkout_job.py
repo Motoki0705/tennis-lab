@@ -26,6 +26,8 @@ OPS = ROOT / ".agents/ops"
         "worktree-scan",
         "worktree-dry-run",
         "worktree-cleanup",
+        "parent-expire",
+        "parent-cli-expire",
     ],
 )
 def test_direct_operational_entry_requires_its_launcher(
@@ -49,6 +51,8 @@ def test_direct_operational_entry_requires_its_launcher(
         "worktree-scan": ["-m", "worktree_cleanup", "scan"],
         "worktree-dry-run": ["-m", "worktree_cleanup", "cleanup", "--dry-run"],
         "worktree-cleanup": ["-m", "worktree_cleanup", "cleanup"],
+        "parent-expire": ["-m", "parent", "improvement-expire", "--dry-run"],
+        "parent-cli-expire": ["-m", "parent.cli", "improvement-expire", "--dry-run"],
     }
     env = {
         key: value

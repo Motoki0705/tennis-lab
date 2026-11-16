@@ -18,7 +18,7 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agy_permissions.py` | コマンド・引数・フラグの定義から、両端を固定したagyの権限規則を生成 |
 | `agy_hook.py` | 使い捨てworkspaceのPreToolUse設定と、controller側で動く拒否・記録処理 |
 | `agy_capture.py` | 本番と調査ハーネスで共有するstreamのコマンド捕捉・正規化・集計 |
-| `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
+| `agent_runtime.py` / `agent_runtime_impl.py` | checkoutを保護する薄い入口 / run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
 
 固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
@@ -74,11 +74,14 @@ if __name__ == "__main__":
 `--once` は `--` の後へ渡す。常駐入口は共有lockを寿命全体で保持しないため専用modeを使う。
 
 常駐dispatcherは `checkout_job.py --repo <main> --supervisor` でimportを保護し、各周期の
-reconcile/assign/launchを共有lockで保護する。更新が排他lockを持つ間は新規起動を行わない。
+reconcile/assign/launchでは設定したjob checkoutと実行コードのGit共通lockを共有で取る。
+どちらかが更新中・復旧待ちなら周期を見送る。寿命全体では保持しない。
 `ops-control.lock` はspinによるdispatcherのON/OFFと保守時の停止・再開を直列化する。
 保守側は両lockを非待機で取得し、jobや制御操作と競合したら延期する。
 board webは `checkout_job.py --repo <main> --board-web-port 8790` でimportを保護し、
-保守側が停止・再開する。常駐serviceに共有lockを寿命全体で保持させない。
+HTTP requestごとにも非待機の共有lockを取る。更新中のrequestは503で再試行を求め、
+registry待ちのHTTP workerがwebの保守終了を塞がない。保守側が停止・再開する。
+常駐serviceに共有lockを寿命全体で保持させない。
 
 state rootは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents`。
 共通lockはstate rootを変更しても変わらず、同じGit共通ディレクトリへ集約される。
@@ -92,6 +95,91 @@ launcherはマーカーが残る間、コードをimportせず75で拒否し、s
 set済みなら起動せず、実行中のsetはprocess groupを停止・回収して `ProcessCancelled(CommandError)`
 を送出する。timeout・通常終了の回収と、cancelを指定しない既存呼出の動作は保持する。
 呼出元はrequest取消・service停止のEventを接続し、後段commitとの同期を別途行う。
+
+### 対話CLIの保護
+
+長時間動き得る次の16入口は、stdlibによるpath設定と `checkout_lock.run_cli()` の呼出だけを行う。
+`run_cli()` は共有lockを取った後に本体moduleをimportし、メインcheckoutのコードを終了まで保護する。
+Pythonは入口全体をlock取得前にcompileするため、入口へ実処理・project importを置かない。
+**起動方法は従来どおりで、launcherの追加は不要**。
+同じ入口の短いstatus/help操作も保護する。subcommandの選別と入口の取りこぼしを避け、
+Gitメタデータの読取とlock操作に留めるための判断である。
+
+| 入口 | lock取得後の本体 | 保持する期間・用途 |
+|---|---|---|
+| `python -m parent` | `parent.cli_impl` | worker待機・補足待ち・公開・復旧を含む全体。`improvement-expire` は有限launcherも必須 |
+| `python -m parent.cli` | `parent.cli_impl` | 同上 |
+| `review/parent_review.py` | `lib.ops_review.parent_review_impl` | レビュー・復旧・公開の全体 |
+| `review/merge_gate.py` | `lib.ops_review.merge_gate_impl` | gate取得・順次mergeの全体 |
+| `lib/agent_exec.sh` | `lib/agent_runtime.py` 経由 | runner終了まで。監視・出力解析・回収中も保護 |
+| `lib/agent_runtime.py` | `lib.agent_runtime_impl` | 同上。直接file起動も保護 |
+| `python -m explain_html` | `explain_html.cli_impl` | start/serveを含む全体。背景serveも自身で取得 |
+| `python -m ci_watch` | `ci_watch.cli` | GitHubのページ取得・複数対象の収集が終わるまで |
+| `python -m project_progress` | `project_progress.cli_impl` | 同上 |
+| `python -m issue_supplement` | `issue_supplement.cli` | 生成・検証・取得serverを含む全体 |
+| `python -m review.evaluation` | `lib.ops_review.evaluation.cli_impl` | 比較・検証の全体 |
+| `python -m lib.review_tools.mcp_server` | `lib.review_tools.mcp_server_impl` | stdio取得serverの終了まで |
+| `python -m lib.review_tools.review_server` | `lib.review_tools.review_server_impl` | 同上 |
+| `python -m opsreport.mcp_server` | `opsreport.mcp_server_impl` | stdio取得serverの終了まで |
+| `python -m opsreport.reproduction_server` | `opsreport.reproduction_server_impl` | stdio CPU検証serverの終了まで |
+| `dispatcher/worker.py` | `dispatcher.worker_impl` | 予約照合からrunner待機・終了記録まで |
+
+lockの対象は `checkout_lock.py` 自身の実体が属するcheckoutで決める。cwd、`--repo`、
+state先で別checkoutのlockを取らない。linked worktree由来のコードには寿命lockを取らない。
+内部APIのimportも新たな寿命lockを取らない。registry transactionの保護は次節のとおり。
+入口のbootstrapは自身の `.git` / gitdir / commondirを直接読み、外部commandを起動しない。
+separate git-dirのメインも保護し、壊れたメタデータは75で拒否する。
+共通Git照会も `GIT_DIR` / `GIT_COMMON_DIR` / `GIT_WORK_TREE` の継承値を除外する。
+
+更新側が排他lockを持っていれば、待機をstderrへ出し、**更新完了を待ってからproject importを始める**。
+取得・repoの識別に失敗した場合や、取得後にも中断マーカーが残る場合は、理由を出して75で拒否する。
+lockなしの実行へ切り替えない。通常の共有lockのFDはexecで閉じ、Pythonのfork子でも閉じるため、
+外部Codex/Claude・toolだけが存続しても親CLIのlockを保持しない。ただしメインのコードを使う
+子のrunner/serverは上表の自身の入口で独立に保持する。有限launcherの既存FD継承契約とは区別する。
+
+`agent_exec.sh` は短いbootstrap全体を1つのcompound commandとしてbashに先にparseさせ、
+Pythonへexecする。Pythonがlock待機している間にbashがscriptの続きを読み直すことはない。
+
+boardの投稿/status、worker_status、herdr_labels、issuesの短い管理CLIとhookは寿命lockの対象外。
+常駐dispatcher/board webは周期lockと保守停止を使い、寿命全体では保持しない。
+`src/` の学習・評価、training queue workerはこの保護の対象外。
+
+延期時はkernelの `/proc/locks` と `/proc/<PID>/cmdline` から実際の保持者を取得し、
+`lock_holders`（`entry`・`pid`・read/writeの`mode`）をgit-syncのstatus/journalに記録する。
+任意の引数・promptは記録しない。PIDファイルは作らず、異常終了後の古い記録で延期しない。
+取得中に終了したPIDは除き、権限不足等の詳細取得失敗は `inspection_error` として明示する。
+
+### registryと保守呼出のlock順
+
+reviewの本体・親の内部APIは `lib.ops_review` の固有import名から既存のreviewソースを読む。
+他モデルの同名 `review` package/namespaceが先に読み込まれていても、それを置換しない。
+
+parent/dispatcherの `Store.locked()` / `consistent_snapshot()` とworktree expiryのjournal回復は、必ず
+**checkout → registry** の順に取得する。所有者変更・board送信の `Store.ownership()` を使う経路は、
+**checkout → ownership → registry** とし、ownershipを保持してcheckoutを待たない。
+直接Python APIやworktreeからの呼出も、transaction中は
+sourceのGit共通ディレクトリの共有lockを取る。保存済みjobがメイン由来のrunnerを参照する場合も、
+registryを持ったままrunnerのcheckout待ちに入らないためである。registryを一時解放するI/O中も
+checkoutは保持し、再取得の順序を変えない。更新が先ならregistry取得前に理由を出して待つ。
+registry transactionを終了してからrunnerを待つ経路では、次のtransactionで改めて
+checkoutから取得する。runner待機・GitHub通信をregistryの保持下へ戻さない。
+`consistent_snapshot()` はregistryを共有読取後に、自分で追加したcheckout lockを検証後に解放する。
+呼出元のGitHub I/Oでregistryを保持せず、入口の寿命lockは終了まで続く。
+
+dispatcherの `__main__.py` / `cli.py` / `dispatch.py` も薄いbootstrapで、
+`dispatcher.cli_impl` のimport前に保護する。runは有限launcher、superviseは専用launcherという
+既存契約を維持する。git-syncの `__main__.py` / `sync.py` は本体と依存のimportだけを共有lock下で
+行い、自身の排他lock取得前にその共有lockを解放する。本体には遅延project importを置かない。
+復旧主体のgit-syncだけは残存マーカーがあっても起動し、既存のpreflightでcheckoutを検証して回復する。
+
+更新側の `Maintenance.pause()` → dispatcher statusと、`Runtime.inspect()` →
+runner status/stopだけは、親の実FDを `pass_fds` と専用contextで同期子へ明示的に渡す。
+入口はGit共通ディレクトリ・FDのinodeと `/proc/self/fdinfo` の実flockを照合する。
+排他contextはstatus/stopに限定し、flockを取り直さないため更新側の排他を共有へ降格しない。
+これにより更新中も保守照会・停止が完了する。通常の直接CLIは更新完了を待つ。
+contextの環境変数は入口で消費し、継承FDは再exec不可・fork時closeに戻す。
+status/stopを中継するwrapperもFDを明示的に継承する。環境変数だけの中継は実FD検証で拒否する。
+外部agentのrun/resume・worker起動には渡さず、親CLIの終了後に不当に更新を止めない。
 
 ## agyの共通呼び出し部品
 
@@ -700,6 +788,8 @@ result.jsonを生成しないので、呼出元は終了値とJSONの有無を�
 statusは保存結果とrunner/CLI/CLI process groupの生存を返す。読み取りだけで状態を変えない。
 通常のstopは同じboot/start ticksのrunnerへTERMを送り、終了記録を待つ。
 runnerはCLI groupをTERM→KILLし、subreaperで引き受けた別sessionの子孫も回収する。
+停止要求が重なっても終端のresult/session記録を保存できるよう、
+SIGINT/SIGTERMのhandlerは子孫回収後の最終保存まで保持する。
 stdoutを先に閉じたCLIも、停止・timeoutを監視し続ける。
 
 runnerがSIGKILL等で失われた場合、`running` の残存は成功でも稼働の証拠でもない。

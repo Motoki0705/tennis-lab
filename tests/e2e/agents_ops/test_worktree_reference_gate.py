@@ -12,6 +12,7 @@ import pytest
 
 from tests.e2e.agents_ops.test_worktree_cleanup import LIFETIME, Lab
 from tests.e2e.agents_ops.test_worktree_cleanup import lab as lab
+from tests.e2e.agents_ops.test_worktree_identity_migration import detached_legacy_record
 
 HOLDER = r"""
 import ctypes, os, sys
@@ -35,13 +36,22 @@ sys.stdin.readline()
 
 @pytest.mark.parametrize("stoppable", [False, True])
 @pytest.mark.parametrize("kind", ["cwd", "fd", "mmap"])
+@pytest.mark.parametrize("detached", [False, True])
 def test_quarantine_gate_refuses_live_references_and_succeeds_after_stop(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch, kind: str, stoppable: bool
+    lab: Lab,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    stoppable: bool,
+    detached: bool,
 ) -> None:
-    path = lab.add()
-    (path / "payload").write_bytes(b"x" * 4096)
+    if detached:
+        old = detached_legacy_record(lab, retired=True)
+        path, physical = Path(old["path"]), Path(old["quarantine"])
+    else:
+        path = physical = lab.add()
+    (physical / "payload").write_bytes(b"x" * 4096)
     child = subprocess.Popen(
-        [sys.executable, "-c", HOLDER, str(path), kind],
+        [sys.executable, "-c", HOLDER, str(physical), kind],
         cwd=lab.repo,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -74,7 +84,8 @@ def test_quarantine_gate_refuses_live_references_and_succeeds_after_stop(
             )
         lab.now += LIFETIME
         code, report = lab.cleaner().run(cleanup=True)
-        assert report["results"][0]["deleted"] is stoppable
+        result = next(r for r in report["results"] if r["path"] == str(path))
+        assert result["deleted"] is stoppable
         assert code == int(not stoppable)
         checks = [check for check in report["reference_checks"] if check["references"]]
         assert checks, "the real proc holder must be observed"
@@ -99,8 +110,10 @@ def test_quarantine_gate_refuses_live_references_and_succeeds_after_stop(
                 row for row in lab.records().values() if row["phase"] == "quarantined"
             )
             assert Path(row["quarantine"]).is_dir()
-            assert "reference gate failed" in report["results"][0]["error"]
-            assert str(path) in lab.git("worktree", "list", "--porcelain")
+            assert "reference gate failed" in result["error"]
+            assert (
+                str(path) in lab.git("worktree", "list", "--porcelain")
+            ) is not detached
             assert child.stdin is not None
             child.stdin.write("\n")
             child.stdin.flush()
