@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "6de0546ee09a41c59de1bef36b1738c1",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=result.json; content_sha256=565a71470e5a3f2300d1c398fae641197fa79667868f4f2e835ad01a0682fe77; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "33a81ee2730d4041abfd52a90706df51",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.result.json: status=succeeded; verdict=request_changes; exception=True; previous_review_keys=['bc83164c0f4040acb98711115e9bd8d2']; PR #2156の固定HEADをレビュー済みです。完了通知の例外処理にmajor 1件、31 nodeの変更前後比較に証拠待ち1件があります。",
+      "verifies": []
+    },
+    "id": "680e4f231762484a921b9c368bb3d2da",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "f1098a5d57774550a10603abcb8ef09d",
+      "delegation": null,
+      "issue": null,
+      "parent": 1734,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "09469523d45f46d7b15d3204c89e6d48"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T16:17:08.880873+00:00"
+      },
+      "recorded_at": "2026-11-15T16:17:08.880893+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
