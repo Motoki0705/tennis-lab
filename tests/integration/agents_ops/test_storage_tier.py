@@ -34,7 +34,10 @@ def filesystem_path(path: Path) -> str:
 @pytest.fixture
 def lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Lab:
     monkeypatch.syspath_prepend(str(OPS))
-    return make_lab(tmp_path)
+    result = make_lab(tmp_path)
+    # Synthetic /proc transitions are driven by test inputs, never wall time.
+    monkeypatch.setattr(result.usage, "sleep", lambda delay: None)
+    return result
 
 
 def test_mirror_evict_hydrate_verifies_known_bytes_and_keeps_ckpt(lab: Lab) -> None:
@@ -221,6 +224,9 @@ def test_mapping_without_fd_and_uninspectable_process_fail_closed(
     process = lab.proc / "123456789"
     (process / "fd").mkdir(parents=True)
     (process / "status").write_text(f"Uid:\t0\t{os.geteuid()}\t0\t0\n")
+    (process / "stat").write_text(
+        f"{process.name} (mapped) " + " ".join(["S", *(["0"] * 18), "314159"])
+    )
     (process / "cwd").symlink_to(lab.config.repo)
     (process / "root").symlink_to("/")
     info = (lab.config.repo / unit.path / "a.bin").stat()
@@ -357,6 +363,221 @@ def private_process(lab: Lab, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]
     monkeypatch.setattr(os, "readlink", link)
     monkeypatch.setattr(Path, "lstat", lstat)
     return options
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        "gone",
+        "unrelated",
+        "fd",
+        "cwd",
+        "root",
+        "maps",
+        "mount",
+        "persistent",
+        "replaced",
+    ],
+)
+def test_permission_recheck_pins_identity_and_reinspects_all_references(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    outcome: str,
+) -> None:
+    unit = lab.unit()
+    directory = lab.config.repo / unit.path
+    payload = directory / "a.bin"
+    process = private_process["path"]
+    private_process["denied"] = {"fd"}  # maps is readable: no exclusion proof.
+    waits: list[float] = []
+    info = payload.stat()
+    namespace = tmp_path / "namespace"
+    if outcome == "mount":
+        namespace.mkdir()
+        os.link(payload, namespace / "alias")
+
+    def resume(delay: float) -> None:
+        waits.append(delay)
+        if outcome == "persistent":
+            return
+        if outcome == "gone":
+            process.rename(process.with_name("finished"))
+            return
+        if outcome == "replaced":
+            path = process / "stat"
+            path.write_bytes(path.read_bytes().replace(b"314159", b"314160"))
+            return
+        private_process["denied"] = set()
+        if outcome == "fd":
+            (process / "fd/7").symlink_to(payload)
+        elif outcome in {"cwd", "root"}:
+            (process / outcome).unlink()
+            (process / outcome).symlink_to(directory)
+        elif outcome == "maps":
+            (process / "maps").write_text(
+                f"1000-2000 r--p 0000 {os.major(info.st_dev):x}:{os.minor(info.st_dev):x} {info.st_ino}\n"
+            )
+        elif outcome == "mount":
+            (process / "root").unlink()
+            (process / "root").symlink_to(namespace)
+            (process / "mountinfo").write_text(
+                f"55 1 {os.major(info.st_dev)}:{os.minor(info.st_dev)} "
+                f"{filesystem_path(directory)} /alias rw - ext4 /dev/fake rw\n"
+            )
+
+    monkeypatch.setattr(lab.usage, "sleep", resume, raising=False)
+    before = lab.filesystem.snapshot(directory, hashes=True)
+    usage = lab.engine.inspector.inspect((directory,), before)
+    scope = usage.scope()
+    if outcome == "persistent":
+        assert usage.unknown and not usage.busy
+        assert len(waits) == 3
+    else:
+        assert not usage.unknown, usage.unknown
+        assert len(waits) == 1
+    expected_busy = outcome in {"fd", "cwd", "root", "maps", "mount"}
+    assert bool(usage.busy) == expected_busy
+    assert usage.exited_processes == int(outcome in {"gone", "replaced"})
+    assert scope["excluded_nondumpable_count"] == 0
+    assert scope["excluded_capabilities_count"] == 0
+    checks = scope["rechecks"]
+    assert checks["attempts"] == len(waits)
+    assert checks["max_rechecks_per_process"] == 3
+    assert checks["interval_seconds"] == 0.05
+    assert sum(waits) == pytest.approx(checks["wait_seconds"])
+    assert checks["resolved_processes"] == int(outcome != "persistent")
+    (record,) = checks["processes"]
+    assert record["pid"] == int(process.name) and record["starttime_ticks"] == 314159
+    assert record["attempts"] == len(waits)
+    assert record["outcome"] == (
+        "unknown"
+        if outcome == "persistent"
+        else "exited"
+        if outcome in {"gone", "replaced"}
+        else "busy"
+        if expected_busy
+        else "inspected"
+    )
+    assert "maps is readable" in record["initial_error"]
+    assert before.entries == lab.filesystem.snapshot(directory, hashes=True).entries
+
+
+@pytest.mark.parametrize(
+    "transition",
+    ["last-attempt", "status-denied", "identity-denied", "credentials-changed"],
+)
+def test_recheck_keeps_permission_and_identity_failures_closed(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    transition: str,
+) -> None:
+    unit = lab.unit()
+    directory = lab.config.repo / unit.path
+    process = private_process["path"]
+    private_process["denied"] = {"fd"}
+    waits: list[float] = []
+    original = lab.usage.read_bytes
+
+    def read(path: Path) -> bytes:
+        if waits and (
+            transition == "identity-denied"
+            and path == process / "stat"
+            or transition == "status-denied"
+            and len(waits) < 3
+            and path == process / "status"
+        ):
+            raise PermissionError(errno.EACCES, "transient metadata denial", str(path))
+        return cast(bytes, original(path))
+
+    def resume(delay: float) -> None:
+        waits.append(delay)
+        if transition == "credentials-changed":
+            path = process / "status"
+            path.write_bytes(path.read_bytes().replace(b"12345", b"12346"))
+        if len(waits) == 3:
+            private_process["denied"] = set()
+
+    monkeypatch.setattr(lab.usage, "read_bytes", read)
+    monkeypatch.setattr(lab.usage, "sleep", resume)
+    observed = lab.engine.inspector.inspect(
+        (directory,), lab.filesystem.snapshot(directory)
+    )
+    failed = transition in {"identity-denied", "credentials-changed"}
+    assert bool(observed.unknown) == failed
+    assert not observed.busy and observed.exited_processes == 0
+    assert len(waits) == (1 if transition == "credentials-changed" else 3)
+    assert observed.rechecks["resolved_processes"] == int(not failed)
+    assert not observed.excluded_nondumpable and not observed.excluded_capabilities
+
+
+def test_recheck_preserves_busy_observation_before_a_later_read_denial(
+    lab: Lab, private_process: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    directory = lab.config.repo / unit.path
+    descriptor = private_process["path"] / "fd/7"
+    descriptor.symlink_to(directory / "a.bin")
+    private_process["denied"] = {"maps"}
+
+    def resume(delay: float) -> None:
+        descriptor.unlink()
+        private_process["denied"] = set()
+
+    monkeypatch.setattr(lab.usage, "sleep", resume)
+    observed = lab.engine.inspector.inspect(
+        (directory,), lab.filesystem.snapshot(directory)
+    )
+    assert observed.busy == ["open-fd: pid=123456789 fd=7"]
+    assert not observed.unknown
+    assert observed.rechecks["processes"][0]["outcome"] == "busy"
+
+
+@pytest.mark.parametrize("failure", ["io-error", "missing-identity"])
+def test_recheck_never_retries_io_errors_or_unpinned_identity(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    unit = lab.unit()
+    directory = lab.config.repo / unit.path
+    private_process["denied"] = {"fd"}
+    if failure == "io-error":
+        private_process["errno"] = errno.EIO
+    else:
+        (private_process["path"] / "stat").unlink()
+
+    def unexpected_wait(delay: float) -> None:
+        pytest.fail("cannot retry without a permission error and pinned identity")
+
+    monkeypatch.setattr(lab.usage, "sleep", unexpected_wait)
+    observed = lab.engine.inspector.inspect(
+        (directory,), lab.filesystem.snapshot(directory)
+    )
+    assert observed.unknown and observed.exited_processes == 0
+    assert observed.rechecks["attempts"] == 0
+
+
+def test_recheck_evidence_survives_later_inspections_and_is_audited(
+    lab: Lab, private_process: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    private_process["denied"] = {"fd"}
+    monkeypatch.setattr(
+        lab.usage, "sleep", lambda delay: private_process.update(denied=set())
+    )
+    code, report = lab.run("mirror", unit)
+    assert code == 0, report
+    checks = report["process_scope"]["rechecks"]
+    assert checks["attempts"] == checks["resolved_processes"] == 1
+    assert checks["processes"][0]["outcome"] == "inspected"
+    verified = next(row for row in lab.records() if row["event"] == "verified")
+    assert verified["process_scope"]["rechecks"] == checks
+    # Reusing an Engine for another command starts a new observation history.
+    assert lab.run("verify", unit)[1]["process_scope"]["rechecks"]["attempts"] == 0
 
 
 def test_nondumpable_same_uid_is_excluded_with_proof_and_audit(
@@ -2630,7 +2851,8 @@ def test_read_only_mount_reference_is_checked_only_on_removal(
     code, report = lab.run(command, unit, dry_run=command != "index")
     assert code == 0, report
     inspected = lab.engine.inspector.inspect((mirror,), lab.filesystem.snapshot(mirror))
-    assert inspected.unknown and inspected.mount_scope["checked_roots"] == 1
+    # Each bounded recheck repeats the mount-reference inspection too.
+    assert inspected.unknown and inspected.mount_scope["checked_roots"] == 4
 
 
 @pytest.mark.parametrize(
@@ -2695,7 +2917,7 @@ def test_mount_root_scope_has_component_boundaries_and_never_stats_excluded_root
         assert scope["checked_roots"] == 1 and stat_calls == 1
     elif relation in {"deleted", "inside-denied"}:
         assert result.unknown
-        assert stat_calls == (relation == "inside-denied")
+        assert stat_calls == (4 if relation == "inside-denied" else 0)
     else:
         assert not result.busy and not result.unknown
         assert stat_calls == 0 and scope["checked_roots"] == 0

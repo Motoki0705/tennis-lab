@@ -316,6 +316,25 @@ readable. Count, comm, both masks and the namespace assumption are recorded in
 `process_scope.excluded_capabilities`; neither rule uses process names.
 This follows the capability subset check in
 [commoncap](https://github.com/torvalds/linux/blob/v6.6/security/commoncap.c).
+An EACCES/EPERM without either exclusion proof triggers at most **three rechecks,
+50ms apart** (150ms of requested sleeping per process per inspection; syscall and
+scheduling time are additional). Pin the PID and `/proc/<pid>/stat` starttime
+before inspecting resources. A missing or unstable initial identity fails closed.
+Before each recheck, a disappeared PID or a different starttime counts as exited;
+the replacement is not evidence about the original process. For the same identity,
+recheck credentials and the existing closed-thread-group proof, then inspect **all
+fd, cwd, root, mmap and applicable mount references again**. Prior busy observations
+are retained. Changed credentials, unexpected I/O errors, or an uninspectable
+survivor after the limit remain unknown and prevent certification/deletion.
+Neither a permission denial nor a readable maps file proves that a process is idle.
+
+`process_scope.rechecks` records the limit/interval, total attempts, requested
+`wait_seconds` (not measured wall time), and `resolved_processes` (distinct
+PID/starttime pairs resolved by inspection, exit or an existing exclusion proof).
+Its `processes` list preserves each recheck episode's identity, initial/last denial,
+attempts and outcome, including unresolved episodes. Unlike the latest process
+census, this history accumulates across all unit inspections in one command and
+appears in JSON output and subsequent audit records; it resets for the next command.
 Training/data-reading scripts must run dumpable and inspectable. Unknown UID,
 unexpected I/O failures and denied processes without either proof still fail closed.
 Namespace identity is always recorded as `unverified`; the handle is not opened
