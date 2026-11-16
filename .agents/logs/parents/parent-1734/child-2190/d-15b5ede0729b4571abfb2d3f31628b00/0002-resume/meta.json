@@ -1,0 +1,77 @@
+{
+  "artifacts": {
+    "commits": [
+      "b46b97869d18b259db8bb092c513f2da91ba6494",
+      "b533eb7abdcb4fe7bdd125d41e2675cd75ceef4c"
+    ],
+    "prs": [
+      2200
+    ]
+  },
+  "captured_at": "2026-11-16T08:18:12.746472+00:00",
+  "decision": {
+    "action": "approve",
+    "source_sequence": 1
+  },
+  "delegation_key": "d-15b5ede0729b4571abfb2d3f31628b00",
+  "files": {
+    "final.md": "44a4bb5ac92c3afea0f1e613801a52cff5e356ab8529c4e9e488dedf146ca72f",
+    "instruction.md": "65c01423deaab849b113c987030545337b029ffb775e1879dfc5182e338c11d4"
+  },
+  "finished_at": "2026-11-16T10:37:56.366633+00:00",
+  "instruction": {
+    "additional_instructions": [
+      "親の回答（承認）に従って、#2190の実装を始めてください。回答の内容が今回の指示です。\n"
+    ],
+    "kind": "answer"
+  },
+  "issue": 2190,
+  "parent": 1734,
+  "repo": "Motoki0705/tennis-lab",
+  "runtime": {
+    "result": "completed",
+    "turn_end_reason": "completed"
+  },
+  "sanitization": {
+    "additional": 0,
+    "final": 0,
+    "instruction": 0,
+    "version": 1
+  },
+  "schema_version": 1,
+  "sources": {
+    "issue": {
+      "body_sha256": "22f886bca735831599475b49be634ec7b3c5856ddb0af3f9ecc515ca0e86118c",
+      "url": "https://github.com/Motoki0705/tennis-lab/issues/2190"
+    },
+    "standard_instruction": {
+      "blob": "8d6d4bcc4bbad9c55b3bc368ddcf5b5574580270",
+      "commit": "2736a24a3fa643254f441f318ed9241bc2c73724",
+      "path": ".agents/ops/parent/worker_prompt.md"
+    }
+  },
+  "started_at": "2026-11-16T08:18:17.434719+00:00",
+  "turn": {
+    "kind": "resume",
+    "phase": "implementing",
+    "previous_sequence": 1,
+    "sequence": 2
+  },
+  "worker": {
+    "agent": "codex",
+    "effective": {
+      "effort": {
+        "status": "observed",
+        "value": "max"
+      },
+      "model": {
+        "status": "observed",
+        "value": "gpt-6-astra"
+      }
+    },
+    "selected": {
+      "effort": "max",
+      "model": "gpt-6-astra"
+    }
+  }
+}
