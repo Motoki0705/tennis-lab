@@ -75,6 +75,8 @@ class PlanExecutor:
         return references
 
     def execute(self, key: NodeKey) -> ArtifactRef:
+        if key in self.plan.references or key not in self.plan.nodes:
+            return self._execute(key)
         node = self.plan.nodes[key]
         with recording_context(clip_id=key[0], camera_id=node.context.camera_id, node=key[1]), span("node", source=node.source) as event:
             try:
