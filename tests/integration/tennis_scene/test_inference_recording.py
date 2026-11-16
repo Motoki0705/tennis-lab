@@ -23,7 +23,12 @@ from src.tennis_scene.pipeline.contracts import (
     ComponentIO,
     SourceVideo,
 )
-from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
+from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
+from src.tennis_scene.pipeline.runner import (
+    ComponentNode,
+    ComponentRunner,
+    PlanExecutor,
+)
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.utils.inference_recording import InferenceRecorder, span
 
@@ -75,6 +80,53 @@ class Assembler:
 
     def assemble(self, context: AssemblyContext, artifacts: object) -> int:
         return self.request
+
+
+def test_multi_clip_executor_records_the_selected_clip_and_camera(tmp_path: Path) -> None:
+    weights = tmp_path / "weights"
+    weights.write_bytes(b"fixed")
+    clips = []
+    for name, camera, request in (("first", "cam2", 2), ("second", "cam0", 3)):
+        context = AssemblyContext(ClipSource(name, (SourceVideo(camera, tmp_path / f"{name}.mp4", "fixed", 3, 30., 2, 2),)), camera)
+        component = Component(CpuModel(weights))
+        node = ComponentNode("values", component, component.io, Assembler(request), {}, context, {}, "fixed-main")
+        clips.append(ClipExecution(name, [node], ClipStore(tmp_path / name, {"input": name})))
+    executor = PlanExecutor(ExecutionPlan(clips), select_ready=lambda ready: ready[-1])
+    with InferenceRecorder(tmp_path / "multi.json"):
+        executor.run()
+    events = json.loads((tmp_path / "multi.json").read_text())["events"]
+    nodes = [e["attributes"] for e in events if e["stage"] == "node"]
+    assert [(e["clip_id"], e["camera_id"], e["outcome"]) for e in nodes] == [
+        ("second", "cam0", "executed"), ("first", "cam2", "executed")]
+    loads = [e["attributes"] for e in events if e["stage"] == "model_load"]
+    assert [(e["clip_id"], e["camera_id"]) for e in loads] == [("second", "cam0"), ("first", "cam2")]
+    np.testing.assert_array_equal(executor.output(("first", "values")).values, [[2., 14.], [10., -6.], [18., 4.]])
+    np.testing.assert_array_equal(executor.output(("second", "values")).values, [[3., 21.], [15., -9.], [27., 6.]])
+
+
+def test_aflink_records_actual_cpu_load_and_preserves_results(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import hashlib
+
+    from src.tasks.person_tracking import strongsort_offline as offline
+
+    checkpoint = tmp_path / "aflink.pth"
+    torch.save(offline.AFLinkNetwork().state_dict(), checkpoint)
+    digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    monkeypatch.setattr(offline, "AF_WEIGHT_SHA256", digest)
+    boxes: NDArray[np.float32] = np.zeros((2, 5, 4), np.float32)
+    boxes[0, :2] = [10., 20., 30., 40.]
+    boxes[1, 3:] = [12., 21., 32., 41.]
+    observed = np.array([[True, True, False, False, False], [False, False, False, True, True]])
+    expected = offline.AFLink(checkpoint).links(boxes, observed)
+    with InferenceRecorder(tmp_path / "aflink.json"):
+        actual = offline.AFLink(checkpoint).links(boxes, observed)
+    assert actual == expected
+    record = json.loads((tmp_path / "aflink.json").read_text())
+    model = record["models"][0]
+    assert (model["model"], model["device"], model["load_count"], model["unload_count"]) == ("AFLink", "cpu", 1, 0)
+    assert model["weights"]["checkpoint"]["sha256"] == digest
+    batch = next(e for e in record["events"] if e["stage"] == "inference")
+    assert batch["attributes"]["batch_shape"] == batch["attributes"]["second_input_shape"] == [1, 1, 30, 3]
 
 
 def test_recording_preserves_artifact_bytes_execution_key_and_cache(tmp_path: Path) -> None:
