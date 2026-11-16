@@ -1,0 +1,121 @@
+{
+  "record": {
+    "data": {
+      "action_id": "61ec00d4460c48108568462c5305df3c",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=worker_logs.receive; artifact=worker-log journal publication view; content_sha256=c0e9b7573351bf1bb68972414095631d6febeb9eb5de83bc749fa4ae6a93d54f; private evidence"
+        }
+      ],
+      "final_report": {
+        "status": "observed",
+        "value": {
+          "kind": "unavailable",
+          "reason": "capture_source=worker_logs.receive; artifact=fixed final receipt; content_sha256=b30d40e62f3406c21d4bc70f9d068605a14167a326f91b9a07b0b517aacf7b43; private evidence"
+        }
+      },
+      "observation": {
+        "execution": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.observation; artifact=fixed worker journal snapshot; content_sha256=ce97f4f41222e76c98c03077de56ca22c773140d0537d627486b47c02747c400; private evidence"
+            }
+          ],
+          "state": "ended"
+        },
+        "final": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.receive; artifact=fixed final receipt; content_sha256=b30d40e62f3406c21d4bc70f9d068605a14167a326f91b9a07b0b517aacf7b43; private evidence"
+            }
+          ],
+          "state": "present"
+        },
+        "kind": "worker_turn",
+        "publication": {
+          "error": null,
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.observation; artifact=fixed worker journal snapshot; content_sha256=ce97f4f41222e76c98c03077de56ca22c773140d0537d627486b47c02747c400; private evidence"
+            }
+          ],
+          "main_revision": null,
+          "pr_head": null,
+          "pr_url": null,
+          "stage": "receipt_verified",
+          "state": "pending"
+        },
+        "version": 1
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "partial",
+      "summary": "worker_logs.receive: delegation_key=d-9aef71789d794a93a5e32a40d679ad61; turn=2; state=ready; stage=receipt_verified; saved_to_main=False; error=None",
+      "verifies": []
+    },
+    "id": "f30dede8c77a48dca8c75e218488edc1",
+    "kind": "result",
+    "schema_version": 2,
+    "scope": {
+      "activity_key": "9aee449d5a5b44cf992bc96f0ca0f1ab",
+      "delegation": {
+        "key": "d-9aef71789d794a93a5e32a40d679ad61",
+        "turn": 2
+      },
+      "issue": 1750,
+      "parent": 1734,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T16:36:34.057258+00:00"
+      },
+      "recorded_at": "2026-11-15T16:36:34.057274+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
