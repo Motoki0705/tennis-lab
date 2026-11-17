@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# name: court-acceptance-test-raw
+# added: 2026-11-16T17:59:23+09:00
+# provider: codex
+# session: 01a1e30b-a305-7672-8355-525787fd6380
+# issue: 2190
+# resource: half
+# external_teardown_ack: 0
+# prune_ckpt: 0
+# idempotency_key_sha256: b9d9a9a5d16d584dc03d079c00eaec1df9117712b891d5003b0d959684dba5f1
+# request_sha256: 0416f967e08f04b4bb65d0c077807a0320276e185852902ecb054ed3bfb1464c
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+export TENNIS_RUN_ID=0-8205180436609729016_2026-11-16T08-59-23-390270983Z_3348010_court-acceptance-test-raw
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205180436609729016_2026-11-16T08-59-23-390270983Z_3348010_court-acceptance-test-raw
+export TENNIS_GPU_RESOURCE=half
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205180436609729016_2026-11-16T08-59-23-390270983Z_3348010_court-acceptance-test-raw --name court-acceptance-test-raw --provider codex --session 01a1e30b-a305-7672-8355-525787fd6380 --issue 2190 --cmd PYTHONPATH=.\ OMP_NUM_THREADS=1\ OPENBLAS_NUM_THREADS=1\ .venv/bin/python\ -u\ outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/cache_synthetic_test.py\ --output\ outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/test_raw
+PYTHONPATH=. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -u outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/cache_synthetic_test.py --output outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/test_raw

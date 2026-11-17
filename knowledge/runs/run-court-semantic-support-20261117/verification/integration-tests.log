@@ -1,0 +1,17 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [2 items]
+
+..                                                                       [100%]
+============================== slowest durations ===============================
+3.37s call     tests/integration/tasks/court_detection/test_real_court_acceptance.py::test_real_heads_keep_quality_failure_separate_from_solver_success[partial_unstable-False]
+2.75s call     tests/integration/tasks/court_detection/test_real_court_acceptance.py::test_real_heads_keep_quality_failure_separate_from_solver_success[supported-True]
+0.00s setup    tests/integration/tasks/court_detection/test_real_court_acceptance.py::test_real_heads_keep_quality_failure_separate_from_solver_success[partial_unstable-False]
+0.00s setup    tests/integration/tasks/court_detection/test_real_court_acceptance.py::test_real_heads_keep_quality_failure_separate_from_solver_success[supported-True]
+0.00s teardown tests/integration/tasks/court_detection/test_real_court_acceptance.py::test_real_heads_keep_quality_failure_separate_from_solver_success[partial_unstable-False]
+0.00s teardown tests/integration/tasks/court_detection/test_real_court_acceptance.py::test_real_heads_keep_quality_failure_separate_from_solver_success[supported-True]
+============================== 2 passed in 13.16s ==============================

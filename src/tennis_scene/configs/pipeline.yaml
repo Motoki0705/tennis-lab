@@ -48,10 +48,45 @@ court_kp:
   # crop on that frame from the image alone.
   region_search:
     enabled: true
+    acceptance_method: legacy
     min_inliers: 8
     inlier_distance_ratio: 0.005
+    refinement_method: model
+    paint:
+      version: semantic_consensus_v2
+      radius_px: 48.0
+      fine_radius_px: 6.0
+      sample_spacing_px: 8.0
+      profile_step_px: 0.5
+      profile_sigma_px: 0.6
+      min_gradient: 2.0
+      min_contrast: 6.0
+      min_width_px: 1.0
+      max_width_px: 18.0
+      line_angle_limit_degrees: 8.0
+      line_inlier_distance_px: 1.5
+      ransac_trials: 500
+      min_line_locations: 8
+      min_coverage: 0.35
+      min_court_lines: 5
+      max_line_residual_px: 3.0
+      ambiguity_support_ratio: 0.8
+      ambiguity_separation_px: 3.0
+      max_projection_std_px: 5.0
+      max_leave_line_out_px: 10.0
+      max_normalized_condition: 10000.0
+      max_nfev: 200
     min_area_ratio: 0.01
+    line_tolerance_ratio: 0.005
+    min_line_support: 0.55
+    min_visible_segment_support: 0.25
+    min_line_coverage: 0.5
+    max_normalized_condition: 10000.0
+    max_projection_std_ratio: 0.005
+    max_leave_line_out_ratio: 0.01
   postprocess:
+    support_method: legacy
+    max_support_candidates: 8
     min_score: 0.05
     threshold_diagonal_ratio: 0.005
     line_probability_threshold: 0.5
@@ -66,6 +101,8 @@ court_kp:
     min_line_support: 0.55
     ambiguity_gap: 0.02
     ambiguity_displacement_ratio: 0.03
+    boundary_margin_cells: 1.0
+    duplicate_distance_cells: 1.0
 people_models:
   # Explicit trial only; comparison pending. Keep the higher score at IoU >= .8.
   merge_duplicate_person_boxes: false

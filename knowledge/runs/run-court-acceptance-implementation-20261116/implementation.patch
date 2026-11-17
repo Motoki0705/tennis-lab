@@ -1,0 +1,1106 @@
+diff --git a/src/tasks/court_detection/README.md b/src/tasks/court_detection/README.md
+index 4baa19d1c..2a5f67839 100644
+--- a/src/tasks/court_detection/README.md
++++ b/src/tasks/court_detection/README.md
+@@ -221,0 +222,31 @@ LINEだけの利用は`predict(rgb, heads=("line",), postprocess="none")`と明
++領域探索の採否は`court_kp.region_search`の品質設定を使います。
++14点すべてが画像内にあることや一律8点のinlierを要求せず、画像内に見える線の一致、
++各方向の独立した線の分布、実際にfitへ使ったKPの支持、投影の安定性を確認します。
++画像との交差面積が`min_area_ratio`以上ある凸なコートだけを候補に残し、
++合格候補の品質costが最小の領域を選びます。同点では提案順です。
++合格候補がなければ`CourtRegionUnavailable`と候補ごとの理由を返します。
++`region_search.enabled=false`でもfull-frame推論の品質確認は行います。
++
++後処理はnative gridで境界から`boundary_margin_cells`未満の点と、
++`duplicate_distance_cells`以内に重なるsemantic KPをfitの等式制約から外します。
++重複は両点を外し、raw出力は変更しません。残った点からconfidenceとtemplate上の分布で
++最大8点を選びます。最適化開始時に可視だった線は、最適化中に画面外へ移しても
++残差から消えません。元から画像外の線は要求しません。
++
++診断`quality.schema=court_quality_v1`の`score`は小さいほどよい順位用costで、
++正解確率や参照とのpx誤差ではありません。forward/reverse線残差のRMSを許容距離で割った和、
++全14点の最大投影標準偏差と1本の線を除いたときの最大変位をそれぞれの制限で割った値、
++`2-forward_support-reverse_support`を加算します。計算できないときは`null`です。
++距離は入力cropのpixel、比率の分母は領域比較に共通な元画像の対角長です。
++`line.segment_support`、`line.visible_segment_mask`、`line_coverage`、
++`supported_keypoints`、`normalized_condition`、`max_projection_std_px`、
++`max_leave_line_out_px`と`reasons`を保持します。安定性は各線を1群とし、実際のKP制約と合わせた
++局所線形化で測ります。LINE自体の誤検出・semanticな取り違えを証明する指標ではありません。
++同じモデル・品質設定の推定間で比較し、camera別の推定を使う側も`accepted`を必ず確認してください。
++
++`tennis_scene`の診断schemaは`court_kp_quality_v2`です。品質不合格は`quality_rejected`とし、
++採用Hは`null`、下流点はゼロ・全無効にします。調査用のHは`rejected_homography`に分けます。
++`keypoint_observations`には境界・重複で除外したindexを残します。
++旧`region_search.min_inliers` / `inlier_distance_ratio`は受理しません。
++品質・後処理の全設定はcomponentのcache identityに入ります。
++
+diff --git a/src/tasks/court_detection/geometry/hybrid_homography.py b/src/tasks/court_detection/geometry/hybrid_homography.py
+index 1901d7802..30f832d9b 100644
+--- a/src/tasks/court_detection/geometry/hybrid_homography.py
++++ b/src/tasks/court_detection/geometry/hybrid_homography.py
+@@ -20,0 +21 @@ from .line_evidence import FloatArray, LineDiagnostics, LineEvidence, line_resid
++from .observations import keypoint_support
+@@ -40,0 +42,2 @@ class HybridHomographyConfig:
++    boundary_margin_cells: float = 1.0
++    duplicate_distance_cells: float = 1.0
+@@ -42,0 +46,3 @@ class HybridHomographyConfig:
++        for value in (self.boundary_margin_cells, self.duplicate_distance_cells):
++            if not np.isfinite(value) or value < 0:
++                raise ValueError("KP cell distances must be finite and nonnegative")
+@@ -107,0 +114 @@ class HybridHomographyResult:
++    observation_diagnostics: dict[str, object] | None = None
+@@ -145 +152,16 @@ def select_keypoints(
+-    order = indices[np.argsort(-merit, kind="stable")]
++    # Confidence alone can put all fit points at one end of the court. Keep the
++    # best-supported point first, then cover distinct template locations. The
++    # template is normalized per axis so metres and court aspect do not bias it.
++    normalized = (template - template.min(axis=0)) / np.maximum(np.ptp(template, axis=0), 1e-12)
++    remaining = list(range(len(indices)))
++    chosen: list[int] = []
++    while remaining and len(chosen) < min(config.max_kp, len(template) - 1):
++        def utility(index: int) -> float:
++            if not chosen:
++                return float(merit[index])
++            separation = float(np.min(np.sum((normalized[indices[index]] - normalized[indices[chosen]]) ** 2, axis=1)))
++            return float(merit[index] * separation)
++
++        next_index = max(remaining, key=utility)
++        chosen.append(next_index)
++        remaining.remove(next_index)
+@@ -147 +169 @@ def select_keypoints(
+-    selected[order[: min(config.max_kp, len(template) - 1)]] = True
++    selected[indices[chosen]] = True
+@@ -186 +208 @@ def estimate_hybrid_homography(
+-    observed = np.asarray(image_xy, dtype=np.float64)
++    observed = np.array(image_xy, dtype=np.float64, copy=True)
+@@ -202,0 +225,2 @@ def estimate_hybrid_homography(
++    if np.ndim(line_probability) != 2 or min(line_probability.shape) < 2:
++        raise ValueError("LINE probability must be a two-dimensional image")
+@@ -204,0 +229,7 @@ def estimate_hybrid_homography(
++    support = keypoint_support(
++        observed, quality, image_size_hw=image_size_hw,
++        native_size_hw=(line_probability.shape[0], line_probability.shape[1]),
++        min_score=config.min_score, boundary_margin_cells=config.boundary_margin_cells,
++        duplicate_distance_cells=config.duplicate_distance_cells,
++    )
++    observed[~support.eligible] = np.nan
+@@ -243,0 +275 @@ def estimate_hybrid_homography(
++            support.diagnostics(),
+@@ -356,0 +389 @@ def estimate_hybrid_homography(
++        required_visible = np.asarray(seed.line["visible_segment_mask"], dtype=bool)
+@@ -368,0 +402 @@ def estimate_hybrid_homography(
++                    required_visible: NDArray[np.bool_] = required_visible,
+@@ -384,0 +419 @@ def estimate_hybrid_homography(
++                        required_visible=required_visible,
+diff --git a/src/tasks/court_detection/geometry/line_evidence.py b/src/tasks/court_detection/geometry/line_evidence.py
+index c3cd4b863..a79422c75 100644
+--- a/src/tasks/court_detection/geometry/line_evidence.py
++++ b/src/tasks/court_detection/geometry/line_evidence.py
+@@ -24,0 +25,2 @@ class LineDiagnostics(TypedDict):
++    visible_segment_mask: list[bool]
++    visible_segment_fraction: list[float]
+@@ -153,0 +156 @@ def line_residuals(
++    required_visible: NDArray[np.bool_] | None = None,
+@@ -164,0 +168,5 @@ def line_residuals(
++    actual_visible = visible.copy()
++    if required_visible is not None:
++        if required_visible.shape != visible.shape or required_visible.dtype != np.bool_:
++            raise ValueError("Required LINE visibility must be a boolean mask per segment")
++        visible = required_visible
+@@ -178,0 +187,3 @@ def line_residuals(
++    # A solve cannot improve by moving a previously visible marking out of the
++    # crop. Truly unobserved segments are omitted at the start, explicitly.
++    raw_distance[visible & ~actual_visible] = evidence.diagonal
+@@ -184 +195 @@ def line_residuals(
+-    distances[:, ~visible] = evidence.diagonal
++    distances[:, ~(visible & actual_visible)] = evidence.diagonal
+@@ -210,0 +222,6 @@ def line_residuals(
++        "visible_segment_mask": actual_visible.tolist(),
++        "visible_segment_fraction": np.where(
++            actual_visible,
++            lengths / np.maximum(np.linalg.norm(projected[edges[:, 1]] - projected[edges[:, 0]], axis=1), 1e-12),
++            0.0,
++        ).tolist(),
+diff --git a/src/tasks/court_detection/geometry/observations.py b/src/tasks/court_detection/geometry/observations.py
+new file mode 100644
+index 000000000..6a40bfefd
+--- /dev/null
++++ b/src/tasks/court_detection/geometry/observations.py
+@@ -0,0 +1,71 @@
++"""Distinguish measured KP locations from censored or colliding heatmap peaks."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++
++import numpy as np
++from numpy.typing import NDArray
++
++
++@dataclass(frozen=True)
++class KeypointSupport:
++    eligible: NDArray[np.bool_]
++    boundary: NDArray[np.bool_]
++    duplicate: NDArray[np.bool_]
++
++    def diagnostics(self) -> dict[str, object]:
++        return {
++            "eligible_indices": np.flatnonzero(self.eligible).tolist(),
++            "boundary_censored_indices": np.flatnonzero(self.boundary).tolist(),
++            "duplicate_peak_indices": np.flatnonzero(self.duplicate).tolist(),
++        }
++
++
++def keypoint_support(
++    observed: NDArray[np.floating],
++    scores: NDArray[np.floating],
++    *,
++    image_size_hw: tuple[int, int],
++    native_size_hw: tuple[int, int],
++    min_score: float,
++    boundary_margin_cells: float,
++    duplicate_distance_cells: float,
++) -> KeypointSupport:
++    """Keep raw evidence unchanged; exclude unreliable *equality constraints*.
++
++    A peak within the declared native-grid border lacks support on both sides.
++    It is censored, not a measured off-image intersection. Two semantic channels
++    within one localization cell cannot count as independent correspondences;
++    neither is chosen by confidence. Final H projections may still recover such
++    points, including genuine intersections on or outside the image boundary.
++    """
++    points = np.asarray(observed, dtype=np.float64)
++    quality = np.asarray(scores, dtype=np.float64)
++    if points.ndim != 2 or points.shape[1] != 2 or quality.shape != (len(points),):
++        raise ValueError("KP coordinates/scores must have shapes (N,2)/(N,)")
++    if min(*image_size_hw, *native_size_hw) < 2:
++        raise ValueError("KP evidence requires image/native dimensions >= 2")
++    if not np.isfinite(quality).all() or np.any((quality < 0) | (quality > 1)):
++        raise ValueError("KP scores must be finite in [0,1]")
++    for value in (boundary_margin_cells, duplicate_distance_cells):
++        if not np.isfinite(value) or value < 0:
++            raise ValueError("KP cell distances must be finite and nonnegative")
++    if not np.isfinite(min_score) or not 0 <= min_score <= 1:
++        raise ValueError("KP min_score must be in [0,1]")
++    height, width = image_size_hw
++    native_height, native_width = native_size_hw
++    scale = np.array([(native_width - 1) / (width - 1), (native_height - 1) / (height - 1)])
++    grid = points * scale
++    finite = np.isfinite(grid).all(axis=1) & (quality >= min_score)
++    boundary = finite & (
++        (grid[:, 0] < boundary_margin_cells)
++        | (grid[:, 1] < boundary_margin_cells)
++        | (grid[:, 0] > native_width - 1 - boundary_margin_cells)
++        | (grid[:, 1] > native_height - 1 - boundary_margin_cells)
++    )
++    distance = np.linalg.norm(grid[:, None] - grid[None], axis=-1)
++    close = (distance <= duplicate_distance_cells) & finite[:, None] & finite[None]
++    np.fill_diagonal(close, False)
++    duplicate = close.any(axis=1)
++    return KeypointSupport(finite & ~boundary & ~duplicate, boundary, duplicate)
+diff --git a/src/tasks/court_detection/geometry/quality.py b/src/tasks/court_detection/geometry/quality.py
+new file mode 100644
+index 000000000..906fd876b
+--- /dev/null
++++ b/src/tasks/court_detection/geometry/quality.py
+@@ -0,0 +1,277 @@
++"""Image-only court quality: visible markings and sensitivity of their fit.
++
++The score is a ranking cost, not a calibrated probability or a reference error.
++Each physical marking has total weight one: a thousand pixels along one line
++must not masquerade as a thousand independent constraints on a homography.
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++
++import cv2
++import numpy as np
++from numpy.typing import NDArray
++
++from .confidence_homography import _has_support
++from .homography import COURT_HOMOGRAPHY_EDGES, court_template_xy
++from .line_evidence import FloatArray, LineEvidence, clip_segments, line_residuals
++
++QUALITY_SCHEMA = "court_quality_v1"
++
++
++@dataclass(frozen=True, slots=True)
++class CourtQualityConfig:
++    line_tolerance_ratio: float = 0.005
++    min_line_support: float = 0.55
++    min_visible_segment_support: float = 0.25
++    min_line_coverage: float = 0.5
++    max_normalized_condition: float = 10000.0
++    max_projection_std_ratio: float = 0.005
++    max_leave_line_out_ratio: float = 0.01
++
++    def __post_init__(self) -> None:
++        for name in (
++            "line_tolerance_ratio", "min_line_support", "min_visible_segment_support",
++            "min_line_coverage", "max_projection_std_ratio", "max_leave_line_out_ratio",
++        ):
++            value = getattr(self, name)
++            if not np.isfinite(value) or not 0 < value <= 1:
++                raise ValueError(f"Court quality {name} must be finite in (0,1]")
++        if not np.isfinite(self.max_normalized_condition) or self.max_normalized_condition <= 1:
++            raise ValueError("Court quality condition limit must be finite and > 1")
++
++
++DEFAULT_QUALITY_CONFIG = CourtQualityConfig()
++
++
++@dataclass(frozen=True)
++class CourtQuality:
++    accepted: bool
++    score: float | None
++    reasons: tuple[str, ...]
++    metrics: dict[str, object]
++
++    def diagnostics(self) -> dict[str, object]:
++        return {
++            "schema": QUALITY_SCHEMA,
++            "accepted": self.accepted,
++            "score": self.score,
++            "score_direction": "lower_is_better",
++            "reasons": list(self.reasons),
++            **self.metrics,
++        }
++
++
++def projection_jacobian(points: FloatArray, matrix: FloatArray) -> FloatArray:
++    """Jacobian for eight H parameters with h33=1, in caller-normalized units."""
++    homogeneous = np.c_[points, np.ones(len(points))] @ matrix.T
++    depth = homogeneous[:, 2]
++    if np.any(np.abs(depth) < 1e-12):
++        raise ValueError("Projection Jacobian crosses a pole")
++    uv = homogeneous[:, :2] / depth[:, None]
++    base = np.c_[points, np.ones(len(points))] / depth[:, None]
++    jacobian = np.zeros((len(points), 2, 8))
++    jacobian[:, 0, :3] = base
++    jacobian[:, 1, 3:6] = base
++    jacobian[:, :, 6:] = -uv[:, :, None] * base[:, None, :2]
++    return jacobian
++
++
++def _projection(points: FloatArray, matrix: FloatArray) -> FloatArray:
++    homogeneous = np.c_[points, np.ones(len(points))] @ matrix.T
++    with np.errstate(divide="ignore", invalid="ignore"):
++        return np.asarray(homogeneous[:, :2] / homogeneous[:, 2, None], dtype=np.float64)
++
++
++def _sensitivity(
++    matrix: FloatArray,
++    template: FloatArray,
++    evidence: LineEvidence,
++    segments: FloatArray,
++    visible: NDArray[np.bool_],
++    tolerance: float,
++    cell_sigma: float,
++    diagonal: float,
++    condition_limit: float,
++    observed: FloatArray,
++    supported_kp: NDArray[np.bool_],
++) -> dict[str, object]:
++    """Joint KP/line covariance and linear leave-one-marking influence.
++
++    These are local diagnostics around a hypothesis; they cannot prove that a
++    neural LINE prediction or its semantic correspondence is correct.
++    """
++    center = template.mean(axis=0)
++    scale = float(np.sqrt(np.mean((template - center) ** 2)))
++    source = np.array([[1 / scale, 0, -center[0] / scale], [0, 1 / scale, -center[1] / scale], [0, 0, 1]])
++    # A centered image chart avoids position-dependent conditioning.
++    image = np.array([[1 / diagonal, 0, -evidence.width / (2 * diagonal)],
++                      [0, 1 / diagonal, -evidence.height / (2 * diagonal)], [0, 0, 1]])
++    normalized = image @ matrix @ np.linalg.inv(source)
++    if abs(normalized[2, 2]) < 1e-12:
++        return {"stability_status": "singular_parameter_chart"}
++    normalized /= normalized[2, 2]
++    inverse = np.linalg.inv(matrix)
++    groups: list[tuple[FloatArray, FloatArray]] = []
++    coverage = np.zeros(len(segments))
++    positions = np.linspace(0.05, 0.95, 24)
++    for index, (segment, is_visible) in enumerate(zip(segments, visible, strict=True)):
++        if not is_visible:
++            continue
++        delta = segment[1] - segment[0]
++        length = float(np.linalg.norm(delta))
++        direction = delta / length
++        samples = segment[0] + positions[:, None] * delta
++        distance, nearest = evidence.tree.query(samples)
++        tangent = evidence.tangents[nearest]
++        supported = (distance <= tolerance) & (np.abs(tangent @ direction) >= np.sqrt(0.5))
++        if supported.sum() < 3:
++            continue
++        coverage[index] = float(np.ptp(positions[supported]) / 0.9)
++        court_samples = _projection(samples[supported], inverse)
++        normalized_samples = _projection(court_samples, source)
++        jacobian = projection_jacobian(normalized_samples, normalized)
++        normal = np.array([-direction[1], direction[0]])
++        line_jacobian = np.einsum("nci,c->ni", jacobian, normal)
++        matched_points = np.asarray(evidence.tree.data[nearest[supported]])
++        residual = (samples[supported] - matched_points) @ normal / diagonal
++        weight = np.sqrt(1.0 / len(residual))
++        groups.append((line_jacobian * weight, residual * weight))
++    metrics: dict[str, object] = {"line_coverage": coverage.tolist(), "independent_line_groups": len(groups)}
++    if not groups:
++        return {**metrics, "stability_status": "insufficient_line_constraints"}
++    line_residual = np.concatenate([g[1] for g in groups])
++    line_sigma = max(cell_sigma, float(np.sqrt(line_residual @ line_residual / len(groups))) * diagonal)
++    groups = [(j * diagonal / line_sigma, r * diagonal / line_sigma) for j, r in groups]
++    # The estimated H is constrained jointly by KP and LINE. Assessing LINE
++    # alone would call a well-anchored fit unobservable when one marking is
++    # removed. Retain the actual independent KP evidence in every line probe.
++    kp_jacobian = projection_jacobian(_projection(template[supported_kp], source), normalized).reshape(-1, 8)
++    kp_residual_px = (_projection(template[supported_kp], matrix) - observed[supported_kp]).ravel()
++    kp_sigma = max(cell_sigma, float(np.sqrt(np.mean(kp_residual_px**2)))) if len(kp_residual_px) else cell_sigma
++    fixed_jacobian = kp_jacobian * diagonal / kp_sigma
++    fixed_residual = kp_residual_px / kp_sigma
++    jacobian = np.vstack([fixed_jacobian, *[g[0] for g in groups]])
++    residual = np.concatenate([fixed_residual, *[g[1] for g in groups]])
++    _, singular, right = np.linalg.svd(jacobian, full_matrices=False)
++    if len(singular) < 8 or singular[-1] <= np.finfo(float).eps * singular[0]:
++        return {**metrics, "stability_status": "rank_deficient_line_constraints"}
++    condition = float(singular[0] / singular[-1])
++    metrics["normalized_condition"] = condition
++    if condition > condition_limit:
++        return {**metrics, "stability_status": "ill_conditioned_line_constraints"}
++    covariance = (right.T / singular**2) @ right
++    query = projection_jacobian(_projection(template, source), normalized)
++    query_covariance = np.einsum("nci,ij,ndj->ncd", query, covariance, query) * diagonal**2
++    std = np.sqrt(np.maximum(np.linalg.eigvalsh(query_covariance)[:, -1], 0))
++    full_delta = -covariance @ jacobian.T @ residual
++    maximum_influence = 0.0
++    for dropped in range(len(groups)):
++        kept = [group for i, group in enumerate(groups) if i != dropped]
++        if not kept:
++            return {**metrics, "stability_status": "leave_line_out_unconstrained"}
++        reduced = np.vstack([fixed_jacobian, *[g[0] for g in kept]])
++        reduced_residual = np.concatenate([fixed_residual, *[g[1] for g in kept]])
++        delta, _, rank, _ = np.linalg.lstsq(reduced, -reduced_residual, rcond=1 / condition_limit)
++        if rank < 8:
++            return {**metrics, "stability_status": "leave_line_out_unconstrained"}
++        displacement = np.einsum("nci,i->nc", query, delta - full_delta) * diagonal
++        maximum_influence = max(maximum_influence, float(np.linalg.norm(displacement, axis=1).max()))
++    return {
++        **metrics, "stability_status": "ok", "line_localization_sigma_px": line_sigma,
++        "kp_localization_sigma_px": kp_sigma,
++        "max_projection_std_px": float(std.max()), "max_leave_line_out_px": maximum_influence,
++    }
++
++
++def assess_court_quality(
++    matrix: NDArray[np.floating] | None,
++    observed: NDArray[np.floating],
++    valid: NDArray[np.bool_],
++    line_probability: NDArray[np.floating],
++    *,
++    image_size_hw: tuple[int, int],
++    config: CourtQualityConfig,
++    evaluation_size_hw: tuple[int, int] | None = None,
++    template_xy: NDArray[np.floating] | None = None,
++) -> CourtQuality:
++    """Assess one image-only H without using camera identity or a reference.
++
++    All distances are source pixels. ``evaluation_size_hw`` supplies a common
++    original-image diagonal for region comparisons, never a GT-based threshold.
++    The covariance uses complete template queries, including off-image corners;
++    visibility is not a reason to fail, insufficient constraints are.
++    """
++    template = court_template_xy().astype(np.float64) if template_xy is None else np.asarray(template_xy, np.float64)
++    raw = np.asarray(observed, dtype=np.float64)
++    raw_valid = np.asarray(valid, dtype=bool)
++    if template.shape != (14, 2) or raw.shape != template.shape or raw_valid.shape != (14,):
++        raise ValueError("Court quality requires ordered KP14")
++    if min(*image_size_hw, *(evaluation_size_hw or image_size_hw)) < 2:
++        raise ValueError("Court quality requires image dimensions >= 2")
++    if matrix is None:
++        return CourtQuality(False, None, ("no_homography",), {})
++    homography = np.asarray(matrix, dtype=np.float64)
++    if homography.shape != (3, 3) or not np.isfinite(homography).all() or np.linalg.matrix_rank(homography) < 3:
++        return CourtQuality(False, None, ("invalid_homography",), {})
++    homogeneous = np.c_[template, np.ones(14)] @ homography.T
++    depth = homogeneous[:, 2]
++    epsilon = 1e-9 * max(float(np.max(np.abs(depth))), 1e-300)
++    if not (np.all(depth > epsilon) or np.all(depth < -epsilon)):
++        return CourtQuality(False, None, ("projection_pole",), {})
++    projected = homogeneous[:, :2] / depth[:, None]
++    if not np.isfinite(projected).all() or not cv2.isContourConvex(projected[[0, 1, 3, 2]].astype(np.float32)):
++        return CourtQuality(False, None, ("invalid_court_polygon",), {})
++    diagonal = float(np.hypot(*(evaluation_size_hw or image_size_hw)))
++    tolerance = config.line_tolerance_ratio * diagonal
++    raw_residual = np.linalg.norm(projected - raw, axis=1)
++    supported_kp = raw_valid & np.isfinite(raw).all(axis=1) & (raw_residual <= tolerance)
++    reasons: list[str] = []
++    if supported_kp.sum() < 4 or not _has_support(template[supported_kp], raw[supported_kp]):
++        reasons.append("insufficient_independent_keypoints")
++    try:
++        evidence = LineEvidence.from_probability(line_probability, image_size_hw)
++    except ValueError as error:
++        if str(error) != "insufficient_or_diffuse_line_evidence":
++            raise
++        return CourtQuality(False, None, (str(error),), {"supported_keypoints": int(supported_kp.sum())})
++    edges = np.asarray(COURT_HOMOGRAPHY_EDGES)
++    _, line = line_residuals(projected, edges, evidence, tolerance)
++    segments, visible = clip_segments(projected[edges], evidence.width, evidence.height)
++    visible &= np.linalg.norm(segments[:, 1] - segments[:, 0], axis=1) >= 0.02 * evidence.diagonal
++    supports = np.asarray(line["segment_support"])
++    if min(line["forward_support"], line["reverse_support"]) < config.min_line_support:
++        reasons.append("insufficient_line_support")
++    if not visible.any() or np.any(supports[visible] < config.min_visible_segment_support):
++        reasons.append("visible_line_mismatch")
++    cell_sigma = 0.5 * max((image_size_hw[0] - 1) / (line_probability.shape[0] - 1),
++                           (image_size_hw[1] - 1) / (line_probability.shape[1] - 1))
++    stability = _sensitivity(homography, template, evidence, segments, visible, tolerance,
++                             cell_sigma, diagonal, config.max_normalized_condition, raw, supported_kp)
++    coverage = np.asarray(stability.get("line_coverage", np.zeros(len(edges))))
++    supported_lines = visible & (supports >= 0.5) & (coverage >= config.min_line_coverage)
++    transverse = np.abs(template[edges[:, 1], 0] - template[edges[:, 0], 0]) > 0
++    if min(int((supported_lines & transverse).sum()), int((supported_lines & ~transverse).sum())) < 2:
++        reasons.append("insufficient_line_distribution")
++    std_ratio: float | None = None
++    influence_ratio: float | None = None
++    if stability["stability_status"] != "ok":
++        reasons.append(str(stability["stability_status"]))
++    else:
++        std_ratio = float(stability["max_projection_std_px"]) / diagonal  # type: ignore[arg-type]
++        influence_ratio = float(stability["max_leave_line_out_px"]) / diagonal  # type: ignore[arg-type]
++        if std_ratio > config.max_projection_std_ratio:
++            reasons.append("unstable_projection")
++        if influence_ratio > config.max_leave_line_out_ratio:
++            reasons.append("unstable_line_influence")
++    score = None if std_ratio is None or influence_ratio is None else float(
++        (line["forward_rms_px"] + line["reverse_rms_px"]) / tolerance
++        + std_ratio / config.max_projection_std_ratio + influence_ratio / config.max_leave_line_out_ratio
++        + 2 - line["forward_support"] - line["reverse_support"]
++    )
++    return CourtQuality(not reasons, score, tuple(reasons), {
++        "supported_keypoints": int(supported_kp.sum()), "support_indices": np.flatnonzero(supported_kp).tolist(),
++        "evaluation_diagonal_px": diagonal, "line_tolerance_px": tolerance, "line": dict(line),
++        "max_projection_std_ratio": std_ratio, "max_leave_line_out_ratio": influence_ratio, **stability,
++    })
+diff --git a/src/tasks/court_detection/inference/contracts.py b/src/tasks/court_detection/inference/contracts.py
+index 5aae9d525..03844f63d 100644
+--- a/src/tasks/court_detection/inference/contracts.py
++++ b/src/tasks/court_detection/inference/contracts.py
+@@ -79,0 +80 @@ class CourtPrediction:
++            "keypoint_observations": result.observation_diagnostics,
+diff --git a/src/tasks/court_detection/inference/regions.py b/src/tasks/court_detection/inference/regions.py
+index a6f2a73c7..ed17c4ae3 100644
+--- a/src/tasks/court_detection/inference/regions.py
++++ b/src/tasks/court_detection/inference/regions.py
+@@ -15,0 +16,6 @@ from numpy.typing import NDArray
++from src.tasks.court_detection.geometry.quality import (
++    DEFAULT_QUALITY_CONFIG,
++    CourtQuality,
++    CourtQualityConfig,
++    assess_court_quality,
++)
+@@ -17 +23,4 @@ from src.tasks.court_detection.inference.contracts import CourtPrediction
+-from src.tasks.court_detection.model_io.contracts import CourtKeypointPrediction
++from src.tasks.court_detection.model_io.contracts import (
++    CourtKeypointPrediction,
++    CourtLinePrediction,
++)
+@@ -26 +35 @@ Region = tuple[int, int, int, int]
+-class CourtRegionSearchConfig:
++class CourtRegionSearchConfig(CourtQualityConfig):
+@@ -28,2 +36,0 @@ class CourtRegionSearchConfig:
+-    min_inliers: int = 8
+-    inlier_distance_ratio: float = 0.005
+@@ -33,6 +40,3 @@ class CourtRegionSearchConfig:
+-        if not 4 <= self.min_inliers <= 14:
+-            raise ValueError("region_search.min_inliers must be between 4 and 14")
+-        for name in ("inlier_distance_ratio", "min_area_ratio"):
+-            value = getattr(self, name)
+-            if not np.isfinite(value) or not 0 < value < 1:
+-                raise ValueError(f"region_search.{name} must be finite and between 0 and 1")
++        CourtQualityConfig.__post_init__(self)
++        if not np.isfinite(self.min_area_ratio) or not 0 < self.min_area_ratio < 1:
++            raise ValueError("region_search.min_area_ratio must be finite and between 0 and 1")
+@@ -71,0 +76,5 @@ class CourtRegionPrediction:
++    quality: CourtQuality
++
++    def __post_init__(self) -> None:
++        if not isinstance(self.quality, CourtQuality):
++            raise ValueError("Region predictions require assessed court quality")
+@@ -77 +86 @@ class CourtRegionPrediction:
+-        if geometry.status != "ok" or geometry.matrix is None:
++        if geometry.status != "ok" or geometry.matrix is None or not self.quality.accepted:
+@@ -107,0 +117,6 @@ class CourtRegionPrediction:
++        diagnostic["quality"] = self.quality.diagnostics()
++        if geometry is not None and geometry.status == "ok" and not self.quality.accepted:
++            diagnostic["hybrid_status"] = "ok"
++            diagnostic["status"] = "quality_rejected"
++            diagnostic["rejected_homography"] = diagnostic["homography_court_metres_to_image_pixels"]
++            diagnostic["homography_court_metres_to_image_pixels"] = None
+@@ -112,0 +128 @@ def predict_court_region(
++    *, quality_config: CourtQualityConfig = DEFAULT_QUALITY_CONFIG,
+@@ -121 +137,18 @@ def predict_court_region(
+-    return CourtRegionPrediction(prediction, region, (image.shape[0], image.shape[1]))
++    quality = assess_prediction_quality(prediction, quality_config, image.shape[:2])
++    return CourtRegionPrediction(prediction, region, (image.shape[0], image.shape[1]), quality)
++
++
++def assess_prediction_quality(
++    prediction: CourtPrediction, config: CourtQualityConfig, evaluation_size_hw: tuple[int, int],
++) -> CourtQuality:
++    """One shared quality contract for full-frame and cropped inference."""
++    raw, line = prediction.raw_heads["kp"], prediction.raw_heads["line"]
++    if not isinstance(raw, CourtKeypointPrediction) or not isinstance(line, CourtLinePrediction):
++        raise ValueError("Court quality requires typed KP and LINE evidence")
++    geometry = prediction.homography
++    return assess_court_quality(
++        None if geometry is None else geometry.matrix, raw.keypoints[:, 0].numpy(),
++        raw.valid[:, 0].numpy() & (geometry.selected if geometry is not None else False),
++        line.probability.numpy(), image_size_hw=prediction.original_size_hw,
++        evaluation_size_hw=evaluation_size_hw, config=config,
++    )
+@@ -141 +174 @@ def select_court_region(
+-    """Select by model inlier count, then confidence; fail if no candidate qualifies.
++    """Select by visible-line quality and stability; fail if no candidate qualifies.
+@@ -148 +180,0 @@ def select_court_region(
+-    threshold = config.inlier_distance_ratio * np.hypot(width, height)
+@@ -150 +182 @@ def select_court_region(
+-    accepted: list[tuple[int, float, Region]] = []
++    accepted: list[tuple[float, Region]] = []
+@@ -152,15 +184,4 @@ def select_court_region(
+-        prediction = predict_court_region(predictor, image, region)
+-        points, visible = prediction.downstream_keypoints()
+-        raw = prediction.cropped.raw_heads["kp"]
+-        assert isinstance(raw, CourtKeypointPrediction)
+-        raw_points = raw.keypoints[:, 0].numpy() + np.asarray(region[:2])
+-        inliers = (np.linalg.norm(points - raw_points, axis=-1) <= threshold) & raw.valid[:, 0].numpy()
+-        count = int(inliers.sum())
+-        score = float(raw.scores[:, 0].numpy()[inliers].sum())
+-        polygon = points[[0, 1, 3, 2]].astype(np.float32)
+-        area = abs(cv2.contourArea(polygon)) / (width * height)
+-        convex = bool(cv2.isContourConvex(polygon))
+-        inside_content = bool((
+-            (points[:, 0] >= left) & (points[:, 0] <= right - 1)
+-            & (points[:, 1] >= top) & (points[:, 1] <= bottom - 1)
+-        ).all())
++        prediction = predict_court_region(predictor, image, region, quality_config=config)
++        quality = prediction.quality
++        if quality is None:
++            raise ValueError("Region selection requires assessed court quality")
+@@ -169,4 +190,26 @@ def select_court_region(
+-        qualifies = (
+-            status == "ok" and bool(visible.all()) and inside_content and convex
+-            and area >= config.min_area_ratio and count >= config.min_inliers
+-        )
++        area, convex, inside_content = 0.0, False, False
++        count, confidence_sum = 0, 0.0
++        if geometry is not None and geometry.matrix is not None:
++            raw = prediction.cropped.raw_heads["kp"]
++            assert isinstance(raw, CourtKeypointPrediction)
++            raw_inliers = raw.valid[:, 0].numpy() & (
++                np.linalg.norm(geometry.projected - raw.keypoints[:, 0].numpy(), axis=1)
++                <= config.line_tolerance_ratio * np.hypot(width, height)
++            )
++            count = int(raw_inliers.sum())
++            confidence_sum = float(raw.scores[:, 0].numpy()[raw_inliers].sum())
++            points = geometry.projected + np.asarray(region[:2])
++            polygon = points[[0, 1, 3, 2]].astype(np.float32)
++            convex = bool(np.isfinite(polygon).all() and cv2.isContourConvex(polygon))
++            if convex:
++                content = np.array([[left, top], [right-1, top], [right-1, bottom-1], [left, bottom-1]], np.float32)
++                intersection, _ = cv2.intersectConvexConvex(polygon, content)
++                area = float(intersection) / (width * height)
++            inside_content = bool(((points[:, 0] >= left) & (points[:, 0] <= right - 1)
++                & (points[:, 1] >= top) & (points[:, 1] <= bottom - 1)).all())
++        reasons = list(quality.reasons)
++        if not convex:
++            reasons.append("invalid_court_polygon")
++        if area < config.min_area_ratio:
++            reasons.append("insufficient_visible_area")
++        qualifies = status == "ok" and quality.accepted and not reasons
+@@ -175 +218,2 @@ def select_court_region(
+-            "inliers": count, "inlier_score": score, "area_ratio": area,
++            "inliers": count, "inlier_score": confidence_sum, "area_ratio": area,
++            "fit_support_count": quality.metrics.get("supported_keypoints", 0),
+@@ -176,0 +221 @@ def select_court_region(
++            "quality": quality.diagnostics(), "rejection_reasons": list(dict.fromkeys(reasons)),
+@@ -179 +224,2 @@ def select_court_region(
+-            accepted.append((count, score, region))
++            assert quality.score is not None
++            accepted.append((quality.score, region))
+@@ -182,2 +228,4 @@ def select_court_region(
+-    chosen = max(accepted, key=lambda item: (item[0], item[1]))
+-    return CourtRegionSelection(chosen[2], tuple(candidates))
++    # Stable input order resolves equal quality. Raw confidence is not a
++    # tiebreaker: channels collapsed onto one peak cannot improve this ranking.
++    chosen = min(accepted, key=lambda item: item[0])
++    return CourtRegionSelection(chosen[1], tuple(candidates))
+diff --git a/src/tennis_scene/configs/pipeline.yaml b/src/tennis_scene/configs/pipeline.yaml
+index bcc3c7fec..35970d435 100644
+--- a/src/tennis_scene/configs/pipeline.yaml
++++ b/src/tennis_scene/configs/pipeline.yaml
+@@ -51,2 +50,0 @@ court_kp:
+-    min_inliers: 8
+-    inlier_distance_ratio: 0.005
+@@ -53,0 +52,7 @@ court_kp:
++    line_tolerance_ratio: 0.005
++    min_line_support: 0.55
++    min_visible_segment_support: 0.25
++    min_line_coverage: 0.5
++    max_normalized_condition: 10000.0
++    max_projection_std_ratio: 0.005
++    max_leave_line_out_ratio: 0.01
+@@ -68,0 +74,2 @@ court_kp:
++    boundary_margin_cells: 1.0
++    duplicate_distance_cells: 1.0
+diff --git a/src/tennis_scene/configuration.py b/src/tennis_scene/configuration.py
+index 69d027b0a..6e30b1085 100644
+--- a/src/tennis_scene/configuration.py
++++ b/src/tennis_scene/configuration.py
+@@ -162,4 +162,2 @@ _COURT_REGION_SCHEMA = StrictConfigSchema(
+-        "enabled": ConfigField.of(bool),
+-        "min_inliers": ConfigField.of(int),
+-        "inlier_distance_ratio": ConfigField.of(float, int),
+-        "min_area_ratio": ConfigField.of(float, int),
++        field.name: ConfigField.of(type(getattr(CourtRegionSearchConfig(), field.name)))
++        for field in fields(CourtRegionSearchConfig)
+@@ -369,2 +367,2 @@ class PipelineRuntimeConfig:
+-            postprocess=CourtKPPostprocessConfig(**dict(_mapping(court["postprocess"], name="court.postprocess"))),
+-            region_search=CourtRegionSearchConfig(**dict(_mapping(court["region_search"], name="court.region_search"))),
++            postprocess=CourtKPPostprocessConfig(**cast(dict[str, Any], dict(_mapping(court["postprocess"], name="court.postprocess")))),
++            region_search=CourtRegionSearchConfig(**cast(dict[str, Any], dict(_mapping(court["region_search"], name="court.region_search")))),
+diff --git a/src/tennis_scene/pipeline/components/court_kp.py b/src/tennis_scene/pipeline/components/court_kp.py
+index c0cfdb213..f33ee009a 100644
+--- a/src/tennis_scene/pipeline/components/court_kp.py
++++ b/src/tennis_scene/pipeline/components/court_kp.py
+@@ -19,0 +20 @@ from src.tasks.court_detection.inference.regions import (
++    CourtRegionPrediction,
+@@ -21,0 +23 @@ from src.tasks.court_detection.inference.regions import (
++    assess_prediction_quality,
+@@ -159 +161 @@ class CourtKPModule(BasePipelineModule):
+-            {"schema": "court_kp_hybrid_v1", "checkpoint": checkpoint,
++            {"schema": "court_kp_quality_v2", "checkpoint": checkpoint,
+@@ -204,2 +206,4 @@ class CourtKPModule(BasePipelineModule):
+-            points, visible = prediction.downstream_keypoints()
+-            diagnostic = prediction.geometry_diagnostics()
++            quality = assess_prediction_quality(prediction, self.config.region_search, frame_rgb.shape[:2])
++            full = CourtRegionPrediction(prediction, (0, 0, frame_rgb.shape[1], frame_rgb.shape[0]), frame_rgb.shape[:2], quality)
++            points, visible = full.downstream_keypoints()
++            diagnostic = full.geometry_diagnostics()
+@@ -208 +212 @@ class CourtKPModule(BasePipelineModule):
+-            region_prediction = predict_court_region(self._predictor, frame_rgb, region)
++            region_prediction = predict_court_region(self._predictor, frame_rgb, region, quality_config=self.config.region_search)
+diff --git a/tests/integration/tasks/court_detection/fixtures/acceptance/README.md b/tests/integration/tasks/court_detection/fixtures/acceptance/README.md
+new file mode 100644
+index 000000000..538308e1f
+--- /dev/null
++++ b/tests/integration/tasks/court_detection/fixtures/acceptance/README.md
+@@ -0,0 +1,14 @@
++# Court後処理の実画像fixture
++
++meiji_4camのframe 0から取得したKP/LINE出力2件。画像のforwardだけを固定し、
++hybrid推定、品質判定、crop座標変換、下流maskまで実処理する。GPUやcheckpointを必要としない。
++原画像・raw cache・checkpointのSHA-256と領域は各JSONに記録する。
++
++- `supported`: video_000/clip_004/cam0の領域4。線と点の支持がある推定。
++- `partial_unstable`: video_000/clip_013/cam3の領域6。境界の2点を除外しても
++  solverは成功するが、外挿の不確かさで品質不合格になる。
++
++採取scriptは`knowledge/runs/run-court-acceptance-implementation-20261116/cache_raw.py`。
++LINEだけ`round(probability * 65535)`でuint16に量子化し、test内で復元する。
++量子化誤差の上限は0.5/65535。KP座標・score・validはfloat32/boolのraw値を保存する。
++母集団の精度・受入結果はknowledgeの全件評価を参照し、この2件から一般化しない。
+diff --git a/tests/integration/tasks/court_detection/fixtures/acceptance/partial_unstable.json b/tests/integration/tasks/court_detection/fixtures/acceptance/partial_unstable.json
+new file mode 100644
+index 000000000..29301286e
+--- /dev/null
++++ b/tests/integration/tasks/court_detection/fixtures/acceptance/partial_unstable.json
+@@ -0,0 +1,16 @@
++{
++  "key": "meiji_4cam/video_000/clip_013/cam3",
++  "region": [
++    240,
++    0,
++    1680,
++    540
++  ],
++  "source_size_hw": [
++    1080,
++    1920
++  ],
++  "raw_cache_sha256": "dc9b3c31ede3dcb595e9bbff69d7ef115af5ead05216769390d2c3c1d2cc0584",
++  "rgb_sha256": "73256064f0666cb12d922a416226527d2f1591cc0111024385720f407725b181",
++  "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
++}
+diff --git a/tests/integration/tasks/court_detection/fixtures/acceptance/partial_unstable.npz b/tests/integration/tasks/court_detection/fixtures/acceptance/partial_unstable.npz
+new file mode 100644
+index 000000000..6b34426cf
+Binary files /dev/null and b/tests/integration/tasks/court_detection/fixtures/acceptance/partial_unstable.npz differ
+diff --git a/tests/integration/tasks/court_detection/fixtures/acceptance/supported.json b/tests/integration/tasks/court_detection/fixtures/acceptance/supported.json
+new file mode 100644
+index 000000000..6468c7b8f
+--- /dev/null
++++ b/tests/integration/tasks/court_detection/fixtures/acceptance/supported.json
+@@ -0,0 +1,16 @@
++{
++  "key": "meiji_4cam/video_000/clip_004/cam0",
++  "region": [
++    0,
++    270,
++    1440,
++    810
++  ],
++  "source_size_hw": [
++    1080,
++    1920
++  ],
++  "raw_cache_sha256": "79fae8158c534e0f9c7cf453356c6a34c817724da0d955dbafd271ecbfeca75e",
++  "rgb_sha256": "350e2ce755fead9dd6dc2b38bd0896dcae0dda31cdc927705b4b10583131dbc2",
++  "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
++}
+diff --git a/tests/integration/tasks/court_detection/fixtures/acceptance/supported.npz b/tests/integration/tasks/court_detection/fixtures/acceptance/supported.npz
+new file mode 100644
+index 000000000..aecc50690
+Binary files /dev/null and b/tests/integration/tasks/court_detection/fixtures/acceptance/supported.npz differ
+diff --git a/tests/integration/tasks/court_detection/test_real_court_acceptance.py b/tests/integration/tasks/court_detection/test_real_court_acceptance.py
+new file mode 100644
+index 000000000..ab22ccf64
+--- /dev/null
++++ b/tests/integration/tasks/court_detection/test_real_court_acceptance.py
+@@ -0,0 +1,73 @@
++"""Cached real model heads -> hybrid fit -> quality gate -> downstream masks."""
++
++import json
++from pathlib import Path
++
++import numpy as np
++import pytest
++import torch
++
++from src.tasks.court_detection.geometry.homography import (
++    COURT_HOMOGRAPHY_EDGES,
++    court_template_xy,
++)
++from src.tasks.court_detection.geometry.hybrid_homography import (
++    estimate_hybrid_homography,
++)
++from src.tasks.court_detection.geometry.quality import CourtQualityConfig
++from src.tasks.court_detection.inference.contracts import CourtPrediction
++from src.tasks.court_detection.inference.regions import (
++    CourtRegionPrediction,
++    assess_prediction_quality,
++)
++from src.tasks.court_detection.model_io.contracts import (
++    CourtKeypointPrediction,
++    CourtLinePrediction,
++)
++
++pytestmark = pytest.mark.integration
++FIXTURES = Path(__file__).parent / "fixtures" / "acceptance"
++
++
++@pytest.mark.parametrize("name,accepted", [("supported", True), ("partial_unstable", False)])
++def test_real_heads_keep_quality_failure_separate_from_solver_success(name, accepted):
++    with np.load(FIXTURES / f"{name}.npz") as data:
++        xy, scores, valid = data["raw_xy"], data["scores"], data["valid"]
++        line = data["line_probability_u16"].astype(np.float32) / 65535
++        size, native = tuple(data["image_size_hw"]), tuple(data["native_size_hw"])
++    meta = json.loads((FIXTURES / f"{name}.json").read_text())
++    observed = xy.astype(float)
++    observed[~valid] = np.nan
++    before = observed.copy()
++    geometry = estimate_hybrid_homography(
++        court_template_xy(), observed, scores, line,
++        image_size_hw=size, edges=np.array(COURT_HOMOGRAPHY_EDGES),
++    )
++    np.testing.assert_array_equal(observed, before)
++    assert geometry.status == "ok"  # A converged H alone cannot certify acceptance.
++    prediction = CourtPrediction({
++        "kp": CourtKeypointPrediction(torch.from_numpy(xy[:, None]), torch.from_numpy(scores[:, None]),
++                                      torch.from_numpy(valid[:, None]), torch.empty((14, 0, 0))),
++        "line": CourtLinePrediction(torch.from_numpy(line), torch.logit(torch.from_numpy(line).clamp(1e-6, 1-1e-6))),
++    }, size, native, geometry)
++    quality = assess_prediction_quality(prediction, CourtQualityConfig(), tuple(meta["source_size_hw"]))
++    result = CourtRegionPrediction(prediction, tuple(meta["region"]), tuple(meta["source_size_hw"]), quality)
++    points, visible = result.downstream_keypoints()
++    diagnostic = result.geometry_diagnostics()
++    assert quality.accepted is accepted
++    quality_diagnostic = diagnostic["quality"]
++    assert isinstance(quality_diagnostic, dict)
++    assert quality_diagnostic["schema"] == "court_quality_v1"
++    if accepted:
++        assert visible.any() and np.isfinite(points).all()
++        np.testing.assert_allclose(points, geometry.projected + meta["region"][:2], atol=2e-4)
++        assert diagnostic["status"] == "ok"
++    else:
++        assert "unstable_projection" in quality.reasons
++        assert geometry.observation_diagnostics is not None
++        assert geometry.observation_diagnostics["boundary_censored_indices"] == [2, 5]
++        assert not geometry.selected[[2, 5]].any()
++        assert not visible.any() and not points.any()
++        assert diagnostic["status"] == "quality_rejected"
++        assert diagnostic["homography_court_metres_to_image_pixels"] is None
++        assert diagnostic["rejected_homography"] is not None
+diff --git a/tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py b/tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py
+index 4134dbbb2..e26000482 100644
+--- a/tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py
++++ b/tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py
+@@ -95,0 +96 @@ def test_line_corrects_biased_kp_and_excludes_confident_outliers(
++    assert result.observation_diagnostics is not None
+@@ -226,0 +228,27 @@ def test_bidirectional_line_objective_penalizes_collapsed_court() -> None:
++def test_refinement_cannot_erase_previously_visible_markings() -> None:
++    _, truth, probability = scene()
++    evidence = LineEvidence.from_probability(probability, (320, 320))
++    _, initial = line_residuals(truth, EDGES, evidence, 3)
++    moved = truth + [0, -1000]
++    unconstrained, _ = line_residuals(moved, EDGES, evidence, 3)
++    fixed, diagnostic = line_residuals(moved, EDGES, evidence, 3,
++        required_visible=np.array(initial["visible_segment_mask"], dtype=bool))
++    assert fixed @ fixed > unconstrained @ unconstrained + 15
++    assert diagnostic["forward_support"] == 0
++
++
++def test_collapsed_boundary_peaks_are_excluded_before_candidate_generation() -> None:
++    template, truth, probability = scene()
++    observed = truth.copy()
++    bad = [1, 3, 6, 7]
++    observed[bad] = [319, 180]
++    result = estimate_hybrid_homography(template, observed, np.full(14, .9), probability,
++        edges=EDGES, image_size_hw=(320, 320), config=replace(CONFIG, max_candidates=300, refine_candidates=2))
++    assert result.status == "ok"
++    assert not result.selected[bad].any()
++    assert result.observation_diagnostics is not None
++    assert result.observation_diagnostics["boundary_censored_indices"] == bad
++    assert result.observation_diagnostics["duplicate_peak_indices"] == bad
++    assert np.max(np.linalg.norm(result.projected - truth, axis=1)) < 2
++
++
+diff --git a/tests/unit/tasks/court_detection/geometry/test_observations.py b/tests/unit/tasks/court_detection/geometry/test_observations.py
+new file mode 100644
+index 000000000..3c94dbbe8
+--- /dev/null
++++ b/tests/unit/tasks/court_detection/geometry/test_observations.py
+@@ -0,0 +1,29 @@
++"""Censored peaks are not independent measured intersections."""
++
++from functools import partial
++
++import numpy as np
++
++from src.tasks.court_detection.geometry.observations import keypoint_support
++
++
++def test_censoring_uses_native_cells_and_preserves_raw_coordinates() -> None:
++    raw = np.array([[0., 50.], [10., 50.], [100., 70.], [102., 70.], [200., 190.], [np.nan, 4.]])
++    original = raw.copy()
++    support = keypoint_support(raw, np.ones(6), image_size_hw=(201, 301), native_size_hw=(101, 151),
++        min_score=.05, boundary_margin_cells=1, duplicate_distance_cells=1)
++    np.testing.assert_array_equal(support.boundary, [True, False, False, False, False, False])
++    np.testing.assert_array_equal(support.duplicate, [False, False, True, True, False, False])
++    np.testing.assert_array_equal(support.eligible, [False, True, False, False, True, False])
++    np.testing.assert_array_equal(raw, original)
++    assert support.diagnostics()["duplicate_peak_indices"] == [2, 3]
++
++
++def test_source_resize_preserves_peak_eligibility_and_low_scores_do_not_collide() -> None:
++    raw = np.array([[5., 10.], [5.1, 10.1], [1., 20.], [15., 10.]])
++    scores = np.array([.9, .01, .8, .8])
++    support = partial(keypoint_support, native_size_hw=(51, 101), min_score=.05, boundary_margin_cells=1., duplicate_distance_cells=1.)
++    first = support(raw, scores, image_size_hw=(101, 201))
++    second = support(raw * 3, scores, image_size_hw=(301, 601))
++    np.testing.assert_array_equal(first.eligible, [True, False, False, True])
++    np.testing.assert_array_equal(first.eligible, second.eligible)
+diff --git a/tests/unit/tasks/court_detection/geometry/test_quality.py b/tests/unit/tasks/court_detection/geometry/test_quality.py
+new file mode 100644
+index 000000000..3e407d236
+--- /dev/null
++++ b/tests/unit/tasks/court_detection/geometry/test_quality.py
+@@ -0,0 +1,63 @@
++"""Known court markings, image clipping and unsupported extrapolation."""
++
++import cv2
++import numpy as np
++
++from src.tasks.court_detection.geometry.quality import (
++    CourtQualityConfig,
++    assess_court_quality,
++    projection_jacobian,
++)
++from tests.unit.tasks.court_detection.geometry.test_hybrid_homography import (
++    EDGES,
++    scene,
++)
++
++
++def test_projection_jacobian_has_expected_eight_constraints() -> None:
++    result = projection_jacobian(np.array([[2., 3.]]), np.eye(3))
++    np.testing.assert_array_equal(result[0], [[2, 3, 1, 0, 0, 0, -4, -6], [0, 0, 0, 2, 3, 1, -6, -9]])
++
++
++def test_visible_partial_court_is_accepted_without_inventing_off_image_observations() -> None:
++    template, truth, _ = scene()
++    truth -= [40, 0]
++    matrix, _ = cv2.findHomography(template, truth, method=0)
++    probability: np.ndarray = np.zeros((320, 320), np.float32)
++    for a, b in EDGES:
++        cv2.line(probability, tuple(np.rint(truth[a]).astype(int)), tuple(np.rint(truth[b]).astype(int)), .95, 3)
++    valid = (truth[:, 0] >= 0) & (truth[:, 0] < 320)
++    assert not valid.all() and valid.sum() >= 4
++    raw = truth.copy()
++    raw[~valid] = np.nan
++    quality = assess_court_quality(matrix, raw, valid, probability, image_size_hw=(320, 320),
++                                  template_xy=template, config=CourtQualityConfig())
++    assert quality.accepted, quality.diagnostics()
++    assert quality.score is not None
++    assert quality.metrics["stability_status"] == "ok"
++    assert quality.diagnostics()["schema"] == "court_quality_v1"
++
++
++def test_one_line_cannot_certify_a_homography_even_with_exact_raw_points() -> None:
++    template, truth, _ = scene()
++    matrix, _ = cv2.findHomography(template, truth, method=0)
++    probability: np.ndarray = np.zeros((320, 320), np.float32)
++    cv2.line(probability, tuple(np.rint(truth[0]).astype(int)), tuple(np.rint(truth[1]).astype(int)), .95, 3)
++    quality = assess_court_quality(matrix, truth, np.ones(14, bool), probability,
++        image_size_hw=(320, 320), template_xy=template, config=CourtQualityConfig())
++    assert not quality.accepted
++    assert "insufficient_line_distribution" in quality.reasons
++
++
++def test_wrong_visible_marking_is_not_hidden_by_an_average_support() -> None:
++    template, truth, probability = scene()
++    matrix, _ = cv2.findHomography(template, truth, method=0)
++    # Remove the near baseline and draw an incompatible parallel marking.
++    cv2.line(probability, tuple(np.rint(truth[2]).astype(int)), tuple(np.rint(truth[3]).astype(int)), 0., 11)
++    quality = assess_court_quality(matrix, truth, np.ones(14, bool), probability,
++        image_size_hw=(320, 320), template_xy=template, config=CourtQualityConfig())
++    assert not quality.accepted
++    assert "visible_line_mismatch" in quality.reasons
++    line = quality.metrics["line"]
++    assert isinstance(line, dict)
++    assert line["forward_support"] > .55
+diff --git a/tests/unit/tasks/court_detection/inference/test_regions.py b/tests/unit/tasks/court_detection/inference/test_regions.py
+index ea2cab624..235721d68 100644
+--- a/tests/unit/tasks/court_detection/inference/test_regions.py
++++ b/tests/unit/tasks/court_detection/inference/test_regions.py
+@@ -11,0 +12 @@ import torch
++from src.tasks.court_detection.geometry.quality import CourtQuality
+@@ -42 +43 @@ def test_crop_geometry_maps_to_full_image_without_relabeling_rasters() -> None:
+-    result = CourtRegionPrediction(cropped, (5, 4, 17, 12), (20, 30))
++    result = CourtRegionPrediction(cropped, (5, 4, 17, 12), (20, 30), CourtQuality(True, .1, (), {}))
+@@ -57 +58,2 @@ def test_failed_crop_has_zero_placeholders_without_offset_or_fallback() -> None:
+-        geometry_prediction(status="joint_optimization_failed"), (5, 4, 17, 12), (20, 30)
++        geometry_prediction(status="joint_optimization_failed"), (5, 4, 17, 12), (20, 30),
++        CourtQuality(False, None, ("no_homography",), {}),
+@@ -68,0 +71,5 @@ def test_crop_outside_image_fails_before_inference() -> None:
++def test_unassessed_region_cannot_bypass_quality_gate() -> None:
++    with pytest.raises(ValueError, match="require assessed court quality"):
++        CourtRegionPrediction(geometry_prediction(), (0, 0, 12, 8), (8, 12), cast(Any, None))
++
++
+@@ -70 +77 @@ def test_crop_outside_image_fails_before_inference() -> None:
+-def test_search_requires_geometry_and_raw_model_support(monkeypatch, failure) -> None:
++def test_search_requires_assessed_geometry_and_visible_area(monkeypatch, failure) -> None:
+@@ -86 +93 @@ def test_search_requires_geometry_and_raw_model_support(monkeypatch, failure) ->
+-        raw_points[7:] += 15
++        raw_points[3:] += 15
+@@ -89,2 +96,4 @@ def test_search_requires_geometry_and_raw_model_support(monkeypatch, failure) ->
+-    monkeypatch.setattr(module, "predict_court_region", lambda *_: CourtRegionPrediction(cropped, (0, 0, 100, 100), (100, 100)))
+-    if failure is not None:
++    quality = CourtQuality(failure != "support", 0.5, ("insufficient_independent_keypoints",) if failure == "support" else (),
++                           {"supported_keypoints": 3 if failure == "support" else 14})
++    monkeypatch.setattr(module, "predict_court_region", lambda *_, **__: CourtRegionPrediction(cropped, (0, 0, 100, 100), (100, 100), quality))
++    if failure not in (None, "outside"):
+@@ -98,0 +108,24 @@ def test_search_requires_geometry_and_raw_model_support(monkeypatch, failure) ->
++        assert selected.candidates[0]["inside_content"] == (failure != "outside")
++
++
++def test_quality_cost_ranks_regions_instead_of_raw_support_count(monkeypatch) -> None:
++    import src.tasks.court_detection.inference.regions as module
++
++    base = geometry_prediction()
++    assert base.homography is not None
++    points = np.tile([30., 30.], (14, 1))
++    points[:4] = [[10, 10], [60, 10], [10, 60], [60, 60]]
++    base = replace(base, homography=replace(base.homography, projected=points))
++    regions = ((0, 0, 100, 100), (5, 0, 100, 100))
++    monkeypatch.setattr(module, "region_proposals", lambda _: regions)
++
++    def predict(_predictor, _image, region, **_):
++        score, count = (.8, 14) if region == regions[0] else (.2, 4)
++        return CourtRegionPrediction(base, region, (100, 100), CourtQuality(True, score, (), {"supported_keypoints": count}))
++
++    monkeypatch.setattr(module, "predict_court_region", predict)
++    result = select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
++    assert result.region == regions[1]
++    quality = result.candidates[1]["quality"]
++    assert isinstance(quality, dict)
++    assert quality["score"] == .2
+diff --git a/tests/unit/tennis_scene/pipeline/components/test_court_kp.py b/tests/unit/tennis_scene/pipeline/components/test_court_kp.py
+index 99bff2631..4d24a1955 100644
+--- a/tests/unit/tennis_scene/pipeline/components/test_court_kp.py
++++ b/tests/unit/tennis_scene/pipeline/components/test_court_kp.py
+@@ -12,0 +13 @@ import pytest
++from src.tasks.court_detection.geometry.quality import CourtQuality
+@@ -16,0 +18,14 @@ from tests.unit.tennis_scene.pipeline.config_factories import make_court_kp_conf
++@pytest.fixture(autouse=True)
++def isolate_numerical_quality_from_component_persistence(monkeypatch: pytest.MonkeyPatch) -> None:
++    """Geometry quality has dedicated numerical tests; these fixtures test IO."""
++    import src.tasks.court_detection.inference.regions as regions
++    import src.tennis_scene.pipeline.components.court_kp as component
++
++    def assess(prediction, _config, _size):
++        ok = prediction.homography.status == "ok"
++        return CourtQuality(ok, .25 if ok else None, () if ok else ("no_homography",), {})
++
++    monkeypatch.setattr(regions, "assess_prediction_quality", assess)
++    monkeypatch.setattr(component, "assess_prediction_quality", assess)
++
++
+@@ -185,0 +201,18 @@ def test_frame_size_must_match_the_source(tmp_path: Path, monkeypatch: pytest.Mo
++
++
++def test_quality_rejection_cannot_publish_a_calibratable_homography(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
++    import src.tennis_scene.pipeline.components.court_kp as component
++    from tests.unit.tasks.court_detection.inference.test_unified_predictor import (
++        geometry_prediction,
++    )
++
++    rejected = CourtQuality(False, 3.0, ("unstable_projection",), {"max_projection_std_px": 80.})
++    monkeypatch.setattr(component, "assess_prediction_quality", lambda *_: rejected)
++    result, _, _ = _run_frame_zero(tmp_path, monkeypatch, geometry_prediction())
++    assert not result.keypoints.any() and not result.visibility.any()
++    assert result.diagnostics is not None
++    frame = result.diagnostics["cameras"][0]["frames"][0]
++    assert frame["status"] == "quality_rejected"
++    assert frame["homography_court_metres_to_image_pixels"] is None
++    assert frame["rejected_homography"] is not None
++    assert frame["quality"]["reasons"] == ["unstable_projection"]
+diff --git a/tests/unit/tennis_scene/test_configuration.py b/tests/unit/tennis_scene/test_configuration.py
+index c53d5db29..4a2e5be3c 100644
+--- a/tests/unit/tennis_scene/test_configuration.py
++++ b/tests/unit/tennis_scene/test_configuration.py
+@@ -23,0 +24 @@ from src.tennis_scene.configuration import (
++from src.tennis_scene.pipeline.artifacts import document_digest
+@@ -185,0 +187,22 @@ def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
++@pytest.mark.parametrize("setting,value", [
++    ("region_search.max_projection_std_ratio", 0.004),
++    ("postprocess.boundary_margin_cells", 2.0),
++])
++def test_court_quality_settings_change_cache_identity(tmp_path: Path, setting: str, value: float) -> None:
++    config = _pipeline_config(tmp_path)
++    before = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
++    OmegaConf.update(config, f"court_kp.{setting}", value)
++    after = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
++    # standard_definition passes this entire document to the court component.
++    # The generic component-store test covers descendant invalidation.
++    assert document_digest(before.processing_settings["court_kp"]) != document_digest(after.processing_settings["court_kp"])
++    group, field = setting.split(".")
++    assert getattr(getattr(after.court_kp, group), field) == value
++
++
++@pytest.mark.parametrize("removed", ["min_inliers", "inlier_distance_ratio"])
++def test_removed_court_acceptance_keys_fail_explicitly(tmp_path: Path, removed: str) -> None:
++    with pytest.raises(UnknownConfigurationKeyError, match=removed):
++        PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, f"+court_kp.region_search.{removed}=8"), bind_inputs=False)
++
++

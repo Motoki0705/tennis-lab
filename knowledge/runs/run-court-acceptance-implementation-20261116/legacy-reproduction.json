@@ -1,0 +1,167 @@
+{
+  "cases": 276,
+  "matching_acceptance": 276,
+  "disagreements": [
+    {
+      "key": "meiji_4cam/video_000/clip_004/cam0",
+      "original": [
+        false,
+        7,
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "replayed": [
+        false,
+        7,
+        [
+          240,
+          270,
+          1680,
+          810
+        ]
+      ]
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_009/cam1",
+      "original": [
+        true,
+        8,
+        [
+          240,
+          270,
+          1680,
+          810
+        ]
+      ],
+      "replayed": [
+        true,
+        9,
+        [
+          0,
+          0,
+          1920,
+          810
+        ]
+      ]
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_022/cam2",
+      "original": [
+        true,
+        8,
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "replayed": [
+        true,
+        9,
+        [
+          0,
+          0,
+          1920,
+          810
+        ]
+      ]
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_024/cam3",
+      "original": [
+        false,
+        6,
+        [
+          240,
+          0,
+          1680,
+          540
+        ]
+      ],
+      "replayed": [
+        false,
+        6,
+        [
+          480,
+          0,
+          1920,
+          540
+        ]
+      ]
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_045/cam2",
+      "original": [
+        true,
+        8,
+        [
+          240,
+          270,
+          1680,
+          810
+        ]
+      ],
+      "replayed": [
+        true,
+        9,
+        [
+          240,
+          270,
+          1680,
+          810
+        ]
+      ]
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_053/cam0",
+      "original": [
+        false,
+        7,
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "replayed": [
+        false,
+        6,
+        [
+          240,
+          270,
+          1680,
+          810
+        ]
+      ]
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_065/cam1",
+      "original": [
+        true,
+        12,
+        [
+          0,
+          270,
+          1920,
+          1080
+        ]
+      ],
+      "replayed": [
+        true,
+        10,
+        [
+          0,
+          270,
+          1920,
+          1080
+        ]
+      ]
+    }
+  ]
+}

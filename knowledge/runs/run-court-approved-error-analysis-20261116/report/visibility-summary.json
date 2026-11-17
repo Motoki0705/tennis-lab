@@ -1,0 +1,178 @@
+{
+  "annotation": {
+    "annotator": "Codex agent; not a new human reference approval",
+    "evidence": "original RGB contact sheets and enlarged suspects.png; model predictions hidden",
+    "scope": "20 images / 280 semantic points; 5 offscreen; no extrapolation of sample visibility labels to remaining clips",
+    "rule": "opaque_person only if body covers query; near feet/edges and unresolved far paint kept uncertain; shadow alone is not occlusion"
+  },
+  "stats": [
+    {
+      "scope": "full_frame",
+      "label": "far_service_net_region_uncertain",
+      "points": 59,
+      "valid_in_crop": 59,
+      "error_px": {
+        "n": 59,
+        "mean": 33.400312366207984,
+        "median": 24.259439851515463,
+        "p90": 64.5489329444057,
+        "p95": 72.18370962448125,
+        "max": 126.08948547886638
+      }
+    },
+    {
+      "scope": "full_frame",
+      "label": "offscreen",
+      "points": 5,
+      "valid_in_crop": 0,
+      "error_px": {
+        "n": 0,
+        "mean": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      }
+    },
+    {
+      "scope": "full_frame",
+      "label": "opaque_person",
+      "points": 8,
+      "valid_in_crop": 8,
+      "error_px": {
+        "n": 8,
+        "mean": 33.826809310306565,
+        "median": 36.73158488461644,
+        "p90": 52.52585338082691,
+        "p95": 60.83961567887526,
+        "max": 69.15337797692364
+      }
+    },
+    {
+      "scope": "full_frame",
+      "label": "uncertain_near_occluder",
+      "points": 7,
+      "valid_in_crop": 7,
+      "error_px": {
+        "n": 7,
+        "mean": 21.183289089833465,
+        "median": 20.427060460998117,
+        "p90": 31.81603755279565,
+        "p95": 33.348472224494806,
+        "max": 34.88090689619398
+      }
+    },
+    {
+      "scope": "full_frame",
+      "label": "unresolved_far_baseline",
+      "points": 77,
+      "valid_in_crop": 77,
+      "error_px": {
+        "n": 77,
+        "mean": 52.66299736388165,
+        "median": 21.318726444438603,
+        "p90": 61.09163471790822,
+        "p95": 74.78754689067284,
+        "max": 1192.6410674297183
+      }
+    },
+    {
+      "scope": "full_frame",
+      "label": "visible_paint",
+      "points": 124,
+      "valid_in_crop": 124,
+      "error_px": {
+        "n": 124,
+        "mean": 77.01812231245003,
+        "median": 13.015955793339586,
+        "p90": 91.47989851513499,
+        "p95": 139.94951499681437,
+        "max": 1459.10860221635
+      }
+    },
+    {
+      "scope": "postprocess_and_acceptance",
+      "label": "far_service_net_region_uncertain",
+      "points": 59,
+      "valid_in_crop": 59,
+      "error_px": {
+        "n": 59,
+        "mean": 25.344356298421037,
+        "median": 19.007131640122395,
+        "p90": 50.12522865870211,
+        "p95": 64.21856045979018,
+        "max": 126.08948547886638
+      }
+    },
+    {
+      "scope": "postprocess_and_acceptance",
+      "label": "offscreen",
+      "points": 5,
+      "valid_in_crop": 0,
+      "error_px": {
+        "n": 0,
+        "mean": null,
+        "median": null,
+        "p90": null,
+        "p95": null,
+        "max": null
+      }
+    },
+    {
+      "scope": "postprocess_and_acceptance",
+      "label": "opaque_person",
+      "points": 8,
+      "valid_in_crop": 7,
+      "error_px": {
+        "n": 7,
+        "mean": 30.72825577736782,
+        "median": 40.15822181326944,
+        "p90": 46.61290404720259,
+        "p95": 48.93294141595438,
+        "max": 51.25297878470619
+      }
+    },
+    {
+      "scope": "postprocess_and_acceptance",
+      "label": "uncertain_near_occluder",
+      "points": 7,
+      "valid_in_crop": 7,
+      "error_px": {
+        "n": 7,
+        "mean": 34.49157808619293,
+        "median": 13.980558141715042,
+        "p90": 69.80533160819927,
+        "p95": 94.41313103544402,
+        "max": 119.02093046268892
+      }
+    },
+    {
+      "scope": "postprocess_and_acceptance",
+      "label": "unresolved_far_baseline",
+      "points": 77,
+      "valid_in_crop": 77,
+      "error_px": {
+        "n": 77,
+        "mean": 32.61291680226482,
+        "median": 15.651778855540659,
+        "p90": 57.810980650541865,
+        "p95": 68.1628500912581,
+        "max": 814.3450642719131
+      }
+    },
+    {
+      "scope": "postprocess_and_acceptance",
+      "label": "visible_paint",
+      "points": 124,
+      "valid_in_crop": 114,
+      "error_px": {
+        "n": 114,
+        "mean": 38.79325733056529,
+        "median": 11.12958154522643,
+        "p90": 81.45872154799892,
+        "p95": 121.24912797630054,
+        "max": 747.2959808106973
+      }
+    }
+  ]
+}

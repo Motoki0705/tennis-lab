@@ -1,0 +1,967 @@
+[
+  {
+    "key": "meiji_4cam/video_000/clip_068/cam0",
+    "camera": "cam0",
+    "condition": "legacy",
+    "region_index": 4,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 16.47114504489466,
+    "max_error_px": 29.69047106263314,
+    "oracle_translation_xy": [
+      18.935425205154345,
+      3.4320643185350264
+    ],
+    "after_oracle_translation_mean_px": 10.334645410729223,
+    "after_oracle_translation_max_px": 25.709097744674725,
+    "court_polygon_iou": 0.9362598723377645,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      2,
+      3,
+      5,
+      8,
+      10,
+      13
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_010/cam0",
+    "camera": "cam0",
+    "condition": "legacy",
+    "region_index": 4,
+    "pattern": "localized_supported_deformation",
+    "mean_error_px": 10.812959787638807,
+    "max_error_px": 31.636722817720017,
+    "oracle_translation_xy": [
+      6.446126183741455,
+      4.33212906077739
+    ],
+    "after_oracle_translation_mean_px": 6.055927036777338,
+    "after_oracle_translation_max_px": 25.47056728640642,
+    "court_polygon_iou": 0.9300106898609093,
+    "localized_indices": [
+      5,
+      2
+    ],
+    "outside_selected_world_hull": [
+      1,
+      2
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_040/cam0",
+    "camera": "cam0",
+    "condition": "legacy",
+    "region_index": 4,
+    "pattern": "localized_extrapolation",
+    "mean_error_px": 11.611522340271364,
+    "max_error_px": 44.308398743488326,
+    "oracle_translation_xy": [
+      -0.11300241212086348,
+      4.7745398599917905
+    ],
+    "after_oracle_translation_mean_px": 9.942693869844849,
+    "after_oracle_translation_max_px": 44.62747453636732,
+    "court_polygon_iou": 0.9190575803901888,
+    "localized_indices": [
+      5,
+      2
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      5,
+      6
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_043/cam0",
+    "camera": "cam0",
+    "condition": "legacy",
+    "region_index": 4,
+    "pattern": "coherent_offset",
+    "mean_error_px": 13.148059455144006,
+    "max_error_px": 21.088318012401214,
+    "oracle_translation_xy": [
+      6.883260774379494,
+      6.032712544624587
+    ],
+    "after_oracle_translation_mean_px": 9.68253877467003,
+    "after_oracle_translation_max_px": 19.38294579230014,
+    "court_polygon_iou": 0.9212635760340719,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      2
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam0",
+    "camera": "cam0",
+    "condition": "acceptance_only",
+    "region_index": 1,
+    "pattern": "coherent_offset",
+    "mean_error_px": 12.75183050149353,
+    "max_error_px": 19.09977016311339,
+    "oracle_translation_xy": [
+      11.504736471678768,
+      5.433192296399255
+    ],
+    "after_oracle_translation_mean_px": 6.549992732261168,
+    "after_oracle_translation_max_px": 11.429667178278677,
+    "court_polygon_iou": 0.9075655516539657,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      4,
+      6,
+      8,
+      9,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_027/cam0",
+    "camera": "cam0",
+    "condition": "acceptance_only",
+    "region_index": 0,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 21.117668670091284,
+    "max_error_px": 32.16215511385557,
+    "oracle_translation_xy": [
+      -10.2102358577269,
+      12.403698215264058
+    ],
+    "after_oracle_translation_mean_px": 15.176612969843978,
+    "after_oracle_translation_max_px": 27.438385779111496,
+    "court_polygon_iou": 0.8620892966566233,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      4,
+      8,
+      10,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_004/cam0",
+    "camera": "cam0",
+    "condition": "acceptance_only",
+    "region_index": 4,
+    "pattern": "localized_extrapolation",
+    "mean_error_px": 10.714420031472487,
+    "max_error_px": 25.5099600590196,
+    "oracle_translation_xy": [
+      -3.4814382767806364,
+      3.266443674272665
+    ],
+    "after_oracle_translation_mean_px": 9.895384421430796,
+    "after_oracle_translation_max_px": 29.24713516024501,
+    "court_polygon_iou": 0.9504372778198066,
+    "localized_indices": [
+      2
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6,
+      8,
+      9,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_010/cam0",
+    "camera": "cam0",
+    "condition": "acceptance_only",
+    "region_index": 4,
+    "pattern": "localized_supported_deformation",
+    "mean_error_px": 10.812959787638807,
+    "max_error_px": 31.636722817720017,
+    "oracle_translation_xy": [
+      6.446126183741455,
+      4.33212906077739
+    ],
+    "after_oracle_translation_mean_px": 6.055927036777338,
+    "after_oracle_translation_max_px": 25.47056728640642,
+    "court_polygon_iou": 0.9300106898609093,
+    "localized_indices": [
+      5,
+      2
+    ],
+    "outside_selected_world_hull": [
+      1,
+      2
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_068/cam0",
+    "camera": "cam0",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 7,
+    "pattern": "coherent_offset",
+    "mean_error_px": 12.539743494638914,
+    "max_error_px": 28.027714530118004,
+    "oracle_translation_xy": [
+      9.621326631015393,
+      4.124726610536612
+    ],
+    "after_oracle_translation_mean_px": 6.390573079947216,
+    "after_oracle_translation_max_px": 18.72772431518635,
+    "court_polygon_iou": 0.9139095536489403,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      2,
+      4,
+      6,
+      8,
+      10,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_055/cam0",
+    "camera": "cam0",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 0,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 20.58751558752669,
+    "max_error_px": 50.57410598442582,
+    "oracle_translation_xy": [
+      -11.111585194936083,
+      6.771050885493281
+    ],
+    "after_oracle_translation_mean_px": 14.879550004981652,
+    "after_oracle_translation_max_px": 41.118621674019025,
+    "court_polygon_iou": 0.9058944658655071,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      6,
+      9,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_004/cam0",
+    "camera": "cam0",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 4,
+    "pattern": "localized_extrapolation",
+    "mean_error_px": 10.714420044583003,
+    "max_error_px": 25.509960172034784,
+    "oracle_translation_xy": [
+      -3.481438389118921,
+      3.266443594668573
+    ],
+    "after_oracle_translation_mean_px": 9.895384458686456,
+    "after_oracle_translation_max_px": 29.24713536983157,
+    "court_polygon_iou": 0.9504372778198066,
+    "localized_indices": [
+      2
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6,
+      8,
+      9,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_005/cam0",
+    "camera": "cam0",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 7,
+    "pattern": "localized_supported_deformation",
+    "mean_error_px": 10.455431874268413,
+    "max_error_px": 38.83000367000866,
+    "oracle_translation_xy": [
+      1.9285812825714288,
+      1.931565090937852
+    ],
+    "after_oracle_translation_mean_px": 9.525892648601088,
+    "after_oracle_translation_max_px": 36.83412831160541,
+    "court_polygon_iou": 0.930658145629039,
+    "localized_indices": [
+      5,
+      2
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      4,
+      6,
+      8,
+      9,
+      10,
+      12,
+      13
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_062/cam1",
+    "camera": "cam1",
+    "condition": "legacy",
+    "region_index": 2,
+    "pattern": "coherent_offset",
+    "mean_error_px": 12.88209743098257,
+    "max_error_px": 17.029112868481633,
+    "oracle_translation_xy": [
+      10.465533768803823,
+      8.182183780637814
+    ],
+    "after_oracle_translation_mean_px": 5.860235130348792,
+    "after_oracle_translation_max_px": 13.606480599033963,
+    "court_polygon_iou": 0.9551505072404183,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      1,
+      2,
+      3,
+      7
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_041/cam1",
+    "camera": "cam1",
+    "condition": "legacy",
+    "region_index": 2,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 18.057566609465297,
+    "max_error_px": 24.34044022270135,
+    "oracle_translation_xy": [
+      12.23151383569325,
+      9.005528460571242
+    ],
+    "after_oracle_translation_mean_px": 10.475597269313097,
+    "after_oracle_translation_max_px": 38.373008703104354,
+    "court_polygon_iou": 0.9494891687761597,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      1,
+      2,
+      3,
+      6,
+      9
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_062/cam1",
+    "camera": "cam1",
+    "condition": "acceptance_only",
+    "region_index": 10,
+    "pattern": "coherent_offset",
+    "mean_error_px": 12.495065410965083,
+    "max_error_px": 18.557484404328427,
+    "oracle_translation_xy": [
+      11.61827349962897,
+      6.198446615587812
+    ],
+    "after_oracle_translation_mean_px": 6.450847413244809,
+    "after_oracle_translation_max_px": 18.827132588319678,
+    "court_polygon_iou": 0.9598330051391807,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_014/cam1",
+    "camera": "cam1",
+    "condition": "acceptance_only",
+    "region_index": 7,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 17.88001573893394,
+    "max_error_px": 27.991159802140974,
+    "oracle_translation_xy": [
+      10.197548116466123,
+      15.877525741456964
+    ],
+    "after_oracle_translation_mean_px": 8.893723861960675,
+    "after_oracle_translation_max_px": 27.447352835221384,
+    "court_polygon_iou": 0.9090850311669888,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6,
+      10
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_067/cam1",
+    "camera": "cam1",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 0,
+    "pattern": "coherent_offset",
+    "mean_error_px": 12.01549462169566,
+    "max_error_px": 15.676062871124595,
+    "oracle_translation_xy": [
+      10.968605248963627,
+      6.868620238740391
+    ],
+    "after_oracle_translation_mean_px": 5.055772989144975,
+    "after_oracle_translation_max_px": 14.872860629863283,
+    "court_polygon_iou": 0.952805377195173,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_010/cam1",
+    "camera": "cam1",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 0,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 18.130079984580817,
+    "max_error_px": 25.297903491342513,
+    "oracle_translation_xy": [
+      11.936951770504038,
+      14.218504680138608
+    ],
+    "after_oracle_translation_mean_px": 8.917854313554761,
+    "after_oracle_translation_max_px": 28.64239888458957,
+    "court_polygon_iou": 0.9311357476019841,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      6,
+      9,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_032/cam2",
+    "camera": "cam2",
+    "condition": "legacy",
+    "region_index": 0,
+    "pattern": "coherent_offset",
+    "mean_error_px": 10.775585171909585,
+    "max_error_px": 17.149382884414653,
+    "oracle_translation_xy": [
+      -3.970562246825523,
+      4.986526807082129
+    ],
+    "after_oracle_translation_mean_px": 9.768504671527198,
+    "after_oracle_translation_max_px": 22.62424281441287,
+    "court_polygon_iou": 0.9408077376894537,
+    "localized_indices": [
+      5,
+      2
+    ],
+    "outside_selected_world_hull": [
+      0,
+      2,
+      4,
+      5
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_042/cam2",
+    "camera": "cam2",
+    "condition": "legacy",
+    "region_index": 1,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 17.992780206479814,
+    "max_error_px": 33.181285327178465,
+    "oracle_translation_xy": [
+      -11.566434793660846,
+      7.930904290952924
+    ],
+    "after_oracle_translation_mean_px": 13.258256706765987,
+    "after_oracle_translation_max_px": 22.411390773964715,
+    "court_polygon_iou": 0.9492794341976304,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      10,
+      13
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_011/cam2",
+    "camera": "cam2",
+    "condition": "legacy",
+    "region_index": 7,
+    "pattern": "localized_extrapolation",
+    "mean_error_px": 13.369498499454536,
+    "max_error_px": 46.92245350162993,
+    "oracle_translation_xy": [
+      -2.744409987857466,
+      1.3759454994195153
+    ],
+    "after_oracle_translation_mean_px": 13.066354607316596,
+    "after_oracle_translation_max_px": 49.637008940169814,
+    "court_polygon_iou": 0.937889345688789,
+    "localized_indices": [
+      5,
+      2
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6,
+      9,
+      10
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_017/cam2",
+    "camera": "cam2",
+    "condition": "acceptance_only",
+    "region_index": 1,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 17.72630669205782,
+    "max_error_px": 36.534623866736766,
+    "oracle_translation_xy": [
+      -9.020506341266469,
+      5.547803504263101
+    ],
+    "after_oracle_translation_mean_px": 14.495274123215347,
+    "after_oracle_translation_max_px": 27.039345466592856,
+    "court_polygon_iou": 0.9559624381426195,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      4,
+      6
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_051/cam2",
+    "camera": "cam2",
+    "condition": "acceptance_only",
+    "region_index": 1,
+    "pattern": "localized_supported_deformation",
+    "mean_error_px": 13.381355833309781,
+    "max_error_px": 40.81983823998194,
+    "oracle_translation_xy": [
+      -1.1459083227279052,
+      3.783296468003016
+    ],
+    "after_oracle_translation_mean_px": 12.112739796340184,
+    "after_oracle_translation_max_px": 42.25482898426035,
+    "court_polygon_iou": 0.9301201367858181,
+    "localized_indices": [
+      5,
+      2
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      4,
+      6,
+      8,
+      10
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_060/cam2",
+    "camera": "cam2",
+    "condition": "acceptance_only",
+    "region_index": 7,
+    "pattern": "coherent_offset",
+    "mean_error_px": 12.434438020841023,
+    "max_error_px": 18.864206940033547,
+    "oracle_translation_xy": [
+      -6.515740665458225,
+      5.474880101874305
+    ],
+    "after_oracle_translation_mean_px": 9.50994489624038,
+    "after_oracle_translation_max_px": 22.955564018836625,
+    "court_polygon_iou": 0.9495440217429084,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      2
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_065/cam2",
+    "camera": "cam2",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 7,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 18.38418097359632,
+    "max_error_px": 38.20035106798443,
+    "oracle_translation_xy": [
+      -12.213554470499275,
+      6.002683105104637
+    ],
+    "after_oracle_translation_mean_px": 14.929443537400312,
+    "after_oracle_translation_max_px": 25.613017366440953,
+    "court_polygon_iou": 0.9585463573370763,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      4,
+      6,
+      9,
+      11,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_051/cam2",
+    "camera": "cam2",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 1,
+    "pattern": "localized_supported_deformation",
+    "mean_error_px": 13.38135585113165,
+    "max_error_px": 40.81983835928988,
+    "oracle_translation_xy": [
+      -1.1459083059411341,
+      3.7832964557635194
+    ],
+    "after_oracle_translation_mean_px": 12.112739821619872,
+    "after_oracle_translation_max_px": 42.25482908486918,
+    "court_polygon_iou": 0.9301201367858181,
+    "localized_indices": [
+      5,
+      2
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      4,
+      6,
+      8,
+      10
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_060/cam2",
+    "camera": "cam2",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 7,
+    "pattern": "coherent_offset",
+    "mean_error_px": 12.434438020841023,
+    "max_error_px": 18.864206940033547,
+    "oracle_translation_xy": [
+      -6.515740665458225,
+      5.474880101874305
+    ],
+    "after_oracle_translation_mean_px": 9.50994489624038,
+    "after_oracle_translation_max_px": 22.955564018836625,
+    "court_polygon_iou": 0.9495440217429084,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      2
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam3",
+    "camera": "cam3",
+    "condition": "legacy",
+    "region_index": 9,
+    "pattern": "localized_extrapolation",
+    "mean_error_px": 10.241905796365797,
+    "max_error_px": 37.57023809722658,
+    "oracle_translation_xy": [
+      -4.81498871865233,
+      -1.1099492248248453
+    ],
+    "after_oracle_translation_mean_px": 7.724104995810218,
+    "after_oracle_translation_max_px": 32.73885001190365,
+    "court_polygon_iou": 0.9376579267637238,
+    "localized_indices": [
+      7
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      11
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_046/cam3",
+    "camera": "cam3",
+    "condition": "legacy",
+    "region_index": 9,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 14.014513517690448,
+    "max_error_px": 42.52877270003475,
+    "oracle_translation_xy": [
+      8.11566161299936,
+      5.831126739545823
+    ],
+    "after_oracle_translation_mean_px": 11.091217497988689,
+    "after_oracle_translation_max_px": 50.07898469720195,
+    "court_polygon_iou": 0.8860489924279308,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      2,
+      3,
+      5,
+      7,
+      8,
+      9,
+      10,
+      11,
+      13
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_021/cam3",
+    "camera": "cam3",
+    "condition": "acceptance_only",
+    "region_index": 0,
+    "pattern": "localized_supported_deformation",
+    "mean_error_px": 12.516546724194777,
+    "max_error_px": 60.3756691445537,
+    "oracle_translation_xy": [
+      -2.2408193949524957,
+      0.6446091660425282
+    ],
+    "after_oracle_translation_mean_px": 12.683870718838445,
+    "after_oracle_translation_max_px": 58.10354337999794,
+    "court_polygon_iou": 0.9280844859189903,
+    "localized_indices": [
+      7
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      3,
+      6,
+      9,
+      11,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_014/cam3",
+    "camera": "cam3",
+    "condition": "acceptance_only",
+    "region_index": 9,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 16.857901015360326,
+    "max_error_px": 38.52162545240917,
+    "oracle_translation_xy": [
+      -15.193698436577165,
+      0.5691134601912609
+    ],
+    "after_oracle_translation_mean_px": 13.18788520822804,
+    "after_oracle_translation_max_px": 23.903304173735638,
+    "court_polygon_iou": 0.9607916586830814,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6,
+      8,
+      10
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_031/cam3",
+    "camera": "cam3",
+    "condition": "acceptance_only",
+    "region_index": 9,
+    "pattern": "coherent_offset",
+    "mean_error_px": 10.431031464702178,
+    "max_error_px": 23.19509575246877,
+    "oracle_translation_xy": [
+      0.6921598526276966,
+      4.326607367900124
+    ],
+    "after_oracle_translation_mean_px": 8.506192785403204,
+    "after_oracle_translation_max_px": 23.26708165338186,
+    "court_polygon_iou": 0.8988776338816605,
+    "localized_indices": [
+      7
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      5
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_035/cam3",
+    "camera": "cam3",
+    "condition": "acceptance_only",
+    "region_index": 9,
+    "pattern": "localized_extrapolation",
+    "mean_error_px": 11.423502074125587,
+    "max_error_px": 38.53096768948524,
+    "oracle_translation_xy": [
+      6.843618585597369,
+      3.9298619002088913
+    ],
+    "after_oracle_translation_mean_px": 9.31222143627876,
+    "after_oracle_translation_max_px": 45.11436217974146,
+    "court_polygon_iou": 0.9029318466865388,
+    "localized_indices": [
+      7
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      7
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_021/cam3",
+    "camera": "cam3",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 0,
+    "pattern": "localized_supported_deformation",
+    "mean_error_px": 12.516546724194777,
+    "max_error_px": 60.3756691445537,
+    "oracle_translation_xy": [
+      -2.2408193949524957,
+      0.6446091660425282
+    ],
+    "after_oracle_translation_mean_px": 12.683870718838445,
+    "after_oracle_translation_max_px": 58.10354337999794,
+    "court_polygon_iou": 0.9280844859189903,
+    "localized_indices": [
+      7
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      3,
+      6,
+      9,
+      11,
+      12
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_014/cam3",
+    "camera": "cam3",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 9,
+    "pattern": "distributed_deformation",
+    "mean_error_px": 16.857901015360326,
+    "max_error_px": 38.52162545240917,
+    "oracle_translation_xy": [
+      -15.193698436577165,
+      0.5691134601912609
+    ],
+    "after_oracle_translation_mean_px": 13.18788520822804,
+    "after_oracle_translation_max_px": 23.903304173735638,
+    "court_polygon_iou": 0.9607916586830814,
+    "localized_indices": [],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6,
+      8,
+      10
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_031/cam3",
+    "camera": "cam3",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 9,
+    "pattern": "coherent_offset",
+    "mean_error_px": 10.431031419842553,
+    "max_error_px": 23.195095756031755,
+    "oracle_translation_xy": [
+      0.6921597670610709,
+      4.326607321640665
+    ],
+    "after_oracle_translation_mean_px": 8.506192746705599,
+    "after_oracle_translation_max_px": 23.26708157146164,
+    "court_polygon_iou": 0.8988776338816605,
+    "localized_indices": [
+      7
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      5
+    ]
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_035/cam3",
+    "camera": "cam3",
+    "condition": "postprocess_and_acceptance",
+    "region_index": 9,
+    "pattern": "localized_extrapolation",
+    "mean_error_px": 11.423502074125587,
+    "max_error_px": 38.53096768948524,
+    "oracle_translation_xy": [
+      6.843618585597369,
+      3.9298619002088913
+    ],
+    "after_oracle_translation_mean_px": 9.31222143627876,
+    "after_oracle_translation_max_px": 45.11436217974146,
+    "court_polygon_iou": 0.9029318466865388,
+    "localized_indices": [
+      7
+    ],
+    "outside_selected_world_hull": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      7
+    ]
+  }
+]

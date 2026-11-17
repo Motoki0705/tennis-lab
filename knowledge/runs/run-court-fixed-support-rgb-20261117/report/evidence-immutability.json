@@ -1,0 +1,121 @@
+{
+  "cases": [
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam0",
+      "before": {
+        "distance": "8e8abde48b97b8b145fc1367c03f0c8af2424134f1305403b061ac84989d8391",
+        "points": "72378118fe1648319d8d92910e0c55ba0cd4499f38a7acd7b2d77d822f35c9dc",
+        "weights": "8c50b60847d45d2e96ab11ea00592750d9059642a1460104074ac2eb67c82c67",
+        "tangents": "3f19e2b3703de0e32321dc22ccc0d8e311736cb4590db78e0465e40ff5b4534a",
+        "coherence": "1d5c420838655e4b0f8b0bb4e9178aed0cb090e72e7595ab2440ba93bd014329",
+        "tree_points": "7b91dfc53b8a65b3ba5a33a345ade01054c7642a83817c99a64bf0adfc9ceb33"
+      },
+      "after": {
+        "legacy": {
+          "distance": "8e8abde48b97b8b145fc1367c03f0c8af2424134f1305403b061ac84989d8391",
+          "points": "72378118fe1648319d8d92910e0c55ba0cd4499f38a7acd7b2d77d822f35c9dc",
+          "weights": "8c50b60847d45d2e96ab11ea00592750d9059642a1460104074ac2eb67c82c67",
+          "tangents": "3f19e2b3703de0e32321dc22ccc0d8e311736cb4590db78e0465e40ff5b4534a",
+          "coherence": "1d5c420838655e4b0f8b0bb4e9178aed0cb090e72e7595ab2440ba93bd014329",
+          "tree_points": "7b91dfc53b8a65b3ba5a33a345ade01054c7642a83817c99a64bf0adfc9ceb33"
+        },
+        "fixed_support": {
+          "distance": "8e8abde48b97b8b145fc1367c03f0c8af2424134f1305403b061ac84989d8391",
+          "points": "72378118fe1648319d8d92910e0c55ba0cd4499f38a7acd7b2d77d822f35c9dc",
+          "weights": "8c50b60847d45d2e96ab11ea00592750d9059642a1460104074ac2eb67c82c67",
+          "tangents": "3f19e2b3703de0e32321dc22ccc0d8e311736cb4590db78e0465e40ff5b4534a",
+          "coherence": "1d5c420838655e4b0f8b0bb4e9178aed0cb090e72e7595ab2440ba93bd014329",
+          "tree_points": "7b91dfc53b8a65b3ba5a33a345ade01054c7642a83817c99a64bf0adfc9ceb33"
+        }
+      }
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam1",
+      "before": {
+        "distance": "86d74a0dca7ea31b09608601ec819cdd79e0a8e712c67468cfe09e86686701d0",
+        "points": "73c55b86e02d4222476216680f99ba8fd92204bc6e0708004daeee6956daef36",
+        "weights": "6671348f53fdcde93fae96677abc1dfd6adb04271ed69cb75dee2d091e8b2823",
+        "tangents": "c3fb8933fc6f360fae6a369d3ca4d9da36b65d3cb61b3de40839dd4e09d15c1c",
+        "coherence": "360e4d7fc5504fe998c08a41a615e7dd2b2a66d3c344ca1ace297f4c8f69f02b",
+        "tree_points": "9d86c0aeb563bf67197b7ca5c9827f6d0cc821907f0118d4b3549fd9e77a6e75"
+      },
+      "after": {
+        "legacy": {
+          "distance": "86d74a0dca7ea31b09608601ec819cdd79e0a8e712c67468cfe09e86686701d0",
+          "points": "73c55b86e02d4222476216680f99ba8fd92204bc6e0708004daeee6956daef36",
+          "weights": "6671348f53fdcde93fae96677abc1dfd6adb04271ed69cb75dee2d091e8b2823",
+          "tangents": "c3fb8933fc6f360fae6a369d3ca4d9da36b65d3cb61b3de40839dd4e09d15c1c",
+          "coherence": "360e4d7fc5504fe998c08a41a615e7dd2b2a66d3c344ca1ace297f4c8f69f02b",
+          "tree_points": "9d86c0aeb563bf67197b7ca5c9827f6d0cc821907f0118d4b3549fd9e77a6e75"
+        },
+        "fixed_support": {
+          "distance": "86d74a0dca7ea31b09608601ec819cdd79e0a8e712c67468cfe09e86686701d0",
+          "points": "73c55b86e02d4222476216680f99ba8fd92204bc6e0708004daeee6956daef36",
+          "weights": "6671348f53fdcde93fae96677abc1dfd6adb04271ed69cb75dee2d091e8b2823",
+          "tangents": "c3fb8933fc6f360fae6a369d3ca4d9da36b65d3cb61b3de40839dd4e09d15c1c",
+          "coherence": "360e4d7fc5504fe998c08a41a615e7dd2b2a66d3c344ca1ace297f4c8f69f02b",
+          "tree_points": "9d86c0aeb563bf67197b7ca5c9827f6d0cc821907f0118d4b3549fd9e77a6e75"
+        }
+      }
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam2",
+      "before": {
+        "distance": "6f0a07d36dcecb233f23e48be167d82efdb584d6505119b1d617091159c3a427",
+        "points": "8e77055484748b1439f3bb55a8c084bef4b310fa4e28dc083e07549ff296032d",
+        "weights": "ac8598c9707cfffb3565ec6eddf3b8db799e155fbefb3dc1c73131203afbe47c",
+        "tangents": "86f52a78502ce934e5183f850fd678fb2141f803e84628651bfdb5a114429a38",
+        "coherence": "5bac96ad02dabae3042a1ff36a497a62bd5effa30224f5c4524e34e1a589258a",
+        "tree_points": "e27b00fe392c0e4f866f049bf8d107882d54b45a3f38c86c0bfd59b5acf0b086"
+      },
+      "after": {
+        "legacy": {
+          "distance": "6f0a07d36dcecb233f23e48be167d82efdb584d6505119b1d617091159c3a427",
+          "points": "8e77055484748b1439f3bb55a8c084bef4b310fa4e28dc083e07549ff296032d",
+          "weights": "ac8598c9707cfffb3565ec6eddf3b8db799e155fbefb3dc1c73131203afbe47c",
+          "tangents": "86f52a78502ce934e5183f850fd678fb2141f803e84628651bfdb5a114429a38",
+          "coherence": "5bac96ad02dabae3042a1ff36a497a62bd5effa30224f5c4524e34e1a589258a",
+          "tree_points": "e27b00fe392c0e4f866f049bf8d107882d54b45a3f38c86c0bfd59b5acf0b086"
+        },
+        "fixed_support": {
+          "distance": "6f0a07d36dcecb233f23e48be167d82efdb584d6505119b1d617091159c3a427",
+          "points": "8e77055484748b1439f3bb55a8c084bef4b310fa4e28dc083e07549ff296032d",
+          "weights": "ac8598c9707cfffb3565ec6eddf3b8db799e155fbefb3dc1c73131203afbe47c",
+          "tangents": "86f52a78502ce934e5183f850fd678fb2141f803e84628651bfdb5a114429a38",
+          "coherence": "5bac96ad02dabae3042a1ff36a497a62bd5effa30224f5c4524e34e1a589258a",
+          "tree_points": "e27b00fe392c0e4f866f049bf8d107882d54b45a3f38c86c0bfd59b5acf0b086"
+        }
+      }
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam3",
+      "before": {
+        "distance": "42c0a694219f81f181b0042362c5a4e482f4b9bf1a366c24dba095dbe8162d94",
+        "points": "721ea1aef1758f835f575de9a407b69742ee7c0f3a15bc9048dba032d43e0815",
+        "weights": "3e338c984e4a84d6dc031d1b44c73ac122948e5db331aaa9bca4e59a530aed28",
+        "tangents": "a80778fc3192ed49755237ed5a6aedef04ce65e331336f069632ee683247bc1d",
+        "coherence": "e52cc9e086b5765f5c2f461e56594f4326f087fa2dd04d2ebd68393c1dd0f661",
+        "tree_points": "9773781a0365d05c2f018f8bdce2424a65edc7ecb07ae79d0d013282df34897f"
+      },
+      "after": {
+        "legacy": {
+          "distance": "42c0a694219f81f181b0042362c5a4e482f4b9bf1a366c24dba095dbe8162d94",
+          "points": "721ea1aef1758f835f575de9a407b69742ee7c0f3a15bc9048dba032d43e0815",
+          "weights": "3e338c984e4a84d6dc031d1b44c73ac122948e5db331aaa9bca4e59a530aed28",
+          "tangents": "a80778fc3192ed49755237ed5a6aedef04ce65e331336f069632ee683247bc1d",
+          "coherence": "e52cc9e086b5765f5c2f461e56594f4326f087fa2dd04d2ebd68393c1dd0f661",
+          "tree_points": "9773781a0365d05c2f018f8bdce2424a65edc7ecb07ae79d0d013282df34897f"
+        },
+        "fixed_support": {
+          "distance": "42c0a694219f81f181b0042362c5a4e482f4b9bf1a366c24dba095dbe8162d94",
+          "points": "721ea1aef1758f835f575de9a407b69742ee7c0f3a15bc9048dba032d43e0815",
+          "weights": "3e338c984e4a84d6dc031d1b44c73ac122948e5db331aaa9bca4e59a530aed28",
+          "tangents": "a80778fc3192ed49755237ed5a6aedef04ce65e331336f069632ee683247bc1d",
+          "coherence": "e52cc9e086b5765f5c2f461e56594f4326f087fa2dd04d2ebd68393c1dd0f661",
+          "tree_points": "9773781a0365d05c2f018f8bdce2424a65edc7ecb07ae79d0d013282df34897f"
+        }
+      }
+    }
+  ],
+  "all_unchanged": true
+}
