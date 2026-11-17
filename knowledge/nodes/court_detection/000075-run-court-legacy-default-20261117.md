@@ -31,9 +31,9 @@ metrics:
   mismatch_images: 0
   mismatch_regions: 0
   cpu_wall_seconds: 4353.849037672975
-  pytest_cpu_passed: 211
+  pytest_cpu_passed: 245
   pytest_cuda_skipped: 1
-  pytest_seconds: 37.17
+  pytest_seconds: 49.3
   pytest_max_case_seconds: 4.8
   added_test_cases: 2
   mutation_checks: 2
@@ -62,6 +62,11 @@ metrics:
   tennis_court_detector_val_any_h: 2211
   tennis_court_detector_val_all_exact: 2211
   tennis_court_detector_val_images: 2211
+  pytest_related_passed: 211
+  pytest_config_passed: 64
+  pytest_overlap_cases: 30
+  pytest_related_seconds: 37.17
+  pytest_config_seconds: 12.13
 artifacts:
   run_dir: knowledge/runs/run-court-legacy-default-20261117
   output_dir: .worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-legacy-default-20261117
@@ -89,7 +94,8 @@ tags:
 - `refinement_method=model`: 既定では品質数値計算もRGB fitも実行しない。
   探索無効時は元のfull-frame hybrid結果と画像内validityを渡す。
   `court_legacy_geometry_v1`はgeometry成立だけで、領域採否は候補診断に分離する。
-- dataclassとpipeline YAMLの値を一致させる。方式・全設定・実装fingerprintはcache identityに含まれる。
+- 支持点・採否・精密化の方式と数値既定はdataclass/pipeline YAMLで一致する。
+  領域探索の`enabled`は汎用dataclass=false、pipeline=trueという旧仕様を保つ。方式・全設定・実装fingerprintはcache identityに含まれる。
 
 |保持する部品|用途・明示方法|検証|
 |---|---|---|
@@ -130,7 +136,8 @@ run 73保存LINEでの旧replay579には数値環境差がある。その履歴�
 既定で新品質/RGBが呼ばれたら失敗する。full-frameの部分観測validityも比較する。
 既存の新品質/RGB testは明示profileへ変更し、診断・不合格伝播の契約を維持した。
 config testは方式ごとのcache差、削除方式とlegacy+RGBの拒否を確認する。
-今回のtest増分はregion 1ケース＋既知H legacy 1ケース。既存nodeの削除なし。
+今回のtest増分はregion 1ケース＋既知H legacy 1ケース。数値検証nodeの削除なし。
+旧設定キーの拒否2ケースはrevision 4で契約が変わったため、同数の受理・値域検査ケースに置き換えた。
 
 受入目標を移したので、参照とRGB抽出器の共有による循環性、既存sceneのGT不足、
 syntheticと学習splitの重複未確認、ネット上端やbaseline IDの誤対応は解消を主張しない。
@@ -151,7 +158,7 @@ pre-commitのruff/mypyは実装commitで成功。詳細はrun bundleのlogsとmu
 **revision 4の受入を満たした。** 全3545画像/8530領域でH・投影・最終支持mask・残差、
 solver状態と採否・選択領域が完全一致した。許容差を使う比較ではなく、配列のdtype/shape/bytesを照合した。
 CPU 10 processで4353.85秒（72.56分）。途中で入力・数値ソースを変更していない。
-YAMLとdataclass既定の一致、およびrun 73で保存した旧採否・選択領域との一致も全件確認した。
+YAMLとdataclassの方式・数値既定の一致（`enabled`を除く）、およびrun 73で保存した旧採否・選択領域との一致も全件確認した。
 
 |入力|画像|領域|H成立（旧=既定）|採用（旧=既定）|全比較完全一致|
 |---|---:|---:|---:|---:|---:|
@@ -172,3 +179,14 @@ meiji3の採用は165件へ戻った。これは既定の互換性の達成で�
 [全件H/診断のinventory](../../runs/run-court-legacy-default-20261117/artifact-inventories.json)と
 [検出力確認](../../runs/run-court-legacy-default-20261117/mutations.json)を保持する。
 CIの最終HEAD結果はPR #2200へ記録する。merge・issue close・#2191実装は親側の後続作業。
+
+初回push `2ea001b59` のCIでは、`test_configuration.py`の
+`test_removed_court_acceptance_keys_fail_explicitly` 2ケースが失敗した。
+復元したキーを削除済みと期待する古い契約が残っていたためで、このworkerのテスト更新漏れだった。
+ローカルでも2 failedを再現し、`test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges`へ
+置換して、設定キーの受理・cache反映・値域外拒否を確認した。
+両設定test fileは64 passed、12.13秒。数値実装と全件replay結果は変更していない。
+[CI失敗と修正の記録](../../runs/run-court-legacy-default-20261117/ci-first-attempt.json)を保持する。
+
+ローカル成功nodeの和集合は245ケース（関連211＋設定64−重複30）、CUDA skipは1ケース。
+上記2 suiteの実行時間の和は49.30秒で、最長case 4.80秒。

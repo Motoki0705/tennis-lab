@@ -200,10 +200,21 @@ def test_court_quality_settings_change_cache_identity(tmp_path: Path, setting: s
     assert getattr(getattr(after.court_kp, group), field) == value
 
 
-@pytest.mark.parametrize("removed", ["min_inliers", "inlier_distance_ratio"])
-def test_removed_court_acceptance_keys_fail_explicitly(tmp_path: Path, removed: str) -> None:
-    with pytest.raises(UnknownConfigurationKeyError, match=removed):
-        PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, f"+court_kp.region_search.{removed}=8"), bind_inputs=False)
+@pytest.mark.parametrize("key,value,invalid", [("min_inliers", 9, 3), ("inlier_distance_ratio", 0.01, 1.0)])
+def test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges(
+    tmp_path: Path, key: str, value: float, invalid: float,
+) -> None:
+    before = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path), bind_inputs=False)
+    after = PipelineRuntimeConfig.from_config(
+        _pipeline_config(tmp_path, f"court_kp.region_search.{key}={value}"), bind_inputs=False,
+    )
+    assert after.court_kp.region_search.acceptance_method == "legacy"
+    assert getattr(after.court_kp.region_search, key) == value
+    assert document_digest(before.processing_settings["court_kp"]) != document_digest(after.processing_settings["court_kp"])
+    with pytest.raises(ValueError, match=key):
+        PipelineRuntimeConfig.from_config(
+            _pipeline_config(tmp_path, f"court_kp.region_search.{key}={invalid}"), bind_inputs=False,
+        )
 
 
 @pytest.mark.parametrize("override", ["+ball_confidence=legacy.yaml", "+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5", "+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt"])

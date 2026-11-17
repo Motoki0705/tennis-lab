@@ -11,7 +11,8 @@ shape/dtype/bytes一致、status・candidate/refined件数・代替score gapは�
 public region APIへ両結果を渡し、全候補の採否と旧診断フィールド、選択regionも一致を確認する。
 先頭の全画面領域は領域探索なしの出力も比較する。空の採用Hは双方Noneで一致させ、
 失敗時のdiagnostic Hを採用結果として数えない。Court val/syntheticは保存済みfull-frame領域だけ、
-sceneは保存された全proposalを比較する。YAMLとdataclassの既定の一致も実行時に検査する。
+sceneは保存された全proposalを比較する。YAMLとdataclassの方式・数値既定の一致も実行時に検査する。領域探索の`enabled`は
+汎用dataclass=false、pipeline=trueという旧仕様なので、この一致検査から除く。
 
 入力はrun 73のmanifest・RGB・保存LINE配列と、run 70のraw。各LINE配列が存在しなければ停止し、
 再抽出・ニューラル推論はしない。native KP heatmap / LINE logitsは保存されておらず、
