@@ -42,6 +42,19 @@ execution:
   body_placement: execute
   scene_assembly: execute
 court_kp:
+  mode: clip
+  video_shared:
+    unobservable_policy: warn
+    action: null
+    directory: null
+    dataset_id: null
+    video_id: null
+    request: null
+    request_sha256: null
+    artifact_digest: null
+    drift_directory: null
+    drift_digest: null
+    rebuild: false
   checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt
   subpixel_refine: true
   # Only frame 0 of each fixed camera is inferred. The region search picks the court

@@ -1,0 +1,22 @@
+{
+  "initial": {
+    "rows": 276,
+    "cameras": 4,
+    "clips": 69,
+    "width": 1920,
+    "height": 1080
+  },
+  "warning": {
+    "camera": "cam1",
+    "clip": "video_000/clip_003",
+    "status": "warning",
+    "source": "file:///home/kamimura/projects/tennis-lab/.worktree-outputs/court-video-shared/tennis_scene/evaluate/court-video-shared-acceptance-20261117/review/cam1/clip_003/heldout/source.jpg"
+  },
+  "final": {
+    "status": "failed",
+    "crops": 4,
+    "source": "file:///home/kamimura/projects/tennis-lab/.worktree-outputs/court-video-shared/tennis_scene/evaluate/court-video-shared-acceptance-20261117/review/cam3/clip_068/heldout/source.jpg"
+  },
+  "result": "passed",
+  "gpu_disabled": true
+}

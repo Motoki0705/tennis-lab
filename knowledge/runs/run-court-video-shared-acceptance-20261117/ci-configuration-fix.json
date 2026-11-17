@@ -1,0 +1,9 @@
+{
+  "head": "2debeca60b5173bf3feedfb93febad13a4a8e527",
+  "ci_run_id": 44031334137,
+  "ci_url": "https://github.com/Motoki0705/tennis-lab/actions/runs/44031334137",
+  "conclusion": "success",
+  "knowledge_run_id": 44031333982,
+  "knowledge_conclusion": "success",
+  "later_cpu_process_change_requires_final_head_ci": true
+}

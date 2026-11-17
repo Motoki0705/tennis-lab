@@ -1,0 +1,5 @@
+[WARNING] Unstaged files detected.
+[INFO] Stashing unstaged files to /home/kamimura/.cache/pre-commit/patch1794896725-423857.
+ruff (fix)...............................................................Passed
+mypy.....................................................................Passed
+[INFO] Restored changes from /home/kamimura/.cache/pre-commit/patch1794896725-423857.

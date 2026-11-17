@@ -1,0 +1,13 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-video-shared
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 2 items
+
+tests/unit/tennis_scene/pipeline/video_court/test_policy.py ..           [100%]
+
+============================= slowest 2 durations ==============================
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+============================== 2 passed in 3.50s ===============================
