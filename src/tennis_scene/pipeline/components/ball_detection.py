@@ -166,7 +166,7 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
         settings = {f.name: getattr(self.config, f.name) for f in fields(self.config)
                     if f.name not in {"checkpoint", "device", "resolver"}}
         return {} if not self.enabled else {"ball": ModelSpec("ball", {"checkpoint": self.config.checkpoint},
-            "checkpoint_model_config", self.config.device, {"fp32": "float32", "bf16": "bfloat16"}[self.config.precision], settings, self._load_predictor)}
+            self.config.model_type, self.config.device, "float32" if self.config.precision == "fp32" else "bfloat16", settings, self._load_predictor)}
 
     def _load_predictor(self) -> BallDetectionPredictor | X3DDPTPredictor:
         LOGGER.info(f"Loading ball detection model from {self.config.checkpoint}")
