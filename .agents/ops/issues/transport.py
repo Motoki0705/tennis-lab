@@ -13,8 +13,9 @@ import os
 import re
 import shutil
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextvars import ContextVar
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, cast
 from urllib.parse import urlsplit
@@ -28,6 +29,25 @@ _logins: dict[tuple[str, str], str] = {}
 _received_status: ContextVar[int | None] = ContextVar(
     "github_http_status", default=None
 )
+
+
+@dataclass(frozen=True)
+class HTTPResponse:
+    """Wire status and selected lowercase headers; error means incomplete I/O."""
+
+    status: int | None
+    headers: dict[str, str]
+    body: str
+    error: str = ""
+
+    def http_error(self) -> str:
+        try:
+            data = json.loads(self.body)
+            message = data.get("message", "") if isinstance(data, dict) else ""
+        except ValueError:
+            message = ""
+        message = re.sub(r"[\x00-\x1f\x7f]", " ", str(message))
+        return f"GitHub: {message} (HTTP {self.status})"
 
 
 class _Response(http.client.HTTPResponse):
@@ -91,6 +111,13 @@ class _BearerAuth(requests.auth.AuthBase):
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         request.headers["Authorization"] = f"Bearer {self.token}"
+        return request
+
+
+class _NoAuth(requests.auth.AuthBase):
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        # An explicit auth object prevents requests from consulting .netrc.
+        request.headers.pop("Authorization", None)
         return request
 
 
@@ -188,6 +215,13 @@ class HTTPClient:
             self._session.close()
             self._session = None
 
+    def cache_key(self, endpoint: str) -> tuple[str, str]:
+        """Scope a representation to its exact URL and selected credential."""
+        url = self._endpoint_url(endpoint)
+        self.prepare_authentication()
+        assert self._token is not None
+        return url, hashlib.sha256(self._token.encode()).hexdigest()
+
     def request(
         self,
         method: str,
@@ -196,6 +230,18 @@ class HTTPClient:
         *,
         include: bool = False,
     ) -> subprocess.CompletedProcess[str]:
+        """Legacy boundary: status line only, unchanged success/error contract."""
+        response = self.request_response(method, endpoint, payload)
+        status = response.status
+        headers = f"HTTP/1.1 {status}\n\n" if include and status is not None else ""
+        success = status is not None and 200 <= status < 300
+        error = response.error or ("" if success else response.http_error())
+        return subprocess.CompletedProcess(
+            [], int(bool(error) or not success), headers + response.body, error
+        )
+
+    @staticmethod
+    def _endpoint_url(endpoint: str) -> str:
         parsed = urlsplit(endpoint)
         if (
             parsed.scheme
@@ -207,6 +253,18 @@ class HTTPClient:
             or any(p in {".", ".."} for p in parsed.path.split("/"))
         ):
             raise ValueError("GitHub API endpoint must be a relative API path")
+        return _API_URL + endpoint
+
+    def request_response(
+        self,
+        method: str,
+        endpoint: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        headers: Mapping[str, str] | None = None,
+    ) -> HTTPResponse:
+        """Additive API retaining wire metadata without following redirects."""
+        url = self._endpoint_url(endpoint)
         if self._session is None:
             self.prepare_authentication()
             assert self._token is not None
@@ -223,14 +281,57 @@ class HTTPClient:
                     "User-Agent": "tennis-lab-agents",
                 }
             )
+        return self._exchange(self._session, method, url, payload, headers=headers)
+
+    def download_log(self, url: str) -> HTTPResponse:
+        """Fetch one signed HTTPS URL with no API auth, cookies or .netrc."""
+        try:
+            parsed = urlsplit(url)
+            valid = (
+                parsed.scheme == "https"
+                and bool(parsed.hostname)
+                and parsed.username is None
+                and parsed.password is None
+                and parsed.port in {None, 443}
+                and not parsed.fragment
+                and "\\" not in url
+                and not any(ord(c) < 33 or ord(c) == 127 for c in url)
+            )
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValueError("GitHub log redirect must be an absolute HTTPS URL")
+        # Never reuse the API session: even a same-host URL receives no token.
+        with requests.Session() as session:
+            session.auth = _NoAuth()
+            session.mount("https://", _Adapter(max_retries=0))
+            return self._exchange(
+                session, "GET", url, headers={"Accept": "text/plain"}, plain_text=True
+            )
+
+    def _exchange(
+        self,
+        session: requests.Session,
+        method: str,
+        url: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        headers: Mapping[str, str] | None = None,
+        plain_text: bool = False,
+    ) -> HTTPResponse:
+        from parent import metrics
+
+        if method == "GET":
+            metrics.count("github_get_requests")
         # requests' default adapter has zero retries. Redirects must not move
         # credentials or change the repository/API host behind the caller.
         observation = _received_status.set(None)
         try:
-            response = self._session.request(
+            response = session.request(
                 method,
-                _API_URL + endpoint,
+                url,
                 json=payload,
+                headers=headers,
                 timeout=_TIMEOUT,
                 stream=True,
                 allow_redirects=False,
@@ -238,10 +339,12 @@ class HTTPClient:
         except requests.RequestException as exc:
             status = _received_status.get()
             if status is not None:
-                return subprocess.CompletedProcess(
-                    [],
-                    1,
-                    f"HTTP/1.1 {status}\n\n" if include else "",
+                if method == "GET":
+                    metrics.count(f"github_get_{status}")
+                return HTTPResponse(
+                    status,
+                    {},
+                    "",
                     f"GitHub response failed after HTTP {status} ({type(exc).__name__})",
                 )
             if isinstance(exc, requests.Timeout):
@@ -249,36 +352,33 @@ class HTTPClient:
                     "GitHub API request", _TIMEOUT
                 ) from None
             # Exception messages/requests can contain credentials and URLs.
-            return subprocess.CompletedProcess(
-                [], 1, "", f"GitHub connection failed ({type(exc).__name__})"
+            return HTTPResponse(
+                None, {}, "", f"GitHub connection failed ({type(exc).__name__})"
             )
         finally:
             _received_status.reset(observation)
         status = response.status_code
-        headers = f"HTTP/1.1 {status}\n\n" if include else ""
+        if method == "GET":
+            metrics.count(f"github_get_{status}")
+        response_headers = {
+            name.lower(): self.redact(value)
+            for name, value in response.headers.items()
+            if name.lower().startswith("x-ratelimit-")
+            or name.lower()
+            in {"etag", "retry-after", "x-poll-interval", "location", "link"}
+        }
         try:
             # Receiving headers ends transport retries, including status=200
             # followed by a read timeout, truncated body or connection reset.
-            body = self.redact_json(response.content.decode("utf-8"))
+            text = response.content.decode("utf-8")
+            body = self.redact(text) if plain_text else self.redact_json(text)
         except (requests.RequestException, UnicodeError) as exc:
-            return subprocess.CompletedProcess(
-                [],
-                1,
-                headers,
+            return HTTPResponse(
+                status,
+                response_headers,
+                "",
                 f"GitHub response body failed after HTTP {status} ({type(exc).__name__})",
             )
         finally:
             response.close()
-        error = ""
-        if not 200 <= status < 300:
-            try:
-                data = json.loads(body)
-                message = data.get("message", "") if isinstance(data, dict) else ""
-            except ValueError:
-                message = ""
-            # Keep control characters out of human-readable diagnostics.
-            message = re.sub(r"[\x00-\x1f\x7f]", " ", str(message))
-            error = f"GitHub: {message} (HTTP {status})"
-        return subprocess.CompletedProcess(
-            [], int(not 200 <= status < 300), headers + body, error
-        )
+        return HTTPResponse(status, response_headers, body)

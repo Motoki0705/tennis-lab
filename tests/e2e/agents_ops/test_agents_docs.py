@@ -178,9 +178,6 @@ def test_relative_links_resolve(doc: Path) -> None:
     [
         ".agents/ops/parent/README.md",
         ".agents/ops/parent/development_workflow.md",
-        ".agents/ops/decision_logs/README.md",
-        ".agents/ops/decision_logs/README.ja.md",
-        ".agents/ops/decision_logs/README.zh-CN.md",
     ],
 )
 def test_new_review_examples_include_explicit_selection(relative: str) -> None:
@@ -191,15 +188,12 @@ def test_new_review_examples_include_explicit_selection(relative: str) -> None:
     examples += re.findall(r"`([^`]+)`", "\n".join(_lines_outside_fences(source)))
     checked = []
     for example in examples:
-        if "review-prepare" not in example and "review-request" not in example:
+        if "review-request" not in example:
             continue
         tokens = shlex.split(example)
         has_targets = "--prs" in tokens and tokens.index("--prs") + 1 < len(tokens)
         new_request = "review-request" in tokens and has_targets
-        new_prepare = "review-prepare" in tokens and (
-            "--prs" in tokens or "--handoff-from-run" in tokens
-        )
-        if not (new_request or new_prepare) or "--recover-source-run" in tokens:
+        if not new_request:
             continue
         for flag in ("--review-model", "--model-reason-file"):
             assert flag in tokens, f"{relative}: {example} requires {flag}"
@@ -212,7 +206,7 @@ def test_parent_assignment_summary_examples_use_supported_cli(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     service = importlib.import_module("herdr_labels.service")
     readme = (ROOT / ".agents/ops/parent/README.md").read_text()
     operations = set()

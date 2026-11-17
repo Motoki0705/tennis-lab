@@ -19,6 +19,7 @@ from src.tasks.court_detection.inference.contracts import (
 from src.tasks.court_detection.inference.regions import (
     CourtRegionSearchConfig,
     Region,
+    assess_region_prediction,
     predict_court_region,
     select_court_region,
 )
@@ -147,7 +148,7 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
         keypoints = normalize_grid_keypoints(prediction.points_px, video.width, video.height)
         result = CourtKPResult(
             keypoints[None, None].astype(np.float32), prediction.valid[None, None].astype(np.float32), np.array([0], np.int32),
-            {"schema": "court_kp_hybrid_v1", "checkpoint": checkpoint,
+            {"schema": "court_kp_quality_v2", "checkpoint": checkpoint,
              "postprocess": asdict(self.config.postprocess), "region_search": asdict(self.config.region_search),
              "output_keypoint_contract": KEYPOINT_CONTRACT,
              "cameras": [{"camera_id": video.camera_id, "video_path": str(video.path), "region_selection": prediction.region_selection,
@@ -187,11 +188,12 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
     ) -> tuple[NDArray[np.float32], NDArray[np.bool_], dict[str, Any]]:
         if region is None:
             prediction = predictor.predict(frame_rgb, postprocess="hybrid", heads=("kp", "line"))
-            points, visible = prediction.downstream_keypoints()
-            diagnostic = prediction.geometry_diagnostics()
+            full = assess_region_prediction(prediction, frame_rgb, (0, 0, frame_rgb.shape[1], frame_rgb.shape[0]), self.config.region_search)
+            points, visible = full.downstream_keypoints()
+            diagnostic = full.geometry_diagnostics()
             schema = prediction.keypoint_schema
         else:
-            region_prediction = predict_court_region(predictor, frame_rgb, region)
+            region_prediction = predict_court_region(predictor, frame_rgb, region, quality_config=self.config.region_search)
             points, visible = region_prediction.downstream_keypoints()
             diagnostic = region_prediction.geometry_diagnostics()
             schema = region_prediction.cropped.keypoint_schema

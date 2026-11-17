@@ -54,7 +54,14 @@ def main() -> int:
     assert "worker_ended" not in task
     assert opt("--role") == "implementation" and opt("--mode") == "write"
     assert opt("--branch") == task["branch"] and opt("--cwd") == task["worktree"]
-    assert "--effort" not in args
+    repair = None
+    if "--repair-id" in args:
+        repair = importlib.import_module("lib.repair_turn").request(
+            opt("--repair-id"), int(opt("--repair-pr"))
+        )
+        assert opt("--effort") == "high" and args[0] == "resume"
+    else:
+        assert "--effort" not in args
     resolver = importlib.import_module("lib.agent_settings")
     settings = resolver.resolve(
         resolver.DEFAULT_CONFIG,
@@ -63,6 +70,7 @@ def main() -> int:
         opt("--model") if "--model" in args else None,
         None,
         "write",
+        repair=repair,
     )
     assert task["model"] == saved["model"] == settings["selected"]["model"]
     assert task["model_reason"] == saved["model_reason"]
@@ -75,6 +83,13 @@ def main() -> int:
     if os.environ.get("MANUAL_PREFLIGHT_FAILURE"):
         print(str(directory), file=sys.stderr)  # Must stay private at the boundary.
         return 2
+    if repair is not None and os.environ.get("MANUAL_REPAIR_SOCKET"):
+        import socket
+
+        with socket.socket(socket.AF_UNIX) as connection:
+            connection.connect(os.environ["MANUAL_REPAIR_SOCKET"])
+            connection.sendall(b"started")
+            assert connection.recv(1) == b"x"
     code = int(os.environ.get("MANUAL_RUNNER_EXIT", "0"))
     contract = {
         "task_id": opt("--task-id"),
@@ -83,11 +98,15 @@ def main() -> int:
         "mode": "write",
         "settings": settings,
     }
+    if repair is not None:
+        contract["repair"] = repair
     session_id = "offline-private-session-" + directory.name
     session_root = directory
     if args[0] == "resume":
         previous = json.loads((Path(opt("--resume-from")) / "result.json").read_text())
-        assert previous["contract"] == contract
+        assert resolver.session_contract(
+            previous["contract"]
+        ) == resolver.session_contract(contract)
         session_id = previous["runtime"]["session_id"]
         session_root = Path(previous["session_root"])
     summary = {

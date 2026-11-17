@@ -18,7 +18,7 @@
 
 ## [environment](environment/index.md) — 環境の癖
 
-- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。WSLのメモリ（`.wslconfig` で上限40GB）が尽きると、学習はtracebackなしで止まり、Claude Code は待機中のbackground shellを止める。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。親レビューの隔離CPUテストのprobeが通らず、CIログも読めないので、指示に書かないと統合レビューが `incomplete` になる。distroが再起動しても boot_id は変わらず、旧PID名前空間のプロセスはすべて消える。
+- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。WSLのメモリ（`.wslconfig` で上限40GB）が尽きると、学習はtracebackなしで止まり、Claude Code は待機中のbackground shellを止める。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。distroが再起動しても boot_id は変わらず、旧PID名前空間のプロセスはすべて消える。
 
 ## [gotcha](gotcha/index.md) — 落とし穴
 
@@ -26,7 +26,6 @@
 - 共有 `.venv` は依存追加に追従しない。不足分はlockの版を `uv pip install` で足す（`uv sync` しない）。
 - pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
 - 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
-- 親の正式レビューの実行中は、同じ親の registry に書き込む CLI を実行しない。衝突で止まると保存済みの結果を採用できず、レビューをやり直すことになる。
 - Codex workerのpromptで途中終了を数値なしで許すと、時間が残っていても早々に止まる。作業単位と時間上限を数値で示し、止めてよい条件を列挙する。
 - ColabのVMは使わずに待たせると寿命前に回収され、取得済み入力も消える。rclone設定に `client_id` がないと共用clientの上限で Drive が 403 rateLimitExceeded になる。
 - Colabの `exec` 直後の接続断では job が `pending` のまま起動しない（`transport_alive: false`）。`running` 後の `transport_alive: false` は提出clientの不在だけで、異常ではない。Claudeのbackground監視は会話のプロセスと一緒に止まる。

@@ -121,12 +121,9 @@ the complete response and error details remain private evidence.
 | `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | Observations and explicit splitting decisions reference the canonical candidate, then link to proposal publication, conversation decisions and grouped extraction requests/results. Capture only while the source parent owns the work |
 | `agree` / `basis-record` / `create-child` / `workflow-report` | Existing basis, creation and acceptance results. A successor's agree observes human approval through its source comment; approval does not imply execution |
 | `delegate`, `stop` / `resume` / `stop-worker`, `handoff` / `release` | Parent command outcomes and canonical comments; dispatcher cancellation and runner stop/recovery writes are separate facts |
-| `review-prepare` / `review-request` / `review-state` | Fixed request and explicit instruction/state outcomes. Only explicit receipt/verification operations set parent verification |
-| Review `run` | Existing execution/output/result/publication states, including valid output from a failed runtime, exception and public predecessor review keys. Publication preserves the original result. Reusing a consumed run is a fetch, not another AI review |
-| Review `recover` / `resume-publication` / `complete-evidence` / `resolve` | Existing saved-source recovery, publication-only retry, and explicit parent verification. They retain predecessor results and never become another AI invocation |
-| Review `close-interrupted` | Existing cleanup/exit confirmation as `verify`, including runs without a final result. It accepts no code coverage or findings and does not verify the source review result |
+| `review-request` / `merge-continue` | Explicit parent request and continuation instruction |
+| Automatic progression | Broad review, runtime/retrieval evidence and persisted CI/repair/merge notifications; observer is machine |
 | Review retrieval tools | Existing received acquisition receipts, including failed CI requests. Repeating the same tool/arguments under the same review binding is `retry_fetch`; only the query instruction is known unchanged |
-| Merge gate `merge` | Per-PR evaluations, saved merge attempts/results and aggregate outcome. Dry-run eligibility remains distinct from an actual merge |
 | Worker-log receive/publish, `worker-log-status` / `publish-worker-log` | Existing journal views, final/publication failures and confirmed main publication; publication retries use `retry_publication` and reference the preceding captured result |
 
 Supported requests accept `--decision-id` and optional `--plan-id`. A single
@@ -147,37 +144,14 @@ Uncaptured surfaces: arbitrary shell/HTTP/gh operations, direct in-process
 ParentSession calls outside these CLI contexts, runner invocations without a
 parent binding, and parser/identity/repository failures before a parent namespace
 is resolved. No historical conversation or arbitrary past run is reconstructed.
-Review fix-resolution policy and automatic recovery/model selection are unchanged.
+The automatic progression contract owns review, recovery and model selection.
 No polling, agent restart or Git publication is added by capture.
 
 ## Review causal links
 
-Use the existing `decide`, journal, publication and navigation mechanisms. Find
-the captured source review result ID `R` in `decision-log-status`. A parent's
-handoff decision names `R` in `decide.inputs`, states retained/rechecked scopes,
-and includes a `review` next-action plan. Prepare with
-`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R
---review-model gpt-6-astra --review-effort xhigh --model-reason-file model-reason.txt`,
-then issue `review-request --run-id NEXT --instruction-file instruction.txt
---decision-id D --retry-of R`. A single matching plan needs no `--plan-id`.
-Preparation is a fetch; attach the review plan to `review-request`, which binds
-the subsequent `run`. Follow the [model selection procedure](../parent/README.md#正式レビューのモデル選択)
-for the model and one-sentence reason required by the usual select configuration.
-Explicit handoff metadata must reference a result from
-that exact source operation and include it in the decision inputs; an unrelated
-result or decision is rejected. Legacy handoffs without decision metadata remain
-usable with a visible missing decision, not an invented one.
-
-`close-interrupted` accepts the same decision/plan/retry/comparison arguments as
-other controls. A `verify` plan can confirm exit/cleanup, but its result leaves
-`verifies` empty: the original review remains unaccepted. Closure may succeed
-with no final/result file and publishes no formal review. Recovery is
-`retry_fetch`, publication-only retry is `retry_publication`, and model choices
-retain selected and observed settings through the existing runner observations.
-These records feed the existing public envelopes and generated README links from
-source result to decision, action and next result; capture itself never publishes.
-The isolated [comparison harness](../review/evaluation/README.md) does not capture
-its fabricated or historical observations into this formal parent journal.
+Use `decide` to name the observed progression result and the parent's next action. Pass the returned decision ID to `review-request` or `merge-continue`; optional retry/comparison metadata keeps the causal link explicit.
+The CLI's automatic review, CI, repair, merge and post-merge observations are recorded as `machine`, never as parent verification. `merge-continue` records the parent's instruction; `--rereview` is the explicit request for an additional broad review.
+State, recovery and model choices follow the [automatic progression contract](../review/README.md). Capture does not launch work or publish Git artifacts. The [private comparison harness](../review/evaluation/README.md) retains historical output separately.
 
 ## Explicit parent decisions
 
@@ -641,7 +615,7 @@ rendering must be checked after the implementation merges, as part of #1817.
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_capture_observations.py \
   tests/integration/agents_ops/test_decision_capture_delivery.py \
   tests/e2e/agents_ops/test_decision_capture.py \
-  tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
+  tests/e2e/agents_ops/test_progression_cli.py -n 2 --durations=10
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_navigation.py \
   tests/e2e/agents_ops/test_decision_publication.py \
   tests/e2e/agents_ops/test_worker_log_publication.py -n 2 --durations=10

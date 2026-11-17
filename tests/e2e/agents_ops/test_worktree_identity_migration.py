@@ -41,6 +41,29 @@ def legacy_records(lab: Lab, count: int = 1) -> dict[str, Any]:
     return dict(data)
 
 
+def detached_legacy_record(
+    lab: Lab, phase: str = "quarantined", *, retired: bool = False
+) -> dict[str, Any]:
+    data = legacy_records(lab, 2)
+    old = next(row for row in data["records"].values() if row["phase"] == "stopping")
+    Path(old["path"]).rename(old["quarantine"])
+    lab.git("worktree", "remove", "--force", old["path"])
+    old["phase"] = phase
+    if retired:
+        old.update(phase="superseded", superseded_at=lab.storage.utc(lab.now))
+        old["filesystem_migration"] = {
+            "result": "retired",
+            "checked_at": old["superseded_at"],
+            "reason": "legacy Git registration disappeared",
+            "previous_phase": phase,
+            "previous_admin_identity": dict(old["admin_identity"]),
+            "previous_directory_identity": dict(old["directory_identity"]),
+        }
+        data["schema_version"] = 2
+    (lab.state / "worktrees.json").write_text(json.dumps(data))
+    return dict(old)
+
+
 def test_six_legacy_intents_migrate_once_and_resume_across_device_changes(
     lab: Lab,
 ) -> None:
@@ -169,34 +192,40 @@ def test_unavailable_filesystem_identity_fails_before_state_or_deletion(
     assert path.is_dir() and not (lab.state / "worktrees.json").exists()
 
 
-def test_quarantined_git_file_mismatch_retires_the_old_intent(lab: Lab) -> None:
+def test_quarantined_git_file_mismatch_keeps_the_residue_as_a_failure(lab: Lab) -> None:
     data = legacy_records(lab, 2)
     row = next(row for row in data["records"].values() if row["phase"] == "quarantined")
     other = next(row for row in data["records"].values() if row["phase"] == "stopping")
     link = Path(row["quarantine"]) / ".git"
     changed = "gitdir: " + other["admin"] + "\n"
     link.write_text(changed)
-    report = lab.run()
-    retired = lab.records()[row["id"]]
-    assert retired["phase"] == "superseded"
+    lab.now += LIFETIME
+    code, report = lab.cleaner().run(cleanup=True, dry_run=True)
+    assert code == 1 and report["outcome"] == "partial_failure"
+    saved = lab.records()[row["id"]]
+    assert saved["phase"] == "quarantined"
+    assert saved["filesystem_migration"]["result"] == "blocked"
     assert (
-        retired["filesystem_migration"]["reason"]
-        == "worktree Git file refers to another registration"
+        "Git file refers to another registration"
+        in saved["filesystem_migration"]["reason"]
     )
     assert link.read_text() == changed
-    assert row["id"] not in {entry["id"] for entry in report["entries"]}
+    assert row["id"] in {entry["id"] for entry in report["entries"]}
 
 
 @pytest.mark.parametrize("replacement", [False, True])
-def test_legacy_unregistered_intent_keeps_residual_quarantine_as_a_failure(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch, replacement: bool
+@pytest.mark.parametrize(
+    "phase", ["stopping", "quarantined", "unregistered", "quarantine_conflict"]
+)
+def test_unverifiable_legacy_intent_keeps_residual_quarantine_as_a_failure(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, replacement: bool, phase: str
 ) -> None:
     data = legacy_records(lab)
     old = next(iter(data["records"].values()))
     path, quarantine = Path(old["path"]), Path(old["quarantine"])
     path.rename(quarantine)
     lab.git("worktree", "remove", "--force", str(path))
-    old["phase"] = "unregistered"
+    old["phase"] = phase
     (lab.state / "worktrees.json").write_text(json.dumps(data))
     lab.now += LIFETIME
     if replacement:
@@ -215,7 +244,7 @@ def test_legacy_unregistered_intent_keeps_residual_quarantine_as_a_failure(
         assert report["results"][0]["deleted"] is False
         assert quarantine.is_dir()
         current = lab.records()[old["id"]]
-        assert current["phase"] == "unregistered"
+        assert current["phase"] == phase
         assert current["filesystem_migration"]["result"] == "blocked"
     code, report = lab.cleaner().run(cleanup=True, dry_run=True)
     assert code == 1 and report["errors"]
@@ -225,3 +254,183 @@ def test_legacy_unregistered_intent_keeps_residual_quarantine_as_a_failure(
     assert lab.records()[old["id"]]["phase"] == "superseded"
     if replacement:
         assert (path / "keep").read_text() == "replacement"
+
+
+@pytest.mark.parametrize("retired", [False, True])
+@pytest.mark.parametrize(
+    "phase", ["stopping", "quarantined", "unregistered", "quarantine_conflict"]
+)
+def test_verified_detached_legacy_residue_migrates_once_and_is_deleted(
+    lab: Lab, phase: str, retired: bool
+) -> None:
+    old = detached_legacy_record(lab, phase, retired=retired)
+    quarantine = Path(old["quarantine"])
+    lab.now += LIFETIME
+    first = lab.run(cleanup=True, dry_run=True)
+    entry = next(entry for entry in first["entries"] if entry["id"] == old["id"])
+    assert entry["selected"] is True and entry["quarantine"] == str(quarantine)
+    check = next(row for row in first["stop_preflight"] if row["path"] == old["path"])
+    assert check["reference_gate"]["stage"] == "after_quarantine"
+    saved = lab.records()[old["id"]]
+    assert saved["created_at_ns"] == BORN
+    assert saved["phase"] == phase
+    assert saved["directory_identity"] == lab.inventory.identity(quarantine)
+    assert saved["filesystem_migration"]["result"] == "migrated"
+    if retired:
+        assert (
+            saved["filesystem_migration"]["recovered_retirement"]
+            == old["filesystem_migration"]
+        )
+    second = lab.run(cleanup=True, dry_run=True)
+    assert second["filesystem_migrations"] == first["filesystem_migrations"]
+    assert lab.records()[old["id"]] == saved
+    report = lab.run(cleanup=True)
+    result = next(row for row in report["results"] if row["path"] == old["path"])
+    assert result["deleted"] is True
+    assert not quarantine.exists()
+    assert lab.records()[old["id"]]["phase"] == "deleted"
+    journal = [
+        json.loads(line)
+        for line in (lab.state / "results.jsonl").read_text().splitlines()
+    ]
+    assert any(row["id"] == old["id"] and row["deleted"] for row in journal)
+    assert lab.run(cleanup=True)["results"] == []
+
+
+def test_detached_residue_with_saved_filesystem_and_birth_needs_no_git_witness(
+    lab: Lab,
+) -> None:
+    data = legacy_records(lab)
+    old = next(iter(data["records"].values()))
+    path, quarantine = Path(old["path"]), Path(old["quarantine"])
+    old["directory_identity"] = lab.inventory.identity(path)
+    path.rename(quarantine)
+    lab.git("worktree", "remove", "--force", str(path))
+    old["phase"] = "quarantined"
+    old.pop("quarantine")
+    (lab.state / "worktrees.json").write_text(json.dumps(data))
+    lab.now += LIFETIME
+    preview = lab.run(cleanup=True, dry_run=True)
+    assert preview["entries"][0]["quarantine"] == str(quarantine)
+    assert preview["stop_preflight"][0]["reference_gate"]["stage"] == "after_quarantine"
+    report = lab.run(cleanup=True)
+    assert report["results"][0]["deleted"] is True
+    assert not quarantine.exists()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "inode",
+        "birth_time",
+        "filesystem_id",
+        "git_file",
+        "admin_birth",
+        "witness",
+        "symlink",
+    ],
+)
+def test_detached_residue_with_insufficient_identity_stays_visible_and_fails(
+    lab: Lab, change: str
+) -> None:
+    old = detached_legacy_record(lab, retired=True)
+    data = json.loads((lab.state / "worktrees.json").read_text())
+    row = data["records"][old["id"]]
+    quarantine = Path(old["quarantine"])
+    if change == "inode":
+        row["directory_identity"]["inode"] += 1
+    elif change == "birth_time":
+        row["directory_identity"]["birth_time_ns"] = BORN - 1
+    elif change == "filesystem_id":
+        row["directory_identity"] = {
+            **lab.inventory.identity(quarantine),
+            "filesystem_id": "ext4-fsid:0000000000000001",
+        }
+    elif change == "git_file":
+        (quarantine / ".git").write_text("gitdir: /another/registration\n")
+    elif change == "admin_birth":
+        row["admin_identity"]["birth_time_ns"] = None
+    elif change == "witness":
+        anchor = next(r for r in data["records"].values() if r["id"] != old["id"])
+        anchor["admin_identity"]["birth_time_ns"] -= 1
+    else:
+        moved = quarantine.with_name("keep-directory")
+        quarantine.rename(moved)
+        quarantine.symlink_to(moved, target_is_directory=True)
+    # The old retirement captured the same unprovable evidence.
+    row["filesystem_migration"]["previous_admin_identity"] = dict(row["admin_identity"])
+    row["filesystem_migration"]["previous_directory_identity"] = dict(
+        row["directory_identity"]
+    )
+    (lab.state / "worktrees.json").write_text(json.dumps(data))
+    lab.now += LIFETIME
+    code, report = lab.cleaner().run(cleanup=True, dry_run=True)
+    assert code == 1 and report["errors"]
+    migration = next(r for r in report["filesystem_migrations"] if r["id"] == old["id"])
+    assert migration["result"] == "blocked" and migration["quarantine"] == str(
+        quarantine
+    )
+    assert lab.records()[old["id"]]["phase"] == "quarantined"
+    code, report = lab.cleaner().run(cleanup=True)
+    assert code == 1 and report["outcome"] == "partial_failure"
+    result = next(r for r in report["results"] if r["path"] == old["path"])
+    assert result["deleted"] is False and result["error"]
+    assert quarantine.is_dir()
+    assert json.loads((lab.state / "report-latest.json").read_text()) == report
+    journal = [
+        json.loads(line)
+        for line in (lab.state / "results.jsonl").read_text().splitlines()
+    ]
+    assert any(r["id"] == old["id"] and r["phase"] == "failed" for r in journal)
+
+
+@pytest.mark.parametrize("failure", ["stop", "remove"])
+def test_detached_residue_retries_failures_and_preserves_a_reused_registration(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    old = detached_legacy_record(lab, retired=True)
+    path, quarantine = Path(old["path"]), Path(old["quarantine"])
+    lab.now += LIFETIME
+    monkeypatch.setattr(
+        lab.inventory,
+        "birth_time",
+        lambda fd: (
+            lab.now
+            if os.readlink(f"/proc/self/fd/{fd}") in {str(path), old["admin"]}
+            else BORN
+        ),
+    )
+    lab.add("replacement", path=path)
+    (path / "keep").write_text("successor")
+    lab.run(cleanup=True, dry_run=True)
+    admin = Path(old["admin"])
+    token = (admin / lab.inventory.TOKEN_FILE).read_bytes()
+    with monkeypatch.context() as patch:
+        if failure == "stop":
+            real_stop = lab.lifecycle.Stopper.stop_moved
+
+            def stop(stopper: Any, physical: Path, original: Path, stamp: str) -> None:
+                if physical == quarantine:
+                    raise lab.storage.CleanupError("injected stop failure")
+                real_stop(stopper, physical, original, stamp)
+
+            patch.setattr(lab.lifecycle.Stopper, "stop_moved", stop)
+        else:
+            real_remove = lab.inventory.remove_tree
+
+            def remove(physical: Path, expected: Any) -> None:
+                if physical == quarantine:
+                    raise OSError("injected removal failure")
+                real_remove(physical, expected)
+
+            patch.setattr(lab.inventory, "remove_tree", remove)
+        code, report = lab.cleaner().run(cleanup=True)
+        assert code == 1
+        result = next(r for r in report["results"] if r["path"] == old["path"])
+        assert result["deleted"] is False and "injected" in result["error"]
+        assert quarantine.exists()
+    lab.run(cleanup=True)
+    assert not quarantine.exists()
+    assert (path / "keep").read_text() == "successor"
+    assert (admin / lab.inventory.TOKEN_FILE).read_bytes() == token
+    assert str(path) in lab.git("worktree", "list", "--porcelain")

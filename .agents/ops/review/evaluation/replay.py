@@ -1,9 +1,8 @@
-"""Read-only assessment of historical retries using the current evidence validator."""
+"""Read archived comparison outputs without recreating a production merge gate."""
 
 from __future__ import annotations
 
 import hashlib
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -31,22 +30,21 @@ def assess_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
 
 
 def assess_source(parent_state: Path, identifier: str) -> dict[str, Any]:
-    ops = Path(__file__).resolve().parents[2]
-    for directory in (ops / "review", ops / "lib"):
-        if str(directory) not in sys.path:
-            sys.path.insert(0, str(directory))
-    from review_recovery import source_evidence
-
+    directory = parent_state / "reviews" / identifier
     try:
-        candidate, validation = source_evidence(parent_state, identifier)
-    except (ValueError, OSError) as exc:
+        output = directory / "output.json"
+        candidate = read(output if output.exists() else directory / "result.json")
+        if "output" in candidate:
+            candidate = candidate["output"]
+        assessment = assess_candidate(candidate)
+    except (ValueError, OSError, KeyError, TypeError) as exc:
         return {
             "can_avoid_full_ai_rereview": None,
-            "reason": "saved_evidence_could_not_be_validated",
+            "reason": "archived_output_unavailable",
             "error_type": type(exc).__name__,
             "current_formal_recovery_authorized": False,
         }
-    return {**assess_candidate(candidate), "validation": validation}
+    return {**assessment, "validation": "historical_output_only"}
 
 
 def historical_reuse(parent_state: Path, *, data: Path = DATA) -> dict[str, Any]:

@@ -212,6 +212,22 @@ Z/X 仅在 `Threads: 1` 且 task 列表只有该 PID 时视为退出并单独计
 前后 PID、UID、能力值必须不变。数量、comm、两方能力值和 namespace 前提记录在
 `process_scope.excluded_capabilities`；两种规则都不使用进程名白名单。
 能力集合依据见 [commoncap](https://github.com/torvalds/linux/blob/v6.6/security/commoncap.c)。
+无法建立任何排除证据的 EACCES/EPERM，**间隔50ms最多复查3次**。
+每个进程每次检查最多请求150ms的等待，syscall与调度耗时另计。
+检查资源前固定PID和 `/proc/<pid>/stat` 启动时间；初始身份不可读或不稳定时保守失败。
+每次复查前，仅在确认PID消失且没有后继时计为已退出。
+启动时间改变表示后继存在：保留全部已观察到的busy参照，即使未观察到busy也以unknown停止。
+原个体退出不能证明后继已被检查。不重新固定后继身份，因为持续PID替换会要求超出既定复查上限的完整检查。
+同一个体必须保持UID不变，并重新验证现有thread-group退出证据，再**完整检查fd、cwd、root、mmap及适用的mount参照**。
+此前观察到的使用中证据仍保留。UID改变、意外I/O错误、达到上限仍不可检查的存活个体保持unknown，阻止认证或删除。
+读取被拒或maps可读本身都不能证明未使用。
+在thread-group证明期间、资源检查后或排除证据的最终身份核对时发现替换，也按unknown处理。
+不将后继的排除证据当作原固定个体的证据。
+
+`process_scope.rechecks` 记录上限、间隔、复查总次数、请求等待总量 `wait_seconds`（非实测经过时间），
+及通过重新检查、退出或既有排除证据得到解决的个体数 `resolved_processes`（按PID/启动时间去重）。
+`processes` 保留每次复查事件的身份、首次/最后拒绝、次数及结果，也包括未解决事件。
+与最近一次进程清单不同，该历史在单个命令的所有单位检查中累积，写入JSON输出及后续审计记录；下一命令重置。
 读取数据的训练和脚本必须 dumpable 且可检查。UID 未知、意外 I/O 错误或两种证据都不成立时仍失败。
 namespace 身份始终记录为 `unverified`。`/proc/<pid>/ns/user` 也执行相同 ptrace 检查，因此不打开 handle
 （[kernel 实现](https://github.com/torvalds/linux/blob/v6.6/fs/proc/namespaces.c)）。

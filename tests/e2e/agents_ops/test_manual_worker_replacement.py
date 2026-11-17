@@ -351,8 +351,10 @@ def test_legacy_session_replacement_retries_rejected_launch_and_requests_review(
         p.note(),
         "--evidence-file",
         p.note(),
+        "--wait",
+        AGENT_AUTO_MERGE="0",
     )
-    assert json.loads(review.stdout)["review_state"] == "instructed"
+    assert json.loads(review.stdout)["status"] == "parent_wait"
     phase = task(p)["preflight"]
     assert phase["accepted_turn_id"] == phase["turns"][-1]["snapshot"]["turn_id"]
     assert phase["accepted_turn_id"] != cancelled["snapshot"]["turn_id"]
@@ -573,9 +575,11 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
         p.note(),
         "--evidence-file",
         p.note(),
+        "--wait",
+        AGENT_AUTO_MERGE="0",
         runner=RUNNER,
     )
-    assert json.loads(response.stdout)["review_state"] == "instructed"
+    assert json.loads(response.stdout)["status"] == "parent_wait"
     assert (
         task(p)["preflight"]["accepted_turn_id"]
         == task(p)["preflight"]["turns"][-1]["snapshot"]["turn_id"]

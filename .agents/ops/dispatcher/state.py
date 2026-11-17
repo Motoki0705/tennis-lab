@@ -20,7 +20,15 @@ def require_client(gh: GitHub, store: Store) -> None:
         raise ValueError("GitHub client must use the transaction's Store instance")
 
 
-def client_for(gh: GitHub, store: Store) -> GitHub:
+def progression_reads(row: dict[str, Any]) -> bool:
+    """Keep bounded reads after a progression hands work back to supervision."""
+    return bool(row.get("progression_notifications")) or any(
+        "repair" in job or job.get("targeted_history", False)
+        for job in row.get("dispatch", {}).get("jobs", {}).values()
+    )
+
+
+def client_for(gh: GitHub, store: Store, *, targeted_history: bool = False) -> GitHub:
     """An independent parent/query scope, bound to the same transaction."""
     import copy
 
@@ -30,6 +38,7 @@ def client_for(gh: GitHub, store: Store) -> GitHub:
     client._cache = {}
     client._history_rows = None
     client._history_scope = False
+    client.targeted_history = gh.targeted_history or targeted_history
     return client
 
 

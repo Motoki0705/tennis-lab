@@ -24,7 +24,7 @@ TRACE_PARENT = r"""
 import fcntl, json, os, sys, time
 from contextlib import contextmanager
 from parent.state import Store
-from parent.cli import main
+from parent.cli_impl import main
 original_flock, original_locked = fcntl.flock, Store.locked
 active = False
 def event(kind):

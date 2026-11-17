@@ -1,0 +1,2207 @@
+[
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam0",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.20308987672604,
+    "new_mean_px": 6.318079434710361
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.884630732754527,
+    "new_mean_px": 6.249840588254649
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.09246608060206,
+    "new_mean_px": 9.933977578137988
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.950311903164163,
+    "new_mean_px": 3.4679365123284556
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam3",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 7.749971948789265,
+    "new_mean_px": 10.241905796365797
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 7.749971948789265,
+    "new_mean_px": 10.241905796365797
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 7.7499723205612545,
+    "new_mean_px": 10.241906227638863
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_001/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.678555624983762,
+    "new_mean_px": 5.13560205156657
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_001/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.678555624983762,
+    "new_mean_px": 5.13560205156657
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_002/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.978749445522709,
+    "new_mean_px": 7.530402802540345
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_002/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.873876189334393,
+    "new_mean_px": 6.48289183769382
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_002/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.873876189334393,
+    "new_mean_px": 6.48289183769382
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_002/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 8.456986392439662,
+    "new_mean_px": 14.205733372357894
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_004/cam0",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 6.069063977936972,
+    "new_mean_px": 10.714420031472487
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_004/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 6.069063868591618,
+    "new_mean_px": 10.714420044583003
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_005/cam0",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 5.878296827317894,
+    "new_mean_px": 13.376773949882246
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_006/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 26.47082640414385,
+    "new_mean_px": 9.756322149564271
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_006/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.837936561009705,
+    "new_mean_px": 5.639202488353107
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_006/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.83793991185396,
+    "new_mean_px": 5.639202250895889
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_006/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.463342526022997,
+    "new_mean_px": 7.35772914622728
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_006/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.463342526022997,
+    "new_mean_px": 7.35772914622728
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_007/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.661262629066837,
+    "new_mean_px": 6.7653881100809565
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_008/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.92123699449573,
+    "new_mean_px": 6.696994190253322
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_008/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.92123699449573,
+    "new_mean_px": 6.696994190253322
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_008/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.92123699449573,
+    "new_mean_px": 6.696994190253322
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_008/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 8.896499125980535,
+    "new_mean_px": 7.626831525895505
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_008/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 8.896499153478997,
+    "new_mean_px": 7.626831489530293
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_009/cam0",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.360790109744402,
+    "new_mean_px": 9.678017138949485
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_009/cam2",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.362033621487107,
+    "new_mean_px": 9.860157544358273
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_009/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.362033621487107,
+    "new_mean_px": 9.860157544358273
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_009/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.362033632434724,
+    "new_mean_px": 9.86015757236152
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_010/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.59997357487935,
+    "new_mean_px": 8.102958927482197
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_010/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.59997357487935,
+    "new_mean_px": 8.102958927482197
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_010/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.5965588696254,
+    "new_mean_px": 8.118750351753063
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_013/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.03961893468361,
+    "new_mean_px": 7.494737158725778
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_013/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 11.40321617847764,
+    "new_mean_px": 9.41057943173498
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_013/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 11.40321617847764,
+    "new_mean_px": 9.41057943173498
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_014/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.15293468189333,
+    "new_mean_px": 8.15846373833325
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_014/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.15293468189333,
+    "new_mean_px": 8.15846373833325
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_014/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.152934678231723,
+    "new_mean_px": 8.15846361385747
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_015/cam3",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 10.502886034776395,
+    "new_mean_px": 6.557300724571343
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_016/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 22.12106980009378,
+    "new_mean_px": 6.751066230063338
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_016/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 22.12106980009378,
+    "new_mean_px": 6.751066230063338
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_016/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 22.12106963818118,
+    "new_mean_px": 6.751066138483507
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_017/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.976310306046079,
+    "new_mean_px": 9.424220397371737
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_018/cam0",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 7.979642079076414,
+    "new_mean_px": 9.627390028419452
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_021/cam1",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.850420099445653,
+    "new_mean_px": 9.456778516884373
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_021/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.85042004578273,
+    "new_mean_px": 9.456778477043859
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_021/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.103720403259853,
+    "new_mean_px": 5.916508668157322
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_021/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.103720403259853,
+    "new_mean_px": 5.916508668157322
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_021/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.10372038265749,
+    "new_mean_px": 5.916508710765212
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_022/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.189913109408472,
+    "new_mean_px": 9.654416407592613
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_023/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 8.37119517802364,
+    "new_mean_px": 14.51504561447102
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_023/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 8.300861873428635,
+    "new_mean_px": 14.482448352373167
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_024/cam2",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.084174872323224,
+    "new_mean_px": 9.679545463552646
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_024/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.084174872323224,
+    "new_mean_px": 9.679545463552646
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_024/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.084174872323224,
+    "new_mean_px": 9.679545463552646
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_025/cam0",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.315573604987534,
+    "new_mean_px": 9.762722816460906
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_025/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.443610835558783,
+    "new_mean_px": 9.998514825482784
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_025/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 22.876241496284496,
+    "new_mean_px": 3.8169406416115654
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_025/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 22.876241496284496,
+    "new_mean_px": 3.8169406416115654
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_025/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 22.854824402179485,
+    "new_mean_px": 3.82673448261441
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_026/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.463050172655082,
+    "new_mean_px": 9.824870684557325
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_026/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.463050275332462,
+    "new_mean_px": 9.82487063931774
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_026/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.171713909905055,
+    "new_mean_px": 9.698085484248045
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_026/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.171713909905055,
+    "new_mean_px": 9.698085484248045
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_026/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.171713909905055,
+    "new_mean_px": 9.698085484248045
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_026/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.653538379207,
+    "new_mean_px": 7.781466037916567
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_026/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 20.499839910703436,
+    "new_mean_px": 8.087265035843501
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_027/cam1",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.77216665830181,
+    "new_mean_px": 9.900428745491784
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_027/cam1",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.77216665830181,
+    "new_mean_px": 9.900428745491784
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_027/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.772166695399257,
+    "new_mean_px": 9.900428763602239
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_027/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.527219794263722,
+    "new_mean_px": 5.1033690983016555
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_027/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.527219794263722,
+    "new_mean_px": 5.1033690983016555
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_027/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.527219849738554,
+    "new_mean_px": 5.103369116352781
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_028/cam0",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.72172338046886,
+    "new_mean_px": 8.32639631447842
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_028/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.626752298179111,
+    "new_mean_px": 8.278533696094842
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_028/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.099885294512653,
+    "new_mean_px": 8.15595769969753
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_028/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.0998851156167,
+    "new_mean_px": 8.155957908430517
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_028/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.02851384288081,
+    "new_mean_px": 8.039865238888122
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_028/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.899425805616183,
+    "new_mean_px": 5.465880302879833
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_028/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.915797323420822,
+    "new_mean_px": 5.466618796262345
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_029/cam1",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.450774915334573,
+    "new_mean_px": 9.909887860153585
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_029/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.218776320198824,
+    "new_mean_px": 7.459981051136128
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_030/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.50455676961879,
+    "new_mean_px": 9.198677106110607
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_030/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.504556749653005,
+    "new_mean_px": 9.198677100962332
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_030/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 20.689767201809683,
+    "new_mean_px": 8.900202710837224
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_030/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 20.689767201809683,
+    "new_mean_px": 8.900202710837224
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_031/cam1",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 6.511290988190738,
+    "new_mean_px": 17.984256270412306
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_031/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 20.849563514728725,
+    "new_mean_px": 8.878967169412018
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_031/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 20.849563514728725,
+    "new_mean_px": 8.878967169412018
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_031/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 20.73193632660026,
+    "new_mean_px": 8.848365659381615
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_032/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.76242447519486,
+    "new_mean_px": 8.318536750773738
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_033/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.89273178088035,
+    "new_mean_px": 7.358993898920886
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_033/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.33201740043135,
+    "new_mean_px": 7.919096957424891
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_033/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.33201740043135,
+    "new_mean_px": 7.919096957424891
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_033/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.081985383405527,
+    "new_mean_px": 7.22783141039866
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_033/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.081985383405527,
+    "new_mean_px": 7.22783141039866
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_034/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 11.568659162520536,
+    "new_mean_px": 5.853343125081807
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_034/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.16193874879718,
+    "new_mean_px": 6.521526018674053
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_034/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.161938746321205,
+    "new_mean_px": 6.5215260450929575
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_035/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.356857133352282,
+    "new_mean_px": 8.904283339497042
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_035/cam0",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 10.926509398307848,
+    "new_mean_px": 7.586094121138926
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_035/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 10.879713214423926,
+    "new_mean_px": 7.504638208350911
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_035/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 20.791893646671287,
+    "new_mean_px": 9.396682187879211
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_036/cam0",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.00062556659311,
+    "new_mean_px": 9.578094617613408
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_036/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.00062556659311,
+    "new_mean_px": 9.578094617613408
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_036/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.264051100894783,
+    "new_mean_px": 7.045073706739898
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_036/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.264051100894783,
+    "new_mean_px": 7.045073706739898
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_036/cam3",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.539591985671825,
+    "new_mean_px": 8.209575093977376
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_036/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.52509911859764,
+    "new_mean_px": 8.192737078458167
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 9.69739047472838,
+    "new_mean_px": 7.847690145128493
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam0",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.846038003893492,
+    "new_mean_px": 9.037876426800144
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.846038003893492,
+    "new_mean_px": 9.037876426800144
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam1",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.043143443048113,
+    "new_mean_px": 9.283722267880126
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.4117353874037,
+    "new_mean_px": 9.360865638535742
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.421750106562358,
+    "new_mean_px": 9.362079478717657
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.261558657674243,
+    "new_mean_px": 7.663385345639617
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.58963129576887,
+    "new_mean_px": 8.278174581935376
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_037/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.54710430392375,
+    "new_mean_px": 8.239071604771025
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_038/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.831191990795844,
+    "new_mean_px": 6.8693400608983515
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_038/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.831191990795844,
+    "new_mean_px": 6.8693400608983515
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_038/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.443430075094728,
+    "new_mean_px": 8.047169857966239
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_038/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.126157690073384,
+    "new_mean_px": 7.957798240666222
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_039/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.857876979883816,
+    "new_mean_px": 8.20960413939284
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_039/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.857880383317056,
+    "new_mean_px": 8.209603168863206
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_039/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.547854051871553,
+    "new_mean_px": 8.145871786991064
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_039/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.547854051871553,
+    "new_mean_px": 8.145871786991064
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_040/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.41879928634925,
+    "new_mean_px": 7.622498761279712
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_040/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.41879928634925,
+    "new_mean_px": 7.622498761279712
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_040/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.56168369345712,
+    "new_mean_px": 8.574542745915307
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_040/cam3",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.56168369345712,
+    "new_mean_px": 8.574542745915307
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_040/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.56750415598973,
+    "new_mean_px": 8.568532139165743
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_041/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.573190591335642,
+    "new_mean_px": 9.828393830524789
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_041/cam1",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 8.613384501590081,
+    "new_mean_px": 18.057566609465297
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_041/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.549891545425604,
+    "new_mean_px": 7.308274322418042
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_041/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.948608643324997,
+    "new_mean_px": 7.9420912175157685
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_041/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.150886928839046,
+    "new_mean_px": 8.060248409643506
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_042/cam0",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.534317261058357,
+    "new_mean_px": 8.803175068792914
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_042/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.601608438564112,
+    "new_mean_px": 8.885950537456145
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_042/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.504450653538553,
+    "new_mean_px": 9.757483701955069
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_042/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.505071448305163,
+    "new_mean_px": 9.757136293805218
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_042/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.03820471713501,
+    "new_mean_px": 7.462957547860261
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_042/cam3",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.03820471713501,
+    "new_mean_px": 7.462957547860261
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_042/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.07078822140163,
+    "new_mean_px": 7.520928459254425
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_043/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.272510544300964,
+    "new_mean_px": 7.887056343901271
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_043/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.272510544300964,
+    "new_mean_px": 7.887056343901271
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_043/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.272510544300964,
+    "new_mean_px": 7.887056343901271
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_043/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.346946766990534,
+    "new_mean_px": 9.896347162397507
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_043/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.346946766990534,
+    "new_mean_px": 9.896347162397507
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_044/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.094747075810968,
+    "new_mean_px": 6.375750604986162
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_044/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.094747075810968,
+    "new_mean_px": 6.375750604986162
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_044/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.094747075810968,
+    "new_mean_px": 6.375750604986162
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_044/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.005866751944708,
+    "new_mean_px": 8.699797703014148
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_045/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.498417929129243,
+    "new_mean_px": 6.5816670161791535
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_045/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.498417929129243,
+    "new_mean_px": 6.5816670161791535
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_045/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.595105003119794,
+    "new_mean_px": 6.522409285538253
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_045/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.47389723528637,
+    "new_mean_px": 6.7553251080138335
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_045/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.147514864393704,
+    "new_mean_px": 8.288420609788524
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_045/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.147514881518187,
+    "new_mean_px": 8.28842061620785
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_046/cam0",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 10.32295920762618,
+    "new_mean_px": 8.350427731741739
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_046/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 10.348798604866802,
+    "new_mean_px": 8.36031781414898
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_046/cam1",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.277106104834797,
+    "new_mean_px": 9.115644304883258
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_046/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 21.527257207769683,
+    "new_mean_px": 7.052470993212334
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_046/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.81443660069573,
+    "new_mean_px": 7.995388967681914
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_046/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.81443660069573,
+    "new_mean_px": 7.995388967681914
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_047/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.660869716348964,
+    "new_mean_px": 8.496009694438666
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_047/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.660869716348964,
+    "new_mean_px": 8.496009694438666
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_047/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.384313513072055,
+    "new_mean_px": 8.968504997482333
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_047/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.384313513072055,
+    "new_mean_px": 8.968504997482333
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_047/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.384313513072055,
+    "new_mean_px": 8.968504997482333
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_047/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 11.491585920648038,
+    "new_mean_px": 8.318632388753924
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_048/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.50323141369523,
+    "new_mean_px": 8.590861084734247
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_048/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.503231389414857,
+    "new_mean_px": 8.590861105324608
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_048/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.091954129094942,
+    "new_mean_px": 8.49526336476325
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_049/cam0",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.290364686825797,
+    "new_mean_px": 9.800902580997327
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_049/cam1",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 9.566118003570553,
+    "new_mean_px": 12.611513751839253
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_049/cam3",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 8.706759183736525,
+    "new_mean_px": 8.41223697486826
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_050/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.537945722315992,
+    "new_mean_px": 8.766476039544774
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_050/cam3",
+    "condition": "acceptance_only",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.537945722315992,
+    "new_mean_px": 8.766476039544774
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_050/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.537945722315992,
+    "new_mean_px": 8.766476039544774
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_051/cam1",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 8.669174625801782,
+    "new_mean_px": 13.889265253865306
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_051/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.72383152353523,
+    "new_mean_px": 9.29947877014115
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_051/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 14.723831557571954,
+    "new_mean_px": 9.299478748148923
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_052/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.050332336790385,
+    "new_mean_px": 8.981835786181154
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_052/cam0",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.050332336790385,
+    "new_mean_px": 8.981835786181154
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_052/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.050332336790385,
+    "new_mean_px": 8.981835786181154
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_053/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 9.322332009397035,
+    "new_mean_px": 14.788787917326877
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_053/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 9.322332014986527,
+    "new_mean_px": 14.788787856673483
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_053/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.18237077906048,
+    "new_mean_px": 4.870911927303467
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_053/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.253194301759088,
+    "new_mean_px": 8.56751823292977
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_053/cam3",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 9.063268609525206,
+    "new_mean_px": 9.726736179977856
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_054/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.396404170104327,
+    "new_mean_px": 8.028232169960848
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_054/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.396404081527766,
+    "new_mean_px": 8.028232178100442
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_054/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.123752619243913,
+    "new_mean_px": 8.780677267964037
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_055/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": true,
+    "new_correct": false,
+    "old_mean_px": 9.6623869460231,
+    "new_mean_px": 15.206773871525254
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_055/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.82486001788925,
+    "new_mean_px": 7.88441488911254
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_055/cam3",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.82486001788925,
+    "new_mean_px": 7.88441488911254
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_055/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.82486001788925,
+    "new_mean_px": 7.88441488911254
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_056/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.178763963614415,
+    "new_mean_px": 8.988614257728234
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_056/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.178763969297258,
+    "new_mean_px": 8.988614291461959
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_057/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 28.79827771344133,
+    "new_mean_px": 9.910781217306974
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_057/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.92091433556854,
+    "new_mean_px": 9.890801160826653
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_057/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.917870271531154,
+    "new_mean_px": 9.86803243740624
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_058/cam0",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.02172296051906,
+    "new_mean_px": 8.975971633359242
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_058/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.115145925125592,
+    "new_mean_px": 9.400744569720091
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_058/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.115145925125592,
+    "new_mean_px": 9.400744569720091
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_058/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.947769549004896,
+    "new_mean_px": 5.89223025590164
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_058/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.947769549004896,
+    "new_mean_px": 5.89223025590164
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_058/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.947769549004896,
+    "new_mean_px": 5.89223025590164
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_059/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.803827356892096,
+    "new_mean_px": 8.805712588286358
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_059/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.22954065549883,
+    "new_mean_px": 9.051685288363398
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_059/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.229540531098547,
+    "new_mean_px": 9.051685469178524
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_060/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.761460190801062,
+    "new_mean_px": 8.91133497719086
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_060/cam0",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 11.951321333432647,
+    "new_mean_px": 6.855680532418924
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_060/cam3",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.729280932089551,
+    "new_mean_px": 7.237125390955871
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_060/cam3",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.745324698153198,
+    "new_mean_px": 7.223277489825443
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_061/cam0",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.963680607249833,
+    "new_mean_px": 8.84076965336529
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_061/cam1",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.348080109729448,
+    "new_mean_px": 8.402146744472956
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_061/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.348080109729448,
+    "new_mean_px": 8.402146744472956
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_061/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.051686477778603,
+    "new_mean_px": 8.38080336308458
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_061/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 22.693578807583503,
+    "new_mean_px": 5.805939694860195
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_061/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 22.693578807583503,
+    "new_mean_px": 5.805939694860195
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_061/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 18.95420913682413,
+    "new_mean_px": 7.962625086558204
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_061/cam3",
+    "condition": "legacy",
+    "accepted": false,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 13.984670458687933,
+    "new_mean_px": 7.460665336834034
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_062/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 11.937553841592802,
+    "new_mean_px": 5.636190198205962
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_062/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.21135214213118,
+    "new_mean_px": 7.370504972358484
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_062/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 24.21135214213118,
+    "new_mean_px": 7.370504972358484
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_062/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 25.46590732084073,
+    "new_mean_px": 7.06720997014629
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_063/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.658927954176438,
+    "new_mean_px": 7.82191648874133
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_063/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.658927954176438,
+    "new_mean_px": 7.82191648874133
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_063/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 19.658927954176438,
+    "new_mean_px": 7.82191648874133
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_065/cam0",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 12.62932294568543,
+    "new_mean_px": 7.5527790866785605
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_065/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.464846287265917,
+    "new_mean_px": 7.7649072371497585
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_065/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.464846287265917,
+    "new_mean_px": 7.7649072371497585
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_066/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.554684672503353,
+    "new_mean_px": 7.8062508069061085
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_066/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 16.554684563997917,
+    "new_mean_px": 7.8062508362114205
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_067/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.006993056974586,
+    "new_mean_px": 8.834447941709508
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_067/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.006993056974586,
+    "new_mean_px": 8.834447941709508
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_067/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 17.006993056974586,
+    "new_mean_px": 8.834447941709508
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_068/cam1",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.034977626854529,
+    "new_mean_px": 8.448718521345224
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_068/cam1",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 15.034977656440901,
+    "new_mean_px": 8.44871856470829
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_068/cam2",
+    "condition": "legacy",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.77551896221626,
+    "new_mean_px": 6.5107304191446005
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_068/cam2",
+    "condition": "acceptance_only",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.77551896221626,
+    "new_mean_px": 6.5107304191446005
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_068/cam2",
+    "condition": "postprocess_and_acceptance",
+    "accepted": true,
+    "old_correct": false,
+    "new_correct": true,
+    "old_mean_px": 23.77551896221626,
+    "new_mean_px": 6.5107304191446005
+  }
+]

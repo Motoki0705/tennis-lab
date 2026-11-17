@@ -75,7 +75,17 @@ def resolve(
     mode: str,
     *,
     review_selection: dict[str, Any] | None = None,
+    repair: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if repair is not None:
+        from lib.repair_turn import validate_request
+
+        validate_request(repair)
+        if (agent, profile, mode) != ("codex", None, "write"):
+            raise ValueError("repair requires write-mode implementation Codex")
+        if effort not in (None, "high"):
+            raise ValueError("repair effort must be high")
+        effort = "high"
     raw = config.read_bytes()
     pins = _parse_pins(raw)
     if profile is not None:
@@ -129,7 +139,9 @@ def resolve(
                 raise ValueError(
                     "implementation model must be the default or configured alternate"
                 )
-            if defaults["effort"] != "max" or selected["effort"] != "max":
+            if defaults["effort"] != "max" or selected["effort"] != (
+                "high" if repair is not None else "max"
+            ):
                 raise ValueError("implementation effort must be max")
     threads = None
     if (
@@ -179,6 +191,21 @@ def execution_contract(contract: dict[str, Any]) -> dict[str, Any]:
             k: v for k, v in contract["settings"].items() if k not in provenance
         },
     }
+
+
+def session_contract(contract: dict[str, Any]) -> dict[str, Any]:
+    """Compare a lineage, allowing only an explicitly identified repair's effort."""
+    value = execution_contract(contract)
+    if "repair" in value:
+        from lib.repair_turn import validate_contract
+
+        validate_contract(contract)
+        value.pop("repair")
+        value["settings"] = {
+            **value["settings"],
+            "selected": {**value["settings"]["selected"], "effort": "max"},
+        }
+    return value
 
 
 def command(

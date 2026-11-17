@@ -6,13 +6,14 @@ import copy
 import json
 import subprocess
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues.cli import GitHub as IssueGitHub
 from issues.evidence import EVIDENCE_LABEL, is_evidence_issue, require_work_issue
+from issues.polling import GETResponse, JobLog
 
 from . import metrics
 from .judgement_comments import read_json
@@ -36,6 +37,7 @@ class GitHub(IssueGitHub):
         super().__init__(repo)
         self._store = store
         self._outside_store: Store | None = None
+        self.targeted_history = False
         self.parent: int | None = None
         self._cache: dict[tuple[str, bool], object] = {}
         self._fresh = False
@@ -50,6 +52,13 @@ class GitHub(IssueGitHub):
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         self._require_scope()
+        if self.targeted_history and endpoint.partition("?")[0] in {
+            f"repos/{self.repo}/issues",
+            f"repos/{self.repo}/pulls",
+        }:
+            raise ValueError(
+                "targeted history cannot enumerate repository issues or PRs"
+            )
         if (
             self._store is not None
             and self._cache_epoch != self._store.transaction_epoch
@@ -92,6 +101,30 @@ class GitHub(IssueGitHub):
                         (f"repos/{self.repo}/issues/{issue['number']}", False)
                     ] = copy.deepcopy(issue)
         return result
+
+    def get_conditional(
+        self, endpoint: str, *, clock: Callable[[], float] = time.time
+    ) -> GETResponse:
+        # Conditional validation is always an HTTP observation, independently
+        # of this transaction's ordinary GET cache.
+        with self.io_scope():
+            started = time.monotonic()
+            metrics.count("github_requests")
+            if "page=" in endpoint:
+                metrics.count("github_pages")
+            try:
+                return super().get_conditional(endpoint, clock=clock)
+            finally:
+                metrics.count("github_seconds", time.monotonic() - started)
+
+    def job_log(self, job_id: int, *, clock: Callable[[], float] = time.time) -> JobLog:
+        with self.io_scope():
+            started = time.monotonic()
+            metrics.count("github_requests")
+            try:
+                return super().job_log(job_id, clock=clock)
+            finally:
+                metrics.count("github_seconds", time.monotonic() - started)
 
     def authenticated_login(self) -> str:
         self._require_scope()

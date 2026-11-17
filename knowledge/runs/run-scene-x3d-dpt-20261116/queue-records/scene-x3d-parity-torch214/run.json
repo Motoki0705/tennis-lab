@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205242053145044929_2026-11-15T15-52-26-854955070Z_644764_scene-x3d-parity-torch214",
+  "name": "scene-x3d-parity-torch214",
+  "command": "PYTHONPATH=outputs/tennis_scene/evaluate/x3d-dpt-20261116/runtime-214:. OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 .venv/bin/python knowledge/runs/run-scene-x3d-dpt-20261116/verify_validation.py --plan knowledge/runs/run-scene-x3d-dpt-20261116/validation-plan.json --store outputs/tennis_scene/evaluate/x3d-dpt-20261116/validation-inputs/store --checkpoint ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt --output outputs/tennis_scene/evaluate/x3d-dpt-20261116/validation-parity-torch214.json --compile-mode default",
+  "provider": "codex",
+  "session": "01a1dfbe-8da3-7440-9833-340a1ae044c1",
+  "issue": "2151",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "3d8e00fe205c2e3634815eac4b91d3b20c382b39",
+  "branch": "codex/scene-x3d-dpt-ball",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-x3d-dpt-ball",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-x3d-dpt-ball",
+  "captured_at": "2026-11-16T00:53:21+09:00"
+}

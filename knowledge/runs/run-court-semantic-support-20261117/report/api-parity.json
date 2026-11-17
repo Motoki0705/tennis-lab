@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "key": "meiji_3cam/video_000/clip_000/cam0",
+      "mode": "new_support",
+      "accepted": false,
+      "region": null,
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_3cam/video_000/clip_000/cam0",
+      "mode": "new_rgb",
+      "accepted": false,
+      "region": null,
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_3cam/video_000/clip_000/cam1",
+      "mode": "new_support",
+      "accepted": false,
+      "region": null,
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_3cam/video_000/clip_000/cam1",
+      "mode": "new_rgb",
+      "accepted": true,
+      "region": [
+        0,
+        270,
+        1440,
+        810
+      ],
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_3cam/video_000/clip_000/cam2",
+      "mode": "new_support",
+      "accepted": true,
+      "region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_3cam/video_000/clip_000/cam2",
+      "mode": "new_rgb",
+      "accepted": true,
+      "region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "matches_offline": true
+    }
+  ],
+  "seconds": 115.84217250999063,
+  "neural_forward": false,
+  "CUDA_used": false
+}

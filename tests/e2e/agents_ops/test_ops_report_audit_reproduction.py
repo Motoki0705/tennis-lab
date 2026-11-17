@@ -17,11 +17,11 @@ repro_tests: Any = importlib.import_module(
     "tests.e2e.agents_ops.test_ops_report_reproduction"
 )
 scenario = repro_tests.scenario
-mcp: Any = importlib.import_module("opsreport.mcp_server")
+mcp: Any = importlib.import_module("opsreport.mcp_server_impl")
 audit: Any = importlib.import_module("opsreport.audit")
 audit_tools: Any = importlib.import_module("opsreport.audit_tools")
 cli: Any = importlib.import_module("opsreport.cli")
-shared: Any = importlib.import_module("lib.review_tools.mcp_server")
+shared: Any = importlib.import_module("lib.review_tools.mcp_server_impl")
 
 
 @pytest.fixture
