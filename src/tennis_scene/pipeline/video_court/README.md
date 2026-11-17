@@ -84,7 +84,7 @@ single-clip and existing dataset entry points. The future batch CLI owns its
 connection to this API; this module does not implement that CLI or model lifetime.
 
 Camera failure and unreliable/drifting clips are explicit failures. A coherent
-shift above 3px is a warning; reliable local H displacement above mean 10px or
+shift above 3px is a warning; reliable measured displacement above mean 10px or
 maximum 25px fails the camera/clip. Unobservable drift also fails. Limits scale
 from 1920×1080. Sparse diagnostic sampling cannot rule out motion between samples.
 There is no time segmentation or local-H substitution. Shared court observations
@@ -93,3 +93,36 @@ calibration does not relabel them as a direct frame-zero observation.
 
 Fixed-geometry import, direct annotation, and the old ball3d court-observation
 reader reject shared provenance. They are not extended by this mode.
+
+## Separate drift evidence for an immutable court
+
+`drift_build.build_video_drift(base, sources, frame_plan=..., directory=...,
+provenance=..., config=DriftConfig(), workers=...)` measures explicitly selected
+frames on CPU. `frame_plan[camera][clip]` lists distinct source-frame indices for
+**every** camera and clip in the base bundle. Callers choose and record exclusions
+before evaluation. The API checks media hashes, source membership and timelines
+before measurement, checks inputs again afterward, and publishes into a separate
+store. It never calls the common-H estimator or rewrites the original objects.
+
+The [signed-line diagnostic](../../../tasks/court_detection/geometry/video_drift/README.md)
+uses fixed line correspondences, four motion parameters and worst-frame clip
+aggregation. Load its result together with the original court using both:
+
+```bash
+court_kp.video_shared.drift_directory=tennis_scene/court_drift/match \
+court_kp.video_shared.drift_digest="$DRIFT_DIGEST"
+```
+
+These options require `action=load`. Omitting both explicitly retains the
+historical diagnostics embedded in the original v1 artifact. Specifying only
+one, a missing/corrupt object, or a diagnostic for another base H is an error;
+there is no fallback to embedded diagnostics. `prepare_video_court()` on the
+orchestrator returns the bound, diagnosed artifact. Multi-clip plans must pass
+that same artifact and matching runtime configuration.
+
+Clip cache identity contains the original camera digest **and** the separate
+diagnostic camera digest. Dataset markers include diagnostic camera references.
+The receipt and court observation record both digests and every frame verdict.
+Changing a camera's diagnostic invalidates that court and its descendants while
+the immutable geometry digest stays unchanged. The original build format and
+its embedded v1 diagnostic remain readable for historical reproduction.

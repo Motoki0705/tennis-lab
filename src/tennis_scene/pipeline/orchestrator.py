@@ -22,6 +22,11 @@ from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.imports import BallAnnotationImporter
 from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.video_court.diagnostics import (
+    clip_report,
+    drift_identity,
+    load_video_drift,
+)
 from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
@@ -48,7 +53,7 @@ class TennisSceneOrchestrator:
         self.last_runner: ComponentRunner | None = None
         self.last_store: ClipStore | None = None
         self.video_court: VideoCourtArtifact | None = None
-        self._video_court_key: tuple[object, str] | None = None
+        self._video_court_key: tuple[object, object, str] | None = None
         source = PROJECT_ROOT / "src"
         self.code_identity = document_digest({str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))})
 
@@ -67,15 +72,18 @@ class TennisSceneOrchestrator:
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
             "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()},
-            **({'video_court_cameras': shared.manifest['cameras']} if shared is not None else {})}
+            **({'video_court_cameras': shared.manifest['cameras'],
+                'video_court_drift_cameras': drift_identity(shared).get('camera_digests', {})} if shared is not None else {})}
 
     def prepare_video_court(self) -> VideoCourtArtifact | None:
         from src.tennis_scene.pipeline.video_court import prepare_video_court
         if self.config.video_court is None:
             return None
-        key = (self.config.video_court, self.code_identity)
+        key = (self.config.video_court, self.config.video_court_drift, self.code_identity)
         if self.video_court is None or self._video_court_key != key:
             self.video_court = prepare_video_court(self.config.video_court, self.config.resolver, code_identity=self.code_identity)
+            if self.config.video_court_drift is not None:
+                self.video_court = load_video_drift(self.video_court, self.config.video_court_drift)
             self._video_court_key = key
         self.video_court.verify()
         return self.video_court
@@ -107,7 +115,8 @@ class TennisSceneOrchestrator:
                 shared.bind(source)
                 self.last_receipt['video_court'] = {'directory': str(shared.root), 'artifact_digest': shared.digest,
                                                    'camera_digests': shared.manifest['cameras'],
-                                                   'clip_diagnostics': json_value({camera: shared.cameras[camera]['clips'][source.clip_id]
+                                                   'drift_artifact': drift_identity(shared),
+                                                   'clip_diagnostics': json_value({camera: clip_report(shared, camera, source.clip_id)
                                                                                   for camera in source.camera_ids})}
             direct = self.config.direct_annotation
             workflow = None

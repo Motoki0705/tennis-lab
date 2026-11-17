@@ -26,3 +26,11 @@ build当前使用固定hash的**冻结模型候选**，不运行新的神经网�
 公共H不成立、局部漂移不可观测或超过限制时显式失败。一致的3px以上移动产生warning；可信局部H与公共H的平均差超过10px或最大差超过25px时失败。阈值按1920×1080缩放。稀疏诊断帧不能排除帧间移动。不分段，也不替换为局部H。
 
 共享观测使用schema v3，记录应用到frame 0的坐标和视频来源，校正不将它改称直接frame 0观测。固定几何import、direct annotation和旧ball3d reader显式拒绝共享来源。
+
+## 不修改共享H的独立诊断
+
+`drift_build.build_video_drift` 接收原成果物、所有片段的 `ClipSource`、显式的 `frame_plan[camera][clip]` 帧列表、来源记录和 `DriftConfig`，在CPU上准备[法向偏移诊断](../../../tasks/court_detection/geometry/video_drift/README.zh-CN.md)。测量前后验证视频哈希、归属与时间轴，不重新拟合H，结果写入独立存储。调用方在评价前固定帧和排除集合。
+
+加载原H时设 `action=load`，并同时指定 `court_kp.video_shared.drift_directory` 和 `drift_digest`。两者都为null时显式使用原v1内嵌诊断。缺少其中一项、对象损坏或共享H不匹配均报错，不退回旧诊断。多片段计划使用orchestrator的 `prepare_video_court()` 返回的同一诊断成果物及一致配置。
+
+片段缓存包含原camera digest与诊断camera digest；dataset marker也包含诊断引用。receipt和球场观测保留两个digest及每帧判定。仅诊断改变时重新计算对应球场节点及下游，共享H内容哈希不变。原build格式和v1诊断保留用于历史复现。

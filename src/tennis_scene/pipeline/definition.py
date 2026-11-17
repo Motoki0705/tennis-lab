@@ -69,6 +69,7 @@ from src.tennis_scene.pipeline.video_court.component import (
     SharedCourtAssembler,
     SharedCourtModule,
 )
+from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
 from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
 from src.utils.checksum import dual_sha256
 
@@ -110,6 +111,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         raise ValueError('Shared court must be prepared explicitly before building the clip plan')
     if video_court is not None:
         video_court.bind(source)
+        requested_drift = None if cfg.video_court_drift is None else cfg.video_court_drift.digest
+        if drift_identity(video_court).get('artifact_digest') != requested_drift:
+            raise ValueError('Execution plan drift artifact disagrees with explicit configuration')
     nodes: list[ComponentNode] = []
     overrides = {} if overrides is None else overrides
 
@@ -148,7 +152,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
 
     def shared_settings(camera_id: str) -> dict[str, Any]:
         assert video_court is not None
-        return {'mode': 'video_shared', 'camera_artifact_digest': video_court.camera_digest(camera_id)}
+        return {'mode': 'video_shared', 'camera_artifact_digest': video_court.camera_digest(camera_id),
+                'drift_artifact_digest': drift_identity(video_court).get('camera_digests', {}).get(camera_id)}
 
     for camera in ids:
         if video_court is None:

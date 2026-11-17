@@ -44,6 +44,7 @@ from src.tennis_scene.pipeline.feature_flags import (
     validate_requested_features,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.video_court.diagnostics import DriftReference
 from src.tennis_scene.pipeline.video_court.prepare import VideoCourtConfig
 from src.tennis_scene.visualization.blender.export.bundle import BlenderBundleConfig
 from src.tennis_scene.visualization.blender.export.placement import (
@@ -174,7 +175,7 @@ _COURT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp",
     fields={"checkpoint": ConfigField.of(str), "subpixel_refine": ConfigField.of(bool), "mode": ConfigField.of(str),
             "video_shared": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.court_kp.video_shared", fields={
-                **{name: ConfigField.of(str, type(None)) for name in ('action', 'directory', 'dataset_id', 'video_id', 'request', 'request_sha256', 'artifact_digest')},
+                **{name: ConfigField.of(str, type(None)) for name in ('action', 'directory', 'dataset_id', 'video_id', 'request', 'request_sha256', 'artifact_digest', 'drift_directory', 'drift_digest')},
                 'rebuild': ConfigField.of(bool)})),
             "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
             "region_search": ConfigField.mapping(_COURT_REGION_SCHEMA)},
@@ -346,6 +347,7 @@ class PipelineRuntimeConfig:
     direct_annotation: DirectAnnotationConfig | None
     clip_id: str | None
     video_court: VideoCourtConfig | None
+    video_court_drift: DriftReference | None
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -376,6 +378,13 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError('court_kp.mode must be clip or video_shared')
         shared_values = _mapping(court['video_shared'], name='court_kp.video_shared')
         video_court = VideoCourtConfig.from_mapping(shared_values, resolver) if court['mode'] == 'video_shared' else None
+        drift_directory, drift_digest = shared_values['drift_directory'], shared_values['drift_digest']
+        if (drift_directory is None) != (drift_digest is None):
+            raise SemanticConfigurationError('Drift evidence requires both directory and content digest')
+        video_court_drift = None if drift_directory is None else DriftReference(
+            resolver.resolve(PathRole.ARTIFACT, cast(str, drift_directory)), cast(str, drift_digest))
+        if video_court_drift is not None and (video_court is None or video_court.action != 'load'):
+            raise SemanticConfigurationError('Separate drift evidence requires an immutable shared-court load')
         if video_court is not None:
             direct_values = _mapping(value['direct_annotation'], name='direct_annotation')
             if (_mapping(value['ball_detection'], name='ball_detection')['method'] == 'gpt_annotation'
@@ -501,7 +510,7 @@ class PipelineRuntimeConfig:
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
-            ball_method, direct_config, cast(str | None, value["clip_id"]), video_court)
+            ball_method, direct_config, cast(str | None, value["clip_id"]), video_court, video_court_drift)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

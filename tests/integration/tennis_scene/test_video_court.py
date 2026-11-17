@@ -81,8 +81,20 @@ def shared_fixture(tmp_path, monkeypatch):
     return pipeline, paths, sources, docs, store, artifact
 
 
-def test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint(tmp_path, monkeypatch):
+@pytest.mark.parametrize('separate_drift', [False, True])
+def test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint(tmp_path, monkeypatch, separate_drift):
     pipeline, paths, sources, _, _, artifact = shared_fixture(tmp_path, monkeypatch)
+    if separate_drift:
+        from dataclasses import asdict
+
+        from src.tasks.court_detection.geometry.video_drift import DriftConfig
+        from src.tennis_scene.pipeline.video_court.diagnostics import (
+            publish_video_drift,
+        )
+
+        artifact = publish_video_drift(artifact, tmp_path / 'drift', protocol={'settings': asdict(DriftConfig())},
+                                       reports=independent_drift_reports(artifact))
+        pipeline.config = replace(pipeline.config, video_court_drift=artifact.drift)
     # The checkpoint path is deliberately absent. All other model stages use
     # existing deterministic fixtures; shared court executes its real component.
     if pipeline.config.court_kp.checkpoint.exists():
@@ -374,3 +386,182 @@ def test_shared_artifact_change_is_part_of_dataset_marker_identity(tmp_path, mon
 def test_invalid_mode_acquisition_and_annotation_combination_stop_at_configuration(tmp_path, overrides):
     with pytest.raises((ValueError, TypeError)):
         runtime(tmp_path, overrides=overrides)
+
+
+def independent_drift_reports(base):
+    from src.tasks.court_detection.geometry.video_drift import summarize_clip
+    return {camera: {clip: summarize_clip([{'schema': 'signed_line_similarity_v1', 'frame_index': 3,
+        'status': 'ok', 'reason': None, 'temporal_pooling': False, 'rgb_sha256': 'b' * 64,
+        'mean_displacement_px': 0., 'max_displacement_px': 0., 'max_visible_projection_std_px': .8}])
+        for clip in doc['clips']} for camera, doc in base.cameras.items()}
+
+
+def test_separate_drift_changes_consumers_and_marker_without_mutating_shared_h(tmp_path, monkeypatch):
+    from copy import deepcopy
+    from dataclasses import asdict
+
+    from src.tasks.court_detection.geometry.video_drift import (
+        DriftConfig,
+        summarize_clip,
+    )
+    from src.tennis_scene.pipeline.video_court.diagnostics import publish_video_drift
+
+    pipeline, paths, sources, _, store, base = shared_fixture(tmp_path, monkeypatch)
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
+    before = {p: p.read_bytes() for p in (store.root / 'objects').glob('*.json')}
+    protocol = {'settings': asdict(DriftConfig())}
+    reports = independent_drift_reports(base)
+    diagnosed = publish_video_drift(base, tmp_path / 'drift', protocol=protocol, reports=reports)
+    pipeline.config = replace(pipeline.config, video_court_drift=diagnosed.drift)
+    root = tmp_path / 'clip'
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    first_identity = pipeline.publication_identity()
+    original_kp = pipeline.last_runner.output('court_detection/cam0').keypoints.copy()
+    changed = deepcopy(reports)
+    frame = changed['cam0'][CLIPS[0]]['frames'][0]
+    frame.update(status='warning', reason='camera_moved_possible', mean_displacement_px=5., max_displacement_px=5.)
+    changed['cam0'][CLIPS[0]] = summarize_clip([frame])
+    latest = publish_video_drift(base, tmp_path / 'drift', protocol=protocol, reports=changed)
+    assert latest.digest == base.digest and latest.manifest == base.manifest
+    assert latest.drift_manifest['cameras']['cam1'] == diagnosed.drift_manifest['cameras']['cam1']
+    pipeline.config = replace(pipeline.config, video_court_drift=latest.drift)
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    np.testing.assert_array_equal(pipeline.last_runner.output('court_detection/cam0').keypoints, original_kp)
+    statuses = pipeline.last_runner.statuses
+    assert statuses['court_detection/cam0'] == statuses['court_calibration'] == 'executed'
+    assert statuses['court_detection/cam1'] == statuses['person_detection/cam0'] == statuses['ball_detection/cam0'] == 'cached'
+    assert pipeline.publication_identity() != first_identity
+    receipt = json.loads((root / 'run.json').read_text())['video_court']
+    assert receipt['artifact_digest'] == base.digest
+    assert receipt['drift_artifact']['artifact_digest'] == latest.drift.digest
+    assert receipt['clip_diagnostics']['cam0']['status'] == 'warning'
+    assert before == {p: p.read_bytes() for p in (store.root / 'objects').glob('*.json')}
+    # Multi-clip planning must consume the same explicitly selected diagnostic.
+    for source in sources:
+        standard_definition(pipeline.config, source, code_identity='fixed', video_court=latest)
+    with pytest.raises(ValueError, match='drift artifact'):
+        standard_definition(pipeline.config, sources[0], code_identity='fixed', video_court=base)
+
+
+def test_separate_drift_unobservable_is_failure_even_if_embedded_report_was_ok(tmp_path, monkeypatch):
+    from dataclasses import asdict
+
+    from src.tasks.court_detection.geometry.video_drift import (
+        DriftConfig,
+        summarize_clip,
+    )
+    from src.tennis_scene.pipeline.video_court.diagnostics import publish_video_drift
+
+    pipeline, paths, _, _, _, base = shared_fixture(tmp_path, monkeypatch)
+    reports = independent_drift_reports(base)
+    frame = reports['cam0'][CLIPS[0]]['frames'][0]
+    frame.update(status='failed', reason='drift_unobservable')
+    reports['cam0'][CLIPS[0]] = summarize_clip([frame])
+    artifact = publish_video_drift(base, tmp_path / 'drift', protocol={'settings': asdict(DriftConfig())}, reports=reports)
+    pipeline.config = replace(pipeline.config, video_court_drift=artifact.drift)
+    with pytest.raises(ReconstructionUnavailable, match='cam0'):
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=tmp_path / 'clip', clip_id=CLIPS[0])
+    assert pipeline.last_receipt['error_diagnostics']['drift_digest'] == artifact.drift_manifest['cameras']['cam0']
+
+
+def test_corrupt_or_wrong_parent_drift_never_reverts_to_embedded_reports(tmp_path, monkeypatch):
+    from dataclasses import asdict
+
+    from src.tasks.court_detection.geometry.video_drift import DriftConfig
+    from src.tennis_scene.pipeline.video_court.diagnostics import (
+        load_video_drift,
+        publish_video_drift,
+    )
+
+    pipeline, paths, _, docs, store, base = shared_fixture(tmp_path, monkeypatch)
+    artifact = publish_video_drift(base, tmp_path / 'drift', protocol={'settings': asdict(DriftConfig())}, reports=independent_drift_reports(base))
+    pipeline.config = replace(pipeline.config, video_court_drift=artifact.drift)
+    root = tmp_path / 'clip'
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    docs['cam0']['matrix'][0][2] += 1
+    changed = store.publish(docs)
+    with pytest.raises(ValueError, match='match shared H'):
+        load_video_drift(changed, artifact.drift)
+    path = artifact.drift.directory / 'objects' / f'{artifact.drift_manifest["cameras"]["cam0"]}.json'
+    value = json.loads(path.read_text())
+    value['clips'][CLIPS[0]]['frames'][0]['mean_displacement_px'] = 2
+    path.write_text(json.dumps(value))
+    with pytest.raises(ValueError, match='content changed'):
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    assert pipeline.last_receipt['status'] == 'failed'
+
+
+def test_drift_preparation_uses_exact_plan_and_preserves_common_artifact(tmp_path, monkeypatch):
+    from dataclasses import asdict
+
+    from src.tasks.court_detection.geometry.video_drift import DriftConfig
+    from src.tennis_scene.pipeline.video_court import drift_build
+
+    _, _, sources, _, _, base = shared_fixture(tmp_path, monkeypatch)
+    calls = []
+    template = independent_drift_reports(base)['cam0'][CLIPS[0]]['frames'][0]
+
+    def measure(job):
+        path, frame, camera, config = job
+        calls.append((path, frame, camera['camera_id']))
+        return {**template, 'frame_index': frame}
+
+    monkeypatch.setattr(drift_build, '_measure', measure)
+    plan = {camera: {clip: [3, 7] for clip in CLIPS} for camera in CAMERAS}
+    before = base.digest
+    result = drift_build.build_video_drift(base, tuple(sources), frame_plan=plan, directory=tmp_path / 'drift',
+                                           provenance={'unit': 'exact frame selection'}, config=DriftConfig())
+    assert len(calls) == 12
+    assert result.digest == before
+    assert result.drift_cameras['cam0']['protocol']['settings'] == asdict(DriftConfig())
+    assert [f['frame_index'] for f in result.drift_cameras['cam0']['clips'][CLIPS[0]]['frames']] == [3, 7]
+    plan['cam0'][CLIPS[0]] = [3, 3]
+    with pytest.raises(ValueError, match='invalid frame'):
+        drift_build.build_video_drift(base, tuple(sources), frame_plan=plan, directory=tmp_path / 'drift', provenance={}, config=DriftConfig())
+    assert len(calls) == 12
+
+
+@pytest.mark.parametrize('overrides', [
+    ('court_kp.video_shared.drift_directory=drift',),
+    ('court_kp.video_shared.drift_directory=drift', 'court_kp.video_shared.drift_digest=' + 'b' * 64),
+    ('court_kp.mode=video_shared', 'court_kp.video_shared.action=load', 'court_kp.video_shared.directory=shared',
+     'court_kp.video_shared.dataset_id=fixture', 'court_kp.video_shared.video_id=video_000',
+     'court_kp.video_shared.artifact_digest=' + 'a' * 64, 'court_kp.video_shared.drift_digest=' + 'b' * 64),
+])
+def test_drift_reference_must_be_complete_and_cannot_activate_clip_mode(tmp_path, overrides):
+    with pytest.raises(ValueError):
+        runtime(tmp_path, overrides=overrides)
+
+
+def test_drift_reader_hashes_rgb_not_opencv_bgr(tmp_path, monkeypatch):
+    import hashlib
+    from types import SimpleNamespace
+
+    from src.tasks.court_detection.geometry.video_drift import DriftConfig
+    from src.tennis_scene.pipeline.video_court import drift_build
+
+    bgr = np.array([[[10, 70, 190], [5, 90, 160]], [[25, 95, 220], [0, 45, 150]]], dtype=np.uint8)
+    rgb = bgr[..., ::-1].copy()
+    monkeypatch.setattr(drift_build, 'read_video_frame', lambda *args: SimpleNamespace(frame=bgr, original_size=(2, 2)))
+
+    def inspect(image, *args):
+        np.testing.assert_array_equal(image, rgb)
+        return {'status': 'failed', 'reason': 'drift_unobservable'}
+
+    monkeypatch.setattr(drift_build, 'inspect_frame', inspect)
+    report = drift_build._measure((tmp_path / 'clip.mp4', 7,
+        {'size_wh': [2, 2], 'matrix': np.eye(3).tolist(), 'diagnostics': {'quality': {'supported_lines': ['near_baseline']}}}, DriftConfig()))
+    assert report['rgb_sha256'] == hashlib.sha256(rgb.tobytes()).hexdigest()
+    assert report['rgb_sha256'] != hashlib.sha256(bgr.tobytes()).hexdigest()
+
+
+def test_runtime_configuration_loads_both_pinned_court_and_drift_references(tmp_path):
+    cfg = runtime(tmp_path, overrides=(
+        'court_kp.mode=video_shared', 'court_kp.video_shared.action=load',
+        'court_kp.video_shared.directory=shared', 'court_kp.video_shared.dataset_id=fixture',
+        'court_kp.video_shared.video_id=video_000', 'court_kp.video_shared.artifact_digest=' + 'a' * 64,
+        'court_kp.video_shared.drift_directory=drift', 'court_kp.video_shared.drift_digest=' + 'b' * 64))
+    assert cfg.video_court.artifact_digest == 'a' * 64
+    assert cfg.video_court_drift.digest == 'b' * 64
+    assert cfg.video_court_drift.directory.name == 'drift'
+    assert cfg.processing_settings['court_kp'] == {'mode': 'video_shared'}

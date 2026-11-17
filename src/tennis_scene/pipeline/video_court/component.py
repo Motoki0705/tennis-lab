@@ -19,6 +19,7 @@ from src.tennis_scene.pipeline.contracts import (
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.utils.geometry.keypoints import normalize_grid_keypoints
 
+from .diagnostics import clip_report, drift_identity
 from .store import VideoCourtArtifact
 
 
@@ -28,6 +29,8 @@ class SharedCourtInput:
     clip_id: str
     camera: dict[str, Any]
     artifact_digest: str
+    drift_report: dict[str, Any] | None = None
+    drift_digest: str | None = None
 
 
 @dataclass(frozen=True)
@@ -41,7 +44,9 @@ class SharedCourtAssembler:
             raise ValueError('Shared court requires an explicit camera')
         camera = context.camera_id
         return SharedCourtInput(context.source.video(camera), context.source.clip_id,
-                                self.artifact.cameras[camera], self.artifact.camera_digest(camera))
+                                self.artifact.cameras[camera], self.artifact.camera_digest(camera),
+                                clip_report(self.artifact, camera, context.source.clip_id),
+                                drift_identity(self.artifact).get('camera_digests', {}).get(camera))
 
 
 class SharedCourtModule:
@@ -49,11 +54,12 @@ class SharedCourtModule:
 
     def process(self, inputs: SharedCourtInput) -> CourtKPResult:
         camera, video = inputs.camera, inputs.video
-        report = camera['clips'][inputs.clip_id]
+        report = camera['clips'][inputs.clip_id] if inputs.drift_report is None else inputs.drift_report
         if camera['status'] != 'accepted' or report['status'] == 'failed':
             raise ReconstructionUnavailable('video_shared_court_failed', f'Shared court unavailable for {inputs.clip_id}/{video.camera_id}',
                                             diagnostics={'camera_id': video.camera_id, 'camera_status': camera['status'],
                                                          'artifact_digest': inputs.artifact_digest,
+                                                         'drift_digest': inputs.drift_digest,
                                                          'camera_reasons': camera['diagnostics'].get('reasons', []), 'clip': report})
         matrix = np.asarray(camera['matrix'], float)
         points = project_candidate(matrix, court_template_xy().astype(float))
@@ -62,6 +68,7 @@ class SharedCourtModule:
         visible = ((points >= 0) & (points <= np.array([video.width - 1, video.height - 1]))).all(axis=1)
         shared = {'dataset_id': camera['dataset_id'], 'video_id': camera['video_id'], 'camera_id': video.camera_id,
                   'artifact_digest': inputs.artifact_digest,
+                  'drift_digest': inputs.drift_digest,
                   'selected_initializer': camera['diagnostics'].get('selected_initializer'),
                   'fit_frames': camera['diagnostics'].get('fit_frames', [])}
         diagnostic = {'schema': 'court_kp_quality_v3', 'output_keypoint_contract': 'camera_view_v2',
