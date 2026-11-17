@@ -1,0 +1,1456 @@
+{
+  "head": "701165bd2deeddc20d4773b3dbacb6890f8c15ae",
+  "records": [
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam0",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_000",
+      "camera": "cam0",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "df3c4acb04974f7cf8d85323424639fe18f830e578d51534d0e86400fc6a9b7b",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 1.7693737230001716,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam1",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_000",
+      "camera": "cam1",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "efccf7cb5d07f6789c8da9745c779b99e15846e3fb5fb143b7003c64f6e92fd9",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.9450512820039876,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam2",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_000",
+      "camera": "cam2",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "e89f5a4f37e9fde63437def7672d6b8d508014a02f9ef6315094eaca2981ef36",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.9455625420087017,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam3",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_000",
+      "camera": "cam3",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam3.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "38c40935bc3551c13bb74daf929b0bada5881da73b925cc0c5d5f65692fbbf59",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.9410164400032954,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_001/cam0",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_001",
+      "camera": "cam0",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_001/media/cam0.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "4c63d63d4804644a6c8beeb236ffe2c325729a8573917d5300c53017e2a94a20",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 1.0035739689919865,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_001/cam1",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_001",
+      "camera": "cam1",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_001/media/cam1.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "bf71cee1f20dfeec756d93ae52efc166fcc2326e476183a7dd42dbc926b2501c",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 1.0367070430074818,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_001/cam2",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_001",
+      "camera": "cam2",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_001/media/cam2.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "8b6cfa944c76ad3c33879f9a94fdcfc60b97c0a716c157d625f5ea10edea23d6",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.9834918599954108,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_001/cam3",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_001",
+      "camera": "cam3",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_001/media/cam3.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "7c8be54c3f9e00ff88cc8675b000df4d1d12dfb8999544b9f052da6c6018322c",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.9497707830014406,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_002/cam0",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_002",
+      "camera": "cam0",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_002/media/cam0.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "19feb9d54bedc49983c5fec99c6b60b05477378337ff53002b6f4bd0eaa3f4c4",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.9556597339978907,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_002/cam1",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_002",
+      "camera": "cam1",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_002/media/cam1.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "d8cc1a40a495f9f25bab94bcec601a952f87a438f5ef8c650e4fcc359b406684",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.9347777340008179,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_002/cam2",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_002",
+      "camera": "cam2",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_002/media/cam2.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "d48d1c54d8615ecc9d02c0fa5e6d8d5f20bea53ee8dd323ef3923f9c005b0d6e",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.9603609159967164,
+      "old_raw_group": "raw"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_002/cam3",
+      "dataset": "meiji_4cam",
+      "clip_id": "video_000/clip_002",
+      "camera": "cam3",
+      "source_video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_002/media/cam3.mp4",
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "content_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "rgb_sha256": "554fd2a35e2503865c4884f3b5b3fbe4d6e12645f468a9bd1e623277e3bfed84",
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1920,
+          810
+        ],
+        [
+          0,
+          270,
+          1920,
+          1080
+        ],
+        [
+          0,
+          0,
+          1440,
+          540
+        ],
+        [
+          0,
+          270,
+          1440,
+          810
+        ],
+        [
+          0,
+          540,
+          1440,
+          1080
+        ],
+        [
+          240,
+          0,
+          1680,
+          540
+        ],
+        [
+          240,
+          270,
+          1680,
+          810
+        ],
+        [
+          240,
+          540,
+          1680,
+          1080
+        ],
+        [
+          480,
+          0,
+          1920,
+          540
+        ],
+        [
+          480,
+          270,
+          1920,
+          810
+        ],
+        [
+          480,
+          540,
+          1920,
+          1080
+        ]
+      ],
+      "seconds": 0.966602807995514,
+      "old_raw_group": "raw"
+    }
+  ],
+  "file_sha256": {
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/manifest.json": "b1d8dd0d37b085741c9da0dbddfc2f09a04a4874de5286b601d5e0a7c1c0bbba",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/knowledge/runs/run-court-legacy-default-20261117/replay.py": "8e1f7fe81f3303d7b72844a8f57dc25c8cb1c4cb27624cec87b71201f91d553a",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/confidence_homography.py": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/paint_refinement.py": "7a04ce8ad7dad1748bcf7069af56c0247f84bd48020ca36b1893d3762ff8c793",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/observations.py": "ea704e5dc944154f3560e08f4f14db4ea0f45db9917da3e198c178e2b1245e17",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/__init__.py": "732436a5b060ad3f63edf28ba267bc7645735a0ccbd5341b27233c1a7bea8001",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/pose.py": "43e1e20cdd1d436b97b25bcd86205ad71533747c0317984f3a6889f2fff6d7ad",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/postprocess.py": "83360fe0115b3337adfce1f8ff55315ad7cc7dfced674521d19cf0ea4914dcf5",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/line_evidence.py": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/quality.py": "ec15ea4582ad113b3358d02ba07bafbe322334b74a8c09ad4b047962dd0d6558",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/paint_correspondence.py": "3ab20414b1a43d0f03794603b5e17b61c3b3b55b6c98462754df27c063d6c81b",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/hybrid_homography.py": "3504859c4f0984f09057873a500cc2f5a85c614e6c69fdbaaf58062924f8fe55",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/geometry/paint_observations.py": "295041f2fa9e6a604bb0cd030af8023e0216a3e5ecb6557e53e6cf5445af33e3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/inference/regions.py": "fba23451083ab5cfeeb05a6d355fd22c4961fac3f3802adee3d6e6137b0e4b1d",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/inference/contracts.py": "18602994a4a0a6b2127174ff3f046a60f8c4148734c1efc4e26c231233db3b7c",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/inference/__init__.py": "d96132b221d35d5489fd654b12029e7cbeac34e7461613d73eb24d2d0eceadbb",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/inference/checkpoint.py": "ead7c1106f44f63e4d4eeda6f39ebf0456788614221cfb79fcb9bb7fcbeef43e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/court_detection/inference/predictor.py": "932906ecd139b0a6b6721fa47e5f59db8b90dcaef0c65e874d53bb427e405ec3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/configs/pipeline.yaml": "73a1b4af1820d4f58f2559fc554f7e7ce0c68d1e12700c59a5fb08dab6d642d1",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_000/cam0/frame.png": "095796e1934badbb6a46d754b42b1814ec7e54f161ae6fa9d257170beb2dd5a7",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_00.npz": "4c2718f27369be67a3eeb8f5112a54f070b45f32d41555911874e921f509cd60",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_00.npz": "5395feb851ad91e9bc3f55db46a24c7cae64beb4c481f6d7fa5d94f6c494eaaf",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_01.npz": "b770cd7bd1d9cc45b6bfcbc6104f755c5592b687433522ce67bb90cd9b9c8751",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_01.npz": "1fc82e700e5abf31158c672e245c887ddf27f4f6205d875b987e83f4fc268ce3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_02.npz": "e5b28b6dec057bd0a522059ac31ff50eb9c2a2dfa34222146b2e988993e7e727",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_02.npz": "cb9bd23b6d75b86fc6396db45e40ab4cae2ac9bd47c5c746ceb2d3fce923eb38",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_03.npz": "a67b94f975070bf187d468dbccd47427bb06fa0e4a342bf122dc35d1d9cfaa94",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_03.npz": "5a95503954c524c8bf22284aaeec3a41a8a40916918724dcc70940280bd0234d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_04.npz": "5fd0c1bde010ec329c25589d4de355514c94089ddb8c59569b97b5749985cf31",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_04.npz": "81beab80c34446952ff85c526dee4a6124b67b2a61944bc65897c7eea3e92bb7",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_05.npz": "b184af60a357a126e88319f8781b27df5a62e238cde6974d5c766aa2f32c8db2",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_05.npz": "a1a67b8bdbedfd38ced6187bc3db4da5c6f88cbcf504d7c28761f1f81a107f5c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_06.npz": "17aa9e98dde0625c6b9f7022fbd5733f367a74d5f749ee57c32985e126a5a365",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_06.npz": "01e04ca5268603acd4c6174934e6729b7055904e329bc8b4099bc82944b604cf",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_07.npz": "56218117b4d01fa69a3129e4cbdfde601de8f63cfbdb2d7f3315724d01bd33ac",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_07.npz": "062b12ce4356d6b4001d016a43086d382fe4532aa614d87e971f0464766678a9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_08.npz": "847653db8394c7eb7179707798ffb26e5e11230c799c10da9c542c326fbb9c8c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_08.npz": "b6e4aae90c72f2c333b7383686d11df8f69120fc2b43d5440ca490e73090682b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_09.npz": "79aedef7bdec7549939bc9730d65bcf4e71c2573b22234963227b674659ac3f8",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_09.npz": "1ad09172c8cedbb4a360311847ff484b06143276729b1341fea880356c21c0c3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_10.npz": "92d19c9f03d25201ef017b688f8ec7f57314cb65db4b32532de5c435ad1edb28",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_10.npz": "6a9bf9c9b4e72fa3f74064cf22d3a802522483c6b04f573af252627e52db937b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam0/raw_11.npz": "c6f055a15d07132f731fc7b070db49aa4d60626b595e9d05ff7be9ab72a62d5c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam0/evidence_11.npz": "3857dd17bdc6e4d542ddc59a25175f41d40d8fa292de2af51fadb7eefd5ef835",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_000/cam1/frame.png": "5e2e5c76258ba7f5e76fce9366517be6e1d53512ca5531cb8e1d93aff148398d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_00.npz": "95255227d5465f20344a5c44340fc9180b02bedb06857955370d38c92157869f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_00.npz": "fc330db1ae82c3d7b071dbcfb44708fc63cf8b2044689c5ea1ab1de6188476c6",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_01.npz": "387ab0edfe7dc16b78247a6afc2ec8c2a58d93821edee8438ebdb86963a7f318",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_01.npz": "4348079494a25d8d827f6c54f07e0e8114e5f02a158f8aac0c1160bddf9b1252",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_02.npz": "a36c5adf16818d826ee8b77008c8e1c2432f51431f9b18671b941e52aecdd389",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_02.npz": "cfdb71e5a8802c475235ac18b9737562ae1da4276f34de07a2a89a8b284e38fa",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_03.npz": "931c7fd2dd0061048145747d10599765ce665830a8a37242956ae9be076e08c0",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_03.npz": "86d78f2203d93abeff6309fd4e92e6f1d3a5a93d77a0a432a35764297b199d2c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_04.npz": "4a379399559bd0bca266badfbb3b15af364d5e710604f7ee73e75e0d0d552e09",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_04.npz": "e60bc5a968744b5dd7b2d5a0f1ca6089e73bf7561761937ba5d3df5c6acc4799",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_05.npz": "3143af918f91678e92a0fb480b3b4d79111410404dd25320fadb97221d502503",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_05.npz": "8475583c0a07e840e739581d4defa552416992561ca0fa60ca88f81e578bf7b7",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_06.npz": "f097a883a49aea315744b4dee90e5004bc603e80cbf6f3fa01bf517bf87b298f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_06.npz": "e5bddff3394567124aafd7b3c25338244d6533562b1614f918ef2a858b555946",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_07.npz": "132c09629c3a61cf0fd3006cf7d8aeb671d8f655c9a572613c9413cbb868802c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_07.npz": "891352295ece5dfe5b72fb854f413f095e86e0bbe438189d88955983ccdafa6c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_08.npz": "54141912b899c5a4bf62e52f192a4d0e2688f844dd00277de09e08f1e7dc1b72",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_08.npz": "0c2260392d535991f6ceb3816564fa1868f83fbc4e3ec95ec11a7afa3c199065",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_09.npz": "59fe37b2d01fbf91de0716caeacbdcf65e1223d9e129a51e9d7eaadb2fada96c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_09.npz": "0af9bc44203c5f0cb7303fd728ff4b4bc3b813297be6bae60b5b58e8ed65bc15",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_10.npz": "9e511170626c3ffed9f25ecd7cb713987d8523c2a27f444163d008e7f502719f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_10.npz": "e3a27c846c7cccb3a6cdc91f955d3044eaf19e15bbd9039cd3de58a1ed39f6f2",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam1/raw_11.npz": "78815b8a8ade4a01ad866690acc956f4f6496ed1efa8722f77b2cd248469cb7d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam1/evidence_11.npz": "2e7a788f20b71cc8ac55e4f0787ddd89ddff307219bb57d43a3525fba52e5ceb",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_000/cam2/frame.png": "ee04c48537f0218e65e54d4a55a42ae84feaf1425745fcc66c4fe37fe92fb999",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_00.npz": "7cd47bbad7f78066cb369e4b1d3653d373e750e018d0983301302c054381c32f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_00.npz": "d0f73258429c99e9ac757b6023dfeeee51653473d344d75281a641b5d4590428",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_01.npz": "1f40cfd06ce89e10fb10b442d7c90fa35c6418c9edd40c2f50db1edb5685d53a",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_01.npz": "cee2a8dfbee37755e8f27aa4a5647b4f3e1982f899ef45988afe3b19a1d0abbf",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_02.npz": "7705c9f545f133d9af2e9586dff6e4ceec0d588bbd72699bc9bebceb998ad2d6",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_02.npz": "ac3125498110f8705cc503691f1f22ca015bbf5dfbd79c83ec1459ca1c6f02cd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_03.npz": "7418e218bb7e6284025925cba36c5220630aab4222541eaec7a06c94a4506fb3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_03.npz": "fecbd50232f73192f4ba2a0a69f76467a7159e5f3776df271c71f7e84022e40c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_04.npz": "7df213652f4d0e39898f80bccdbc1b844c362b0bb69a94aeae6c94991ffd63f8",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_04.npz": "3e246f240e519c106727e847043f13cc50c2536e9ed3fdcbf14cc2480a74c889",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_05.npz": "d02141c5bcc4a4f303ef4c3db2cbdbe0c6eba737b23743ecd26b4deac3e0e3c9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_05.npz": "9e43e1b02d75ca5608601fa174c9ad04c3d2d81d5c8b2fa3c6a7c44ea61eb681",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_06.npz": "c5fc2b6eaa726820bc977773a65c1223dc5d76d7470cf4d0a9fc771a73ca3f91",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_06.npz": "74228b99d7e9900b0709d4d79badeca6bdd95d033b9ebc83be0691675b8f903d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_07.npz": "ccf240d91f808e0fac89fc6502fc5c6b2978880a31aae117809c442f255cb625",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_07.npz": "494794551302a0166d3179ecb3854a5f80509170d2d88406b7df434343790a6d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_08.npz": "6cccfbea2648ab5ce8b14c1d576edf80bf403529f0f2835c2687bc1b67e1c988",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_08.npz": "bd9ac0c8a7eed24453109dc0d0911e306d8c78b7369a661f4dca32c4b360f9bd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_09.npz": "914e0ba5c32f5bf809ef68c6e8827dce00f2739ced4350629ffa23601c6237f8",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_09.npz": "358e4f203866aad47bb4cc9d9e8f71d575eb31b11d547febc2665152f0c1b7ef",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_10.npz": "8f8b8235411a02eb724e97eafa5dac2031e0a8ed33d817233602a47709e4b217",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_10.npz": "fa8d41de6b4d3ec51af32527aafeb68ef173a52f4f697015f833bbb51b754b8a",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam2/raw_11.npz": "6c26aed0659e74891ba67a63aee38687c8ebceb2f250bf685ce6b72da5c47c5d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam2/evidence_11.npz": "dc7ed235f493ad6dec3a26880f637f90d271cc69d3c3be99bbd62455d68dad24",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_000/cam3/frame.png": "9931139baa66864be35a7617e142e85a134a7ddc02134b1aaff66555c44fdb09",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_00.npz": "bbde4dcaa9761e76f3e8c95a671cf044bf54869d3d2e16a7d63e904842f6577e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_00.npz": "b658b4b6a7e904f095d879646baa3b0386b621b005c7a450938b61e2a861285c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_01.npz": "66c640da01feca2bf33d81b509d205e165cfb187f3a66b9fca26019e74aea063",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_01.npz": "ea9ffec6516147f07f26629ae6a3ae9fa41e96762bc18d4f5174e183b599cb51",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_02.npz": "9810ba97c29148f09285d07dde246465979d5da0fb79c811f368ee332d61e94c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_02.npz": "4976554e65ff3882cd1f8bc3555adace59a53637ba937d2460fadcb1a5b283b4",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_03.npz": "c3926715f1c61eae2ca263688b3aedb2a97916a22a5874853090de97308e20bd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_03.npz": "669c319607677702756bb947d00286ab0cd5ac8eb93134c51d162c3a18e77ee4",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_04.npz": "1eaf1ec923a7673a5fdc225ae19ff3892cbdb73bb432480b164227301a3cf721",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_04.npz": "63ec414a6562f83f22716a4443ff7d53c7ac7770d75b3c876777f44259e9095c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_05.npz": "839a386cd0ee6756433c8d63f2fbea12b1fdb714e436cb534f3d93ab489ed7b9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_05.npz": "da558a4f73ff966877f44d9048177663e21ff42bcda3da00c490af2b067de49e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_06.npz": "09d11fc55a24dfd0c2812b16d7e87e30d31a169aec0ab13ef19cf4b6ecef486b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_06.npz": "7b4029a047d77a4dc514c28c9bfd44131d275247fa86175b321974c4076d4e9c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_07.npz": "0babfaf98e72ffb08f11d9756a88fb9dca75d36fb5fe49de1151a5be0dde741b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_07.npz": "9fec4286090f4fb5d2e0fe4692a4c3688bb3fac91922a4cbad7c9ebcb2bd5f36",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_08.npz": "d937409869a9d2dd318aae991c78dafba010b78604abb70ebed033c4bf49fec6",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_08.npz": "1f050e1ac727ff2e409b44ba8586c9cc4149df5a2d101fcfeee61a90729d0a75",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_09.npz": "917ab1ae67433514961967e6fcb0c5a969ded0a250f4f4e83d2340c321d7ba64",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_09.npz": "9f1612940adaaff70748129e6651ef6436931ecb1dad1ef78d12f1a7d99adaa7",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_10.npz": "f215c26a6c04ea0b643c893a90b53f794a0beafb52819b01c42aefed5eb3c64f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_10.npz": "4fa1c9b33b388d17a5d1e4a11ede906e2dcb79e82b9668df1ca08ccab98bc334",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_000/cam3/raw_11.npz": "e416b0f8d725b3db259a45ba63eed3ae47f52fdc44611abe16ae6cb18a693de1",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_000/cam3/evidence_11.npz": "338f8685790760bf7b3ddccb28d34f8a3bcb388624080ddd234e2ae530d4a52b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_001/cam0/frame.png": "cf553b33ce8d48e72e2f33f16ead5346ee2c7ae51c573864e0dfd1b19bc32750",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_00.npz": "0844daa2a8820ba775f888040c66778b0bed42bb6e7f8aa9c331e71541160eb0",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_00.npz": "45e557f72da9633d4226f422cbe665b3208af133e5fd7d6df360e2ca90607a2e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_01.npz": "e230c54cc9ebf5e16ebe2df9ef345b8615b3468713957c987af277c941ffaa74",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_01.npz": "808f1a85590262a639a5a27e822af2c79fa547012591c613589b5edcdc574a63",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_02.npz": "52d15144f4cc279bcc25f9071dface919188da84d4baf62d1bb9635d415a1f26",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_02.npz": "63c6d75a552e037020c17f6f8e9b0a6f818b9f74d6a35611b96708a78390f786",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_03.npz": "28b1dd30f682ba0da3b922b73fdb0149087d46c1adb4165d62d080a567a64483",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_03.npz": "3e454b5681b229ee722fec074c035f72844de79526435e1b706e71835eef2d20",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_04.npz": "4be86511a9b47ceec05ec962cf5f9b1bb4b98295191ae81ae6651782a9fe80b3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_04.npz": "aeaa93b2b08a58261baa3f9ce3e27dd3754cc658068cc001158b710f8e1ea15d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_05.npz": "1520e76873ce85e1c4729eb47b5af26956c84b684e0d66b15cd9d89e6bc97335",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_05.npz": "8ef9ccf46c59d43d8768b559a548957d03bc18abef2c992f52cf9c261a342beb",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_06.npz": "7d81f1c14f0f0e29b0a4701990cfa4082e8ad3d5cbca4e1bf0dd39f664090836",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_06.npz": "a2a467d8fdbdac00982fc3fd145398e6b90406dc2a9161e33c7c970814349dc2",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_07.npz": "00c7017d6e1b659a079df62b91b2846b398376b49f82e37d3b8994ab2aa5ae6c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_07.npz": "85a9bb2e4e2a4c79dda354b1bb882ac5d21b3ff28882fc9d763603c6009bba1b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_08.npz": "c2e22e5b30968743349bd2ef2843909ae63c9d82f1eba2b4c8921c89855fd095",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_08.npz": "d7490cdf65498e95eda9795f1ef06c9398cb45fb667350b48ce45d7fa32963ce",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_09.npz": "54cdab094adbe72172eb9a0f7b27302219bc1bad2f4cc4e50931868239a03bb3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_09.npz": "3d620078cb29ead9ed0b7f8579de6aa144f157486d5f518c18acb5f74c868013",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_10.npz": "6a774af1ed808b0aa51ca3dd2e722f3174353ab4aeb57a3878b48fd8e0e4dacc",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_10.npz": "cf2a90361839e7bd1ca92fc8b9daa1ede022dc7fef0f489ba08ec6de5ec78dbe",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam0/raw_11.npz": "a6f29d85095a779da3a608f7609aea53213044dda829cf20ca42fb5b3648dc2c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam0/evidence_11.npz": "b086b10b296f63711422442b52403932a09bbee64a2e506f6911797f98e4455c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_001/cam1/frame.png": "785a0906c974fd49310ddec6b7a8aee3b06b5d1ab57f2329687907282de63893",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_00.npz": "76814fb88fc5cb2325e418a93423333d66b5d4d8fab01c858262b824f9e5c095",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_00.npz": "5cbaef773f4595cf0fb6c97980b6cdb72d7389810f591386fca8c36ead95b8ca",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_01.npz": "4b86a084e8807acddbd433a172b727193c11c42b9b188f47277220e696943b3d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_01.npz": "f76671502f3880b4292a4e5853bc994b5a0664bc71dbbb8a2b8fa2cb0a6c59bc",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_02.npz": "5b533689fbcb8a338a1f958bf90aac1031cb63a0c708a4e9665c3675358238a5",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_02.npz": "e8819edd53dff28dce8e24ea6670b7532b27f9b254922788b523a7647a2117aa",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_03.npz": "aacc2f09d2e0729077d725be3786169f96b3bbcabbb728ed7f5e971d5adf086d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_03.npz": "e8da4e85763a2f2106bc292966d9aa24b8900c704277ed2b1ccdd9a1a7d691f6",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_04.npz": "98ba13fbd627b4868fa9b90d0e3d6b65b1a16d46a6d0b50268b33d4f347b0f5e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_04.npz": "8ccbb5d90b60de43f75575463968434b1004456c08fff28e28d0c2b9a0c2d98f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_05.npz": "676558cc5da512ee717ba58c705c66b27da0728a811230b04ba4e41dddf1dde8",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_05.npz": "0d5b46efbe2666434912b147baeda4f86a45c7b49c19a810a3e799c07cf552ba",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_06.npz": "a3cef1cc7fe768006a552ed92d45dad7993b3748e4950fce091870e12bf430a9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_06.npz": "163f48da4a3ba91fc5ddebe98f6dac8d0253c5b2fa6b8dc7b9875264733e9531",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_07.npz": "a0a2df35c2d9192bf01e9639a783766d37bf4a88951d6197934763ea74a3123f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_07.npz": "1f43b9ad12263aaac8a00f1a138ec26a4bb830c63d82f7583b243ebb0de9a58e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_08.npz": "bf2ba8dc873582ef42169497653e2c226cef1a9a59d24d0f671fcbdd889ff1ed",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_08.npz": "b271b93317820718f862d6d2e3e6a278d55627ec0b1b3d6076493f7ac39658d5",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_09.npz": "c164318771eb21606ea3aa1c7acc8c5420e38d7b06b7ed3fe9419501ddfdc575",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_09.npz": "484447423eefed44d76e97434248d3ad540eeb0381ff41b1d7337b9af38cc0a3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_10.npz": "ccd207838758f950442854f24b567d67646ea56dd8f3b52a94ddbb5beb9323c0",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_10.npz": "3fb60092a19e9ad64e2db15f19b108b61a0c657a811c0d4affca519140033694",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam1/raw_11.npz": "1a50fe69772c52692594d2ec33b0f63b0e236bbf58d46b8a206ae4523d84f106",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam1/evidence_11.npz": "8f91d6c92398290373f2973153b0923a7b142296093fb17c3bd7de31f113fa28",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_001/cam2/frame.png": "9b1afa905129b20107e3bad9a08f7601069fb2069e685f7b63c0164e61f26171",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_00.npz": "dbcfe38b80455c3ec0c2461d8325e458eb5c7392b0c4849a302a5e0c1347c73c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_00.npz": "e4cfdefcec661ce7e804d10c7cd425bb61dde6cbda92760987aa47ead67d367a",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_01.npz": "56ca917d74a22bd9a52aa4042823785e897665f2c2c336ebc2c8c564fa3acedf",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_01.npz": "238276b4b880f38014b31be04a8b2dfceae355f7436064d0e16bc107f2820295",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_02.npz": "9caeae41965cab0e4ba4aaa7242c09f1fa66087bead51429f7f8c676a74179b7",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_02.npz": "765091d231c6120115c848b0b04e85a7cec54a5027c4dbaad0c4d036b8787951",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_03.npz": "c783c698fce0f3516ed845e6cd0efa02ab61eceef6f7c7378e51b2cc71baabb0",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_03.npz": "32d2c686578ea602019b06733df7db95c38b3edad60f669df6ca99431efe8fdc",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_04.npz": "87ea0d6227aff98149aacb4494fa1fb3569be9e03425e8d7020a7c64b6f39a8e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_04.npz": "447a59dbd6e8bd5a9169c7497a505598759ed2f4dc1da4dd591b10f452b20de1",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_05.npz": "c3d6dfaf6069766475b97bb9961787041643b9766d8fc79011dd2a41f066593e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_05.npz": "18fde36585b338d594206e323a9376efdded09e39dd6d6ffb499464aa1985335",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_06.npz": "f53cd45c148602cb94afa64d0f422e518fb7f3bb29043b60e77c9dddcfbce1e0",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_06.npz": "a8cda533d0bdfd82cdd68fae3fa56ccda972674f8becacb54beb27297ed8ecfe",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_07.npz": "65b48105f4b7bf9b89e78a66943dbcc342e56c301c03f1be62972ef1e0bfc780",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_07.npz": "7679910a6eb357fc26917a37597e9084c2139dc6e986ea08aa1d5c315e3b2ad5",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_08.npz": "42ac48a0edc545ac77053e14b8b4ddd9ae2373183df707e6943e38faa900ff49",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_08.npz": "9bef75bb13f447ba847cd8b5b952a06253b6326ed8f8fbc8370e4b2cf9d1ed28",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_09.npz": "31ca493b8a5ead6828935d04a43118204945ea6216d92bcf2e49920694f0ae22",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_09.npz": "bf61012284527a92283e5e16d7ba89c400239c5192eea10ef13f577056eed5c1",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_10.npz": "d200da8c580a0f747448b13edaf7aecf3720b2306c47065fa2c1bf2f19c33896",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_10.npz": "3b349c9b4fdaeea2d629ed787b2d96fd4034962b6f4c1237536b83b6c2cc8ddb",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam2/raw_11.npz": "15bfefdea368ea7cd86225bc9c342152dca86590d155120f92dc3c8d968c63c6",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam2/evidence_11.npz": "881a7e387938a2b925302a4b0d2c4e4a473df609e085cbfb1e3fe9206dba14c4",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_001/cam3/frame.png": "6a0763c58a048c2b6ebf8888b41df9c7dc463196c27a2d7217c1acb09b7210fd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_00.npz": "c886e56a626e08a0c9a68b8e2565b1c265970a72089ef6d9f1867bcbe85d30ea",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_00.npz": "0ee18ee53764cabcf2ebed36e8f631feefd7af1e3e697edd01dbab04c9c7b265",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_01.npz": "37024e336857bd00e34c80474741ec42e5ca7f3c240298691901d698612f1b33",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_01.npz": "87bc496d3cc4f4e549634b906aa301a47c14ad84b3e73eb7053c5d29a7c242cb",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_02.npz": "14109e6d689d853ec73c993ad9b3f0892a56d65faf1c89c40436649cf37cb3e6",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_02.npz": "ab3f384be22911588c6ac6ae2ac0770200e75f7c9da53f65c1190c00b0396b86",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_03.npz": "340d448eb9aa085687ec1bc1adc5d25b00ded43a92f6fdcbb42be1a70392c115",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_03.npz": "45eab64cc394ff103fe196493266a0b6c92553c3e0c657f5498e2ee8c1ed992a",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_04.npz": "95feb14b0f80f080c427dc568881cb4e7fa02a38feead599d389180ca6e48dc0",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_04.npz": "fa4d96cf6466a3646c39c832d7733dc99fb6f597f8a04e7ebbd00fe2b725ae3b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_05.npz": "50d3e431086e8f0a8156ac12fd89b189426b2758874ca44878ab97b804288c4a",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_05.npz": "c3caa9ee2f37d734d7b82ba790dca2637f1452907231c8e6119974e5159430b4",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_06.npz": "96b0204487015d38a686e4b103db597d07b274c8a6b2c7f29fa05dda83cac4bd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_06.npz": "a1dfc4fb31082c5846ad65c42845d30fc729b1906ff21cdf54f5de1190849422",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_07.npz": "469d0f398531e02640a0d9fa37c367a93c72ead22cfb86bc025209dc4ee07238",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_07.npz": "1735e206159d1d6419f883622040c4971c132b2b0cf54ade08ee921b54b0b956",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_08.npz": "851d6444b26ba58d7b850b0bd0cadbf472e5917072a3d2c4f47ae5bf3b49c23f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_08.npz": "194f740ca2901b70909ceb14c118d50adf61af556e9e896a0e2c9166aad18132",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_09.npz": "266e03fdcd4af4e1a4404e64bd43f93306b4053d77c716cc93ff12e9c4d8a188",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_09.npz": "bcfe9b15e3e3406f4a0dbb61440e529c627082794b88d11a71587f18553c65fa",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_10.npz": "36678e71e5d76710371bbae382021fd3226fe8deb27a99242862400cc4bf35c9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_10.npz": "9828fd0e9b966c7ddb72a6ba3b3c89d4924b38f0eefe4d409f8281b823ed945b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_001/cam3/raw_11.npz": "6f4e00555a8aeef96779dd64012df97d8f3e16c132cda2e0c5c35ac439f90c5d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_001/cam3/evidence_11.npz": "17fc21e681e9d6102dcc4ea997f3e93b09f08a0b55bca9a6e04d9ba196da90d3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_002/cam0/frame.png": "b00a0c3353de485a9227a690c4741aa71e5301c9f4fea53db341d7e6bca9d192",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_00.npz": "3862643618f0ecea187c117cb8bce58163e4043e97de1e8246320085a70061bd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_00.npz": "f182b74e810eab20adf1459de35ac047c9e67806ae2a4bada4ac4a9aa0e39e21",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_01.npz": "1ac53aa2e7ba58464b1ca246a0a92435092de2e74c27fcc2cf729c6416837151",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_01.npz": "bbe515207628e69802c3e7ca6b1db262e3f4e24ce538dd33f4ebdedef439b338",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_02.npz": "40fd11b2e9d1930f38446e4c6cf515dcbde4e2d334c45887db070fa2708da7a8",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_02.npz": "d03d5649da7044e72d6b878d6bfa8142fb689235b9b9f806a827bcbefef92cec",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_03.npz": "5ae864aef9a4e15945bff591025d05fe60d47553088af12b9bf3415dc688b2ae",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_03.npz": "625250ad9b44fdd2fc7ac719cd667a69faea30d0f5bd45c120c2abe17aed1c59",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_04.npz": "0bb9eb68bbdcffbecc2fffca40bc75f11790702f90719f8c64352f500b51af2d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_04.npz": "699a17bf7746c13f229229c1fb6f037b89b817f4a87be025c043ac519cc71064",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_05.npz": "cabaedbb203ecae20ecca6e77452d005d8591083138853bf2daa8334a4ac4d4f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_05.npz": "4b202eacee372185075a70d4bd805f7fb95002c59dc09225e2acc11610dc4b1d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_06.npz": "6d8852554905d3b948b4e1d58e13b7be970046cf1d9c3b9c0173882ccefaf3a9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_06.npz": "63b7774e86dc8099f7d4053708b932124e60c77a7988fe27640740e496e9e34e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_07.npz": "5be6451093c7dc94314dae03558be5e6699d24fb0c84da92dcbbfc3da7721542",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_07.npz": "9114d9b8451cab53f94fdeaea5cb1a3792e7e6018b13c3bdc599d4a9ac68ff5f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_08.npz": "34243057c2f095924cc00b6fc6d451bb9a78f727538dd7673ec6bf088d8fc24e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_08.npz": "5db20adbf521e3a757b410ad12f64df9b2e1d91709d5c19b04b479f05e127282",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_09.npz": "626ea29c9ec2cd3ca841f1abf469cbd554c7e660fe2114e38386575fe1abe14e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_09.npz": "8b4b511fba45ec019f1345422ddda11f7758273f3c066649155b78a3b740e491",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_10.npz": "5a012369a9b3ca8389348f0b9b03467f5d270d22f5bd5ec9823de04d6ad008b9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_10.npz": "d0e69bd260c060aef70e20fcf4938aa95b47ac6b3814d6fe6a8e7a9b4a43d9d4",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam0/raw_11.npz": "ef782e8679758f8b68b661760231bd80dee07c410f7ff0a3f59bceace62a6663",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam0/evidence_11.npz": "0d7f5253b24d388cc737c1abfece42467ba701b1d45479358509e777d6685459",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_002/cam1/frame.png": "e62bdf8969bec05a369b71e71b24935c77cfc31cc96f333c23fd7f1f0926eb32",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_00.npz": "6038d556e78a17fdee00e2150330bec384a257e461366196d6141cdbe951295f",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_00.npz": "d97a9dc073974f2dd699104bf5e9908a04be963dae4da55169f253f0ea706930",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_01.npz": "44210ff7f4b5247472fc54c67a36eeee0fb31794450a0e5d18afd11c8d452e74",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_01.npz": "0e60b372d30bbd21f38928d9854b8f0f4b23f229e2affa751f03f93fdcabf837",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_02.npz": "f0931ee08e04586f73f6dc1f297417b0f0b523a73bb713ef856eea5622361ed3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_02.npz": "6c7767aaeb33e08b3178d55d894a5c44782f0162dd3c05c4fa3347379a03146c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_03.npz": "8eb7a113c7232fdd87ef5769fd49aa35462b6884863611e7fb904f9d0e33d21a",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_03.npz": "cd4c05521a022b7065d87cda9c1a65fcb477ca5ee32f14f07dd0b841aa0a83dc",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_04.npz": "ad5a22e78d595df1e4b080a8c96d1aea37aa82e417889fc0d05d5c2056986de9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_04.npz": "1f4ab0e7cec47322c4565e7f235d3deb5ccbb157e1ab35d698831e36ff6c15f7",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_05.npz": "5027d0b5647b942df1e412805c3e155cdebc2f16decf30d1248e6af31c6c03f1",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_05.npz": "e17f05223aec53dddafbdf5228a98ffcba135d436576c77e91a9b7c076638f52",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_06.npz": "b88d896501fa2054e15535461276899f0698c9af7cc4db76d3fe63020f704a05",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_06.npz": "a5a24b89b16caed41c3f97e7bbedba6f97f918017c9f15fd711db149372ae5c2",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_07.npz": "ab698c2e64e99ed40231a7e1b57d2e774ac013dd2eb4147ca9159276250f9f54",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_07.npz": "d9880d6c8674eb29c994f44d51cb7d34c9d85ce8921e871fcfbfdfde079f9fae",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_08.npz": "34e4f3c01cd05451d8ddb332a00b97adba04e4f89e145b5505a784a4dc1762cf",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_08.npz": "6f1bb43c24ae9e522c880221bf21cdd82aea252034d8b0bdb04457b47e1390cb",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_09.npz": "522848d07e0a6a0a32cb31c1506ed5d4665b7ee34154de6feb0fda0fd6597ef0",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_09.npz": "6b478b3bbd51c4b3fd5cd0ef0494bce7ff59499bb743405a1e085501bf94b4e8",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_10.npz": "9ad9b653862a257a43359b7ce30f881313cbdf7f9ee5977f748d973b7c007b99",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_10.npz": "e4ce87a893bc5671ae7e8551bba6e96ba7a107f2e92cc2957bdd6f40bdd7639e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam1/raw_11.npz": "90fe6640518cb1222dd2d81264f2d18b2a2998a3b3e6611e17418298de98702a",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam1/evidence_11.npz": "494b1e3db7b22265dad7915914a56e55336e9d45b7963bf3ef9726cf25a3eccb",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_002/cam2/frame.png": "bff8bed2f32d05747ca4332751679e45e5e644afb14747e6c26d078cc53e187e",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_00.npz": "cc20597726400aa34f7dbfcfd264cb7772cb60e60726d6483962d863820cf925",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_00.npz": "cee45e020ec2db9e1a61091f7ad32c990ea33c305cc364185671e4d59e15e3f2",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_01.npz": "ae4a18e0911b902b0a157e019141b93f6d722689b09b4fcadc08dccda9396f54",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_01.npz": "4b95c63452199b0311c6e0a2af39a56cb44f2c590ce6b21e970572392c2a8610",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_02.npz": "45c7cf6322619b3ca102628d1266bc774a468e68df7e6a718ec7e633b01b837b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_02.npz": "9df1eaafba29aff61c18cb72afd3962d66b147a00219430741bc99816de16b85",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_03.npz": "ba5361ae1ea5492ef6d8142348bf46ef97dbf1afb220e9b9d044b7f4170c57c4",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_03.npz": "cc5de149028b59558b2920b99501528a77f6cb4d155d77be6b98fa23fcd49416",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_04.npz": "2f9bed26aba341ace3236ee6fc29a4e9f4d33634440f1e7b9612129d1805f0a2",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_04.npz": "f4365db7849e85a0c83438d1e1ef44cbe6e05effd0741a802537d0b43d39c16c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_05.npz": "794757b36c249c0e66be6539bd2a2d0d7de099cf36928d626e8913b4c9e12338",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_05.npz": "79071a70b5e0a32d472fe782e51f45db5f31042ce8d75bc6751fd54b7b5d06a9",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_06.npz": "d74a68a17e77611992396fa213932f508386d3ac7fa75314fc762cfd8f3c80fd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_06.npz": "18220970251d70a6a1a20ecfbbf00d5379b3bfc971c07b4cf75f36415be289ff",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_07.npz": "9242ee2a845032a2ce81fa3ddaf23028db44092dbfca3a83bc232c9f4cded578",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_07.npz": "5219251238eeb82f31181dfb4d27ccc9b20a75e542409c8eba12159ed3b09955",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_08.npz": "634e9a78ca203897f7eab82bfa26ffa2ec1b347ea4d1e70100ab27cd57ed5926",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_08.npz": "4029366a1f70bfac9ac3b262eb4d65c2e200c5118384e2602c8e601332b74277",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_09.npz": "e1d542046d82b9acdcfca90fa325ce6e7e3b92cbf72918eb1a7f3af599b8ee6c",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_09.npz": "3e80a2467c603d208742b349b6c1fdba3118f3112df97ab8647dd15877d9d6d3",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_10.npz": "ca866cd81d7a8956786c6a4161f0a239bd5b79aa68afbcd3cfbfdc4daa26d3ea",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_10.npz": "7ff835166c6b12b99a2bd77152e3d5eda6f320b47dc2366cbb9151b8b83d3dfe",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam2/raw_11.npz": "ba52ab6b6b4bf388aa8b0ffbda32a7b12f170b63fa401cfac4b602401828e4af",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam2/evidence_11.npz": "50e503d6ee773cbc50ab24629e2c4c4d5da5d1544f6ee1700b1585d7eef57309",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb/meiji_4cam/video_000/clip_002/cam3/frame.png": "0ab16521667b7a52709c8d27d12223085b2395761cc11f5e64fc4ff47ea7b599",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_00.npz": "1f1aa0d49d8551d80b50a63be6552e6b9465ea216dbed76923078ca3651d69e5",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_00.npz": "201d0a40a982ca11233f533a8c12fd3059bc6338e7c3c6c5911b79793235fb41",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_01.npz": "0230a3293abb8e76da4f0166789b896de465602e31ffc084eb1ed9db075e3821",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_01.npz": "0bb6b469678b27743c95bdf019d66ae6c56a4ea392d65e323f82c1f357ec0037",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_02.npz": "60b62393d6ca79e982dcebe87313df8fb90a93503de5d3416239e0f1062ad73d",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_02.npz": "dc20c9bf5794e62e4639f5e7126ea0e052704f024fbfe24a7294aa8a3b5dd8a6",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_03.npz": "7c87383e24d6bd068234a63258cf7c966c8218f17c738f443956fdb3183225c1",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_03.npz": "7978c0326b8f460fc853d83db033a0206decbe2293c99898a55e98ae4932c4cd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_04.npz": "c9a39ab4991da57e508716a6a735eef72aa388a5bab3ad22821005cd9eeef8f7",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_04.npz": "3ac4b363762324acdb6604d06aff707791e04e9dbe891143dc824ff3dfe9b764",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_05.npz": "d6efc167d6632b09193c54f1954ba4d7b843ffe073d7d25dd34845b2f44ef4a5",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_05.npz": "2f9daa48a4745d309a2f7cccc66434b081d4a035d8d0fb4b94828cb92d8d99a5",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_06.npz": "b630bbaf0b1fc354c931ea8f62806de958d6c6ee0128d3cabbe77db95b9c17cf",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_06.npz": "57897602ef811aa9149c2b9cd64838d55a671072c00a9ab9cb9657615c4849d7",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_07.npz": "150aeb6bbd1407738d83e37e851bef116164f84c04244780687b713d1217d842",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_07.npz": "ece3c0f54d755fb6cca1af649f0e3ef1a54f4674f85a2d5ad4cd44e58712650b",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_08.npz": "f8802345a852e8b4602dbff5ac1599cde73326536b88a69df34f7a58c2a5fba4",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_08.npz": "7e1df9ea2011ccc92757ccc3721b950fe73d68d09a878a1d3a8255c50de05af8",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_09.npz": "961c192acd19025608c4cefe4f8cda4f079a0a6cc16e036cc74e8618a8188878",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_09.npz": "59c41fb7c7bcb596d80fb969473b01c3559384d332b465027261cecdf0b99bad",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_10.npz": "7b0b8b10c9a58049967713f0e8e42657adafef4cf84a65fd513de8175bc036bd",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_10.npz": "4837c240f4153d5373a9e2ba74407578ac749d3c9679d6cac14baca2767a1c73",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/meiji_4cam/video_000/clip_002/cam3/raw_11.npz": "49cf89d869e7cfdd10327efa144c2cc00e139a013c36dd9e6706a18827888f57",
+    "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence/meiji_4cam/video_000/clip_002/cam3/evidence_11.npz": "ec33b7d7cd61e80f62b9409b3ea9aba21fba3346a6bae3ed3a801afd18298f01"
+  },
+  "purpose": "CPU default-postprocess replay; saved neural outputs, no GPU forward, not baseline"
+}

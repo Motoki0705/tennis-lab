@@ -1,0 +1,34 @@
+[
+  {
+    "clip_id": "video_000/clip_000",
+    "camera_id": "cam0",
+    "best_inliers": 7,
+    "inside_content": true,
+    "convex": true,
+    "status": "ok"
+  },
+  {
+    "clip_id": "video_000/clip_001",
+    "camera_id": "cam1",
+    "best_inliers": 7,
+    "inside_content": true,
+    "convex": true,
+    "status": "ok"
+  },
+  {
+    "clip_id": "video_000/clip_001",
+    "camera_id": "cam3",
+    "best_inliers": 9,
+    "inside_content": false,
+    "convex": true,
+    "status": "ok"
+  },
+  {
+    "clip_id": "video_000/clip_002",
+    "camera_id": "cam3",
+    "best_inliers": 6,
+    "inside_content": true,
+    "convex": true,
+    "status": "ok"
+  }
+]

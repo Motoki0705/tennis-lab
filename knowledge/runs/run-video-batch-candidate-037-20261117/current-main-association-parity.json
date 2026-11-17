@@ -1,0 +1,198 @@
+{
+  "measured_commit": "701165bd2deeddc20d4773b3dbacb6890f8c15ae",
+  "rebased_main": "1ccbede7654552590b09474e6a6daf8d5f39875f",
+  "player_association_python_unchanged": true,
+  "default_court_mode": "clip",
+  "default_max_sampled_frames": 1024,
+  "default_players_per_side": 1,
+  "files": [
+    {
+      "path": "src/tennis_scene/pipeline/components/identity.py",
+      "sha256": "993acf955b632f1d043a6cc56832d4b935ae11ef8c51344ff2d6cce8a23fab83"
+    },
+    {
+      "path": "src/tasks/player_association/README.md",
+      "sha256": "85e508b4ab9001c23b889d394b3242058cf2cd264943d72ef492b5a38667e1d6"
+    },
+    {
+      "path": "src/tasks/player_association/__init__.py",
+      "sha256": "7e7b77687c3879480df9ca8076016fcad2a566946f7e7b1e2d3b89e77ff02c6e"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/affinity.py",
+      "sha256": "7bad7948f6d7a6445576498f4172ea42d0fa2ce5fa254982390bc1b875262751"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/encoders.py",
+      "sha256": "c7f30d1cbfbed75c1b1dfeb072a7a0f87b3a74483f22c21fdacf914846a5425e"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/kpr.py",
+      "sha256": "1ab7520f113f06a3374b5ef04cb0f098b41d5200a867c2fab0070da58d413c4e"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/kpr_vendor/LICENSE",
+      "sha256": "67bddcd8fa213e00543728ba9aa3e3b23ee96d67cf33f67d05f22339b8e9cb28"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/kpr_vendor/NOTICE.md",
+      "sha256": "534df9c26e0cf2b043fb68f0c385594b2fed7e8c10e8fea3da6d1dcf0d1d6c7f"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/kpr_vendor/__init__.py",
+      "sha256": "81ce21d16145d1eb1a675830b169612962826f0d1755f7d616bafaff40072f13"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/kpr_vendor/heads.py",
+      "sha256": "a109f9dc8ce2de6ca54f404393a1e8fa420a1e51cf8dcd3bfbe4fcd50605ae59"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/parts.py",
+      "sha256": "4743b21a23c42e4c23cb4861fdc911f0e80a5bbdb76003cd481a658ade9bfabe"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/sampling.py",
+      "sha256": "21b1b785109df111ce942dde17b242d4676825a59aa36f7f276ecbce86423118"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/solider.py",
+      "sha256": "69c43935796e9284ef439cfa2126653d2a3f02b9d765733512dc8066a4d0ad32"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/solider_vendor/LICENSE",
+      "sha256": "41bdd950521659c65a55ac02ff48d0626ff4c6cfc7861e0e4fd1032c79e2c99a"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/solider_vendor/NOTICE.md",
+      "sha256": "a03a140dddda8111fd92cb2d61035cbe15d8b9fbd0e39cb048494235618bfcd5"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/solider_vendor/__init__.py",
+      "sha256": "aca7c03c74122a41f2e62adb88c679300256e0c9cde192595b845ce60fc56add"
+    },
+    {
+      "path": "src/tasks/player_association/appearance/solider_vendor/swin_transformer.py",
+      "sha256": "54249aa7303ae57c45f6522218800eb788e8b1efc347e239d08bd24c7da93130"
+    },
+    {
+      "path": "src/tasks/player_association/association/__init__.py",
+      "sha256": "b505f018851e9d1c6d581cd15c7a00fa964812c2a325677215624c3d6dca69ca"
+    },
+    {
+      "path": "src/tasks/player_association/association/associate.py",
+      "sha256": "9774c17accc9fda84aae7f95b9ff17a27450f5eabc448ed1dea32403e12a2b58"
+    },
+    {
+      "path": "src/tasks/player_association/association/config.py",
+      "sha256": "e710c1aa7297b2330c84264d780ae94977342098bda1d1ad33584a1be5f62cd3"
+    },
+    {
+      "path": "src/tasks/player_association/calibration/__init__.py",
+      "sha256": "f74be3ea9967d9c331b36a5cfebf9e162f3510b3c599dfd4fc901f837b4f3cfd"
+    },
+    {
+      "path": "src/tasks/player_association/calibration/fitting.py",
+      "sha256": "9bd1f7fec42a662dab7e37528c76f8ebb438aef8d4a49c24d3dfe72965c66178"
+    },
+    {
+      "path": "src/tasks/player_association/calibration/samples.py",
+      "sha256": "bdc46a942035ee1a372c6e314cdba194367da5b7fec47654695f6c96bdfc5934"
+    },
+    {
+      "path": "src/tasks/player_association/calibration/validation.py",
+      "sha256": "525ad7d4f5218192355399277523b4d0b225c193fab2444b9c60558060499db1"
+    },
+    {
+      "path": "src/tasks/player_association/configs/association.yaml",
+      "sha256": "da0ea67b607001ab6630b642703a6ed0a0414a81ea2f4743d8a2b4320deaf676"
+    },
+    {
+      "path": "src/tasks/player_association/configs/association_i964_r14_lovo_a.yaml",
+      "sha256": "3f18419c49567f697e43fd18c78d6df78ffcd6c654bef5cac0ddc88193a74789"
+    },
+    {
+      "path": "src/tasks/player_association/evaluation/__init__.py",
+      "sha256": "f8359589fa6b783f2fbcf5e03175d05abc5676a769518b6ba00bb847d7fb1712"
+    },
+    {
+      "path": "src/tasks/player_association/evaluation/dataset_labels.py",
+      "sha256": "b03e13826100f5baee94029556804b81a8ec27b63afbed10b4382ef8e8327ba2"
+    },
+    {
+      "path": "src/tasks/player_association/evaluation/labels.py",
+      "sha256": "9eef333e595cf4cbade4ccecb7bc7e6dec7c716386a5eb492bfcd62f1b9df7d2"
+    },
+    {
+      "path": "src/tasks/player_association/evaluation/metrics.py",
+      "sha256": "82fe2d21764d41d4be69614432a4c93a091bb4a60ba6b0c5975ee47d2825cc98"
+    },
+    {
+      "path": "src/tasks/player_association/geometry/__init__.py",
+      "sha256": "d6a7152d55208f9683e44314dbac808ddf6c3a2ca1a5030a0dec7263ffa4da00"
+    },
+    {
+      "path": "src/tasks/player_association/geometry/affinity.py",
+      "sha256": "5a49176a4dbb1d5d510ae1ccc401ef27f0759fd4b58fc8a8ceeab5783f28b7a8"
+    },
+    {
+      "path": "src/tasks/player_association/geometry/footpoints.py",
+      "sha256": "3ebdcb2d45273d7541b789bfe747a9867bb51ed81d682a44911180ffe574e79d"
+    },
+    {
+      "path": "src/tasks/player_association/geometry/region.py",
+      "sha256": "8d0664505bf279d834645d0334ac13ab8322e41c06d11c65e32f6b15c353c619"
+    },
+    {
+      "path": "src/tasks/player_association/geometry/switches.py",
+      "sha256": "450efcc8c686859f03f89e4fd143756a894c0f83558ad8a6e01101f87b0a38f3"
+    },
+    {
+      "path": "src/tasks/player_association/review/README.md",
+      "sha256": "7b987c7c1b05ac523fa9cc7e17ea43556c4c13e3e43564062e55214c5b63f08c"
+    },
+    {
+      "path": "src/tasks/player_association/review/__init__.py",
+      "sha256": "da84d45e94e231312a7fd2707f374852b4434ca707f408716fdf80602b1b412a"
+    },
+    {
+      "path": "src/tasks/player_association/review/diagnostics.py",
+      "sha256": "d5617aa5cb0538fdcfb3ee1093a1d18eee3ba9f77c73cc97628939d7c4289690"
+    },
+    {
+      "path": "src/tasks/player_association/review/reader.py",
+      "sha256": "afb417e803e14f3efdb09652f20a1fc2dd90dfe498081fbd919a2566a099ce76"
+    },
+    {
+      "path": "src/tasks/player_association/review/service.py",
+      "sha256": "41c23295f5dd27fb3cfecec51202ec54fd1a316625bd73362ff5ad3e1a6649fd"
+    },
+    {
+      "path": "src/tasks/player_association/review/static/app.js",
+      "sha256": "ca2010e23c99ef08d0ff2584a8c93189bdd0db79dd4e1037e410e29267a9fa1a"
+    },
+    {
+      "path": "src/tasks/player_association/review/static/index.html",
+      "sha256": "1ae5ff6756347565701a4c6abc7a8afc8a212446e7a78657f1ae8ad876d33d4c"
+    },
+    {
+      "path": "src/tasks/player_association/review/static/style.css",
+      "sha256": "d79bb55688d630939c8eeb6267a9dcface80173e8338d244067d494873a67b09"
+    },
+    {
+      "path": "src/tasks/player_association/review/web.py",
+      "sha256": "25bb7600e796b35094ddfe9d2761b014960235cdcc9eb175f7d1c5a4b2132bc0"
+    },
+    {
+      "path": "src/tasks/player_association/scripts/__init__.py",
+      "sha256": "110a034633fb47fbaf4076699fd0dc0cfc0f88b696b4b36484178d5733b65a18"
+    },
+    {
+      "path": "src/tasks/player_association/scripts/review_dataset.py",
+      "sha256": "e87c38628537d25f94c16282d42e0d489a953d73e2669502d8d2754c5a7b9619"
+    }
+  ]
+}

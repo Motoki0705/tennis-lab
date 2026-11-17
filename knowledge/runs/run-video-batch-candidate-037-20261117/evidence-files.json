@@ -1,0 +1,221 @@
+{
+  "outputs": [
+    {
+      "path": "outputs/tennis_scene/evaluate/video-batch-candidate-037-20261117/recordings/repeat-1-cold_component_cache.json",
+      "sha256": "6446c4c948a467101d0c71bf43be7bf735466a12e22ddb8d63119d016e7dcae9",
+      "bytes": 11072957
+    }
+  ],
+  "promoted": [
+    {
+      "path": "benchmark.py",
+      "sha256": "7e4452bab2fddea5d0d53b605d3276b1b899d5d6412844bb35eb3949f95aca6b",
+      "bytes": 14172
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_000/cam0.json",
+      "sha256": "7ca4c1bd868e442d63427025fc52e5b6ef426d92b529c77525b593bbc53a19d7",
+      "bytes": 8572
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_000/cam1.json",
+      "sha256": "b94e557a22ff718c5f1bfa7c4b05cd2d3666e2dc363e425f032364978d1c2c8a",
+      "bytes": 8871
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_000/cam2.json",
+      "sha256": "0bf35a7c925e302265cc01d13cb21dcbb197523867f5ad380de04c00f57777b7",
+      "bytes": 8273
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_000/cam3.json",
+      "sha256": "83ba321e144ac83ab24fd4516e27f397bb97b88850ff1d4f1bd1c6479612f974",
+      "bytes": 8930
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_001/cam0.json",
+      "sha256": "e99c71a9c0f64e293955050fe4d1a36e00e69d6de14995eee5d346930de16b7a",
+      "bytes": 8612
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_001/cam1.json",
+      "sha256": "d9ec83b58b92d7a206b49e2c6b1b9f0aca5eab6e671fc1e7f26454c4f208795a",
+      "bytes": 8201
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_001/cam2.json",
+      "sha256": "a062e1f9dbc77fd7cb65a7a1c84d678633e7e6c7b1eaf89a817efd6cf9b9e3cb",
+      "bytes": 8644
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_001/cam3.json",
+      "sha256": "149f9d4fcb13a98fcde35071e2483c53f665ac93c7f29c0653946151d5eb8c4f",
+      "bytes": 7912
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_002/cam0.json",
+      "sha256": "cd007aa1eeb96bfe10a2ed61892667dde875d4ad9d8c474d94ae1461dfe686fc",
+      "bytes": 8573
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_002/cam1.json",
+      "sha256": "d12a78e415950724ca028f654ffaa6a0589668832cf9836c464f05bf36b5c796",
+      "bytes": 8538
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_002/cam2.json",
+      "sha256": "3baafe9fe3a48e6c799448495a334564f33e6c08a638ee505035edfc3e1f699e",
+      "bytes": 8575
+    },
+    {
+      "path": "court-default-replay/comparisons/clip_002/cam3.json",
+      "sha256": "e108c7fe2e3495288f9c6571b9a18cbf46dcdc5e7bdc1af21ae51596e2385158",
+      "bytes": 8883
+    },
+    {
+      "path": "court-default-replay/inputs-and-source.json",
+      "sha256": "266872fa3558064d450f7798d26e340eee377bdf8d6d279897a7dc587e98519c",
+      "bytes": 104876
+    },
+    {
+      "path": "court-default-replay/rejected.json",
+      "sha256": "0fa8cca5da66103b406b0ef5610311739b5bfde9d1e451c21ee21c1048ffd06f",
+      "bytes": 648
+    },
+    {
+      "path": "court-default-replay/replay.log",
+      "sha256": "86f375a16daf7814fcffdf58aebe4ef197bacfe11befab1a22fec7e79d63ef5a",
+      "bytes": 4301
+    },
+    {
+      "path": "court-default-replay/replay_original_inputs.py",
+      "sha256": "72377346de062b64c82d95f17b5aca0eef3de0c9fda4e78d101439be270fd7e6",
+      "bytes": 2681
+    },
+    {
+      "path": "court-default-replay/summary.json",
+      "sha256": "2f162e9c42bf86c59af5afcd8eafcf2b5dc3748fc432af3cf35718212229ceef",
+      "bytes": 6324
+    },
+    {
+      "path": "current-main-association-parity.json",
+      "sha256": "33baa549d5f683a1fff97395bfd9a71f79136cf1e0f3ccf9c03dc3d2a34aee76",
+      "bytes": 8102
+    },
+    {
+      "path": "current-main-collect-only.log",
+      "sha256": "afc43abfa6325824a80456b848cac9c8ca8c0273db48b89b73176b708bb4f4eb",
+      "bytes": 13291
+    },
+    {
+      "path": "current-main-related-pytest.log",
+      "sha256": "2867ffc05b5cb50a767cbc45d68e264dec15df693e8ee01ca7155d27e9d2e398",
+      "bytes": 37938
+    },
+    {
+      "path": "current-main-video-court-pytest.log",
+      "sha256": "c16e14d2f0f55f091532e56d08d593dfff75ba5a759576565fe47a40a042e187",
+      "bytes": 19633
+    },
+    {
+      "path": "dataset.json",
+      "sha256": "84d544c7b3a77444c5e44bed21d84fe68a71c705d086ede9aa509cbf8610245b",
+      "bytes": 456
+    },
+    {
+      "path": "environment-after-run.json",
+      "sha256": "ded636ecfe3392675d386b3f255908037ec7f6bc5d6ccfd4dc4b8e4ddb4ef911",
+      "bytes": 1060
+    },
+    {
+      "path": "failures/clip_037.json",
+      "sha256": "12c9ec07dd4cc4cee31a6e87acc9f0fd7b7d2d2dd2517d7662ca4c71c8d64ce9",
+      "bytes": 201
+    },
+    {
+      "path": "input-manifest.json",
+      "sha256": "497f75bf338ec5a918f9011cea789b7375bd184ce9407a7b6583126c24194002",
+      "bytes": 2701
+    },
+    {
+      "path": "lifecycle/repeat-1-cold_component_cache.json",
+      "sha256": "1ea566cc28fa2c94cd47e29816edcf6f3d2fc29149349e8ea493e0d6644cf394",
+      "bytes": 44022
+    },
+    {
+      "path": "measured-pipeline-defaults.yaml",
+      "sha256": "73a1b4af1820d4f58f2559fc554f7e7ce0c68d1e12700c59a5fb08dab6d642d1",
+      "bytes": 7786
+    },
+    {
+      "path": "measured-source-after-run.json",
+      "sha256": "1ee20cf589f9f43d642345248cc5557e8e78d89d4d11a94158258b18629809ca",
+      "bytes": 382
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "7634701aca8b055fbf65f7ae601a67fe50c0d8cb94aa20e61537264695b4c867",
+      "bytes": 12897
+    },
+    {
+      "path": "promote.py",
+      "sha256": "045204147a7dddde58b4ba582b8bfddad234f1f49943916e6b819aa16319b176",
+      "bytes": 5618
+    },
+    {
+      "path": "queue/completion.json",
+      "sha256": "501bf8b3dd4c7a367c202ea1c1e01ddfa6a16729598709211ab4a410d625272b",
+      "bytes": 249
+    },
+    {
+      "path": "queue/git_status.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "queue/repro.sh",
+      "sha256": "cd20de3125764ea79022a6034133e7c9ce1cf64c993dee941ff3b2389f17c590",
+      "bytes": 1395
+    },
+    {
+      "path": "queue/run.json",
+      "sha256": "5145ec4ae080f118f120cd5e2efaee314044330a034652c7338caf683f931055",
+      "bytes": 1131
+    },
+    {
+      "path": "queue/stdout.log",
+      "sha256": "d265b303a751b02fe716d8275fb9189f0cdb1d5cb47c3343eb518ebbe5671ae0",
+      "bytes": 6451
+    },
+    {
+      "path": "queue/uncommitted.patch",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "queue-registration.json",
+      "sha256": "db12fc1f63921c2a0954b44eac2f001eef9a0d0daa1b355f45887eabb832c4c5",
+      "bytes": 759
+    },
+    {
+      "path": "rebase-related-pytest.log",
+      "sha256": "230a72554289e448f5e0ec68e9efb8aa5319e8b0ee099bbe7d83a2e0da6c8cd5",
+      "bytes": 1299
+    },
+    {
+      "path": "receipts/repeat-1-cold_component_cache.json",
+      "sha256": "3b5324e4895ae07d0baa117e29c7f9db4dd52365f88e5e4f5b537869b7946ba0",
+      "bytes": 52972
+    },
+    {
+      "path": "reproduce.md",
+      "sha256": "571ba28e013cf9135bd651d1654b4c85880f03a5f632e03185ee1ff7d4eddb0c",
+      "bytes": 3614
+    },
+    {
+      "path": "stopped.json",
+      "sha256": "227d8fc340dcdd5f87ed91af5d58ca6e1b00f3cac1cbe97dddde635ca9c71ce9",
+      "bytes": 177
+    }
+  ]
+}

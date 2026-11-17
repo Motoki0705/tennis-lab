@@ -1,0 +1,26 @@
+{
+  "captured_after_run": true,
+  "python": "3.11.15",
+  "packages": {
+    "torch": "2.13.0",
+    "numpy": "2.3.5",
+    "scipy": "1.17.1",
+    "opencv-python": "5.0.0.93",
+    "hydra-core": "1.3.6"
+  },
+  "gpu_query": "NVIDIA GeForce RTX 5060 Ti, 610.88, 16311 MiB",
+  "dino_extension": {
+    "main_relative_path": ".worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/toolchain/MultiScaleDeformableAttention.so",
+    "sha256": "e4effe790b4cd9b47d45cf68bbc26958d1be658574fc7a1dd84089b4dc647f3f"
+  },
+  "submodules": [
+    " d84a491d41898b3befd8294d1cf2614661fc0953 third_party/DINO (heads/main)",
+    "-8a956ca7f4d7071d56f8cc0a987270f302015990 third_party/GVHMR",
+    " 4add255125e6cbf446c6a43c5f3028aa41b63648 third_party/dinov3 (heads/main)",
+    "-bf05cd79b54475752fee8d8ebd19d743c5fa542f third_party/nht"
+  ],
+  "original_source_tags": {
+    "evidence/i1748/clip-035-20261116": "cf4a1b0459588cf77f5ed81af9b69751c5b65ec7",
+    "evidence/i1748/clip-037-20261117": "701165bd2deeddc20d4773b3dbacb6890f8c15ae"
+  }
+}
