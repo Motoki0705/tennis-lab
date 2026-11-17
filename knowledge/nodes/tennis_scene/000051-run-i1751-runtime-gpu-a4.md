@@ -2,7 +2,7 @@
 id: run-i1751-runtime-gpu-a4
 type: run
 task: tennis_scene
-sequence: 47
+sequence: 51
 recorded_at: '2026-11-18'
 title: mainのDINO推論でheartbeat停止を検出しGPU受入を中断
 issue: 1751
@@ -115,3 +115,8 @@ callbackはCUDA APIを呼ばず、NVMLは別process・1秒間隔、query期限10
 `run.json`・元command・patchも変更していない。`repro.sh` は保存bundleのscriptを新しいoutputsへ
 コピーして使う追加adapterで、推論sourceの固定HEAD確認は元の `run_pair.py` が行う。
 queue外からの起動は拒否する。GPU受入は停止中のため、親の再開判断前には実行しない。
+
+停止後の保存作業では、mainのframe上限変更（PR #2229）も統合した。保存試行4件はmainの
+割当済み47番より後の48〜51番に再割当し、run ID・原command・観測値は保持した。
+設定のCPU回帰検証は65 passed / 15.86秒。固定GPU試行のmain/runtime commitは変更せず、
+GPUの再実行は行っていない。
