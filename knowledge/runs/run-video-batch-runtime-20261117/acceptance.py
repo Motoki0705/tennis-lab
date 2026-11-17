@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from time import perf_counter
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPOSITORY))
@@ -107,6 +108,7 @@ def run(root: Path) -> int:
             torch.manual_seed(42)
             orchestrator = TennisSceneOrchestrator(runtime)
             condition = f"{name}-{cache}"
+            entry_started = perf_counter()
             if name == "single":
                 recorder = InferenceRecorder(root / "recordings" / f"{condition}.json", devices=("cuda:0",),
                     metadata={"entry": "generate_dataset", "cache": cache, "commit": head, "clip_order": manifest["clip_order"]})
@@ -123,8 +125,10 @@ def run(root: Path) -> int:
                     progress_directory=root / "progress" / condition, recording_devices=("cuda:0",))
                 outcome = [{"clip_id": o.clip_id, "status": o.status, "error": o.error} for o in batch.outcomes]
                 recording = batch.progress_path.with_name("recording.json")
+            entry_seconds = perf_counter() - entry_started
             raw = json.loads(recording.read_text())
-            results[condition] = {"outcomes": outcome, "total_wall_seconds": raw["total_wall_seconds"],
+            results[condition] = {"outcomes": outcome, "entry_wall_seconds": entry_seconds,
+                                  "total_wall_seconds": raw["total_wall_seconds"],
                                   "models": raw["models"], "resources": raw["resources"],
                                   "recording": str(recording.relative_to(root))}
             write(root / "metrics.json", {"commit": head, "conditions": results})

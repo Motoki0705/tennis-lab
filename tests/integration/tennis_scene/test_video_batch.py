@@ -140,6 +140,20 @@ def test_batch_matches_single_entry_and_reuses_mixed_cache(tmp_path: Path, monke
                 assert a == b
 
 
+def test_batch_keeps_the_single_entry_data_path_authority(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    data = tmp_path / "data"
+    data.mkdir()
+    pipeline, dataset, clips, _, _ = harness(data, monkeypatch, 1)
+    foreign = tmp_path / "outside.mp4"
+    foreign.write_bytes(b"foreign media")
+    media = clips[0] / "cam1.mp4"
+    media.unlink()
+    media.symlink_to(foreign)
+    with pytest.raises(ValueError, match="outside|root"):
+        execute(pipeline, dataset)
+    assert not list(dataset.rglob("annotations"))
+
+
 def test_clip_too_long_isolated_and_other_clip_publishes_immediately(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import src.tennis_scene.pipeline.video_batch as batch
     from src.tennis_scene.pipeline.components.court_side import CourtSideModule

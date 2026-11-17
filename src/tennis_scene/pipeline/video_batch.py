@@ -31,6 +31,7 @@ from src.tennis_scene.pipeline.execution_plan import (
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.utils.configuration import PathRole
 from src.utils.inference_recording import InferenceRecorder
 from src.utils.io import utc_now_iso
 
@@ -125,7 +126,11 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
     cfg = orchestrator.config
     if cfg.max_frames is not None or cfg.direct_annotation is not None:
         raise ValueError("Video batches require complete clips and the model pipeline")
+    cfg.resolver.validate(PathRole.DATA, dataset_directory)
     dataset_id, prepared = prepare_video_inputs(dataset_directory, video_id, clip_ids)
+    for clip in prepared:
+        for video in clip.media.source.videos:
+            cfg.resolver.validate(PathRole.DATA, video.path)
     identity = orchestrator.publication_identity()
     directory = (dataset_directory / "videos" / video_id / "annotations" / "tennis_scene" / "batch"
                  if progress_directory is None else progress_directory)
