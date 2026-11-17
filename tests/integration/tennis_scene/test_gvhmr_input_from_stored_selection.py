@@ -149,6 +149,8 @@ def test_real_body_nodes_reuse_models_across_people_clips_and_cache(tmp_path: Pa
     assert [b.person_id for b in first.bodies] == [9, 2, 17]
     np.testing.assert_array_equal(first.bodies[0].segments[0].parameters.transl[:, 0], [10011, 10013, 10015])
     np.testing.assert_array_equal(first.bodies[0].segments[1].parameters.transl[:, 0], [20030, 20034])
+    assert [s.observed_samples for s in first.bodies[0].segments] == [3, 2]
+    assert first.bodies[1].segments[0].observed_samples == 3  # Four features include one interpolated crop.
     assert not first.bodies[2].segments
     if clips > 1:
         other = executor.output(('clip-1', 'gvhmr'))
