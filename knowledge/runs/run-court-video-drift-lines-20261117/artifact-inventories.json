@@ -1,0 +1,29 @@
+{
+  "review": {
+    "files": 16561,
+    "bytes": 4806312180,
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-drift-lines-20261117/review-inventory.jsonl",
+    "inventory_sha256": "1c6e0a41d4f088e8e82c4b08cd23f61757808b961c8203fbf4d859677dd4ca8a"
+  },
+  "drift-store": {
+    "files": 11,
+    "bytes": 9094462,
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-drift-lines-20261117/drift-store-inventory.jsonl",
+    "inventory_sha256": "442cb1d613fcacfb38213dfaff58e1d76d4e677748b05e678190ae9cc4bbe0e9"
+  },
+  "causes": {
+    "files": 49,
+    "bytes": 13538530,
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-drift-lines-20261117/causes-inventory.jsonl",
+    "inventory_sha256": "a6789a4ccd375bf079eea35afbc4483ffa788cdbcafbabe38be1a450d26152eb"
+  },
+  "retained_locally": [
+    "development-detail.json",
+    "heldout-detail.json",
+    "causes-detail.json",
+    "evaluation-summary-bgr.json",
+    "evaluated-builder-bgr.py",
+    "gallery-warning.png"
+  ],
+  "deleted_files": []
+}

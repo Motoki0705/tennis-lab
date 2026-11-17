@@ -83,6 +83,8 @@ class FixedGeometryImporter:
         """
         if self.court_detection not in ("stored_artifact", "verified_calibration_frame0"):
             raise ValueError("Unknown fixed court detection storage policy")
+        if any(node.io.name == 'court_detection' and node.io.version != 2 for node in nodes):
+            raise ValueError('Fixed geometry import supports only frame-zero court_observations v2')
         source = next(n.context.source for n in nodes if n.name == "court_calibration")
         wanted = set(geometry_nodes(source))
         if not wanted.issubset({n.name for n in nodes}):

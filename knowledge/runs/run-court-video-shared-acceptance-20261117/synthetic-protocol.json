@@ -1,0 +1,374 @@
+{
+  "schema": "video_court_synthetic_heldout_v1",
+  "random_seed": 20261117,
+  "size_wh": [
+    1280,
+    720
+  ],
+  "cases": [
+    {
+      "id": 0,
+      "truth": [
+        [
+          64.77694065372414,
+          20.868685572175437,
+          651.2961914208071
+        ],
+        [
+          -2.117465943990607,
+          -8.085411366131796,
+          309.77723384200664
+        ],
+        [
+          -0.0013472829320380296,
+          0.030572815912035277,
+          1.0
+        ]
+      ],
+      "initial": [
+        [
+          64.77755738352742,
+          20.854690615143742,
+          650.8384332256849
+        ],
+        [
+          -2.121599971465657,
+          -7.991601181229644,
+          312.8456520463377
+        ],
+        [
+          -0.0013472829320380296,
+          0.030572815912035277,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": 1,
+      "truth": [
+        [
+          76.87278780132083,
+          11.605362579697955,
+          636.4079035549771
+        ],
+        [
+          0.6067261400017374,
+          -11.840452478136758,
+          347.2864611339271
+        ],
+        [
+          0.0026221344013601837,
+          0.019622678032239386,
+          1.0
+        ]
+      ],
+      "initial": [
+        [
+          76.86782197295538,
+          11.568200925768997,
+          634.5140920238547
+        ],
+        [
+          0.6126951629215923,
+          -11.795783442536365,
+          349.5628596727505
+        ],
+        [
+          0.0026221344013601837,
+          0.019622678032239386,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": 2,
+      "truth": [
+        [
+          73.35380034131406,
+          12.22126419487067,
+          638.0319437384196
+        ],
+        [
+          0.4193395136313929,
+          -11.773543316927643,
+          358.01961313404007
+        ],
+        [
+          0.0017479570483586021,
+          0.02000969083755112,
+          1.0
+        ]
+      ],
+      "initial": [
+        [
+          73.34635545611359,
+          12.136039073737216,
+          633.7727514387807
+        ],
+        [
+          0.4271455118014531,
+          -11.684184364882414,
+          362.4853968770619
+        ],
+        [
+          0.0017479570483586021,
+          0.02000969083755112,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": 3,
+      "truth": [
+        [
+          77.06598462289305,
+          11.003855848376405,
+          628.5571509706851
+        ],
+        [
+          -2.307278300912694,
+          -13.700686518518756,
+          335.2674240344097
+        ],
+        [
+          -0.0016785316065403592,
+          0.01803756302495415,
+          1.0
+        ]
+      ],
+      "initial": [
+        [
+          77.06395123013465,
+          11.025706762527397,
+          629.7685626298302
+        ],
+        [
+          -2.3016950141834096,
+          -13.760684725209323,
+          331.94113175160174
+        ],
+        [
+          -0.0016785316065403592,
+          0.01803756302495415,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": 4,
+      "truth": [
+        [
+          67.06505581831584,
+          16.126750820083632,
+          635.8344246745104
+        ],
+        [
+          -3.7638500616915898,
+          -9.579655458135836,
+          330.7814931092558
+        ],
+        [
+          -0.006511680238167161,
+          0.023212122709291242,
+          1.0
+        ]
+      ],
+      "initial": [
+        [
+          67.06793593846153,
+          16.116484084034838,
+          635.3921240638607
+        ],
+        [
+          -3.7522613630617805,
+          -9.620965578534475,
+          329.00181440791476
+        ],
+        [
+          -0.006511680238167161,
+          0.023212122709291242,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": 5,
+      "truth": [
+        [
+          60.34809516000501,
+          18.801199509919066,
+          634.8367483908619
+        ],
+        [
+          0.1732057008978843,
+          -8.330469747022576,
+          336.3293571432404
+        ],
+        [
+          -0.001142348598539802,
+          0.02962969666302923,
+          1.0
+        ]
+      ],
+      "initial": [
+        [
+          60.34034147128553,
+          19.00231101394811,
+          641.6242462959614
+        ],
+        [
+          0.17685499457806236,
+          -8.425123397332296,
+          333.1348036725724
+        ],
+        [
+          -0.001142348598539802,
+          0.02962969666302923,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": 6,
+      "truth": [
+        [
+          72.62227612044089,
+          18.347955945174228,
+          672.3023066845716
+        ],
+        [
+          1.9429996028248522,
+          -8.689734946235903,
+          340.3759680649906
+        ],
+        [
+          0.004128417795635437,
+          0.026077884503042506,
+          1.0
+        ]
+      ],
+      "initial": [
+        [
+          72.6425471297881,
+          18.47600137727061,
+          677.2124224603141
+        ],
+        [
+          1.9379206047425683,
+          -8.721817340009373,
+          339.1457151367009
+        ],
+        [
+          0.004128417795635437,
+          0.026077884503042506,
+          1.0
+        ]
+      ]
+    },
+    {
+      "id": 7,
+      "truth": [
+        [
+          77.42776718357828,
+          16.16320298948209,
+          659.118618560688
+        ],
+        [
+          2.917218232422326,
+          -10.230496519757242,
+          320.48769156088906
+        ],
+        [
+          0.004973706477302821,
+          0.024812942348442425,
+          1.0
+        ]
+      ],
+      "initial": [
+        [
+          77.44658947655556,
+          16.257104081684023,
+          662.9029779842219
+        ],
+        [
+          2.907785788445035,
+          -10.27755331526407,
+          318.59122983353643
+        ],
+        [
+          0.004973706477302821,
+          0.024812942348442425,
+          1.0
+        ]
+      ]
+    }
+  ],
+  "settings": {
+    "paint": {
+      "version": "semantic_consensus_v2",
+      "radius_px": 48.0,
+      "fine_radius_px": 6.0,
+      "sample_spacing_px": 8.0,
+      "profile_step_px": 0.5,
+      "profile_sigma_px": 0.6,
+      "min_gradient": 2.0,
+      "min_contrast": 6.0,
+      "min_width_px": 1.0,
+      "max_width_px": 18.0,
+      "line_angle_limit_degrees": 8.0,
+      "line_inlier_distance_px": 1.5,
+      "ransac_trials": 500,
+      "min_line_locations": 8,
+      "min_coverage": 0.35,
+      "min_court_lines": 5,
+      "max_line_residual_px": 3.0,
+      "ambiguity_support_ratio": 0.8,
+      "ambiguity_separation_px": 3.0,
+      "max_projection_std_px": 5.0,
+      "max_leave_line_out_px": 10.0,
+      "max_normalized_condition": 10000.0,
+      "max_nfev": 200
+    },
+    "min_lines": 6,
+    "min_transverse": 2,
+    "min_longitudinal": 3,
+    "min_clips_per_line": 3,
+    "samples_per_group": 24,
+    "max_common_line_p95_px": 6.0,
+    "equivalent_projection_px": 3.0,
+    "initializer_cluster_px": 12.0,
+    "max_nfev": 200,
+    "max_condition": 10000.0
+  },
+  "source_hashes": {
+    "src/tasks/court_detection/geometry/__init__.py": "732436a5b060ad3f63edf28ba267bc7645735a0ccbd5341b27233c1a7bea8001",
+    "src/tasks/court_detection/geometry/confidence_homography.py": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+    "src/tasks/court_detection/geometry/homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+    "src/tasks/court_detection/geometry/hybrid_homography.py": "3504859c4f0984f09057873a500cc2f5a85c614e6c69fdbaaf58062924f8fe55",
+    "src/tasks/court_detection/geometry/line_evidence.py": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+    "src/tasks/court_detection/geometry/observations.py": "ea704e5dc944154f3560e08f4f14db4ea0f45db9917da3e198c178e2b1245e17",
+    "src/tasks/court_detection/geometry/paint_correspondence.py": "3ab20414b1a43d0f03794603b5e17b61c3b3b55b6c98462754df27c063d6c81b",
+    "src/tasks/court_detection/geometry/paint_observations.py": "295041f2fa9e6a604bb0cd030af8023e0216a3e5ecb6557e53e6cf5445af33e3",
+    "src/tasks/court_detection/geometry/paint_refinement.py": "7a04ce8ad7dad1748bcf7069af56c0247f84bd48020ca36b1893d3762ff8c793",
+    "src/tasks/court_detection/geometry/pose.py": "43e1e20cdd1d436b97b25bcd86205ad71533747c0317984f3a6889f2fff6d7ad",
+    "src/tasks/court_detection/geometry/postprocess.py": "83360fe0115b3337adfce1f8ff55315ad7cc7dfced674521d19cf0ea4914dcf5",
+    "src/tasks/court_detection/geometry/quality.py": "ec15ea4582ad113b3358d02ba07bafbe322334b74a8c09ad4b047962dd0d6558",
+    "src/tasks/court_detection/geometry/video_shared/__init__.py": "33375011f63d3f8b1f13a2f672b6b19362735a6f87f2745fb8af4b042ef2b73f",
+    "src/tasks/court_detection/geometry/video_shared/candidates.py": "3bca3c90d0b245c8f1beeda1a32e7739ee9a5e5d96fe8049ffc071c43093d6f0",
+    "src/tasks/court_detection/geometry/video_shared/consensus.py": "df0b5e7ffcdff29f4c5319f944546e6f0fae84759851d6b1c4659cd7a79c3b0b",
+    "src/tasks/court_detection/geometry/video_shared/drift.py": "ffd404e6f2a3e12e849b7ef90f18ccb4512cc92a54907fe977f86f53d881dc11",
+    "src/tasks/court_detection/geometry/video_shared/endpoints.py": "591495e845adedc16600b8641d9ad6a3ad0022a4e6db692ef5b6d1aecd3a982e",
+    "src/tasks/court_detection/geometry/video_shared/fit.py": "948126c1769cbb3337848c2e568d8fb5cbc477f3d84e96c44e57765f6ff1e851",
+    "src/tasks/court_detection/geometry/video_shared/observations.py": "a0276294e775c719d613a4a81b6a7f413ea6b569328bd158ec7062fc30aa950e"
+  },
+  "driver_sha256": "f0c93d587e70de6230bd9cc6087213929c5f3ae24243bb8fcdfa7f02b41e614b",
+  "frames_per_case": 5,
+  "gpu_used": false,
+  "motion_px_at_1920x1080": [
+    0,
+    5,
+    11
+  ],
+  "reference_h_used": false,
+  "thresholds_frozen_before_this_evaluation": true
+}

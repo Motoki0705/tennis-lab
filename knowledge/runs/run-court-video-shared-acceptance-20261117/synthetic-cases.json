@@ -1,0 +1,418 @@
+[
+  {
+    "id": 0,
+    "adopted": true,
+    "reasons": [],
+    "frame_measurement_reasons": [
+      "measured",
+      "measured",
+      "measured",
+      "measured",
+      "measured"
+    ],
+    "mean_reference_px": 0.38847188334436833,
+    "max_reference_px": 1.226943557237356,
+    "negative_adopted": false,
+    "negative_reasons": [
+      "insufficient_independent_line_support",
+      "unverified_finite_line_identity"
+    ],
+    "motion": [
+      {
+        "shift_reference_px": 0,
+        "expected": "ok",
+        "status": "failed",
+        "reason": "drift_unobservable",
+        "geometry_reasons": [
+          "uncertain_local_projection"
+        ],
+        "mean_displacement_px": null,
+        "max_displacement_px": null,
+        "max_visible_projection_std_px": 3.489310464320076
+      },
+      {
+        "shift_reference_px": 5,
+        "expected": "warning",
+        "status": "failed",
+        "reason": "drift_unobservable",
+        "geometry_reasons": [
+          "uncertain_local_projection"
+        ],
+        "mean_displacement_px": null,
+        "max_displacement_px": null,
+        "max_visible_projection_std_px": 3.4659588987942933
+      },
+      {
+        "shift_reference_px": 11,
+        "expected": "failed",
+        "status": "failed",
+        "reason": "drift_unobservable",
+        "geometry_reasons": [
+          "uncertain_local_projection"
+        ],
+        "mean_displacement_px": null,
+        "max_displacement_px": null,
+        "max_visible_projection_std_px": 3.44763522607143
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "adopted": true,
+    "reasons": [],
+    "frame_measurement_reasons": [
+      "measured",
+      "measured",
+      "measured",
+      "measured",
+      "measured"
+    ],
+    "mean_reference_px": 0.10783153099841337,
+    "max_reference_px": 0.22770040586257825,
+    "negative_adopted": false,
+    "negative_reasons": [
+      "insufficient_independent_line_support",
+      "unverified_finite_line_identity"
+    ],
+    "motion": [
+      {
+        "shift_reference_px": 0,
+        "expected": "ok",
+        "status": "ok",
+        "reason": null,
+        "geometry_reasons": [],
+        "mean_displacement_px": 0.04894536371411384,
+        "max_displacement_px": 0.09492532445394236,
+        "max_visible_projection_std_px": 1.338952141784778
+      },
+      {
+        "shift_reference_px": 5,
+        "expected": "warning",
+        "status": "warning",
+        "reason": "camera_moved_possible",
+        "geometry_reasons": [],
+        "mean_displacement_px": 3.3165029292279553,
+        "max_displacement_px": 3.4864732900923645,
+        "max_visible_projection_std_px": 1.3368432779253778
+      },
+      {
+        "shift_reference_px": 11,
+        "expected": "failed",
+        "status": "failed",
+        "reason": "camera_drift_exceeds_tolerance",
+        "geometry_reasons": [],
+        "mean_displacement_px": 7.33119833313558,
+        "max_displacement_px": 7.457490802749418,
+        "max_visible_projection_std_px": 1.3494426844336076
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "adopted": true,
+    "reasons": [],
+    "frame_measurement_reasons": [
+      "measured",
+      "measured",
+      "measured",
+      "measured",
+      "measured"
+    ],
+    "mean_reference_px": 0.2366257944757348,
+    "max_reference_px": 0.39793750713192666,
+    "negative_adopted": false,
+    "negative_reasons": [
+      "insufficient_independent_line_support",
+      "unverified_finite_line_identity"
+    ],
+    "motion": [
+      {
+        "shift_reference_px": 0,
+        "expected": "ok",
+        "status": "ok",
+        "reason": null,
+        "geometry_reasons": [],
+        "mean_displacement_px": 0.03162914858642194,
+        "max_displacement_px": 0.0869542781494383,
+        "max_visible_projection_std_px": 1.3173268759553527
+      },
+      {
+        "shift_reference_px": 5,
+        "expected": "warning",
+        "status": "warning",
+        "reason": "camera_moved_possible",
+        "geometry_reasons": [],
+        "mean_displacement_px": 3.1684949743641044,
+        "max_displacement_px": 3.4068284009319676,
+        "max_visible_projection_std_px": 1.3282347135194135
+      },
+      {
+        "shift_reference_px": 11,
+        "expected": "failed",
+        "status": "failed",
+        "reason": "camera_drift_exceeds_tolerance",
+        "geometry_reasons": [],
+        "mean_displacement_px": 7.155323547904849,
+        "max_displacement_px": 7.400455132204395,
+        "max_visible_projection_std_px": 1.3270912623284252
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "adopted": true,
+    "reasons": [],
+    "frame_measurement_reasons": [
+      "measured",
+      "measured",
+      "measured",
+      "measured",
+      "measured"
+    ],
+    "mean_reference_px": 0.2791878353820295,
+    "max_reference_px": 0.5007251389297853,
+    "negative_adopted": false,
+    "negative_reasons": [
+      "insufficient_independent_line_support",
+      "unverified_finite_line_identity"
+    ],
+    "motion": [
+      {
+        "shift_reference_px": 0,
+        "expected": "ok",
+        "status": "ok",
+        "reason": null,
+        "geometry_reasons": [],
+        "mean_displacement_px": 0.020566285855036316,
+        "max_displacement_px": 0.04038780028916491,
+        "max_visible_projection_std_px": 1.2851557411519967
+      },
+      {
+        "shift_reference_px": 5,
+        "expected": "warning",
+        "status": "warning",
+        "reason": "camera_moved_possible",
+        "geometry_reasons": [],
+        "mean_displacement_px": 3.3559077921846607,
+        "max_displacement_px": 3.5535733201903206,
+        "max_visible_projection_std_px": 1.2817564582304946
+      },
+      {
+        "shift_reference_px": 11,
+        "expected": "failed",
+        "status": "failed",
+        "reason": "camera_drift_exceeds_tolerance",
+        "geometry_reasons": [],
+        "mean_displacement_px": 7.359158355262738,
+        "max_displacement_px": 7.528594409878363,
+        "max_visible_projection_std_px": 1.2998662229689029
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "adopted": true,
+    "reasons": [],
+    "frame_measurement_reasons": [
+      "measured",
+      "measured",
+      "measured",
+      "measured",
+      "measured"
+    ],
+    "mean_reference_px": 0.1890921946601523,
+    "max_reference_px": 0.5168035166314187,
+    "negative_adopted": false,
+    "negative_reasons": [
+      "insufficient_independent_line_support",
+      "unverified_finite_line_identity"
+    ],
+    "motion": [
+      {
+        "shift_reference_px": 0,
+        "expected": "ok",
+        "status": "ok",
+        "reason": null,
+        "geometry_reasons": [],
+        "mean_displacement_px": 0.02647351492270223,
+        "max_displacement_px": 0.05009933053039844,
+        "max_visible_projection_std_px": 1.451114089705995
+      },
+      {
+        "shift_reference_px": 5,
+        "expected": "warning",
+        "status": "warning",
+        "reason": "camera_moved_possible",
+        "geometry_reasons": [],
+        "mean_displacement_px": 3.342425726929661,
+        "max_displacement_px": 3.622255861023282,
+        "max_visible_projection_std_px": 1.4363046137028237
+      },
+      {
+        "shift_reference_px": 11,
+        "expected": "failed",
+        "status": "failed",
+        "reason": "camera_drift_exceeds_tolerance",
+        "geometry_reasons": [],
+        "mean_displacement_px": 7.326312572774202,
+        "max_displacement_px": 7.612192152712995,
+        "max_visible_projection_std_px": 1.4335107006390977
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "adopted": true,
+    "reasons": [],
+    "frame_measurement_reasons": [
+      "measured",
+      "measured",
+      "measured",
+      "measured",
+      "measured"
+    ],
+    "mean_reference_px": 0.11723628389850985,
+    "max_reference_px": 0.21171261155495766,
+    "negative_adopted": false,
+    "negative_reasons": [
+      "insufficient_independent_line_support",
+      "unverified_finite_line_identity"
+    ],
+    "motion": [
+      {
+        "shift_reference_px": 0,
+        "expected": "ok",
+        "status": "ok",
+        "reason": null,
+        "geometry_reasons": [],
+        "mean_displacement_px": 0.12681357673202082,
+        "max_displacement_px": 0.5527956279689173,
+        "max_visible_projection_std_px": 3.267516430088772
+      },
+      {
+        "shift_reference_px": 5,
+        "expected": "warning",
+        "status": "warning",
+        "reason": "camera_moved_possible",
+        "geometry_reasons": [],
+        "mean_displacement_px": 3.321260388466549,
+        "max_displacement_px": 3.978760745352845,
+        "max_visible_projection_std_px": 3.2844514825528073
+      },
+      {
+        "shift_reference_px": 11,
+        "expected": "failed",
+        "status": "failed",
+        "reason": "drift_unobservable",
+        "geometry_reasons": [
+          "uncertain_local_projection"
+        ],
+        "mean_displacement_px": null,
+        "max_displacement_px": null,
+        "max_visible_projection_std_px": 3.3341368782830023
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "adopted": true,
+    "reasons": [],
+    "frame_measurement_reasons": [
+      "measured",
+      "measured",
+      "measured",
+      "measured",
+      "measured"
+    ],
+    "mean_reference_px": 0.41637571626907544,
+    "max_reference_px": 2.0261680219052063,
+    "negative_adopted": false,
+    "negative_reasons": [
+      "insufficient_independent_line_support",
+      "unverified_finite_line_identity"
+    ],
+    "motion": [
+      {
+        "shift_reference_px": 0,
+        "expected": "ok",
+        "status": "ok",
+        "reason": null,
+        "geometry_reasons": [],
+        "mean_displacement_px": 0.04627708383186237,
+        "max_displacement_px": 0.0872249310945497,
+        "max_visible_projection_std_px": 3.0802360010914276
+      },
+      {
+        "shift_reference_px": 5,
+        "expected": "warning",
+        "status": "warning",
+        "reason": "camera_moved_possible",
+        "geometry_reasons": [],
+        "mean_displacement_px": 3.2535894257535465,
+        "max_displacement_px": 3.44600534376454,
+        "max_visible_projection_std_px": 3.0646097352574215
+      },
+      {
+        "shift_reference_px": 11,
+        "expected": "failed",
+        "status": "failed",
+        "reason": "camera_drift_exceeds_tolerance",
+        "geometry_reasons": [],
+        "mean_displacement_px": 7.189514873802614,
+        "max_displacement_px": 7.395343357443097,
+        "max_visible_projection_std_px": 1.5291965178046807
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "adopted": true,
+    "reasons": [],
+    "frame_measurement_reasons": [
+      "measured",
+      "measured",
+      "measured",
+      "measured",
+      "measured"
+    ],
+    "mean_reference_px": 0.6127567928418567,
+    "max_reference_px": 1.4549840244971775,
+    "negative_adopted": false,
+    "negative_reasons": [
+      "insufficient_independent_line_support",
+      "unverified_finite_line_identity"
+    ],
+    "motion": [
+      {
+        "shift_reference_px": 0,
+        "expected": "ok",
+        "status": "ok",
+        "reason": null,
+        "geometry_reasons": [],
+        "mean_displacement_px": 0.04343998837418467,
+        "max_displacement_px": 0.09934878518160545,
+        "max_visible_projection_std_px": 2.8799088285275687
+      },
+      {
+        "shift_reference_px": 5,
+        "expected": "warning",
+        "status": "warning",
+        "reason": "camera_moved_possible",
+        "geometry_reasons": [],
+        "mean_displacement_px": 3.3780068975228743,
+        "max_displacement_px": 3.5516058540778763,
+        "max_visible_projection_std_px": 2.87370928478
+      },
+      {
+        "shift_reference_px": 11,
+        "expected": "failed",
+        "status": "failed",
+        "reason": "camera_drift_exceeds_tolerance",
+        "geometry_reasons": [],
+        "mean_displacement_px": 7.369243849178062,
+        "max_displacement_px": 7.545421207468635,
+        "max_visible_projection_std_px": 2.8604842991483688
+      }
+    ]
+  }
+]
