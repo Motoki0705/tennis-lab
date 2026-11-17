@@ -1,0 +1,80 @@
+{
+  "artifacts": {
+    "commits": [
+      "5ec8e30e3119304227f43b1854cb493ec4cd5e0d",
+      "be095af1195b3ed807f6d27bbe79ea6370be388a"
+    ],
+    "prs": [
+      2222
+    ]
+  },
+  "captured_at": "2026-11-17T04:13:17.970961+00:00",
+  "decision": {
+    "action": "approve",
+    "source_sequence": 1
+  },
+  "delegation_key": "d-2529adb649b848bd84a5bc5ded627349",
+  "files": {
+    "final.md": "b0167378a7a3a35b99b48339a9cc7693f9531559889ea0f78113b39d92634d85",
+    "instruction.md": "7f62c46ee3d9ed0641772965e4906c0f9c82ef506e61193dcf25429b31a67533"
+  },
+  "finished_at": "2026-11-17T08:54:09.061847+00:00",
+  "instruction": {
+    "additional_instructions": [
+      "## 親の回答: #2191 のplanningを承認し、実装を開始する\n\n計画（issueコメント 6938028620）を承認します。判断点への回答は次のとおりです。\n\n1. **実装開始:** 承認します。順序は計画のとおり、次の4段階です。\n   1. 候補reader・線対応・共通fit・人工データでの検証。\n   2. storeと共通入口・来歴・marker。\n   3. 全件のCPU評価と、既定のreplay。\n   4. 可視化・knowledge・PR。\n\n   第1段階で、モデルの初期値から手指定なしに4cameraの線の意味対応を決められるかを検証します。決められない場合は、入力の根拠と代替仮説を残して親へ返してください。参照H・手指定のネット帯は使いません。\n2. **drift:** 提案の運用基準で進めます。\n   - 3px超で、複数の非平行線で整合し、不確かさで説明できない場合: `camera_moved_possible`（warning）。共通Hは使い、receiptと重ね描きに明示する。\n   - 信頼できる局所Hで `D_mean > 10px` または `D_max > 25px` の場合: そのcamera/clipを失敗にする。\n   - `drift_unobservable`: そのcamera/clipを失敗にする（安全と確認できたことにはしない）。meiji_4camでこれが多発し、受入（全69clip成立）を妨げる場合は、件数と理由を記録して親へ返してください。閾値を結果に合わせて動かしません。\n   - 最低支持・不確かさの数値は、人工データの開発集合で決めて、評価の前に凍結します。\n3. **評価subset:** 参照の15frame/cameraを、初期値・白線fit・評価のすべてから除く案を承認します。初期値は64clipのframe 0、fitは全69clipの3frame、評価は全69clipの `floor(4*(N-1)[local path])` のframeです。これは製品の既定（全clip）とは別の、明示したsubsetとして記録してください。\n4. **#1752との分担:** この子では、`prepare_video_court(...)` の共通準備APIと、複数clip計画のintegration、単一clip入口での明示build/loadまでを作ります。一括CLIへの接続は #1752 で行います。#1752の完了前に「一括CLIでも受入済み」とは書きません。CLI全体やモデル寿命（C3）の実装は重複させません。\n5. **旧ball3d評価reader・固定幾何import・direct_annotation:** 共有モードとは非対応のまま、明示的に拒否する境界をテストすることで十分です。対応の拡張はこの子の範囲外です。\n\n### 制約\n- GPU: 共有lockが復旧していない可能性があります。queueを通さずにCUDAを使いません（`CUDA_VISIBLE_DEVICES=''`）。今回はfrozen候補とCPUで進めます。\n- 許容差（平均10px・最大25px）、承認済み参照、区間分割なし、clipモードの既定の維持は変えません。\n- 静かなフォールバックを入れません。merge・issue closeは親が行います。\n- PRを作成し、CIの成功まで確認してください。PR本文に `Closes #2191（親 #1734）` を含めます。\n"
+    ],
+    "kind": "answer"
+  },
+  "issue": 2191,
+  "parent": 1734,
+  "repo": "Motoki0705/tennis-lab",
+  "runtime": {
+    "result": "completed",
+    "turn_end_reason": "completed"
+  },
+  "sanitization": {
+    "additional": 1,
+    "final": 2,
+    "instruction": 1,
+    "local_paths": {
+      "posix": 2
+    },
+    "version": 2
+  },
+  "schema_version": 1,
+  "sources": {
+    "issue": {
+      "body_sha256": "a7d1ed5d5fc9de9dab4ebeb07acfdca476a45b5cf77ca06e8d812f62e5d67d26",
+      "url": "https://github.com/Motoki0705/tennis-lab/issues/2191"
+    },
+    "standard_instruction": {
+      "blob": "8d6d4bcc4bbad9c55b3bc368ddcf5b5574580270",
+      "commit": "4b110f9b8a2c2a8cdb6438178f1aa03758605391",
+      "path": ".agents/ops/parent/worker_prompt.md"
+    }
+  },
+  "started_at": "2026-11-17T04:13:20.561895+00:00",
+  "turn": {
+    "kind": "resume",
+    "phase": "implementing",
+    "previous_sequence": 1,
+    "sequence": 2
+  },
+  "worker": {
+    "agent": "codex",
+    "effective": {
+      "effort": {
+        "status": "observed",
+        "value": "max"
+      },
+      "model": {
+        "status": "observed",
+        "value": "gpt-6-astra"
+      }
+    },
+    "selected": {
+      "effort": "max",
+      "model": "gpt-6-astra"
+    }
+  }
+}
