@@ -19,7 +19,6 @@ from src.tasks.court_detection.geometry.paint_refinement import (
     refine_paint,
 )
 from src.tasks.court_detection.geometry.quality import (
-    DEFAULT_QUALITY_CONFIG,
     CourtQuality,
     CourtQualityConfig,
     assess_court_quality,
@@ -39,18 +38,32 @@ Region = tuple[int, int, int, int]
 @dataclass(frozen=True, slots=True)
 class CourtRegionSearchConfig(CourtQualityConfig):
     enabled: bool = False
+    acceptance_method: str = "legacy"
+    min_inliers: int = 8
+    inlier_distance_ratio: float = 0.005
     min_area_ratio: float = 0.01
     refinement_method: str = "model"
     paint: PaintConfig = PaintConfig()
 
     def __post_init__(self) -> None:
         CourtQualityConfig.__post_init__(self)
+        if self.acceptance_method not in {"legacy", "quality"}:
+            raise ValueError("Unknown court acceptance_method")
+        if not 4 <= self.min_inliers <= 14:
+            raise ValueError("region_search.min_inliers must be between 4 and 14")
+        if not np.isfinite(self.inlier_distance_ratio) or not 0 < self.inlier_distance_ratio < 1:
+            raise ValueError("region_search.inlier_distance_ratio must be finite and between 0 and 1")
         if self.refinement_method not in {"model", "rgb_paint"}:
             raise ValueError("Unknown court refinement_method")
+        if self.acceptance_method == "legacy" and self.refinement_method != "model":
+            raise ValueError("rgb_paint requires acceptance_method=quality")
         if not isinstance(self.paint, PaintConfig):
             raise ValueError("Court paint configuration must be typed")
         if not np.isfinite(self.min_area_ratio) or not 0 < self.min_area_ratio < 1:
             raise ValueError("region_search.min_area_ratio must be finite and between 0 and 1")
+
+
+DEFAULT_REGION_SEARCH_CONFIG = CourtRegionSearchConfig()
 
 
 def image_content_region(image: NDArray[np.uint8]) -> Region:
@@ -155,7 +168,7 @@ class CourtRegionPrediction:
 
 def predict_court_region(
     predictor: CourtPredictor, image: NDArray[np.uint8], region: Region,
-    *, quality_config: CourtQualityConfig = DEFAULT_QUALITY_CONFIG,
+    *, quality_config: CourtQualityConfig = DEFAULT_REGION_SEARCH_CONFIG,
 ) -> CourtRegionPrediction:
     x0, y0, x1, y1 = region
     if not (0 <= x0 < x1 <= image.shape[1] and 0 <= y0 < y1 <= image.shape[0]):
@@ -170,6 +183,12 @@ def predict_court_region(
 def assess_region_prediction(prediction: CourtPrediction, image: NDArray[np.uint8], region: Region,
                              config: CourtQualityConfig) -> CourtRegionPrediction:
     """Common live/frozen-raw boundary; RGB always uses the full source frame."""
+    if isinstance(config, CourtRegionSearchConfig) and config.acceptance_method == "legacy":
+        geometry = prediction.homography
+        accepted = geometry is not None and geometry.status == "ok" and geometry.matrix is not None
+        quality = CourtQuality(accepted, None, () if accepted else ("no_homography",),
+            {"schema": "court_legacy_geometry_v1", "method": "legacy", "scope": "geometry_only"})
+        return CourtRegionPrediction(prediction, region, (image.shape[0], image.shape[1]), quality)
     model_quality = assess_prediction_quality(prediction, config, image.shape[:2])
     paint = None
     quality = model_quality
@@ -218,11 +237,13 @@ class CourtRegionUnavailable(ValueError):
 def select_court_region(
     predictor: CourtPredictor, image: NDArray[np.uint8], config: CourtRegionSearchConfig,
 ) -> CourtRegionSelection:
-    """Select by visible-line quality and stability; fail if no candidate qualifies.
+    """Select by the explicit legacy or opt-in quality policy.
 
     This establishes a region once, not a stored homography or per-frame fallback.
     The caller reruns inference for every frame within the selected region.
     """
+    if config.acceptance_method == "legacy":
+        return _select_legacy_region(predictor, image, config)
     left, top, right, bottom = image_content_region(image)
     height, width = image.shape[:2]
     candidates: list[dict[str, object]] = []
@@ -283,3 +304,47 @@ def select_court_region(
     # tiebreaker: channels collapsed onto one peak cannot improve this ranking.
     chosen = min(accepted, key=lambda item: item[0])
     return CourtRegionSelection(chosen[1], tuple(candidates))
+
+
+def _select_legacy_region(
+    predictor: CourtPredictor, image: NDArray[np.uint8], config: CourtRegionSearchConfig,
+) -> CourtRegionSelection:
+    """Original all-visible/inlier gate and confidence ranking, including float32 projection."""
+    left, top, right, bottom = image_content_region(image)
+    height, width = image.shape[:2]
+    threshold = config.inlier_distance_ratio * np.hypot(width, height)
+    candidates: list[dict[str, object]] = []
+    accepted: list[tuple[int, float, Region]] = []
+    for region in region_proposals(image):
+        prediction = predict_court_region(predictor, image, region, quality_config=config)
+        points, visible = prediction.downstream_keypoints()
+        raw = prediction.cropped.raw_heads["kp"]
+        assert isinstance(raw, CourtKeypointPrediction)
+        raw_points = raw.keypoints[:, 0].numpy() + np.asarray(region[:2])
+        inliers = (np.linalg.norm(points - raw_points, axis=-1) <= threshold) & raw.valid[:, 0].numpy()
+        count = int(inliers.sum())
+        score = float(raw.scores[:, 0].numpy()[inliers].sum())
+        polygon = points[[0, 1, 3, 2]].astype(np.float32)
+        area = abs(cv2.contourArea(polygon)) / (width * height)
+        convex = bool(cv2.isContourConvex(polygon))
+        inside_content = bool((
+            (points[:, 0] >= left) & (points[:, 0] <= right - 1)
+            & (points[:, 1] >= top) & (points[:, 1] <= bottom - 1)
+        ).all())
+        geometry = prediction.cropped.homography
+        status = geometry.status if geometry is not None else "not_requested"
+        qualifies = (
+            status == "ok" and bool(visible.all()) and inside_content and convex
+            and area >= config.min_area_ratio and count >= config.min_inliers
+        )
+        candidates.append({
+            "region_xyxy": list(region), "status": status, "accepted": qualifies,
+            "inliers": count, "inlier_score": score, "area_ratio": area,
+            "convex": convex, "inside_content": inside_content,
+        })
+        if qualifies:
+            accepted.append((count, score, region))
+    if not accepted:
+        raise CourtRegionUnavailable(tuple(candidates))
+    chosen = max(accepted, key=lambda item: (item[0], item[1]))
+    return CourtRegionSelection(chosen[2], tuple(candidates))

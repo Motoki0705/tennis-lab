@@ -25,7 +25,7 @@ from src.tasks.court_detection.geometry.line_evidence import (
 EDGES = np.array(
     [(0, 1), (2, 3), (0, 2), (1, 3), (4, 5), (6, 7), (8, 9), (10, 11), (12, 13)]
 )
-CONFIG = HybridHomographyConfig(refine_candidates=3, max_nfev=100)
+CONFIG = HybridHomographyConfig(support_method="candidate_subsets", refine_candidates=3, max_nfev=100)
 
 
 def scene() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -62,8 +62,9 @@ def scene() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return template, truth, probability
 
 
+@pytest.mark.parametrize("support_method", ["legacy", "candidate_subsets"])
 def test_line_corrects_biased_kp_and_excludes_confident_outliers(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, support_method: str,
 ) -> None:
     import src.tasks.court_detection.geometry.hybrid_homography as module
 
@@ -88,12 +89,12 @@ def test_line_corrects_biased_kp_and_excludes_confident_outliers(
         probability,
         edges=EDGES,
         image_size_hw=(320, 320),
-        config=CONFIG,
+        config=replace(CONFIG, support_method=support_method),
     )
     assert result.status == "ok"
     assert 4 <= result.selected.sum() <= 8
     assert not result.selected[bad].any()
-    assert result.observation_diagnostics is not None
+    assert (result.observation_diagnostics is None) == (support_method == "legacy")
     assert all(4 <= mask.sum() <= 8 for mask in selections)
     assert result.best is not None
     assert 1 <= len(result.seeds) <= CONFIG.refine_candidates
@@ -110,13 +111,16 @@ def test_line_corrects_biased_kp_and_excludes_confident_outliers(
         for previous in result.seeds[:index]
     )
     assert tuple(np.flatnonzero(result.selected)) == result.best.selection_history[-1]
-    assert result.solve_diagnostics
-    winning = [solve for solve in result.solve_diagnostics if solve["stop_reason"] == "converged" and
-               np.allclose(solve["fitted_homography"], result.matrix)]
-    assert len(winning) >= 1
-    assert winning[0]["selected_indices"] == np.flatnonzero(result.selected).tolist()
-    np.testing.assert_allclose(winning[0]["selected_residuals_px"], result.residuals_px[result.selected])
-    assert len(set(result.best.selection_history)) == 1  # fixed across both distance fields
+    if support_method == "candidate_subsets":
+        assert result.solve_diagnostics
+        winning = [solve for solve in result.solve_diagnostics if solve["stop_reason"] == "converged" and
+                   np.allclose(solve["fitted_homography"], result.matrix)]
+        assert len(winning) >= 1
+        assert winning[0]["selected_indices"] == np.flatnonzero(result.selected).tolist()
+        np.testing.assert_allclose(winning[0]["selected_residuals_px"], result.residuals_px[result.selected])
+        assert len(set(result.best.selection_history)) == 1  # fixed across both distance fields
+    else:
+        assert not result.solve_diagnostics
     before = np.mean(np.linalg.norm(result.kp_only.projected - truth, axis=1))
     after = np.mean(np.linalg.norm(result.projected - truth, axis=1))
     assert after < 0.8
@@ -147,7 +151,7 @@ def test_new_support_candidate_recovers_after_fixed_set_becomes_inconsistent() -
     rng = np.random.default_rng(17)
     observed = truth + rng.normal(0, 1.6, truth.shape)
     scores = rng.uniform(.6, 1., 14)
-    config = HybridHomographyConfig(max_candidates=100, refine_candidates=2)
+    config = HybridHomographyConfig(support_method="candidate_subsets", max_candidates=100, refine_candidates=2)
     before = estimate_hybrid_homography(template, observed, scores, probability, edges=EDGES,
         image_size_hw=(320, 320), config=replace(config, support_method="fixed_subsets"))
     assert before.matrix is None and before.status == "joint_optimization_failed"
@@ -204,6 +208,10 @@ def test_gate_excludes_geometric_and_line_outliers_and_never_uses_all_points() -
     selected = select_keypoints(template, observed, scores, truth, distances, 3, CONFIG)
     assert selected.sum() == 8
     assert not selected[:2].any()
+    # The default original ranking is confidence-first, including stable ties.
+    assert np.flatnonzero(selected).tolist() == list(range(2, 10))
+    tied = select_keypoints(template, truth, np.ones(14), truth, np.zeros(14), 3, HybridHomographyConfig())
+    assert np.flatnonzero(tied).tolist() == list(range(8))
     all_good = select_keypoints(
         template, truth, scores, truth, np.zeros(14), 3, replace(CONFIG, max_kp=100)
     )

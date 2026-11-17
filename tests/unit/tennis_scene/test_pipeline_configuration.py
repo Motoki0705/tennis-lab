@@ -71,12 +71,26 @@ def test_placement_override_is_typed_and_part_of_cache_settings() -> None:
 
 def test_court_methods_and_paint_measurements_change_cache_identity() -> None:
     baseline = _runtime([])
-    for override in ("court_kp.region_search.refinement_method=model", "court_kp.postprocess.support_method=adaptive",
-                     "court_kp.postprocess.support_method=fixed_subsets", "court_kp.postprocess.max_support_candidates=4",
-                     "court_kp.region_search.paint.version=paired_edges_v1",
-                     "court_kp.region_search.paint.radius_px=40.0"):
-        changed = _runtime([override])
+    assert baseline.court_kp.postprocess.support_method == "legacy"
+    assert baseline.court_kp.region_search.acceptance_method == "legacy"
+    assert baseline.court_kp.region_search.refinement_method == "model"
+    for overrides in (
+        ["court_kp.region_search.acceptance_method=quality"],
+        ["court_kp.region_search.acceptance_method=quality", "court_kp.region_search.refinement_method=rgb_paint"],
+        ["court_kp.postprocess.support_method=candidate_subsets"],
+        ["court_kp.postprocess.support_method=fixed_subsets"],
+        ["court_kp.postprocess.max_support_candidates=4"],
+        ["court_kp.region_search.paint.radius_px=40.0"],
+        ["court_kp.region_search.min_inliers=9"],
+    ):
+        changed = _runtime(overrides)
         assert changed.processing_settings["court_kp"] != baseline.processing_settings["court_kp"]
+    with pytest.raises(ValueError, match="requires acceptance_method=quality"):
+        _runtime(["court_kp.region_search.refinement_method=rgb_paint"])
+    with pytest.raises(ValueError, match="paint extraction version"):
+        _runtime(["court_kp.region_search.paint.version=paired_edges_v1"])
+    with pytest.raises(ValueError, match="support_method"):
+        _runtime(["court_kp.postprocess.support_method=adaptive"])
     with pytest.raises(ValueError, match="refinement_method"):
         _runtime(["court_kp.region_search.refinement_method=automatic"])
 

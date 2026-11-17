@@ -12,6 +12,7 @@ from src.tasks.court_detection.geometry.homography import (
     court_template_xy,
 )
 from src.tasks.court_detection.geometry.hybrid_homography import (
+    HybridHomographyConfig,
     estimate_hybrid_homography,
 )
 from src.tasks.court_detection.geometry.quality import CourtQualityConfig
@@ -42,6 +43,7 @@ def test_real_heads_keep_quality_failure_separate_from_solver_success(name, acce
     geometry = estimate_hybrid_homography(
         court_template_xy(), observed, scores, line,
         image_size_hw=size, edges=np.array(COURT_HOMOGRAPHY_EDGES),
+        config=HybridHomographyConfig(support_method="candidate_subsets"),
     )
     np.testing.assert_array_equal(observed, before)
     assert geometry.status == "ok"  # A converged H alone cannot certify acceptance.

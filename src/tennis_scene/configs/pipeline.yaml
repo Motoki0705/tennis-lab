@@ -48,7 +48,10 @@ court_kp:
   # crop on that frame from the image alone.
   region_search:
     enabled: true
-    refinement_method: rgb_paint
+    acceptance_method: legacy
+    min_inliers: 8
+    inlier_distance_ratio: 0.005
+    refinement_method: model
     paint:
       version: semantic_consensus_v2
       radius_px: 48.0
@@ -82,7 +85,7 @@ court_kp:
     max_projection_std_ratio: 0.005
     max_leave_line_out_ratio: 0.01
   postprocess:
-    support_method: candidate_subsets
+    support_method: legacy
     max_support_candidates: 8
     min_score: 0.05
     threshold_diagonal_ratio: 0.005

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 from typing import Any, cast
 
 import numpy as np
@@ -69,7 +70,7 @@ def test_rgb_rejection_keeps_model_evidence_but_never_publishes_its_h(monkeypatc
 
     monkeypatch.setattr(module, "assess_prediction_quality", lambda *_: CourtQuality(True, .1, (), {}))
     result = assess_region_prediction(geometry_prediction(), np.full((80, 120, 3), 80, np.uint8),
-                                     (5, 4, 17, 12), CourtRegionSearchConfig(refinement_method="rgb_paint"))
+                                     (5, 4, 17, 12), CourtRegionSearchConfig(acceptance_method="quality", refinement_method="rgb_paint"))
     points, valid = result.downstream_keypoints()
     assert not points.any() and not valid.any()
     diagnostic = result.geometry_diagnostics()
@@ -87,7 +88,7 @@ def test_rgb_rejection_keeps_model_evidence_but_never_publishes_its_h(monkeypatc
     monkeypatch.setattr(module, "region_proposals", lambda _: ((5, 4, 17, 12),))
     monkeypatch.setattr(module, "predict_court_region", lambda *_, **__: result)
     with pytest.raises(module.CourtRegionUnavailable) as error:
-        select_court_region(cast(Any, object()), np.full((80, 120, 3), 80, np.uint8), CourtRegionSearchConfig())
+        select_court_region(cast(Any, object()), np.full((80, 120, 3), 80, np.uint8), CourtRegionSearchConfig(acceptance_method="quality"))
     candidate = error.value.candidates[0]
     assert candidate["status"] == "quality_rejected"
     assert candidate["model_fit_support_count"] == 4
@@ -109,7 +110,7 @@ def test_rgb_result_uses_full_frame_pixels_without_applying_crop_offset_twice(mo
     # Model self-consistency can reject a correct partial observation. RGB has
     # its own measured support and acceptance; the two scores are kept separate.
     monkeypatch.setattr(module, "assess_prediction_quality", lambda *_: CourtQuality(False, 3., ("unstable_projection",), {}))
-    result = assess_region_prediction(cropped, image, (70, 40, 600, 470), CourtRegionSearchConfig(refinement_method="rgb_paint"))
+    result = assess_region_prediction(cropped, image, (70, 40, 600, 470), CourtRegionSearchConfig(acceptance_method="quality", refinement_method="rgb_paint"))
     assert result.quality.accepted
     points, valid = result.downstream_keypoints()
     assert valid.all()
@@ -160,11 +161,11 @@ def test_search_requires_assessed_geometry_and_visible_area(monkeypatch, failure
     monkeypatch.setattr(module, "predict_court_region", lambda *_, **__: CourtRegionPrediction(cropped, (0, 0, 100, 100), (100, 100), quality))
     if failure not in (None, "outside"):
         with pytest.raises(module.CourtRegionUnavailable, match="No Court region meets") as error:
-            select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
+            select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig(acceptance_method="quality"))
         assert len(error.value.candidates) == 1
         assert error.value.candidates[0]["accepted"] is False
     else:
-        selected = select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
+        selected = select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig(acceptance_method="quality"))
         assert selected.region == (0, 0, 100, 100)
         assert selected.candidates[0]["inliers"] == 14
         assert selected.candidates[0]["inside_content"] == (failure != "outside")
@@ -186,8 +187,48 @@ def test_quality_cost_ranks_regions_instead_of_raw_support_count(monkeypatch) ->
         return CourtRegionPrediction(base, region, (100, 100), CourtQuality(True, score, (), {"supported_keypoints": count}))
 
     monkeypatch.setattr(module, "predict_court_region", predict)
-    result = select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
+    result = select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig(acceptance_method="quality"))
     assert result.region == regions[1]
     quality = result.candidates[1]["quality"]
     assert isinstance(quality, dict)
     assert quality["score"] == .2
+
+
+def test_default_search_preserves_visibility_inlier_gate_and_stable_confidence_ranking(monkeypatch) -> None:
+    import src.tasks.court_detection.inference.regions as module
+
+    base = geometry_prediction()
+    assert base.homography is not None
+    points = np.tile([30., 30.], (14, 1)).astype(np.float32)
+    points[:4] = [[10, 10], [60, 10], [10, 60], [60, 60]]
+    regions = tuple((x, 0, 100, 100) for x in range(6))
+    predictions = []
+    # An exterior point and seven inliers each reject. Among valid regions,
+    # count outranks confidence; confidence outranks order; exact ties keep order.
+    for index, (count, confidence) in enumerate(((14, 1.), (7, 1.), (8, 1.), (9, .3), (9, .8), (9, .8))):
+        projected = points.copy()
+        if index == 0:
+            projected[3, 0] = 150
+        local = projected - [index, 0]
+        observed = local.copy()
+        observed[count:] += 5
+        raw = base.raw_heads["kp"]
+        predictions.append(replace(base, homography=replace(base.homography, projected=local), raw_heads={
+            "kp": replace(raw, keypoints=torch.tensor(observed[:, None]),
+                          scores=torch.full((14, 1), confidence), valid=torch.ones((14, 1), dtype=torch.bool))}))
+    iterator = iter(predictions)
+    predictor = SimpleNamespace(predict=lambda *_a, **_k: next(iterator))
+    monkeypatch.setattr(module, "region_proposals", lambda _: regions)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("Opt-in quality/RGB must not execute in legacy mode")
+
+    monkeypatch.setattr(module, "assess_prediction_quality", forbidden)
+    monkeypatch.setattr(module, "refine_paint", forbidden)
+    selected = select_court_region(cast(Any, predictor), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
+    assert selected.region == regions[4]
+    assert [c["accepted"] for c in selected.candidates] == [False, False, True, True, True, True]
+    # Full-frame (no region search) still exposes partial-court geometry as before.
+    full = assess_region_prediction(predictions[0], np.ones((100, 100, 3), np.uint8), regions[0], CourtRegionSearchConfig())
+    assert full.downstream_keypoints()[1].sum() == 13
+    assert cast(dict[str, Any], full.geometry_diagnostics()["quality"])["schema"] == "court_legacy_geometry_v1"

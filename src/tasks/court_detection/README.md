@@ -219,13 +219,23 @@ LINEだけの利用は`predict(rgb, heads=("line",), postprocess="none")`と明�
 固定カメラ向け領域探索は`inference/regions.py`に残し、`tennis_scene`が利用します。
 合成データ生成のalignmentも`CourtLinePredictor`を利用します。
 
-領域探索の採否は`court_kp.region_search`の品質設定を使います。
-14点すべてが画像内にあることや一律8点のinlierを要求せず、画像内に見える線の一致、
-各方向の独立した線の分布、実際にfitへ使ったKPの支持、投影の安定性を確認します。
-画像との交差面積が`min_area_ratio`以上ある凸なコートだけを候補に残し、
-合格候補の品質costが最小の領域を選びます。同点では提案順です。
+clip単位の既定は旧処理です。`postprocess.support_method=legacy`はconfidence順の
+支持点選択と元の反復fitを使い、境界打切り・相関群による選別は行いません。
+`region_search.acceptance_method=legacy`は全14点の画像・content内投影、凸性、
+面積`min_area_ratio`以上、`min_inliers=8`以上を要求します。
+inlier距離は元画像の対角長×`inlier_distance_ratio=0.005`です。
+合格候補をinlier数、confidence和の順で選び、同点では提案順を保ちます。
+`enabled=false`なら領域gateを実行せず、元のhybrid結果と画像内validityを返します。
+この経路は新しい品質計算やRGB精密化を起動しません。
+`quality.schema=court_legacy_geometry_v1`はgeometryの成立だけを表し、`scope=geometry_only`、
+`score=null`です。領域採否は`region_selection.candidates`に分けて残します。
+
+新方式は再利用用の明示profileであり、clip既定には採用していません。
+支持点方式、採否方式、RGBの使用はそれぞれ設定します。
+`region_search.acceptance_method=quality`では、画像内に見える線の一致、
+独立した支持の分布と投影の安定性を判定し、画像との交差面積が十分な凸な候補のうち
+品質costが最小の領域を選びます。`enabled=false`でもこの明示profileは品質を判定します。
 合格候補がなければ`CourtRegionUnavailable`と候補ごとの理由を返します。
-`region_search.enabled=false`でもfull-frame推論の品質確認は行います。
 
 `postprocess.support_method=candidate_subsets`は、各初期Hに対して空間分布とconfidenceの
 支持集合を明示的に作り、各集合を固定して最大8点で解きます。最適化後に支持集合が変われば、
@@ -235,8 +245,9 @@ LINEだけの利用は`predict(rgb, heads=("line",), postprocess="none")`と明�
 `boundary_margin_cells`未満の座標は外側への移動を拘束しない片側制約です。
 `duplicate_distance_cells`以内のピークの連結成分から、1候補には最大1点を使います。
 rawは変更せず、`keypoint_observations`に打切方向と相関群、`support_solves`に
-実際の集合・H・残差・optimizer終了理由を残します。`adaptive`は前方式の明示的な比較用です。
-最適化開始時に可視だったLINEは、画面外へ移しても残差から消えません。
+実際の集合・H・残差・optimizer終了理由を残します。これらの固定集合方式では、
+最適化開始時に可視だったLINEを画面外へ移しても残差から消えません。
+中間実験の`adaptive`は削除し、旧処理は`legacy`だけで明示します。
 
 診断`quality.schema=court_quality_v1`の`score`は小さいほどよい順位用costで、
 正解確率や参照とのpx誤差ではありません。forward/reverse線残差のRMSを許容距離で割った和、
@@ -249,8 +260,9 @@ rawは変更せず、`keypoint_observations`に打切方向と相関群、`suppo
 局所線形化で測ります。LINE自体の誤検出・semanticな取り違えを証明する指標ではありません。
 同じモデル・品質設定の推定間で比較し、camera別の推定を使う側も`accepted`を必ず確認してください。
 
-`region_search.refinement_method=model`は上記のモデル内部品質を採否に使います。
-`rgb_paint`は元RGBの1frameとモデルHから塗線中心へ精密化します。
+`acceptance_method=quality`と`region_search.refinement_method=model`は上記のモデル内部品質を採否に使います。
+`refinement_method=rgb_paint`は元RGBの1frameとモデルHから塗線中心へ精密化します。
+この指定には`acceptance_method=quality`が必要で、legacy採否との組合せはエラーです。
 RGB精密化はregion APIとscene componentの段階で行い、`CourtPredictor.predict`単独はモデルHまでを返します。
 `region_search.paint`に探索幅・edge対の条件・支持・残差・安定性の全設定があります。
 camera固有のmaskや参照は使いません。`paint.version=semantic_consensus_v2`は両側の明るさ
@@ -258,7 +270,8 @@ camera固有のmaskや参照は使いません。`paint.version=semantic_consens
 モデル近傍のstripeとcoarse候補を比較し、幾何で確認できた近傍対応を優先します。
 coarseで直線が見つかっただけでは必須にせず、モデル投影・コート全体・代替stripeの検査を
 通った線だけを初期支持とします。未確認stripeの喪失は診断に残し、確認済みの線の喪失や
-別のstripeへの移動は拒否します。`paired_edges_v1`は全coarse stripeを必須にした前方式です。
+別のstripeへの移動は拒否します。全coarse stripeを必須にした中間実験の`paired_edges_v1`は
+productionから削除し、当時のコードと結果はknowledgeのcommit付き再現記録に保持します。
 
 線残差、未解決の意味対応、各物理線を独立群とする投影標準偏差と線除去の影響を確認します。
 線の除去後にrankが不足する場合は、変位を捏造せず`essential_lines`に記録します。
@@ -285,7 +298,7 @@ RGB不合格時に旧Hを採用Hへ戻すことはありません。品質を利
 `tennis_scene`の診断schemaは`court_kp_quality_v2`です。品質不合格は`quality_rejected`とし、
 採用Hは`null`、下流点はゼロ・全無効にします。調査用のHは`rejected_homography`に分けます。
 `keypoint_observations`には境界・重複で除外したindexを残します。
-旧`region_search.min_inliers` / `inlier_distance_ratio`は受理しません。
+`min_inliers` / `inlier_distance_ratio`はlegacy採否だけに使い、品質profileには使いません。
 品質・後処理の全設定はcomponentのcache identityに入ります。
 
 KPのcamera-view順序を複数cameraの物理point identityへ自動変換しません。

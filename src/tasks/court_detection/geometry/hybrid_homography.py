@@ -41,11 +41,11 @@ class HybridHomographyConfig:
     ambiguity_displacement_ratio: float = 0.03
     boundary_margin_cells: float = 1.0
     duplicate_distance_cells: float = 1.0
-    support_method: str = "candidate_subsets"
+    support_method: str = "legacy"
     max_support_candidates: int = 8
 
     def __post_init__(self) -> None:
-        if self.support_method not in {"candidate_subsets", "fixed_subsets", "adaptive"}:
+        if self.support_method not in {"legacy", "candidate_subsets", "fixed_subsets"}:
             raise ValueError("Unknown hybrid support_method")
         if self.max_support_candidates < 2:
             raise ValueError("At least two support candidates are required")
@@ -142,7 +142,7 @@ def select_keypoints(
     config: HybridHomographyConfig,
     *,
     support: KeypointSupport | None = None,
-    spatial: bool = True,
+    spatial: bool = False,
 ) -> NDArray[np.bool_]:
     """Hard residual/LINE gates, then confidence/residual ranking and strict cap.
 
@@ -159,6 +159,14 @@ def select_keypoints(
     )
     indices = np.flatnonzero(eligible)
     merit = scores[indices] / (1 + (residual[indices] / threshold_px) ** 2)
+    if support is None and not spatial:
+        # Preserve the original confidence ranking, including stable ties.
+        order = indices[np.argsort(-merit, kind="stable")]
+        selected: NDArray[np.bool_] = np.zeros(len(template), dtype=bool)
+        selected[order[: min(config.max_kp, len(template) - 1)]] = True
+        if selected.sum() < 4 or not _has_support(template[selected], observed[selected]):
+            selected[:] = False
+        return selected
     # Confidence alone can put all fit points at one end of the court. Keep the
     # best-supported point first, then cover distinct template locations. The
     # template is normalized per axis so metres and court aspect do not bias it.
@@ -177,7 +185,7 @@ def select_keypoints(
         remaining.remove(next_index)
         if support is not None:
             remaining = [i for i in remaining if support.correlation_groups[indices[i]] != support.correlation_groups[indices[next_index]]]
-    selected: NDArray[np.bool_] = np.zeros(len(template), dtype=bool)
+    selected = np.zeros(len(template), dtype=bool)
     selected[indices[chosen]] = True
     if selected.sum() < 4 or not _has_support(template[selected], observed[selected]):
         selected[:] = False
@@ -241,16 +249,14 @@ def estimate_hybrid_homography(
         raise ValueError("LINE probability must be a two-dimensional image")
     diagonal = float(np.hypot(width, height))
     threshold = config.threshold_diagonal_ratio * diagonal
+    fixed_method = config.support_method != "legacy"
     support = keypoint_support(
         observed, quality, image_size_hw=image_size_hw,
         native_size_hw=(line_probability.shape[0], line_probability.shape[1]),
         min_score=config.min_score, boundary_margin_cells=config.boundary_margin_cells,
         duplicate_distance_cells=config.duplicate_distance_cells,
-    )
-    fixed_method = config.support_method != "adaptive"
-    if not fixed_method:
-        observed[~support.eligible] = np.nan
-    fit_support = support if fixed_method else None
+    ) if fixed_method else None
+    fit_support = support
     solves: list[dict[str, object]] = []
     # Reuse its strict coordinate/score validation and the published baseline.
     baseline = estimate_confidence_homography(
@@ -291,7 +297,7 @@ def estimate_hybrid_homography(
             count,
             refined,
             gap,
-            support.diagnostics(),
+            None if support is None else support.diagnostics(),
             tuple(solves),
         )
 
@@ -329,10 +335,12 @@ def estimate_hybrid_homography(
             threshold,
             config,
             support=fit_support,
+            spatial=fixed_method,
         )
         if fixed is not None:
             # Validate the actual fitted set, without replacing it by a new
             # ranking. Censored coordinates use the same one-sided residual.
+            assert support is not None
             residuals = np.linalg.norm(support.residual(projected, observed), axis=1)
             if np.any(residuals[fixed] > threshold):
                 return None
@@ -361,7 +369,7 @@ def estimate_hybrid_homography(
     )
     for indices in combinations_ranked[: config.max_candidates]:
         subset = order[list(indices)]
-        if fixed_method and len(np.unique(support.correlation_groups[subset])) < 4:
+        if support is not None and len(np.unique(support.correlation_groups[subset])) < 4:
             continue
         if not _has_support(template[subset], observed[subset]):
             continue
@@ -416,6 +424,7 @@ def estimate_hybrid_homography(
     # always uses the original ridges, in the same original-image pixel units.
     fields = (gaussian_filter(evidence.distance, threshold / 2), evidence.distance)
     if fixed_method:
+        assert support is not None
         # Both policies are explicit candidates, selected once at each seed.
         # Confidence retains localized precision; spatial selection supplies
         # leverage away from densely observed intersections. Neither is a
@@ -500,7 +509,6 @@ def estimate_hybrid_homography(
                     trace["support_proposals"] = proposals
     for seed in (() if fixed_method else seeds):
         current = seed
-        required_visible = np.asarray(seed.line["visible_segment_mask"], dtype=bool)
         history: list[tuple[int, ...]] = []
         valid = True
         for field in fields:
@@ -513,7 +521,6 @@ def estimate_hybrid_homography(
                     parameters: FloatArray,
                     fixed: NDArray[np.bool_] = fixed,
                     field: FloatArray = field,
-                    required_visible: NDArray[np.bool_] = required_visible,
                 ) -> FloatArray:
                     projected = project_candidate(unpack(parameters), template)
                     size = (
@@ -530,7 +537,6 @@ def estimate_hybrid_homography(
                         threshold,
                         samples_per_line=config.samples_per_line,
                         distance_field=field,
-                        required_visible=required_visible,
                     )
                     kp = selected_kp_residuals(
                         projected, observed, quality, fixed, threshold

@@ -108,7 +108,7 @@ def test_non_camera_view_checkpoint_schema_is_rejected(tmp_path) -> None:
 
 
 def _run_frame_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prediction: Any, *, region_search: bool = False,
-                    size: tuple[int, int] = (30, 20)) -> tuple[CourtKPResult, list[Any], CourtKPModule]:
+                    size: tuple[int, int] = (30, 20), acceptance_method: str = "legacy") -> tuple[CourtKPResult, list[Any], CourtKPModule]:
     import src.tennis_scene.pipeline.components.court_kp as component
     from src.tasks.court_detection.inference.regions import (
         CourtRegionSearchConfig,
@@ -119,8 +119,7 @@ def _run_frame_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prediction:
 
     calls: list[Any] = []
     config = make_court_kp_config(tmp_path)
-    if region_search:
-        config = replace(config, region_search=CourtRegionSearchConfig(enabled=True))
+    config = replace(config, region_search=CourtRegionSearchConfig(enabled=region_search, acceptance_method=acceptance_method))
     module = CourtKPModule(config)
     def predict(image: np.ndarray, **kwargs: Any) -> Any:
         calls.append(("predict", image.shape))
@@ -206,7 +205,7 @@ def test_quality_rejection_cannot_publish_a_calibratable_homography(tmp_path: Pa
 
     rejected = CourtQuality(False, 3.0, ("unstable_projection",), {"max_projection_std_px": 80.})
     monkeypatch.setattr(regions, "assess_prediction_quality", lambda *_: rejected)
-    result, _, _ = _run_frame_zero(tmp_path, monkeypatch, geometry_prediction())
+    result, _, _ = _run_frame_zero(tmp_path, monkeypatch, geometry_prediction(), acceptance_method="quality")
     assert not result.keypoints.any() and not result.visibility.any()
     assert result.diagnostics is not None
     frame = result.diagnostics["cameras"][0]["frames"][0]

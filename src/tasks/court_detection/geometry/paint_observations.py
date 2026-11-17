@@ -52,7 +52,7 @@ class PaintConfig:
     def __post_init__(self) -> None:
         from dataclasses import fields
 
-        if self.version not in {"paired_edges_v1", "semantic_consensus_v2"}:
+        if self.version != "semantic_consensus_v2":
             raise ValueError("Unknown paint extraction version")
         for field in fields(self):
             value = getattr(self, field.name)
