@@ -51,7 +51,15 @@ def _criteria(section: str) -> list[dict[str, str]]:
                 criterion = f"[{group}] {criterion}"
             criteria.append({"id": identifier, "criterion": criterion})
         elif line.strip():
-            if not criteria or group is not None:
+            # candidate_sections retains indentation within multiline criteria.
+            if not criteria or (
+                group is not None
+                and (
+                    groups[group] == 0
+                    or not line[0].isspace()
+                    or re.match(r"#{1,6}(?:\s|$)", line.lstrip())
+                )
+            ):
                 raise ValueError("acceptance snapshot is not an explicit checklist")
             criteria[-1]["criterion"] += " " + line.strip()
     if any(count == 0 for count in groups.values()):

@@ -117,6 +117,38 @@ def test_grouped_acceptance_identifies_candidates_and_validates_finish(
 
 
 @pytest.mark.parametrize(
+    "indent",
+    [" ", "  ", "    ", "\t"],
+    ids=["one-space", "two-spaces", "four-spaces", "tab"],
+)
+def test_grouped_acceptance_combines_indented_continuations(
+    api: Any, indent: str
+) -> None:
+    accepted = (
+        "### I-1878-first\n- [ ] 保存できる。\n"
+        f"{indent}再読込できる。\n{indent}内容が一致する。\n"
+        "### I-1878-second\n- [ ] 失敗を表示する。\n"
+        f"{indent}保存した内容を保持する。"
+    )
+    required = acceptance_requirements(api, accepted)
+    assert required["criteria"] == [
+        {"id": "agreement", "criterion": "合意した条件を検証する。"},
+        {
+            "id": "ac-I-1878-first-1",
+            "criterion": "[I-1878-first] 保存できる。 再読込できる。 内容が一致する。",
+        },
+        {
+            "id": "ac-I-1878-second-1",
+            "criterion": "[I-1878-second] 失敗を表示する。 保存した内容を保持する。",
+        },
+    ]
+    with pytest.raises(ValueError, match="acceptance criteria changed since agreement"):
+        acceptance_requirements(
+            api, accepted, accepted.replace("内容が一致する。", "内容を変換する。")
+        )
+
+
+@pytest.mark.parametrize(
     "section",
     [
         "説明文。\n### I-1-first\n- [ ] 条件。",
@@ -134,7 +166,10 @@ def test_grouped_acceptance_identifies_candidates_and_validates_finish(
         "### I-1-first\n- [ ] 条件。\n### I-1-first\n- [ ] 別条件。",
         "### I-1-first\n- [ ] 条件。\n### Other\n- [ ] 別条件。",
         "### I-1-first\n- [ ] 条件。\n自由文。",
-        "### I-1-first\n- [ ] 条件。\n  自由文。",
+        "### I-1-first\n  自由文。\n- [ ] 条件。",
+        "### I-1-first\n- [ ] 条件。\n### I-1-second\n  自由文。\n- [ ] 別条件。",
+        "### I-1-first\n- [ ] 条件。\n  ### Other",
+        "### I-1-first\n- [ ] 条件。\n  続きの条件。\n- [ ] 条件。 続きの条件。",
         "- [ ] 所属不明の条件。\n### I-1-first\n- [ ] 条件。",
     ],
     ids=[
@@ -153,7 +188,10 @@ def test_grouped_acceptance_identifies_candidates_and_validates_finish(
         "repeated-group",
         "unknown-heading-after-item",
         "prose-after-item",
-        "indented-prose",
+        "indented-prose-before-item",
+        "indented-prose-in-next-group",
+        "indented-heading",
+        "duplicate-multiline-item",
         "mixed-format",
     ],
 )

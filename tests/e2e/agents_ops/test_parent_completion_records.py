@@ -115,13 +115,17 @@ def test_extracted_candidate_groups_complete_through_structured_finish(
             parent="2",
         )
         p.env["PARENT_CREATED_AT"] = "2099-01-01T00:00:00Z"
+        validate_spec = importlib.import_module("issues.improvement").validate_spec
         for key in ("first", "second"):
+            candidate = candidate_spec()
+            candidate["acceptance"][0] = "保存できる。\n  再読込して内容が一致する。"
+            validate_spec(candidate)
             p.cli(
                 "improvement",
                 "--key",
                 key,
                 "--spec",
-                p.spec(candidate_spec()),
+                p.spec(candidate),
                 parent="2",
             )
         p.cli("improvement-propose", parent="2")
@@ -167,6 +171,7 @@ def test_extracted_candidate_groups_complete_through_structured_finish(
         assert extracted["issue"] == 1
         state = p.state()
         extracted_body.append(state["issues"]["1"]["body"])
+        assert "- [ ] 保存できる。\n  再読込して内容が一致する。" in extracted_body[0]
         state["next"] = next_number
         p.save(state)
         p.cli("release", "--ended", "--note-file", p.note(), parent="2")
@@ -180,6 +185,12 @@ def test_extracted_candidate_groups_complete_through_structured_finish(
             "ac-I-2-first-2",
             "ac-I-2-second-1",
             "ac-I-2-second-2",
+        ]
+        assert [row["criterion"] for row in required["criteria"][1:]] == [
+            "[I-2-first] 保存できる。 再読込して内容が一致する。",
+            "[I-2-first] 取得失敗を表示し、保存済み結果を保持する。",
+            "[I-2-second] 保存できる。 再読込して内容が一致する。",
+            "[I-2-second] 取得失敗を表示し、保存済み結果を保持する。",
         ]
 
     monkeypatch.setattr(p, "agreed", agree_extracted)
