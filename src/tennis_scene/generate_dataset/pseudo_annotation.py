@@ -45,12 +45,15 @@ def generate_pseudo_annotations(
     clip_ids: Sequence[str] | None = None,
     overwrite: bool = False,
     continue_on_error: bool = True,
+    scene_export: Callable[[], Path] | None = None,
 ) -> list[AnnotationGenerationResult]:
     """Run selected clips, reusing the common input and publication boundary.
 
     ``runner`` must leave the scene export in the clip-owned component store.
     Selection and error continuation belong to this entry point; cache/load
     decisions belong to the execution plan and marker rules to the publisher.
+    Orchestrator callers pass ``completed_scene_export`` to pin the exact export
+    across concurrent writers, even if another lineage has identical arrays.
     """
     records = select_dataset_clips(dataset_dir, clip_ids)
     outcomes: list[AnnotationGenerationResult] = []
@@ -64,7 +67,8 @@ def generate_pseudo_annotations(
             with recording_context(clip_id=record.clip_id), span("clip"):
                 result = runner(inputs.video_paths, inputs.camera_ids, inputs.clip_dir)
             marker = publish_annotation(inputs, result, pipeline_config_yaml=pipeline_config_yaml,
-                                        publication_identity=publication_identity)
+                                        publication_identity=publication_identity,
+                                        expected_scene=None if scene_export is None else scene_export())
             outcomes.append(AnnotationGenerationResult(record.clip_id, "generated", marker))
         except Exception as error:
             message = record_annotation_failure(dataset_dir / record.path, record.clip_id, error)

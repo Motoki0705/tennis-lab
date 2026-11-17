@@ -106,6 +106,7 @@ def main(cfg: DictConfig) -> int:
         overwrite=runtime.overwrite,
         continue_on_error=runtime.continue_on_error,
         publication_identity=orchestrator.publication_identity(),
+        scene_export=orchestrator.completed_scene_export,
     )
     for outcome in outcomes:
         if outcome.status == "failed":

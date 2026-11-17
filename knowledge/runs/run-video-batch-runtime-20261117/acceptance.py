@@ -151,7 +151,8 @@ def run(root: Path, clips: list[str], court_settings: Path | None) -> int:
                         operation(root, operation="clip", condition=phase, clip_id=f"video_000/{directory.name}", state="finished")
                         return scene
                     outcomes = generate_pseudo_annotations(dataset, reconstruct, pipeline_config_yaml=yaml,
-                        publication_identity=orchestrator.publication_identity(), overwrite=True, continue_on_error=False)
+                        publication_identity=orchestrator.publication_identity(), overwrite=True, continue_on_error=False,
+                        scene_export=orchestrator.completed_scene_export)
                     outcome = [{"clip_id": o.clip_id, "status": o.status, "error": o.error} for o in outcomes]
                 recording = recorder.destination
             else:

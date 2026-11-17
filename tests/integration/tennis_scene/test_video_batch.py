@@ -338,10 +338,14 @@ def test_corrupt_cache_and_completed_export_cannot_be_reported_as_success(tmp_pa
     assert again.exit_code == 1 and again.outcomes[0].status == "failed"
 
 
-def test_single_entry_concurrent_export_cannot_mix_batch_publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("entry", ["batch", "single"])
+def test_single_entry_concurrent_export_cannot_mix_batch_publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, entry: str) -> None:
+    import src.tennis_scene.generate_dataset.pseudo_annotation as single
     import src.tennis_scene.pipeline.video_batch as batch
+    from src.tennis_scene.pipeline.storage.scene_export import validate_scene_export
+    from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
 
-    pipeline, dataset, clips, stages, _ = harness(tmp_path, monkeypatch, 1)
+    pipeline, dataset, clips, _, _ = harness(tmp_path, monkeypatch, 1)
     clip = clips[0]
     context = multiprocessing.get_context("fork")
     start, done = context.Event(), context.Event()
@@ -349,24 +353,39 @@ def test_single_entry_concurrent_export_cannot_mix_batch_publication(tmp_path: P
     def single_writer():
         assert start.wait(10)
         pipeline.config = replace(pipeline.config, cache_overwrite=True)
-        stages["ball_detection/cam0"].stage.result.confidence[:] = .8
+        # Same numeric outputs, distinct component lineage. Array equality
+        # alone cannot authorize a marker for the original writer's settings.
+        pipeline.code_identity = "another-writer"
         pipeline.run(tuple(clip / f"cam{i}.mp4" for i in range(3)), video_role=PathRole.DATA,
             camera_ids=("cam0", "cam1", "cam2"), store_root=clip / "annotations/tennis_scene", clip_id="video_000/clip_000")
         done.set()
 
     writer = context.Process(target=single_writer)
     writer.start()
-    publish = batch.publish_annotation
+    module = batch if entry == "batch" else single
+    publish = module.publish_annotation
 
     def concurrent(*args, **kwargs):
         start.set()
         assert done.wait(10)
+        current = indexed_scene_path(clip / "annotations/tennis_scene/scene.json")
+        assert kwargs["expected_scene"] != current
+        validate_scene_export(args[1], current)
         return publish(*args, **kwargs)
 
-    monkeypatch.setattr(batch, "publish_annotation", concurrent)
+    monkeypatch.setattr(module, "publish_annotation", concurrent)
     try:
-        result = execute(pipeline, dataset)
-        assert result.exit_code == 1 and "superseded" in result.outcomes[0].error
+        if entry == "batch":
+            result = execute(pipeline, dataset)
+            assert result.exit_code == 1
+            outcomes = result.outcomes
+        else:
+            def reconstruct(paths, cameras, directory):
+                return pipeline.run(paths, video_role=PathRole.DATA, camera_ids=cameras,
+                    store_root=directory / "annotations/tennis_scene", clip_id="video_000/clip_000")
+            outcomes = single.generate_pseudo_annotations(dataset, reconstruct, pipeline_config_yaml="fixture: video-batch-v1\n",
+                publication_identity=pipeline.publication_identity(), scene_export=pipeline.completed_scene_export)
+        assert outcomes[0].status == "failed" and "superseded" in outcomes[0].error
         assert not list(dataset.rglob("annotation.json"))
     finally:
         start.set()

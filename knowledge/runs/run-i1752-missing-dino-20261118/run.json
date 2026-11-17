@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205067461095423186_2026-11-17T16-22-18-904576813Z_114066_video-batch-runtime-parity-reboot-a1",
+  "name": "video-batch-runtime-parity-reboot-a1",
+  "command": "env TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib/MultiScaleDeformableAttention.so PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python knowledge/runs/run-video-batch-runtime-20261117/acceptance.py run --root outputs/tennis_scene/evaluate/video-batch-runtime-20261117 --court-settings knowledge/runs/run-video-batch-runtime-20261117/court-settings.json",
+  "provider": "codex",
+  "session": "01a1e957-c745-72f3-b662-6dcb032b4374",
+  "issue": "1752",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "004bca23b86f421dc8c77affdf30b0303087bf25",
+  "branch": "codex/video-batch-cli",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli",
+  "captured_at": "2026-11-18T01:24:42+09:00"
+}

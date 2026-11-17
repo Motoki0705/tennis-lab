@@ -56,6 +56,7 @@ class TennisSceneOrchestrator:
         self.last_receipt: dict[str, Any] = {}
         self.last_runner: ComponentRunner | None = None
         self.last_store: ClipStore | None = None
+        self._scene_export: Path | None = None
         self.video_court: VideoCourtArtifact | None = None
         self._video_court_key: tuple[object, object, str] | None = None
         source = PROJECT_ROOT / "src"
@@ -93,6 +94,12 @@ class TennisSceneOrchestrator:
         self.video_court.verify()
         return self.video_court
 
+    def completed_scene_export(self) -> Path:
+        """The exact export produced by the last run, before another writer acts."""
+        if self._scene_export is None:
+            raise RuntimeError("No completed scene export for the last run")
+        return self._scene_export
+
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
             store_root: Path | None, max_frames: int | None = None, clip_id: str | None = None) -> SceneResult:
         """Run the standard recipe into an explicitly chosen component store.
@@ -102,6 +109,7 @@ class TennisSceneOrchestrator:
         ``cache.directory/<source digest>``. The store is never inferred from
         the shape of the video paths.
         """
+        self._scene_export = None
         paths = tuple(self.config.resolver.validate(video_role, Path(p)) for p in video_paths)
         inputs = prepare_clip_source(paths, camera_ids, max_frames=max_frames, clip_id=clip_id or self.config.clip_id)
         source = inputs.source
@@ -162,6 +170,7 @@ class TennisSceneOrchestrator:
                 write_json_atomic(store.root / "run.json", self.last_receipt)
                 if direct.resume == "publication":
                     scene, saved = saved_scene(store, direct, workflow.reference.digest)
+                    archive = Path(str(saved["archive"]))
                     self.last_receipt["scene"] = saved
                 else:
                     annotations, expected = workflow.inputs(completed)
@@ -180,6 +189,7 @@ class TennisSceneOrchestrator:
                 scene, archive = runner.finalize_clip()
                 if direct is not None and workflow is not None:
                     self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive)
+            self._scene_export = archive
             if workflow is not None:
                 write_json_atomic(store.root / "run.json", self.last_receipt)
                 try:
