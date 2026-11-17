@@ -2,7 +2,7 @@
 id: run-hmr2-feature-parity-clip037-20261117
 type: run
 task: tennis_scene
-sequence: 45
+sequence: 53
 recorded_at: '2026-11-17'
 title: 短いダブルスclipでHMR2特徴分離前後を比較する
 issue: 1754
@@ -32,6 +32,8 @@ metrics:
   body_geometry_loads_per_path: 1
   integrated_cpu_passed: 1215
   integrated_cpu_wall_seconds: 50.44
+  final_cpu_passed: 1216
+  final_cpu_wall_seconds: 50.18
 artifacts:
   run_dir: knowledge/runs/run-hmr2-feature-parity-clip037-20261117
   output_dir: outputs/hmr2_feature_acceptance_20261117
@@ -42,6 +44,8 @@ artifacts:
   separated_recorder: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/comparison/separated_recorder.json
   comparison_log: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/comparison/queue.log
   integrated_source_check: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/integrated-source-check.json
+  final_base_check: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/final-base-check.json
+  final_validation: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/final-validation.json
 parents: []
 relations: []
 papers: []
@@ -57,7 +61,7 @@ repro:
     --output outputs/hmr2_feature_acceptance_20261117/comparison/clip_037
 ---
 
-親の継続指示（#1754、worker turn 76a9f971355c49ae855fdac0d08f2ecd）により、clip_035を受入入力から外して短い入力を選び直す。既存の失敗は000044へ保持する。今回はclip_037（292frame、59.94fps、4camera、1920×1080）を最初に試す。受入結果は後述の通り成功した。
+親の継続指示（#1754、worker turn 76a9f971355c49ae855fdac0d08f2ecd）により、clip_035を受入入力から外して短い入力を選び直す。既存の失敗は000052へ保持する。今回はclip_037（292frame、59.94fps、4camera、1920×1080）を最初に試す。受入結果は後述の通り成功した。
 
 mainの既存clip_037計測にも、identity 1と0が同じ290frame候補となる人物対応停止があった。source frame 0を目視すると対象コートはダブルスで、近側2人・遠側2人がいる。既定の1人/側から、既に対応済みの試合形式設定 `player_association.players_per_side=2` を明示し、main単一CLI・base・分離後の全経路を同じ設定にする。人物IDの手動統合や採用閾値の変更は行わない。
 
@@ -81,4 +85,6 @@ GPUは共有training queueのall枠で1clipずつ処理する。最初の候補�
 
 この入力では4人物とも1segment・同じ長さのため、実データだけでは非対称segmentの取り違えを十分検出できない。非対称unit/fake integrationおよび特徴row反転の故障注入がその契約を補う。全69clip・clipをまたぐbatch化・速度改善は今回の受入に含めない。body parameter/mesh等の大きい配列はoutputsの比較directoryに保持し、Gitには小さい結果/再現情報だけを残す。標準checkpointや再構成方式は変わらず、summary_impactはnoneのままとする。
 
-比較完了後に最新C3 `8ef978146`（mainのvideo court変更を含む）を統合した。競合はdefinitionのasset helperとshared court helperの両方を残して解消し、[内容hash検査](../../runs/run-hmr2-feature-parity-clip037-20261117/integrated-source-check.json)でGPU受入時の身体段8fileおよびモデル実装が変わらないことを確認した。統合後のCPU unit/integrationはCUDA_VISIBLE_DEVICES空で1,215 passed / 50.44秒。durations=0の中心caseの最長callは0.99秒、表示setupは最大0.01秒だった。既存の全gallery描画caseは6.48秒で5秒目安を超えるが、000044に記録した固有のstore不変/登録schema描画契約を保ったもので、今回新しく重いcaseを追加した結果ではない。実測の小さい要約は[統合検証](../../runs/run-hmr2-feature-parity-clip037-20261117/integrated-validation.json)、全ログはoutputsに保持する。
+比較完了後に最新C3 `8ef978146`（mainのvideo court変更を含む）を統合した。競合はdefinitionのasset helperとshared court helperの両方を残して解消し、[内容hash検査](../../runs/run-hmr2-feature-parity-clip037-20261117/integrated-source-check.json)でGPU受入時の身体段8fileおよびモデル実装が変わらないことを確認した。統合後のCPU unit/integrationはCUDA_VISIBLE_DEVICES空で1,215 passed / 50.44秒。durations=0の中心caseの最長callは0.99秒、表示setupは最大0.01秒だった。既存の全gallery描画caseは6.48秒で5秒目安を超えるが、000052に記録した固有のstore不変/登録schema描画契約を保ったもので、今回新しく重いcaseを追加した結果ではない。実測の小さい要約は[統合検証](../../runs/run-hmr2-feature-parity-clip037-20261117/integrated-validation.json)、全ログはoutputsに保持する。
+
+初回統合HEAD 6c8d78edcのCIはPython/CPU全10分割/Knowledgeを含め全成功した。その直後にC3 baseが1bef628a9へ進み、knowledge採番とC7のframe_sampling.max_frames既定値2048を取り込む必要が生じた。merge先の予約最大51を保持し、本branchの未マージ記録だけを52・53へ採番し直した。run ID・原ログ・reproは変更していない。新baseでも身体段8fileとモデル実装は受入時のhashを維持し、clip_037の標本格子146点はmax_frames=1024/2048で厳密一致した（[追加確認](../../runs/run-hmr2-feature-parity-clip037-20261117/final-base-check.json)）。したがって実GPUを追加実行せず受入結果を保持する。新base統合後のCPUは1,216 passed / 50.18秒、中心caseの最長callは1.05秒、既存gallery全描画は7.04秒だった。最終HEADのCIはPRに対象SHAとrunを記録する。

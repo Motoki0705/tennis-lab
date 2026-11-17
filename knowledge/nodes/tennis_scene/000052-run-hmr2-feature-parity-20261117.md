@@ -2,7 +2,7 @@
 id: run-hmr2-feature-parity-20261117
 type: run
 task: tennis_scene
-sequence: 44
+sequence: 52
 recorded_at: '2026-11-17'
 title: HMR2特徴分離のclip_035身体推論境界比較
 issue: 1754
