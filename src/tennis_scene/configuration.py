@@ -156,13 +156,17 @@ _POSTPROCESS_SCHEMA = StrictConfigSchema(
         for field in fields(CourtKPPostprocessConfig)
     },
 )
+_PAINT_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.court_kp.region_search.paint",
+    fields={field.name: ConfigField.of(type(getattr(CourtRegionSearchConfig().paint, field.name)))
+            for field in fields(type(CourtRegionSearchConfig().paint))},
+)
 _COURT_REGION_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp.region_search",
     fields={
-        "enabled": ConfigField.of(bool),
-        "min_inliers": ConfigField.of(int),
-        "inlier_distance_ratio": ConfigField.of(float, int),
-        "min_area_ratio": ConfigField.of(float, int),
+        field.name: (ConfigField.mapping(_PAINT_SCHEMA) if field.name == "paint" else
+                     ConfigField.of(type(getattr(CourtRegionSearchConfig(), field.name))))
+        for field in fields(CourtRegionSearchConfig)
     },
 )
 _COURT_SCHEMA = StrictConfigSchema(
@@ -199,6 +203,11 @@ _BALL_SCHEMA = StrictConfigSchema(
     fields={
         "enabled": ConfigField.of(bool),
         "method": ConfigField.of(str),
+        "model_type": ConfigField.of(str),
+        "input_channels": ConfigField.of(int),
+        "num_frames": ConfigField.of(int),
+        "precision": ConfigField.of(str),
+        "compile_mode": ConfigField.of(str),
         "checkpoint": ConfigField.of(str, type(None)),
         "batch_size": ConfigField.of(int),
         "image_size": ConfigField.sequence(ConfigField.of(int)),
@@ -358,11 +367,15 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Cache source must be execute/load; load forbids overwrite")
         cache_directory = resolver.resolve(PathRole.ARTIFACT, cast(str, cache["directory"]))
         court = _mapping(value["court_kp"], name="court_kp")
+        from src.tasks.court_detection.geometry.paint_observations import PaintConfig
+
+        region_config = dict(_mapping(court["region_search"], name="court.region_search"))
+        region_config["paint"] = PaintConfig(**cast(dict[str, Any], region_config["paint"]))
         court_config = CourtKPConfig(
             checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, court["checkpoint"])), device=device,
             subpixel_refine=cast(bool, court["subpixel_refine"]),
-            postprocess=CourtKPPostprocessConfig(**dict(_mapping(court["postprocess"], name="court.postprocess"))),
-            region_search=CourtRegionSearchConfig(**dict(_mapping(court["region_search"], name="court.region_search"))),
+            postprocess=CourtKPPostprocessConfig(**cast(dict[str, Any], dict(_mapping(court["postprocess"], name="court.postprocess")))),
+            region_search=CourtRegionSearchConfig(**cast(dict[str, Any], region_config)),
             resolver=resolver,
         )
         models = _mapping(value["people_models"], name="people_models")
@@ -1036,6 +1049,11 @@ def build_ball_detection_config(
         )
     _positive(gate_passes, name="ball_detection.trajectory_gate.max_passes")
     return BallDetectionConfig(
+        model_type=cast(str, ball["model_type"]),
+        input_channels=cast(int, ball["input_channels"]),
+        num_frames=cast(int, ball["num_frames"]),
+        precision=cast(str, ball["precision"]),
+        compile_mode=cast(str, ball["compile_mode"]),
         checkpoint=resolver.resolve(
             PathRole.CHECKPOINT, cast(str, ball["checkpoint"])
         ),

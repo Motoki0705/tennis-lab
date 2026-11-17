@@ -22,20 +22,6 @@ PHASES = {
     "agreed": "要件合意済み",
     "autonomous": "自律着手根拠あり",
 }
-REVIEW_STATES = (
-    "targets_fixed",
-    "instructed",
-    "result_received",
-    "fixes_verified",
-    "complete",
-)
-REVIEW_LABELS = dict(
-    zip(
-        REVIEW_STATES,
-        ("対象確定", "指示済み", "結果受領", "修正確認", "完了"),
-        strict=True,
-    )
-)
 ACTIVE = {"active", "handoff_pending"}
 
 
@@ -252,28 +238,18 @@ def require_agreement(history: Sequence[Mapping[str, Any]]) -> None:
         raise ValueError("親issueの要件合意記録がありません。分割・委任は拒否しました")
 
 
-def review_state(
+def legacy_review_state(
     history: Sequence[Mapping[str, Any]], request: Mapping[str, Any]
 ) -> str | None:
-    current: str | None = None
-    for event in history:
+    """Display the last archived label, without replaying the retired gate."""
+    for event in reversed(history):
         if (
-            event.get("event") != "review"
-            or event.get("review_run_id") != request["review_run_id"]
+            event.get("event") == "review"
+            and event.get("review_run_id") == request["review_run_id"]
+            and isinstance(event.get("state"), str)
         ):
-            continue
-        state = event.get("state")
-        if state not in REVIEW_STATES or event.get("request_sha256") != digest(request):
-            raise ValueError("review event has an invalid state or request digest")
-        expected = 0 if current is None else REVIEW_STATES.index(current) + 1
-        if (
-            state != current
-            and REVIEW_STATES.index(state) != expected
-            and (current, state) != ("instructed", "fixes_verified")
-        ):
-            raise ValueError("public review state skips or reverses a transition")
-        current = str(state)
-    return current
+            return str(event["state"])
+    return None
 
 
 def registration(records: Mapping[str, Any], key: str, session: str) -> None:
@@ -330,7 +306,7 @@ def progress(
         upstream = [visit(d) for d in deps[n]]
         state = task_status(children[n])
         if state != "open":
-            value = state
+            value: str = state
         elif child_stopped(
             children[n].body, tasks.get(str(n), {}).get("stopped", False)
         ):

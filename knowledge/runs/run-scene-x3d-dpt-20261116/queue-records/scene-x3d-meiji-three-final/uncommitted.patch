@@ -1,0 +1,14 @@
+diff --git a/knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json b/knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json
+index 757eb8dbe..e74fa2dae 100644
+--- a/knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json
++++ b/knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json
+@@ -12,5 +12,9 @@
+   "pipeline_regression": {
+     "cases": 164,
+     "max_case_seconds": 5.614
++  },
++  "model_device_decode_regression": {
++    "cases": 44,
++    "max_case_seconds": 2.994
+   }
+ }

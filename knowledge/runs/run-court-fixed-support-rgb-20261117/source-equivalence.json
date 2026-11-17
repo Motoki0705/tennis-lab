@@ -1,0 +1,46 @@
+{
+  "evaluated_commit": "49f605aabbea65dc09c00c28a72a02b4a4ea59b2",
+  "numerical_and_reference_files_unchanged": {
+    "knowledge/runs/run-court-acceptance-implementation-20261116/legacy_geometry/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "knowledge/runs/run-court-acceptance-implementation-20261116/legacy_geometry/confidence_homography.py": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+    "knowledge/runs/run-court-acceptance-implementation-20261116/legacy_geometry/homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+    "knowledge/runs/run-court-acceptance-implementation-20261116/legacy_geometry/hybrid_homography.py": "a90367127de453378ec1126d0276712e2bebd26dace1348b6ef2271e5d712b4c",
+    "knowledge/runs/run-court-acceptance-implementation-20261116/legacy_geometry/line_evidence.py": "a4a9fa809191b776ea4d85919f05f8aa97fd6540d5a4b9dd26f97da0ed37f353",
+    "knowledge/runs/run-court-white-line-reference-20261116/reference/references.json": "90ed3bbdeae4a553cf82c9fb13c49ee56cf45e17f0436b0c30ae83929de08e4b",
+    "src/tasks/court_detection/geometry/__init__.py": "732436a5b060ad3f63edf28ba267bc7645735a0ccbd5341b27233c1a7bea8001",
+    "src/tasks/court_detection/geometry/confidence_homography.py": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+    "src/tasks/court_detection/geometry/homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+    "src/tasks/court_detection/geometry/hybrid_homography.py": "3d5b0bff60e0183283efeaf6e4f5e644af3084e653db37b3d019fc4e2de31044",
+    "src/tasks/court_detection/geometry/line_evidence.py": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+    "src/tasks/court_detection/geometry/observations.py": "ea704e5dc944154f3560e08f4f14db4ea0f45db9917da3e198c178e2b1245e17",
+    "src/tasks/court_detection/geometry/paint_observations.py": "85923447b7c428ae9aff8c7c6417edbfe2464a0d326706fad3f4d1304627cfac",
+    "src/tasks/court_detection/geometry/paint_refinement.py": "95f4a0404ced8ec5a4b369658a4b13409dd3354684ffd960dfb0649d475e3348",
+    "src/tasks/court_detection/geometry/pose.py": "43e1e20cdd1d436b97b25bcd86205ad71533747c0317984f3a6889f2fff6d7ad",
+    "src/tasks/court_detection/geometry/postprocess.py": "83360fe0115b3337adfce1f8ff55315ad7cc7dfced674521d19cf0ea4914dcf5",
+    "src/tasks/court_detection/geometry/quality.py": "ec15ea4582ad113b3358d02ba07bafbe322334b74a8c09ad4b047962dd0d6558",
+    "src/tasks/court_detection/inference/__init__.py": "d96132b221d35d5489fd654b12029e7cbeac34e7461613d73eb24d2d0eceadbb",
+    "src/tasks/court_detection/inference/checkpoint.py": "ead7c1106f44f63e4d4eeda6f39ebf0456788614221cfb79fcb9bb7fcbeef43e",
+    "src/tasks/court_detection/inference/contracts.py": "18602994a4a0a6b2127174ff3f046a60f8c4148734c1efc4e26c231233db3b7c",
+    "src/tasks/court_detection/inference/predictor.py": "fff3c227258e66c197f0e588e7860c9646ef9771e754097156b5777c2f0c824f",
+    "src/tennis_scene/configs/pipeline.yaml": "efd5856a571b28020f5ea1eeba0988201ea76f868478148a4d2006e76e934e88",
+    "src/tennis_scene/configuration.py": "8eec57ec5bc4fdcc2527182c64370bf0e810b6862107bc0c7b60e3c37e83aa14",
+    "src/tennis_scene/pipeline/components/court_kp.py": "ada52ef288d99772010db4febf3ccabcf4c1e039ec4421094e13d10e3b7cbe1c"
+  },
+  "region_original_sha256": "304801f79216322b64eb7d0e6bee090ef9f1ac6280019d8ee9418ef7423e01ef",
+  "region_diagnostic_revision_sha256": "835c02702b9f90df6e5cca55c2132101f8acd1242b1f46857aa1c6ea27067cde",
+  "unchanged_region_functions": {
+    "image_content_region": "763d7b8e40e929555b878965befed0902abc51fcfcb6c22cd0181b3fe57721de",
+    "region_proposals": "532968ecdb10c789ad4eb1e7d05a3a69d5f94215f875035c7bed461773481131",
+    "downstream_keypoints": "922b9706f895f6118c88b4f53ecc1ad6ec944cf0ab9b8a63f9ec4922ae96f252",
+    "predict_court_region": "3c5d0be3196b2d6d2da48a4e531aeb09c82a15bf2e0251bb0d16b0aac2887c66",
+    "assess_region_prediction": "fc48a0032a71a4ff80ebe38008d002a6ba72dd001861dd022cccb9863a1abf79",
+    "assess_prediction_quality": "09aab4920956064b044e9518ca6448da6d8d9a9f96aede70d142ecc348651620"
+  },
+  "unchanged_selection_parts": {
+    "proposal_fit_gate": "c0bbb8e8ed3739e40dabdbcd9be71088f3ebcebda260328c1308a91812f4b433",
+    "acceptance_decision": "cb0a4f09e575454e3bac436c606473ab8a1d8bed968c982c5b1ecbfde5a05918",
+    "ranking_publication": "654bff5370b1ddac36f09670b285ec7f1d32becda1906af97b32bea7a2af6f8a"
+  },
+  "changed_scope": "geometry_diagnostics packaging and candidate diagnostic payload only; no estimator/config/threshold changes",
+  "runtime_check": "api-parity.json: four cameras x two methods; decoded heads frozen"
+}

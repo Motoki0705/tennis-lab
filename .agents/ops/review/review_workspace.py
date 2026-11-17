@@ -5,14 +5,12 @@ from __future__ import annotations
 import json
 import os
 import string
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 from parent.snapshot import git
-from parent_review_policy import BaseAdvance, hex_value, snapshots, validate_result
 
 
 def changed_paths(before: str, after: str) -> list[str]:
@@ -48,153 +46,6 @@ def full_diff(before: str, after: str) -> bytes:
             "--",
         ),
     )
-
-
-def file_deltas(before: str, after: str) -> dict[bytes, bytes]:
-    """Blob IDs, modes and status per path; renames retain both endpoints."""
-    raw = git(
-        "diff",
-        "--raw",
-        "--no-abbrev",
-        "--no-renames",
-        "--no-ext-diff",
-        "--no-textconv",
-        "-z",
-        before,
-        after,
-        "--",
-    )
-    parts = raw.split(b"\0")
-    if parts[-1] != b"" or (len(parts) - 1) % 2:
-        raise ValueError("invalid per-file git delta")
-    return dict(zip(parts[1:-1:2], parts[:-1:2], strict=True))
-
-
-@dataclass(frozen=True)
-class ResolutionScope:
-    changed_paths: list[str]
-    head_changed_paths: list[str]
-    base_only_paths: list[str]
-
-    def paths(self) -> dict[str, list[str]]:
-        return {
-            "changed_paths": self.changed_paths,
-            "head_changed_paths": self.head_changed_paths,
-            "base_only_paths": self.base_only_paths,
-        }
-
-
-def resolution_scope(
-    original: Mapping[str, Any], current: Mapping[str, Any]
-) -> ResolutionScope:
-    """Compare the PR's own deltas, proving every excluded head change is base-only.
-
-    A change to either blob/mode in a PR delta needs confirmation, even when the
-    resulting head blob is unchanged (e.g. base absorbed a previous PR edit).
-    """
-    if (
-        original["number"] != current["number"]
-        or original["branch"] != current["branch"]
-    ):
-        raise ValueError("resolution PR/branch identity changed")
-    for entry in (original, current):
-        actual = (
-            git("merge-base", entry["base_sha"], entry["head_sha"]).decode().strip()
-        )
-        if actual != entry["merge_base_sha"]:
-            raise ValueError("resolution merge-base differs from actual git evidence")
-    before = file_deltas(original["merge_base_sha"], original["head_sha"])
-    after = file_deltas(current["merge_base_sha"], current["head_sha"])
-    required = {
-        path
-        for path in before.keys() | after.keys()
-        if before.get(path) != after.get(path)
-    }
-    head = file_deltas(original["head_sha"], current["head_sha"])
-    base = file_deltas(original["merge_base_sha"], current["merge_base_sha"])
-    excluded = head.keys() - required
-    for path in excluded:
-        if path in before or path in after or head[path] != base.get(path):
-            raise ValueError(
-                "excluded resolution path is not explained by base changes"
-            )
-    return ResolutionScope(
-        sorted(os.fsdecode(path) for path in required),
-        sorted(os.fsdecode(path) for path in head),
-        sorted(os.fsdecode(path) for path in excluded),
-    )
-
-
-def verify_base_advances(
-    result: Mapping[str, Any],
-    current: Sequence[Mapping[str, Any]],
-    merged_prs: Sequence[Mapping[str, Any]],
-) -> tuple[BaseAdvance, ...]:
-    """Verify every base step against authenticated GitHub GET /pulls/{n} data.
-
-    The caller fetches same-repository peer PRs directly from GitHub, never from
-    comments or the PR's payload. Every first-parent commit must be the merge
-    commit of a different PR in this run. Unknown commits and rewinds fail closed.
-    """
-    validate_result(dict(result))
-    reviewed = {p["number"]: p for p in result["request"]["prs"]}
-    latest = snapshots(list(current))
-    merges: dict[str, Mapping[str, Any]] = {}
-    repo = result["request"]["repo"].lower()
-    for pr in merged_prs:
-        n = pr["number"]
-        if pr.get("merged") is not True:
-            continue
-        if (
-            n not in reviewed
-            or pr["base"]["repo"]["full_name"].lower() != repo
-            or pr["base"]["ref"] != reviewed[n]["base_ref"]
-            or pr["head"]["ref"] != reviewed[n]["branch"]
-        ):
-            raise ValueError("base advance evidence is outside this review run/base")
-        commit = hex_value(pr.get("merge_commit_sha"), 40)
-        if commit in merges:
-            raise ValueError("ambiguous merged PR evidence")
-        merges[commit] = pr
-    advances: set[BaseAdvance] = set()
-    for entry in latest:
-        original = reviewed[entry["number"]]
-        if original["base_ref"] != entry["base_ref"]:
-            raise ValueError("retargeted base cannot inherit coverage")
-        before, after = original["base_sha"], entry["base_sha"]
-        if before == after:
-            continue
-        git("merge-base", "--is-ancestor", before, after)
-        history = (
-            git(
-                "rev-list",
-                "--first-parent",
-                "--parents",
-                "--reverse",
-                f"{before}..{after}",
-            )
-            .decode()
-            .splitlines()
-        )
-        tip = before
-        for row in history:
-            commit, *parents = row.split()
-            peer = merges.get(commit)
-            if (
-                not parents
-                or parents[0] != tip
-                or peer is None
-                or peer["number"] == entry["number"]
-                or peer["base"]["ref"] != entry["base_ref"]
-            ):
-                raise ValueError(
-                    "base advance contains an unexplained first-parent commit"
-                )
-            advances.add(BaseAdvance(peer["number"], entry["base_ref"], tip, commit))
-            tip = commit
-        if tip != after:
-            raise ValueError("incomplete first-parent base advance evidence")
-    return tuple(sorted(advances, key=lambda step: (step.base_ref, step.before_sha)))
 
 
 def write_new(path: Path, data: bytes) -> None:
@@ -269,15 +120,3 @@ def build_prompt(
         ),
         targets=json.dumps(targets, ensure_ascii=False, separators=(",", ":")),
     )
-
-
-def verify_rebased_snapshot(
-    original: Mapping[str, Any], current: Mapping[str, Any]
-) -> bool:
-    """Inherit only when the PR's own delta needs no new parent confirmation."""
-    if (
-        original["number"] != current["number"]
-        or original["branch"] != current["branch"]
-    ):
-        return False
-    return not resolution_scope(original, current).changed_paths

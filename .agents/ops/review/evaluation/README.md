@@ -11,6 +11,9 @@ record the measurements and completed parent adjudication. The result report
 contains the parent's policy decision; formal review acceptance remains pending.
 Normal pytest runs only offline contract tests; it never runs the comparison.
 
+Historical requests, outputs and measurements stay unchanged. Current executions use the broad approve/major output; archived outputs are read with their saved schema. Evaluation observations cannot authorize production merges.
+
+
 ## Frozen material
 
 [manifest.json](cases/manifest.json) is the snapshot authority: full head, base,

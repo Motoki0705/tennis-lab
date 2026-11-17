@@ -1,0 +1,88 @@
+{
+  "record": {
+    "data": {
+      "action_id": "a28eb85bc46c40a9855764e9ba91e1ce",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=saved parent verification; content_sha256=04bc5885c604c0bdaa7aaa212fc035c2610eddcc8b89f899bcf6893106e298f2; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=04bc5885c604c0bdaa7aaa212fc035c2610eddcc8b89f899bcf6893106e298f2; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2206]; PR #2206（HEAD a59aba6b1）。旧レビュー経路を前提にした共有memory 2件（gotcha/parent-review-registry-write-conflict.md、environment/wsl2-review-isolated-cpu-probe-fails.md）を索引・SUMMARYと同じcommitで削除し、decision/pr-ci-required.md のリンクを現行の軽いgateへ修正。根拠: 旧ファイルの不在（git ls-files 0件）、現行レビューの保存・再利用・失敗時の親待ちのコード、実機probe 5 challenge成功。worker報告: 既存node 150件成功、pre-commit成功。",
+      "verifies": [
+        "aaae9df54e7646b9be3d78c460730683"
+      ]
+    },
+    "id": "77e057ab6f474bb389a3200745e94b1d",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "dce7b2a9521c4350aee74a37caa35a8a",
+      "delegation": {
+        "key": "d-bf772d29d836446eb1ca268eb7a6f662",
+        "turn": 1
+      },
+      "issue": 2204,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-16T15:45:10.236485+00:00"
+      },
+      "recorded_at": "2026-11-16T15:45:10.236500+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

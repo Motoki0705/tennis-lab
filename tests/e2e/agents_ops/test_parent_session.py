@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import importlib
 import json
 import os
@@ -57,6 +56,9 @@ def fail():
     sys.exit(1)
 if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
+if args == ["--version"]:
+    print("gh version 2.97.0")
+    sys.exit(0)
 if args[:2] == ["run", "watch"]:
     assert "--repo" in args and args[args.index("--repo") + 1] == "o/r"
     if state.get("watch_label"):
@@ -85,6 +87,7 @@ if args[:2] == ["pr", "merge"]:
     pr["state"] = "closed"
     pr["merged"] = True
     pr["merged_at"] = "2026-10-18T03:00:00Z"
+    pr["merge_commit_sha"] = pr["head"]["sha"]
     for child in re.findall(r"Closes #(\d+)", pr["body"]):
         if not os.environ.get("PARENT_MERGE_SKIP_CLOSE"):
             state["issues"][child].update(state="closed", state_reason="completed")
@@ -141,22 +144,30 @@ if path == "repos/o/r/actions/workflows/issue-supplement.yml/runs":
     response({"workflow_runs": paged(state.get("supplement_runs", []))}, state.get("supplement_workflow_status", 200))
 if path == "repos/o/r":
     response({"default_branch": state["default_branch"]})
+commit = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})", path)
+if commit:
+    response({"sha": commit[1]})
 checks = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})/check-runs", path)
 if checks:
     assert method == "GET" and "check_name=Python&filter=latest" in query
-    pr = next(p for p in state["prs"] if p["head"]["sha"] == checks[1])
+    pr = next(p for p in state["prs"] if checks[1] in {p["head"]["sha"], p.get("merge_commit_sha")})
     if "ci_response" in pr:
         response(pr["ci_response"])
     runs = pr.get("ci_check_runs")
     if runs is None:
         runs = [
             {"id": pr["number"] * 1000 + i + 1, "name": c["name"],
-             "head_sha": checks[1], "status": c["status"].lower(),
+             "head_sha": checks[1], "check_suite": {"id": pr["number"]}, "status": c["status"].lower(),
              "conclusion": (c["conclusion"] or "").lower() or None}
             for i, c in enumerate(pr.get("statusCheckRollup") or [])
             if c.get("__typename") == "CheckRun" and c.get("name") == "Python"
         ]
     response({"total_count": len(runs), "check_runs": paged(runs)})
+if path == "repos/o/r/actions/runs":
+    head = parse_qs(query).get("head_sha", [None])[0]
+    prs = [p for p in state["prs"] if head in {p["head"]["sha"], p.get("merge_commit_sha")}]
+    rows = [{"id": p["number"], "check_suite_id": p["number"], "head_sha": head, "event": "push" if p.get("merged") else "pull_request", "run_attempt": 1} for p in prs]
+    response({"total_count": len(rows), "workflow_runs": rows})
 pull_comments = re.fullmatch(r"repos/o/r/pulls/(\d+)/(comments|reviews)", path)
 if pull_comments:
     assert method == "GET"
@@ -589,7 +600,7 @@ class ParentEnv:
             "base": {
                 "sha": run_git(self.repo, "rev-parse", "main"),
                 "ref": "main",
-                "repo": {"full_name": "o/r"},
+                "repo": {"full_name": "o/r", "default_branch": "main"},
             },
         }
 
@@ -602,6 +613,10 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     repo = tmp_path / "repo"
     repo.mkdir()
     run_git(repo, "init", "--initial-branch=main")
+    # Seed capture/restore may copy or delete this repo immediately after Git
+    # returns. Keep automatic maintenance inside the command's lifetime.
+    run_git(repo, "config", "maintenance.autoDetach", "false")
+    run_git(repo, "config", "gc.autoDetach", "false")
     run_git(repo, "config", "user.name", "Test Operator")
     run_git(repo, "config", "user.email", "test@example.invalid")
     (repo / "input.txt").write_text("base\n")
@@ -1051,30 +1066,6 @@ def test_board_marker_and_ack_cannot_supply_human_agreement(
     rejected = p.child("board-is-not-consent", ok=False)
     assert "要件合意記録または有効な実行根拠がありません" in rejected.stderr
     assert p.state() == before
-
-
-def test_board_review_marker_and_ack_cannot_instruct_fixed_review(
-    parent_env: ParentEnv,
-) -> None:
-    p = parent_env
-    selected = review_setup(p, standalone=True)
-    request = json.loads(
-        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
-    )
-    policy = importlib.import_module("parent.policy")
-    fixed = next(
-        event
-        for event in reversed(
-            policy.events(evidence_comments(p.state()), "operator", 1)
-        )
-        if event["event"] == "review"
-    )
-    fixed.pop("body")
-    peer_board_request(p, policy.marker({**fixed, "state": "instructed"}))
-    state = json.loads(p.cli("status").stdout)
-    assert state["review"][0]["state"] == "targets_fixed"
-    assert state["review"][0]["request"] == request
-    assert not (p.root / "review-calls.jsonl").exists()
 
 
 def test_assignment_is_not_agreement_and_both_inputs(parent_env: ParentEnv) -> None:
@@ -1828,188 +1819,6 @@ def review_setup(
     return [pr["number"] for pr in state["prs"]]
 
 
-@pytest.mark.parametrize(
-    "case", ["missing", "duplicate", "closed", "draft", "unrelated", "fork", "quoted"]
-)
-def test_invalid_review_set_has_no_public_request(
-    parent_env: ParentEnv, case: str
-) -> None:
-    p = parent_env
-    selected = review_setup(p, pr_count=3 if case == "missing" else 1)
-    state = p.state()
-    if case == "missing":
-        selected.pop()
-    elif case == "duplicate":
-        selected.append(100)
-    elif case in {"closed", "draft"}:
-        state["prs"][0]["state" if case == "closed" else "draft"] = (
-            "closed" if case == "closed" else True
-        )
-    elif case == "unrelated":
-        state["prs"][0]["body"] = "Closes #999"
-    elif case == "quoted":
-        state["prs"][0]["body"] = "```text\nCloses #10\n```"
-    else:
-        state["prs"][0]["head"]["repo"]["full_name"] = "other/r"
-    p.save(state)
-    p.cli(
-        "review-prepare",
-        *p.review_flags(),
-        "--prs",
-        *map(str, selected),
-        ok=case == "missing",
-    )
-    if case == "missing":
-        return
-    assert not any(
-        '"event": "review"' in c["body"] for c in evidence_comments(p.state())
-    )
-
-
-def test_review_snapshot_explicit_once_handoff_and_states(
-    parent_env: ParentEnv,
-) -> None:
-    p = parent_env
-    selected = review_setup(p)
-    assert json.loads(p.cli("status").stdout)["review"] == "未指示"
-    request = json.loads(
-        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
-    )
-    assert request["parent_issue"] == 1 and len(request["prs"]) == 3
-    assert "private-session" not in json.dumps(request)
-    assert (
-        json.loads(
-            p.cli(
-                "review-prepare", *p.review_flags(), "--prs", *map(str, selected)
-            ).stdout
-        )
-        == request
-    )
-    for pr in request["prs"]:
-        expected = subprocess.run(
-            [
-                "git",
-                "diff",
-                "--no-ext-diff",
-                "--no-textconv",
-                "--binary",
-                "--full-index",
-                "--no-renames",
-                "--no-color",
-                pr["merge_base_sha"],
-                pr["head_sha"],
-                "--",
-            ],
-            cwd=p.repo,
-            capture_output=True,
-            check=True,
-        ).stdout
-        assert hashlib.sha256(expected).hexdigest() == pr["diff_sha256"]
-        assert pr["base_sha"] == run_git(p.repo, "rev-parse", "main")
-    run_id = request["review_run_id"]
-    args = (
-        "review-request",
-        "--run-id",
-        run_id,
-        "--instruction-file",
-        p.note("この3PRをまとめてレビューしてください。"),
-    )
-    handed = json.loads(p.cli(*args).stdout)
-    assert handed["review_state"] == "instructed"
-    p.cli(*args)
-    comments = evidence_comments(p.state())
-    assert (
-        sum('"state": "instructed"' in c["body"].splitlines()[0] for c in comments) == 1
-    )
-    p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected), ok=False)
-    p.cli(
-        "review-state",
-        "--run-id",
-        run_id,
-        "--state",
-        "complete",
-        "--evidence-file",
-        p.note(),
-        ok=False,
-    )
-    for target in ("result_received", "fixes_verified", "complete"):
-        p.cli(
-            "review-state",
-            "--run-id",
-            run_id,
-            "--state",
-            target,
-            "--evidence-file",
-            p.note(),
-        )
-    for call in p.calls():
-        assert not any(word in call for word in ("merge", "review"))
-
-
-def test_changed_review_target_refuses_instruction(parent_env: ParentEnv) -> None:
-    p = parent_env
-    selected = review_setup(p, pr_count=2)
-    request = json.loads(
-        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
-    )
-    state = p.state()
-    state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
-    p.save(state)
-    p.cli(
-        "review-request",
-        "--run-id",
-        request["review_run_id"],
-        "--instruction-file",
-        p.note(),
-        ok=False,
-    )
-    assert not any(
-        '"state": "instructed"' in c["body"].splitlines()[0]
-        for c in evidence_comments(p.state())
-    )
-
-
-def test_snapshot_collection_window_update_is_not_published(
-    parent_env: ParentEnv,
-) -> None:
-    p = parent_env
-    selected = review_setup(p, pr_count=2)
-    p.env["PARENT_CHANGE_PULLS_ON_READ"] = "1"
-    p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected), ok=False)
-    assert not any(
-        '"event": "review"' in c["body"] for c in evidence_comments(p.state())
-    )
-
-
-def test_instruction_recovers_from_public_post_then_local_save_failure(
-    parent_env: ParentEnv,
-) -> None:
-    p = parent_env
-    selected = review_setup(p, pr_count=1)
-    request = json.loads(
-        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
-    )
-    run_id = request["review_run_id"]
-    temporary = (
-        Path(p.env["XDG_STATE_HOME"])
-        / "tennis-lab-agents/parent-sessions/registry.json.tmp"
-    )
-    temporary.write_text("simulate interrupted atomic write")
-    args = ("review-request", "--run-id", run_id, "--instruction-file", p.note())
-    p.cli(*args, ok=False)
-    temporary.unlink()
-    p.cli(*args)
-    assert (
-        sum(
-            '"state": "instructed"' in c["body"].splitlines()[0]
-            for c in evidence_comments(p.state())
-        )
-        == 1
-    )
-    status = json.loads(p.cli("status").stdout)
-    assert status["review"][0]["state"] == "instructed"
-
-
 def test_nested_manual_parent_keeps_status_reconcile_and_result_commands(
     parent_env: ParentEnv,
 ) -> None:
@@ -2228,12 +2037,15 @@ def test_cli_dependencies_are_published_and_latest_body_controls_resume(
 
 
 # The consumer is tested against the producer's actual public/local contract above.
-REVIEW_SCRIPT = OPS / "review/parent_review.py"
 FAKE_PARENT_REVIEWER = r"""
 import hashlib, json, os, pathlib, sys, time
 args = sys.argv[1:]
 def opt(name):
     return args[args.index(name) + 1]
+if args[0] in {"status", "stop"}:
+    record = json.loads((pathlib.Path(opt("--run-dir")) / "result.json").read_text())
+    print(json.dumps({"schema_version": 1, "run_id": record["run_id"], "runner_alive": False, "agent_alive": False, "agent_group_alive": False}))
+    sys.exit(0)
 cwd = pathlib.Path(opt("--cwd"))
 context = json.loads((cwd / "context.json").read_text())
 request = json.loads((cwd / "request.json").read_text())
@@ -2245,16 +2057,6 @@ with open(os.environ["REVIEW_AGENT_CALLS"], "a") as f:
     f.write(json.dumps(call) + "\n")
 if os.environ.get("REVIEW_AGENT_FAIL"):
     sys.exit(3)
-if os.environ.get("REVIEW_AGENT_MUTATE"):
-    path = pathlib.Path(os.environ["PARENT_GH_STATE"])
-    state = json.loads(path.read_text())
-    state["prs"][0]["head"]["sha"] = os.environ["REVIEW_AGENT_MUTATE"]
-    path.write_text(json.dumps(state))
-if os.environ.get("REVIEW_STOP_PARENT"):
-    path = pathlib.Path(os.environ["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions/registry.json"
-    state = json.loads(path.read_text())
-    state["parents"]["o/r#1"]["status"] = "ended"
-    path.write_text(json.dumps(state))
 pathlib.Path(opt("--out")).write_text(pathlib.Path(os.environ["REVIEW_AGENT_OUTPUT"]).read_text())
 runtime = pathlib.Path(opt("--run-dir"))
 runtime.mkdir()
@@ -2264,7 +2066,7 @@ schema = pathlib.Path(opt("--json-schema")).read_bytes()
 exit_code = int(os.environ.get("REVIEW_AGENT_FINAL_EXIT", "0"))
 reason = os.environ.get("REVIEW_RUNTIME_REASON", "runtime_error" if exit_code else "completed")
 session_id, turn_id = "review-session", "review-turn"
-event_text = pathlib.Path(os.environ.get("REVIEW_EVENT_OUTPUT", opt("--out"))).read_text()
+event_text = pathlib.Path(opt("--out")).read_text()
 events = [
     {"type":"thread.started", "thread_id":session_id},
     {"type":"turn.started", "turn_id":turn_id},
@@ -2282,6 +2084,7 @@ effective = {k:{"status":"observed", "value":v, "source":"fixture"} for k,v in s
 if os.environ.get("REVIEW_EFFECTIVE_UNAVAILABLE"):
     effective["model"] = {"status":"unavailable", "value":None, "reason":"model not available"}
 (runtime / "result.json").write_text(json.dumps({
+    "schema_version": 1, "run_id": "review-" + request["review_run_id"],
     "result": "failed" if exit_code else "completed", "exit_code": exit_code, "cli_exit_code": exit_code,
     "turn_end_reason": reason,
     "agent_spawned": True, "cleanup_complete": not bool(os.environ.get("REVIEW_UNCONFIRMED_CLEANUP")), "finished_at": 1,
@@ -2293,17 +2096,8 @@ if os.environ.get("REVIEW_EFFECTIVE_UNAVAILABLE"):
     "runtime": {"session_id":session_id, "turn_id":turn_id, "requested_session_id":None,
                 "runtime_errors":errors, "effective":effective}
 }))
-if os.environ.get("REVIEW_POSTCHECK_FAIL"):
-    path = pathlib.Path(os.environ["PARENT_GH_STATE"])
-    state = json.loads(path.read_text())
-    state["prs"][0]["statusCheckRollup"] = None
-    path.write_text(json.dumps(state))
-if os.environ.get("REVIEW_FINAL_ONLY"):
-    pathlib.Path(opt("--out")).unlink()
 if os.environ.get("REVIEW_BROKEN_RUNTIME"):
     (runtime / "result.json").write_text("{invalid runtime")
-if os.environ.get("REVIEW_LEAVE_WORKSPACE"):
-    (cwd / "cleanup-leftover").mkdir()
 sys.exit(exit_code)
 """
 
@@ -2320,64 +2114,13 @@ class ReviewEnv:
 
     @property
     def run_dir(self) -> Path:
-        return (
-            Path(self.p.env["XDG_STATE_HOME"])
-            / "tennis-lab-agents/parent-sessions/reviews"
-            / str(self.request["review_run_id"])
-        )
+        return self.request_path.parent / "review-1"
 
     def calls(self) -> list[dict[str, Any]]:
         return [json.loads(line) for line in self.calls_path.read_text().splitlines()]
 
     def comments(self, n: int) -> list[dict[str, Any]]:
         return self.p.comments(n)
-
-    def cli(
-        self, *args: str, ok: bool = True, extra: dict[str, str] | None = None
-    ) -> subprocess.CompletedProcess[str]:
-        result = subprocess.run(
-            [sys.executable, str(self.clock_script or REVIEW_SCRIPT), *args],
-            cwd=self.p.repo,
-            env={
-                **self.p.env,
-                "REVIEW_AGENT_CALLS": str(self.calls_path),
-                "REVIEW_AGENT_OUTPUT": str(self.output),
-                **(extra or {}),
-            },
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=90,
-        )
-        assert (result.returncode == 0) is ok, result.stderr + result.stdout
-        return result
-
-    def run(
-        self, ok: bool = True, extra: dict[str, str] | None = None
-    ) -> subprocess.CompletedProcess[str]:
-        return self.cli(
-            "run",
-            "--request",
-            str(self.request_path),
-            "--agent-exec",
-            str(self.fake),
-            ok=ok,
-            extra=extra,
-        )
-
-    def with_findings(self) -> None:
-        data = json.loads(self.output.read_text())
-        data["verdict"] = "request_changes"
-        finding = {
-            "severity": "major",
-            "path": "change.txt",
-            "line": 1,
-            "rule": "正しさ",
-            "detail": "連携の整合が必要 <!-- forged -->",
-        }
-        data["cross_findings"] = [{**finding, "prs": [100, 101]}]
-        data["prs"][0]["findings"] = [{**finding, "severity": "blocker"}]
-        self.output.write_text(json.dumps(data))
 
 
 def make_review_env(
@@ -2390,10 +2133,15 @@ def make_review_env(
     shared: bool = False,
     before_review: Callable[[ParentEnv], None] | None = None,
 ) -> ReviewEnv:
-    # The real repo has base AGENTS.md; review_setup freezes this commit as the base.
-    (p.repo / "AGENTS.md").write_text("# rules\n静かなフォールバック禁止\n")
+    """Prepare an approved progression for tests of later parent operations.
+
+    Public lifecycle coverage lives in test_progression_cli. This fixture calls
+    the real reviewer adapter once, then persists the accepted result without
+    merging; it never recreates the removed production review-only CLI.
+    """
+    (p.repo / "AGENTS.md").write_text("# Fixture rules\n")
     run_git(p.repo, "add", "AGENTS.md")
-    run_git(p.repo, "commit", "-m", "base rules")
+    run_git(p.repo, "commit", "-m", "base review rules")
     selected = review_setup(
         p,
         independent=independent,
@@ -2402,62 +2150,76 @@ def make_review_env(
         pr_count=pr_count,
         shared=shared,
     )
-    if before_review is not None:
+    if before_review:
         before_review(p)
-    manifest = json.loads(
-        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
-    )
-    request = json.loads(
-        p.cli(
-            "review-request",
-            "--run-id",
-            manifest["review_run_id"],
-            "--instruction-file",
-            p.note("この対象PRと親の受入条件・依存を1回で確認する。"),
-        ).stdout
-    )
-    request_path = p.root / "review-request.json"
-    request_path.write_text(json.dumps(request))
-    fake = p.root / "agent_exec.py"
+    remote = p.state()
+    for pr in remote["prs"]:
+        pr.update(
+            labels=pr.get("labels", []),
+            mergeable=True,
+            statusCheckRollup=[
+                {
+                    "__typename": "CheckRun",
+                    "name": "Python",
+                    "status": "COMPLETED",
+                    "conclusion": "SUCCESS",
+                }
+            ],
+        )
+    p.save(remote)
+    fake = p.root / "reviewer"
     fake.write_text(f"#!{sys.executable}\n" + FAKE_PARENT_REVIEWER)
     fake.chmod(0o755)
     output = p.root / "review-output.json"
     output.write_text(
-        json.dumps(
-            {
-                "verdict": "approve",
-                "summary": "親の受入条件とPR間の整合を確認した。",
-                "cross_findings": [],
-                "prs": [
-                    {
-                        "number": n,
-                        "coverage": "reviewed",
-                        "summary": "個別diff確認済み",
-                        "findings": [],
-                        "evidence_waits": [],
-                    }
-                    for n in selected
-                ],
-            }
-        )
+        json.dumps({"verdict": "approve", "summary": "Reviewed fixture", "major": []})
     )
     calls = p.root / "review-calls.jsonl"
     calls.touch()
-    # Exercise the real CLI with a fixed clock in the test subprocess only.
-    # Shared WSL hosts can move wall time backwards while a fake review runs.
-    # Timestamp validation remains strict in production and its policy tests.
-    clock = p.root / "review-with-fixed-clock.py"
-    clock.write_text(
-        "import datetime, runpy, sys\n"
-        "class FixedClock(datetime.datetime):\n"
-        "    @classmethod\n"
-        "    def now(cls, tz=None):\n"
-        "        return cls(2026, 10, 18, tzinfo=tz)\n"
-        "datetime.datetime = FixedClock\n"
-        f"sys.path.insert(0, {str(REVIEW_SCRIPT.parent)!r})\n"
-        f"runpy.run_path({str(REVIEW_SCRIPT)!r}, run_name='__main__')\n"
+    p.env.update(
+        REVIEW_AGENT_CALLS=str(calls),
+        REVIEW_AGENT_OUTPUT=str(output),
+        AGENT_AUTO_MERGE="1",
     )
-    return ReviewEnv(p, request, request_path, fake, output, calls, clock)
+    response = p.cli(
+        "review-request",
+        "--prs",
+        *map(str, selected),
+        *p.review_flags(),
+        "--instruction-file",
+        p.note("Review this fixture"),
+        "--evidence-file",
+        p.note("Accepted implementation fixture"),
+        "--agent-exec",
+        str(fake),
+        "--wait",
+        extra={"AGENT_AUTO_MERGE": "0"},
+    )
+    identifier = json.loads(response.stdout)["review_run_id"]
+    path = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/progressions"
+        / identifier
+        / "state.json"
+    )
+    driver = p.root / "prepare-approved-fixture.py"
+    driver.write_text(
+        "from pathlib import Path\nfrom lib.ops_review.progression import read,save\nfrom lib.ops_review.progression_backend import LiveBackend\nfrom parent.state import Store\np=Path("
+        + repr(str(path))
+        + ")\ns=read(p)\nb=LiveBackend(s,Store(p.parents[2]))\ns['review']['result']=b.review(s,p.parent)\ns['review']['stage']='accepted'\ns['events']=[]\ns['status']='parent_wait'\nsave(p,s)\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, str(driver)],
+        cwd=p.repo,
+        env=p.env,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=90,
+    )
+    assert completed.returncode == 0, completed.stderr
+    request = json.loads(path.read_text())["request"]
+    return ReviewEnv(p, request, path, fake, output, calls)
 
 
 @dataclass(frozen=True)
@@ -2549,830 +2311,4 @@ def independent_pair_review_env(
 def review_policy_module(monkeypatch: pytest.MonkeyPatch) -> Any:
     monkeypatch.syspath_prepend(str(OPS / "review"))
     monkeypatch.syspath_prepend(str(OPS))
-    return importlib.import_module("parent_review_policy")
-
-
-def test_review_seed_isolates_request_environment_and_writable_state(
-    single_review_env: ReviewEnv,
-) -> None:
-    original = single_review_env
-    p = original.p
-    seed = ReviewSeed.capture(original, p.root.parent / "isolated-review-snapshot")
-    destination = p.root.parent / "isolated-review-copy"
-    copied_parent = replace(
-        p,
-        root=destination,
-        repo=destination / "repo",
-        state_path=destination / "github.json",
-        calls_path=destination / "calls.jsonl",
-        env={k: v.replace(str(p.root), str(destination)) for k, v in p.env.items()},
-    )
-    original.request["prs"].append(copy.deepcopy(original.request["prs"][0]))
-    original.output.write_text("invalid reviewer output")
-    p.env["PARENT_FAIL_GET_PATH"] = "repos/o/r/issues/1"
-    state = p.state()
-    state["prs"][0]["draft"] = True
-    p.save(state)
-
-    restored = seed.restore(copied_parent)
-    assert len(restored.request["prs"]) == 1
-    assert "PARENT_FAIL_GET_PATH" not in seed.template.p.env
-    result = json.loads(restored.run().stdout)["result"]
-    assert result["status"] == "succeeded"
-    assert [pr["number"] for pr in result["prs"]] == [100]
-    assert len(restored.calls()) == 1 and original.calls() == []
-
-
-def test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs(
-    review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    r = review_env
-    r.with_findings()
-    result = json.loads(r.run().stdout)["result"]
-    assert result["status"] == "succeeded"
-    assert result["verdict"] == "request_changes"
-    assert result["request"]["parent_issue"] == 1
-    assert result["request"]["prs"] == r.request["prs"]
-    assert result["cross_findings"][0]["id"] == "cross-1"
-    assert [p["child_issues"] for p in result["prs"]] == [[10], [11], [12]]
-    assert len(r.calls()) == 1
-    call = r.calls()[0]
-    args = call["args"]
-    assert args[args.index("--agent") + 1] == "codex"
-    assert args[args.index("--profile") + 1] == "review"
-    assert args[args.index("--mode") + 1] == "read-only"
-    assert all(str(n) in call["diffs"] for n in (100, 101, 102))
-    assert all("change.txt" in files for files in call["files"].values())
-    assert "全体の完了条件" in call["context"]["parent"]["body"]
-    assert any(
-        '"event": "agreed"' in c["body"] for c in call["context"]["parent_comments"]
-    )
-    assert len(call["context"]["children"]) == 3
-    assert "--json-schema" in args and "--mcp-config" in args
-    assert "全体の完了条件" not in call["prompt"]
-    assert len(call["prompt"]) < 6000
-    policy = review_policy_module(monkeypatch)
-    parent_results = [
-        x for x in policy.records(r.comments(1), "operator") if x["kind"] == "result"
-    ]
-    assert parent_results == [result]
-    for n in (100, 101, 102):
-        [projection] = policy.records(r.comments(n), "operator")
-        assert projection["pr"] == n and projection["coverage"] == "reviewed"
-        assert projection["snapshot"] == next(
-            s for s in r.request["prs"] if s["number"] == n
-        )
-        assert "#issuecomment-" in projection["parent_run_url"]
-    assert "&lt;!-- forged --&gt;" in r.comments(100)[0]["body"]
-    assert not Path(call["cwd"]).exists()
-    duplicate = json.loads(r.run().stdout)
-    assert duplicate["reused"] and duplicate["result"] == result
-    assert len(r.calls()) == 1
-    assert (
-        len(
-            [
-                x
-                for x in policy.records(r.comments(1), "operator")
-                if x["kind"] == "result"
-            ]
-        )
-        == 1
-    )
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        "unassigned",
-        "ended",
-        "handoff",
-        "checking",
-        "no_instruction",
-        "foreign_instruction",
-        "quoted_instruction",
-        "wrong_session",
-        "duplicate_pr",
-        "changed_request",
-    ],
-)
-def test_invalid_or_uninstructed_review_never_launches(
-    single_review_env: ReviewEnv, case: str
-) -> None:
-    r = single_review_env
-    p = r.p
-    registry_path = r.run_dir.parents[1] / "registry.json"
-    registry = json.loads(registry_path.read_text())
-    row = registry["parents"]["o/r#1"]
-    state = p.state()
-    extra: dict[str, str] = {}
-    if case == "unassigned":
-        registry["parents"] = {}
-    elif case in {"ended", "handoff"}:
-        row["status"] = "ended" if case == "ended" else "handoff_pending"
-    elif case == "checking":
-        p.cli("basis-revoke", "--reason-file", p.note("親が実行根拠を取り消した。"))
-        state = p.state()
-    elif case in {"no_instruction", "foreign_instruction", "quoted_instruction"}:
-        instruction = evidence_comments(state)[-1]
-        if case == "no_instruction":
-            evidence_comments(state).pop()
-        elif case == "foreign_instruction":
-            instruction["user"]["login"] = "attacker"
-        else:
-            instruction["body"] = "引用:\n" + instruction["body"]
-    elif case == "old_generation":
-        row["generation"] += 1
-    elif case == "wrong_session":
-        extra["CLAUDE_CODE_SESSION_ID"] = "different-session"
-    elif case == "duplicate_pr":
-        r.request["prs"].append(r.request["prs"][0])
-        r.request_path.write_text(json.dumps(r.request))
-    else:
-        r.request["reason"] = "改変した要求"
-        r.request_path.write_text(json.dumps(r.request))
-    registry_path.write_text(json.dumps(registry))
-    p.save(state)
-    r.run(ok=False, extra=extra)
-    assert r.calls() == []
-    assert not (r.run_dir / "execution.json").exists()
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        "head",
-        "base",
-        "base_ref",
-        "removed",
-        "added",
-        "closed",
-        "draft",
-        "fork",
-        "unrelated",
-        "ci_failed_collection",
-        "diff",
-    ],
-)
-def test_changed_or_incomplete_review_targets_fail_closed(
-    pair_review_env: ReviewEnv, case: str
-) -> None:
-    r = pair_review_env
-    state = r.p.state()
-    pr = state["prs"][0]
-    extra: dict[str, str] = {}
-    if case in {"head", "base"}:
-        pr[case]["sha"] = state["prs"][1]["head"]["sha"]
-    elif case == "base_ref":
-        pr["base"]["ref"] = "retarget"
-    elif case == "removed":
-        state["prs"].pop()
-    elif case == "added":
-        state["prs"].append({**pr, "number": 103})
-    elif case in {"closed", "draft", "unrelated", "fork"}:
-        if case == "closed":
-            pr["state"] = "closed"
-        elif case == "draft":
-            pr["draft"] = True
-        elif case == "unrelated":
-            pr["body"] = "Closes #999"
-        else:
-            pr["head"]["repo"]["full_name"] = "fork/r"
-    elif case == "ci_failed_collection":
-        pr["statusCheckRollup"] = None
-    else:
-        (r.run_dir / "pr-100.diff").write_bytes(b"changed bytes")
-    r.p.save(state)
-    value = r.run(ok=case == "added", extra=extra)
-    if case == "added":
-        assert len(r.calls()) == 1
-        return
-    assert r.calls() == []
-    if case != "diff":
-        result = json.loads(value.stdout)["result"]
-        assert result["status"] == "failed" and result["verdict"] == "incomplete"
-        assert all(p["coverage"] == "not_reviewed" for p in result["prs"])
-        r.run(ok=False)
-        assert r.calls() == []
-
-
-@pytest.mark.parametrize(
-    "case", ["agent", "parse", "partial", "post", "head_during_review"]
-)
-def test_failed_run_is_durable_and_never_automatically_retried(
-    pair_review_env: ReviewEnv, case: str
-) -> None:
-    r = pair_review_env
-    extra = {}
-    if case == "agent":
-        extra["REVIEW_AGENT_FAIL"] = "1"
-    elif case == "parse":
-        r.output.write_text("invalid JSON")
-    elif case == "partial":
-        data = json.loads(r.output.read_text())
-        data["verdict"] = "incomplete"
-        data["prs"][1]["coverage"] = "not_reviewed"
-        r.output.write_text(json.dumps(data))
-    elif case == "post":
-        extra["PARENT_FAIL_PATH"] = "repos/o/r/issues/101/comments"
-    else:
-        extra["REVIEW_AGENT_MUTATE"] = r.request["prs"][1]["head_sha"]
-    value = json.loads(r.run(ok=False, extra=extra).stdout)
-    assert value["result"]["status"] == ("succeeded" if case == "post" else "failed")
-    if case == "post":
-        assert value["publication"] == "publication_failed"
-    assert len(r.calls()) == 1
-    r.run(ok=False)
-    assert len(r.calls()) == 1
-    result = json.loads((r.run_dir / "result.json").read_text())
-    assert result["status"] == ("succeeded" if case == "post" else "failed")
-    assert all(
-        '"status":"succeeded"' not in c["body"].splitlines()[0] for c in r.comments(1)
-    )
-
-
-def test_interrupted_consumed_run_is_not_restarted(
-    single_review_env: ReviewEnv,
-) -> None:
-    r = single_review_env
-    r.run()
-    execution = json.loads((r.run_dir / "execution.json").read_text())
-    execution["status"] = "running"
-    (r.run_dir / "execution.json").write_text(json.dumps(execution))
-    result = r.run(ok=False)
-    assert "running/interrupted" in result.stderr
-    assert len(r.calls()) == 1
-
-
-def test_new_explicit_run_requires_reason_and_is_visible_as_exception(
-    review_env: ReviewEnv,
-) -> None:
-    r = review_env
-    r.run()
-    r.p.cli(
-        "review-prepare", *r.p.review_flags(), "--prs", "100", "101", "102", ok=False
-    )
-    manifest = json.loads(
-        r.p.cli(
-            "review-prepare",
-            *r.p.review_flags(),
-            "--prs",
-            "100",
-            "101",
-            "102",
-            "--reason-file",
-            r.p.note("追加レビューが必要な理由を親が明示。"),
-        ).stdout
-    )
-    new_request = json.loads(
-        r.p.cli(
-            "review-request",
-            "--run-id",
-            manifest["review_run_id"],
-            "--instruction-file",
-            r.p.note("例外として新しいレビューを実行。"),
-        ).stdout
-    )
-    r.request_path.write_text(json.dumps(new_request))
-    result = json.loads(r.run().stdout)["result"]
-    assert len(r.calls()) == 2
-    assert result["exception"]["previous_runs"] == [r.request["review_run_id"]]
-    assert "追加レビュー" in result["exception"]["reason"]
-    r.request_path.write_text(json.dumps(r.request))
-    assert json.loads(r.run().stdout)["reused"]
-    assert len(r.calls()) == 2
-
-
-def test_fix_and_regression_test_push_are_resolved_without_codex_again(
-    review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    r = review_env
-    r.with_findings()
-    result = json.loads(r.run().stdout)["result"]
-    worktree = r.p.repo / ".claude/worktrees/pr-0"
-    (worktree / "change.txt").write_text("fixed\n")
-    (worktree / "tests").mkdir()
-    (worktree / "tests/test_change.py").write_text(
-        "# Regression for the boundary condition\n"
-    )
-    paths = ["change.txt", "tests/test_change.py"]
-    run_git(worktree, "add", ".")
-    run_git(worktree, "commit", "-m", "fix blocker and cross finding")
-    head = run_git(worktree, "rev-parse", "HEAD")
-    state = r.p.state()
-    state["prs"][0]["head"]["sha"] = head
-    r.p.save(state)
-    proof = r.p.spec(
-        {
-            "ci": "必須CIすべて通過、head=" + head,
-            "regression_tests": "回帰テスト4件成功",
-            "resolution": "指摘の再現条件が解消したことを差分とテストで確認。",
-            "reviewed_paths": paths,
-        }
-    )
-    args = (
-        "resolve",
-        "--run",
-        r.request["review_run_id"],
-        "--pr",
-        "100",
-        "--fixed-head",
-        head,
-        "--evidence",
-        proof,
-    )
-    first = json.loads(r.cli(*args, "--finding", "pr-100-1").stdout)
-    assert first["coverage"]["covered"]
-    r.cli(*args, "--finding", "cross-1")
-    r.cli(*args, "--finding", "cross-1")
-    assert len(r.calls()) == 1
-    policy = review_policy_module(monkeypatch)
-    resolutions = [
-        x
-        for x in policy.records(r.comments(1), "operator")
-        if x["kind"] == "resolution"
-    ]
-    assert len(resolutions) == 2
-    assert {x["finding"] for x in resolutions} == {"pr-100-1", "cross-1"}
-    assert all(
-        x["fixed_snapshot"]["head_sha"] == head
-        and x["changed_paths"] == policy.path_manifest(paths)
-        and x["evidence"]["reviewed_paths"] == policy.path_manifest(paths)
-        for x in resolutions
-    )
-    latest = [
-        {**p, "head_sha": head} if p["number"] == 100 else p for p in r.request["prs"]
-    ]
-    # Use the recomputed diff, not a hand-edited snapshot, to exercise the gate boundary.
-    latest[0] = resolutions[0]["fixed_snapshot"]
-    monkeypatch.chdir(r.p.repo)
-    inputs = importlib.import_module("review_workspace")
-    fix_digest = hashlib.sha256(
-        inputs.full_diff(r.request["prs"][0]["head_sha"], head)
-    ).hexdigest()
-    assert fix_digest == resolutions[0]["fix_diff_sha256"]
-    coverage = policy.evaluate_coverage(
-        result,
-        latest,
-        resolutions,
-        {100: paths},
-        fix_diff_digests={100: fix_digest},
-        review_paths={100: paths},
-    )
-    assert coverage.covered
-    assert coverage.unresolved == ((101, "cross-1"),)
-    assert all((100, f) not in coverage.unresolved for f in ("cross-1", "pr-100-1"))
-    r.run(ok=False)  # historical run is not approval for the pushed head
-    assert len(r.calls()) == 1
-
-
-@pytest.mark.parametrize(
-    "case", ["missing_path", "missing_declaration", "empty_reason"]
-)
-def test_resolve_rejects_unconfirmed_fix_scope_before_publication(
-    review_env: ReviewEnv, case: str
-) -> None:
-    r = review_env
-    r.with_findings()
-    r.run()
-    worktree = r.p.repo / ".claude/worktrees/pr-0"
-    (worktree / "change.txt").write_text("fixed\n")
-    (worktree / "unconfirmed.txt").write_text("extra change\n")
-    run_git(worktree, "add", ".")
-    run_git(worktree, "commit", "-m", "fix with extra file")
-    head = run_git(worktree, "rev-parse", "HEAD")
-    state = r.p.state()
-    state["prs"][0]["head"]["sha"] = head
-    r.p.save(state)
-    proof: dict[str, Any] = {
-        "ci": "CI成功 head=" + head,
-        "regression_tests": "回帰テスト成功",
-        "resolution": "修正差分を確認",
-        "reviewed_paths": ["change.txt", "unconfirmed.txt"],
-    }
-    if case == "missing_path":
-        proof["reviewed_paths"] = ["change.txt"]
-    elif case == "missing_declaration":
-        del proof["reviewed_paths"]
-    else:
-        proof["resolution"] = " "
-    before = r.comments(1), r.comments(100)
-    r.cli(
-        "resolve",
-        "--run",
-        r.request["review_run_id"],
-        "--pr",
-        "100",
-        "--finding",
-        "pr-100-1",
-        "--fixed-head",
-        head,
-        "--evidence",
-        r.p.spec(proof),
-        ok=False,
-    )
-    assert (r.comments(1), r.comments(100)) == before
-    assert not list(r.run_dir.glob("resolution-*.json"))
-    assert len(r.calls()) == 1
-
-
-def test_sequential_peer_merges_reuse_one_review_run(
-    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    r = make_review_env(parent_env, independent=True)
-    result = json.loads(r.run().stdout)["result"]
-    assert result["verdict"] == "approve"
-    policy = review_policy_module(monkeypatch)
-    inputs = importlib.import_module("review_workspace")
-    snapshot = importlib.import_module("parent.snapshot").snapshot
-    monkeypatch.chdir(r.p.repo)
-    state = r.p.state()
-    merged = []
-    for index in (0, 1):
-        pr = state["prs"][index]
-        run_git(
-            r.p.repo,
-            "merge",
-            "--no-ff",
-            "-m",
-            f"merge PR {pr['number']}",
-            pr["head"]["sha"],
-        )
-        tip = run_git(r.p.repo, "rev-parse", "HEAD")
-        pr.update(state="closed", merged=True, merge_commit_sha=tip)
-        merged.append(pr)
-        remaining = []
-        current = []
-        for i, raw in enumerate(state["prs"]):
-            if i <= index:
-                current.append(r.request["prs"][i])
-            else:
-                raw["base"]["sha"] = tip
-                entry, _ = snapshot(raw)
-                remaining.append(entry)
-                current.append(entry)
-                assert all(
-                    entry[k] == r.request["prs"][i][k]
-                    for k in ("head_sha", "merge_base_sha", "diff_sha256")
-                )
-        advances = inputs.verify_base_advances(result, remaining, merged)
-        assert len(advances) == index + 1
-        coverage = policy.evaluate_coverage(
-            result, current, [], {}, fix_diff_digests={}, base_advances=advances
-        )
-        assert coverage.covered and not coverage.unresolved
-        assert not policy.evaluate_coverage(
-            result, current, [], {}, fix_diff_digests={}
-        ).covered
-    assert len(r.calls()) == 1
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        "missing_merge",
-        "unmerged",
-        "foreign_pr",
-        "wrong_base",
-        "wrong_repo",
-        "wrong_branch",
-        "unknown_commit",
-        "rewind",
-    ],
-)
-def test_base_advance_requires_github_merge_and_complete_git_history(
-    independent_pair_review_env: ReviewEnv,
-    monkeypatch: pytest.MonkeyPatch,
-    case: str,
-) -> None:
-    r = independent_pair_review_env
-    result = json.loads(r.run().stdout)["result"]
-    review_policy_module(monkeypatch)
-    inputs = importlib.import_module("review_workspace")
-    snapshot = importlib.import_module("parent.snapshot").snapshot
-    monkeypatch.chdir(r.p.repo)
-    state = r.p.state()
-    peer, target = state["prs"][:2]
-    run_git(r.p.repo, "merge", "--no-ff", "-m", "merge PR 100", peer["head"]["sha"])
-    tip = run_git(r.p.repo, "rev-parse", "HEAD")
-    peer.update(state="closed", merged=True, merge_commit_sha=tip)
-    target["base"]["sha"] = tip
-    evidence = [peer]
-    if case == "missing_merge":
-        evidence = []
-    elif case == "unmerged":
-        peer["merged"] = False  # merge_commit_sha alone may be a GitHub test merge.
-    elif case == "foreign_pr":
-        peer["number"] = 999
-    elif case == "wrong_base":
-        peer["base"]["ref"] = "other"
-    elif case == "wrong_repo":
-        peer["base"]["repo"]["full_name"] = "other/repo"
-    elif case == "wrong_branch":
-        peer["head"]["ref"] = "codex/other"
-    elif case == "unknown_commit":
-        (r.p.repo / "unreviewed.txt").write_text("unexpected base change\n")
-        run_git(r.p.repo, "add", "unreviewed.txt")
-        run_git(r.p.repo, "commit", "-m", "unexplained commit after the merge")
-        target["base"]["sha"] = run_git(r.p.repo, "rev-parse", "HEAD")
-    else:
-        target["base"]["sha"] = run_git(
-            r.p.repo, "rev-parse", r.request["prs"][1]["base_sha"] + "^"
-        )
-    current, _ = snapshot(target)
-    with pytest.raises(ValueError):
-        inputs.verify_base_advances(result, [current], evidence)
-    assert len(r.calls()) == 1
-
-
-def test_resolve_after_peer_merge_keeps_explicit_fix_coverage(
-    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    r = make_review_env(parent_env, independent=True)
-    output = json.loads(r.output.read_text())
-    output["verdict"] = "request_changes"
-    output["prs"][1]["findings"] = [
-        {
-            "severity": "major",
-            "path": "change-1.txt",
-            "line": 1,
-            "rule": "境界条件",
-            "detail": "回帰テストを伴う修正が必要",
-        }
-    ]
-    r.output.write_text(json.dumps(output))
-    result = json.loads(r.run().stdout)["result"]
-    state = r.p.state()
-    peer, target = state["prs"][:2]
-    run_git(r.p.repo, "merge", "--no-ff", "-m", "merge PR 100", peer["head"]["sha"])
-    tip = run_git(r.p.repo, "rev-parse", "HEAD")
-    peer.update(state="closed", merged=True, merge_commit_sha=tip)
-    for raw in state["prs"][1:]:
-        raw["base"]["sha"] = tip
-    worktree = r.p.repo / ".claude/worktrees/pr-1"
-    (worktree / "change-1.txt").write_text("fixed boundary\n")
-    (worktree / "test_change.py").write_text("# Boundary regression\n")
-    run_git(worktree, "add", ".")
-    run_git(worktree, "commit", "-m", "fix with regression")
-    head = run_git(worktree, "rev-parse", "HEAD")
-    target["head"]["sha"] = head
-    r.p.save(state)
-    paths = ["change-1.txt", "test_change.py"]
-    proof = r.p.spec(
-        {
-            "ci": "CI成功 head=" + head,
-            "regression_tests": "境界回帰テスト成功",
-            "resolution": "修正と境界回帰テストの差分を確認",
-            "reviewed_paths": paths,
-        }
-    )
-    fixed = json.loads(
-        r.cli(
-            "resolve",
-            "--run",
-            r.request["review_run_id"],
-            "--pr",
-            "101",
-            "--finding",
-            "pr-101-1",
-            "--fixed-head",
-            head,
-            "--evidence",
-            proof,
-        ).stdout
-    )
-    assert fixed["coverage"]["covered"] and not fixed["coverage"]["unresolved"]
-    policy = review_policy_module(monkeypatch)
-    inputs = importlib.import_module("review_workspace")
-    snapshot = importlib.import_module("parent.snapshot").snapshot
-    monkeypatch.chdir(r.p.repo)
-    latest = [r.request["prs"][0], *(snapshot(raw)[0] for raw in state["prs"][1:])]
-    advances = inputs.verify_base_advances(result, latest[1:], [peer])
-    record = fixed["resolution"]
-    actual_digest = hashlib.sha256(
-        inputs.full_diff(record["reviewed_head"], head)
-    ).hexdigest()
-    coverage = policy.evaluate_coverage(
-        result,
-        latest,
-        [record],
-        {101: paths},
-        fix_diff_digests={101: actual_digest},
-        review_paths={101: paths},
-        base_advances=advances,
-    )
-    assert coverage.covered and not coverage.unresolved
-    assert len(r.calls()) == 1
-
-
-def test_merging_main_into_a_reviewed_pr_accepts_parent_resolution(
-    independent_pair_review_env: ReviewEnv,
-) -> None:
-    r = independent_pair_review_env
-    r.with_findings()
-    r.run()
-    state = r.p.state()
-    peer, target = state["prs"][:2]
-    run_git(r.p.repo, "merge", "--no-ff", "-m", "merge peer", target["head"]["sha"])
-    tip = run_git(r.p.repo, "rev-parse", "HEAD")
-    target.update(state="closed", merged=True, merge_commit_sha=tip)
-    worktree = r.p.repo / ".claude/worktrees/pr-0"
-    run_git(worktree, "merge", "--no-ff", "-m", "follow main", tip)
-    head = run_git(worktree, "rev-parse", "HEAD")
-    peer["head"]["sha"] = head
-    peer["base"]["sha"] = tip
-    r.p.save(state)
-    r.cli(
-        "resolve",
-        "--run",
-        r.request["review_run_id"],
-        "--pr",
-        "100",
-        "--finding",
-        "pr-100-1",
-        "--fixed-head",
-        head,
-        "--evidence",
-        r.p.spec(
-            {
-                "ci": "成功",
-                "regression_tests": "成功",
-                "resolution": "main追従を確認",
-                "reviewed_paths": [],
-            }
-        ),
-    )
-    assert list(r.run_dir.glob("resolution-*.json"))
-    assert len(r.calls()) == 1
-
-
-def test_no_poll_or_timer_entrypoint_and_events_never_launch(
-    review_env: ReviewEnv,
-) -> None:
-    r = review_env
-    state = r.p.state()
-    state["prs"][0]["statusCheckRollup"] = [
-        {"__typename": "StatusContext", "context": "CI", "state": "SUCCESS"}
-    ]
-    state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
-    state["prs"].append({**state["prs"][0], "number": 103})
-    r.p.save(state)
-    r.p.cli("reconcile")
-    r.p.cli("sync")
-    r.cli(ok=False)  # no default command, PR enumeration, or scheduling entrypoint
-    assert r.calls() == []
-    assert not (OPS / "review/cross_review.py").exists()
-    assert not list((OPS / "review").glob("systemd/*"))
-    assert list(OPS.glob("*/systemd/*report.timer"))
-
-
-def test_large_diff_is_available_in_full_without_extra_review(
-    parent_env: ParentEnv,
-) -> None:
-    def expand_diff(p: ParentEnv) -> None:
-        worktree = p.repo / ".claude/worktrees/pr-0"
-        (worktree / "change.txt").write_text("full-diff-content\n" * 15_000)
-        run_git(worktree, "add", "change.txt")
-        run_git(worktree, "commit", "-m", "large diff")
-        state = p.state()
-        state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
-        p.save(state)
-
-    r = make_review_env(parent_env, pr_count=1, before_review=expand_diff)
-    r.run()
-    assert len(r.calls()) == 1
-    call = r.calls()[0]
-    assert call["diffs"]["100"].count("full-diff-content") == 15_000
-    assert "full-diff-content" not in call["prompt"]
-    assert len(call["prompt"]) < 6000
-
-
-def test_concurrent_resends_consume_the_run_only_once(
-    single_review_env: ReviewEnv,
-) -> None:
-    r = single_review_env
-
-    def invoke() -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [
-                sys.executable,
-                str(REVIEW_SCRIPT),
-                "run",
-                "--request",
-                str(r.request_path),
-                "--agent-exec",
-                str(r.fake),
-            ],
-            cwd=r.p.repo,
-            env={
-                **r.p.env,
-                "REVIEW_AGENT_CALLS": str(r.calls_path),
-                "REVIEW_AGENT_OUTPUT": str(r.output),
-            },
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=30,
-        )
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        completed = list(pool.map(lambda _: invoke(), range(2)))
-    assert any(p.returncode == 0 for p in completed), [p.stderr for p in completed]
-    for proc in completed:
-        if proc.returncode:
-            assert (
-                "already active" in proc.stderr or "running/interrupted" in proc.stderr
-            )
-    assert len(r.calls()) == 1
-    assert (
-        json.loads((r.run_dir / "execution.json").read_text())["agent_invocations"] == 1
-    )
-
-
-def test_parent_stopping_during_review_invalidates_the_result(
-    single_review_env: ReviewEnv,
-) -> None:
-    r = single_review_env
-    response = r.run(ok=False, extra={"REVIEW_STOP_PARENT": "1"})
-    assert response.returncode == 2 and "registry changed" in response.stderr
-    assert not (r.run_dir / "result.json").exists()
-    assert json.loads((r.run_dir / "execution.json").read_text())["status"] == "running"
-    r.run(ok=False)
-    assert len(r.calls()) == 1
-
-
-def test_preparation_failure_can_retry_same_run_without_public_failure(
-    single_review_env: ReviewEnv,
-) -> None:
-    r = single_review_env
-    state = r.p.state()
-    original = state["prs"][0].get("statusCheckRollup", [])
-    state["prs"][0]["statusCheckRollup"] = None
-    r.p.save(state)
-    r.run(ok=False)
-    execution = json.loads((r.run_dir / "execution.json").read_text())
-    assert execution["agent_invocations"] == 0
-    assert execution["status"] == "preparation_failed"
-    assert r.calls() == []
-    assert not any("parent-review:v1" in c["body"] for c in r.comments(1))
-    state = r.p.state()
-    state["prs"][0]["statusCheckRollup"] = original
-    r.p.save(state)
-    completed = json.loads(r.run().stdout)
-    assert completed["result"]["status"] == "succeeded"
-    assert len(r.calls()) == 1
-    assert len(list((r.run_dir / "preparation-attempts").glob("*/execution.json"))) == 1
-    r.run()
-    assert len(r.calls()) == 1
-
-
-def test_combined_handoff_registers_results_and_instructs_subset(
-    parent_env: ParentEnv,
-) -> None:
-    p = parent_env
-    review_setup(p, independent=True)
-    requested = json.loads(
-        p.cli(
-            "review-request",
-            *p.review_flags(),
-            "--prs",
-            "100",
-            "--instruction-file",
-            p.note("PR 100の受入条件を確認する。"),
-            "--evidence-file",
-            p.note("実装と回帰テストを確認済み。"),
-        ).stdout
-    )
-    assert [pr["number"] for pr in requested["prs"]] == [100]
-    assert requested["review_state"] == "instructed"
-    state = json.loads(p.cli("status").stdout)
-    assert state["review"][-1]["state"] == "instructed"
-
-
-def test_common_runner_prelaunch_failure_does_not_consume_review(
-    single_review_env: ReviewEnv,
-) -> None:
-    r = single_review_env
-    original = r.fake.read_text()
-    injected = """
-if os.environ.get("REVIEW_WRAPPER_PRELAUNCH_FAIL"):
-    runtime = pathlib.Path(opt("--run-dir"))
-    runtime.mkdir()
-    (runtime / "result.json").write_text(json.dumps({"result":"failed", "agent_spawned":False, "cleanup_complete":True}))
-    sys.exit(1)
-"""
-    r.fake.write_text(
-        original.replace(
-            'cwd = pathlib.Path(opt("--cwd"))',
-            injected + '\ncwd = pathlib.Path(opt("--cwd"))',
-        )
-    )
-    r.run(ok=False, extra={"REVIEW_WRAPPER_PRELAUNCH_FAIL": "1"})
-    assert (
-        json.loads((r.run_dir / "execution.json").read_text())["agent_invocations"] == 0
-    )
-    assert r.calls() == []
-    r.run()
-    assert len(r.calls()) == 1
-    assert list(
-        (r.run_dir / "preparation-attempts").glob("*/agent-runtime/result.json")
-    )
+    return importlib.import_module("lib.ops_review.parent_review_policy")

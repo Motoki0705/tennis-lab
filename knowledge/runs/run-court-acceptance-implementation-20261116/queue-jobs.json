@@ -1,0 +1,20 @@
+[
+  {
+    "stem": "0-8205182584228624441_2026-11-16T08-23-35-771375558Z_3171752_court-acceptance-raw",
+    "status": "done",
+    "job_sha256": "4dad8eca5dca2eba3ea9c37e0ba400590ab88e27424516fe13e44465a9af21b1",
+    "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/0-8205182584228624441_2026-11-16T08-23-35-771375558Z_3171752_court-acceptance-raw.log"
+  },
+  {
+    "stem": "0-8205181027467843555_2026-11-16T08-49-32-532156444Z_3331506_court-acceptance-val-raw",
+    "status": "done",
+    "job_sha256": "c335bb9f27f3ba9d14977bcaa626fa4f699bba2a63159979d93c8e29abed5ed3",
+    "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/0-8205181027467843555_2026-11-16T08-49-32-532156444Z_3331506_court-acceptance-val-raw.log"
+  },
+  {
+    "stem": "0-8205180436609729016_2026-11-16T08-59-23-390270983Z_3348010_court-acceptance-test-raw",
+    "status": "done",
+    "job_sha256": "4f12ca277ddd48e0787cb876bda2dcbff2dd777cad944b2b23c4fb0d098c1325",
+    "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/0-8205180436609729016_2026-11-16T08-59-23-390270983Z_3348010_court-acceptance-test-raw.log"
+  }
+]

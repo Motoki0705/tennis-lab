@@ -1,0 +1,48 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 3 items
+
+outputs/tennis_scene/evaluate/court-reference-white-lines-20261116/test_reference.py . [ 33%]
+.F                                                                       [100%]
+
+=================================== FAILURES ===================================
+________ test_line_fit_recovers_known_projective_mapping_with_outliers _________
+
+    def test_line_fit_recovers_known_projective_mapping_with_outliers():
+        truth=np.array([[28.,33.,800.],[5.,-19.,500.],[.01,.02,1.]])
+        initial=truth.copy();initial[:2,2]+=[5,-4]
+        points=[];labels=[]
+        rng=np.random.default_rng(93)
+        for index,(a,b) in enumerate(fit.EDGES):
+            xy=(1-np.linspace(.05,.95,24))[:,None]*fit.POINTS[a]+np.linspace(.05,.95,24)[:,None]*fit.POINTS[b]
+            homogeneous=np.column_stack((xy,np.ones(len(xy))))@truth.T
+            image=homogeneous[:,:2]/homogeneous[:,2,None]
+            image+=rng.normal(0,.05,image.shape)
+            image[:2]+=[20,-15]
+            points.extend(image);labels.extend([index]*len(image))
+        h,diagnostic=fit.fit_h(initial,np.array(points),np.array(labels))
+        assert diagnostic['success'] and diagnostic['rank']==8
+        truth_points=np.column_stack((fit.POINTS,np.ones(14)))@truth.T
+        expected=truth_points[:,:2]/truth_points[:,2,None]
+>       assert np.max(np.linalg.norm(fit.project(h)-expected,axis=1))<.8
+E       AssertionError: assert np.float64(1.1399037648755928) < 0.8
+E        +  where np.float64(1.1399037648755928) = <function max at 0x71b56dfa0470>(array([1.13990376, 0.54875766, 0.80388328, 0.86705147, 1.02622643,\n       0.63181301, 0.56518562, 0.72820218, 0.93926179, 0.41149411,\n       0.67891997, 0.32886434, 0.59448014, 0.1674493 ]))
+E        +    where <function max at 0x71b56dfa0470> = np.max
+E        +    and   array([1.13990376, 0.54875766, 0.80388328, 0.86705147, 1.02622643,\n       0.63181301, 0.56518562, 0.72820218, 0.93926179, 0.41149411,\n       0.67891997, 0.32886434, 0.59448014, 0.1674493 ]) = <function norm at 0x71b56dbaef30>((array([[ 879.10801354,  208.14389348],\n       [1041.64268809,  233.64923656],\n       [ 359.30405496,  986.39036962],\n ...,\n       [ 770.75773588,  703.49526077],\n       [ 897.03665965,  335.34351671],\n       [ 675.24687452,  712.67750998]]) - array([[ 878.0699167 ,  208.61478151],\n       [1041.18603159,  233.34493438],\n       [ 359.33986972,  987.19345469],\n ...,\n       [ 770.97956927,  703.25248165],\n       [ 896.45390198,  335.46099073],\n       [ 675.22935567,  712.84404033]])), axis=1)
+E        +      where <function norm at 0x71b56dbaef30> = <module 'numpy.linalg' from '/home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess/.venv/lib/python3.11/site-packages/numpy/linalg/__init__.py'>.norm
+E        +        where <module 'numpy.linalg' from '/home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess/.venv/lib/python3.11/site-packages/numpy/linalg/__init__.py'> = np.linalg
+E        +      and   array([[ 879.10801354,  208.14389348],\n       [1041.64268809,  233.64923656],\n       [ 359.30405496,  986.39036962],\n ...,\n       [ 770.75773588,  703.49526077],\n       [ 897.03665965,  335.34351671],\n       [ 675.24687452,  712.67750998]]) = <function project at 0x71b567051c60>(array([[ 2.79406272e+01,  3.30649011e+01,  8.00349620e+02],\n       [ 5.08610091e+00, -1.89891830e+01,  4.99838499e+02],\n       [ 9.99526586e-03,  2.00187486e-02,  1.00000000e+00]]))
+E        +        where <function project at 0x71b567051c60> = fit.project
+
+outputs/tennis_scene/evaluate/court-reference-white-lines-20261116/test_reference.py:39: AssertionError
+============================== slowest durations ===============================
+0.01s call     outputs/tennis_scene/evaluate/court-reference-white-lines-20261116/test_reference.py::test_line_fit_recovers_known_projective_mapping_with_outliers
+0.01s call     outputs/tennis_scene/evaluate/court-reference-white-lines-20261116/test_reference.py::test_paired_edges_measure_the_centre_not_the_inner_edge
+
+(7 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED outputs/tennis_scene/evaluate/court-reference-white-lines-20261116/test_reference.py::test_line_fit_recovers_known_projective_mapping_with_outliers
+========================= 1 failed, 2 passed in 2.48s ==========================

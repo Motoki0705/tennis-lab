@@ -1,0 +1,209 @@
+{
+  "evaluation_status": "human_approved / 承認済み",
+  "prediction_selection_source": "original primary meiji4-evaluation snapshot; later scene-evaluation has different selections in two conditions at clip_033/cam0 and was not used",
+  "label_changes": {
+    "legacy": {
+      "accepted_wrong_to_correct": 47,
+      "accepted_correct_to_wrong": 8,
+      "rejected_wrong_to_correct": 23,
+      "rejected_correct_to_wrong": 3
+    },
+    "acceptance_only": {
+      "accepted_wrong_to_correct": 63,
+      "accepted_correct_to_wrong": 4,
+      "rejected_wrong_to_correct": 12,
+      "rejected_correct_to_wrong": 2
+    },
+    "postprocess_and_acceptance": {
+      "accepted_wrong_to_correct": 63,
+      "accepted_correct_to_wrong": 3,
+      "rejected_wrong_to_correct": 15,
+      "rejected_correct_to_wrong": 2
+    }
+  },
+  "reference_changes": {
+    "cam0": {
+      "mean_common_visible_displacement_px": 9.065162809678442,
+      "max_common_visible_displacement_px": 15.99080504355806,
+      "old_visible_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "new_visible_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "measurement_failures": [
+        "far_baseline"
+      ],
+      "failed_frames": []
+    },
+    "cam1": {
+      "mean_common_visible_displacement_px": 18.067219659121708,
+      "max_common_visible_displacement_px": 31.351589578335446,
+      "old_visible_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "new_visible_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "measurement_failures": [
+        "far_baseline",
+        "right_doubles",
+        "far_service"
+      ],
+      "failed_frames": []
+    },
+    "cam2": {
+      "mean_common_visible_displacement_px": 22.32914446916005,
+      "max_common_visible_displacement_px": 47.67541311459838,
+      "old_visible_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "new_visible_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "measurement_failures": [
+        "far_baseline",
+        "far_service"
+      ],
+      "failed_frames": []
+    },
+    "cam3": {
+      "mean_common_visible_displacement_px": 10.628782814663575,
+      "max_common_visible_displacement_px": 37.85269908706393,
+      "old_visible_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "new_visible_indices": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "measurement_failures": [
+        "far_baseline",
+        "far_service"
+      ],
+      "failed_frames": [
+        {
+          "clip_id": "video_000/clip_068",
+          "frame_index": 0,
+          "reason": "insufficient_consistent_court_lines"
+        }
+      ]
+    }
+  },
+  "same_frame_sensitivity": {
+    "images": 19,
+    "changed_classifications": 6,
+    "not_used_to_replace_primary_results": true
+  },
+  "reference_error_example": {
+    "key": "meiji_4cam/video_000/clip_000/cam2",
+    "condition": "legacy",
+    "point_index": 2,
+    "old_mean_px": 23.884630732754527,
+    "new_mean_px": 6.249840588254649,
+    "same_prediction_and_gate": true
+  },
+  "approval_evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209"
+}

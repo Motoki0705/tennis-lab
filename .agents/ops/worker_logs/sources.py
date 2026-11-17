@@ -166,6 +166,18 @@ def freeze(session: Any, child: int, prompt: str, standard: bytes) -> Path:
         "run_directory": turn["source"],
         "task_id": task["delegation_id"],
     }
+    if "repair" in turn:
+        from lib.repair_turn import validate_request
+
+        validate_request(turn["repair"])
+        source["repair"] = dict(turn["repair"])
+        repair_id = turn["repair"]["repair_id"]
+        if re.fullmatch(
+            r"[a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}",
+            repair_id,
+            re.IGNORECASE,
+        ):
+            source["private"].append(repair_id)
     result = subprocess.run(
         ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
         cwd=task["worktree"],
@@ -349,10 +361,16 @@ def render(source: dict[str, Any], receipt: dict[str, Any]) -> dict[str, bytes]:
     )
     additional = [guard.sanitize(s) for s in source["additional"]]
     settings = record["contract"]["settings"]
+    repair = source.get("repair")
+    if repair is not None:
+        from lib.repair_turn import validate_contract
+
+        validate_contract(record["contract"])
+    require(record["contract"].get("repair") == repair, "runner_settings_changed")
     require(
         settings["agent"] == "codex"
         and settings.get("profile") is None
-        and settings["selected"]["effort"] == "max",
+        and settings["selected"]["effort"] == ("high" if repair is not None else "max"),
         "runner_settings_changed",
     )
     selected = {k: settings["selected"][k] for k in ("model", "effort")}
@@ -416,6 +434,7 @@ def render(source: dict[str, Any], receipt: dict[str, Any]) -> dict[str, bytes]:
             "kind": source["kind"],
             "phase": source["phase"],
             "previous_sequence": source["sequence"] - 1 or None,
+            **({"repair": {"pr": repair["pr"]}} if repair is not None else {}),
         },
         "decision": source["decision"],
         "sources": {

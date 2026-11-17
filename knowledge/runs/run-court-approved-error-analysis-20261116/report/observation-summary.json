@@ -1,0 +1,33 @@
+{
+  "cohort": "42 cases with O necessary in the preceding paired intervention",
+  "success_tuple_order": [
+    "neither",
+    "boundary_only",
+    "duplicate_only",
+    "both"
+  ],
+  "success_tuples": {
+    "lost": {
+      "1/1/0/0": 10,
+      "1/0/1/0": 17,
+      "1/0/1/1": 1,
+      "1/0/0/0": 2,
+      "1/1/1/1": 2,
+      "0/0/0/0": 1
+    },
+    "gained": {
+      "0/0/1/1": 2,
+      "0/1/1/1": 1,
+      "0/1/0/1": 6
+    }
+  },
+  "point_counts": {
+    "lost/duplicate/all": 44,
+    "lost/boundary/all": 48,
+    "lost/duplicate/valid_close_GT": 3,
+    "gained/duplicate/all": 16,
+    "gained/boundary/all": 17,
+    "lost/boundary/valid_close_GT": 1
+  },
+  "limits": "Each four-way comparison freezes its own LINE evidence. Four loss cases no longer reproduce the prior O effect; do not force an attribution."
+}

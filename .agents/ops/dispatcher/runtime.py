@@ -11,6 +11,7 @@ from contextlib import AbstractContextManager, contextmanager, nullcontext
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import checkout_subprocess_options
 from parent.policy import object_value
 
 from .records import read_json
@@ -71,6 +72,7 @@ class Runtime:
             text=True,
             check=False,
             timeout=timeout,
+            **checkout_subprocess_options(),
         )
         if proc.returncode:
             raise ValueError(
@@ -160,6 +162,18 @@ class Runtime:
             cmd += ["--branch", job["branch"]]
         if job.get("model"):
             cmd += ["--model", job["model"]]
+        if "repair" in job:
+            from lib.repair_turn import validate_request
+
+            validate_request(job["repair"])
+            cmd += [
+                "--repair-id",
+                job["repair"]["repair_id"],
+                "--repair-pr",
+                str(job["repair"]["pr"]),
+                "--effort",
+                "high",
+            ]
         from decision_logs.observations import job_environment
 
         with self.launch_context():

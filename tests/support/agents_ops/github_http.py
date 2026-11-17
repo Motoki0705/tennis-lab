@@ -117,19 +117,23 @@ class Bridge:
 
 def install(module: Any) -> Bridge:
     bridge = Bridge()
+
     # Importing a client is common in non-GitHub commands too. Start the server
     # only for actual I/O, so process-lifecycle tests don't acquire extra threads.
-    original = getattr(
-        module.HTTPClient.request, "_http_bridge_original", module.HTTPClient.request
-    )
+    def patch(name: str) -> None:
+        method = getattr(module.HTTPClient, name)
+        original = getattr(method, "_http_bridge_original", method)
 
-    def request(self: Any, *args: Any, **kwargs: Any) -> Any:
-        module._API_URL = bridge.url
-        return original(self, *args, **kwargs)
+        def request(self: Any, *args: Any, **kwargs: Any) -> Any:
+            module._API_URL = bridge.url
+            return original(self, *args, **kwargs)
 
-    wrapper: Any = request
-    wrapper._http_bridge_original = original
-    module.HTTPClient.request = wrapper
+        wrapper: Any = request
+        wrapper._http_bridge_original = original
+        setattr(module.HTTPClient, name, wrapper)
+
+    patch("request")
+    patch("request_response")
     module._token = lambda: "test-github-http-token"
     # localhost fixtures must not use a proxy configured on the runner.
     os.environ["NO_PROXY"] = ",".join(

@@ -29,8 +29,6 @@ from tests.e2e.agents_ops.test_merge_gate import GateEnv, GateSeed, make_gate_en
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
-    make_review_env,
-    review_policy_module,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.improvements import finish_for
@@ -624,7 +622,7 @@ def test_workflow_cli_never_recreates_registry_with_dispatcher_history(
     loss: str,
 ) -> None:
     _, _, env = workflow(d, monkeypatch)
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
 
     def github(repo: str, *, store: Any) -> Any:
         client = copy.copy(d.h.gh)
@@ -731,7 +729,7 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
 ) -> None:
     development, _, env = workflow(d, monkeypatch)
     tree = child_tree(d)
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     original_get = d.h.gh.get
     operations = []
     held: list[str] = []
@@ -1431,7 +1429,9 @@ def test_completed_report_requires_gate_real_merge_close_and_parent_verification
                 else {}
             ),
         )
-    assert response.returncode in {0, 1}, response.stderr
+    assert response.returncode == (2 if remote == "dry_run" else 0), response.stderr
+    if remote == "dry_run":
+        assert "auto_merge_disabled" in response.stderr
     if remote == "wrong_head":
         state = p.state()
         state["prs"][0]["head"]["sha"] = "f" * 40
@@ -1545,64 +1545,6 @@ def test_delegate_checks_context_adoption_on_parent_and_child(
     )
     assert "adoption" in response.stderr
     assert not json.loads(p.cli("status").stdout)["tasks"]["10"].get("delegated")
-
-
-@pytest.mark.parametrize("target", [1, 10])
-def test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible(
-    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, target: int
-) -> None:
-    p = parent_env
-
-    def configure_adoption(p: ParentEnv) -> None:
-        bind_adoption(p, target)
-        if target == 1:
-            p.agreed()
-        for child in (10, 11, 12):
-            p.cli(
-                "record-result",
-                "--child",
-                str(child),
-                "--evidence-file",
-                p.note("出典を含む現在の要件で差分・テスト・PRを確認した。"),
-            )
-
-    review = make_review_env(p, independent=True, before_review=configure_adoption)
-    state = p.state()
-    for pr in state["prs"]:
-        pr.update(
-            labels=[],
-            mergeable=True,
-            statusCheckRollup=[
-                {
-                    "__typename": "CheckRun",
-                    "name": "Python",
-                    "workflowName": "CI",
-                    "status": "COMPLETED",
-                    "conclusion": "SUCCESS",
-                }
-            ],
-        )
-    p.save(state)
-    review.run()
-    g = GateEnv(review, review_policy_module(monkeypatch))
-    g.confirm()
-    before = g.cli("merge", AGENT_AUTO_MERGE="0")
-    assert all(row["decision"] == "merge" for row in g.results(before).values())
-    state = p.state()
-    state["issues"]["90"]["body"] = state["issues"]["90"]["body"].replace(
-        "- [x] **", "- [ ] **"
-    )
-    p.save(state)
-    after = g.cli("merge")
-    rows = g.results(after)
-    assert "task_adoption_changed" in rows[100]["reasons"]
-    assert rows[100]["action"] == "blocked"
-    if target == 10:
-        assert rows[101]["action"] == rows[102]["action"] == "merged"
-        assert len(g.merge_calls()) == 2
-    else:
-        assert g.merge_calls() == []
-    assert len(review.calls()) == 1
 
 
 @pytest.mark.parametrize("action", ["approve", "reject"])

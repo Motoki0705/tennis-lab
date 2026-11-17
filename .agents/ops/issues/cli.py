@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import subprocess
 import sys
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 from typing import cast
@@ -30,7 +32,8 @@ from .format import (
     render_child_body,
     render_parent_body,
 )
-from .transport import HTTPClient
+from .polling import GETResponse, JobLog, RateLimit, rate_limit
+from .transport import HTTPClient, HTTPResponse
 
 _HTTP_STATUS = re.compile(r"HTTP/\S+ ([0-9]{3})(?:\s|$)")
 _GET_RETRY_DELAYS = (1.0, 2.0)
@@ -195,9 +198,7 @@ def local_repository() -> str:
         # fetch URLs when pushurl is absent. Inspect every URL, not just origin
         # or the first destination, so a rewritten push cannot pick another repo.
         urls.extend(git_lines("remote", "get-url", "--all", "--", remote))
-        urls.extend(
-            git_lines("remote", "get-url", "--push", "--all", "--", remote)
-        )
+        urls.extend(git_lines("remote", "get-url", "--push", "--all", "--", remote))
     repos: dict[str, str] = {}
     for url in urls:
         scp = re.fullmatch(r"git@github\.com:([^?#]+)", url, re.IGNORECASE)
@@ -260,6 +261,8 @@ class GitHub:
     def __init__(self, repo: str | None) -> None:
         self.repo = _repo_name(repo) if repo is not None else local_repository()
         self._http = HTTPClient()
+        self._conditional_cache: dict[tuple[str, str], tuple[str, object]] = {}
+        self._secondary_limits: dict[str, int] = {}
 
     def close(self) -> None:
         self._http.close()
@@ -351,6 +354,135 @@ class GitHub:
         if payload is None:
             raise ValueError(f"{context} last_error_kind=unexpected_null_response")
         return payload
+
+    def _poll_response(self, endpoint: str, headers: dict[str, str]) -> HTTPResponse:
+        """A polling request never sleeps or retries inside the acquisition layer."""
+        try:
+            response = self._http.request_response("GET", endpoint, headers=headers)
+        except subprocess.TimeoutExpired:
+            raise GitHubTransportError(
+                self._http.redact(endpoint),
+                1,
+                "timeout_without_http_response",
+                "GitHub polling request timed out before HTTP status",
+            ) from None
+        if response.status is None:
+            raise GitHubTransportError(
+                self._http.redact(endpoint),
+                1,
+                "missing_http_response_status",
+                response.error,
+            )
+        if response.error:
+            raise GitHubHTTPError(
+                self._http.redact(endpoint), response.status, response.error
+            )
+        return response
+
+    def _poll_limit(
+        self, response: HTTPResponse, principal: str, clock: Callable[[], float]
+    ) -> RateLimit | None:
+        limit = rate_limit(
+            response,
+            now=clock(),
+            secondary_attempt=self._secondary_limits.get(principal, 0) + 1,
+        )
+        if limit is not None and limit.kind == "secondary":
+            self._secondary_limits[principal] = limit.secondary_attempt
+        elif response.status in {200, 304}:
+            self._secondary_limits.pop(principal, None)
+        return limit
+
+    def get_conditional(
+        self, endpoint: str, *, clock: Callable[[], float] = time.time
+    ) -> GETResponse:
+        """Opt-in ETag GET. Rate limits return deadlines; other failures raise."""
+        from parent import metrics
+
+        key = self._http.cache_key(endpoint)
+        cached = self._conditional_cache.get(key)
+        response = self._poll_response(
+            endpoint, {"If-None-Match": cached[0]} if cached else {}
+        )
+        assert response.status is not None
+        limit = self._poll_limit(response, key[1], clock)
+        if limit is not None:
+            return GETResponse(
+                response.status,
+                response.headers,
+                response.body,
+                True if cached else None,
+                limit,
+            )
+        if response.status == 304:
+            if cached is None:
+                raise ValueError(
+                    "GitHub 304 has no saved response for this URL and authentication"
+                )
+            cached_etag = response.headers.get("etag") or cached[0]
+            self._conditional_cache[key] = (cached_etag, cached[1])
+            return GETResponse(304, response.headers, copy.deepcopy(cached[1]), True)
+        if response.status != 200:
+            raise GitHubHTTPError(
+                self._http.redact(endpoint), response.status, response.http_error()
+            )
+        try:
+            payload: object = json.loads(response.body)
+        except ValueError:
+            raise ValueError("GitHub conditional GET returned invalid JSON") from None
+        if payload is None:
+            raise ValueError("GitHub conditional GET returned unexpected null")
+        etag = response.headers.get("etag")
+        if etag:
+            self._conditional_cache[key] = (etag, copy.deepcopy(payload))
+        else:
+            self._conditional_cache.pop(key, None)
+            metrics.count("github_get_without_etag")
+        return GETResponse(200, response.headers, payload, bool(etag))
+
+    def job_log(self, job_id: int, *, clock: Callable[[], float] = time.time) -> JobLog:
+        """Resolve the job log redirect once; report missing/expired logs explicitly."""
+        if type(job_id) is not int or job_id < 1:
+            raise ValueError("job_id must be a positive integer")
+        endpoint = f"repos/{self.repo}/actions/jobs/{job_id}/logs"
+        try:
+            response = self._poll_response(endpoint, {})
+        except (GitHubHTTPError, GitHubTransportError) as exc:
+            return JobLog(getattr(exc, "status", None), None, str(exc))
+        key = self._http.cache_key(endpoint)
+        try:
+            limit = self._poll_limit(response, key[1], clock)
+        except ValueError as exc:
+            return JobLog(response.status, None, str(exc))
+        if limit is not None:
+            return JobLog(response.status, None, f"{limit.kind}_rate_limit", limit)
+        if response.status != 302:
+            return JobLog(
+                response.status,
+                None,
+                "GitHub job log expected HTTP 302; " + response.http_error(),
+            )
+        location = response.headers.get("location")
+        if not location:
+            return JobLog(302, None, "GitHub job log redirect has no Location header")
+        try:
+            downloaded = self._http.download_log(location)
+        except subprocess.TimeoutExpired:
+            return JobLog(None, None, "GitHub job log download timed out")
+        except ValueError as exc:
+            return JobLog(302, None, str(exc))
+        if downloaded.error:
+            return JobLog(downloaded.status, None, downloaded.error)
+        if downloaded.status != 200:
+            return JobLog(
+                downloaded.status,
+                None,
+                f"GitHub job log download HTTP {downloaded.status}",
+            )
+        if not downloaded.body:
+            return JobLog(200, None, "GitHub job log download returned an empty body")
+        self._secondary_limits.pop(key[1], None)
+        return JobLog(200, downloaded.body)
 
     def identity(self, value: object) -> int:
         issue = _object(value, "issue")

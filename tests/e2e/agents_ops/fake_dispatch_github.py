@@ -16,6 +16,9 @@ def main() -> None:
     args = sys.argv[1:]
     assert args[0] == "api" and args[args.index("--method") + 1] == "GET"
     endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
+    if os.environ.get("FAKE_DISPATCH_HTTP_CALLS"):
+        with Path(os.environ["FAKE_DISPATCH_HTTP_CALLS"]).open("a") as stream:
+            stream.write(json.dumps(endpoint) + "\n")
     path, _, query = endpoint.partition("?")
     state = json.loads(Path(os.environ["FAKE_DISPATCH_GITHUB"]).read_text())
     page = int(parse_qs(query).get("page", ["1"])[0])
@@ -25,7 +28,9 @@ def main() -> None:
 
     result: Any
     code = 200
-    if path == "user":
+    if path == os.environ.get("FAKE_DISPATCH_FAIL_GET"):
+        result, code = {"message": "injected unavailable resource"}, 503
+    elif path == "user":
         result = {"login": "operator"}
     elif path == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
         result, code = {"message": "Not Found"}, 404

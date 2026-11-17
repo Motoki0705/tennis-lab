@@ -1,0 +1,557 @@
+{
+  "raw": {
+    "manifest_sha256": "95dde24efa7b932647d95341aa7403895f0c68d2ff594836e092f45c8d2080b9",
+    "samples": 448,
+    "header": {
+      "schema": "court_raw_cache_v1",
+      "checkpoint": {
+        "schema": "court_inference_checkpoint_v1",
+        "checkpoint_path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+        "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+        "backbone_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "backbone_asset_migration": {
+          "layout": "external_dinov3_to_checkpoint",
+          "saved_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+          "runtime_path": "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+          "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt"
+        },
+        "architecture": {
+          "encoder": {
+            "name": "dinov3",
+            "backbone_name": "dinov3_vitb16",
+            "repository_path": "dinov3",
+            "checkpoint_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+            "strict": true,
+            "train_mode": "frozen",
+            "last_n_blocks": 0,
+            "out_indices": [
+              2,
+              5,
+              8,
+              11
+            ],
+            "layer_mode": "uniform",
+            "lora": {
+              "enabled": false,
+              "rank": 8,
+              "alpha": 16.0,
+              "dropout": 0.0,
+              "target_modules": [
+                "qkv",
+                "proj",
+                "fc1",
+                "fc2"
+              ]
+            }
+          },
+          "transformer_encoder": {
+            "name": "transformer",
+            "enabled": true,
+            "dim": 768,
+            "depth": 8,
+            "num_heads": 12,
+            "head_dim": 64,
+            "ffn_dim": 2048,
+            "rope_dim": 64,
+            "rope_theta": 10000.0,
+            "dropout": 0.0,
+            "attention_type": "mha",
+            "n_kv_heads": null,
+            "ffn_type": "swiglu"
+          },
+          "decoder": {
+            "name": "dpt",
+            "size": "large",
+            "channels": 512,
+            "reassemble_factors": [
+              4.0,
+              2.0,
+              1.0,
+              0.5
+            ]
+          },
+          "dense_head": {
+            "name": "residual",
+            "normalization_groups": 32,
+            "kp": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "seg": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "line": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "semantic_line": {
+              "hidden_channels": 256,
+              "depth": 3
+            }
+          },
+          "name": "court_hierarchical",
+          "in_channels": 3
+        },
+        "target_bundle": {
+          "schema": "court_target_bundle_v1",
+          "targets": [
+            {
+              "kind": "kp",
+              "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+              "output_channels": 14,
+              "channel_names": [
+                "far_doubles_left",
+                "far_doubles_right",
+                "near_doubles_left",
+                "near_doubles_right",
+                "far_singles_left",
+                "near_singles_left",
+                "far_singles_right",
+                "near_singles_right",
+                "far_service_left",
+                "far_service_right",
+                "near_service_left",
+                "near_service_right",
+                "far_service_t",
+                "near_service_t"
+              ],
+              "target_dtype": "float32",
+              "precomputed": false
+            },
+            {
+              "kind": "seg",
+              "schema": "court_cell_segmentation_single_court_v2",
+              "output_channels": 7,
+              "channel_names": [
+                "background",
+                "service_left",
+                "service_right",
+                "back_left",
+                "back_right",
+                "doubles_left",
+                "doubles_right"
+              ],
+              "target_dtype": "int64",
+              "precomputed": true
+            },
+            {
+              "kind": "line",
+              "schema": "court_line_binary_75mm_150mm_single_court_v3",
+              "output_channels": 1,
+              "channel_names": [
+                "court_line"
+              ],
+              "target_dtype": "float32",
+              "precomputed": true
+            },
+            {
+              "kind": "semantic_line",
+              "schema": "court_line_semantic_camera_view_75mm_150mm_single_court_v1",
+              "output_channels": 12,
+              "channel_names": [
+                "background",
+                "far_baseline",
+                "near_baseline",
+                "left_doubles_sideline",
+                "right_doubles_sideline",
+                "left_singles_sideline",
+                "right_singles_sideline",
+                "far_service_line",
+                "near_service_line",
+                "center_service_line",
+                "far_center_mark",
+                "near_center_mark"
+              ],
+              "target_dtype": "int64",
+              "precomputed": true
+            }
+          ]
+        },
+        "short_side": 512,
+        "pose_long_side": true,
+        "patch_size": 16,
+        "epoch": 17,
+        "global_step": 29844
+      },
+      "postprocess": "none",
+      "frame": 0
+    }
+  },
+  "val_raw": {
+    "manifest_sha256": "dc7e6905e5b0c7179dce6d27380946da7c5575cde7c91b7b8893e360526c3626",
+    "samples": 2211,
+    "header": {
+      "schema": "court_raw_cache_v1",
+      "checkpoint": {
+        "schema": "court_inference_checkpoint_v1",
+        "checkpoint_path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+        "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+        "backbone_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "backbone_asset_migration": {
+          "layout": "external_dinov3_to_checkpoint",
+          "saved_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+          "runtime_path": "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+          "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt"
+        },
+        "architecture": {
+          "encoder": {
+            "name": "dinov3",
+            "backbone_name": "dinov3_vitb16",
+            "repository_path": "dinov3",
+            "checkpoint_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+            "strict": true,
+            "train_mode": "frozen",
+            "last_n_blocks": 0,
+            "out_indices": [
+              2,
+              5,
+              8,
+              11
+            ],
+            "layer_mode": "uniform",
+            "lora": {
+              "enabled": false,
+              "rank": 8,
+              "alpha": 16.0,
+              "dropout": 0.0,
+              "target_modules": [
+                "qkv",
+                "proj",
+                "fc1",
+                "fc2"
+              ]
+            }
+          },
+          "transformer_encoder": {
+            "name": "transformer",
+            "enabled": true,
+            "dim": 768,
+            "depth": 8,
+            "num_heads": 12,
+            "head_dim": 64,
+            "ffn_dim": 2048,
+            "rope_dim": 64,
+            "rope_theta": 10000.0,
+            "dropout": 0.0,
+            "attention_type": "mha",
+            "n_kv_heads": null,
+            "ffn_type": "swiglu"
+          },
+          "decoder": {
+            "name": "dpt",
+            "size": "large",
+            "channels": 512,
+            "reassemble_factors": [
+              4.0,
+              2.0,
+              1.0,
+              0.5
+            ]
+          },
+          "dense_head": {
+            "name": "residual",
+            "normalization_groups": 32,
+            "kp": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "seg": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "line": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "semantic_line": {
+              "hidden_channels": 256,
+              "depth": 3
+            }
+          },
+          "name": "court_hierarchical",
+          "in_channels": 3
+        },
+        "target_bundle": {
+          "schema": "court_target_bundle_v1",
+          "targets": [
+            {
+              "kind": "kp",
+              "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+              "output_channels": 14,
+              "channel_names": [
+                "far_doubles_left",
+                "far_doubles_right",
+                "near_doubles_left",
+                "near_doubles_right",
+                "far_singles_left",
+                "near_singles_left",
+                "far_singles_right",
+                "near_singles_right",
+                "far_service_left",
+                "far_service_right",
+                "near_service_left",
+                "near_service_right",
+                "far_service_t",
+                "near_service_t"
+              ],
+              "target_dtype": "float32",
+              "precomputed": false
+            },
+            {
+              "kind": "seg",
+              "schema": "court_cell_segmentation_single_court_v2",
+              "output_channels": 7,
+              "channel_names": [
+                "background",
+                "service_left",
+                "service_right",
+                "back_left",
+                "back_right",
+                "doubles_left",
+                "doubles_right"
+              ],
+              "target_dtype": "int64",
+              "precomputed": true
+            },
+            {
+              "kind": "line",
+              "schema": "court_line_binary_75mm_150mm_single_court_v3",
+              "output_channels": 1,
+              "channel_names": [
+                "court_line"
+              ],
+              "target_dtype": "float32",
+              "precomputed": true
+            },
+            {
+              "kind": "semantic_line",
+              "schema": "court_line_semantic_camera_view_75mm_150mm_single_court_v1",
+              "output_channels": 12,
+              "channel_names": [
+                "background",
+                "far_baseline",
+                "near_baseline",
+                "left_doubles_sideline",
+                "right_doubles_sideline",
+                "left_singles_sideline",
+                "right_singles_sideline",
+                "far_service_line",
+                "near_service_line",
+                "center_service_line",
+                "far_center_mark",
+                "near_center_mark"
+              ],
+              "target_dtype": "int64",
+              "precomputed": true
+            }
+          ]
+        },
+        "short_side": 512,
+        "pose_long_side": true,
+        "patch_size": 16,
+        "epoch": 17,
+        "global_step": 29844
+      },
+      "postprocess": "none",
+      "source_split": "val",
+      "original_split_counts": {
+        "train": 6629,
+        "val": 2211
+      },
+      "test_split_available": false,
+      "source_descriptor_sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+      "source_index_sha256": "31c1f71e57f4575bd0d72491fa65af31467e226c84045fcfaa0784bf7c13982b"
+    }
+  },
+  "test_raw": {
+    "manifest_sha256": "832b9651bf9ce210a39ff5736be91a5ec0589e92f14e51bbe105e31de46bc39e",
+    "samples": 886,
+    "header": {
+      "schema": "court_raw_cache_v1",
+      "checkpoint": {
+        "schema": "court_inference_checkpoint_v1",
+        "checkpoint_path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+        "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+        "backbone_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "backbone_asset_migration": {
+          "layout": "external_dinov3_to_checkpoint",
+          "saved_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+          "runtime_path": "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+          "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt"
+        },
+        "architecture": {
+          "encoder": {
+            "name": "dinov3",
+            "backbone_name": "dinov3_vitb16",
+            "repository_path": "dinov3",
+            "checkpoint_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+            "strict": true,
+            "train_mode": "frozen",
+            "last_n_blocks": 0,
+            "out_indices": [
+              2,
+              5,
+              8,
+              11
+            ],
+            "layer_mode": "uniform",
+            "lora": {
+              "enabled": false,
+              "rank": 8,
+              "alpha": 16.0,
+              "dropout": 0.0,
+              "target_modules": [
+                "qkv",
+                "proj",
+                "fc1",
+                "fc2"
+              ]
+            }
+          },
+          "transformer_encoder": {
+            "name": "transformer",
+            "enabled": true,
+            "dim": 768,
+            "depth": 8,
+            "num_heads": 12,
+            "head_dim": 64,
+            "ffn_dim": 2048,
+            "rope_dim": 64,
+            "rope_theta": 10000.0,
+            "dropout": 0.0,
+            "attention_type": "mha",
+            "n_kv_heads": null,
+            "ffn_type": "swiglu"
+          },
+          "decoder": {
+            "name": "dpt",
+            "size": "large",
+            "channels": 512,
+            "reassemble_factors": [
+              4.0,
+              2.0,
+              1.0,
+              0.5
+            ]
+          },
+          "dense_head": {
+            "name": "residual",
+            "normalization_groups": 32,
+            "kp": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "seg": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "line": {
+              "hidden_channels": 256,
+              "depth": 3
+            },
+            "semantic_line": {
+              "hidden_channels": 256,
+              "depth": 3
+            }
+          },
+          "name": "court_hierarchical",
+          "in_channels": 3
+        },
+        "target_bundle": {
+          "schema": "court_target_bundle_v1",
+          "targets": [
+            {
+              "kind": "kp",
+              "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+              "output_channels": 14,
+              "channel_names": [
+                "far_doubles_left",
+                "far_doubles_right",
+                "near_doubles_left",
+                "near_doubles_right",
+                "far_singles_left",
+                "near_singles_left",
+                "far_singles_right",
+                "near_singles_right",
+                "far_service_left",
+                "far_service_right",
+                "near_service_left",
+                "near_service_right",
+                "far_service_t",
+                "near_service_t"
+              ],
+              "target_dtype": "float32",
+              "precomputed": false
+            },
+            {
+              "kind": "seg",
+              "schema": "court_cell_segmentation_single_court_v2",
+              "output_channels": 7,
+              "channel_names": [
+                "background",
+                "service_left",
+                "service_right",
+                "back_left",
+                "back_right",
+                "doubles_left",
+                "doubles_right"
+              ],
+              "target_dtype": "int64",
+              "precomputed": true
+            },
+            {
+              "kind": "line",
+              "schema": "court_line_binary_75mm_150mm_single_court_v3",
+              "output_channels": 1,
+              "channel_names": [
+                "court_line"
+              ],
+              "target_dtype": "float32",
+              "precomputed": true
+            },
+            {
+              "kind": "semantic_line",
+              "schema": "court_line_semantic_camera_view_75mm_150mm_single_court_v1",
+              "output_channels": 12,
+              "channel_names": [
+                "background",
+                "far_baseline",
+                "near_baseline",
+                "left_doubles_sideline",
+                "right_doubles_sideline",
+                "left_singles_sideline",
+                "right_singles_sideline",
+                "far_service_line",
+                "near_service_line",
+                "center_service_line",
+                "far_center_mark",
+                "near_center_mark"
+              ],
+              "target_dtype": "int64",
+              "precomputed": true
+            }
+          ]
+        },
+        "short_side": 512,
+        "pose_long_side": true,
+        "patch_size": 16,
+        "epoch": 17,
+        "global_step": 29844
+      },
+      "source_split": "test",
+      "split_counts": {
+        "train": 6594,
+        "val": 935,
+        "test": 886
+      },
+      "source_descriptors": {
+        "B00": "f2e37e8ad6df7a1b944ec34580b60c7c26f315ebb2b803273d1e3fd0a080e6ad",
+        "B01": "a2f7ee3a04bb3c6e39732b7917a1af5af0ad093446b36a0f7974e4569f436f4e",
+        "B02": "40f17dd3345570c5f4897d2ee454909a678583e0a8237f4dca352e34cfc9b568",
+        "B03": "84c8195ac34c4cf0a9eb4852ec85e37ce7940a58cc2b29a7637c1fa087d12607"
+      },
+      "checkpoint_training_overlap": "not established; regression test, not an independent generalization claim"
+    }
+  }
+}

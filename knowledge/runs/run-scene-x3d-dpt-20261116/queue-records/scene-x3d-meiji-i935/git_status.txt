@@ -1,0 +1,6 @@
+ M knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json
+?? knowledge/runs/run-scene-x3d-dpt-20261116/environment.json
+?? knowledge/runs/run-scene-x3d-dpt-20261116/runtime-investigation.json
+?? knowledge/runs/run-scene-x3d-dpt-20261116/source-parity.json
+?? knowledge/runs/run-scene-x3d-dpt-20261116/validation-parity-compiled.json
+?? knowledge/runs/run-scene-x3d-dpt-20261116/validation-parity-eager.json

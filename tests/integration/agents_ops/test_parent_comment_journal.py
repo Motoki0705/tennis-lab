@@ -49,10 +49,6 @@ def verify(session, evidence: int, journal) -> None:
         "execution_basis",
         "basis_revoked",
         "child_stopped",
-        "review",
-        "parent-review/result",
-        "parent-review/resolution",
-        "parent-review/evidence",
         "notification_record",
         "notification",
         "completion",
@@ -88,7 +84,7 @@ def test_every_record_family_is_attested_without_a_type_allowlist(
     verify(session, evidence, journal)
 
 
-def test_pr_projection_and_other_parent_receipts_keep_their_scope(
+def test_old_pr_copies_are_display_only_and_other_parents_stay_scoped(
     tmp_path: Path,
 ) -> None:
     session, evidence, writer, journal = setup(tmp_path)
@@ -99,8 +95,7 @@ def test_pr_projection_and_other_parent_receipts_keep_their_scope(
     session.gh.comment_rows[2].clear()
     verify(session, evidence, journal)
     session.gh.comment_rows[100].clear()
-    with pytest.raises(ValueError, match="comment journal"):
-        verify(session, evidence, journal)
+    verify(session, evidence, journal)  # Retired PR display copies are not authority.
 
 
 def test_unreadable_journal_cannot_be_treated_as_an_empty_history(
@@ -121,13 +116,11 @@ def test_unreadable_journal_cannot_be_treated_as_an_empty_history(
         verify(session, evidence, journal)
 
 
-def test_pending_update_intent_does_not_hide_loss_or_post_commit_edits(
-    tmp_path: Path,
-) -> None:
+def test_retired_review_receipts_do_not_gate_control_records(tmp_path: Path) -> None:
     session, evidence, writer, journal = setup(tmp_path)
     digest = importlib.import_module("parent.policy").digest
     atomic = importlib.import_module("worker_logs.journal").atomic
-    c = writer.post_once(session, evidence, "pending bytes", "pending")
+    c = writer.post_once(session, evidence, "old review pending", "pending")
     path = tmp_path / "comment-updates" / f"{digest(['o/r', evidence, c['id']])}.json"
     row = {
         "version": 1,
@@ -137,20 +130,22 @@ def test_pending_update_intent_does_not_hide_loss_or_post_commit_edits(
         "comment_id": c["id"],
         "publisher": "operator",
         "state": "sent",
-        "from_sha256": digest("pending bytes"),
-        "to_sha256": digest("final bytes"),
+        "from_sha256": digest("old review pending"),
+        "to_sha256": digest("old review result"),
     }
     atomic(path, row)
+    original = path.read_bytes()
+    note = writer.post_once(session, evidence, "revocation control", "revocation")
+    session.gh.comment_rows[evidence] = [
+        x for x in session.gh.comment_rows[evidence] if x["id"] != c["id"]
+    ]
     verify(session, evidence, journal)
-    session.gh.comment_rows[evidence][0]["body"] = "final bytes"
-    verify(session, evidence, journal)  # A lost PATCH response is still verifiable.
-    writer.post_once(session, evidence, "final bytes", "final")
-    session.gh.comment_rows[evidence][0]["body"] = "pending bytes"
+    assert path.read_bytes() == original
+    session.gh.comment_rows[evidence][0]["body"] = (
+        '<!-- parent-review:v1 {"kind":"result"} -->'
+    )
     with pytest.raises(ValueError, match="comment journal"):
         verify(session, evidence, journal)
-    session.gh.comment_rows[evidence][0]["body"] = "final bytes"
-    atomic(path, {**row, "state": "bound"})
+    session.gh.comment_rows[evidence][0]["body"] = "revocation control"
     verify(session, evidence, journal)
-    session.gh.comment_rows[evidence][0]["body"] = "pending bytes"
-    with pytest.raises(ValueError, match="comment journal"):
-        verify(session, evidence, journal)
+    assert note["id"] != c["id"]

@@ -37,7 +37,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 親は子のscope・対象外・受入条件・依存・テスト条件・PR作成時点を指示ファイルへ書く。
 モデル選択は [AGENTS.md](../../../AGENTS.md#開発ルール) に従い、通常はSol/max、未解決の数理・幾何アルゴリズムや
 広範囲の統合設計などの高難度の委任では親がAstra/maxを選べる。人間との合意によるモデル指定を優先する。
-選択肢は `agents.conf` の既定・代替の2種で、effortはmax固定。理由は `note`（証拠用Issue）と具体指示へ残す。
+選択肢は `agents.conf` の既定・代替の2種で、通常のeffortはmax固定。[自動進行の修正ターン](README.md#自動進行の修正ターン)はhighを使う。理由は `note`（証拠用Issue）と具体指示へ残す。
 同一委任・sessionの途中では変更せず、利用不可・実効値不一致を別モデルへ振り替えない。
 GPU・Blenderはtraining queueを使い、未指定の資源予算を作らない。
 
@@ -98,44 +98,25 @@ CI待ち・情報不足・権限不足はwaiting、runtime/検証の失敗はfai
 子が追加の修正で進展しない、対象外へ広がる、同じ失敗を繰り返す場合も待機へ移し、
 回数・費用・GPU時間等の未指定の上限を勝手に生成しない。修正・再レビュー・別sessionを無制限に繰り返さない。
 
-## 親単位レビューと順次merge
+## 親単位レビューと自動進行
 
-親が準備できたopen PRの部分集合を選び、明示要求する。自動レビューは作らない。
-同じprivate state、親のCLI identityとghアカウントで既存入口を呼ぶ。
-モデル選択も手動親と同じ[review-request契約](README.md#レビュー要求契約schema-version-3version-1と2の読取互換)を使う。
-通常設定selectでは[モデル選択手順](README.md#正式レビューのモデル選択)に従い、
-親が差分・受入条件・影響先からモデルを選び、1文の理由を `--model-reason-file` で渡す。
-人間の明示指定を優先し、情報不足をSolへの振替にしない。取得・設定の不整合時に別モデルを自動起動しない。
-保存finalの復旧は元run参照をprepareで固定し、新しいモデルへの引継ぎは別runの理由と対応を記録する。
+親が準備できたopen PRの部分集合を選び、[モデル選択](README.md#正式レビューのモデル選択)と根拠を付けて1回依頼する。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  --state-dir "$parent_state" review-request --prs 200 201 \
+  --state-dir "$parent_state" --dispatcher-state-dir "$dispatcher_state" review-request --prs 200 201 \
   --instruction-file tmp/review.md --evidence-file tmp/result.md \
-  --review-model gpt-6-astra --review-effort xhigh \
-  --model-reason-file tmp/review-model-reason.md > tmp/review-request.json
-.venv/bin/python .agents/ops/review/parent_review.py --state-dir "$parent_state" \
-  run --request tmp/review-request.json
+  --review-model gpt-6-astra --review-effort xhigh --model-reason-file tmp/review-model-reason.md
 ```
 
-結果受領を `review-state --state result_received` に記録する。阻害指摘は同じworkerへ戻し、修正diff・最新HEAD・
-CI・回帰テストと指摘解消を親が確認して既存の `parent_review.py resolve`、`review-state --state fixes_verified` に残す。
-指摘がなくても親の確認は必要。coverage不成立・部分結果・失敗を成功にせず、自動再レビューしない。
-重大な対象変更は停止し、必要なら親が理由と新runを明示する。詳細は [review契約](../review/README.md)。
-
-```bash
-.venv/bin/python .agents/ops/review/merge_gate.py --repo owner/repo --parent 123 \
-  --state-dir "$parent_state" merge
-```
-
-既定のdry-runを読み、呼出元環境の `AGENT_AUTO_MERGE` に従う。workflow自身が有効値を設定しない。
-PRへのpushごとにCIを実行し、コミットに `[skip ci]` を付けない。
-gateは対象HEADの `Python` check runの成功を必須とし、coverage/HEAD/CI/依存と、
-親・対象子に含まれる全採用提案の鮮度を検査し、通るPRだけ順次mergeする。
-CI未完了・失敗・取消・欠落・別HEADのPRは理由付きで停止し、条件を満たす独立PRから進める。
-応答喪失・試行済みheadはremoteと試行journalを照合し、記録を消して再mergeしない。
+親はwaitingへ戻り、保存された自動進行イベントで再開する。CLIがCI待機と修正worker、gate、merge後確認を担当する。
+major・判断要求を受けた親は必要な修正を同じworkerへ依頼し、`merge-continue` する。追加レビューは親が `--rereview` を指定したときだけ。
+中断後も親の明示続行で保存段階から再開する。状態・通知・上限・復旧は [review README](../review/README.md) を正本とする。
+呼出元の `AGENT_AUTO_MERGE` とneeds-humanを維持し、workflow自身では有効化しない。pushごとにCIを実行し `[skip ci]` を付けない。
 
 ## 待機・完了・担当終了
+
+切替前にmerge済みの子を含む親は、[既存成果の後確認](../review/README.md#切替前にmerge済みの成果)で完了判定に必要な記録を揃える。
 
 worker終了イベントでのログ保存と公開失敗の照合・再開は [workerログ保存](../worker_logs/README.md) を参照する。
 親自身の操作・再試行・引継ぎを含む結果と判断は [判断記録](../decision_logs/README.ja.md#親の判断を明示記録する)へ結び、
@@ -174,7 +155,7 @@ Path("tmp/report.json").write_text(json.dumps(report, ensure_ascii=False))
 ```
 
 CLIは現在の根拠/要件・記録済み検証・全対象issueのclosed/completed・open PRの不在・
-実mergeのHEAD/branch/repo・gateの試行journal・公開/ローカルの親レビュー・子の終了を照合する。
+実mergeのHEAD/branch/repo・自動進行のmerge後確認記録・子の終了を照合する。
 dry-run結果、子の成功JSON、PR作成やチェック数だけではcompletedを返さない。
 親に子がある場合はsyncで進捗を照合するが、未closeの親テーマを勝手にcloseしない。
 自律親は生存中にreleaseせず、最終イベント受領後にsupervisorが当該job/権限のfinish receiptも照合して担当をendedへ移す。
@@ -183,7 +164,7 @@ waiting/failedは担当を保持し、子終了イベントまたは理由付き
 単独issue自身がmergeでclosed/completedになり、最終イベントを返す前に親が中断した場合も、同じstateで
 `dispatcher resume --parent N --reason-file tmp/resume.md` を明示する。supervisorは通常の実行枠・入力鮮度に加え、
 終了済みの直前の親runtimeと受理済みsession、実行根拠・担当generation・現在の実装委任IDと保存jobの一致、
-全workerの終了、対応PRの実merge/close・gateの試行journal・親レビュー・検証記録を再照合してから予約を起動する。
+全workerの終了、対応PRの実merge/close・自動進行のmerge後確認記録・検証記録を再照合してから予約を起動する。
 直接実装には実装worker・委任IDを要求せず、同じ成果・レビュー・mergeの証拠を照合する。
 これは子を持たない単独issueの終了照合への復帰であり、初回の親起動と実装子の起動にはopenが必要なまま。
 再開後もbootstrapのacceptを通し、残るProject更新・全体受入の確認とworkflow-reportを終えて最終JSONを返す。

@@ -1,0 +1,24 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 1 item
+
+tests/unit/tasks/court_detection/geometry/test_paint_refinement.py F     [100%]
+
+=================================== FAILURES ===================================
+________ test_successful_fit_with_uncertain_projection_is_not_accepted _________
+
+    def test_successful_fit_with_uncertain_projection_is_not_accepted():
+        image, matrix, _ = painted_court(partial=True)
+        result = refine_paint(image, matrix, replace(PaintConfig(), max_projection_std_px=.01))
+        assert result.fitted_matrix is not None
+>       assert result.matrix is None and "uncertain_paint_extrapolation" in result.quality.reasons
+E       assert (array([[2.79922741e+01, 2.99829629e+00, 1.39757219e+02],\n       [1.03523133e+00, 1.39973409e+01, 2.39660958e+02],\n       [2.07975175e-03, 9.81897019e-04, 1.00000000e+00]]) is None)
+E        +  where array([[2.79922741e+01, 2.99829629e+00, 1.39757219e+02],\n       [1.03523133e+00, 1.39973409e+01, 2.39660958e+02],\n       [2.07975175e-03, 9.81897019e-04, 1.00000000e+00]]) = PaintResult(matrix=array([[2.79922741e+01, 2.99829629e+00, 1.39757219e+02],\n       [1.03523133e+00, 1.39973409e+01, 2....al_matrix=array([[2.8e+01, 3.0e+00, 1.4e+02],\n       [1.0e+00, 1.4e+01, 2.4e+02],\n       [2.0e-03, 1.0e-03, 1.0e+00]])).matrix
+
+tests/unit/tasks/court_detection/geometry/test_paint_refinement.py:61: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_successful_fit_with_uncertain_projection_is_not_accepted
+============================== 1 failed in 4.21s ===============================

@@ -1,0 +1,77 @@
+{
+  "cases": [
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam0",
+      "condition": "fixed_support",
+      "status": "accepted",
+      "region": [
+        0,
+        0,
+        1920,
+        810
+      ],
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam0",
+      "condition": "fixed_support_rgb",
+      "status": "rejected",
+      "region": null,
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam1",
+      "condition": "fixed_support",
+      "status": "accepted",
+      "region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam1",
+      "condition": "fixed_support_rgb",
+      "status": "rejected",
+      "region": null,
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam2",
+      "condition": "fixed_support",
+      "status": "accepted",
+      "region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam2",
+      "condition": "fixed_support_rgb",
+      "status": "rejected",
+      "region": null,
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam3",
+      "condition": "fixed_support",
+      "status": "rejected",
+      "region": null,
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam3",
+      "condition": "fixed_support_rgb",
+      "status": "rejected",
+      "region": null,
+      "matches_offline": true
+    }
+  ],
+  "seconds": 123.2039815900207,
+  "model_forward": "frozen decoded heads, no CUDA"
+}
