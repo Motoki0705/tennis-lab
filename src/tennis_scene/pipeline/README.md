@@ -81,7 +81,8 @@ cache hitのnodeも需要を消費するが借用しない。明示的な`load` 
 
 共有対象はCourt、DINO、Ball、ViTPose、CLIP（追跡・選別の画像推論経路・人物対応）、HMR2、GVHMR、
 身体配置のSMPL-X/変換行列/関節・root regressor。tracker・AFLink・時系列入力は共有モデルへ混ぜない。
-追跡はViTPoseとCLIP、現行GVHMR nodeはHMR2とGVHMRを同時に必要とする。
+追跡はViTPoseとCLIPを同時に必要とする。HMR2画像特徴とGVHMRは別nodeで処理し、
+HMR2の最終需要の後に解放してからGVHMRの時系列推論へ進める。
 依存に従ってモデルの段階をまとめ、全モデルを常時GPUへ載せない。
 途中targetsで`run()`を分けるとcontextごとに解放し、次の実行で必要なモデルは新しいpassとして読み込む。
 単独の`execute(key)`も1nodeで寿命を閉じる。処理済みartifactは再計算しない。
@@ -112,7 +113,7 @@ ball_points＋court → court_side（ballだけのhalf-turn仮説検定）
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
 ball_points＋camera → ball_triangulation
-人物対応＋2D観測＋camera → body_view_selection → gvhmr
+人物対応＋2D観測＋camera → body_view_selection → hmr2_features → gvhmr
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
 
@@ -170,7 +171,20 @@ ball検出を無効にした構成では実行できず、definition構築時に
 `camera_alignment`は決まったsideを1仮説として、人物とballの観測で絶対的な整合性だけを再検証する。
 
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
-`gvhmr`はHMR画像特徴とGVHMRだけを実行する。SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。
+`hmr2_features`は選択済みの人物cropからHMR2画像特徴を生成する（`hmr2_features` schema v1）。
+成果物はclip ID、人物ID、camera ID、source動画のSHA-256、選択順のsegment番号、
+segment内のsource frame番号とfloat32 `(L,1024)`特徴を保持する。sourceの動画path・サイズ・frame範囲と
+選択結果を推論前に照合し、人物やsegmentをまたいで時系列を連結しない。
+crop前処理・batch上限・重みは従来と同じHMR2 wrapperを使い、clipをまたぐbatch化は行わない。
+
+`gvhmr`は`body_view_selection`と保存済み`hmr2_features`を受け取り、clip・人物・camera・source動画・
+segment・frameの対応をモデル起動前に検証する。特徴の欠損・不一致を画像からの再推論で補わない。
+既存のsegment単位で時系列推論し、`body_parameters` schema v2を保存する。
+`body_placement`もv2を要求する。旧v1はexecuteで再生成し、loadではschema不一致として停止する。
+SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。
+`execution.hmr2_features=execute|load`は他nodeと同じcache・依存照合に従い、
+単一clipと複数clip計画は共通の`standard_definition`・assembler・runtimeを使う。
+HMR2・GVHMR・body geometry資産は各段階の最終需要まで共有し、人物ごとには読み直さない。
 
 ## ball検出証拠
 

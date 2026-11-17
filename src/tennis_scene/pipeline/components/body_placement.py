@@ -87,7 +87,7 @@ class BodyPlacementModule(InferenceComponent[BodyPlacementInput, BodyPlacementOu
         self.io = ComponentIO("body_placement", BodyPlacementInput, BodyPlacementOutput,
             {"alignment": InputPort("aligned_cameras"), "calibration": InputPort("local_court_calibration"),
              "identities": IDENTITIES_PORT, "skeleton": InputPort("player_skeletons"),
-             "recovered": InputPort("body_parameters"), **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "placed_bodies")
+             "recovered": InputPort("body_parameters", version=2), **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "placed_bodies")
 
     def model_specs(self) -> dict[str, ModelSpec[SmplGeometry]]:
         weights = {k: v for k, v in self.models.body_assets().items() if k not in {"hmr2", "gvhmr"}}

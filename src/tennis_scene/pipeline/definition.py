@@ -26,6 +26,7 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.components.court_side import CourtSideModule
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
+from src.tennis_scene.pipeline.components.hmr2_features import HMR2FeaturesModule
 from src.tennis_scene.pipeline.components.identity import PlayerAssociationModule
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
 from src.tennis_scene.pipeline.components.person_tracking import (
@@ -46,6 +47,7 @@ from src.tennis_scene.pipeline.input_assembly.body import (
     BodyPlacementInputAssembler,
     BodyViewSelectionInputAssembler,
     GVHMRInputAssembler,
+    HMR2FeaturesInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     BallDetectionInputAssembler,
@@ -120,7 +122,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     def body_assets() -> dict[str, Any]:
         if body_enabled:
             cfg.people.smpl_assets.require_files()
-        return asset_identities(body_enabled, cfg.people.body_assets())
+        assets: dict[str, Any] = asset_identities(body_enabled, cfg.people.body_assets())
+        return assets
 
     for camera in ids:
         add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
@@ -195,8 +198,14 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("body_view_selection", BodyViewSelectionModule(ids, max_frames=cfg.sampling_max_frames, enabled=body_enabled),
         BodyViewSelectionInputAssembler(cfg.human_vis_threshold), reconstructed,
         lambda: {"policy": "coverage_confidence_camera_id", "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "enabled": body_enabled})
-    add("gvhmr", GVHMRModule(cfg.people, enabled=body_enabled), GVHMRInputAssembler(), {"selection": "body_view_selection"},
-        lambda: {"assets": body_assets(), "runtime": cfg.people.runtime.hmr2, "enabled": body_enabled})
+    add("hmr2_features", HMR2FeaturesModule(cfg.people, enabled=body_enabled), HMR2FeaturesInputAssembler(),
+        {"selection": "body_view_selection"}, lambda: {
+            "assets": asset_identities(body_enabled, {"checkpoint": cfg.people.hmr2_checkpoint,
+                "mean_params": cfg.people.smpl_assets.hmr2_mean_params}),
+            "runtime": cfg.people.runtime.hmr2, "enabled": body_enabled})
+    add("gvhmr", GVHMRModule(cfg.people, enabled=body_enabled), GVHMRInputAssembler(),
+        {"selection": "body_view_selection", "features": "hmr2_features"},
+        lambda: {"assets": body_assets(), "static_cam": cfg.people.runtime.static_cam, "enabled": body_enabled})
     add("body_placement", BodyPlacementModule(ids, cfg.people, cfg.player_placement,
         reprojection_px=cfg.player_reprojection_px, enabled=body_enabled), BodyPlacementInputAssembler(cfg.human_vis_threshold),
         {**reconstructed, "skeleton": "player_triangulation", "recovered": "gvhmr"},

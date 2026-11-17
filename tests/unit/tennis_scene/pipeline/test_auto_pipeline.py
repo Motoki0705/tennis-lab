@@ -316,6 +316,15 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
                 tuple(RecoveredBodySegment(request.source_frames, body.recover(request), count)
                     for request, count in zip(selected.requests, selected.observed_samples, strict=True)))
                 for selected in inputs.selection.selections))
+    from src.tennis_scene.pipeline.components.hmr2_features import (
+        HMR2FeaturesModule,
+        HMR2FeaturesOutput,
+    )
+    class KnownFeatures:
+        io = HMR2FeaturesModule.io
+        def process(self, inputs):
+            return HMR2FeaturesOutput(inputs.source.clip_id, ())
+    stages["hmr2_features"] = KnownFeatures()
     stages["gvhmr"] = KnownGVHMR()
     monkeypatch.setattr("src.tennis_scene.pipeline.components.body_placement.SmplGeometry", lambda config: body)
     config = replace(pipeline.config, enabled={**pipeline.config.enabled, "gvhmr": True}, processing_settings={**pipeline.config.processing_settings, "gvhmr": {"enabled": True}})

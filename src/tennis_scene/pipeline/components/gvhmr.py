@@ -1,4 +1,4 @@
-"""HMR image features and GVHMR only; detections and view choices are inputs."""
+"""GVHMR temporal inference over persisted, source-checked HMR2 image features."""
 
 from __future__ import annotations
 
@@ -9,17 +9,16 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.submodules.models import (
-    GvhmrMeshRecovery,
-    GvhmrRequest,
-    Hmr2FeatureExtractor,
-    ImageFeatureRequest,
-)
+from src.submodules.models import GvhmrMeshRecovery, GvhmrRequest
 from src.tennis_scene.pipeline.body_types import BodyParameters
 from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionOutput,
 )
-from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort
+from src.tennis_scene.pipeline.components.hmr2_features import (
+    HMR2FeaturesOutput,
+    validate_body_selection,
+)
+from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
 from src.tennis_scene.pipeline.inference_runtime import (
     InferenceComponent,
     ModelBorrower,
@@ -49,12 +48,28 @@ class GVHMROutput:
 
 @dataclass(frozen=True)
 class GVHMRInput:
+    source: ClipSource
     selection: BodyViewSelectionOutput
+    features: HMR2FeaturesOutput
+
+    def validate(self) -> None:
+        validate_body_selection(self.source, self.selection)
+        if self.features.clip_id != self.source.clip_id or len(self.features.bodies) != len(self.selection.selections):
+            raise ValueError("HMR2 features do not match the selected clip/persons")
+        for selected, body in zip(self.selection.selections, self.features.bodies, strict=True):
+            video = self.source.video(selected.camera_id)
+            if (body.person_id, body.camera_id, body.video_sha256) != (selected.person_id, selected.camera_id, video.sha256):
+                raise ValueError("HMR2 features do not match the selected person/camera/source")
+            if len(body.segments) != len(selected.requests):
+                raise ValueError("HMR2 features do not match the selected segments")
+            for index, (request, segment) in enumerate(zip(selected.requests, body.segments, strict=True)):
+                if segment.segment_index != index or not np.array_equal(segment.source_frames, request.source_frames):
+                    raise ValueError("HMR2 features do not match the selected segment/source frames")
 
 
 class GVHMRModule(InferenceComponent[GVHMRInput, GVHMROutput]):
     io = ComponentIO("gvhmr", GVHMRInput, GVHMROutput,
-        {"selection": InputPort("body_view_selection")}, "body_parameters")
+        {"selection": InputPort("body_view_selection"), "features": InputPort("hmr2_features")}, "body_parameters", version=2)
 
     def __init__(self, config: PeopleModelConfig, *, enabled: bool = True) -> None:
         self.config, self.enabled = config, enabled
@@ -64,11 +79,6 @@ class GVHMRModule(InferenceComponent[GVHMRInput, GVHMROutput]):
         if not self.enabled:
             return {}
         return {
-            "features": ModelSpec("hmr2", {"checkpoint": config.hmr2_checkpoint, "mean_params": config.smpl_assets.hmr2_mean_params},
-                "hmr2_vit_huge", config.runtime.device, "float32", {"runtime": config.runtime.hmr2},
-                lambda: Hmr2FeatureExtractor(config.hmr2_checkpoint, device=config.runtime.device,
-                    batch_size=config.runtime.hmr2.batch_size, mean_params_path=config.smpl_assets.hmr2_mean_params),
-                initialize=lambda model: model.load(), release=lambda model: model.unload()),
             "mesh": ModelSpec("gvhmr", {k: v for k, v in config.body_assets().items() if k != "hmr2"},
                 "gvhmr", config.runtime.device, "float32", {"static_cam": config.runtime.static_cam},
                 lambda: GvhmrMeshRecovery(config.gvhmr_checkpoint, config.body_models_dir,
@@ -77,19 +87,17 @@ class GVHMRModule(InferenceComponent[GVHMRInput, GVHMROutput]):
         }
 
     def process_with_models(self, inputs: GVHMRInput, models: ModelBorrower) -> GVHMROutput:
-        if not self.enabled or not inputs.selection.selections:
+        if not self.enabled:
             return GVHMROutput(())
-        features: Hmr2FeatureExtractor = models.borrow("features")
-        model: GvhmrMeshRecovery = models.borrow("mesh")
+        inputs.validate()
         bodies: list[RecoveredBody] = []
-        for selected in inputs.selection.selections:
+        for selected, image in zip(inputs.selection.selections, inputs.features.bodies, strict=True):
             segments: list[RecoveredBodySegment] = []
-            for request, observed_samples in zip(selected.requests, selected.observed_samples, strict=True):
+            for request, observed_samples, segment in zip(selected.requests, selected.observed_samples, image.segments, strict=True):
                 boxes = torch.from_numpy(np.array(request.boxes_xys, copy=True))
-                image = features.predict(ImageFeatureRequest(request.video_path, boxes,
-                    frame_indices=torch.from_numpy(np.array(request.source_frames, copy=True))))
+                model: GvhmrMeshRecovery = models.borrow("mesh")
                 result = model.predict(GvhmrRequest(kp2d=torch.from_numpy(np.array(request.keypoints, copy=True)),
-                    bbx_xys=boxes, f_imgseq=image.features, width=request.size[0], height=request.size[1],
+                    bbx_xys=boxes, f_imgseq=torch.from_numpy(np.array(segment.features, copy=True)), width=request.size[0], height=request.size[1],
                     static_cam=True, K_fullimg=torch.from_numpy(request.intrinsic.astype(np.float32))))
                 params = result.smpl_params_incam
                 parameters = BodyParameters(**{name: params[name].detach().float().cpu().numpy() for name in ("body_pose", "global_orient", "betas", "transl")})
