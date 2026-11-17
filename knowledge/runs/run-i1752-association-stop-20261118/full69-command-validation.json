@@ -1,0 +1,14 @@
+{
+  "command_composed": true,
+  "pipeline_started": false,
+  "dataset_directory": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset",
+  "video_id": "video_000",
+  "clip_ids": null,
+  "pipeline_config": "pipeline_x3d_dpt",
+  "ball_model": "x3d_csn_dpt",
+  "court_mode": "video_shared",
+  "sampling_max_frames": 2048,
+  "continue_on_error": true,
+  "overwrite": true,
+  "over_sampling_limit": []
+}

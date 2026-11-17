@@ -1,0 +1,35 @@
+{
+  "passed": 536,
+  "failed": 0,
+  "seconds": 89.47,
+  "CUDA_VISIBLE_DEVICES": "",
+  "workers": 4,
+  "new_entry_tests": 44,
+  "max_entry_function_cases": 6,
+  "over_five_seconds": [
+    {
+      "node": "tests.integration.tennis_scene.test_video_batch::test_one_plan_reuses_each_model_once_and_records_real_batch_sizes[3]",
+      "seconds": 5.871
+    },
+    {
+      "node": "tests.e2e.tennis_scene.test_video_batch_cli::test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure[False]",
+      "seconds": 10.051
+    },
+    {
+      "node": "tests.e2e.tennis_scene.test_video_batch_cli::test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure[True]",
+      "seconds": 8.959
+    }
+  ],
+  "raw_logs": [
+    {
+      "path": ".worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-runtime-20261117/final-cpu.log",
+      "bytes": 357503,
+      "sha256": "b1c79ed7c0b658190db0062d0e8655305e272e6803750fde895b2a0e02a27443"
+    },
+    {
+      "path": ".worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-runtime-20261117/final-cpu.xml",
+      "bytes": 85859,
+      "sha256": "7e324660f9c7bac40bfb35005ea97a55085a73e1761b08b85ffd8a64e451e85f"
+    }
+  ]
+}
