@@ -1,0 +1,25 @@
+Starting main
+main: failed, exit=1
+{"at_utc": "2026-11-17T17:12:46.318498+00:00", "elapsed_seconds": 0.0005775769996034796, "event": "backend_load_start", "model": "dino"}
+{"at_utc": "2026-11-17T17:12:46.318601+00:00", "elapsed_seconds": 0.0006809699998484575, "event": "backend_load_return", "model": "dino", "seconds": 0.0001036649991874583}
+{
+  "status": "passed",
+  "cases": [
+    "health_query_success",
+    "query_timeout_stops_without_retry",
+    "nvml_error_keeps_full_stderr",
+    "normal_child_completes",
+    "ordinary_failure_is_not_mislabelled_by_cuda_metadata",
+    "first_cuda_failure_is_recorded",
+    "stalled_child_records_time_and_stops",
+    "diagnostic_exception_still_terminates_child",
+    "no_runtime_process_after_main_failure",
+    "all_thread_stacks_and_gpu_report_precede_sigterm",
+    "diagnostic_full_stdout_and_stderr_are_saved",
+    "diagnostic_error_is_saved_without_retry",
+    "diagnostic_timeout_is_saved_without_retry",
+    "profile_does_not_compile_or_initialize_cuda"
+  ],
+  "count": 14,
+  "cuda_initialized": false
+}
