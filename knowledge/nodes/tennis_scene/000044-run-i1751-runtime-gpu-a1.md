@@ -77,3 +77,8 @@ agentの正常終了だけを実行成功と読み替えていない。
 
 `summary_impact: none`。標準pipelineのcheckpoint、X3Dの採否、3D精度に関する現行判断を変える
 証拠は得ていない。TensorBoardの学習曲線は対象外の推論受入試行である。
+
+再現入口の保存: queueが生成した原本は `queue-repro.sh` にbyte単位で保存し、
+`run.json`・元command・patchも変更していない。`repro.sh` は保存bundleのscriptを新しいoutputsへ
+コピーして使う追加adapterで、推論sourceの固定HEAD確認は元の `run_pair.py` が行う。
+queue外からの起動は拒否する。GPU受入は停止中のため、親の再開判断前には実行しない。

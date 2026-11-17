@@ -71,3 +71,8 @@ serviceのPATHにWSLの `nvidia-smi` がなく、両variantとも計測subproces
 
 `summary_impact: none`。計測環境の起動失敗であり、標準pipelineと明示X3D profileの採否・
 3D精度の判断を更新しない。TensorBoard学習曲線は対象外。
+
+再現入口の保存: queueが生成した原本は `queue-repro.sh` にbyte単位で保存し、
+`run.json`・元command・patchも変更していない。`repro.sh` は保存bundleのscriptを新しいoutputsへ
+コピーして使う追加adapterで、推論sourceの固定HEAD確認は元の `run_pair.py` が行う。
+queue外からの起動は拒否する。GPU受入は停止中のため、親の再開判断前には実行しない。
