@@ -44,6 +44,7 @@ execution:
 court_kp:
   mode: clip
   video_shared:
+    unobservable_policy: warn
     action: null
     directory: null
     dataset_id: null

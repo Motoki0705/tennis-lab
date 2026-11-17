@@ -153,6 +153,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     def shared_settings(camera_id: str) -> dict[str, Any]:
         assert video_court is not None
         return {'mode': 'video_shared', 'camera_artifact_digest': video_court.camera_digest(camera_id),
+                'unobservable_policy': cfg.video_court_unobservable_policy,
                 'drift_artifact_digest': drift_identity(video_court).get('camera_digests', {}).get(camera_id)}
 
     for camera in ids:
@@ -160,7 +161,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
                 lambda: {"config": cfg.processing_settings["court_kp"], "checkpoint": file_identity(cfg.court_kp.checkpoint)}, camera=camera)
         else:
-            add(f"court_detection/{camera}", SharedCourtModule(), SharedCourtAssembler(video_court), {},
+            add(f"court_detection/{camera}", SharedCourtModule(cfg.video_court_unobservable_policy), SharedCourtAssembler(video_court), {},
                 partial(shared_settings, camera), camera=camera)
     if not cfg.enabled["ball_detection"] and cfg.cache_source != "load":
         if cfg.component_sources["court_side"] != "load" and "court_side" not in overrides:

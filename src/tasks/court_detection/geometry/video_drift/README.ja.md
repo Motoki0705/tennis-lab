@@ -10,6 +10,8 @@
 
 変位meanから2stdを引いて3px超なら `camera_moved_possible` のwarning。信頼できるmeanが10px超またはmaxが25px超なら失敗。検査不能も失敗。変位は診断用であり、下流へ渡すコートは共通Hのまま。
 
+これは保存する**測定の判定**である。pipelineの明示設定 `unobservable_policy=warn`（既定）は検査不能を警告として利用し、`fail` は厳格な拒否を維持する。確かな10/25px超過は引き続き失敗。方針を適用しても測定値と元の判定を保持する。詳細は[実行方針](../../../../tennis_scene/pipeline/video_court/README.ja.md)を参照。
+
 `summarize_clip` は全frameを保持し、失敗・warning・okの順で最悪frameを選ぶ。時間平均や同じ姿勢の仮定は使わない。未測定frameは保証できない。4自由度で表せない実際のprojectiveな動きも矛盾として失敗しうるので、失敗だけからcameraの移動有無は断定しない。
 
 最低支持と不確かさは人工開発集合で凍結した。[run 78](../../../../../knowledge/nodes/court_detection/000078-run-court-video-drift-lines-20261117.md)に独立評価、frame選択と限界を残す。保存・明示loadは[動画成果物の境界](../../../../tennis_scene/pipeline/video_court/README.ja.md)を参照。

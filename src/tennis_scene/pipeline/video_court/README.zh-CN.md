@@ -23,7 +23,7 @@ build当前使用固定hash的**冻结模型候选**，不运行新的神经网�
 
 `run.json`记录bundle及camera digest。load不需要Court checkpoint，不检测、不build、不自动修复。camera内容hash进入clip court node identity，bundle camera引用进入dataset marker identity。改变一个camera会失效其court和下游node，同一实现下独立的人物和球root可复用。既有全局Python fingerprint在代码改变时仍使所有组件cache失效。
 
-公共H不成立、局部漂移不可观测或超过限制时显式失败。一致的3px以上移动产生warning；可信局部H与公共H的平均差超过10px或最大差超过25px时失败。阈值按1920×1080缩放。稀疏诊断帧不能排除帧间移动。不分段，也不替换为局部H。
+公共H不成立时失败。一致的3px以上移动产生warning；可信测量的平均位移超过10px或最大位移超过25px时失败。使用 `court_kp.video_shared.unobservable_policy: warn|fail` 明确处理不可观测状态。默认 `warn` 将不可观测和线冲突记录为带原因与帧号的警告并使用公共H；`fail` 保持严格拒绝。可靠的超限位移在两种策略下都失败。阈值按1920×1080缩放。片段中途的相机移动可能无法自动检测。不分段，也不替换为局部H。
 
 共享观测使用schema v3，记录应用到frame 0的坐标和视频来源，校正不将它改称直接frame 0观测。固定几何import、direct annotation和旧ball3d reader显式拒绝共享来源。
 
@@ -34,3 +34,5 @@ build当前使用固定hash的**冻结模型候选**，不运行新的神经网�
 加载原H时设 `action=load`，并同时指定 `court_kp.video_shared.drift_directory` 和 `drift_digest`。两者都为null时显式使用原v1内嵌诊断。缺少其中一项、对象损坏或共享H不匹配均报错，不退回旧诊断。多片段计划使用orchestrator的 `prepare_video_court()` 返回的同一诊断成果物及一致配置。
 
 片段缓存包含原camera digest与诊断camera digest；dataset marker也包含诊断引用。receipt和球场观测保留两个digest及每帧判定。仅诊断改变时重新计算对应球场节点及下游，共享H内容哈希不变。原build格式和v1诊断保留用于历史复现。
+
+执行策略也进入court node和发布identity；切换后重新计算consumer，但H与诊断bundle均不改变。`policy.apply_drift_policy` 保留原始 `measurement_status`、数值和原因，再汇总执行判定。receipt与gallery显示策略、原因及帧号，不把无法观测当作已证实静止。默认策略依据[run 78的人类共享H确认](../../../../knowledge/nodes/court_detection/000078-run-court-video-drift-lines-20261117.md)。

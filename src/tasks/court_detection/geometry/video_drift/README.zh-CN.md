@@ -10,6 +10,8 @@
 
 平均位移减去两倍标准差超过3px时给出 `camera_moved_possible` 警告；可靠的平均位移超过10px或最大位移超过25px时失败。无法观测也失败。下游始终使用原共享H。
 
+以上是保存的**测量判定**。pipeline的显式 `unobservable_policy=warn` 默认将不可观测作为警告继续使用共享H，`fail` 保持严格拒绝。可靠的10/25px超限仍失败，策略应用保留测量数值和原始状态。参见[执行策略](../../../../tennis_scene/pipeline/video_court/README.zh-CN.md)。
+
 `summarize_clip` 保留所有帧，以失败、警告、正常的顺序取最坏判定。不进行时间平均，也不假设各帧姿态相同。未采样帧没有安全保证。真实的投影运动可能超出四参数模型，因此模型矛盾不能单独证明相机移动或静止。
 
 支持量及不确定性阈值在人工开发集上冻结后再评价。证据见[run 78](../../../../../knowledge/nodes/court_detection/000078-run-court-video-drift-lines-20261117.md)，保存和显式加载见[视频成果物入口](../../../../tennis_scene/pipeline/video_court/README.zh-CN.md)。

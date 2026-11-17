@@ -137,7 +137,10 @@ def test_warning_keeps_shared_geometry_and_is_visible_in_receipt_and_overlay(tmp
     pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
     receipt = json.loads((root / 'run.json').read_text())
     assert receipt['status'] != 'failed'
-    assert receipt['video_court']['clip_diagnostics']['cam0'] == warning
+    effective = receipt['video_court']['clip_diagnostics']['cam0']
+    assert effective['status'] == warning['status']
+    assert effective['unobservable_policy'] == 'warn'
+    assert effective['frames'][0]['measurement_status'] == warning['frames'][0]['status']
     assert receipt['video_court']['clip_diagnostics']['cam1']['status'] == 'ok'
     messages = []
     original_text = gallery._text
@@ -186,10 +189,15 @@ def test_corruption_is_rejected_even_with_complete_clip_cache_and_records_failur
     assert json.loads((root / 'run.json').read_text())['status'] == 'failed'
 
 
-@pytest.mark.parametrize('failure', ['no_h', 'drift'])
+@pytest.mark.parametrize('failure', ['no_h', 'drift', 'tolerance'])
 def test_failed_camera_never_calls_clip_detector_or_uses_another_camera(tmp_path, monkeypatch, failure):
     pipeline, paths, _, docs, store, _ = shared_fixture(tmp_path, monkeypatch)
     docs['cam1']['clips'][CLIPS[0]] = report(failed=True)
+    if failure == 'drift':
+        pipeline.config = replace(pipeline.config, video_court_unobservable_policy='fail')
+    elif failure == 'tolerance':
+        docs['cam1']['clips'][CLIPS[0]]['frames'][0].update(reason='camera_drift_exceeds_tolerance',
+                                                         mean_displacement_px=11., max_displacement_px=12.)
     if failure == 'no_h':
         docs['cam1']['status'], docs['cam1']['matrix'] = 'failed', None
         docs['cam1']['clips'] = {clip: report(failed=True) for clip in CLIPS}
@@ -443,7 +451,7 @@ def test_separate_drift_changes_consumers_and_marker_without_mutating_shared_h(t
         standard_definition(pipeline.config, sources[0], code_identity='fixed', video_court=base)
 
 
-def test_separate_drift_unobservable_is_failure_even_if_embedded_report_was_ok(tmp_path, monkeypatch):
+def test_explicit_fail_policy_rejects_unobservable_even_if_embedded_report_was_ok(tmp_path, monkeypatch):
     from dataclasses import asdict
 
     from src.tasks.court_detection.geometry.video_drift import (
@@ -458,7 +466,7 @@ def test_separate_drift_unobservable_is_failure_even_if_embedded_report_was_ok(t
     frame.update(status='failed', reason='drift_unobservable')
     reports['cam0'][CLIPS[0]] = summarize_clip([frame])
     artifact = publish_video_drift(base, tmp_path / 'drift', protocol={'settings': asdict(DriftConfig())}, reports=reports)
-    pipeline.config = replace(pipeline.config, video_court_drift=artifact.drift)
+    pipeline.config = replace(pipeline.config, video_court_drift=artifact.drift, video_court_unobservable_policy='fail')
     with pytest.raises(ReconstructionUnavailable, match='cam0'):
         pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=tmp_path / 'clip', clip_id=CLIPS[0])
     assert pipeline.last_receipt['error_diagnostics']['drift_digest'] == artifact.drift_manifest['cameras']['cam0']
@@ -564,4 +572,72 @@ def test_runtime_configuration_loads_both_pinned_court_and_drift_references(tmp_
     assert cfg.video_court.artifact_digest == 'a' * 64
     assert cfg.video_court_drift.digest == 'b' * 64
     assert cfg.video_court_drift.directory.name == 'drift'
-    assert cfg.processing_settings['court_kp'] == {'mode': 'video_shared'}
+    assert cfg.video_court_unobservable_policy == 'warn'
+    assert cfg.processing_settings['court_kp'] == {'mode': 'video_shared', 'unobservable_policy': 'warn'}
+
+
+def test_warn_policy_uses_h_and_keeps_unobservable_frames_in_receipt_and_gallery(tmp_path, monkeypatch):
+    from dataclasses import asdict
+
+    from src.tasks.court_detection.geometry.video_drift import (
+        DriftConfig,
+        summarize_clip,
+    )
+    from src.tennis_scene.pipeline.video_court.diagnostics import publish_video_drift
+    from src.tennis_scene.visualization.review import gallery
+
+    pipeline, paths, _, _, store, base = shared_fixture(tmp_path, monkeypatch)
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
+    snapshots = {p: p.read_bytes() for p in (store.root / 'objects').glob('*.json')}
+    reports = independent_drift_reports(base)
+    frame = reports['cam0'][CLIPS[0]]['frames'][0]
+    frame.update(status='failed', reason='drift_unobservable', geometry_reasons=['non_similarity_or_conflicting_line'],
+                 mean_displacement_px=None, max_displacement_px=None, max_visible_projection_std_px=None)
+    reports['cam0'][CLIPS[0]] = summarize_clip([frame])
+    artifact = publish_video_drift(base, tmp_path / 'drift', protocol={'settings': asdict(DriftConfig())}, reports=reports)
+    pipeline.config = replace(pipeline.config, video_court_drift=artifact.drift)
+    root = tmp_path / 'clip'
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    warn_identity = pipeline.publication_identity()
+    receipt = pipeline.last_receipt['video_court']
+    output = pipeline.last_runner.output('court_detection/cam0')
+    assert receipt['unobservable_policy'] == 'warn'
+    assert receipt['clip_diagnostics']['cam0'] == output.diagnostics['drift']
+    assert output.diagnostics['drift']['status'] == 'warning'
+    assert output.diagnostics['drift']['frames'][0]['measurement_status'] == 'failed'
+    assert output.diagnostics['drift']['frames'][0]['frame_index'] == 3
+    assert output.diagnostics['drift']['frames'][0]['mean_displacement_px'] is None
+    assert artifact.drift_cameras['cam0']['clips'][CLIPS[0]]['status'] == 'failed'
+    assert snapshots == {p: p.read_bytes() for p in (store.root / 'objects').glob('*.json')}
+    monkeypatch.setattr(gallery.Review, 'frame', lambda *args: np.zeros((720, 1280, 3), np.uint8))
+    review = gallery.Review(root / 'scene.json', tmp_path / 'review')
+    payload, _ = review.payload('court_detection/cam0')
+    _, details = review.render_court_detection('court_detection/cam0', 'cam0', payload)
+    assert dict(details)['drift'] == 'warning' and dict(details)['unobservable policy'] == 'warn'
+    assert 'f3: drift_unobservable' in dict(details)['diagnostic frames']
+    pipeline.config = replace(pipeline.config, video_court_unobservable_policy='fail')
+    assert pipeline.publication_identity() != warn_identity
+    # The completed warn cache must not bypass the explicit strict policy.
+    with pytest.raises(ReconstructionUnavailable, match='cam0'):
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    assert pipeline.last_receipt['video_court']['clip_diagnostics']['cam0']['status'] == 'failed'
+
+
+def test_policy_change_invalidates_court_descendants_but_reuses_independent_roots(tmp_path, monkeypatch):
+    pipeline, paths, _, _, _, artifact = shared_fixture(tmp_path, monkeypatch)
+    root = tmp_path / 'clip'
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    original = pipeline.last_runner.output('court_detection/cam0').keypoints.copy()
+    pipeline.config = replace(pipeline.config, video_court_unobservable_policy='fail')
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    assert all(pipeline.last_runner.statuses[f'court_detection/{camera}'] == 'executed' for camera in CAMERAS)
+    assert pipeline.last_runner.statuses['court_calibration'] == pipeline.last_runner.statuses['scene_assembly'] == 'executed'
+    assert pipeline.last_runner.statuses['person_detection/cam0'] == pipeline.last_runner.statuses['ball_detection/cam0'] == 'cached'
+    np.testing.assert_array_equal(pipeline.last_runner.output('court_detection/cam0').keypoints, original)
+    assert pipeline.last_receipt['video_court']['artifact_digest'] == artifact.digest
+
+
+@pytest.mark.parametrize('policy', ['ignore', 'null'])
+def test_unknown_unobservable_policy_is_rejected_by_configuration(tmp_path, policy):
+    with pytest.raises((ValueError, TypeError)):
+        runtime(tmp_path, overrides=(f'court_kp.video_shared.unobservable_policy={policy}',))

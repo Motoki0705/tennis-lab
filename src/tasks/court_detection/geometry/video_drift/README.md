@@ -29,6 +29,12 @@ Mean displacement minus two standard deviations above 3px gives
 maximum above 25px fails. Unobservable frames also fail. The estimated transform
 is diagnostic only: downstream coordinates always use the original shared H.
 
+These are immutable **measurement** verdicts. The pipeline's explicit
+`unobservable_policy=warn` default consumes unobservable measurements as warnings;
+`fail` preserves strict rejection. Reliable 10/25px failures remain failures.
+Policy application preserves the measured values and their original statuses.
+See the [execution policy](../../../../tennis_scene/pipeline/video_court/README.md).
+
 `summarize_clip(frames)` retains every measured frame and chooses the worst
 verdict (failure before warning before ok). It never pools temporal observations
 or assumes equal camera poses across frames. Sparse sampling cannot certify

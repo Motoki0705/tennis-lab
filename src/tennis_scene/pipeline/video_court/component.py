@@ -20,6 +20,7 @@ from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.utils.geometry.keypoints import normalize_grid_keypoints
 
 from .diagnostics import clip_report, drift_identity
+from .policy import apply_drift_policy, validate_unobservable_policy
 from .store import VideoCourtArtifact
 
 
@@ -52,9 +53,13 @@ class SharedCourtAssembler:
 class SharedCourtModule:
     io = ComponentIO('court_detection', SharedCourtInput, CourtKPResult, {}, 'court_observations', 3)
 
+    def __init__(self, unobservable_policy: str) -> None:
+        self.unobservable_policy = validate_unobservable_policy(unobservable_policy)
+
     def process(self, inputs: SharedCourtInput) -> CourtKPResult:
         camera, video = inputs.camera, inputs.video
-        report = camera['clips'][inputs.clip_id] if inputs.drift_report is None else inputs.drift_report
+        measured = camera['clips'][inputs.clip_id] if inputs.drift_report is None else inputs.drift_report
+        report = apply_drift_policy(measured, self.unobservable_policy, common_status=camera['status'])
         if camera['status'] != 'accepted' or report['status'] == 'failed':
             raise ReconstructionUnavailable('video_shared_court_failed', f'Shared court unavailable for {inputs.clip_id}/{video.camera_id}',
                                             diagnostics={'camera_id': video.camera_id, 'camera_status': camera['status'],
@@ -69,6 +74,7 @@ class SharedCourtModule:
         shared = {'dataset_id': camera['dataset_id'], 'video_id': camera['video_id'], 'camera_id': video.camera_id,
                   'artifact_digest': inputs.artifact_digest,
                   'drift_digest': inputs.drift_digest,
+                  'unobservable_policy': self.unobservable_policy,
                   'selected_initializer': camera['diagnostics'].get('selected_initializer'),
                   'fit_frames': camera['diagnostics'].get('fit_frames', [])}
         diagnostic = {'schema': 'court_kp_quality_v3', 'output_keypoint_contract': 'camera_view_v2',

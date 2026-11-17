@@ -27,6 +27,7 @@ from src.tennis_scene.pipeline.video_court.diagnostics import (
     drift_identity,
     load_video_drift,
 )
+from src.tennis_scene.pipeline.video_court.policy import apply_drift_policy
 from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
@@ -73,6 +74,7 @@ class TennisSceneOrchestrator:
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
             "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             **({'video_court_cameras': shared.manifest['cameras'],
+                'video_court_unobservable_policy': cfg.video_court_unobservable_policy,
                 'video_court_drift_cameras': drift_identity(shared).get('camera_digests', {})} if shared is not None else {})}
 
     def prepare_video_court(self) -> VideoCourtArtifact | None:
@@ -116,7 +118,10 @@ class TennisSceneOrchestrator:
                 self.last_receipt['video_court'] = {'directory': str(shared.root), 'artifact_digest': shared.digest,
                                                    'camera_digests': shared.manifest['cameras'],
                                                    'drift_artifact': drift_identity(shared),
-                                                   'clip_diagnostics': json_value({camera: clip_report(shared, camera, source.clip_id)
+                                                   'unobservable_policy': self.config.video_court_unobservable_policy,
+                                                   'clip_diagnostics': json_value({camera: apply_drift_policy(
+                                                       clip_report(shared, camera, source.clip_id), self.config.video_court_unobservable_policy,
+                                                       common_status=shared.cameras[camera]['status'])
                                                                                   for camera in source.camera_ids})}
             direct = self.config.direct_annotation
             workflow = None

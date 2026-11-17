@@ -287,8 +287,11 @@ class Review(StoreReader):
         diagnostics = value['diagnostics']
         caption = None
         if diagnostics.get('temporal_policy') == 'static_video_shared':
-            reasons = sorted({frame['reason'] for frame in diagnostics['drift']['frames'] if frame.get('reason')})
-            caption = f"video shared | {diagnostics['drift']['status']} | {', '.join(reasons) or 'applied at frame 0'}"
+            reasons = [f"f{frame['frame_index']}: {frame['reason']}"
+                       + (f" ({', '.join(frame['geometry_reasons'])})" if frame.get('geometry_reasons') else '')
+                       for frame in diagnostics['drift']['frames'] if frame.get('reason')]
+            policy = diagnostics['drift'].get('unobservable_policy', 'stored measurement')
+            caption = f"video shared | {diagnostics['drift']['status']} | {policy} | {', '.join(reasons) or 'applied at frame 0'}"
         def draw(image: np.ndarray, _: int) -> None:
             for index, (point, score) in enumerate(zip(points, visible, strict=True)):
                 if score <= 0:
@@ -301,7 +304,9 @@ class Review(StoreReader):
         if diagnostics.get('temporal_policy') == 'static_video_shared':
             return [image], [('source', 'video shared; applied at frame 0'),
                              ('artifact', diagnostics['shared_court']['artifact_digest']),
-                             ('drift', diagnostics['drift']['status']), ('visible keypoints', f'{_count(visible)}/14')]
+                             ('drift', diagnostics['drift']['status']),
+                             ('unobservable policy', diagnostics['drift'].get('unobservable_policy', 'stored measurement')),
+                             ('diagnostic frames', '; '.join(reasons)), ('visible keypoints', f'{_count(visible)}/14')]
         return [image], [("observed frame", "0 only"), ("visible keypoints", f"{_count(visible)}/14"),
                          ("joint fitting", str(frame.get("status", "unknown")))]
 

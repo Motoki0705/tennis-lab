@@ -35,7 +35,7 @@ requestのJSONと候補のfield一覧は[英語版の入力契約](README.md)を
 
 `run.json` はbundleとcameraのdigestを記録する。loadではCourt checkpoint、検出、build、暗黙修復は不要。camera内容hashがclipのcourt node identityへ入り、bundleのcamera参照がdataset marker identityへ入る。1cameraの変更はそのcourtと依存nodeを無効化し、同じ実装の人物・ボールrootは再利用できる。既存のPython全体fingerprintによる実装変更時の全cache無効化は維持する。
 
-共通Hが成立しないcameraと、信頼できない／大きく動いたclipは明示的に失敗する。整合する3px超はwarning、信頼できる測定変位が平均10px超または最大25px超なら失敗。drift不明も失敗。閾値は1920×1080からscaleする。少数の診断frame間での動きは保証できない。区間分割・局所Hへの置換はしない。
+共通H不成立は失敗。整合する3px超はwarning、信頼できる測定変位が平均10px超または最大25px超なら失敗する。`court_kp.video_shared.unobservable_policy: warn|fail` で検査不能の扱いを明示する。既定の `warn` は検査不能・線の矛盾を理由とframe付きの警告として共通Hを使い、`fail` は厳格な失敗判定を維持する。確かな閾値超過はどちらも失敗。閾値は1920×1080からscaleする。clipの途中でcameraが動いた場合、自動では検出されないことがある。区間分割・局所Hへの置換はしない。
 
 共有観測はschema v3で、frame 0へ適用した座標と動画来歴を持つ。校正は直接のframe 0観測と呼び替えない。固定幾何import・direct annotation・旧ball3d readerは共有来歴を明示的に拒否する。
 
@@ -46,3 +46,5 @@ requestのJSONと候補のfield一覧は[英語版の入力契約](README.md)を
 元の共通Hを `action=load` し、`court_kp.video_shared.drift_directory` と `drift_digest` の両方を追加すると新診断を使う。両方nullなら明示的に元のv1埋込み診断を使う。片方だけ・破損・別の共通Hへの診断はエラーで、旧診断へ戻さない。orchestratorの `prepare_video_court()` が返す診断付き成果物と、同じruntime設定を複数clip計画にも渡す。
 
 clip cacheは元のcamera digestと診断camera digestを別々に持ち、dataset markerにも診断参照を含める。receiptとcourt観測へ両digestと全frame判定を残す。診断だけ変わると対象courtと下流を再計算し、共通Hの内容hashは変わらない。元のbuild形式とv1診断は過去の再現用に保持する。
+
+実行方針もcourt nodeと公開identityに含める。切替時はconsumerを再計算し、H・診断bundleは変更しない。`policy.apply_drift_policy` は元の `measurement_status`・値・理由を保持し、適用後の判定を集計する。receiptとgalleryは方針・理由・frameを示す。検査不能を静止確認済みとは扱わない。既定値の根拠は[run 78の人間による共通H承認](../../../../knowledge/nodes/court_detection/000078-run-court-video-drift-lines-20261117.md)を参照。

@@ -83,10 +83,14 @@ Pass its artifact to `standard_definition(..., video_court=artifact)` for each
 single-clip and existing dataset entry points. The future batch CLI owns its
 connection to this API; this module does not implement that CLI or model lifetime.
 
-Camera failure and unreliable/drifting clips are explicit failures. A coherent
-shift above 3px is a warning; reliable measured displacement above mean 10px or
-maximum 25px fails the camera/clip. Unobservable drift also fails. Limits scale
-from 1920×1080. Sparse diagnostic sampling cannot rule out motion between samples.
+An unavailable common H remains a failure. A coherent shift above 3px is a
+warning; reliable measured displacement above mean 10px or maximum 25px fails
+the camera/clip. Limits scale from 1920×1080. Set
+`court_kp.video_shared.unobservable_policy` to `warn` (default) or `fail`.
+`warn` uses the shared H when drift is unobservable or observed lines conflict,
+preserving the reason and frame as a warning; `fail` retains strict rejection.
+Neither policy changes a reliable tolerance failure. Camera motion partway
+through a clip may go undetected by the automatic check.
 There is no time segmentation or local-H substitution. Shared court observations
 use schema v3, with derived frame-zero coordinates and explicit video provenance;
 calibration does not relabel them as a direct frame-zero observation.
@@ -126,3 +130,11 @@ The receipt and court observation record both digests and every frame verdict.
 Changing a camera's diagnostic invalidates that court and its descendants while
 the immutable geometry digest stays unchanged. The original build format and
 its embedded v1 diagnostic remain readable for historical reproduction.
+
+The execution policy is also part of court-node and publication identities.
+Changing it recalculates court consumers while both immutable bundles remain
+unchanged. `policy.apply_drift_policy` preserves each frame's
+`measurement_status`, values and reasons, then aggregates the effective verdict.
+Receipts and gallery views expose the policy and affected frames. This does not
+certify that an unobservable camera stayed still. The default follows the human
+approval of the shared H documented in [run 78](../../../../knowledge/nodes/court_detection/000078-run-court-video-drift-lines-20261117.md).
