@@ -109,6 +109,40 @@ def test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_che
         FixedGeometryImporter(tmp_path / 'unused.json', 'a' * 64).bind_nodes(specs[0].nodes)
 
 
+def test_warning_keeps_shared_geometry_and_is_visible_in_receipt_and_overlay(tmp_path, monkeypatch):
+    from src.tennis_scene.visualization.review import gallery
+
+    pipeline, paths, _, docs, store, original = shared_fixture(tmp_path, monkeypatch)
+    warning = docs['cam0']['clips'][CLIPS[0]]
+    warning['status'] = 'warning'
+    warning['frames'][0].update(status='warning', reason='camera_moved_possible',
+                                mean_displacement_px=5., max_displacement_px=5.)
+    with store.lock():
+        artifact = store.publish(docs)
+    np.testing.assert_array_equal(artifact.cameras['cam0']['matrix'], original.cameras['cam0']['matrix'])
+    pipeline.config = replace(pipeline.config, video_court=replace(pipeline.config.video_court, artifact_digest=artifact.digest))
+    root = tmp_path / 'scene'
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    receipt = json.loads((root / 'run.json').read_text())
+    assert receipt['status'] != 'failed'
+    assert receipt['video_court']['clip_diagnostics']['cam0'] == warning
+    assert receipt['video_court']['clip_diagnostics']['cam1']['status'] == 'ok'
+    messages = []
+    original_text = gallery._text
+
+    def record_text(frame, message, at, color=(255, 255, 255)):
+        messages.append(message)
+        original_text(frame, message, at, color)
+
+    monkeypatch.setattr(gallery, '_text', record_text)
+    monkeypatch.setattr(gallery.Review, 'frame', lambda *args: np.zeros((720, 1280, 3), np.uint8))
+    review = gallery.Review(root / 'scene.json', tmp_path / 'review')
+    payload, _ = review.payload('court_detection/cam0')
+    _, details = review.render_court_detection('court_detection/cam0', 'cam0', payload)
+    assert dict(details)['drift'] == 'warning'
+    assert any('warning' in text and 'camera_moved_possible' in text for text in messages)
+
+
 def test_camera_content_change_invalidates_its_court_and_descendants_only(tmp_path, monkeypatch):
     pipeline, paths, _, docs, store, artifact = shared_fixture(tmp_path, monkeypatch)
     root = tmp_path / 'clip-store'

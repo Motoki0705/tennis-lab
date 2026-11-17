@@ -106,7 +106,9 @@ class TennisSceneOrchestrator:
             if shared is not None:
                 shared.bind(source)
                 self.last_receipt['video_court'] = {'directory': str(shared.root), 'artifact_digest': shared.digest,
-                                                   'camera_digests': shared.manifest['cameras']}
+                                                   'camera_digests': shared.manifest['cameras'],
+                                                   'clip_diagnostics': json_value({camera: shared.cameras[camera]['clips'][source.clip_id]
+                                                                                  for camera in source.camera_ids})}
             direct = self.config.direct_annotation
             workflow = None
             if direct is not None:
