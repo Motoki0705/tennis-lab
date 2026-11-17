@@ -1,0 +1,11 @@
+{
+  "camera_clips": 276,
+  "diagnostic_frames": 1380,
+  "first_overlays": 276,
+  "diagnostic_overlays": 1380,
+  "native_crop_pairs": 6624,
+  "seconds": 237.7925272640132,
+  "human_reviewed": false,
+  "reference_sha256": "90ed3bbdeae4a553cf82c9fb13c49ee56cf45e17f0436b0c30ae83929de08e4b",
+  "source_rgb_hashes_verified": 1380
+}

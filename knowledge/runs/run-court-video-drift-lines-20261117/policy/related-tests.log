@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-video-shared
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [508 items]
+
+........................................................................ [ 14%]
+........................................................................ [ 28%]
+........................................................................ [ 42%]
+........................................................................ [ 56%]
+........................................................................ [ 70%]
+........................................................................ [ 85%]
+........................................................................ [ 99%]
+....                                                                     [100%]
+============================= slowest 12 durations =============================
+65.88s call     tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]
+62.83s call     tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]
+24.33s call     tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit
+5.80s call     tests/unit/tennis_scene/visualization/review/test_gallery.py::test_gallery_renders_every_declared_component_without_writing_the_store
+4.34s call     tests/integration/tennis_scene/test_video_court.py::test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint[False]
+3.99s call     tests/integration/tennis_scene/test_video_court.py::test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint[True]
+3.95s call     tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity
+2.79s call     tests/integration/tennis_scene/test_video_court.py::test_camera_content_change_invalidates_its_court_and_descendants_only
+2.41s call     tests/integration/tennis_scene/test_video_court.py::test_separate_drift_changes_consumers_and_marker_without_mutating_shared_h
+2.30s call     tests/integration/tennis_scene/test_video_court.py::test_policy_change_invalidates_court_descendants_but_reuses_independent_roots
+1.77s call     tests/integration/tennis_scene/test_video_court.py::test_warning_keeps_shared_geometry_and_is_visible_in_receipt_and_overlay
+1.55s call     tests/integration/tennis_scene/test_video_court.py::test_corruption_is_rejected_even_with_complete_clip_cache_and_records_failure
+======================= 508 passed in 202.22s (0:03:22) ========================

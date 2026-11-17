@@ -68,6 +68,12 @@ from src.tennis_scene.pipeline.model_assets import asset_identities as asset_ide
 from src.tennis_scene.pipeline.model_assets import file_identity as file_identity
 from src.tennis_scene.pipeline.model_resources import appearance_model
 from src.tennis_scene.pipeline.runner import ComponentNode
+from src.tennis_scene.pipeline.video_court.component import (
+    SharedCourtAssembler,
+    SharedCourtModule,
+)
+from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
+from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -76,7 +82,7 @@ if TYPE_CHECKING:
 
 
 def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_identity: str,
-                        overrides: dict[str, Any] | None = None) -> tuple[ComponentNode, ...]:
+                        overrides: dict[str, Any] | None = None, video_court: VideoCourtArtifact | None = None) -> tuple[ComponentNode, ...]:
     """Overrides select implementations through the same declarations, including tests.
 
     ``settings`` of a standard component are built lazily so that asset
@@ -84,6 +90,13 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     for components that are not overridden.
     """
     ids = source.camera_ids
+    if (cfg.video_court is None) != (video_court is None):
+        raise ValueError('Shared court must be prepared explicitly before building the clip plan')
+    if video_court is not None:
+        video_court.bind(source)
+        requested_drift = None if cfg.video_court_drift is None else cfg.video_court_drift.digest
+        if drift_identity(video_court).get('artifact_digest') != requested_drift:
+            raise ValueError('Execution plan drift artifact disagrees with explicit configuration')
     nodes: list[ComponentNode] = []
     overrides = {} if overrides is None else overrides
 
@@ -120,11 +133,22 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     def body_assets() -> dict[str, Any]:
         if body_enabled:
             cfg.people.smpl_assets.require_files()
-        return asset_identities(body_enabled, cfg.people.body_assets())
+        identities: dict[str, Any] = asset_identities(body_enabled, cfg.people.body_assets())
+        return identities
+
+    def shared_settings(camera_id: str) -> dict[str, Any]:
+        assert video_court is not None
+        return {'mode': 'video_shared', 'camera_artifact_digest': video_court.camera_digest(camera_id),
+                'unobservable_policy': cfg.video_court_unobservable_policy,
+                'drift_artifact_digest': drift_identity(video_court).get('camera_digests', {}).get(camera_id)}
 
     for camera in ids:
-        add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
-            lambda: {"config": cfg.processing_settings["court_kp"], "checkpoint": file_identity(cfg.court_kp.checkpoint)}, camera=camera)
+        if video_court is None:
+            add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
+                lambda: {"config": cfg.processing_settings["court_kp"], "checkpoint": file_identity(cfg.court_kp.checkpoint)}, camera=camera)
+        else:
+            add(f"court_detection/{camera}", SharedCourtModule(cfg.video_court_unobservable_policy), SharedCourtAssembler(video_court), {},
+                partial(shared_settings, camera), camera=camera)
     if not cfg.enabled["ball_detection"] and cfg.cache_source != "load":
         if cfg.component_sources["court_side"] != "load" and "court_side" not in overrides:
             raise ValueError("court_side decides sides from the ball alone; it requires ball_detection.enabled or execution.court_side=load")
@@ -142,7 +166,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add(f"ball_points/{camera}", BallPointsModule(cfg.ball_smoothing), BallPointsInputAssembler(),
             {"detections": f"ball_detection/{camera}"},
             lambda: {"point": "motion_consensus_loess_observed_only", "smoothing": cfg.ball_smoothing}, camera=camera)
-    add("court_calibration", CourtCalibrationModule(ids, cfg.camera_geometry, roi_margins=cfg.person_roi_margins), CourtCalibrationInputAssembler(),
+    add("court_calibration", CourtCalibrationModule(ids, cfg.camera_geometry, roi_margins=cfg.person_roi_margins,
+        court_schema_version=3 if video_court is not None else 2), CourtCalibrationInputAssembler(),
         {c: f"court_detection/{c}" for c in ids}, lambda: {"geometry": cfg.camera_geometry, "roi": cfg.person_roi_margins, "enabled": people_enabled})
     for camera in ids:
         add(f"person_detection/{camera}", PersonDetectionModule(cfg.people, enabled=people_enabled,
@@ -211,7 +236,7 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     """Every model asset the standard recipe reads for the enabled features."""
     people, body = cfg.enabled["person_observations"], cfg.enabled["gvhmr"]
     return {
-        **({"court": cfg.court_kp.checkpoint} if cfg.direct_annotation is None else {}),
+        **({"court": cfg.court_kp.checkpoint} if cfg.direct_annotation is None and cfg.video_court is None else {}),
         **({"ball": cfg.ball_detection.checkpoint} if cfg.ball_detection is not None else {}),
         **({"detector": cfg.people.dino_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),

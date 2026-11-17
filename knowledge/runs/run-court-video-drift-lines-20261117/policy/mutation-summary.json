@@ -1,0 +1,8 @@
+{
+  "mutation": "Allow reliable tolerance failure to become warning",
+  "node": "tests/unit/tennis_scene/pipeline/video_court/test_policy.py::test_reliable_tolerance_failure_dominates_unobservable_warnings",
+  "mutant_failed_cases": 2,
+  "restored_passed_cases": 2,
+  "restored_source_sha256": "96e274d3b3f58a3eb3c6e01b491cc00bf51e0939178eadb395670e0fdae3aa27",
+  "source_restored": true
+}

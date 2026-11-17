@@ -162,7 +162,7 @@ class Review(StoreReader):
         return tuple(sorted(set(min(self.frame_count - 1, index) for index in standard)))
 
     def sheet(self, node: str, camera: str, draw: Callable[[np.ndarray, int], None], *,
-              frames: tuple[int, ...] | None = None) -> str:
+              frames: tuple[int, ...] | None = None, caption: str | None = None) -> str:
         cells: list[np.ndarray] = []
         for index in self.samples() if frames is None else frames:
             image = self.frame(camera, index)
@@ -170,6 +170,9 @@ class Review(StoreReader):
             cell = cv2.resize(image, (720, 405), interpolation=cv2.INTER_AREA)
             cv2.rectangle(cell, (0, 0), (719, 43), (25, 33, 39), -1)
             _text(cell, f"{camera} | frame {index}", (12, 31))
+            if caption is not None:
+                cv2.rectangle(cell, (0, 43), (719, 81), (25, 33, 39), -1)
+                _text(cell, caption, (12, 71), (40, 210, 255))
             cells.append(cell)
         columns = min(3, len(cells))
         blank = np.full_like(cells[0], 245)
@@ -276,11 +279,19 @@ class Review(StoreReader):
         return labels
 
 
-    @renders("court_detection", "court_observations", 2)
+    @renders("court_detection", "court_observations", (2, 3))
     def render_court_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         points, visible = _array(value["keypoints"])[0, 0], _array(value["visibility"])[0, 0]
         if _array(value["frame_indices"]).tolist() != [0]:
-            raise ValueError("Court reviewer expects an actual frame-zero observation")
+            raise ValueError("Court reviewer expects frame-zero coordinates")
+        diagnostics = value['diagnostics']
+        caption = None
+        if diagnostics.get('temporal_policy') == 'static_video_shared':
+            reasons = [f"f{frame['frame_index']}: {frame['reason']}"
+                       + (f" ({', '.join(frame['geometry_reasons'])})" if frame.get('geometry_reasons') else '')
+                       for frame in diagnostics['drift']['frames'] if frame.get('reason')]
+            policy = diagnostics['drift'].get('unobservable_policy', 'stored measurement')
+            caption = f"video shared | {diagnostics['drift']['status']} | {policy} | {', '.join(reasons) or 'applied at frame 0'}"
         def draw(image: np.ndarray, _: int) -> None:
             for index, (point, score) in enumerate(zip(points, visible, strict=True)):
                 if score <= 0:
@@ -288,9 +299,14 @@ class Review(StoreReader):
                 pixel = tuple(np.rint(point * (np.asarray(self.size) - 1)).astype(int))
                 cv2.circle(image, pixel, 8, (40, 210, 255), -1)
                 _text(image, str(index), (pixel[0] + 9, pixel[1] - 9), (40, 210, 255))
-        image = self.sheet(node, camera, draw, frames=(0,))
-        diagnostics = value["diagnostics"]
+        image = self.sheet(node, camera, draw, frames=(0,), caption=caption)
         frame = diagnostics["cameras"][0]["frames"][0]
+        if diagnostics.get('temporal_policy') == 'static_video_shared':
+            return [image], [('source', 'video shared; applied at frame 0'),
+                             ('artifact', diagnostics['shared_court']['artifact_digest']),
+                             ('drift', diagnostics['drift']['status']),
+                             ('unobservable policy', diagnostics['drift'].get('unobservable_policy', 'stored measurement')),
+                             ('diagnostic frames', '; '.join(reasons)), ('visible keypoints', f'{_count(visible)}/14')]
         return [image], [("observed frame", "0 only"), ("visible keypoints", f"{_count(visible)}/14"),
                          ("joint fitting", str(frame.get("status", "unknown")))]
 
