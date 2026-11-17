@@ -1,0 +1,19 @@
+{
+  "focused_cases": 32,
+  "focused_passed": 32,
+  "max_case_total_seconds": 0.804,
+  "max_parametrize_expansion": 7,
+  "setup_durations_display": "all 0.00 seconds at pytest rounding precision",
+  "regression_passed": 272,
+  "regression_wall_seconds": 30.69,
+  "mutation": {
+    "change": "Reverse HMR2 feature rows without changing source-frame metadata",
+    "node": "tests/unit/tennis_scene/pipeline/components/test_hmr2_features.py::test_features_preserve_asymmetric_people_segments_source_frames_and_values",
+    "result": "Failed on expected feature values (2 of 3 rows differ, max absolute difference 4); restored node passed."
+  },
+  "validator": {
+    "requested": 0,
+    "attempted": 0,
+    "completed": 0
+  }
+}
