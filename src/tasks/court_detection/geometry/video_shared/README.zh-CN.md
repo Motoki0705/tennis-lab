@@ -11,10 +11,13 @@
 - `observations.measure_frame`从白色条带的两侧边缘提出投影网格，并用其他线验证。
   `endpoints.measure_endings`测量有限线段内外。看不到端点不代表线条在这里结束。
 - `fit.fit_common_court`对线、clip、frame等权处理，要求底线和发球线的端点证据。
+  只有两条横线时还要求中间发球线来确定顺序。多帧残差保留给drift诊断；线p95的6px条件用于单帧局部fit的可靠性。
   失败时`SharedFit.matrix`为None；单独的`fitted_matrix`仅用于诊断。优化收敛不足以采纳结果。
+- `fit.choose_common_solution`要求有效解的全部14点在3px内一致，再按残差选择。产品采用此策略。
 - `consensus.merge_measurements`双向核对实际条带，在原始frame/线分组内合并测量。
   不平均H的矩阵系数，也不把重复初值当作新frame。
 - `drift.inspect_drift`考虑线的相关不确定性，利用诊断局部H报告警告、失败或不可观测。
+  不确定性只使用局部fit保留的线。记录每条测量线相对公共H的有符号中位残差、p95及排除标记。
   不替换共享H。3/10/25px按1920×1080的对角线缩放；`SharedPaintConfig`和`PaintConfig`
   中的白线测量容差使用原图像素。
 

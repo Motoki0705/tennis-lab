@@ -6,7 +6,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import Any, Literal, cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -44,6 +44,7 @@ from src.tennis_scene.pipeline.feature_flags import (
     validate_requested_features,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.video_court.prepare import VideoCourtConfig
 from src.tennis_scene.visualization.blender.export.bundle import BlenderBundleConfig
 from src.tennis_scene.visualization.blender.export.placement import (
     PlacementExportConfig,
@@ -76,10 +77,6 @@ _PATH_FIELDS = {
     )
 }
 PATHS_SCHEMA = StrictConfigSchema(name="tennis_scene.paths", fields=_PATH_FIELDS)
-
-
-if TYPE_CHECKING:
-    from src.tennis_scene.pipeline.video_court.prepare import VideoCourtConfig
 
 
 def _mapping(value: object, *, name: str) -> Mapping[str, object]:
@@ -348,7 +345,7 @@ class PipelineRuntimeConfig:
     ball_method: str
     direct_annotation: DirectAnnotationConfig | None
     clip_id: str | None
-    video_court: VideoCourtConfig | None = None
+    video_court: VideoCourtConfig | None
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -375,8 +372,6 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Cache source must be execute/load; load forbids overwrite")
         cache_directory = resolver.resolve(PathRole.ARTIFACT, cast(str, cache["directory"]))
         court = _mapping(value["court_kp"], name="court_kp")
-        from src.tennis_scene.pipeline.video_court import VideoCourtConfig
-
         if court['mode'] not in {'clip', 'video_shared'}:
             raise SemanticConfigurationError('court_kp.mode must be clip or video_shared')
         shared_values = _mapping(court['video_shared'], name='court_kp.video_shared')

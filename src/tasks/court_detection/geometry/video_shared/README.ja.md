@@ -11,10 +11,14 @@
 - `observations.measure_frame`は白色stripeの両edgeからgridを提案し、残る線で検査する。
   `endpoints.measure_endings`は有限線分の内外を測る。未観測の端を「ここで終わる」根拠にはしない。
 - `fit.fit_common_court`は線・clip・frameを均等に重み付けし、baseline/serviceの端の根拠を要求する。
+  横線が2本ならcentre service線で順序も確認する。複数frameの残差はdrift診断へ残し、
+  線p95の6px条件は単一frameの局所fitの信頼性に適用する。
   失敗時の`SharedFit.matrix`はNone。別の`fitted_matrix`は診断用で、収束だけでは採用しない。
+- `fit.choose_common_solution`は有効解の全14点が3px以内で一致することを要求し、残差で選ぶ。製品はこの方式を使う。
 - `consensus.merge_measurements`は実際のstripeを双方向に照合し、元frame/線の群の中で測定を統合する。
   H行列の係数を平均せず、初期値の重複を新しいframeとして数えない。
 - `drift.inspect_drift`は線の相関を考慮した不確かさと診断用局所Hから、warning/失敗/検査不能を返す。
+  不確かさには局所fitで使用した線だけを使う。各測定線の共通Hに対する符号付き中央値・p95を、除外フラグとともに保存する。
   共通Hは置き換えない。3/10/25pxは1920×1080の対角長を基準に拡縮し、
   `SharedPaintConfig`と`PaintConfig`の白線測定の許容値は元画像pixelで指定する。
 
