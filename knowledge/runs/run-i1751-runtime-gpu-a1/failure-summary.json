@@ -1,0 +1,20 @@
+{
+  "commit": "486aa1ab09be857909d0fcf8c2b616c75a53f5b0",
+  "status": "failed",
+  "error_type": "FailOnRecompileLimitHit",
+  "error": "Hard failure due to fullgraph=True",
+  "wall_seconds": 184.00129055499565,
+  "backend_load_counts": {
+    "court": 3,
+    "ball": 2
+  },
+  "peak_allocated_bytes": 1387587584,
+  "peak_reserved_bytes": 1992294400,
+  "device_memory_peak_mib": 3265,
+  "allocated_after_gc_bytes": 149758464,
+  "queue_terminal_state": "failed",
+  "queue_exit_code": 143,
+  "queue_wait_reason": "signal",
+  "runtime_variant_started": false,
+  "acceptance_evidence": false
+}

@@ -2,7 +2,7 @@
 id: run-video-batch-input-qualification-20261116
 type: run
 task: tennis_scene
-sequence: 45
+sequence: 53
 recorded_at: '2026-11-16'
 date: '2026-11-16'
 title: meiji_4camの追加8clipもCourt cam3で停止
@@ -51,7 +51,7 @@ tags:
 - negative-result
 ---
 
-既定のCourt検出で全cameraを通過できる入力を選ぶため、meiji_4camで書き出し・登録済みのclip_003〜010を順に調べた。候補8件すべてがcam3でCourtRegionUnavailableとなり、完走候補は得られなかった。これは[固定3clipでの停止](000044-run-video-batch-baseline-20261116.md)と同じ未解決点を補強する結果であり、summaryの判断は変わらないためsummary_impactはnoneとする。
+既定のCourt検出で全cameraを通過できる入力を選ぶため、meiji_4camで書き出し・登録済みのclip_003〜010を順に調べた。候補8件すべてがcam3でCourtRegionUnavailableとなり、完走候補は得られなかった。これは[固定3clipでの停止](000052-run-video-batch-baseline-20261116.md)と同じ未解決点を補強する結果であり、summaryの判断は変わらないためsummary_impactはnoneとする。
 
 カメラ順はcam3→cam1→cam0→cam2。1cameraで不成立なら残りを実行せず次clipへ進み、最初の全4camera成立例、または8候補で終了する計画を実行前に子issueへ記録した。全例が最初のcam3で止まったので、ほかのcameraの成立可否はこのrunでは未測定である。既定モデル・閾値・精度・clip境界は変えていない。Court predictorを保持してframe0を確認する入力選定であり、このrunのtimingやload回数を現行clip逐次実行の基準値へ混ぜない。
 

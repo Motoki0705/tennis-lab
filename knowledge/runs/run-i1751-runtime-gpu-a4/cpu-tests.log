@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [354 items]
+
+........................................................................ [ 20%]
+........................................................................ [ 40%]
+........................................................................ [ 61%]
+........................................................................ [ 81%]
+..................................................................       [100%]
+============================= slowest 10 durations =============================
+4.63s call     tests/integration/tennis_scene/test_video_court.py::test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint[True]
+4.26s call     tests/integration/tennis_scene/test_video_court.py::test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint[False]
+3.77s call     tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs
+2.95s call     tests/integration/tennis_scene/test_model_runtime_plan.py::test_node_failure_unloads_before_a_new_execution[KeyboardInterrupt]
+2.94s call     tests/integration/tennis_scene/test_video_court.py::test_separate_drift_changes_consumers_and_marker_without_mutating_shared_h
+2.83s call     tests/integration/tennis_scene/test_model_runtime_plan.py::test_node_failure_unloads_before_a_new_execution[ValueError]
+2.64s call     tests/integration/tennis_scene/test_video_court.py::test_camera_content_change_invalidates_its_court_and_descendants_only
+2.62s call     tests/integration/tennis_scene/test_video_court.py::test_policy_change_invalidates_court_descendants_but_reuses_independent_roots
+2.59s call     tests/integration/tennis_scene/test_model_runtime_plan.py::test_mixed_cache_reuses_model_for_only_missing_cameras
+2.40s call     tests/integration/tennis_scene/test_model_runtime_plan.py::test_all_cache_hit_and_load_only_create_no_models[load-True]
+============================= 354 passed in 37.70s =============================

@@ -2,7 +2,7 @@
 id: run-video-batch-baseline-20261116
 type: run
 task: tennis_scene
-sequence: 44
+sequence: 52
 recorded_at: '2026-11-16'
 date: '2026-11-16'
 title: 旧入力3clipのCourt停止例と逐次計測基盤
@@ -113,6 +113,6 @@ RAMは100ms sampling、VRAMはPyTorch allocatorのpeakであり、他processやd
 
 停止は毎回同じで、clip_000はcourt_detection/cam0、clip_001はcam1、clip_002はcam3。停止cameraの候補はいずれも最大7/7/6 inliersで、既定の8点支持条件を満たさない。成功済みCourt成果物はclip_001/cam0とclip_002/cam0〜2の4件だけで、cache条件ではこの4件を再利用し、失敗した3nodeを再実行した。空検出の実データ例・全モデル実行・全cache hitは未確認である。
 
-[追加8clipの入力選定](000045-run-video-batch-input-qualification-20261116.md)でもcam3が全件で不成立だった。この8件のtimingは本表へ混ぜない。clip_011以降やdataset全69clipの失敗は主張しない。閾値・精度・モデル・処理順の変更、新clip作成、source datasetへの書込みは行っていない。C1を完了するには、Court側の対処を別途先行させるか、比較入力を見直す親判断が必要である。
+[追加8clipの入力選定](000053-run-video-batch-input-qualification-20261116.md)でもcam3が全件で不成立だった。この8件のtimingは本表へ混ぜない。clip_011以降やdataset全69clipの失敗は主張しない。閾値・精度・モデル・処理順の変更、新clip作成、source datasetへの書込みは行っていない。C1を完了するには、Court側の対処を別途先行させるか、比較入力を見直す親判断が必要である。
 
 raw recorder JSON・receipt・outcomeは本run bundleへコピーし、[内容hash一覧](../../runs/run-video-batch-baseline-20261116/evidence-files.json)と再集計用`summarize_evidence.py`を保存した。sourceの厳密な再現は`repro.commit`へcheckoutして実行する。記録後に非有限intervalの拒否・resource失敗JSON保存・ゼロ長span集計・BallのMDD変換後のbatch shape記録を補強した。実測spanは全て正の長さでBallへ未到達のため、これらは保存済みの計測値を変えない。モデル処理・寿命・設定を変更していない。独立validatorは未指定のため指定0回・試行0回・完了0回である。

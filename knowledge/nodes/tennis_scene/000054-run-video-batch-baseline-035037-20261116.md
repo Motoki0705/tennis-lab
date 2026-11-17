@@ -2,7 +2,7 @@
 id: run-video-batch-baseline-035037-20261116
 type: run
 task: tennis_scene
-sequence: 46
+sequence: 54
 recorded_at: '2026-11-16'
 title: 固定2clipの逐次計測：clip_035がcourt_sideの長さ上限で停止
 issue: 1748

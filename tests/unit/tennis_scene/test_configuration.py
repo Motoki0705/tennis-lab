@@ -178,7 +178,6 @@ def test_invalid_ball_candidate_config_fails_before_inference(tmp_path: Path, ov
 
 def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path))
-    assert runtime.sampling_max_frames == 1024
     assert runtime.camera_geometry.reference_camera is None
     assert runtime.people.runtime.static_cam
     assert runtime.enabled["player_reconstruction"] and "blcs_association" not in runtime.enabled

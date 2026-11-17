@@ -14,13 +14,14 @@
 
 標準のシーン再構成は、各カメラのコートkeypoint・人物box/pose・ボールの2D観測からカメラを校正し、人物の関節とボールを三角測量します。PLCS・BLCS・SLCSの学習モデルは標準pipelineに入っていません。
 
+- **clip長の上限**: 約30fpsの全長gridを2048点まで許容し、超過は切り詰めず拒否します。[1055点のCPU確認](nodes/tennis_scene/000047-run-frame-sampling-limit-20261117.md)ではcourt_side・camera_alignment・body_view_selectionが完了し、上限4096との出力も一致しました。下流2段は人物対応未生成のためballのみ・暫定ID・制御入力を区別した検証で、全69clipのGPU完走を示していません。
 - **明示profileのボール部品**: X3D/CSN＋DPT T32の[scene接続](nodes/tennis_scene/000043-run-scene-x3d-dpt-20261116.md)は、人間が現状の証拠で受入れました（2026-11-16）。学習時validationとの許容差超過は数値のまま保持し、既定i935は維持します。meiji_4camの通常4cameraはcourt推定で停止しており、3D比較は条件付き結果です。各clipの動画確認とcourt停止への対処は人間が判断します。
 - **動作確認**: 公開3カメラサンプル（Meiji clip_000）で、既定設定がSceneResult v2の保存まで完走しました（[標準pipeline](nodes/tennis_scene/000028-run-multiview-sample-standard-pipeline-20261021.md)、[クリーン導入](nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)）。1clipの動作確認であり、独立した3D精度や全frameの目視合格は示していません。
 - **ボール3Dの平滑化**: 三角測量の後、局所運動のconsensusで外れ値を除き、頑健な2次LOESSをかけます（既定で有効）。[導入時の比較](nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)では3D有効frameが821→859/1010に増え、隣接移動量のp95も下がりました。一方、元の2D観測への再投影中央値は3.554→4.810 pxに増えました。滑らかさと観測追従の交換関係であり、3D精度の向上とは扱いません。
 - **ボール3Dの評価基盤**（2026-11-03）: clip_000の人間参照を使い、[固定入力のCPU replay比較](nodes/tennis_scene/000032-run-ball3d-evaluation-foundation-20261103.md)を作りました。[レビュー修正後](nodes/tennis_scene/000033-run-ball3d-foundation-review-20261103.md)、全方式に共通の768点でのLOVO中央値/p90は、既定が8.97/25.40 px、LOESSなしが9.70/28.02 pxです。共通点は全対象の52.53%に限られ、可用性を条件とする比較です。[誤差分解](nodes/tennis_scene/000034-run-ball3d-error-decomposition-20261103.md)では、top-8候補にargmax失敗の約半数を回収できる候補がある一方、既存の採用maskを保つ3D候補oracleの改善は小さく、校正誤差と同期ずれも分離できていません。
 - **6方式の比較と採否**: [統合比較](nodes/tennis_scene/000041-run-ball3d-integrated-comparison-20261104.md)では後半LOVOとcoverageの一貫した改善は得られず、人間はbaseline維持を決定しました。後処理・三角測量側の追加改善はキャンセルされ、検出モデルの学習戦略の改善が必要と判断されました。比較は1 clip・近似校正・推定を含む2D参照に限られます。詳細は[凍結アーカイブ](history/summary-2026-11-05.md)を参照してください。
 
-- **動画一括推論の基準値**: [旧3clipのCourt停止](nodes/tennis_scene/000044-run-video-batch-baseline-20261116.md)・[追加8clip](nodes/tennis_scene/000045-run-video-batch-input-qualification-20261116.md)を保持しています。親指定のclip_035・037へ替えた[逐次計測](nodes/tennis_scene/000046-run-video-batch-baseline-035037-20261116.md)は、035がCourtと人物処理を4camera通過した後、court_sideの長さ上限（1,055>1,024）で停止しました。停止prefixは6,289.220秒、model load比0.84%。037・warm・cache条件は未実行で、全段基準値は未成立です。入力長と上限の扱いは親判断を要し、停止例から全体の高速化率を推定しません。
+- **動画一括推論の基準値**: [旧3clipのCourt停止](nodes/tennis_scene/000052-run-video-batch-baseline-20261116.md)・[追加8clip](nodes/tennis_scene/000053-run-video-batch-input-qualification-20261116.md)を保持しています。親指定のclip_035・037へ替えた[逐次計測](nodes/tennis_scene/000054-run-video-batch-baseline-035037-20261116.md)は、035がCourtと人物処理を4camera通過した後、court_sideの長さ上限（1,055>1,024）で停止しました。停止prefixは6,289.220秒、model load比0.84%。037・warm・cache条件は未実行で、全段基準値は未成立です。入力長と上限の扱いは親判断を要し、停止例から全体の高速化率を推定しません。
 
 ## Court Detection
 
