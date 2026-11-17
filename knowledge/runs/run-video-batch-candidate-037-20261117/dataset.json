@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "dataset_id": "meiji_4cam",
+  "created_at": "2026-11-15T13:57:34.247947+00:00",
+  "updated_at": "2026-11-15T16:40:44.643970+00:00",
+  "clips": [
+    {
+      "clip_id": "video_000/clip_037",
+      "video_id": "video_000",
+      "clip_name": "clip_037",
+      "path": "videos/video_000/clips/clip_037",
+      "num_cameras": 4,
+      "num_frames": 292,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    }
+  ]
+}
