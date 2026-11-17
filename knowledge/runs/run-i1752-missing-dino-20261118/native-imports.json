@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "imports": [
+    {
+      "directory": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib",
+      "rebuild": "rebuild-native.sh",
+      "files": {
+        "MultiScaleDeformableAttention.so": {
+          "sha256": "68580f2e5b0454dba630ba3d37e55e383d5babd86b15cda92d4e7c104f5797b7",
+          "bytes": 12097592
+        },
+        "tennis_lab_compressed_time_local_cuda.so": {
+          "sha256": "b277373744ebad3645cba0cfbf8a41139cb869d3872c2813cbbe12710df8f75e",
+          "bytes": 13458128
+        }
+      }
+    }
+  ]
+}

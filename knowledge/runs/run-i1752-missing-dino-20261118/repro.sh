@@ -11,5 +11,6 @@ echo "[repro] target commit: 004bca23b86f421dc8c77affdf30b0303087bf25 (branch co
 git checkout 004bca23b86f421dc8c77affdf30b0303087bf25 2>/dev/null || echo "[repro] WARN: checkout 004bca23b86f421dc8c77affdf30b0303087bf25 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+bash "$SCRIPT_DIR/rebuild-native.sh"
 # --- original training command ---
 env TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib/MultiScaleDeformableAttention.so PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python knowledge/runs/run-video-batch-runtime-20261117/acceptance.py run --root outputs/tennis_scene/evaluate/video-batch-runtime-20261117 --court-settings knowledge/runs/run-video-batch-runtime-20261117/court-settings.json
