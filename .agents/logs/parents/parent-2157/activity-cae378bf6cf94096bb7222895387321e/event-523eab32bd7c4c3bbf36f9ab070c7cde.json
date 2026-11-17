@@ -1,0 +1,88 @@
+{
+  "record": {
+    "data": {
+      "action_id": "75a4e82f426241dc843586565aab2199",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=saved parent verification; content_sha256=cf140fd48287c9a79f0fb7d0bc7d9047ed011c7fcad9f59d57b9021ceee197f5; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=cf140fd48287c9a79f0fb7d0bc7d9047ed011c7fcad9f59d57b9021ceee197f5; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2184]; PR #2184（HEAD f5d63d7f9、+3930/-18479、104ファイル）。review-request 1回で 大局レビュー→CI待機→軽いgate→merge→merge後確認 を切り離したCLIが進める自動進行へ切替。approve/majorの2値、--rereviewは任意、CI失敗・gate停止は#2175の接続口で作成workerを修正ターン再開（PRごと合算3回、rerunなし）、private stateに段階と副作用の意図を保存し不明な副作用はrecovery_required、待機中にregistry lockなし、#2174の条件付きGETで60秒間隔・上限6時間。厳密照合（diff SHA固定・postcheck・公開順序digest・resolve4項目・complete-evidence・base継承）と旧操作を削除、旧schema1〜3は履歴表示のみ。#2157完了条件1〜11をテスト名で対応付け、旧テスト210件の対応表をPRコメントに掲載。GET計測は無関係Issue 0/120/160件で同数（1PR=64、3PR=136）。worker報告: 広域回帰1902件中6件失敗→修正後該当99件成功、中核59件・関連283件成功、pre-commit成功、REPAIR_LIMIT変異で検出。CIは実行中。",
+      "verifies": [
+        "c6de2afccee84eabbbf9cda489ac7ff9"
+      ]
+    },
+    "id": "523eab32bd7c4c3bbf36f9ab070c7cde",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "cae378bf6cf94096bb7222895387321e",
+      "delegation": {
+        "key": "d-f50042219a6e4d8a845402934cf15b28",
+        "turn": 1
+      },
+      "issue": 2176,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-16T04:10:01.409870+00:00"
+      },
+      "recorded_at": "2026-11-16T04:10:01.409882+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

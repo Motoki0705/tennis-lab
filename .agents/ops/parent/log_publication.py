@@ -34,6 +34,8 @@ READ_ONLY = {
     "basis-check",
     "wait-supplement",
     "wait-worker",
+    "wait-merge",
+    "merge-status",
     "state-migrate",
 }
 BEFORE_WORKER = {"run-worker", "start-worker", "continue-worker"}
@@ -69,9 +71,8 @@ MUTATIONS = {
     "improvement-propose",
     "improvement-extract",
     "improvement-decide",
-    "review-prepare",
     "review-request",
-    "review-state",
+    "merge-continue",
     "retry-decision-capture",
     "release",
     "handoff",

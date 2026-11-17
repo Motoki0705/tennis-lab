@@ -118,6 +118,13 @@ class Store:
         All worktrees use this one host-state lock. Ordinary registry updates
         do not participate. Never wait for it while holding registry.lock.
         """
+        from lib.checkout_lock import registry_checkout_lock
+
+        with registry_checkout_lock(), self._ownership():
+            yield
+
+    @contextmanager
+    def _ownership(self) -> Iterator[None]:
         # A different thread may be using this Store. Wait for its live
         # references first; only our own nested transaction is an inversion.
         # Release the guard before waiting for the host-wide fence.
@@ -172,11 +179,11 @@ class Store:
                 object_value(review)
                 request = object_value(review.get("request"))
                 version = request.get("schema_version")
-                if type(version) is not int or version not in {1, 2, 3}:
+                if type(version) is not int or version not in {1, 2, 3, 4}:
                     raise ValueError("unknown or malformed saved review request")
-                if version in {2, 3}:
+                if version in {2, 3, 4}:
                     validate_authorization(request.get("authorization"))
-                if version == 3:
+                if version in {3, 4}:
                     from lib.review_settings import validate_selection
 
                     validate_selection(request.get("review_selection"))
@@ -208,23 +215,28 @@ class Store:
         never blocked by remote latency. The snapshot is read-only: it opens no
         transaction and cannot save.
         """
+        from lib.checkout_lock import registry_checkout_lock
+
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with (self.directory / "registry.lock").open("a", encoding="utf-8") as lock:
-            os.chmod(lock.name, 0o600)
-            metrics.flock(lock, fcntl.LOCK_SH)
-            try:
-                data = self.read_data()
-            finally:
-                metrics.flock(lock, fcntl.LOCK_UN)
-        self.data = data
-        self._validate_loaded()
+        with registry_checkout_lock():
+            with (self.directory / "registry.lock").open("a", encoding="utf-8") as lock:
+                os.chmod(lock.name, 0o600)
+                metrics.flock(lock, fcntl.LOCK_SH)
+                try:
+                    data = self.read_data()
+                finally:
+                    metrics.flock(lock, fcntl.LOCK_UN)
+            self.data = data
+            self._validate_loaded()
         yield self
 
     @contextmanager
     def locked(self) -> Iterator[Store]:
+        from lib.checkout_lock import registry_checkout_lock
+
         # A Store owns live transaction objects. Threads sharing that instance
         # must wait even while its flock is released for another process's I/O.
-        with self._transaction_guard:
+        with registry_checkout_lock(), self._transaction_guard:
             if self._lock is not None:
                 raise ValueError("registry transaction is already active")
             with self._locked() as store:

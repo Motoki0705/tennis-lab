@@ -1,0 +1,542 @@
+[
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam0",
+    "status": "ok",
+    "accepted": false,
+    "mean_error_px": 18.835141601776503,
+    "max_error_px": 52.55035255550472,
+    "quality": {
+      "schema": "court_quality_v1",
+      "accepted": false,
+      "score": 4.643206239787088,
+      "score_direction": "lower_is_better",
+      "reasons": [
+        "visible_line_mismatch",
+        "unstable_projection"
+      ],
+      "supported_keypoints": 4,
+      "support_indices": [
+        3,
+        5,
+        7,
+        10
+      ],
+      "evaluation_diagonal_px": 2202.9071700822983,
+      "line_tolerance_px": 11.014535850411491,
+      "line": {
+        "forward_support": 0.5888888888888889,
+        "reverse_support": 0.9991693419896107,
+        "segment_support": [
+          0.325,
+          0.975,
+          0.8,
+          0.925,
+          0.7,
+          0.875,
+          0.05,
+          0.55,
+          0.1
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 6.0,
+        "forward_rms_px": 19.733182519900904,
+        "reverse_rms_px": 3.8046484976456023,
+        "visible_segment_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible_segment_fraction": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "max_projection_std_ratio": 0.0064070677445371696,
+      "max_leave_line_out_ratio": 0.008128719934388857,
+      "line_coverage": [
+        0.3478260869565217,
+        0.9999999999999999,
+        0.9565217391304347,
+        0.9565217391304347,
+        0.7391304347826086,
+        0.9130434782608694,
+        0.0,
+        0.9999999999999999,
+        0.0
+      ],
+      "independent_line_groups": 7,
+      "normalized_condition": 67.19333373455937,
+      "stability_status": "ok",
+      "line_localization_sigma_px": 4.749111222727096,
+      "kp_localization_sigma_px": 2.305032948897957,
+      "max_projection_std_px": 14.11417547364395,
+      "max_leave_line_out_px": 17.906815427056124
+    }
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam1",
+    "status": "ok",
+    "accepted": false,
+    "mean_error_px": 9.141673836331826,
+    "max_error_px": 18.095497935292432,
+    "quality": {
+      "schema": "court_quality_v1",
+      "accepted": false,
+      "score": 5.199715720715621,
+      "score_direction": "lower_is_better",
+      "reasons": [
+        "visible_line_mismatch"
+      ],
+      "supported_keypoints": 6,
+      "support_indices": [
+        4,
+        5,
+        7,
+        8,
+        9,
+        10
+      ],
+      "evaluation_diagonal_px": 2202.9071700822983,
+      "line_tolerance_px": 11.014535850411491,
+      "line": {
+        "forward_support": 0.6638888888888889,
+        "reverse_support": 0.998730783257206,
+        "segment_support": [
+          0.25,
+          0.975,
+          0.95,
+          0.825,
+          1.0,
+          0.8,
+          0.05,
+          0.95,
+          0.175
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 6.0,
+        "forward_rms_px": 38.504367969593204,
+        "reverse_rms_px": 4.77200785899536,
+        "visible_segment_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible_segment_fraction": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "max_projection_std_ratio": 0.003015634943826693,
+      "max_leave_line_out_ratio": 0.0033018439288742497,
+      "line_coverage": [
+        0.9565217391304347,
+        0.9999999999999999,
+        0.9565217391304347,
+        0.9130434782608694,
+        0.9999999999999999,
+        0.9999999999999999,
+        0.0,
+        0.9999999999999999,
+        0.13043478260869565
+      ],
+      "independent_line_groups": 8,
+      "normalized_condition": 43.34314901813304,
+      "stability_status": "ok",
+      "line_localization_sigma_px": 4.976186180367388,
+      "kp_localization_sigma_px": 4.550651094869559,
+      "max_projection_std_px": 6.643163840106551,
+      "max_leave_line_out_px": 7.273655665409791
+    }
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam2",
+    "status": "ok",
+    "accepted": false,
+    "mean_error_px": 14.850556952883059,
+    "max_error_px": 25.910830676599616,
+    "quality": {
+      "schema": "court_quality_v1",
+      "accepted": false,
+      "score": 20.29979882415038,
+      "score_direction": "lower_is_better",
+      "reasons": [
+        "unstable_projection",
+        "unstable_line_influence"
+      ],
+      "supported_keypoints": 6,
+      "support_indices": [
+        3,
+        6,
+        7,
+        8,
+        9,
+        11
+      ],
+      "evaluation_diagonal_px": 2202.9071700822983,
+      "line_tolerance_px": 11.014535850411491,
+      "line": {
+        "forward_support": 0.7944444444444445,
+        "reverse_support": 0.8933453112853221,
+        "segment_support": [
+          0.425,
+          1.0,
+          0.95,
+          0.95,
+          1.0,
+          1.0,
+          0.275,
+          0.775,
+          0.775
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 7.0,
+        "forward_rms_px": 16.68904616812176,
+        "reverse_rms_px": 165.65937024257937,
+        "visible_segment_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible_segment_fraction": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "max_projection_std_ratio": 0.011902365960012973,
+      "max_leave_line_out_ratio": 0.010518634111100683,
+      "line_coverage": [
+        0.9130434782608694,
+        0.9999999999999999,
+        0.9999999999999999,
+        0.9999999999999999,
+        0.9999999999999999,
+        0.9999999999999999,
+        0.9999999999999999,
+        0.9999999999999999,
+        0.7826086956521738
+      ],
+      "independent_line_groups": 9,
+      "normalized_condition": 99.14100534197989,
+      "stability_status": "ok",
+      "line_localization_sigma_px": 4.132459029478009,
+      "kp_localization_sigma_px": 3.1281523052573994,
+      "max_projection_std_px": 26.21980731425606,
+      "max_leave_line_out_px": 23.171574502815936
+    }
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_000/cam3",
+    "status": "ok",
+    "accepted": false,
+    "mean_error_px": 21.241722736429004,
+    "max_error_px": 47.52947819544762,
+    "quality": {
+      "schema": "court_quality_v1",
+      "accepted": false,
+      "score": 9.221326442458336,
+      "score_direction": "lower_is_better",
+      "reasons": [
+        "unstable_projection"
+      ],
+      "supported_keypoints": 4,
+      "support_indices": [
+        2,
+        5,
+        7,
+        13
+      ],
+      "evaluation_diagonal_px": 2202.9071700822983,
+      "line_tolerance_px": 11.014535850411491,
+      "line": {
+        "forward_support": 0.7222222222222222,
+        "reverse_support": 0.9850191953612897,
+        "segment_support": [
+          0.575,
+          0.925,
+          0.75,
+          0.675,
+          0.975,
+          0.7,
+          0.25,
+          0.775,
+          0.875
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 8.0,
+        "forward_rms_px": 14.200049263525257,
+        "reverse_rms_px": 57.829585173789404,
+        "visible_segment_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible_segment_fraction": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "max_projection_std_ratio": 0.008012584862013084,
+      "max_leave_line_out_ratio": 0.00786543874765536,
+      "line_coverage": [
+        0.9565217391304347,
+        0.9999999999999999,
+        0.7826086956521738,
+        0.9999999999999999,
+        0.9565217391304347,
+        0.826086956521739,
+        0.7826086956521738,
+        0.9565217391304347,
+        0.9130434782608694
+      ],
+      "independent_line_groups": 9,
+      "normalized_condition": 66.15583699333902,
+      "stability_status": "ok",
+      "line_localization_sigma_px": 5.241055773935704,
+      "kp_localization_sigma_px": 3.0954834482870557,
+      "max_projection_std_px": 17.650980643421505,
+      "max_leave_line_out_px": 17.326831413053124
+    }
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_013/cam0",
+    "status": "joint_optimization_failed",
+    "accepted": false,
+    "mean_error_px": NaN,
+    "max_error_px": NaN,
+    "quality": {
+      "schema": "court_quality_v1",
+      "accepted": false,
+      "score": null,
+      "score_direction": "lower_is_better",
+      "reasons": [
+        "no_homography"
+      ]
+    }
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_013/cam3",
+    "status": "ok",
+    "accepted": false,
+    "mean_error_px": 27.308497267659977,
+    "max_error_px": 65.1622890049052,
+    "quality": {
+      "schema": "court_quality_v1",
+      "accepted": false,
+      "score": 7.309771938950065,
+      "score_direction": "lower_is_better",
+      "reasons": [
+        "visible_line_mismatch"
+      ],
+      "supported_keypoints": 5,
+      "support_indices": [
+        2,
+        5,
+        7,
+        10,
+        13
+      ],
+      "evaluation_diagonal_px": 2202.9071700822983,
+      "line_tolerance_px": 11.014535850411491,
+      "line": {
+        "forward_support": 0.6777777777777777,
+        "reverse_support": 0.9646141551816028,
+        "segment_support": [
+          0.425,
+          0.975,
+          0.775,
+          0.625,
+          0.975,
+          0.5,
+          0.2,
+          0.825,
+          0.8
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 7.0,
+        "forward_rms_px": 14.158729624623653,
+        "reverse_rms_px": 50.069353562908304,
+        "visible_segment_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible_segment_fraction": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "max_projection_std_ratio": 0.004867289870535463,
+      "max_leave_line_out_ratio": 0.0014749484544262252,
+      "line_coverage": [
+        0.391304347826087,
+        0.9999999999999999,
+        0.7826086956521738,
+        0.5652173913043478,
+        0.9999999999999999,
+        0.9565217391304347,
+        0.13043478260869565,
+        0.826086956521739,
+        0.826086956521739
+      ],
+      "independent_line_groups": 9,
+      "normalized_condition": 53.51068862732706,
+      "stability_status": "ok",
+      "line_localization_sigma_px": 4.6490410434952985,
+      "kp_localization_sigma_px": 3.267441630221456,
+      "max_projection_std_px": 10.722187754671513,
+      "max_leave_line_out_px": 3.2491745257573355
+    }
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_035/cam3",
+    "status": "ok",
+    "accepted": false,
+    "mean_error_px": 18.861585828439193,
+    "max_error_px": 29.48565004725428,
+    "quality": {
+      "schema": "court_quality_v1",
+      "accepted": false,
+      "score": 3.6379959829844144,
+      "score_direction": "lower_is_better",
+      "reasons": [
+        "unstable_projection"
+      ],
+      "supported_keypoints": 5,
+      "support_indices": [
+        2,
+        5,
+        10,
+        11,
+        13
+      ],
+      "evaluation_diagonal_px": 2202.9071700822983,
+      "line_tolerance_px": 11.014535850411491,
+      "line": {
+        "forward_support": 0.8444444444444446,
+        "reverse_support": 0.9981438085024473,
+        "segment_support": [
+          0.675,
+          0.95,
+          0.9,
+          0.725,
+          1.0,
+          0.9,
+          0.525,
+          0.975,
+          0.95
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 9.0,
+        "forward_rms_px": 8.675918432707114,
+        "reverse_rms_px": 3.6995922142510698,
+        "visible_segment_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "visible_segment_fraction": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "max_projection_std_ratio": 0.010391932788948545,
+      "max_leave_line_out_ratio": 0.0027863597612981035,
+      "line_coverage": [
+        0.9130434782608694,
+        0.9999999999999999,
+        0.9565217391304347,
+        0.7391304347826086,
+        0.9999999999999999,
+        0.9999999999999999,
+        0.9565217391304347,
+        0.9565217391304347,
+        0.9565217391304347
+      ],
+      "independent_line_groups": 9,
+      "normalized_condition": 97.1894938105644,
+      "stability_status": "ok",
+      "line_localization_sigma_px": 4.640162901485229,
+      "kp_localization_sigma_px": 3.784026184022473,
+      "max_projection_std_px": 22.892463251788087,
+      "max_leave_line_out_px": 6.138091896592393
+    }
+  }
+]

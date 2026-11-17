@@ -23,17 +23,48 @@ def snapshot(body: str) -> dict[str, str]:
     }
 
 
-def _criteria(section: str) -> list[str]:
-    criteria: list[str] = []
+def _criteria(section: str) -> list[dict[str, str]]:
+    criteria: list[dict[str, str]] = []
+    group: str | None = None
+    groups: dict[str, int] = {}
     for line in visible_lines(section):
+        heading = re.fullmatch(
+            r"### (I-[1-9][0-9]*-[a-z0-9][a-z0-9-]{0,63})[ \t]*", line
+        )
+        if heading:
+            if criteria and group is None:
+                raise ValueError(
+                    "acceptance snapshot mixes grouped and ungrouped criteria"
+                )
+            group = heading[1]
+            if group in groups:
+                raise ValueError("acceptance snapshot repeats a candidate group")
+            groups[group] = 0
+            continue
         match = re.fullmatch(r"[-*] \[[ xX]\] (\S.*)", line)
         if match:
-            criteria.append(match[1].strip())
+            identifier = f"ac-{len(criteria) + 1}"
+            criterion = match[1].strip()
+            if group is not None:
+                groups[group] += 1
+                identifier = f"ac-{group}-{groups[group]}"
+                criterion = f"[{group}] {criterion}"
+            criteria.append({"id": identifier, "criterion": criterion})
         elif line.strip():
-            if not criteria:
+            # candidate_sections retains indentation within multiline criteria.
+            if not criteria or (
+                group is not None
+                and (
+                    groups[group] == 0
+                    or not line[0].isspace()
+                    or re.match(r"#{1,6}(?:\s|$)", line.lstrip())
+                )
+            ):
                 raise ValueError("acceptance snapshot is not an explicit checklist")
-            criteria[-1] += " " + line.strip()
-    if not criteria or len(set(criteria)) != len(criteria):
+            criteria[-1]["criterion"] += " " + line.strip()
+    if any(count == 0 for count in groups.values()):
+        raise ValueError("acceptance snapshot has an empty candidate group")
+    if not criteria or len({item["criterion"] for item in criteria}) != len(criteria):
         raise ValueError("acceptance snapshot has no unique identifiable criteria")
     return criteria
 
@@ -90,10 +121,7 @@ def requirements(session: ParentSession) -> dict[str, Any]:
         )
     agreement = basis["agreement"] if basis["event"] == "agreed" else basis["basis"]
     items = [{"id": "agreement", "criterion": text(agreement["acceptance"])}]
-    items.extend(
-        {"id": f"ac-{i}", "criterion": criterion}
-        for i, criterion in enumerate(criteria, 1)
-    )
+    items.extend(criteria)
     return {
         "basis_ref": digest(
             {

@@ -1,0 +1,9 @@
+{
+  "comparisons": {
+    "root": "outputs/tennis_scene/evaluate/court-legacy-default-20261117",
+    "files": 3545,
+    "inventory_path": "outputs/tennis_scene/evaluate/court-legacy-default-20261117/inventories/comparisons.jsonl",
+    "sha256": "8746480f13999491f66caab9ce41dead821561f8aa1fd53db11fb7c6b0b6eb80"
+  },
+  "inputs": "knowledge/runs/run-court-fixed-support-rgb-20261117/artifact-inventories.json"
+}

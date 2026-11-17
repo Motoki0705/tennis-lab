@@ -1,0 +1,37 @@
+{
+  "src/tasks/ball_detection/models/mdd/x3d_csn.py": {
+    "training_sha256": "9f7faade143f44bdb6f61bb8f142cb91d0109d21969638005b8589c50a63f7de",
+    "current_sha256": "9f7faade143f44bdb6f61bb8f142cb91d0109d21969638005b8589c50a63f7de",
+    "identical": true
+  },
+  "src/tasks/ball_detection/models/mdd/execution.py": {
+    "training_sha256": "c34296006351f753136e4b6567f7277f14999c88a89b96dddbbf857b0ee7c63f",
+    "current_sha256": "c34296006351f753136e4b6567f7277f14999c88a89b96dddbbf857b0ee7c63f",
+    "identical": true
+  },
+  "src/tasks/ball_detection/preprocessing/mdd.py": {
+    "training_sha256": "efd82af03e89808eb17c429a065aaa584f4c00976549630d47ab516f34bc847e",
+    "current_sha256": "efd82af03e89808eb17c429a065aaa584f4c00976549630d47ab516f34bc847e",
+    "identical": true
+  },
+  "src/tasks/ball_detection/preprocessing/rgb_mdd.py": {
+    "training_sha256": "00d6eb6e5ad10f7cd85212bc21eb99e8a01de55f62694cc974bcebb4c064144c",
+    "current_sha256": "00d6eb6e5ad10f7cd85212bc21eb99e8a01de55f62694cc974bcebb4c064144c",
+    "identical": true
+  },
+  "src/utils/models/dpt.py": {
+    "training_sha256": "7e39d4852327c11531dd15068af250837db14f811c86078393d2faf664853b0a",
+    "current_sha256": "7e39d4852327c11531dd15068af250837db14f811c86078393d2faf664853b0a",
+    "identical": true
+  },
+  "src/utils/data/heatmaps.py": {
+    "training_sha256": "826db42f847a75e5332787f08ae89bc133e1b8f4b8e0811ffec39aea949b3a9d",
+    "current_sha256": "826db42f847a75e5332787f08ae89bc133e1b8f4b8e0811ffec39aea949b3a9d",
+    "identical": true
+  },
+  "src/utils/models/blocks.py": {
+    "training_sha256": "473a2b70c8397122d6bc4e01241bc05fde52aa5c2a109efc18f626e2aca0af20",
+    "current_sha256": "473a2b70c8397122d6bc4e01241bc05fde52aa5c2a109efc18f626e2aca0af20",
+    "identical": true
+  }
+}

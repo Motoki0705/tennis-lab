@@ -456,6 +456,54 @@ header読取中のtimeoutや本文の切断・不正も、status受信後なら�
 エラー種別は `missing_http_response_status` または `timeout_without_http_response`。
 再試行後にHTTPエラーへ変わった場合も、HTTPエラーに累積試行回数と最終statusを残す。
 空配列や成功には置き換えない。既存のscripted GET用 `_run` 注入境界と診断形式は保持する。
+
+### 条件付きGETとjobログ（明示利用する追加API）
+
+既存の `get()` は上記の契約を維持する。待機する呼出元は
+`get_conditional(endpoint, *, clock=time.time)` を明示的に使う。
+`issues.polling.GETResponse` は実際の `status`、選別した小文字の `headers`、
+`body`（200/304はJSON、上限応答はエラー本文の文字列）、`etag_supported`、`rate_limit` を返す。
+上限応答の `etag_supported` は保存応答があればTrue、未確認ならNoneで、endpoint非対応とは扱わない。
+ヘッダーは `etag`・`x-ratelimit-*`・`retry-after`・`x-poll-interval`・`link`・`location`。
+低層の `HTTPClient.request_response(method, endpoint, payload=None, *, headers=None)` は
+同じmetadataと文字列のbody、I/O失敗の `error` を `HTTPResponse` で返す。
+通信失敗でstatusを受信していない場合だけ `status=None`、status前のtimeoutは
+既存と同じ `TimeoutExpired`。通常のHTTPエラーはbodyとstatusを保持する。
+
+- ETag付き200のJSONを完全URL（queryを含む）と認証tokenのdigestで分離してメモリに保存し、
+  次回は `If-None-Match` を送る。304のbodyだけを保存応答から復元し、
+  `status=304`・`from_cache=True`、headersは今回受信した値のまま返す。
+  呼出元によるbodyの変更は保存応答に影響しない。
+- 保存応答のない304は明示エラー。ETagのない200は `etag_supported=False` として記録し、
+  以前のvalidatorを破棄する。以後の要求は通常GETになる。
+  キャッシュはclientの生存期間内だけで、ディスクへ資格情報や応答を保存しない。
+- 403/429のprimaryはremaining=0またはprimaryの明示メッセージで識別し、
+  reset（UTC epoch秒）とRetry-Afterの遅い方を `rate_limit.resume_at` として返す。
+  resetがなくRetry-Afterが有効ならそれを使い、両方なければ明示エラー。
+  secondaryは429・Retry-After・secondary/abuseの明示メッセージで識別する。
+  権限不足403などは従来の `GitHubHTTPError`。
+- secondaryはRetry-After（秒またはHTTP date）を優先し、なければ最低60秒から
+  120・240・480・960秒へ延ばす。同じ認証情報で連続5回まで再開時刻を返し、
+  次は明示エラーにする。200/304成功で連続回数を消す。
+  remainingが非0のprimary resetはsecondaryの解除時刻には使わない。
+  不正な待機情報は明示エラー。指針は [GitHub公式](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api#handle-rate-limit-errors-appropriately)。
+
+追加API内ではsleep・自動再送を行わない。呼出元がdeadline・`x-poll-interval`・
+全体のtimeoutを使って待機する。通常の200/304以外、JSON不正、途中で切れた応答も成功にしない。
+parent clientでもtransaction/`detached()` のlock境界を守り、既存のtransaction内GET cacheは使わず
+毎回HTTPで検証する。プロセス再開時は新しいclientで200から検証を始める。
+
+`job_log(job_id, *, clock=time.time)` は `issues.polling.JobLog` を返す。
+jobログendpointの302からLocationを読み、専用の `HTTPClient.download_log(url)` で
+署名付きHTTPS URLを一度だけ取得する。APIの認証・Cookie・`.netrc` を転送せず、
+追加のredirectはたどらない。成功時は `body` にテキスト、失敗時は `body=None` と必ず `reason`、
+API上限なら `rate_limit` も返す。期限切れ・権限不足・空body・通信失敗・不正なLocationを
+空文字や空JSONへ置き換えない。署名付きURLをreasonへ含めない。
+
+親コマンドの `PARENT_METRICS_FILE` に、実際のGET送信数 `github_get_requests`、
+受信status別の `github_get_200` / `github_get_304`（他statusも同形式）、
+ETagなしの200件数 `github_get_without_etag` を追加する。
+既存GETの再試行と署名付きログのGETも実送信数に含む。本文・URL・認証情報は記録しない。
 親・dispatcher等の共有reader利用先にも同じGET契約が適用される。
 `parent.github.GitHub.rows()` の最大3回の取り直しはページ重複の整合対策であり、接続断の再試行とは別である。
 

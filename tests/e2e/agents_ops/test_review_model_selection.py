@@ -101,12 +101,12 @@ def test_allowed_review_choice_keeps_tools_schema_and_observed_settings(
 @pytest.mark.parametrize(
     "scenario,reason",
     [
-        ("wrong_model", "metadata_error"),
-        ("wrong_effort", "metadata_error"),
+        ("wrong_model", "completed"),
+        ("wrong_effort", "completed"),
         ("model_unavailable", "cli_error"),
     ],
 )
-def test_review_runtime_failure_never_retries_another_model(
+def test_review_observes_effective_settings_without_switching_models(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scenario: str, reason: str
 ) -> None:
     h = Harness(tmp_path)
@@ -122,7 +122,7 @@ def test_review_runtime_failure_never_retries_another_model(
             str(path),
         ),
     )
-    assert proc.returncode != 0
+    assert (proc.returncode != 0) == (scenario == "model_unavailable")
     assert h.result()["turn_end_reason"] == reason
     if scenario == "model_unavailable":
         assert "not available" in h.result()["error"]

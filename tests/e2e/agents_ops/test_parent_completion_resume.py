@@ -125,10 +125,14 @@ class CompletionWorkflow:
         )
         assert merged.returncode == 0, merged.stderr + merged.stdout
         self.finish(self.parent, state)
-        assert self.row()["dispatch"]["phase"] == state
         assert self.row()["status"] == "active"
-        self.control.resume(1, "確認済みのmerge/closeの後、完了照合へ戻る。")
-        self.control.reconcile()
+        if state == "waiting":
+            assert self.row()["dispatch"]["phase"] == "reserved"
+            assert self.row()["progression_notifications"]
+        else:
+            assert self.row()["dispatch"]["phase"] == state
+            self.control.resume(1, "確認済みのmerge/closeの後、完了照合へ戻る。")
+            self.control.reconcile()
         row = self.row()
         return dict(row["dispatch"]["jobs"][row["dispatch"]["active_job"]])
 
@@ -479,7 +483,7 @@ def test_closed_parent_resume_checks_execution_evidence(
     if change == "basis":
         p.cli("basis-revoke", "--reason-file", p.note("実行根拠を取り消す。"))
     elif change == "journal":
-        attempts = list((control.store.directory / "merges").rglob("*.json"))
+        attempts = list((control.store.directory / "progressions").glob("*/state.json"))
         assert len(attempts) == 1
         for path in attempts:
             path.unlink()
@@ -590,26 +594,7 @@ def test_legacy_result_migration_preserves_review_and_completion(
         state = p.state()
         state["prs"][0]["head"]["sha"] = head
         p.save(state)
-        flow.gate.review.cli(
-            "resolve",
-            "--run",
-            flow.gate.review.request["review_run_id"],
-            "--pr",
-            "100",
-            "--fixed-head",
-            head,
-            "--finding",
-            "changes",
-            "--evidence",
-            p.spec(
-                {
-                    "ci": "対象headのPython成功。",
-                    "regression_tests": "代表回帰が成功。",
-                    "resolution": "親が旧委任の修正差分を確認。",
-                    "reviewed_paths": ["change.txt"],
-                }
-            ),
-        )
+
         response = flow.gate.cli("merge")
         assert response.returncode == 0, response.stderr + response.stdout
     else:
@@ -675,5 +660,6 @@ def test_legacy_result_migration_preserves_review_and_completion(
             )
     else:
         response = flow.gate.cli("merge", AGENT_AUTO_MERGE="0")
-        assert response.returncode == 1
+        assert response.returncode == 2
+        assert "auto_merge_disabled" in response.stderr
         assert not flow.gate.merge_calls()

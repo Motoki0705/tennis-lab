@@ -1,0 +1,95 @@
+{
+  "code_head": "5fa344519a19511ebb886afd4256ab37648ddaab",
+  "added_cases": 17,
+  "validator_requested": 0,
+  "validator_attempts": 0,
+  "runs": [
+    {
+      "command": "pytest tests/unit/tasks/court_detection/geometry tests/unit/tasks/court_detection/inference tests/unit/tennis_scene/pipeline/components/test_court_kp.py tests/unit/tennis_scene/test_configuration.py tests/integration/tasks/court_detection/test_model_contracts.py --durations=0 -q",
+      "passed": 209,
+      "seconds": 47.63,
+      "stage": "before cache-key and real-fixture additions; includes one existing CUDA pose-math case, not a GPU model evaluation"
+    },
+    {
+      "command": "pytest tests/unit/tasks/court_detection/inference/test_regions.py tests/unit/tennis_scene/test_configuration.py -q --durations=0",
+      "passed": 44,
+      "seconds": 26.81,
+      "stage": "cache-setting and removed-key contracts"
+    },
+    {
+      "command": "pytest tests/integration/tasks/court_detection/test_real_court_acceptance.py -n 0 -q --durations=0",
+      "passed": 2,
+      "seconds": 9.68,
+      "calls_seconds": [
+        2.1,
+        2.28
+      ],
+      "stage": "final fixture timing; earlier concurrent-load timing 4.62/6.28 seconds retained"
+    },
+    {
+      "command": "pytest tests/unit/tasks/court_detection/inference/test_regions.py tests/unit/tennis_scene/pipeline/components/test_court_kp.py -n 0 -q --durations=0",
+      "passed": 21,
+      "seconds": 5.09,
+      "stage": "strict assessed-region contract"
+    },
+    {
+      "command": "pytest tests/e2e/skills/test_knowledge_repro_paths.py::test_the_repository_bundles_reference_only_reproducible_scripts -n 0 -q --durations=0",
+      "passed": 1,
+      "seconds": 10.62,
+      "stage": "original captured-source correction"
+    }
+  ],
+  "pre_commit": "ruff and mypy passed at each code commit",
+  "first_ci": {
+    "head": "fac8448470cbd70e4f8a84f07ef0b02786953e8e",
+    "run": 43839870979,
+    "conclusion": "failure",
+    "failure": "only test_knowledge_repro_paths: two original planning scripts missing from captured patch; corrected with saved original source",
+    "knowledge_run": 43839870930
+  },
+  "notes": "Test run counts overlap; do not sum them as distinct cases.",
+  "evaluation_completion": {
+    "legacy": {
+      "mode": "legacy",
+      "cases": 448,
+      "regions": 5433,
+      "seconds": 1522.7871659429948
+    },
+    "current": {
+      "mode": "current",
+      "cases": 448,
+      "regions": 5433,
+      "seconds": 1895.7957582699892
+    },
+    "val_legacy": {
+      "mode": "legacy",
+      "cases": 2211,
+      "regions": 2211,
+      "seconds": 745.7515295899939
+    },
+    "val_current": {
+      "mode": "current",
+      "cases": 2211,
+      "regions": 2211,
+      "seconds": 948.6231791680038
+    },
+    "test_legacy": {
+      "mode": "legacy",
+      "cases": 886,
+      "regions": 886,
+      "seconds": 1449.1265243050002
+    },
+    "test_current": {
+      "mode": "current",
+      "cases": 886,
+      "regions": 886,
+      "seconds": 1427.7025505670026
+    },
+    "val-evaluation": {
+      "records": 2211,
+      "seconds": 712.6661419868469,
+      "workers": 2,
+      "includes_dependency_wait": true
+    }
+  }
+}

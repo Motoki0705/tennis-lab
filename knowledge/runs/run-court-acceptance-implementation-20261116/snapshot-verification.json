@@ -1,0 +1,41 @@
+{
+  "commit": "5fa344519a19511ebb886afd4256ab37648ddaab",
+  "files": [
+    {
+      "file": "confidence_homography.py",
+      "snapshot_sha256": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+      "commit_sha256": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+      "same_ast_excluding_function_docstrings": true
+    },
+    {
+      "file": "homography.py",
+      "snapshot_sha256": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+      "commit_sha256": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+      "same_ast_excluding_function_docstrings": true
+    },
+    {
+      "file": "observations.py",
+      "snapshot_sha256": "96bcbcf8c8c8103804e95afa91b67d6ace9d676f5ced4f4ff3d8d4b38a08d3cb",
+      "commit_sha256": "96bcbcf8c8c8103804e95afa91b67d6ace9d676f5ced4f4ff3d8d4b38a08d3cb",
+      "same_ast_excluding_function_docstrings": true
+    },
+    {
+      "file": "line_evidence.py",
+      "snapshot_sha256": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+      "commit_sha256": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+      "same_ast_excluding_function_docstrings": true
+    },
+    {
+      "file": "quality.py",
+      "snapshot_sha256": "3b17c32128ad654cb615f93ee397026c6f558d09f2a9390f55118fbacb419ba2",
+      "commit_sha256": "ec15ea4582ad113b3358d02ba07bafbe322334b74a8c09ad4b047962dd0d6558",
+      "same_ast_excluding_function_docstrings": true
+    },
+    {
+      "file": "hybrid_homography.py",
+      "snapshot_sha256": "eb7045dbfc1b7424520060c4a39fc7c3c836436d5bee440ee7b5ec771f09c0f4",
+      "commit_sha256": "eb7045dbfc1b7424520060c4a39fc7c3c836436d5bee440ee7b5ec771f09c0f4",
+      "same_ast_excluding_function_docstrings": true
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, cast
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -641,7 +642,7 @@ def test_current_authorization_is_required_after_external_freshness_check(
 def invoke_worker(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, job_id: str
 ) -> list[dict[str, Any]]:
-    worker = importlib.import_module("dispatcher.worker")
+    worker = importlib.import_module("dispatcher.worker_impl")
     calls: list[dict[str, Any]] = []
 
     class RecordingRuntime:
@@ -1461,6 +1462,188 @@ def test_new_child_delegation_resumes_previous_child_session(
     )
 
 
+@pytest.fixture
+def registered_repair(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> tuple[DispatchHarness, Any]:
+    fixture_runtime(d, monkeypatch)
+    runtime_module = importlib.import_module("dispatcher.runtime")
+    runtime_type = runtime_module.Runtime
+    monkeypatch.setattr(runtime_module, "Runtime", FixtureRuntime)
+    repairs = importlib.import_module("dispatcher.repairs")
+    settings = importlib.import_module("lib.agent_settings")
+    d.prepare_family(10)
+    d.control.assign()
+    env = d.accepted()
+    row = d.row()
+    row["tasks"]["10"] = d.child_task(10, "creator")
+    d.update(row)
+    creator_id = d.control.start_child(1, 10, "creator", "initial", env)
+    creator = d.row()["dispatch"]["jobs"][creator_id]
+    creator["phase"] = "starting"
+    row = d.row()
+    row["dispatch"]["jobs"][creator_id] = creator
+    d.update(row)
+    d.runtime(creator)
+    record_path = Path(creator["directory"]) / "runtime/result.json"
+    record = json.loads(record_path.read_text())
+    record["contract"].update(
+        branch="test",
+        settings=settings.resolve(
+            settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
+        ),
+    )
+    record_path.write_text(json.dumps(record))
+    d.control.reconcile()
+    d.h.gh.prs = [
+        {
+            "number": 42,
+            "body": "Closes #10",
+            "state": "open",
+            "merged_at": None,
+            "draft": False,
+            "labels": [],
+            "head": {"ref": "test", "sha": "a" * 40, "repo": {"full_name": "o/r"}},
+        }
+    ]
+    with d.h.store.locked():
+        row = d.h.store.parents["o/r#1"]
+        session = d.control._session("o/r#1", row)
+        repairs.register_progression(session, "pipeline-1", child=10, pr=42)
+    return d, runtime_type
+
+
+def test_registered_progression_reserves_repair_without_parent_runtime_environment(
+    registered_repair: tuple[DispatchHarness, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d, runtime_type = registered_repair
+    creator = next(j for j in d.row()["dispatch"]["jobs"].values() if j["child"] == 10)
+    record_path = Path(creator["directory"]) / "runtime/result.json"
+    with pytest.raises(ValueError, match="owner-registered"):
+        d.control.start_repair(1, "missing-pipeline", "ci-1", "Failed import.")
+    # The detached caller has no parent runtime environment to impersonate.
+    for key in (
+        "CLAUDE_CODE_SESSION_ID",
+        "CODEX_THREAD_ID",
+        "AGENT_RUNTIME_RUN_DIR",
+        "AGENT_RUNTIME_TASK_ID",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    repair_id = d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.")
+    assert (
+        d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.") == repair_id
+    )
+    job = d.row()["dispatch"]["jobs"][repair_id]
+    assert job["resume_from"] == str(record_path.parent)
+    assert job["model"] == "gpt-6-astra"
+    assert job["task_id"] == creator["task_id"]
+    assert job["repair"] == {"schema_version": 1, "repair_id": "ci-1", "pr": 42}
+    with pytest.raises(ValueError, match="another request"):
+        d.control.start_repair(1, "pipeline-1", "ci-1", "Different failure.")
+    claimed = d.control.claim("o/r#1", repair_id)
+    assert claimed is not None
+    assert d.control.claim("o/r#1", repair_id) is None
+    captured = d.h.root / "repair-argv.json"
+    runner = d.h.root / "repair-runner"
+    runner.write_text(
+        f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\nPath({str(captured)!r}).write_text(json.dumps(sys.argv[1:]))\n"
+    )
+    runner.chmod(0o700)
+    with (d.h.root / "repair-execute.lock").open("a") as lock:
+        assert runtime_type(runner).execute(claimed, lock.fileno()) == 0
+    argv = json.loads(captured.read_text())
+    assert argv[:3] == ["resume", "--resume-from", str(record_path.parent)]
+    assert argv[argv.index("--effort") + 1] == "high"
+    assert argv[argv.index("--model") + 1] == "gpt-6-astra"
+    assert argv[argv.index("--repair-id") + 1] == "ci-1"
+    # Registration is checked again at admission, before another runtime starts.
+    row = d.row()
+    row["generation"] += 1
+    d.update(row)
+    with pytest.raises(ValueError, match="owner/authority/delegation"):
+        d.control.start_repair(1, "pipeline-1", "ci-2", "Failed import.")
+
+
+@pytest.mark.parametrize("target", ["parent", "child", "pr"])
+@pytest.mark.parametrize("timing", ["reserved", "claimed"])
+def test_dispatch_repair_rechecks_needs_human_before_popen(
+    registered_repair: tuple[DispatchHarness, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    target: str,
+    timing: str,
+) -> None:
+    d, runtime_type = registered_repair
+    job_id = d.control.start_repair(1, "pipeline-1", "ci-label", "Failed import.")
+    claimed = d.control.claim("o/r#1", job_id) if timing == "claimed" else None
+    if timing == "claimed":
+        assert claimed is not None
+    remote = (
+        d.h.gh.prs[0]
+        if target == "pr"
+        else d.h.gh.issues[1 if target == "parent" else 10]
+    )
+    remote["labels"].append({"name": "needs-human"})
+    if timing == "reserved":
+        claimed = d.control.claim("o/r#1", job_id)
+    popen = MagicMock()
+    popen.return_value.wait.return_value = 0
+    monkeypatch.setattr("subprocess.Popen", popen)
+    if claimed is not None:
+        runtime = runtime_type(Path(claimed["runner"]))
+        runtime.launch_context = lambda: d.control.launch_admission("o/r#1", job_id)
+        with pytest.raises(ValueError, match="needs-human|human decision"):
+            runtime.execute(claimed, 0)
+    popen.assert_not_called()
+    rejected = d.row()["dispatch"]["jobs"][job_id]
+    assert rejected["phase"] == "ended" and rejected["cancelled_before_start"]
+    assert (
+        "needs-human" in rejected["diagnostic"]
+        or "human decision" in rejected["diagnostic"]
+    )
+    assert not (Path(rejected["directory"]) / "runtime").exists()
+
+
+@pytest.mark.parametrize("change", ["handoff", "authorization"])
+def test_dispatch_repair_rechecks_registration_after_claim(
+    registered_repair: tuple[DispatchHarness, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    d, runtime_type = registered_repair
+    job_id = d.control.start_repair(1, "pipeline-1", "ci-owner", "Failed import.")
+    claimed = d.control.claim("o/r#1", job_id)
+    assert claimed is not None
+    with d.h.store.ownership(), d.h.store.locked():
+        row = d.h.store.parents["o/r#1"]
+        if change == "handoff":
+            row.update(session="codex:new-owner", generation=row["generation"] + 1)
+            current_auth = importlib.import_module("parent.execution").authorization(
+                d.control._session("o/r#1", row)
+            )
+            importlib.import_module("parent.development").transfer_controller(
+                row, current_auth, "claim後の引継ぎ", takeover=True
+            )
+        else:
+            row["repair_progressions"]["pipeline-1"]["authorization"][
+                "execution_basis_sha256"
+            ] = "f" * 64
+        d.h.store.save()
+    owner = d.row()["session"], d.row()["generation"]
+    runtime = runtime_type(Path(claimed["runner"]))
+    runtime.launch_context = lambda: d.control.launch_admission("o/r#1", job_id)
+    popen = MagicMock()
+    popen.return_value.wait.return_value = 0
+    monkeypatch.setattr("subprocess.Popen", popen)
+    with pytest.raises(ValueError, match="owner/authority/delegation"):
+        runtime.execute(claimed, 0)
+    popen.assert_not_called()
+    rejected = d.row()["dispatch"]["jobs"][job_id]
+    assert rejected["phase"] == "ended" and rejected["cancelled_before_start"]
+    assert "owner/authority/delegation" in rejected["diagnostic"]
+    assert not (Path(rejected["directory"]) / "runtime").exists()
+    assert (d.row()["session"], d.row()["generation"]) == owner
+
+
 def test_cancelled_resume_reservation_reuses_original_session(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1862,7 +2045,7 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
 def test_supervisor_never_reconciles_or_launches_while_checkout_is_locked(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    cli = importlib.import_module("dispatcher.cli")
+    cli = importlib.import_module("dispatcher.cli_impl")
     lock = importlib.import_module("lib.checkout_lock").checkout_lock
     calls = []
     for name in ("reconcile", "assign", "launch_reserved"):
@@ -1896,7 +2079,7 @@ def test_supervisor_never_reconciles_or_launches_while_checkout_is_locked(
 def test_supervisor_maintenance_pause_preserves_enabled_but_normal_stop_shuts_down(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, maintenance: bool
 ) -> None:
-    cli = importlib.import_module("dispatcher.cli")
+    cli = importlib.import_module("dispatcher.cli_impl")
     handlers = {}
     calls = []
     monkeypatch.setattr(
@@ -2654,3 +2837,57 @@ def test_run_replacement_during_final_github_check_is_not_applied(
         if stage == "accept" or event["event"] != "parent_accepted"
     )
     assert after["dispatch"]["wake_requested"] is False
+
+
+def test_repair_completion_wakes_progression_and_final_notice_wakes_parent_once(
+    registered_repair: tuple[DispatchHarness, Any],
+) -> None:
+    LiveBackend = importlib.import_module("lib.ops_review.progression_backend").LiveBackend
+
+    d, _ = registered_repair
+    row = d.row()
+    row["dispatch"].update(phase="waiting", wake_requested=False)
+    d.update(row)
+    d.runtime(d.job(row), state="waiting")
+    d.control.reconcile()
+    assert d.row()["dispatch"]["phase"] == "waiting"
+    repair_id = d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.")
+    assert d.control.claim("o/r#1", repair_id) is not None
+    job = d.row()["dispatch"]["jobs"][repair_id]
+    d.runtime(job)
+    record_path = Path(job["directory"]) / "runtime/result.json"
+    record = json.loads(record_path.read_text())
+    settings = importlib.import_module("lib.agent_settings")
+    record["contract"]["settings"] = settings.resolve(
+        settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
+    )
+    record["contract"]["settings"]["selected"]["effort"] = "high"
+    record["contract"]["repair"] = job["repair"]
+    record_path.write_text(json.dumps(record))
+    row = d.row()
+    row["dispatch"]["jobs"][repair_id]["worker"] = None
+    d.update(row)
+    d.control.reconcile()
+    row = d.row()
+    assert row["dispatch"]["jobs"][repair_id]["phase"] == "ended"
+    assert row["dispatch"]["phase"] == "waiting"
+    assert row["dispatch"]["wake_requested"] is False
+    # A saved final notification is independently idempotent and uses the
+    # existing dispatcher wake path for the waiting parent.
+    state = {
+        "id": "parent-1-" + "1" * 32,
+        "request": {"repo": "o/r", "parent_issue": 1},
+        "owner": row["session"],
+        "generation": row["generation"],
+        "review": {},
+        "targets": {},
+    }
+    backend = LiveBackend(state, d.h.store)
+    notification = {"id": 1, "kind": "completed", "reason": None}
+    backend.notify(state, notification)
+    backend.notify(state, notification)
+    row = d.row()
+    assert row["dispatch"]["phase"] == "resume_pending"
+    assert len(row["progression_notifications"]) == 1
+    d.control.reconcile()
+    assert d.row()["dispatch"]["phase"] == "reserved"

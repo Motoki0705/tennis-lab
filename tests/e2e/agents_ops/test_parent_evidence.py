@@ -16,7 +16,6 @@ from typing import Any
 import pytest
 import yaml
 
-from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
@@ -289,57 +288,6 @@ def test_evidence_agreement_keeps_state_and_same_login_human_input(
     after = json.loads(p.cli("status").stdout)
     assert after["input_changes"]["comments"][0]["id"] == n
     assert p.state() == state
-
-
-def test_review_gate_and_inspection_read_evidence_permalink_without_new_agent(
-    gate_env: GateEnv,
-) -> None:
-    g, p = gate_env, gate_env.review.p
-    before = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    moved = move_machine_records(p)
-    execution_path = g.review.run_dir / "execution.json"
-    execution = json.loads(execution_path.read_text())
-    old_url = execution["parent_run_url"]
-    cid = moved[int(old_url.rsplit("-", 1)[1])]
-    new_url = (
-        f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-{cid}"
-    )
-    execution["parent_run_url"] = new_url
-    execution["stages"]["publication"].update(
-        parent_comment_id=cid, parent_run_url=new_url
-    )
-    execution_path.write_text(json.dumps(execution))
-    state = p.state()
-    for rows in state["comments"].values():
-        for c in rows:
-            records = g.policy.records([c], "operator")
-            if records and records[0]["kind"] == "pr":
-                c["body"] = g.policy.marker({**records[0], "parent_run_url": new_url})
-    p.save(state)
-    assert g.results(g.cli("merge", AGENT_AUTO_MERGE="0")) == before
-    view = json.loads(p.cli("review-inspect", "--prs", "100").stdout)
-    run = view["prs"][0]["history"][0]
-    assert run["parent_run_url"] == new_url and run["publication_errors"] == []
-    assert len(g.review.calls()) == 1 and not g.merge_calls()
-    state = p.state()
-    result = next(
-        c
-        for c in state["comments"][str(evidence_number(state))]
-        if g.policy.records([c], "operator")
-        and g.policy.records([c], "operator")[0]["kind"] == "result"
-    )
-    state["comments"]["1"].append(
-        {
-            **result,
-            "id": max(c["id"] for rows in state["comments"].values() for c in rows) + 1,
-        }
-    )
-    p.save(state)
-    blocked = g.cli("merge", AGENT_AUTO_MERGE="0")
-    assert (
-        blocked.returncode == 2 and "duplicate parent evidence record" in blocked.stderr
-    )
-    assert len(g.review.calls()) == 1 and not g.merge_calls()
 
 
 @pytest.mark.parametrize("state", ["open", "closed"])

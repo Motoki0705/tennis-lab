@@ -108,12 +108,7 @@ class Cleaner:
         for key, row in state.records.items():
             if key not in live_ids and row["phase"] == "observed":
                 row.update(phase="absent", disappeared_at=utc(now))
-            if key not in live_ids and row["phase"] in {
-                "stopping",
-                "quarantined",
-                "unregistered",
-                "quarantine_conflict",
-            }:
+            if key not in live_ids and row["phase"] in migration.UNFINISHED:
                 row.setdefault("registration_lost_at", utc(now))
                 entries.append(
                     self.entry(
@@ -141,6 +136,7 @@ class Cleaner:
             "selected": target and now >= deadline,
             "scope_error": error,
             "phase": row["phase"],
+            **({"quarantine": row["quarantine"]} if row.get("quarantine") else {}),
             **(
                 {"identity_migration": row["identity_migration"]}
                 if "identity_migration" in row
@@ -309,6 +305,12 @@ class Cleaner:
                         saved = state.records[entry["id"]]
                         migration.require_ready(saved)
                         physical = Path(saved.get("quarantine") or entry["path"])
+                        if saved.get("filesystem_migration", {}).get(
+                            "registration_lost"
+                        ) and os.path.lexists(physical):
+                            inventory.require_directory(
+                                physical, saved["directory_identity"]
+                            )
                         if not physical.exists():
                             physical = Path(entry["path"])
                         preflight.append(
@@ -386,7 +388,17 @@ class Cleaner:
             if getattr(self.stopper, "reference_checks", None):
                 report["reference_checks"] = self.stopper.reference_checks
             migrated = [
-                {"id": row["id"], "path": row["path"], **row["filesystem_migration"]}
+                {
+                    "id": row["id"],
+                    "path": row["path"],
+                    "phase": row["phase"],
+                    **(
+                        {"quarantine": row["quarantine"]}
+                        if row.get("quarantine")
+                        else {}
+                    ),
+                    **row["filesystem_migration"],
+                }
                 for row in state.records.values()
                 if "filesystem_migration" in row
             ]

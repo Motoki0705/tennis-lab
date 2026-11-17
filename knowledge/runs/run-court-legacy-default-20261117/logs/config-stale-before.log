@@ -1,0 +1,199 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collecting ... collected 2 items
+
+tests/unit/tennis_scene/test_configuration.py::test_removed_court_acceptance_keys_fail_explicitly[min_inliers] FAILED [ 50%]
+tests/unit/tennis_scene/test_configuration.py::test_removed_court_acceptance_keys_fail_explicitly[inlier_distance_ratio] FAILED [100%]
+
+=================================== FAILURES ===================================
+_______ test_removed_court_acceptance_keys_fail_explicitly[min_inliers] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-kamimura/pytest-525/test_removed_court_acceptance_0')
+removed = 'min_inliers'
+
+    @pytest.mark.parametrize("removed", ["min_inliers", "inlier_distance_ratio"])
+    def test_removed_court_acceptance_keys_fail_explicitly(tmp_path: Path, removed: str) -> None:
+        with pytest.raises(UnknownConfigurationKeyError, match=removed):
+>           PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, f"+court_kp.region_search.{removed}=8"), bind_inputs=False)
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/tennis_scene/test_configuration.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/tennis_scene/test_configuration.py:53: in _pipeline_config
+    with _composed(
+/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+tests/unit/tennis_scene/test_configuration.py:38: in _composed
+    yield compose(config_name=config_name, overrides=overrides)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venv/lib/python3.11/site-packages/hydra/compose.py:38: in compose
+    cfg = gh.hydra.compose_config(
+../../../.venv/lib/python3.11/site-packages/hydra/_internal/hydra.py:594: in compose_config
+    cfg = self.config_loader.load_configuration(
+../../../.venv/lib/python3.11/site-packages/hydra/_internal/config_loader_impl.py:142: in load_configuration
+    return self._load_configuration_impl(
+../../../.venv/lib/python3.11/site-packages/hydra/_internal/config_loader_impl.py:276: in _load_configuration_impl
+    ConfigLoaderImpl._apply_overrides_to_config(config_overrides, cfg)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+overrides = [Override(type=<OverrideType.CHANGE: 1>, key_or_group='paths.project_root', value_type=<ValueType.ELEMENT: 1>, _value=...ValueType.ELEMENT: 1>, _value=8, package=None, input_line='+court_kp.region_search.min_inliers=8', config_loader=None)]
+cfg = {'hydra': {'run': {'dir': '${tennis_lab_path:output,${paths.output_root},${output_directory},hydra}'}, 'sweep': {'dir'...e}, 'cache': {'directory': 'tennis_scene/cache/pipeline', 'source': 'execute', 'overwrite': False}, 'max_frames': None}
+
+    @staticmethod
+    def _apply_overrides_to_config(overrides: List[Override], cfg: DictConfig) -> None:
+        for override in overrides:
+            if override.package is not None:
+                raise ConfigCompositionException(
+                    f"Override {override.input_line} looks like a config group"
+                    f" override, but config group '{override.key_or_group}' does not"
+                    " exist."
+                )
+    
+            key = override.key_or_group
+            value = override.value()
+            try:
+                if override.is_delete():
+                    config_val = OmegaConf.select(cfg, key, throw_on_missing=False)
+                    if config_val is None:
+                        raise ConfigCompositionException(
+                            f"Could not delete from config. '{override.key_or_group}'"
+                            " does not exist."
+                        )
+                    elif value is not None and value != config_val:
+                        raise ConfigCompositionException(
+                            "Could not delete from config. The value of"
+                            f" '{override.key_or_group}' is {config_val} and not"
+                            f" {value}."
+                        )
+    
+                    last_dot = key.rfind(".")
+                    with open_dict(cfg):
+                        if last_dot == -1:
+                            del cfg[key]
+                        else:
+                            node = OmegaConf.select(cfg, key[0:last_dot])
+                            del node[key[last_dot + 1 :]]
+    
+                elif override.is_add():
+                    if OmegaConf.select(
+                        cfg, key, throw_on_missing=False
+                    ) is None or isinstance(value, (dict, list)):
+                        OmegaConf.update(cfg, key, value, merge=True, force_add=True)
+                    else:
+                        assert override.input_line is not None
+>                       raise ConfigCompositionException(
+                            dedent(
+                                f"""\
+                        Could not append to config. An item is already at '{override.key_or_group}'.
+                        Either remove + prefix: '{override.input_line[1:]}'
+                        Or add a second + to add or override '{override.key_or_group}': '+{override.input_line}'
+                        """
+                            )
+E                           hydra.errors.ConfigCompositionException: Could not append to config. An item is already at 'court_kp.region_search.min_inliers'.
+E                           Either remove + prefix: 'court_kp.region_search.min_inliers=8'
+E                           Or add a second + to add or override 'court_kp.region_search.min_inliers': '++court_kp.region_search.min_inliers=8'
+
+../../../.venv/lib/python3.11/site-packages/hydra/_internal/config_loader_impl.py:377: ConfigCompositionException
+__ test_removed_court_acceptance_keys_fail_explicitly[inlier_distance_ratio] ___
+
+tmp_path = PosixPath('/tmp/pytest-of-kamimura/pytest-525/test_removed_court_acceptance_1')
+removed = 'inlier_distance_ratio'
+
+    @pytest.mark.parametrize("removed", ["min_inliers", "inlier_distance_ratio"])
+    def test_removed_court_acceptance_keys_fail_explicitly(tmp_path: Path, removed: str) -> None:
+        with pytest.raises(UnknownConfigurationKeyError, match=removed):
+>           PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, f"+court_kp.region_search.{removed}=8"), bind_inputs=False)
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/tennis_scene/test_configuration.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/tennis_scene/test_configuration.py:53: in _pipeline_config
+    with _composed(
+/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+tests/unit/tennis_scene/test_configuration.py:38: in _composed
+    yield compose(config_name=config_name, overrides=overrides)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.venv/lib/python3.11/site-packages/hydra/compose.py:38: in compose
+    cfg = gh.hydra.compose_config(
+../../../.venv/lib/python3.11/site-packages/hydra/_internal/hydra.py:594: in compose_config
+    cfg = self.config_loader.load_configuration(
+../../../.venv/lib/python3.11/site-packages/hydra/_internal/config_loader_impl.py:142: in load_configuration
+    return self._load_configuration_impl(
+../../../.venv/lib/python3.11/site-packages/hydra/_internal/config_loader_impl.py:276: in _load_configuration_impl
+    ConfigLoaderImpl._apply_overrides_to_config(config_overrides, cfg)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+overrides = [Override(type=<OverrideType.CHANGE: 1>, key_or_group='paths.project_root', value_type=<ValueType.ELEMENT: 1>, _value=...ELEMENT: 1>, _value=8, package=None, input_line='+court_kp.region_search.inlier_distance_ratio=8', config_loader=None)]
+cfg = {'hydra': {'run': {'dir': '${tennis_lab_path:output,${paths.output_root},${output_directory},hydra}'}, 'sweep': {'dir'...e}, 'cache': {'directory': 'tennis_scene/cache/pipeline', 'source': 'execute', 'overwrite': False}, 'max_frames': None}
+
+    @staticmethod
+    def _apply_overrides_to_config(overrides: List[Override], cfg: DictConfig) -> None:
+        for override in overrides:
+            if override.package is not None:
+                raise ConfigCompositionException(
+                    f"Override {override.input_line} looks like a config group"
+                    f" override, but config group '{override.key_or_group}' does not"
+                    " exist."
+                )
+    
+            key = override.key_or_group
+            value = override.value()
+            try:
+                if override.is_delete():
+                    config_val = OmegaConf.select(cfg, key, throw_on_missing=False)
+                    if config_val is None:
+                        raise ConfigCompositionException(
+                            f"Could not delete from config. '{override.key_or_group}'"
+                            " does not exist."
+                        )
+                    elif value is not None and value != config_val:
+                        raise ConfigCompositionException(
+                            "Could not delete from config. The value of"
+                            f" '{override.key_or_group}' is {config_val} and not"
+                            f" {value}."
+                        )
+    
+                    last_dot = key.rfind(".")
+                    with open_dict(cfg):
+                        if last_dot == -1:
+                            del cfg[key]
+                        else:
+                            node = OmegaConf.select(cfg, key[0:last_dot])
+                            del node[key[last_dot + 1 :]]
+    
+                elif override.is_add():
+                    if OmegaConf.select(
+                        cfg, key, throw_on_missing=False
+                    ) is None or isinstance(value, (dict, list)):
+                        OmegaConf.update(cfg, key, value, merge=True, force_add=True)
+                    else:
+                        assert override.input_line is not None
+>                       raise ConfigCompositionException(
+                            dedent(
+                                f"""\
+                        Could not append to config. An item is already at '{override.key_or_group}'.
+                        Either remove + prefix: '{override.input_line[1:]}'
+                        Or add a second + to add or override '{override.key_or_group}': '+{override.input_line}'
+                        """
+                            )
+E                           hydra.errors.ConfigCompositionException: Could not append to config. An item is already at 'court_kp.region_search.inlier_distance_ratio'.
+E                           Either remove + prefix: 'court_kp.region_search.inlier_distance_ratio=8'
+E                           Or add a second + to add or override 'court_kp.region_search.inlier_distance_ratio': '++court_kp.region_search.inlier_distance_ratio=8'
+
+../../../.venv/lib/python3.11/site-packages/hydra/_internal/config_loader_impl.py:377: ConfigCompositionException
+============================== slowest durations ===============================
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_removed_court_acceptance_keys_fail_explicitly[min_inliers]
+0.07s call     tests/unit/tennis_scene/test_configuration.py::test_removed_court_acceptance_keys_fail_explicitly[inlier_distance_ratio]
+
+(4 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/unit/tennis_scene/test_configuration.py::test_removed_court_acceptance_keys_fail_explicitly[min_inliers]
+FAILED tests/unit/tennis_scene/test_configuration.py::test_removed_court_acceptance_keys_fail_explicitly[inlier_distance_ratio]
+============================== 2 failed in 4.82s ===============================

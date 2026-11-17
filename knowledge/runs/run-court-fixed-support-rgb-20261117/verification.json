@@ -1,0 +1,62 @@
+{
+  "numerical_commit": "49f605aabbea65dc09c00c28a72a02b4a4ea59b2",
+  "diagnostic_commit": "56a0e88124858aa2490325bc89f937a84aef6c1e",
+  "distinct_pytest_passed": 253,
+  "cuda_skipped": 1,
+  "added_cases": 9,
+  "validator_requested": 0,
+  "validator_attempted": 0,
+  "validator_completed": 0,
+  "runs": [
+    {
+      "scope": "geometry/inference/CourtKP component/pipeline configuration",
+      "passed": 202,
+      "skipped": 1,
+      "seconds": 12.54,
+      "max_call_seconds": 1.74,
+      "log": "verification/unit-tests.log"
+    },
+    {
+      "scope": "additional RGB crop coordinate contract",
+      "passed": 1,
+      "seconds": 7.93,
+      "call_seconds": 0.78,
+      "log": "verification/rgb-coordinate-contract.log"
+    },
+    {
+      "scope": "real fixture/model contracts/configuration",
+      "passed": 50,
+      "seconds": 36.49,
+      "max_call_seconds": 3.41,
+      "real_fixture_call_seconds": [
+        2.32,
+        2.17
+      ],
+      "log": "verification/integration-tests.log"
+    },
+    {
+      "scope": "diagnostic serialization regression; overlaps previous nodes",
+      "passed": 23,
+      "seconds": 9.61,
+      "log": "verification/diagnostic-contracts.log"
+    }
+  ],
+  "mutation": {
+    "change": "bypass uncertain_paint_extrapolation rejection",
+    "detected": true,
+    "restored_source_node_passed": true,
+    "logs": [
+      "verification/mutation.log",
+      "verification/mutation-restored.log"
+    ]
+  },
+  "public_region_api": {
+    "frozen_head_conditions": 10,
+    "all_selected_regions_and_acceptance_match": true,
+    "GPU_forward_verified": false
+  },
+  "pre_commit": "ruff and mypy passed for both code commits",
+  "CI_code_head": "ci-code.json",
+  "final_head_CI": "recorded on PR #2200 after evidence commit; do not create an infinite commit/CI loop",
+  "notes": "Counts of repeated checks are not added to distinct cases. CUDA bf16 skip is not a pass. Initial exploratory full-import mypy had unrelated repository errors; required changed-file pre-commit mypy uses --follow-imports=skip."
+}

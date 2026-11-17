@@ -1,0 +1,122 @@
+{
+  "schema": "scene_dpt_validation_parity.v1",
+  "plan_sha256": "480084c77be5d8b1b213d7b3a50a7c6368245ec4b2ee11c56af3870c22e9353a",
+  "checkpoint_sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+  "commit": "3d8e00fe205c2e3634815eac4b91d3b20c382b39",
+  "torch": "2.14.1+cu130",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "memory_fraction": 0.7,
+  "compile_mode": "default",
+  "input_decoder": "torchvision.io.decode_jpeg/nvjpeg (same encoded JPEG bytes)",
+  "by_precision": {
+    "bf16": {
+      "frames": 104,
+      "max_source_px_difference": 16.605078399181366,
+      "max_score_difference": 0.0026840269565582275,
+      "mismatches": [
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 44,
+          "kind": "reviewed_empty",
+          "source_px_difference": 13.875489950180054,
+          "score_difference": 0.0008078217506408691,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 59,
+          "kind": "reviewed_empty",
+          "source_px_difference": 16.605078399181366,
+          "score_difference": 0.0008679628372192383,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 52,
+          "kind": "observed",
+          "source_px_difference": 11.352603435516357,
+          "score_difference": 0.0,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 115,
+          "kind": "out_of_frame",
+          "source_px_difference": 1.0025255009531975,
+          "score_difference": 0.002136439085006714,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 118,
+          "kind": "out_of_frame",
+          "source_px_difference": 1.000378966331482,
+          "score_difference": 0.0010992884635925293,
+          "passed": false
+        }
+      ],
+      "tolerance": {
+        "source_px_atol": 1.0,
+        "score_atol": 0.005
+      },
+      "seconds": 61.906291038001655,
+      "peak_allocated_bytes": 1354033152,
+      "peak_reserved_bytes": 1958739968,
+      "mismatch_count": 5
+    },
+    "fp32": {
+      "frames": 104,
+      "max_source_px_difference": 75.95433920621872,
+      "max_score_difference": 0.006585150957107544,
+      "mismatches": [
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 41,
+          "kind": "observed",
+          "source_px_difference": 9.276210129261017,
+          "score_difference": 0.0011589527130126953,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 59,
+          "kind": "reviewed_empty",
+          "source_px_difference": 16.531645596027374,
+          "score_difference": 0.0009870529174804688,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 52,
+          "kind": "observed",
+          "source_px_difference": 11.400709867477417,
+          "score_difference": 0.0005447268486022949,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 114,
+          "kind": "out_of_frame",
+          "source_px_difference": 75.95433920621872,
+          "score_difference": 0.0018564015626907349,
+          "passed": false
+        }
+      ],
+      "tolerance": {
+        "source_px_atol": 2.0,
+        "score_atol": 0.01
+      },
+      "seconds": 44.10738762099936,
+      "peak_allocated_bytes": 2472403968,
+      "peak_reserved_bytes": 4414504960,
+      "mismatch_count": 4
+    }
+  },
+  "passed": false,
+  "raw_report": {
+    "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/validation-parity-torch214.json",
+    "size_bytes": 67430,
+    "sha256": "f327b3e36da4297f27d6a85b6cb836e8b57ec6408b2fcb2d0a4330fa172991ff"
+  },
+  "curation": "Every mismatch retained. Per-frame passing differences remain in the immutable raw report."
+}

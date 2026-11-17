@@ -50,6 +50,7 @@ def raw_issue(n: int, **changes: Any) -> dict[str, Any]:
 
 class FakeGitHub:
     repo = "o/r"
+    targeted_history = False
 
     def authenticated_login(self) -> str:
         return str(self.get("user")["login"])

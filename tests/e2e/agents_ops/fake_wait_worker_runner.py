@@ -17,11 +17,16 @@ from pathlib import Path
 def main() -> int:
     args = sys.argv[1:]
     if args[0] == "status":
+        # This synchronous status proxy must pass the checkout context as well
+        # as its environment when delegating to the actual runner.
+        checkout = importlib.import_module("lib.checkout_lock")
+        checkout.guard_interactive_cli(allow_exclusive=True)
         proc = subprocess.run(
             [os.environ["WAIT_REAL_RUNNER"], *args],
             capture_output=True,
             text=True,
             check=False,
+            **checkout.checkout_subprocess_options(),
         )
         # Acknowledgement proves the waiter reached its running observation.
         # The test can update the parent while this observation is paused.

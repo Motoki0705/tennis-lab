@@ -1,0 +1,1 @@
+[{'test': 'test_unconfirmed_net_tape_is_diagnostic_not_required_paint', 'mutation': 'old_paint', 'caught_by_assertion': True, 'restored_passed': True, 'seconds': 1.8542409559886437}, {'test': 'test_new_support_candidate_recovers_after_fixed_set_becomes_inconsistent', 'mutation': 'old_support', 'caught_by_assertion': True, 'restored_passed': True, 'seconds': 4.598781439010054}]

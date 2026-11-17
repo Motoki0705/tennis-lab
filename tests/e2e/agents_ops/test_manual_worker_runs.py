@@ -52,7 +52,7 @@ if os.environ.get("MANUAL_ADMISSION_FAILURE"):
             raise ValueError("injected admission rejection before Popen")
         return original_popen(command, *args, **kwargs)
     subprocess.Popen = rejected_popen
-from parent.cli import main
+from parent.cli_impl import main
 sys.exit(main(sys.argv[2:]))
 """
 MANUAL_SEED = pytest.StashKey[DirectorySeed]()
@@ -926,17 +926,19 @@ def test_review_request_uses_current_registry_run(
         p.note(),
         "--evidence-file",
         p.note(),
+        "--wait",
+        AGENT_AUTO_MERGE="0",
         ok=mode == "completed",
     )
     if mode == "completed":
-        assert json.loads(response.stdout)["review_state"] == "instructed"
+        assert json.loads(response.stdout)["status"] == "parent_wait"
         assert (
             json.loads(p.cli("status").stdout)["launch_plan"]["active_reservations"]
             == []
         )
         assert str(latest(p)) not in response.stdout + json.dumps(p.state())
     else:
-        assert not (state_dir(p) / "reviews").exists()
+        assert not (state_dir(p) / "progressions").exists()
 
 
 @pytest.mark.parametrize("option", ["--effort", "--worker-runs"])
@@ -945,7 +947,14 @@ def test_removed_or_unsupported_overrides_are_not_cli_options(
 ) -> None:
     command = "review-request" if option == "--worker-runs" else "run-worker"
     required = (
-        ("--prs", "100", "--instruction-file", parent_env.note())
+        (
+            "--prs",
+            "100",
+            "--instruction-file",
+            parent_env.note(),
+            "--evidence-file",
+            parent_env.note(),
+        )
         if command == "review-request"
         else ("--child", "10", "--prompt-file", parent_env.note())
     )
@@ -1055,7 +1064,19 @@ def test_parent_can_verify_artifacts_independent_of_planning_phase(
         p.note("実差分とテストを親が確認した。"),
     )
     assert json.loads(p.cli("reconcile").stdout)["tasks"][0]["artifacts_accepted"]
-    manual(p, "review-prepare", *p.review_flags(), "--prs", "100")
+    manual(
+        p,
+        "review-request",
+        *p.review_flags(),
+        "--prs",
+        "100",
+        "--instruction-file",
+        p.note(),
+        "--evidence-file",
+        p.note(),
+        "--wait",
+        AGENT_AUTO_MERGE="0",
+    )
     assert len(task(p)["worker_runs"]) == 1
 
 
