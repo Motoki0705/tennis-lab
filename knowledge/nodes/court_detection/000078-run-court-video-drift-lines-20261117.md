@@ -7,11 +7,13 @@ recorded_at: '2026-11-17'
 title: 共通Hを固定した線offsetによる複数frame drift診断
 issue: 2191
 provider: codex
-status: failed
+status: done
 summary_impact: updated
 date: '2026-11-17'
 config:
   mode: video_shared
+  unobservable_policy: warn
+  policy_decision_date: '2026-11-17'
   profile: signed_line_similarity_v1
   common_h_refit: false
   frame_numerators: [1, 3, 7, 8, 9]
@@ -29,18 +31,22 @@ config:
   gpu_used: false
   development_seed: 219178
 metrics:
-  acceptance_met: false
+  acceptance_met: true
   common_h_accepted_cameras: 4
   common_h_artifact_bytes_unchanged: true
   real_camera_clips: 276
   real_diagnostic_frames: 1380
-  real_usable_camera_clips: 121
-  real_warning_camera_clips: 4
+  real_usable_camera_clips: 276
+  real_warning_camera_clips: 159
+  real_failed_camera_clips: 0
   real_unobservable_camera_clips: 155
   real_unobservable_frames: 437
   real_tolerance_exceeded_frames: 0
   real_uncertain_projection_frames: 0
-  complete_four_camera_clips: 0
+  complete_four_camera_clips: 69
+  strict_policy_usable_camera_clips: 121
+  strict_policy_failed_camera_clips: 155
+  strict_policy_complete_four_camera_clips: 0
   development_cases: 56
   development_matches: 56
   development_missing_direction_unobservable: 8
@@ -59,23 +65,27 @@ metrics:
   default_replay_reused_images: 3545
   default_replay_reused_regions: 8530
   default_replay_mismatch_images: 0
-  human_reviewed: false
+  human_reviewed: true
+  human_review_clips: 3
+  human_review_cameras: 4
+  human_review_all_clip_images: false
   frame0_overlays: 276
   diagnostic_overlays: 1380
   native_crop_pairs: 6624
   render_seconds: 237.7925272640132
   rgb_correction_numeric_mismatches: 0
-  actual_component_shared_outputs: 121
-  actual_component_explicit_failures: 155
-  added_test_cases: 22
+  actual_component_shared_outputs: 276
+  actual_component_explicit_failures: 0
+  policy_reassessment_seconds: 4.111369363992708
+  added_test_cases: 34
   validator_requested: 0
 repro:
-  commit: edf33290d5e22383dd3d66e4e277ec2538c81f62
+  commit: 56656531c6dd1721d3967790dacbebad07ce0abd
   command: See knowledge/runs/run-court-video-drift-lines-20261117/reproduce.md
 artifacts:
   run_dir: knowledge/runs/run-court-video-drift-lines-20261117
   output_dir: .worktree-outputs/court-video-shared/tennis_scene/evaluate/court-video-drift-lines-20261117
-  review: .worktree-outputs/court-video-shared/tennis_scene/evaluate/court-video-drift-lines-20261117/review/index.html
+  review: .worktree-outputs/court-video-shared/tennis_scene/evaluate/court-video-drift-lines-20261117/policy/review/index.html
 parents:
 - run-court-video-shared-acceptance-20261117
 - run-court-white-line-reference-20261116
@@ -84,12 +94,54 @@ papers: []
 tags: [video-shared, drift, CPU-evaluation, independent-synthetic]
 ---
 
-**全69clip×4cameraの受入は未達。** 共通Hはrun 77から再fitせず、bundleと4camera文書の内容hash・ファイルbytesを維持した。
-人工8視点の静止/5px/11pxは新診断で24/24一致し、検査不能・移動の安全誤判定は0だった。
-実動画は1,380 frameを測り、155/276 camera-clipが検査不能、4cameraそろうclipは0/69だった。
-旧診断の投影不確かさ超過から、抽出した一部の線と共通変位の矛盾へ停止理由が変わった。
-閾値・採否を結果に合わせて変更せず、矛盾した線を黙って除外しない。次の設計判断は親へ返す。
-summary_impactはupdated。既定clip・checkpointの採用は変えず、現在の未解決要因を更新する。
+**人間の共通H承認と `unobservable_policy=warn` の方針により、69/69clipで4cameraの共通Hを利用可能。**
+共通Hはrun 77から再fitせず、bundleと4camera文書の内容hash・ファイルbytesを維持した。
+run 78の測定値も変更せず、検査不能は理由・frame付きwarningへ再分類した。信頼できる10/25px超過は引き続き失敗する。
+これは自動検査の精度改善や検査不能の解消ではなく、共通Hを採用する運用方針の明示的な変更である。
+summary_impactはupdated。既定clip・checkpointは変更せず、動画共有の利用方針と残る検出限界を更新する。
+
+## 人間の確認と採用方針（2026-11-17）
+
+親からの継続指示（turn `c4c7bed22d114a2da39b7a77252fca41`、[子issueへの記録](https://github.com/Motoki0705/tennis-lab/issues/2191#issuecomment-6946828202)）により、
+人間が確認ページの3clip×4cameraと原寸の拡大cropを見て、次の判断をしたと伝達された。
+
+> 緑の線は完全にコートを示している。これを下流で用いていけばよい
+
+これを**共通Hそのものの人間確認**として記録する。全69clip画像を人間が全覧したという意味ではない。
+3clipのIDは親の指示に指定されていないため推測しない。全69clipで同じcamera Hを使うことは機械的に確認した。
+方針変更の根拠は、(1) 共通Hが承認済み参照と一致した、(2) 人間が共通Hを目視確認した、
+(3) 検査不成立の主な原因は隣接線の誤った拾い方で、10px級の整合したcamera移動の証拠がない、の3点である。
+個々の検査不能frameすべての原因が確定したという主張ではない。
+
+**限界: clipの途中でcameraが動いた場合、自動では検出されないことがある。**
+警告を消して静止確認済みと扱わず、元の測定判定・数値・理由・frameをreceipt、表、galleryに残す。
+線の候補を保持し、共有した線配置で対応を検証するdrift改善は将来の課題として残す。
+
+`court_kp.video_shared.unobservable_policy: warn|fail` を設定に追加し、既定を人間の判断どおり `warn` とした。
+`drift_unobservable`／線の矛盾はwarnなら警告、failなら従来の失敗。共通H不成立、入力破損、
+信頼できる `D_mean > 10px` または `D_max > 25px` は失敗のまま。別H・別camera・clip推定への切替はない。
+この方針をcourt nodeとdataset markerのidentityへ含め、切替時は必要なconsumerを再計算する。
+共通Hとdrift bundleは変更せず、読み取り時に純粋関数で判定を適用する。
+
+|camera|使用可 / 69（warning含む）|warning|失敗|
+|---|---:|---:|---:|
+|cam0|69|48|0|
+|cam1|69|12|0|
+|cam2|69|30|0|
+|cam3|69|69|0|
+
+保存済み1,380frameを再集計し、使用可276/276 camera-clip、4cameraがそろうclipは69/69。
+warningは159 camera-clip／467frameで、信頼できる10/25px超過は0件。
+実court component全276件は同camera内で同一KPを返し、元のfail方針で返せた121件ともbyte一致した。
+再集計とcomponent確認は4.11秒、画像decode・白線抽出・H再fitは行っていない。
+Hとdrift成果物のbytes/hash、全測定値の不変を照合した。
+[新方針の集計](../../runs/run-court-video-drift-lines-20261117/policy/summary.json)、
+[clip表](../../runs/run-court-video-drift-lines-20261117/policy/clips.csv)、
+[frame表](../../runs/run-court-video-drift-lines-20261117/policy/frames.csv)が現在の適用結果である。
+新galleryは元のraw画像・原寸cropを参照し、警告・理由・frame・方針を表示する。
+原寸表示・拡大・raw/overlay cropを利用でき、旧失敗ラベル付きの全画面JPEGへのリンクは表示しない。
+
+以下は方針変更前に凍結した測定と、厳格なfail方針での評価履歴。測定条件や元の成果物は書き換えない。
 
 ## 固定した入力・方式
 
@@ -133,7 +185,7 @@ run 77は人工共通H行列を保存していなかったため、**人工fixtu
 人工の広い画角・均一paintは、実映像の狭い投影、隣接線、弱い線、遮蔽をすべて代表しない。
 今回の人工合格は実動画の全clip採用を代替しない。
 
-## 実動画の結果
+## 実動画の測定結果（旧fail方針）
 
 |camera|使用可 / 69|うちwarning|失敗＝検査不能 / 69|frame使用可 / 345|frame矛盾|観測可能frameの最大投影std中央値(px)|
 |---|---:|---:|---:|---:|---:|---:|
@@ -156,7 +208,7 @@ run 77は人工共通H行列を保存していなかったため、**人工fixtu
 HTMLでは全5測定frameと先頭frameを選べ、frameごとの変位・std・判定・矛盾線を参照できる。
 先頭276枚・診断1,380枚のoverlayと、手前baseline・net側・左右sidelineの原寸raw/overlay crop 6,624組を保持する（237.79秒）。
 CPU browserでframe切替・5行の表・原寸canvas・拡大・warning・連続切替・cropと画像の対応を確認した。
-人間による品質承認は未完了。縮小図だけで判断せず、outputsのreviewで原寸を確認する。
+初回評価時は人間の品質承認前だった。現在の承認範囲と適用結果は冒頭の方針変更の節を参照。
 
 ## 本当のcameraの動きと測定限界の切り分け
 
@@ -181,7 +233,7 @@ cam1の代表frameは暗いsidelineと部分的な支持で、他の線が示す
 437件中384件で条件付きの変位が観測可能だった。mean範囲はcam0 0.09〜0.87px、cam1 3.58〜3.98px、
 cam2 0.15〜1.21px、cam3 0.83〜4.66px。いずれも10/25px失敗を裏付ける大変位ではない。
 残るcam2 10件・cam3 43件はsubsetでも検査不能で、真のprojective motionと測定の限界を分離できない。
-条件付きで求めた値を根拠に安全へ昇格させず、全155 camera-clipを失敗のまま親へ返す。
+初回は条件付きの値を受入に使わず、全155 camera-clipを失敗のまま親へ返した。現在も条件付きfitを下流には使わず、元の共通Hをwarning付きで使用する。
 
 次案は、drift専用の抽出で正しい弱い線の候補を早期に落とさず、共有した線配置と複数線の変位から
 候補の対応を検証する設計。現在の3/10/25pxや不確かさの閾値を緩める案ではない。
@@ -197,9 +249,9 @@ H digestと診断camera digestを別々にclip cacheとdataset markerへ入れ�
 両設定を省略した場合だけ元のv1埋込み診断を使うので、過去のartifact/replayを再現できる。
 
 既存geometry・共有fit・estimatorとclip推論の数値ソースはbyte一致。
-YAMLの既存値も一致し、追加は診断load用のnull項目2つだけ。
+初回評価ではYAMLの既存値が一致し、追加は診断load用のnull項目2つだった。今回の方針変更は `unobservable_policy: warn` を加えたもので、既定clipの数値設定は不変。
 親の許可どおり、run 77の全3,545画像/8,530領域の完全一致replay（mismatch 0）を再利用した。
-今回GPUモデルforward・3D再構成・未測定frameの安全・人間の承認を実施したとは扱わない。
+このCPU評価をGPUモデルforward・3D再構成・未測定frameの安全の確認とは扱わない。後から伝達された人間の共通H承認は冒頭に範囲付きで記録した。
 一括CLIへの接続は#1752が担当し、この子でCLI全体を受入済みとは書かない。
 
 ## 検証・実装中の修正
@@ -227,4 +279,25 @@ channel最小値を使う測定式は不変で、全1,380frameを再実行し、
 実装commitのpre-commitはruff/mypyとも成功した。最初のhookは追加testのimport整形で停止し、整形後に通過した。
 validator指定は0回のため起動していない。
 
-PR #2222はDraftのまま。merge・issue close・統合レビュー・追加設計の判断は親が行う。
+初回はPR #2222をDraftで返した。方針変更を反映して統合レビューへ渡し、merge・issue closeは親が行う。
+
+
+## 方針変更の検証
+
+実装は `56656531c6dd1721d3967790dacbebad07ce0abd`。元の数値測定の実装は `edf33290d` のまま。
+新規12ケース（policy unit 7、integrationの増分5）を追加し、旧検査不能失敗テストは明示 `fail` の契約として維持した。
+新しい既定warnで共有Hを使うこと、元の測定を改変しないこと、確かな10/25px超過・共通H不成立は失敗すること、
+方針切替のcache/marker無効化、receiptとcomponentの一致、galleryの理由・frame表示を確認した。
+関連75ケースは17.72秒、設定catalogとreviewを含む508ケースは202.22秒で成功（suite間は重複する）。
+新規integration最長は2.30秒。既存の全component gallery描画は5.80秒、cold importは最大65.88秒、source auditは24.33秒。
+前者は全schemaと実store描画の整合、後者は設定領域全体の契約を確認する既存ケースなので、狭いunitでは置き換えない。
+
+代表的な誤変更として、確かな閾値超過までwarning化する変更を一時注入し、mean11px／max26pxの2ケースが失敗した。
+元ソースをhash一致で復元すると同じ2ケースが成功した。[故障注入記録](../../runs/run-court-video-drift-lines-20261117/policy/mutation-summary.json)を保持する。
+pre-commit ruff/mypyは成功。新galleryの276件・159 warning・人間確認範囲・frame切替・原寸・拡大・cropリンクをCPU browserで確認した。
+既存の原寸画像・cropを再利用し、旧判定のfull JPEGへはリンクしない。初回に試した任意のcanvas保存はlocal-file環境で成立しなかったため採用せず、requiredな表示とcrop参照に絞った。
+このbrowser動作確認は、親から伝達された人間の共通H承認とは別の検証である。
+
+共通H・既存geometry・estimator・clip推論componentの数値ソースはbyte一致で、既存YAML値も同一。
+[方針変更後の照合](../../runs/run-court-video-drift-lines-20261117/policy/default-replay-reuse.json)を根拠にrun 77の完全一致replayを引き続き再利用した。
+自動drift検査の改善、実GPUのscene全処理、一括CLI接続（#1752）、merge後確認はこの変更に含めない。

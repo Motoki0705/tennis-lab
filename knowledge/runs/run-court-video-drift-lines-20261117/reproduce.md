@@ -74,3 +74,32 @@ browserは `--disable-gpu --use-gl=disabled` と専用の一時profileで起動�
 テストは `verification.log`（143）、`configuration-verification.log`（464）、
 `reader-and-motion-final.log`（13）、`multi-clip-final.log`（2）、`runtime-reference-final.log`（1）を参照。
 同じnodeを複数suiteで使っており、件数を合計して独立ケース数とはしない。
+
+## 人間の判断による方針変更の再集計
+
+上記は元の数値測定・fail方針の履歴であり、実装commit `edf33290d` に対応する。
+現在の方針適用は `56656531c6dd1721d3967790dacbebad07ce0abd` と同じソースを使う。
+H、RGB測定、診断bundleを再作成せず、保存済みのrun 78の結果を既定 `warn` と明示 `fail` で比較する。
+
+```bash
+export CUDA_VISIBLE_DEVICES=''
+export PYTHONDONTWRITEBYTECODE=1 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
+PY=.venv/bin/python
+DRIVER=knowledge/runs/run-court-video-drift-lines-20261117
+RUN=outputs/tennis_scene/evaluate/court-video-drift-lines-20261117
+$PY "$DRIVER/reassess_policy.py" --previous "$RUN" --output "$RUN/policy" > "$RUN/policy/reassessment.log" 2>&1
+$PY "$DRIVER/check_policy_gallery.py" \
+  --chrome /home/kamimura/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell \
+  --output "$RUN/policy" > "$RUN/policy/browser.log" 2>&1
+```
+
+再実行は空の別outputへ行う。既存の `policy/summary.json` とCSV、判断の出典を保持する。
+`reassess_policy.py` はHydraから明示load設定を読み、YAML既定の `warn` を確認する。
+276件のcourt component出力がcamera内で同一であること、strict方針で出力できた値との一致、
+元Hとdriftのbytes/hash不変、frameごとの数値・理由不変を検査する。元動画をdecodeしない。
+人間の確認範囲と引用は親からの指示（2026-11-17、turn c4c7bed22d114a2da39b7a77252fca41）に基づく。
+
+現在の確認ページは `policy/review/index.html`。既存raw/cropへの相対参照を使うため、元のreviewディレクトリも保持する。
+元のH・参照H・cropは不変で、適用判定と理由・frame・方針を更新した。旧失敗ラベルの全画面JPEGは現在のページからリンクしない。
+`policy/tests.log`（75ケース）、`policy/related-tests.log`（508ケース）、故障注入と復元2ケースの記録を参照する。
+このrunの現在の受入と歴史的な厳格判定は、nodeの別の節で区別している。
