@@ -8,7 +8,7 @@ title: 人物pose/CLIP特徴の分離受入：固定特徴のCPU一致と単一c
 issue: 1753
 provider: codex
 date: '2026-11-17'
-status: planned
+status: running
 summary_impact: none
 config:
   clip: video_000/clip_037
@@ -28,6 +28,15 @@ metrics:
   frozen_cpu_reference_frames: 64
   frozen_cpu_reference_rows: 122
   frozen_cpu_tracking_selection_exact: true
+  related_cpu_cases: 1270
+  related_cpu_seconds: 117.50
+  focused_cpu_cases: 22
+  focused_cpu_seconds: 7.92
+  focused_max_call_seconds: 0.57
+  focused_setup_seconds: 0.00
+  validator_requested: 0
+  validator_attempted: 0
+  validator_completed: 0
 artifacts:
   run_dir: knowledge/runs/run-person-feature-artifacts-20261117
   output_dir: outputs/person_feature_acceptance/gpu
@@ -61,7 +70,9 @@ CPU dispatchを先に検証する。ViTPose/CLIPのload/unloadはC1 recorderをr
 StrongSORTのID・box・元row・全特徴、GSIの座標/観測/補間mask、選別mask・group/出自row・診断が完全一致した。
 4つのGSI synthetic位置は実観測に昇格しない。別呼出しでもID状態は漏れない。
 frame途中/末尾の空検出、pose順序の反転、非対称box、端数batch、無効cropのmasked zeroも検証した。
-元rowへのscatterを逆順にする故障注入で数値対応テストが失敗し、復元後に再実行する。
+元rowへのscatterを逆順にする故障注入で数値対応テストが失敗し、復元後の22caseは7.92秒で成功した。
+追加・拡張の最長callは0.57秒、setupはいずれも0.00秒。collect-onlyで展開数を確認した。
+関連CPU回帰1,270caseは117.50秒で全成功し、差分のpre-commit ruff/mypyも通過した。
 
 2cameraの実PlanExecutor/ClipStoreのCPU fake計画で、ViTPose unload後にCLIPをloadし、
 全cacheと全loadはモデル起動0回となった。旧追跡/選別/pose schemaの接続は明示的に拒否する。
