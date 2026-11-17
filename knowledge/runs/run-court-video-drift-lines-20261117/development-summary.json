@@ -1,0 +1,641 @@
+{
+  "cases": 56,
+  "matches": 56,
+  "unobservable": 8,
+  "moving_safe": 0,
+  "seconds": 4.883881654008292,
+  "results": [
+    {
+      "case": 0,
+      "shift": 0,
+      "frame": 5,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.11711659863753769,
+      "std_px": 0.5583848798703542
+    },
+    {
+      "case": 0,
+      "shift": 0,
+      "frame": 6,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.11644925899662371,
+      "std_px": 0.5585375301535467
+    },
+    {
+      "case": 0,
+      "shift": 5,
+      "frame": 5,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.1778874045654573,
+      "std_px": 0.5572591601371831
+    },
+    {
+      "case": 0,
+      "shift": 5,
+      "frame": 6,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.180035297698534,
+      "std_px": 0.5574292073465454
+    },
+    {
+      "case": 0,
+      "shift": 11,
+      "frame": 5,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.178958397777167,
+      "std_px": 0.5562308657594276
+    },
+    {
+      "case": 0,
+      "shift": 11,
+      "frame": 6,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.181592568529908,
+      "std_px": 0.556401445930546
+    },
+    {
+      "case": 1,
+      "shift": 0,
+      "frame": 5,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.1483919197144625,
+      "std_px": 0.555650268534042
+    },
+    {
+      "case": 1,
+      "shift": 0,
+      "frame": 6,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.1490911987350604,
+      "std_px": 0.5552151532973557
+    },
+    {
+      "case": 1,
+      "shift": 5,
+      "frame": 5,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.280420998862455,
+      "std_px": 0.554424086613344
+    },
+    {
+      "case": 1,
+      "shift": 5,
+      "frame": 6,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.280947715795044,
+      "std_px": 0.5539925189726616
+    },
+    {
+      "case": 1,
+      "shift": 11,
+      "frame": 5,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.27922348698585,
+      "std_px": 0.553248020092651
+    },
+    {
+      "case": 1,
+      "shift": 11,
+      "frame": 6,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.281296359810608,
+      "std_px": 0.5527023429641025
+    },
+    {
+      "case": 2,
+      "shift": 0,
+      "frame": 5,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.12406560908620771,
+      "std_px": 0.5784210184196549
+    },
+    {
+      "case": 2,
+      "shift": 0,
+      "frame": 6,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.12635418374289112,
+      "std_px": 0.5748138469858756
+    },
+    {
+      "case": 2,
+      "shift": 5,
+      "frame": 5,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.3229022392393373,
+      "std_px": 0.580367915163139
+    },
+    {
+      "case": 2,
+      "shift": 5,
+      "frame": 6,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.32407222288741,
+      "std_px": 0.5764587070792824
+    },
+    {
+      "case": 2,
+      "shift": 11,
+      "frame": 5,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.319248692035515,
+      "std_px": 0.5799388181272623
+    },
+    {
+      "case": 2,
+      "shift": 11,
+      "frame": 6,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.319698621965167,
+      "std_px": 0.5768392511767629
+    },
+    {
+      "case": 3,
+      "shift": 0,
+      "frame": 5,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.0719665137793989,
+      "std_px": 0.5550230980626247
+    },
+    {
+      "case": 3,
+      "shift": 0,
+      "frame": 6,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.07393596946561291,
+      "std_px": 0.5522748778134391
+    },
+    {
+      "case": 3,
+      "shift": 5,
+      "frame": 5,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.2693615899077137,
+      "std_px": 0.557096607002619
+    },
+    {
+      "case": 3,
+      "shift": 5,
+      "frame": 6,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.2687158579629805,
+      "std_px": 0.5545380959232832
+    },
+    {
+      "case": 3,
+      "shift": 11,
+      "frame": 5,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.269517415514932,
+      "std_px": 0.5572241827206948
+    },
+    {
+      "case": 3,
+      "shift": 11,
+      "frame": 6,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.263097533690383,
+      "std_px": 0.5543554312713916
+    },
+    {
+      "case": 4,
+      "shift": 0,
+      "frame": 5,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.13526105215368767,
+      "std_px": 0.6137120236539942
+    },
+    {
+      "case": 4,
+      "shift": 0,
+      "frame": 6,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.13516389524003017,
+      "std_px": 0.6130307847983973
+    },
+    {
+      "case": 4,
+      "shift": 5,
+      "frame": 5,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.3027715521624095,
+      "std_px": 0.6144822384946165
+    },
+    {
+      "case": 4,
+      "shift": 5,
+      "frame": 6,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.3049137076793325,
+      "std_px": 0.6137914055181155
+    },
+    {
+      "case": 4,
+      "shift": 11,
+      "frame": 5,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.299618780572165,
+      "std_px": 0.6154839640545806
+    },
+    {
+      "case": 4,
+      "shift": 11,
+      "frame": 6,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.305078533880868,
+      "std_px": 0.6147787724025949
+    },
+    {
+      "case": 5,
+      "shift": 0,
+      "frame": 5,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.19567473564541296,
+      "std_px": 0.524678870935722
+    },
+    {
+      "case": 5,
+      "shift": 0,
+      "frame": 6,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.19470544518276195,
+      "std_px": 0.5207392126868896
+    },
+    {
+      "case": 5,
+      "shift": 5,
+      "frame": 5,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.4130119240423746,
+      "std_px": 0.5252251125801719
+    },
+    {
+      "case": 5,
+      "shift": 5,
+      "frame": 6,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.4101697398834476,
+      "std_px": 0.5215528597790837
+    },
+    {
+      "case": 5,
+      "shift": 11,
+      "frame": 5,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.412477959868986,
+      "std_px": 0.525679291913962
+    },
+    {
+      "case": 5,
+      "shift": 11,
+      "frame": 6,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.415172666605386,
+      "std_px": 0.5226610063658981
+    },
+    {
+      "case": 6,
+      "shift": 0,
+      "frame": 5,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.1578517344864029,
+      "std_px": 0.5803047334249182
+    },
+    {
+      "case": 6,
+      "shift": 0,
+      "frame": 6,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.15900354134892036,
+      "std_px": 0.5796768450736078
+    },
+    {
+      "case": 6,
+      "shift": 5,
+      "frame": 5,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.470896621175698,
+      "std_px": 0.5814063307303936
+    },
+    {
+      "case": 6,
+      "shift": 5,
+      "frame": 6,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.4739760629665626,
+      "std_px": 0.5804410774981785
+    },
+    {
+      "case": 6,
+      "shift": 11,
+      "frame": 5,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.466999585132802,
+      "std_px": 0.5824370655114225
+    },
+    {
+      "case": 6,
+      "shift": 11,
+      "frame": 6,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.472286530462802,
+      "std_px": 0.5814791638553878
+    },
+    {
+      "case": 7,
+      "shift": 0,
+      "frame": 5,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.016856668392463116,
+      "std_px": 0.5772133762058593
+    },
+    {
+      "case": 7,
+      "shift": 0,
+      "frame": 6,
+      "negative": false,
+      "status": "ok",
+      "reason": null,
+      "geometry": [],
+      "mean_px": 0.01673166554799115,
+      "std_px": 0.575975523969132
+    },
+    {
+      "case": 7,
+      "shift": 5,
+      "frame": 5,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.343364337687349,
+      "std_px": 0.578179890335389
+    },
+    {
+      "case": 7,
+      "shift": 5,
+      "frame": 6,
+      "negative": false,
+      "status": "warning",
+      "reason": "camera_moved_possible",
+      "geometry": [],
+      "mean_px": 3.3392051984224693,
+      "std_px": 0.5771970586162796
+    },
+    {
+      "case": 7,
+      "shift": 11,
+      "frame": 5,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.332312263606553,
+      "std_px": 0.5794118483742677
+    },
+    {
+      "case": 7,
+      "shift": 11,
+      "frame": 6,
+      "negative": false,
+      "status": "failed",
+      "reason": "camera_drift_exceeds_tolerance",
+      "geometry": [],
+      "mean_px": 7.332824997738527,
+      "std_px": 0.5783487499989661
+    },
+    {
+      "case": 0,
+      "shift": 0,
+      "frame": 5,
+      "negative": true,
+      "status": "failed",
+      "reason": "drift_unobservable",
+      "geometry": [
+        "insufficient_independent_line_support"
+      ],
+      "mean_px": null,
+      "std_px": null
+    },
+    {
+      "case": 1,
+      "shift": 0,
+      "frame": 5,
+      "negative": true,
+      "status": "failed",
+      "reason": "drift_unobservable",
+      "geometry": [
+        "insufficient_independent_line_support"
+      ],
+      "mean_px": null,
+      "std_px": null
+    },
+    {
+      "case": 2,
+      "shift": 0,
+      "frame": 5,
+      "negative": true,
+      "status": "failed",
+      "reason": "drift_unobservable",
+      "geometry": [
+        "insufficient_independent_line_support"
+      ],
+      "mean_px": null,
+      "std_px": null
+    },
+    {
+      "case": 3,
+      "shift": 0,
+      "frame": 5,
+      "negative": true,
+      "status": "failed",
+      "reason": "drift_unobservable",
+      "geometry": [
+        "insufficient_independent_line_support"
+      ],
+      "mean_px": null,
+      "std_px": null
+    },
+    {
+      "case": 4,
+      "shift": 0,
+      "frame": 5,
+      "negative": true,
+      "status": "failed",
+      "reason": "drift_unobservable",
+      "geometry": [
+        "insufficient_independent_line_support"
+      ],
+      "mean_px": null,
+      "std_px": null
+    },
+    {
+      "case": 5,
+      "shift": 0,
+      "frame": 5,
+      "negative": true,
+      "status": "failed",
+      "reason": "drift_unobservable",
+      "geometry": [
+        "insufficient_independent_line_support"
+      ],
+      "mean_px": null,
+      "std_px": null
+    },
+    {
+      "case": 6,
+      "shift": 0,
+      "frame": 5,
+      "negative": true,
+      "status": "failed",
+      "reason": "drift_unobservable",
+      "geometry": [
+        "insufficient_independent_line_support"
+      ],
+      "mean_px": null,
+      "std_px": null
+    },
+    {
+      "case": 7,
+      "shift": 0,
+      "frame": 5,
+      "negative": true,
+      "status": "failed",
+      "reason": "drift_unobservable",
+      "geometry": [
+        "insufficient_independent_line_support"
+      ],
+      "mean_px": null,
+      "std_px": null
+    }
+  ]
+}

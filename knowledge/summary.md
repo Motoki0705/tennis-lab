@@ -26,7 +26,7 @@
 - **合成データのscene組合せ**（#1581）: [全6ペアと共通4scene評価](nodes/court_detection/000067-group-court-scene-pair-s42.md)が完了しました。固定5,500枚・33,160更新・seed42では、同群2ペアの実画像KP中央値平均57.36 pxに対し、異群4ペアは4.57 px（δ=+52.80 px）で、全5指標が同群側で悪い向きでした。P03（B00+B03）が実画像KP中央値で最良（2.97 px）、共通合成の4scene平均ではscene-4が最良です。単一seed・再開・会場とsurface等の交絡があり、一般的な因果効果や採用変更にはしません。旧[1〜4scene比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)は当時の4条件の証拠として保持します。
 - **backbone**（#983）: [凍結DINOv3 S/S+/B/Lの比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)では、出力ごとに最良のサイズが異なり、サイズによる一様な改善は見られませんでした（1 seed）。
 - **後処理**（#2190）: revision 4で1frameの精度目標を動画共有へ移した。[旧処理復元](nodes/court_detection/000075-run-court-legacy-default-20261117.md)は全3545画像・8530領域の採否・Hが旧処理と完全一致。clip既定は`legacy`・RGB無効のまま、白線・品質部品と[run 69〜74](nodes/court_detection/000074-run-court-semantic-support-20261117.md)の負の結果を保持する。
-- **動画共有**（#2191）: [手指定なしの共通H](nodes/court_detection/000077-run-court-video-shared-acceptance-20261117.md)は4cameraとも参照目標内（mean0.38〜2.00px、max最大3.36px）。一方、単一heldout frameの局所driftが169/276件で検査不能となり、4cameraがそろうclipは0/69で受入未達。次は共有した線対応とclip内の複数frameを使うdrift診断の設計判断を親へ返す。閾値は緩和しない。参照と白線抽出器の共有による独立性の限界、実scene GT不足、人間の画像確認、一括CLI接続は残る。
+- **動画共有**（#2191）: [共通Hを固定した線offset診断](nodes/court_detection/000078-run-court-video-drift-lines-20261117.md)は人工8視点の静止/5px/11pxで24/24一致し、安全誤判定0。共通Hの4camera参照目標内と内容hashを維持した。各clipの5frameを独立に判定すると、155/276件が観測線と4自由度変位の矛盾で検査不能、4cameraがそろうclipは0/69で受入未達。旧局所Hの不確かさ超過は解消したが、隣接線・遮蔽等の候補抽出が次の課題。事後の線除外は受入に使わず、閾値も緩和しない。参照との白線抽出器共有、人間の画像確認、一括CLI接続は残る。
 - **次の比較候補**: 収録を分けた実画像testで、従来のhomography推定・PROSAC・共同推定のKP距離、geometry valid率、失敗率、処理時間、下流E2Eを比べます。scene組合せは追加seed、3sceneから1つずつ抜く配置、会場を固定したsurface対照が候補ですが、今回追加実行はしていません。画像数スケーリングは実施しない判断を維持し、B/Lの複数seedも残っています。
 
 ## Ball Detection
