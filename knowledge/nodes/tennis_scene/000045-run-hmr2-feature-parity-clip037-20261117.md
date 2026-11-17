@@ -30,6 +30,8 @@ metrics:
   hmr2_loads_per_path: 1
   gvhmr_loads_per_path: 1
   body_geometry_loads_per_path: 1
+  integrated_cpu_passed: 1215
+  integrated_cpu_wall_seconds: 50.44
 artifacts:
   run_dir: knowledge/runs/run-hmr2-feature-parity-clip037-20261117
   output_dir: outputs/hmr2_feature_acceptance_20261117
@@ -39,6 +41,7 @@ artifacts:
   base_recorder: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/comparison/base_recorder.json
   separated_recorder: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/comparison/separated_recorder.json
   comparison_log: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/comparison/queue.log
+  integrated_source_check: knowledge/runs/run-hmr2-feature-parity-clip037-20261117/integrated-source-check.json
 parents: []
 relations: []
 papers: []
@@ -77,3 +80,5 @@ GPUは共有training queueのall枠で1clipずつ処理する。最初の候補�
 分離後はHMR2 artifactをClipStoreにpublishした後、memory cache無しの別store instanceから再読込してGVHMRへ渡した。[base recorder](../../runs/run-hmr2-feature-parity-clip037-20261117/comparison/base_recorder.json)と[分離後recorder](../../runs/run-hmr2-feature-parity-clip037-20261117/comparison/separated_recorder.json)は、4人物に対しHMR2/GVHMR/body geometryのload・unloadがそれぞれ1回だった。複数clipで回数が増えない契約は既存の1clip/3clip fake計画テストで補う。CUDA例外・NVML timeout・ハングはこの再開後の2jobでは記録されなかった。これは前回のCUDA異常の原因解消を証明するものではない。
 
 この入力では4人物とも1segment・同じ長さのため、実データだけでは非対称segmentの取り違えを十分検出できない。非対称unit/fake integrationおよび特徴row反転の故障注入がその契約を補う。全69clip・clipをまたぐbatch化・速度改善は今回の受入に含めない。body parameter/mesh等の大きい配列はoutputsの比較directoryに保持し、Gitには小さい結果/再現情報だけを残す。標準checkpointや再構成方式は変わらず、summary_impactはnoneのままとする。
+
+比較完了後に最新C3 `8ef978146`（mainのvideo court変更を含む）を統合した。競合はdefinitionのasset helperとshared court helperの両方を残して解消し、[内容hash検査](../../runs/run-hmr2-feature-parity-clip037-20261117/integrated-source-check.json)でGPU受入時の身体段8fileおよびモデル実装が変わらないことを確認した。統合後のCPU unit/integrationはCUDA_VISIBLE_DEVICES空で1,215 passed / 50.44秒。durations=0の中心caseの最長callは0.99秒、表示setupは最大0.01秒だった。既存の全gallery描画caseは6.48秒で5秒目安を超えるが、000044に記録した固有のstore不変/登録schema描画契約を保ったもので、今回新しく重いcaseを追加した結果ではない。実測の小さい要約は[統合検証](../../runs/run-hmr2-feature-parity-clip037-20261117/integrated-validation.json)、全ログはoutputsに保持する。

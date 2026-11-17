@@ -1,0 +1,36 @@
+{
+  "source_inventory_metadata_sha256": "ed447f7feeb2b38bc098b70fd77dbfebd0ed6ddcc1310d01a04524f637b9cad1",
+  "groups": {
+    "input-raw": {
+      "files": 5433,
+      "bytes": 2190809991,
+      "all_hashes_match": true,
+      "inventory_sha256": "b699a7a4978c24352b3d88daeb69689c90d2c02e08e523f9e6abbb07fad8ef29"
+    },
+    "input-val_raw": {
+      "files": 2211,
+      "bytes": 1172362220,
+      "all_hashes_match": true,
+      "inventory_sha256": "ac4725957c01ffb785ee0ea60450de8d1907f111f90ea2d5f844ce26110d71c5"
+    },
+    "input-test_raw": {
+      "files": 886,
+      "bytes": 474439144,
+      "all_hashes_match": true,
+      "inventory_sha256": "fe93cf16f27f1af68ac1b15965d8f118610f131dfbf54ac3c5257e81d2481849"
+    },
+    "line-evidence": {
+      "files": 8530,
+      "bytes": 18331535548,
+      "all_hashes_match": true,
+      "inventory_sha256": "afca19e7726c7681c60924791f04d816932c9959607831d2b8d633915d58d1e5"
+    },
+    "rgb": {
+      "files": 3545,
+      "bytes": 2869680921,
+      "all_hashes_match": true,
+      "inventory_sha256": "8c0d8e975121c3be530097a291c91f386d18d2a10a18c14f552642ed5f263b68"
+    }
+  },
+  "seconds": 68.56321057898458
+}

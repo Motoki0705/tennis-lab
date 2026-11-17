@@ -1,0 +1,86 @@
+{
+  "cam0": {
+    "observable_frames": 217,
+    "mean_px_percentiles": [
+      0.032806133278748324,
+      0.3687530281827426,
+      0.6579500622734161,
+      0.8403730905094189
+    ],
+    "projection_std_px_percentiles": [
+      2.465380346367246,
+      2.4726253747706552,
+      2.4796890354790837,
+      2.4861184231836324
+    ],
+    "conditional_observable_count": 128,
+    "conditional_observable_mean_range": [
+      0.09001892799056846,
+      0.8659339796708877
+    ],
+    "conditional_unobservable_count": 0
+  },
+  "cam1": {
+    "observable_frames": 334,
+    "mean_px_percentiles": [
+      0.24604952042436268,
+      1.6043460362559818,
+      3.981155430923159,
+      4.169804574271136
+    ],
+    "projection_std_px_percentiles": [
+      2.1934163919034053,
+      2.197516658913943,
+      2.211905722883371,
+      3.0135779314707927
+    ],
+    "conditional_observable_count": 11,
+    "conditional_observable_mean_range": [
+      3.575418465933065,
+      3.979654969540564
+    ],
+    "conditional_unobservable_count": 0
+  },
+  "cam2": {
+    "observable_frames": 294,
+    "mean_px_percentiles": [
+      0.040915485535608136,
+      0.40792371916786985,
+      1.2730254342358862,
+      1.3969809168539045
+    ],
+    "projection_std_px_percentiles": [
+      2.779652250215652,
+      2.7857448046376945,
+      2.7928258422731362,
+      3.5582737053391518
+    ],
+    "conditional_observable_count": 41,
+    "conditional_observable_mean_range": [
+      0.15116770014404501,
+      1.2107052900770552
+    ],
+    "conditional_unobservable_count": 10
+  },
+  "cam3": {
+    "observable_frames": 98,
+    "mean_px_percentiles": [
+      0.9961182528870709,
+      2.764853321594007,
+      4.241718965506667,
+      4.477297483778734
+    ],
+    "projection_std_px_percentiles": [
+      2.7416898725137657,
+      2.7902916977671857,
+      2.8273281051569383,
+      3.13961748435606
+    ],
+    "conditional_observable_count": 204,
+    "conditional_observable_mean_range": [
+      0.8327520610748338,
+      4.659178529830613
+    ],
+    "conditional_unobservable_count": 43
+  }
+}

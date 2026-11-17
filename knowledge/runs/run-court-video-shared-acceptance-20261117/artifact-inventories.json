@@ -1,0 +1,58 @@
+{
+  "store": {
+    "root": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/store",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inventories/store.jsonl",
+    "files": 9,
+    "bytes": 6508578,
+    "sha256": "258fe4a80a2dab13501044ffe8b7f842da930b2cbabadebad764eb11f9c6cec5"
+  },
+  "inputs": {
+    "root": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inputs",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inventories/inputs.jsonl",
+    "files": 6,
+    "bytes": 1680014,
+    "sha256": "17319fe64a23ba4e1bf5b5c6d925e566d697b4217d8e3967b4f380122b9fa778"
+  },
+  "review": {
+    "root": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/review",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inventories/review.jsonl",
+    "files": 3313,
+    "bytes": 1030664994,
+    "sha256": "212ca25c9ad1269ad27b7e88c752f53e1da6796b1e73645b78f78323f05182d5"
+  },
+  "synthetic": {
+    "root": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/synthetic",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inventories/synthetic.jsonl",
+    "files": 18,
+    "bytes": 924599,
+    "sha256": "0dfa7cdf7fef25e84b443637b42d12d7d531de6e4215349aeccaed3d8626d16a"
+  },
+  "legacy-replay": {
+    "root": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/legacy-replay",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inventories/legacy-replay.jsonl",
+    "files": 3550,
+    "bytes": 7581375,
+    "sha256": "d59244432e58aec6e5427572d939017f1b88130110f3d236bb37e40963fcc68a"
+  },
+  "pre-heldout-interrupted-build": {
+    "root": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/pre-heldout-interrupted-build",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inventories/pre-heldout-interrupted-build.jsonl",
+    "files": 3,
+    "bytes": 211271,
+    "sha256": "9ee8d383cad651bf61adc58f3b70260de73f277c538bbe9f46951dab2559c240"
+  },
+  "ci-import-interrupted": {
+    "root": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/ci-import-interrupted",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inventories/ci-import-interrupted.jsonl",
+    "files": 161,
+    "bytes": 1583964,
+    "sha256": "61584af6c97f498c0db3ed6e025e918182866fe7d322e83f74b41ea3be72c4c4"
+  },
+  "cpu-thread-interrupted": {
+    "root": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/cpu-thread-interrupted",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-video-shared-acceptance-20261117/inventories/cpu-thread-interrupted.jsonl",
+    "files": 3,
+    "bytes": 211308,
+    "sha256": "2a0b7b9c86ec38b2076812e8703a63ccb44aca8b33267b491226e1b21d6a9715"
+  }
+}
