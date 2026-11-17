@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
@@ -133,8 +133,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     def body_assets() -> dict[str, Any]:
         if body_enabled:
             cfg.people.smpl_assets.require_files()
-        identities: dict[str, Any] = asset_identities(body_enabled, cfg.people.body_assets())
-        return identities
+        return cast(dict[str, Any], asset_identities(body_enabled, cfg.people.body_assets()))
 
     def shared_settings(camera_id: str) -> dict[str, Any]:
         assert video_court is not None
