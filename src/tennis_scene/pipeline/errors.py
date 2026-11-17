@@ -15,5 +15,6 @@ class ReconstructionUnavailable(RuntimeError):
 def is_clip_failure(error: BaseException) -> bool:
     """Only known input/contract and reconstruction failures allow continuation."""
     from src.utils.checksum import FileIntegrityError
+    from src.utils.video.reader import VideoReadError
 
-    return isinstance(error, (ReconstructionUnavailable, ValueError, FileNotFoundError, FileIntegrityError))
+    return isinstance(error, (ReconstructionUnavailable, ValueError, FileNotFoundError, FileIntegrityError, VideoReadError))

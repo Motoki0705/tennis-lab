@@ -14,11 +14,15 @@ from src.utils.inference_recording import measured, span
 from src.utils.video.types import FramePacket, VideoInfo
 
 
+class VideoReadError(RuntimeError):
+    """The selected media could not be opened or decoded."""
+
+
 def probe_video_info(video_path: str | Path) -> VideoInfo:
     """Read video metadata without decoding all frames."""
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
-        raise RuntimeError(f"Failed to open video: {video_path}")
+        raise VideoReadError(f"Failed to open video: {video_path}")
     try:
         return VideoInfo(
             fps=float(cap.get(cv2.CAP_PROP_FPS)),
@@ -40,13 +44,13 @@ def read_video_frame(
 
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
-        raise RuntimeError(f"Failed to open video: {video_path}")
+        raise VideoReadError(f"Failed to open video: {video_path}")
 
     try:
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
         ok, frame_bgr = cap.read()
         if not ok:
-            raise RuntimeError(f"Failed to read frame {frame_index} from {video_path}")
+            raise VideoReadError(f"Failed to read frame {frame_index} from {video_path}")
         frame_bgr = cast(NDArray[np.uint8], np.asarray(frame_bgr, dtype=np.uint8))
         original_size = (int(frame_bgr.shape[1]), int(frame_bgr.shape[0]))
         return FramePacket(
@@ -70,7 +74,7 @@ class OpenCVVideoFrameReader:
     def __iter__(self) -> Iterator[FramePacket[NDArray[np.uint8]]]:
         cap = cv2.VideoCapture(str(self.video_path))
         if not cap.isOpened():
-            raise RuntimeError(f"Failed to open video: {self.video_path}")
+            raise VideoReadError(f"Failed to open video: {self.video_path}")
 
         try:
             frame_index = 0
@@ -127,7 +131,7 @@ class RandomAccessVideoReader:
         if self._cap is None:
             cap = cv2.VideoCapture(str(self.video_path))
             if not cap.isOpened():
-                raise RuntimeError(f"Failed to open video: {self.video_path}")
+                raise VideoReadError(f"Failed to open video: {self.video_path}")
             self._cap = cap
             self._next_index = 0
         cap = self._cap
@@ -136,7 +140,7 @@ class RandomAccessVideoReader:
         if 0 < distance <= self.seek_grab_threshold:
             for skipped in range(distance):
                 if not cap.grab():
-                    raise RuntimeError(
+                    raise VideoReadError(
                         f"Failed to grab frame {self._next_index + skipped} "
                         f"from {self.video_path}"
                     )
@@ -145,7 +149,7 @@ class RandomAccessVideoReader:
 
         ok, frame_bgr = cap.read()
         if not ok:
-            raise RuntimeError(
+            raise VideoReadError(
                 f"Failed to read frame {frame_index} from {self.video_path}"
             )
         self._next_index = frame_index + 1
@@ -197,5 +201,5 @@ def read_video_rgb(
             )
         frames.append(frame_bgr[..., ::-1])
     if not frames:
-        raise RuntimeError(f"No frames decoded from {video_path}")
+        raise VideoReadError(f"No frames decoded from {video_path}")
     return np.ascontiguousarray(np.stack(frames, axis=0))

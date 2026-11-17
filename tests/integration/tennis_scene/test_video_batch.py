@@ -26,6 +26,7 @@ from src.tennis_scene.pipeline.video_batch import run_video_batch
 from src.tennis_scene.schema import SceneResult
 from src.utils.configuration import PathRole
 from src.utils.inference_recording import model_event, span
+from src.utils.video import VideoReadError
 from tests.support.tennis_scene.video_dataset import add_clip
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     FixedStage,
@@ -171,12 +172,14 @@ def test_clip_too_long_isolated_and_other_clip_publishes_immediately(tmp_path: P
     assert json.loads(result.progress_path.read_text())["clips"]["video_000/clip_001"]["reason"] == "clip_too_long"
 
 
-def test_clip_failure_keeps_the_resident_model_for_other_clips(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("failure_type", [ValueError, VideoReadError])
+def test_clip_failure_keeps_the_resident_model_for_other_clips(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                                             failure_type: type[Exception]) -> None:
     pipeline, dataset, clips, stages, events = harness(tmp_path, monkeypatch)
     stage = stages["ball_detection/cam0"]
     def fail(inputs):
         if inputs.video.path.parent == clips[0]:
-            raise ValueError("malformed clip observation")
+            raise failure_type("malformed clip observation")
     stage.before = fail
     result = execute(pipeline, dataset)
     assert [o.status for o in result.outcomes] == ["failed", "generated"]

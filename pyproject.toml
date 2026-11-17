@@ -285,6 +285,11 @@ ignore_errors = true
 module = ["src.submodules.vendor.*"]
 ignore_errors = true
 
+# Keep the shared recording decorators typed for partial-file pre-commit runs.
+[[tool.mypy.overrides]]
+module = ["src.utils.inference_recording"]
+follow_imports = "normal"
+
 # Tests are still type-checked (bodies are validated), but pytest's own
 # fixture / parametrize decorators are seen as untyped under the
 # `--follow-imports=skip` pre-commit invocation, so the strict
