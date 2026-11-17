@@ -94,7 +94,11 @@ def path(meta: dict[str, Any]) -> str:
         "record_key",
     )
     turn = meta["turn"]
-    fields(turn, {"sequence", "kind", "phase", "previous_sequence"})
+    fields(
+        turn,
+        {"sequence", "kind", "phase", "previous_sequence"}
+        | ({"repair"} if "repair" in turn else set()),
+    )
     require(integer(turn["sequence"]), "record_turn")
     require(turn["kind"] in {"initial", "resume"}, "record_turn")
     require(turn["phase"] in {"planning", "implementing"}, "record_phase")
@@ -103,6 +107,15 @@ def path(meta: dict[str, Any]) -> str:
         previous is None or integer(previous) and previous < turn["sequence"],
         "record_turn",
     )
+    if "repair" in turn:
+        fields(turn["repair"], {"pr"})
+        require(
+            integer(turn["repair"]["pr"])
+            and turn["kind"] == "resume"
+            and turn["phase"] == "implementing"
+            and previous is not None,
+            "record_repair",
+        )
     return (
         f"{DIRECTORY}/parent-{meta['parent']}/child-{meta['issue']}/"
         f"{meta['delegation_key']}/{turn['sequence']:04d}-{turn['kind']}"
@@ -182,7 +195,8 @@ def validate(files: dict[str, bytes], guard: Guard | None = None) -> dict[str, A
     require(
         isinstance(worker["selected"]["model"], str)
         and bool(re.fullmatch(r"[A-Za-z0-9_.-]+", worker["selected"]["model"]))
-        and worker["selected"]["effort"] == "max",
+        and worker["selected"]["effort"]
+        == ("high" if "repair" in meta["turn"] else "max"),
         "record_worker",
     )
     fields(worker["effective"], {"model", "effort"})

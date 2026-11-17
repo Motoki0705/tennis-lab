@@ -62,7 +62,7 @@ def unassigned_cli(
     target_status: str | None = None,
     issue_state: str = "open",
 ) -> list[str]:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     parents = {"o/r#1900": recovery_owner()}
     if target_status:
         parents["o/r#2"] = recovery_owner(target_status, session="codex:previous")
@@ -113,7 +113,7 @@ def test_unassigned_parent_cli_publishes_open_and_closed_without_assignment(
     issue_state: str,
     target_status: str | None,
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     reconciliation = importlib.import_module("worker_logs.reconciliation")
     log = env.capture(parent=2)
     args = unassigned_cli(
@@ -201,7 +201,7 @@ def test_unassigned_parent_cli_refuses_ownership_before_any_mutation(
     capsys: pytest.CaptureFixture[str],
     fault: str,
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     from tests.support.agents_ops.decision_logs import journal
 
     log = journal.Journal(tmp_path, "o/r", 2)
@@ -292,7 +292,7 @@ def test_unassigned_publication_rechecks_before_external_writes(
     boundary: str,
     change: str,
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     log = env.capture(parent=2, prepare=True)
     args = unassigned_cli(
         env,
@@ -377,7 +377,7 @@ def test_unassigned_publication_reuses_existing_batch_and_records_recovery_actor
     capsys: pytest.CaptureFixture[str],
     admission_race: bool,
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     continuation = importlib.import_module("parent.log_publication")
     log = env.capture(parent=2)
     worker = env.decision_publisher(log)
@@ -429,7 +429,7 @@ def test_unassigned_publication_resumes_frozen_actor_after_partial_confirmation(
     point: str,
     legacy_batch: bool,
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     log = env.capture(parent=2)
     args = unassigned_cli(env, monkeypatch)
     record_publication = type(log).publication
@@ -499,7 +499,7 @@ def test_unassigned_publication_rechecks_confirmation_after_merge(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     env.capture(parent=2)
     args = unassigned_cli(env, monkeypatch)
     registry = env.state / "registry.json"
@@ -536,7 +536,7 @@ def test_unassigned_successor_records_its_request_for_unmerged_batch(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     log = env.capture(parent=2)
     args = unassigned_cli(env, monkeypatch)
     env.github.pause_reads = True
@@ -688,7 +688,7 @@ def test_publication_resume_retains_ignored_outside_plan_files(
     unassigned: bool,
     point: str,
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     env.advance({".gitignore": b"*.json\n"})
     args = unassigned_cli(env, monkeypatch)
     if not unassigned:
@@ -754,7 +754,7 @@ def test_publication_cleanup_retains_ignored_outside_plan_files(
     capsys: pytest.CaptureFixture[str],
     unassigned: bool,
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     env.advance({".gitignore": b"*.json\n"})
     args = unassigned_cli(env, monkeypatch)
     if not unassigned:
@@ -1414,7 +1414,7 @@ def test_parent_cli_checks_owner_and_never_captures_its_own_publication(
     capsys: pytest.CaptureFixture[str],
     authorized: bool,
 ) -> None:
-    cli: Any = importlib.import_module("parent.cli")
+    cli: Any = importlib.import_module("parent.cli_impl")
     log = env.capture()
     monkeypatch.chdir(env.root)
     monkeypatch.setattr(cli, "session_identity", lambda _: "codex:current-owner")

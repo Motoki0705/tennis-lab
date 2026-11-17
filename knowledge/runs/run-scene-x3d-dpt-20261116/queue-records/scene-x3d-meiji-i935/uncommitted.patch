@@ -1,0 +1,15 @@
+diff --git a/knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json b/knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json
+index c092ecb92..757eb8dbe 100644
+--- a/knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json
++++ b/knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json
+@@ -8,5 +8,9 @@
+     "max_case_seconds": 1.133
+   },
+   "precommit": "staged ruff/mypy passed on 7610d05ed and 732d9eb5c",
+-  "broader_check": "all-files mypy also attempted; fails in untouched repository paths; no repository-wide success claimed"
++  "broader_check": "all-files mypy also attempted; fails in untouched repository paths; no repository-wide success claimed",
++  "pipeline_regression": {
++    "cases": 164,
++    "max_case_seconds": 5.614
++  }
+ }

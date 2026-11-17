@@ -31,6 +31,7 @@ def _isolate_agent_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
         "DECISION_LOG_RETRIEVAL",
         "AGENT_RUNTIME_RUN_DIR",
         "AGENT_RUNTIME_TASK_ID",
+        "AGENT_AUTO_MERGE",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -730,6 +731,9 @@ def _github_http_bridge(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(transport, "_logins", {})
     monkeypatch.setattr(transport, "_token", transport._token)
     monkeypatch.setattr(transport.HTTPClient, "request", transport.HTTPClient.request)
+    monkeypatch.setattr(
+        transport.HTTPClient, "request_response", transport.HTTPClient.request_response
+    )
     monkeypatch.setenv("NO_PROXY", os.environ.get("NO_PROXY", ""))
     bridge = helper.install(transport)
     original = subprocess.Popen.__init__

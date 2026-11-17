@@ -40,6 +40,24 @@ def test_defaults_associate_players_and_decide_sides() -> None:
     assert runtime.player_placement.min_joints == 5
 
 
+def test_explicit_x3d_config_changes_model_and_cache_settings() -> None:
+    directory = Path(__file__).parents[3] / "src/tennis_scene/configs"
+    with initialize_config_dir(version_base="1.3", config_dir=str(directory)):
+        cfg = compose(config_name="pipeline_x3d_dpt")
+    runtime = PipelineRuntimeConfig.from_config(cfg)
+    assert runtime.ball_detection is not None
+    assert runtime.ball_detection.model_type == "x3d_csn_dpt"
+    assert runtime.ball_detection.score_threshold == 0.5380124449729919
+    assert runtime.ball_detection.num_frames == 32
+    assert runtime.ball_detection.precision == "bf16"
+    assert runtime.processing_settings["ball_detection"] != _runtime([]).processing_settings["ball_detection"]
+
+
+def test_missing_model_selection_fails_instead_of_guessing_checkpoint() -> None:
+    with pytest.raises(ValueError, match="model_type"):
+        _runtime(["~ball_detection.model_type"])
+
+
 def test_placement_override_is_typed_and_part_of_cache_settings() -> None:
     value = _runtime(["player_reconstruction.placement.temporal_weight=0.2"])
     assert value.player_placement.temporal_weight == 0.2
@@ -49,6 +67,32 @@ def test_placement_override_is_typed_and_part_of_cache_settings() -> None:
         ]["temporal_weight"]
         == 0.2
     )
+
+
+def test_court_methods_and_paint_measurements_change_cache_identity() -> None:
+    baseline = _runtime([])
+    assert baseline.court_kp.postprocess.support_method == "legacy"
+    assert baseline.court_kp.region_search.acceptance_method == "legacy"
+    assert baseline.court_kp.region_search.refinement_method == "model"
+    for overrides in (
+        ["court_kp.region_search.acceptance_method=quality"],
+        ["court_kp.region_search.acceptance_method=quality", "court_kp.region_search.refinement_method=rgb_paint"],
+        ["court_kp.postprocess.support_method=candidate_subsets"],
+        ["court_kp.postprocess.support_method=fixed_subsets"],
+        ["court_kp.postprocess.max_support_candidates=4"],
+        ["court_kp.region_search.paint.radius_px=40.0"],
+        ["court_kp.region_search.min_inliers=9"],
+    ):
+        changed = _runtime(overrides)
+        assert changed.processing_settings["court_kp"] != baseline.processing_settings["court_kp"]
+    with pytest.raises(ValueError, match="requires acceptance_method=quality"):
+        _runtime(["court_kp.region_search.refinement_method=rgb_paint"])
+    with pytest.raises(ValueError, match="paint extraction version"):
+        _runtime(["court_kp.region_search.paint.version=paired_edges_v1"])
+    with pytest.raises(ValueError, match="support_method"):
+        _runtime(["court_kp.postprocess.support_method=adaptive"])
+    with pytest.raises(ValueError, match="refinement_method"):
+        _runtime(["court_kp.region_search.refinement_method=automatic"])
 
 
 @pytest.mark.parametrize(
@@ -156,6 +200,7 @@ def test_default_coco_source_and_explicit_finetuned_comparison() -> None:
 
 def test_ball_detection_is_used_without_refiner_assets() -> None:
     current = _runtime([])
+    assert current.ball_detection is not None
     assert current.ball_detection.checkpoint.name == "i935-mixed-ft-s42-epoch09.ckpt"
     assert current.ball_detection.overlap_aggregation == "nearest_window_centre_then_earlier_start"
     assert "ball_refiner_2d" not in current.component_sources

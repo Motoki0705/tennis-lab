@@ -104,12 +104,9 @@ outbox只保存私有投递输入，不是发布单元。
 | `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | 候选观察和明确的拆分判断引用原始评论，再连接提案发布、会话决策和批量提取的请求/结果。仅捕获原父级仍负责期间的操作 |
 | `agree` / `basis-record` / `create-child` / `workflow-report` | 现有依据、创建和验收结果。后继父级的agree通过来源评论记录观察到的人类批准，不将批准视为已执行 |
 | `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI结果和原始评论；dispatcher取消、runner停止/恢复是独立事实 |
-| `review-prepare` / `review-request` / `review-state` | 固定请求及显式指示/状态结果；只有显式接收/验证才记录父级确认 |
-| review `run` | 既有execution、output、result和发布状态，包括runtime失败时的有效输出、exception及先前review公开键。发布不改变原result；读取已消费run不是新AI评审 |
-| review `recover` / `resume-publication` / `complete-evidence` / `resolve` | 既有保存证据恢复、仅发布重试和父级显式验证。保留前一结果，不算新AI启动 |
-| review `close-interrupted` | 以 `verify` 捕获结束和 cleanup，支持缺失 final/result。不会接收 coverage/问题，也不把源审查标为已验证 |
+| `review-request` / `merge-continue` | 父级明确请求与继续指令 |
+| 自动流程 | 整体审查、runtime/获取证据与CI/修复/merge通知；observer为machine |
 | review获取tool | 包括CI获取失败的既有receipt。同一review绑定、tool和参数的重试为 `retry_fetch`；只确认查询指示不变，不猜测网络等条件 |
-| merge gate `merge` | 各PR判定、保存的merge尝试/结果及整体结果。区分dry-run合格和实际合并 |
 | worker日志接收/发布、`worker-log-status` / `publish-worker-log` | 既有journal状态、final/发布失败和main保存确认。仅发布重试为 `retry_publication`，引用前一结果 |
 
 支持的请求接受 `--decision-id` 和可选 `--plan-id`。只有一个匹配plan时自动选择；
@@ -128,22 +125,9 @@ outbox只保存私有投递输入，不是发布单元。
 
 ## 审查因果链接
 
-复用既有 `decide`、journal、发布与 README 生成。用 `decision-log-status` 找到源审查结果 ID `R`。
-父级 handoff 判断须把 `R` 放入 `decide.inputs`，说明复用及重查范围，并指定 `review` next-action plan。
-先 `review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R
---review-model gpt-6-astra --review-effort xhigh --model-reason-file model-reason.txt`，
-再 `review-request --run-id NEXT --instruction-file instruction.txt --decision-id D --retry-of R`。
-单个匹配 plan 无需 `--plan-id`。prepare 是 fetch，review plan 应绑定后续 run 的 review-request。
-通常 select 设置要求模型和一句话理由；按[模型选择步骤](../parent/README.md#正式レビューのモデル選択)填写。
-显式 handoff 元数据必须引用该源操作捕获的结果，且判断 inputs 包含它；拒绝其他 run 结果或无关判断。
-未提供判断元数据的旧 handoff 仍可使用，并明确标注判断未记录。
-
-`close-interrupted` 也接受共通判断 ID、plan、前一结果和比较参数。
-`verify` plan 只确认结束及 cleanup，结果 `verifies` 保持空，源审查未被接收。
-没有 final/result 的中断也可终结，不发布正式 review。
-恢复为 `retry_fetch`，仅发布重试为 `retry_publication`；模型选择与有效设置沿用 runner 观察路径。
-既有公开 envelope 和层级 README 将源结果、判断、行动、后续结果相连；capture 不自动发布。
-[私有比较](../review/evaluation/README.zh-CN.md) 的人工结果和历史观察不混入正式 parent journal。
+使用 `decide` 连接自动流程的观察结果与父级下一步操作，并将判断ID传给 `review-request` 或 `merge-continue`。可选的重试与比较metadata保留明确的因果关系。
+CLI的审查、CI、修复、merge及合并后确认记录为 `machine`，不视为父级验证。`merge-continue` 保存父级指令，只有 `--rereview` 才要求追加整体审查。
+状态、恢复与模型选择遵循[自动流程契约](../review/README.md)。capture不会自行启动任务或发布Git。[私有比较](../review/evaluation/README.zh-CN.md)保留独立的历史资料。
 
 ## 显式记录父级判断
 
@@ -498,7 +482,7 @@ GitHub原生路径过滤限制仍然存在。
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_capture_observations.py \
   tests/integration/agents_ops/test_decision_capture_delivery.py \
   tests/e2e/agents_ops/test_decision_capture.py \
-  tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
+  tests/e2e/agents_ops/test_progression_cli.py -n 2 --durations=10
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_navigation.py \
   tests/e2e/agents_ops/test_decision_publication.py \
   tests/e2e/agents_ops/test_worker_log_publication.py -n 2 --durations=10

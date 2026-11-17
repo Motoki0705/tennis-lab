@@ -35,7 +35,7 @@ from .filesystem import (
 )
 from .layout import Config, Unit, discover
 from .references import inspect_references
-from .usage import Inspector
+from .usage import Inspector, Usage
 
 IDLE_NS = 14 * 24 * 3600 * 10**9
 
@@ -252,14 +252,32 @@ class Engine:
             marker.unlink()
             sync_dir(marker.parent)
 
+    def observe_usage(self, usage: Usage) -> None:
+        """Keep command-wide retry evidence alongside the latest process census."""
+        previous = self.process_scope.get("rechecks")
+        current = usage.scope()
+        checks = current["rechecks"]
+        if previous is not None:
+            for name in ("attempts", "wait_seconds"):
+                checks[name] += previous[name]
+            checks["processes"] = previous["processes"] + checks["processes"]
+            checks["resolved_processes"] = len(
+                {
+                    (record["pid"], record["starttime_ticks"])
+                    for record in checks["processes"]
+                    if record["outcome"] != "unknown"
+                }
+            )
+        self.process_scope.clear()
+        self.process_scope.update(current)
+
     def quiet(
         self, unit: Unit, path: Path, tree: Snapshot, *, destructive: bool = False
     ) -> None:
         usage = self.inspector.inspect(
             (self.config.repo / unit.path, path), tree, check_mounts=destructive
         )
-        self.process_scope.clear()
-        self.process_scope.update(usage.scope())
+        self.observe_usage(usage)
         if usage.unknown:
             raise StorageError("usage cannot be verified: " + "; ".join(usage.unknown))
         if usage.busy:

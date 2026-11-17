@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import importlib
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,6 +21,51 @@ is_evidence_issue, require_work_issue = (
     evidence.is_evidence_issue,
     evidence.require_work_issue,
 )
+
+
+@pytest.mark.parametrize("foreign", ["namespace", "package"])
+def test_preloaded_review_namespace_keeps_ops_history_reader_available(
+    tmp_path: Path, foreign: str
+) -> None:
+    (tmp_path / "review").mkdir()
+    if foreign == "package":
+        (tmp_path / "review/__init__.py").write_text('"""Another domain review package."""\n')
+    driver = """
+import sys
+sys.path.insert(0, sys.argv[1])
+import review
+sys.path.insert(0, sys.argv[2])
+from parent.history import HistoryValidationError, parse_history
+from lib.ops_review.parent_review_impl import run_review
+from lib.ops_review.merge_gate_impl import completion
+from lib.ops_review.progression import Engine
+from parent.cli_impl import parser
+assert all(callable(api) for api in (run_review, completion, Engine, parser))
+comment = {'id': 1, 'user': {'login': 'publisher'}, 'body': '<!-- parent-review:v2 {} -->'}
+try:
+    parse_history('o/r', 1, 'publisher', [comment], [], evidence_issue=None)
+except HistoryValidationError:
+    assert sys.modules['review'] is review
+    print('invalid-owned-record')
+else:
+    raise AssertionError('invalid review record was accepted')
+"""
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            driver,
+            str(tmp_path),
+            str(Path(__file__).resolve().parents[3] / ".agents/ops"),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=8,
+        check=False,
+    )
+    assert process.returncode == 0, process.stdout + process.stderr
+    assert process.stdout.strip() == "invalid-owned-record"
 
 
 def comment(n: int, event: dict, *, login: str = "publisher") -> dict:

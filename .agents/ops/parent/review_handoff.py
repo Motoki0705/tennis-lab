@@ -7,8 +7,6 @@ from typing import Any
 
 from .policy import closing_issues, object_value
 from .session import ParentSession
-from .snapshot import prepare, transition
-from .worker_preflight import require_implementation
 
 
 def runner_ended(session: ParentSession, child: int, *, persist: bool = True) -> None:
@@ -72,21 +70,26 @@ def request(
     evidence: str,
     reason: str | None,
     *,
-    review_selection: dict[str, Any] | None = None,
+    review_selection: dict[str, Any],
+    options: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    session.gh.targeted_history = True
     session.agreed()
     parent, children = session.work_items()
     targets = set(children)
     linked: set[int] = set()
     for n in prs:
         pr = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
+        from .work_targets import require_separate_self_prs
+
+        require_separate_self_prs(parent, [pr], session.gh.repo)
         relevant = closing_issues(pr.get("body") or "", session.gh.repo) & targets
         if pr.get("number") != n or not relevant or pr.get("state") != "open":
             raise ValueError("review requires related open PRs")
         linked.update(relevant)
     for child in sorted(linked):
-        require_implementation(session, child)
         runner_ended(session, child)
-        session.record_result(child, evidence)
-    fixed = prepare(session, prs, reason, review_selection=review_selection)
-    return transition(session, fixed["review_run_id"], "instructed", instruction)
+    session.record_results(sorted(linked), evidence)
+    from lib.ops_review.merge_gate_impl import register
+
+    return register(session, prs, instruction, reason, review_selection, options or {})

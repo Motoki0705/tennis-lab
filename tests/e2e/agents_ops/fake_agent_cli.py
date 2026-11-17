@@ -76,6 +76,8 @@ def main() -> None:
                 if scenario == "wrong_effort"
                 else "max"
                 if 'model_reasoning_effort="max"' in args
+                else "high"
+                if 'model_reasoning_effort="high"' in args
                 else "xhigh",
             }
             with path.open("a") as stream:

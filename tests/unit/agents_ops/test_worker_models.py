@@ -41,7 +41,7 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
     with pytest.raises(ValueError, match="default or configured alternate"):
         settings.implementation_model("gpt-6-astra")
 
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     root = cli.parser()
     for command, required in (
         ("run-worker", []),
@@ -67,7 +67,7 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
             root.parse_args([*args, "--model", "gpt-6-astra"])
         assert rejected.value.code == 2
 
-    dispatcher = importlib.import_module("dispatcher.cli").parser()
+    dispatcher = importlib.import_module("dispatcher.cli_impl").parser()
     args = [
         "start-child",
         "--parent",

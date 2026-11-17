@@ -1,0 +1,121 @@
+{
+  "record": {
+    "data": {
+      "action_id": "dd8a77e282344e3284e40c2565ba8deb",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=worker_logs.publish; artifact=worker-log journal publication view; content_sha256=f8baa68f939781cae40699d5a84f90a5183063b299a282d722b9f2c31f5c35c4; private evidence"
+        }
+      ],
+      "final_report": {
+        "status": "observed",
+        "value": {
+          "kind": "unavailable",
+          "reason": "capture_source=worker_logs.receive; artifact=fixed final receipt; content_sha256=edc58977275f8a58fd449589285ef85700b494541f45b92239eb54d43ceccbaa; private evidence"
+        }
+      },
+      "observation": {
+        "execution": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.observation; artifact=fixed worker journal snapshot; content_sha256=390b11a040739baccbf1241c037a52c8ae684135b4bd72ef1fd2e07c92681010; private evidence"
+            }
+          ],
+          "state": "ended"
+        },
+        "final": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.receive; artifact=fixed final receipt; content_sha256=edc58977275f8a58fd449589285ef85700b494541f45b92239eb54d43ceccbaa; private evidence"
+            }
+          ],
+          "state": "present"
+        },
+        "kind": "worker_turn",
+        "publication": {
+          "error": "git_failed",
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.observation; artifact=fixed worker journal snapshot; content_sha256=390b11a040739baccbf1241c037a52c8ae684135b4bd72ef1fd2e07c92681010; private evidence"
+            }
+          ],
+          "main_revision": null,
+          "pr_head": null,
+          "pr_url": null,
+          "stage": "receipt_verified",
+          "state": "pending"
+        },
+        "version": 1
+      },
+      "observer": "machine",
+      "previous_result_id": "28a5b4bc9ef84d4e86204bc52d91cba5",
+      "repeat": null,
+      "status": "failure",
+      "summary": "worker_logs.publish: delegation_key=d-2c91957afc514edeaf3117d6b0c4eca1; turn=1; state=pending; stage=receipt_verified; saved_to_main=False; error=git_failed",
+      "verifies": []
+    },
+    "id": "66776e980491470180456159ab8d63a6",
+    "kind": "result",
+    "schema_version": 2,
+    "scope": {
+      "activity_key": "841c9ed0857a4964a0c0aaa0b18dd2c2",
+      "delegation": {
+        "key": "d-2c91957afc514edeaf3117d6b0c4eca1",
+        "turn": 1
+      },
+      "issue": 2174,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-16T00:52:08.213351+00:00"
+      },
+      "recorded_at": "2026-11-16T00:52:08.213369+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

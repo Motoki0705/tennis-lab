@@ -40,16 +40,7 @@ def runner_evidence(
             {
                 "verdict": "approve",
                 "summary": "Fixture complete",
-                "cross_findings": [],
-                "prs": [
-                    {
-                        "number": number,
-                        "coverage": "reviewed",
-                        "summary": "Fixture checked",
-                        "findings": [],
-                        "evidence_waits": [],
-                    }
-                ],
+                "major": [],
             }
         )
     )

@@ -105,6 +105,18 @@ def findings(row: dict[str, Any]) -> list[dict[str, Any]]:
     output = row.get("output")
     if output is None:
         return []
+    if "major" in output:
+        return [
+            {
+                "id": f"major-{i}",
+                "severity": "major",
+                "title": f["title"],
+                "detail": f["detail"],
+                "path": None,
+                "line": None,
+            }
+            for i, f in enumerate(output["major"], 1)
+        ]
     return [*output["prs"][0]["findings"], *output["cross_findings"]]
 
 
@@ -308,7 +320,7 @@ def summarize(
         code_unknown = sum(
             not runtime_succeeded(row)
             or row.get("output") is None
-            or any(p["coverage"] != "reviewed" for p in row["output"]["prs"])
+            or any(p["coverage"] != "reviewed" for p in row["output"].get("prs", []))
             for row in group
         )
         durations = [row.get("elapsed_seconds") for row in group]
@@ -333,9 +345,7 @@ def summarize(
             "format_failures": sum(
                 row["output_status"] in {"invalid", "missing"} for row in group
             ),
-            "runtime_failures": sum(
-                not runtime_succeeded(row) for row in group
-            ),
+            "runtime_failures": sum(not runtime_succeeded(row) for row in group),
             "failed_observations": sum(
                 row["output_status"] != "valid"
                 or row["runtime_status"] not in {"completed", "not_invoked"}
@@ -346,7 +356,7 @@ def summarize(
                 len(p.get("evidence_waits", []))
                 for row in group
                 if row.get("output")
-                for p in row["output"]["prs"]
+                for p in row["output"].get("prs", [])
             ),
             "elapsed_seconds": {
                 "observed_sum": sum(t for t in durations if t is not None),

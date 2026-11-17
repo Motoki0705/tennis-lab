@@ -1,0 +1,79 @@
+{
+  "schema": "scene_x3d_dpt_export.v1",
+  "input_sha256": {
+    "full": "8a10a5a856703946d36df4a9490a62f68e05522b96bde0730f648f3e7c9b053e",
+    "weights": "8b06768307e4451396e91f4baa5023b8ef9aa97d053b7088dd17b61a81c27c2c",
+    "frames": "c121d00dde82506c5dcfe25e812b7c706ca6a91a4d3e0db71434ce8137875307",
+    "manifest": "fb0ef368e1535bccb5ca1997b39c2e32871fd1f72cb9bb077d4ffe10ac41653d"
+  },
+  "full_checkpoint_and_weights_state_identical": true,
+  "state_tensors": 181,
+  "geometry_from": "pinned evaluation manifest, every clip",
+  "scene_input_contract": {
+    "schema": "scene_x3d_csn_dpt_input.v1",
+    "image_size_hw": [
+      720,
+      1280
+    ],
+    "frames": 32,
+    "input_channels": 5,
+    "resize": "opencv_inter_linear_uint8",
+    "rgb_normalization": "divide_255_only",
+    "output_stride": 4
+  },
+  "exported_checkpoint": "ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt",
+  "exported_sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+  "calibration": {
+    "mode": "threshold",
+    "threshold": 0.5380124449729919,
+    "method": "minimize_balanced_fpr_fnr; tie_lower_fpr_then_higher_threshold; tied_scores_indivisible",
+    "split": "val",
+    "balanced_error": 0.16917054420744707,
+    "observed": 85473,
+    "negatives": 31885,
+    "false_positive": 5336,
+    "false_negative": 14615,
+    "true_positive": 70858,
+    "true_negative": 26549
+  },
+  "metrics": {
+    "support": {
+      "frames": 128668,
+      "scored_frames": 117358,
+      "masked": 11310,
+      "observed": 85473,
+      "reviewed_empty": 29173,
+      "out_of_frame": 2712
+    },
+    "mean_error_px": 34.43154376927215,
+    "median_error_px": 8.872786521911621,
+    "p95_error_px": 170.75442199706973,
+    "within_distance_rate": 0.8614065260374622,
+    "distance_threshold_source_px": 20.0,
+    "false_negative": 14615,
+    "observed_fnr": 0.1709896692522785,
+    "false_positive": 5336,
+    "negative_fpr": 0.16735141916261564,
+    "by_negative_kind": {
+      "reviewed_empty": {
+        "support": 29173,
+        "false_positive": 5074,
+        "fpr": 0.17392794707434958,
+        "observed_fnr": null,
+        "mean_error_px": null,
+        "median_error_px": null,
+        "p95_error_px": null
+      },
+      "out_of_frame": {
+        "support": 2712,
+        "false_positive": 262,
+        "fpr": 0.09660766961651918,
+        "observed_fnr": null,
+        "mean_error_px": null,
+        "median_error_px": null,
+        "p95_error_px": null
+      }
+    }
+  },
+  "evaluation_note": "Calibrated and measured on the same validation; not an independent test."
+}

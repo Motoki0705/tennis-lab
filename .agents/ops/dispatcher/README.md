@@ -17,6 +17,8 @@
 ## 明示実行と保存物
 
 Pythonのimport rootは `.agents/ops`。`--cwd` はcommit済みでtrackedファイルがcleanなgit checkoutを指定する。
+管理CLIの入口も本体import前にcheckoutを保護する。registry取得順と更新中の保守status/stopは
+[共通checkout lock](../lib/README.md#registryと保守呼出のlock順)に従う。
 `--run-dir` は毎回新規にする。run dirは0700、JSONは0600でatomic writeする。
 本文・ローカルパス等が入るため、保存物をそのまま公開issueへ貼らない。
 `--parent-state-dir` 省略時は [parent](../parent/README.md#責務と状態の正本) と同じregistryを使う。
@@ -86,6 +88,7 @@ GitHub GETの接続断は[共有readerの有限再試行](../issues/README.md#gi
   GitHubの `created_at` も保持し、ラベル・有効化時刻とともに[共有の補足追加判定](../issues/README.md#親issueの補足追加状態)へ渡す。
   親、子、先行依存、提案出典レポートはclosedも含め再帰的に収集する。別親に属する同repo依存も収集する。
 - `pulls`（全状態・全ページのPRとclosing指示・head・merge状態）、`owners`（既存registryの状態・generation・内容digest・委任予約の投影）。
+  自動進行の修正予約では明示seedの親子・依存閉包から番号指定timelineとPRを読む。通常の全体着手判定と異なりrepo全体一覧は取得しない。
   生session ID・ローカルworktreeは判定入力や公開コメントへ渡さない。別の担当台帳は作らない。
 - `code`（commitとgit treeのpath/mode/kind/oid）。agentが必要なtracked blobを調べ、そのcommit/pathを出典にする。
   gitlinkの先にある未固定ファイルやuntrackedファイルを着手根拠にしない。

@@ -14,6 +14,7 @@ from src.tasks.ball_detection.inference.trajectory_gate import (
     TrajectoryGateConfig,
     apply_trajectory_gate,
 )
+from src.tasks.ball_detection.inference.x3d_dpt import X3DDPTPredictor
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tennis_scene.pipeline.components.ball_evidence import (
     BallHeatmapEvidence,
@@ -29,6 +30,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
 from src.utils.configuration import PathResolver
 from src.utils.geometry.keypoints import denormalize_grid_keypoints
 from src.utils.video import (
+    BgrToRgbUint8Transform,
     BgrToTensorTransform,
     FramePacket,
     OpenCVVideoFrameReader,
@@ -86,7 +88,11 @@ class BallDetectionConfig:
     """Configuration for the scene ball-detection module.
 
     Attributes:
-        checkpoint: Path to a ``src.tasks.ball_detection`` Lightning checkpoint.
+        checkpoint: Path to the explicitly selected model's checkpoint.
+        model_type: ``conv_next_unet`` or ``x3d_csn_dpt``; never inferred from a filename.
+        input_channels: Expected model channels (2 MDD or 5 RGB+MDD).
+        num_frames: Expected checkpoint sequence length.
+        precision: Explicit fp32 or bf16 inference, without automatic fallback.
         batch_size: Batch size for inference.
         device: Inference device.
         image_size: Model input size as ``(height, width)``.
@@ -104,6 +110,11 @@ class BallDetectionConfig:
     """
 
     checkpoint: Path
+    model_type: str
+    input_channels: int
+    num_frames: int
+    precision: str
+    compile_mode: str
     batch_size: int
     device: str
     image_size: tuple[int, int]
@@ -121,6 +132,24 @@ class BallDetectionConfig:
     candidates: BallCandidateConfig
     resolver: PathResolver
 
+    def __post_init__(self) -> None:
+        if self.model_type not in {"conv_next_unet", "x3d_csn_dpt"}:
+            raise ValueError("ball_detection.model_type must explicitly select conv_next_unet or x3d_csn_dpt")
+        if self.precision not in {"fp32", "bf16"}:
+            raise ValueError("ball_detection.precision must be fp32 or bf16")
+        if self.compile_mode not in {"off", "default"}:
+            raise ValueError("ball_detection.compile_mode must be off or default")
+        if type(self.num_frames) is not int or self.num_frames < 1:
+            raise ValueError("ball_detection.num_frames must be a positive integer")
+        if self.model_type == "conv_next_unet":
+            if self.input_channels != 2 or self.precision != "fp32" or self.compile_mode != "off":
+                raise ValueError("ConvNeXt requires two MDD channels, fp32 inference and compile_mode=off")
+        elif (self.input_channels != 5 or self.num_frames != 32 or self.image_size != (720, 1280)
+              or self.normalize_imagenet or self.window_stride != 16 or self.tail_policy != "backfill"
+              or self.overlap_aggregation != "nearest_window_centre_then_earlier_start"
+              or not self.checkpoint_strict or not self.checkpoint_weights_only):
+            raise ValueError("X3D/CSN + DPT requires 5ch, T32, 720x1280, divide_255 only, stride16, backfill, centre owners and strict weights-only loading")
+
 
 class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOutput]):
     """Detect one unidentified ball observation stream for one camera video."""
@@ -131,16 +160,24 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
         self.config = config
         self.enabled = enabled
 
-    def model_specs(self) -> dict[str, ModelSpec[BallDetectionPredictor]]:
+    def model_specs(self) -> dict[str, ModelSpec[BallDetectionPredictor | X3DDPTPredictor]]:
         from dataclasses import fields
 
         settings = {f.name: getattr(self.config, f.name) for f in fields(self.config)
                     if f.name not in {"checkpoint", "device", "resolver"}}
         return {} if not self.enabled else {"ball": ModelSpec("ball", {"checkpoint": self.config.checkpoint},
-            "checkpoint_model_config", self.config.device, "float32", settings, self._load_predictor)}
+            self.config.model_type, self.config.device, "float32" if self.config.precision == "fp32" else "bfloat16", settings, self._load_predictor)}
 
-    def _load_predictor(self) -> BallDetectionPredictor:
+    def _load_predictor(self) -> BallDetectionPredictor | X3DDPTPredictor:
         LOGGER.info(f"Loading ball detection model from {self.config.checkpoint}")
+        if self.config.model_type == "x3d_csn_dpt":
+            return X3DDPTPredictor.load_from_checkpoint(
+                self.config.checkpoint, device=self.config.device, image_size=self.config.image_size,
+                frames=self.config.num_frames, input_channels=self.config.input_channels,
+                normalize_imagenet=self.config.normalize_imagenet, precision=self.config.precision,
+                subpixel_refine=self.config.subpixel_refine,
+                compile_mode=self.config.compile_mode,
+            )
         predictor = BallDetectionPredictor.load_from_checkpoint(
             self.config.checkpoint,
             resolver=self.config.resolver,
@@ -154,6 +191,10 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
                 "ball_detection.normalize_imagenet does not match the saved "
                 f"checkpoint preprocessing ({predictor.image_normalization.enabled})."
             )
+        if (predictor.configured_frames, predictor.adapter.spec.in_channels) != (self.config.num_frames, self.config.input_channels):
+            raise ValueError("Ball checkpoint channels/T do not match the explicit scene configuration")
+        if predictor.adapter.spec.model_name != self.config.model_type:
+            raise ValueError("Ball checkpoint model type does not match the explicit scene configuration")
         return predictor
 
     def process_with_models(self, inputs: BallDetectionInput, models: ModelBorrower) -> BallDetectionOutput:
@@ -191,7 +232,7 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
     def _predict_video(
         self,
         video: SourceVideo,
-        predictor: BallDetectionPredictor,
+        predictor: BallDetectionPredictor | X3DDPTPredictor,
     ) -> tuple[NDArray[np.float32], NDArray[np.float32], BallHeatmapEvidence]:
         """Stream video windows through the predictor."""
         sequence_length = predictor.configured_frames
@@ -208,10 +249,9 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
         if centre_policy and (video.num_frames < sequence_length or self.config.tail_policy != "backfill"):
             raise ValueError("Centre selection requires backfill with real frames; short-clip padding is forbidden")
 
-        transform = BgrToTensorTransform(
-            image_size=self.config.image_size,
-            normalize_imagenet=False,
-        )
+        transform = (BgrToRgbUint8Transform(image_size=self.config.image_size)
+                     if self.config.model_type == "x3d_csn_dpt" else
+                     BgrToTensorTransform(image_size=self.config.image_size, normalize_imagenet=False))
         frame_stream = (
             FramePacket(
                 index=packet.index,

@@ -1,0 +1,96 @@
+{
+  "cam0": {
+    "total": 69,
+    "gates": {
+      "inliers": 40,
+      "accepted": 29
+    },
+    "best_inliers": {
+      "7": 26,
+      "9": 10,
+      "8": 17,
+      "5": 5,
+      "6": 7,
+      "4": 2,
+      "10": 2
+    },
+    "candidate_status": {
+      "ok": 417,
+      "insufficient_line_support": 48,
+      "joint_optimization_failed": 173,
+      "no_jointly_supported_candidate": 188,
+      "ambiguous_candidates": 2
+    }
+  },
+  "cam1": {
+    "total": 69,
+    "gates": {
+      "accepted": 63,
+      "inliers": 6
+    },
+    "best_inliers": {
+      "8": 7,
+      "7": 5,
+      "6": 1,
+      "9": 7,
+      "10": 12,
+      "13": 5,
+      "11": 12,
+      "12": 19,
+      "14": 1
+    },
+    "candidate_status": {
+      "ok": 466,
+      "joint_optimization_failed": 142,
+      "insufficient_line_support": 143,
+      "no_jointly_supported_candidate": 76,
+      "ambiguous_candidates": 1
+    }
+  },
+  "cam2": {
+    "total": 69,
+    "gates": {
+      "accepted": 52,
+      "inliers": 17
+    },
+    "best_inliers": {
+      "10": 11,
+      "9": 15,
+      "8": 17,
+      "11": 8,
+      "7": 15,
+      "12": 1,
+      "6": 2
+    },
+    "candidate_status": {
+      "ok": 384,
+      "insufficient_line_support": 85,
+      "no_jointly_supported_candidate": 212,
+      "joint_optimization_failed": 147
+    }
+  },
+  "cam3": {
+    "total": 69,
+    "gates": {
+      "accepted": 8,
+      "outside": 15,
+      "inliers": 16,
+      "inliers+outside": 30
+    },
+    "best_inliers": {
+      "8": 18,
+      "9": 4,
+      "6": 19,
+      "7": 23,
+      "5": 4,
+      "10": 1
+    },
+    "candidate_status": {
+      "ok": 425,
+      "insufficient_line_support": 72,
+      "no_jointly_supported_candidate": 228,
+      "joint_optimization_failed": 101,
+      "ambiguous_candidates": 2
+    }
+  }
+}

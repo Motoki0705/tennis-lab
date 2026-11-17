@@ -1,0 +1,28 @@
+{
+  "input-raw": {
+    "files": 5433,
+    "bytes": 2190809991,
+    "all_hashes_match": true
+  },
+  "input-val_raw": {
+    "files": 2211,
+    "bytes": 1172362220,
+    "all_hashes_match": true
+  },
+  "input-test_raw": {
+    "files": 886,
+    "bytes": 474439144,
+    "all_hashes_match": true
+  },
+  "line-evidence": {
+    "files": 8530,
+    "bytes": 18331535548,
+    "all_hashes_match": true
+  },
+  "rgb": {
+    "files": 3545,
+    "bytes": 2869680921,
+    "all_hashes_match": true
+  },
+  "seconds": 101.03912739199586
+}

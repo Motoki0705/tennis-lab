@@ -1,4 +1,4 @@
-"""Lock before importing an operational job from the mutable main checkout."""
+"""Lock finite/resident jobs; interactive CLIs guard their native entrypoints."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def main() -> int:
             )
             return 75
         if args.supervisor:
-            from dispatcher.cli import main as supervise
+            from dispatcher.cli_impl import main as supervise
         elif args.board_web_port is not None:
             from board.web import serve
         else:

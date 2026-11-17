@@ -148,6 +148,92 @@ def h(tmp_path: Path) -> Harness:
     return Harness(tmp_path)
 
 
+def test_repair_resumes_same_model_session_then_returns_to_max(h: Harness) -> None:
+    assert h.run(extra=("--mode", "write", "--model", "gpt-6-astra")).returncode == 0
+    initial = h.result()
+    proc = h.run(
+        "repair",
+        action="resume",
+        extra=(
+            "--mode",
+            "write",
+            "--resume-from",
+            str(h.root / "initial"),
+            "--repair-id",
+            "ci-1",
+            "--repair-pr",
+            "42",
+            "--effort",
+            "high",
+        ),
+    )
+    assert proc.returncode == 0, proc.stderr
+    repaired = h.result("repair")
+    assert repaired["contract"]["settings"]["selected"]["model"] == "gpt-6-astra"
+    assert repaired["runtime"]["session_id"] == initial["runtime"]["session_id"]
+    assert repaired["runtime"]["effective"]["effort"]["value"] == "high"
+    assert repaired["contract"]["repair"] == {
+        "schema_version": 1,
+        "repair_id": "ci-1",
+        "pr": 42,
+    }
+    proc = h.run(
+        "normal",
+        action="resume",
+        extra=("--mode", "write", "--resume-from", str(h.root / "repair")),
+    )
+    assert proc.returncode == 0, proc.stderr
+    normal = h.result("normal")
+    assert normal["runtime"]["session_id"] == initial["runtime"]["session_id"]
+    assert normal["runtime"]["effective"]["effort"]["value"] == "max"
+    duplicate = h.run(
+        "duplicate",
+        action="resume",
+        extra=(
+            "--mode",
+            "write",
+            "--resume-from",
+            str(h.root / "normal"),
+            "--repair-id",
+            "ci-1",
+            "--repair-pr",
+            "42",
+        ),
+    )
+    assert duplicate.returncode == 2 and "already has" in duplicate.stderr
+    assert not (h.root / "duplicate").exists()
+
+
+@pytest.mark.parametrize(
+    "mutation", ["initial", "readonly", "model", "effort", "missing_pr", "no_marker"]
+)
+def test_repair_exception_cannot_change_other_contracts(
+    h: Harness, mutation: str
+) -> None:
+    assert h.run(extra=("--mode", "write")).returncode == 0
+    options = ["--mode", "write", "--repair-id", "ci-1", "--repair-pr", "42"]
+    action = "resume"
+    if mutation == "initial":
+        action = "run"
+    else:
+        options += ["--resume-from", str(h.root / "initial")]
+    if mutation == "readonly":
+        options[1] = "read-only"
+    elif mutation == "model":
+        options += ["--model", "gpt-6-astra"]
+    elif mutation == "effort":
+        options += ["--effort", "max"]
+    elif mutation == "missing_pr":
+        options[4:6] = []
+    elif mutation == "no_marker":
+        options[2:6] = ["--effort", "high"]
+    before = (h.root / "args.txt").read_bytes()
+    proc = h.run("invalid-repair", action=action, extra=tuple(options))
+    assert proc.returncode == 2, proc.stderr
+    assert (h.root / "args.txt").read_bytes() == before
+    assert not (h.root / "invalid-repair").exists()
+
+
 @pytest.mark.parametrize("scenario", ["success", "web_search", "malformed"])
 def test_event_receipts_match_exact_cli_bytes_and_utc_receive_times(
     h: Harness, scenario: str
@@ -998,8 +1084,32 @@ def test_timeout_reaps_uncooperative_descendants(h: Harness, scenario: str) -> N
     assert not process_alive(int((h.root / "child.pid").read_text()))
 
 
-@pytest.mark.parametrize("operation", ["stop", "signal"])
+@pytest.mark.parametrize("operation", ["stop", "signal", "repeated-signal"])
 def test_stop_and_signal_recovery(h: Harness, operation: str) -> None:
+    previous_pythonpath = h.env.get("PYTHONPATH")
+    repeated = h.root / "second-stop-signal"
+    if operation == "repeated-signal":
+        # Keep the real entry, capture and process-group cleanup. A profile
+        # hook schedules another ordinary stop exactly after capture returns,
+        # before the caller can persist the terminal result.
+        hook = h.root / "stop-hook"
+        hook.mkdir()
+        (hook / "sitecustomize.py").write_text(
+            "import os, signal, sys\n"
+            "from pathlib import Path\n"
+            "def stop_after_capture(frame, event, value):\n"
+            "    if event == 'return' and frame.f_code.co_name == 'capture' and "
+            "Path(frame.f_code.co_filename).name in "
+            "{'agent_runtime.py', 'agent_runtime_impl.py'}:\n"
+            "        sys.setprofile(None)\n"
+            f"        Path({str(repeated)!r}).touch()\n"
+            "        os.kill(os.getpid(), signal.SIGTERM)\n"
+            "if Path(sys.argv[0]).name == 'agent_runtime.py':\n"
+            "    sys.setprofile(stop_after_capture)\n"
+        )
+        h.env["PYTHONPATH"] = str(hook) + (
+            os.pathsep + previous_pythonpath if previous_pythonpath else ""
+        )
     proc = subprocess.Popen(
         h.cmd(extra=("--timeout", "15")),
         env={**h.env, "FAKE_SCENARIO": "hang"},
@@ -1012,12 +1122,18 @@ def test_stop_and_signal_recovery(h: Harness, operation: str) -> None:
         running = h.query("status")
         assert running.returncode == 0
         assert json.loads(running.stdout)["agent_alive"]
-        if operation == "signal":
+        if operation in {"signal", "repeated-signal"}:
             proc.send_signal(signal.SIGINT)
         else:
             stopped = h.query("stop")
             assert stopped.returncode == 0, stopped.stderr
         proc.communicate(timeout=10)
+        if operation == "repeated-signal":
+            assert repeated.exists(), "the post-capture stop signal was not injected"
+            if previous_pythonpath is None:
+                h.env.pop("PYTHONPATH")
+            else:
+                h.env["PYTHONPATH"] = previous_pythonpath
         assert not process_alive(child)
         result = h.result()
         assert result["turn_end_reason"] == "stopped" and result["result"] == "failed"
@@ -1391,7 +1507,7 @@ def test_cleanup_confirmation_cannot_override_live_processes(
     h: Harness, lost_turn: dict[str, Any]
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     sleeper = subprocess.Popen(
         [sys.executable, "-c", "import time;time.sleep(20)"], start_new_session=True
     )
@@ -1534,7 +1650,7 @@ def test_missing_executable_saves_a_failed_attempt(
     h: Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     monkeypatch.setattr(runtime, "enable_child_subreaper", lambda: None)
     monkeypatch.setattr(
         runtime, "command", lambda *args: [str(h.root / "missing-executable")]
@@ -1569,7 +1685,7 @@ def test_existing_or_reused_process_identity_prevents_unsafe_actions(
     h: Harness, operation: str
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     assert h.run().returncode == 0
     sleeper = subprocess.Popen(
         [sys.executable, "-c", "import time;time.sleep(20)"], start_new_session=True

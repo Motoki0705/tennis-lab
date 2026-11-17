@@ -22,6 +22,8 @@ class LineDiagnostics(TypedDict):
     supported_segments: float
     forward_rms_px: float
     reverse_rms_px: float
+    visible_segment_mask: list[bool]
+    visible_segment_fraction: list[float]
 
 
 @dataclass(frozen=True)
@@ -151,6 +153,7 @@ def line_residuals(
     *,
     samples_per_line: int = 40,
     distance_field: FloatArray | None = None,
+    required_visible: NDArray[np.bool_] | None = None,
 ) -> tuple[FloatArray, LineDiagnostics]:
     """Balanced bidirectional distances plus local tangent disagreement.
 
@@ -162,6 +165,11 @@ def line_residuals(
     segments, visible = clip_segments(projected[edges], evidence.width, evidence.height)
     lengths = np.linalg.norm(segments[:, 1] - segments[:, 0], axis=1)
     visible &= lengths >= 0.02 * evidence.diagonal
+    actual_visible = visible.copy()
+    if required_visible is not None:
+        if required_visible.shape != visible.shape or required_visible.dtype != np.bool_:
+            raise ValueError("Required LINE visibility must be a boolean mask per segment")
+        visible = required_visible
     n = samples_per_line
     samples = segments[:, :1] + np.linspace(0, 1, n)[None, :, None] * (
         segments[:, 1:] - segments[:, :1]
@@ -176,12 +184,15 @@ def line_residuals(
             cval=evidence.diagonal,
         )
     ).reshape(len(edges), n)
+    # A solve cannot improve by moving a previously visible marking out of the
+    # crop. Truly unobserved segments are omitted at the start, explicitly.
+    raw_distance[visible & ~actual_visible] = evidence.diagonal
     count = max(1, int(visible.sum()))
     forward = np.minimum(raw_distance / tolerance_px, 4) * visible[:, None]
     forward /= np.sqrt(count * n)
 
     distances = segment_distances(evidence.points, segments)
-    distances[:, ~visible] = evidence.diagonal
+    distances[:, ~(visible & actual_visible)] = evidence.diagonal
     reverse_px = distances.min(axis=1)
     reverse = np.minimum(reverse_px / tolerance_px, 4) * np.sqrt(
         evidence.weights / evidence.weights.sum()
@@ -208,6 +219,12 @@ def line_residuals(
         "reverse_rms_px": float(
             np.sqrt(np.average(reverse_px**2, weights=evidence.weights))
         ),
+        "visible_segment_mask": actual_visible.tolist(),
+        "visible_segment_fraction": np.where(
+            actual_visible,
+            lengths / np.maximum(np.linalg.norm(projected[edges[:, 1]] - projected[edges[:, 0]], axis=1), 1e-12),
+            0.0,
+        ).tolist(),
     }
     return np.concatenate(
         (forward.ravel(), reverse, np.sqrt(0.1) * orientation.ravel())

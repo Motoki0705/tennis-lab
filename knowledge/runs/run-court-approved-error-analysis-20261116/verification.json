@@ -1,0 +1,21 @@
+{
+  "source_commit": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+  "approval_metadata_only": true,
+  "H_coordinates_and_old_numeric_results_unchanged": true,
+  "all_276_confusions_and_recovery_counts_verified": true,
+  "raw_point_rows": 46368,
+  "factorial_solves": 1176,
+  "paired_cases": 221,
+  "paired_evidence_unchanged_within_case": true,
+  "RGB_completed_before_pause": true,
+  "RGB_counts_recounted": true,
+  "production_diff_empty": true,
+  "input_and_source_hashes_verified": true,
+  "native_figure_links_exist": true,
+  "bundle_bytes": {
+    "knowledge/runs/run-court-approved-error-analysis-20261116": 1457539,
+    "knowledge/runs/run-court-white-line-reference-20261116": 1807064
+  },
+  "GPU_used": false,
+  "training_queue_jobs_added": 0
+}

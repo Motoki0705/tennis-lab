@@ -1,0 +1,11 @@
+{
+  "source_commit": "b533eb7abdcb4fe7bdd125d41e2675cd75ceef4c",
+  "src_tests_diff_empty": true,
+  "reference_and_fit_freeze_verified": true,
+  "approval_flags_false": true,
+  "csv_rows": 1656,
+  "all_camera_confusion_tables_recounted": true,
+  "analysis_scripts_parse": true,
+  "bundle_bytes_before_verification": 1769689,
+  "gpu_used": false
+}

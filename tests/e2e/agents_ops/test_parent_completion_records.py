@@ -9,8 +9,9 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.agents_ops.test_merge_gate import GateEnv
+from tests.e2e.agents_ops.test_merge_gate import GateEnv, make_gate_env
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
+from tests.e2e.agents_ops.test_parent_improvements import decision_spec
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.decision_logs import navigation_snapshot
@@ -89,6 +90,135 @@ def test_unsplit_manual_parent_finishes_with_no_candidate_and_retries_without_re
     public = navigation_snapshot(directory)
     assert "最後の親の受入（明示記録時点）: completed" in public
     assert "担当終了" in public and "#issuecomment-" in public
+
+
+def test_extracted_candidate_groups_complete_through_structured_finish(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = parent_env
+    extracted_body = []
+
+    def agree_extracted() -> None:
+        p.cli("register", parent="2")
+        p.cli(
+            "agree",
+            "--spec",
+            p.spec(
+                {
+                    "purpose": "元の成果を実装する。",
+                    "scope": "元の親の範囲。",
+                    "behavior": "合意後に実装する。",
+                    "acceptance": "fakeで検証する。",
+                    "human_confirmation": "この範囲で進めてください。",
+                }
+            ),
+            parent="2",
+        )
+        p.env["PARENT_CREATED_AT"] = "2099-01-01T00:00:00Z"
+        validate_spec = importlib.import_module("issues.improvement").validate_spec
+        for key in ("first", "second"):
+            candidate = candidate_spec()
+            candidate["acceptance"][0] = "保存できる。\n  再読込して内容が一致する。"
+            validate_spec(candidate)
+            p.cli(
+                "improvement",
+                "--key",
+                key,
+                "--spec",
+                p.spec(candidate),
+                parent="2",
+            )
+        p.cli("improvement-propose", parent="2")
+        decision = decision_spec()
+        del decision["revision"], decision["previous_decision"]
+        decision["human_confirmation"]["source"] = (
+            "人間との会話で元親 #2 の2候補を確認。"
+        )
+        decision["candidates"] = {
+            key: {"revision": 1, "previous_decision": None}
+            for key in ("I-2-first", "I-2-second")
+        }
+        approved = json.loads(
+            p.cli(
+                "improvement-decide",
+                "--candidate",
+                "I-2-first",
+                "--candidate",
+                "I-2-second",
+                "--action",
+                "approve",
+                "--spec",
+                p.spec(decision),
+                parent="2",
+            ).stdout
+        )["decisions"][0]["decision_id"]
+        # The shared merge fixture operates on #1. Let the real extraction CLI
+        # create that issue, then restore the fake server's normal allocation.
+        state = p.state()
+        next_number = state["next"]
+        del state["issues"]["1"]
+        state["next"] = 1
+        p.save(state)
+        extracted = json.loads(
+            p.cli(
+                "improvement-extract",
+                "--candidates",
+                "I-2-first",
+                "I-2-second",
+                parent="2",
+            ).stdout
+        )
+        assert extracted["issue"] == 1
+        state = p.state()
+        extracted_body.append(state["issues"]["1"]["body"])
+        assert "- [ ] 保存できる。\n  再読込して内容が一致する。" in extracted_body[0]
+        state["next"] = next_number
+        p.save(state)
+        p.cli("release", "--ended", "--note-file", p.note(), parent="2")
+        p.cli("register")
+        p.cli("agree", "--improvement-approval", approved)
+        required = json.loads(p.cli("status").stdout)["completion"]["requirements"]
+        assert required["available"], required
+        assert [row["id"] for row in required["criteria"]] == [
+            "agreement",
+            "ac-I-2-first-1",
+            "ac-I-2-first-2",
+            "ac-I-2-second-1",
+            "ac-I-2-second-2",
+        ]
+        assert [row["criterion"] for row in required["criteria"][1:]] == [
+            "[I-2-first] 保存できる。 再読込して内容が一致する。",
+            "[I-2-first] 取得失敗を表示し、保存済み結果を保持する。",
+            "[I-2-second] 保存できる。 再読込して内容が一致する。",
+            "[I-2-second] 取得失敗を表示し、保存済み結果を保持する。",
+        ]
+
+    monkeypatch.setattr(p, "agreed", agree_extracted)
+    g = make_gate_env(p, monkeypatch, "parent_self")
+    merged = g.cli("merge")
+    assert merged.returncode == 0, merged.stderr
+    p.announce_completion()
+    spec = finish_for(p)
+    p.cli(
+        "workflow-report",
+        "--spec",
+        p.spec(
+            {
+                "schema_version": 2,
+                "state": "completed",
+                "finish": spec,
+                "reason": "取り出した全候補の受入を確認した。",
+                "resume_condition": "完了。",
+                "evidence": "PR #100 の実merge・closeと各候補の検証を確認した。",
+            }
+        ),
+    )
+    result = json.loads(p.cli("release", "--ended", "--spec", p.spec(spec)).stdout)
+    assert result["completion"]["acceptance"] == "completed"
+    assert result["completion"]["record"]["state"] == "completed"
+    assert result["assignment"] == "ended"
+    snapshot = importlib.import_module("parent.completion").snapshot
+    assert snapshot(p.state()["issues"]["1"]["body"]) == snapshot(extracted_body[0])
 
 
 def test_unmet_acceptance_exported_to_candidate_cannot_finish(

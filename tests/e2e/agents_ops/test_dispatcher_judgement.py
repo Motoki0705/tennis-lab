@@ -104,6 +104,7 @@ def agreement_comment(n: int) -> dict[str, Any]:
 
 class FakeGitHub:
     repo = "o/r"
+    targeted_history = False
 
     def authenticated_login(self) -> str:
         return cast(dict[str, str], self.get("user"))["login"]
@@ -170,6 +171,11 @@ class FakeGitHub:
             )
         if path == "repos/o/r/pulls":
             return paged(self.prs)
+        pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
+        if pull:
+            return copy.deepcopy(
+                next(pr for pr in self.prs if pr["number"] == int(pull[1]))
+            )
         parts = path.removeprefix("repos/o/r/issues/").split("/")
         n = int(parts[0])
         if len(parts) == 1:

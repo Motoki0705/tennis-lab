@@ -1,0 +1,51 @@
+{
+  "input-raw": {
+    "root": "outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw",
+    "files": 5433,
+    "bytes": 2190809991,
+    "jsonl_sha256": "b699a7a4978c24352b3d88daeb69689c90d2c02e08e523f9e6abbb07fad8ef29",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/inventories/input-raw.jsonl"
+  },
+  "input-val_raw": {
+    "root": "outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/val_raw",
+    "files": 2211,
+    "bytes": 1172362220,
+    "jsonl_sha256": "ac4725957c01ffb785ee0ea60450de8d1907f111f90ea2d5f844ce26110d71c5",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/inventories/input-val_raw.jsonl"
+  },
+  "input-test_raw": {
+    "root": "outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/test_raw",
+    "files": 886,
+    "bytes": 474439144,
+    "jsonl_sha256": "fe93cf16f27f1af68ac1b15965d8f118610f131dfbf54ac3c5257e81d2481849",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/inventories/input-test_raw.jsonl"
+  },
+  "line-evidence": {
+    "root": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/line-evidence",
+    "files": 8530,
+    "bytes": 18331535548,
+    "jsonl_sha256": "afca19e7726c7681c60924791f04d816932c9959607831d2b8d633915d58d1e5",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/inventories/line-evidence.jsonl"
+  },
+  "rgb": {
+    "root": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/rgb",
+    "files": 3545,
+    "bytes": 2869680921,
+    "jsonl_sha256": "8c0d8e975121c3be530097a291c91f386d18d2a10a18c14f552642ed5f263b68",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/inventories/rgb.jsonl"
+  },
+  "evaluation": {
+    "root": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/evaluation",
+    "files": 3545,
+    "bytes": 234795221,
+    "jsonl_sha256": "8d9486ba1bc22eca2a1f6a4fc5fc0cd843fccc46d3144b129a712954694d7469",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/inventories/evaluation.jsonl"
+  },
+  "review": {
+    "root": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/review",
+    "files": 897,
+    "bytes": 474363090,
+    "jsonl_sha256": "c97be429f5f70a9c47c117881e0d783a85c8abb8dd30f6c23e6c1b7663d55555",
+    "inventory_path": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117/inventories/review.jsonl"
+  }
+}

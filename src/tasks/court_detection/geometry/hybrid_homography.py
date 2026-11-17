@@ -18,6 +18,7 @@ from .confidence_homography import (
     estimate_confidence_homography,
 )
 from .line_evidence import FloatArray, LineDiagnostics, LineEvidence, line_residuals
+from .observations import KeypointSupport, keypoint_support
 
 
 @dataclass(frozen=True)
@@ -38,8 +39,19 @@ class HybridHomographyConfig:
     min_line_support: float = 0.55
     ambiguity_gap: float = 0.02
     ambiguity_displacement_ratio: float = 0.03
+    boundary_margin_cells: float = 1.0
+    duplicate_distance_cells: float = 1.0
+    support_method: str = "legacy"
+    max_support_candidates: int = 8
 
     def __post_init__(self) -> None:
+        if self.support_method not in {"legacy", "candidate_subsets", "fixed_subsets"}:
+            raise ValueError("Unknown hybrid support_method")
+        if self.max_support_candidates < 2:
+            raise ValueError("At least two support candidates are required")
+        for value in (self.boundary_margin_cells, self.duplicate_distance_cells):
+            if not np.isfinite(value) or value < 0:
+                raise ValueError("KP cell distances must be finite and nonnegative")
         if not 0 <= self.min_score <= 1 or not 0 < self.line_probability_threshold < 1:
             raise ValueError("Invalid probability thresholds")
         if not 0 < self.threshold_diagonal_ratio < 0.1:
@@ -105,6 +117,8 @@ class HybridHomographyResult:
     candidate_count: int
     refined_count: int
     alternative_score_gap: float | None
+    observation_diagnostics: dict[str, object] | None = None
+    solve_diagnostics: tuple[dict[str, object], ...] = ()
 
 
 def project_candidate(matrix: FloatArray, template: FloatArray) -> FloatArray | None:
@@ -126,6 +140,9 @@ def select_keypoints(
     line_distance_px: FloatArray,
     threshold_px: float,
     config: HybridHomographyConfig,
+    *,
+    support: KeypointSupport | None = None,
+    spatial: bool = False,
 ) -> NDArray[np.bool_]:
     """Hard residual/LINE gates, then confidence/residual ranking and strict cap.
 
@@ -133,7 +150,7 @@ def select_keypoints(
     subset enters its KP objective. The cap never permits the complete input
     set, even if every point passes; no all-point soft-weighted loss exists.
     """
-    residual = np.linalg.norm(projected - observed, axis=1)
+    residual = np.linalg.norm(projected - observed if support is None else support.residual(projected, observed), axis=1)
     eligible = (
         np.isfinite(observed).all(axis=1)
         & (scores >= config.min_score)
@@ -142,9 +159,34 @@ def select_keypoints(
     )
     indices = np.flatnonzero(eligible)
     merit = scores[indices] / (1 + (residual[indices] / threshold_px) ** 2)
-    order = indices[np.argsort(-merit, kind="stable")]
-    selected: NDArray[np.bool_] = np.zeros(len(template), dtype=bool)
-    selected[order[: min(config.max_kp, len(template) - 1)]] = True
+    if support is None and not spatial:
+        # Preserve the original confidence ranking, including stable ties.
+        order = indices[np.argsort(-merit, kind="stable")]
+        selected: NDArray[np.bool_] = np.zeros(len(template), dtype=bool)
+        selected[order[: min(config.max_kp, len(template) - 1)]] = True
+        if selected.sum() < 4 or not _has_support(template[selected], observed[selected]):
+            selected[:] = False
+        return selected
+    # Confidence alone can put all fit points at one end of the court. Keep the
+    # best-supported point first, then cover distinct template locations. The
+    # template is normalized per axis so metres and court aspect do not bias it.
+    normalized = (template - template.min(axis=0)) / np.maximum(np.ptp(template, axis=0), 1e-12)
+    remaining = list(range(len(indices)))
+    chosen: list[int] = []
+    while remaining and len(chosen) < min(config.max_kp, len(template) - 1):
+        def utility(index: int) -> float:
+            if not chosen or not spatial:
+                return float(merit[index])
+            separation = float(np.min(np.sum((normalized[indices[index]] - normalized[indices[chosen]]) ** 2, axis=1)))
+            return float(merit[index] * separation)
+
+        next_index = max(remaining, key=utility)
+        chosen.append(next_index)
+        remaining.remove(next_index)
+        if support is not None:
+            remaining = [i for i in remaining if support.correlation_groups[indices[i]] != support.correlation_groups[indices[next_index]]]
+    selected = np.zeros(len(template), dtype=bool)
+    selected[indices[chosen]] = True
     if selected.sum() < 4 or not _has_support(template[selected], observed[selected]):
         selected[:] = False
     return selected
@@ -156,10 +198,13 @@ def selected_kp_residuals(
     scores: FloatArray,
     selected: NDArray[np.bool_],
     threshold_px: float,
+    support: KeypointSupport | None = None,
 ) -> FloatArray:
     """Only selected rows are touched; NaNs/extreme rejected KP have zero effect."""
     weights = 0.5 + 0.5 * scores[selected]
     delta = (projected[selected] - observed[selected]) / threshold_px
+    if support is not None:
+        delta = support.residual(projected, observed)[selected] / threshold_px
     return np.asarray(
         (delta * np.sqrt(weights / weights.sum())[:, None]).ravel(), dtype=np.float64
     )
@@ -183,7 +228,7 @@ def estimate_hybrid_homography(
     LINE labels, camera intrinsics, LINE-only initializer or GT are assumed.
     """
     template = np.asarray(template_xy, dtype=np.float64)
-    observed = np.asarray(image_xy, dtype=np.float64)
+    observed = np.array(image_xy, dtype=np.float64, copy=True)
     quality = np.asarray(scores, dtype=np.float64)
     segments = np.asarray(edges)
     if (
@@ -200,8 +245,19 @@ def estimate_hybrid_homography(
     height, width = image_size_hw
     if min(height, width) < 2:
         raise ValueError("Invalid image size")
+    if np.ndim(line_probability) != 2 or min(line_probability.shape) < 2:
+        raise ValueError("LINE probability must be a two-dimensional image")
     diagonal = float(np.hypot(width, height))
     threshold = config.threshold_diagonal_ratio * diagonal
+    fixed_method = config.support_method != "legacy"
+    support = keypoint_support(
+        observed, quality, image_size_hw=image_size_hw,
+        native_size_hw=(line_probability.shape[0], line_probability.shape[1]),
+        min_score=config.min_score, boundary_margin_cells=config.boundary_margin_cells,
+        duplicate_distance_cells=config.duplicate_distance_cells,
+    ) if fixed_method else None
+    fit_support = support
+    solves: list[dict[str, object]] = []
     # Reuse its strict coordinate/score validation and the published baseline.
     baseline = estimate_confidence_homography(
         template,
@@ -241,6 +297,8 @@ def estimate_hybrid_homography(
             count,
             refined,
             gap,
+            None if support is None else support.diagnostics(),
+            tuple(solves),
         )
 
     # Invalid probability arrays are caller errors; lack of meaningful evidence
@@ -259,7 +317,8 @@ def estimate_hybrid_homography(
     observed_line_distance = evidence.distances(np.nan_to_num(observed, nan=-diagonal))
 
     def evaluate(
-        matrix: FloatArray, history: tuple[tuple[int, ...], ...] = ()
+        matrix: FloatArray, history: tuple[tuple[int, ...], ...] = (),
+        fixed: NDArray[np.bool_] | None = None,
     ) -> HybridHypothesis | None:
         projected = project_candidate(matrix, template)
         if projected is None or np.max(np.abs(projected)) > 10 * diagonal:
@@ -275,7 +334,17 @@ def estimate_hybrid_homography(
             observed_line_distance,
             threshold,
             config,
+            support=fit_support,
+            spatial=fixed_method,
         )
+        if fixed is not None:
+            # Validate the actual fitted set, without replacing it by a new
+            # ranking. Censored coordinates use the same one-sided residual.
+            assert support is not None
+            residuals = np.linalg.norm(support.residual(projected, observed), axis=1)
+            if np.any(residuals[fixed] > threshold):
+                return None
+            selected = fixed
         if not selected.any():
             return None
         line, diagnostic = line_residuals(
@@ -285,7 +354,7 @@ def estimate_hybrid_homography(
             threshold,
             samples_per_line=config.samples_per_line,
         )
-        kp = selected_kp_residuals(projected, observed, quality, selected, threshold)
+        kp = selected_kp_residuals(projected, observed, quality, selected, threshold, fit_support)
         score = float(line @ line + config.kp_weight * (kp @ kp))
         return HybridHypothesis(matrix, projected, selected, score, diagnostic, history)
 
@@ -300,6 +369,8 @@ def estimate_hybrid_homography(
     )
     for indices in combinations_ranked[: config.max_candidates]:
         subset = order[list(indices)]
+        if support is not None and len(np.unique(support.correlation_groups[subset])) < 4:
+            continue
         if not _has_support(template[subset], observed[subset]):
             continue
         matrix = cast(
@@ -352,7 +423,91 @@ def estimate_hybrid_homography(
     # Smooth distance fields widen the convergence basin; final fit/acceptance
     # always uses the original ridges, in the same original-image pixel units.
     fields = (gaussian_filter(evidence.distance, threshold / 2), evidence.distance)
-    for seed in seeds:
+    if fixed_method:
+        assert support is not None
+        # Both policies are explicit candidates, selected once at each seed.
+        # Confidence retains localized precision; spatial selection supplies
+        # leverage away from densely observed intersections. Neither is a
+        # fallback for a failed solve, and no active set changes during fitting.
+        for seed_index, seed in enumerate(seeds):
+            subsets: dict[tuple[int, ...], str] = {}
+            for spatial, name in ((True, "spatial"), (False, "confidence")):
+                selected = select_keypoints(template, observed, quality, seed.projected,
+                    observed_line_distance, threshold, config, support=support, spatial=spatial)
+                if selected.any():
+                    subsets.setdefault(tuple(np.flatnonzero(selected).tolist()), name)
+            # Candidate discovery is separate from each fixed-set solve. A
+            # rejected solve may expose another supported set. Enqueue it with
+            # provenance, never replace the failed H or require rankings to
+            # reach a fixed point. A set is solved once per seed; cycles stop.
+            pending: list[tuple[tuple[int, ...], str, FloatArray, int | None]] = [
+                (indices, policy, seed.matrix, None) for indices, policy in subsets.items()
+            ]
+            seen = set(subsets)
+            for fixed_indices, policy, start_matrix, parent_id in pending:
+                fixed: NDArray[np.bool_] = np.zeros(len(template), dtype=bool)
+                fixed[list(fixed_indices)] = True
+                required_visible = np.asarray(seed.line["visible_segment_mask"], dtype=bool)
+                current_matrix = start_matrix
+                candidate_id = len(solves)
+                trace: dict[str, object] = {"seed_index": seed_index, "policy": policy,
+                    "selected_indices": list(fixed_indices), "method": config.support_method,
+                    "candidate_id": candidate_id, "parent_candidate_id": parent_id}
+                stops: list[int] = []
+                success = True
+                for field in fields:
+                    def fixed_residual(parameters: FloatArray, fixed: NDArray[np.bool_] = fixed,
+                                       field: FloatArray = field,
+                                       required_visible: NDArray[np.bool_] = required_visible) -> FloatArray:
+                        projected = project_candidate(unpack(parameters), template)
+                        if projected is None:
+                            return np.full(2 * int(fixed.sum()) + 2 * len(segments) * config.samples_per_line + len(evidence.points), 100.)
+                        line, _ = line_residuals(projected, segments, evidence, threshold,
+                            samples_per_line=config.samples_per_line, distance_field=field,
+                            required_visible=required_visible)
+                        kp = selected_kp_residuals(projected, observed, quality, fixed, threshold, support)
+                        return np.asarray(np.r_[np.sqrt(config.kp_weight) * kp, line], dtype=np.float64)
+
+                    optimized = least_squares(fixed_residual, pack(current_matrix), method="trf",
+                        max_nfev=config.max_nfev, ftol=1e-6, xtol=1e-7, gtol=1e-6)
+                    stops.append(int(optimized.status))
+                    current_matrix = unpack(optimized.x)
+                    if not optimized.success:
+                        success = False
+                        break
+                updated = evaluate(current_matrix, (fixed_indices,) * len(stops), fixed=fixed) if success else None
+                trace.update(optimizer_status=stops, stop_reason="converged" if updated is not None else
+                    ("fixed_support_inconsistent" if success else "optimizer_failed"),
+                    fitted_homography=current_matrix.tolist())
+                projection = project_candidate(current_matrix, template)
+                if projection is not None:
+                    trace["selected_residuals_px"] = np.linalg.norm(support.residual(projection, observed)[fixed], axis=1).tolist()
+                    if success and updated is None and np.all(np.asarray(trace["selected_residuals_px"]) <= threshold):
+                        trace["stop_reason"] = "invalid_projected_geometry"
+                elif success:
+                    trace["stop_reason"] = "invalid_projected_geometry"
+                solves.append(trace)
+                if updated is not None:
+                    solutions.append(updated)
+                if success and projection is not None and config.support_method == "candidate_subsets":
+                    proposals = []
+                    for spatial, name in ((True, "spatial"), (False, "confidence")):
+                        selected = select_keypoints(template, observed, quality, projection,
+                            observed_line_distance, threshold, config, support=support, spatial=spatial)
+                        proposed_indices = tuple(np.flatnonzero(selected).tolist())
+                        if not proposed_indices:
+                            state = "insufficient_support"
+                        elif proposed_indices in seen:
+                            state = "already_solved_or_queued"
+                        elif len(pending) >= config.max_support_candidates:
+                            state = "candidate_budget_exhausted"
+                        else:
+                            state = "queued"
+                            seen.add(proposed_indices)
+                            pending.append((proposed_indices, name, current_matrix, candidate_id))
+                        proposals.append({"policy": name, "proposed_indices": list(proposed_indices), "status": state})
+                    trace["support_proposals"] = proposals
+    for seed in (() if fixed_method else seeds):
         current = seed
         history: list[tuple[int, ...]] = []
         valid = True

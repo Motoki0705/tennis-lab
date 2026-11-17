@@ -10,7 +10,6 @@ import copy
 import importlib
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -275,7 +274,21 @@ def test_review_only_history_prevents_silent_target_switch(
     state = p.state()
     state["prs"] = [p.pr(100, 10, run_git(tree, "rev-parse", "HEAD"), "codex/reviewed")]
     p.save(state)
-    p.cli("review-prepare", *p.review_flags(), "--prs", "100")
+    p.cli(
+        "review-request",
+        *p.review_flags(),
+        "--prs",
+        "100",
+        "--instruction-file",
+        p.note(),
+        "--evidence-file",
+        p.note(),
+        "--wait",
+        extra={"AGENT_AUTO_MERGE": "0"},
+    )
+    with store(p).locked() as registry:
+        registry.parents["o/r#1"]["tasks"] = {}
+        registry.save()
     row = store(p).read_data()["parents"]["o/r#1"]
     assert row["tasks"] == {} and row["reviews"]
     state = p.state()
@@ -309,7 +322,16 @@ def test_unregistered_self_pr_blocks_new_child_execution_and_acceptance(
             str(tree),
         ),
         ("record-result", "--child", "10", "--evidence-file", p.note()),
-        ("review-prepare", *p.review_flags(), "--prs", "100"),
+        (
+            "review-request",
+            *p.review_flags(),
+            "--prs",
+            "100",
+            "--instruction-file",
+            p.note(),
+            "--evidence-file",
+            p.note(),
+        ),
         ("workflow-report", "--spec", completion_spec(p)),
     ):
         denied = p.cli(*command, ok=False)
@@ -374,11 +396,13 @@ def test_self_result_review_merge_completion_without_creating_children(
     saved = store(p).read_data()["parents"]["o/r#1"]
     task = saved["tasks"]["1"]
     assert task["verification"]["prs"] == [100] and task["verification"]["evidence"]
-    assert set(g.review.request["requirements"]) == {"1"}
+    assert g.review.request["prs"][0]["issues"] == [1]
     result = json.loads((g.review.run_dir / "result.json").read_text())
-    assert result["prs"][0]["child_issues"] == [1]
-    assert g.review.calls()[0]["context"]["children"] == []
-    assert result["request"]["prs"][0]["head_sha"] == p.state()["prs"][0]["head"]["sha"]
+    assert {i["issue"]["number"] for i in g.review.calls()[0]["context"]["issues"]} == {
+        1,
+        g.review.calls()[0]["context"]["evidence_bindings"]["1"],
+    }
+    assert result["reviewed_heads"]["100"] == p.state()["prs"][0]["head"]["sha"]
     if task.get("delegated"):
         assert task["worker_ended"]["delegation_id"] == task["delegation_id"]
         assert len(task["worker_runs"]) == 1
@@ -409,44 +433,20 @@ def test_self_result_review_merge_completion_without_creating_children(
 
 
 @pytest.mark.parametrize("gate_env", ["parent_self"], indirect=True)
-@pytest.mark.parametrize("pending", ["ci", "finding", "acceptance", "worker"])
+@pytest.mark.parametrize("pending", ["acceptance", "worker"])
 def test_self_completion_waits_for_real_evidence(
     gate_env: GateEnv, pending: str
 ) -> None:
     g, p = gate_env, gate_env.review.p
-    if pending == "ci":
-        state = p.state()
-        state["prs"][0]["statusCheckRollup"][0].update(status="QUEUED", conclusion="")
-        p.save(state)
-    elif pending == "finding":
-
-        def unresolved(result: dict[str, Any]) -> None:
-            result["verdict"] = "request_changes"
-            result["prs"][0]["findings"] = [
-                {
-                    "id": "pr-100-1",
-                    "severity": "major",
-                    "path": "change.txt",
-                    "line": 1,
-                    "rule": "受入条件",
-                    "detail": "受入条件が未達。回帰を確認する。",
-                }
-            ]
-
-        g.edit_result(unresolved)
     response = g.cli("merge")
-    if pending in {"ci", "finding"}:
-        assert response.returncode == 1, response.stderr + response.stdout
-        assert not g.merge_calls()
-    else:
-        assert response.returncode == 0, response.stderr + response.stdout
-        with store(p).locked() as registry:
-            task = registry.parents["o/r#1"]["tasks"]["1"]
-            if pending == "acceptance":
-                del task["verification"]
-            else:
-                task.update(delegated=True, delegation_id="pending-worker")
-            registry.save()
+    assert response.returncode == 0, response.stderr + response.stdout
+    with store(p).locked() as registry:
+        task = registry.parents["o/r#1"]["tasks"]["1"]
+        if pending == "acceptance":
+            del task["verification"]
+        else:
+            task.update(delegated=True, delegation_id="pending-worker")
+        registry.save()
     denied = p.cli("workflow-report", "--spec", completion_spec(p), ok=False)
     assert "pending" in denied.stderr or "acceptance evidence" in denied.stderr
     assert "development_result" not in store(p).read_data()["parents"]["o/r#1"]

@@ -1,0 +1,334 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [64 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root 
+[gw1] [  1%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root 
+[gw0] [  3%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1] 
+[gw1] [  4%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root] 
+[gw0] [  6%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1] 
+tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0] 
+[gw1] [  7%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path] 
+[gw1] [  9%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id] 
+[gw1] [ 10%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths] 
+[gw1] [ 12%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids] 
+[gw1] [ 14%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids] 
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0] 
+[gw1] [ 15%] PASSED tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0] 
+tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[min_inliers-9-3] 
+[gw0] [ 17%] PASSED tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0] 
+tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4] 
+[gw0] [ 18%] PASSED tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4] 
+tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1] 
+[gw0] [ 20%] PASSED tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults 
+[gw1] [ 21%] PASSED tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[min_inliers-9-3] 
+tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[inlier_distance_ratio-0.01-1.0] 
+[gw0] [ 23%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults 
+tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[region_search.max_projection_std_ratio-0.004] 
+[gw0] [ 25%] PASSED tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[region_search.max_projection_std_ratio-0.004] 
+tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[postprocess.boundary_margin_cells-2.0] 
+[gw0] [ 26%] PASSED tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[postprocess.boundary_margin_cells-2.0] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt] 
+[gw1] [ 28%] PASSED tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[inlier_distance_ratio-0.01-1.0] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml] 
+[gw0] [ 29%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0] 
+[gw1] [ 31%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs] 
+[gw0] [ 32%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1] 
+[gw1] [ 34%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]] 
+[gw1] [ 35%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]] 
+[gw0] [ 37%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1] 
+[gw1] [ 39%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5] 
+[gw0] [ 40%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1] 
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0] 
+[gw1] [ 42%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5] 
+tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own 
+[gw0] [ 43%] PASSED tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0] 
+tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction 
+[gw1] [ 45%] PASSED tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own 
+tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer 
+[gw0] [ 46%] PASSED tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides 
+[gw1] [ 48%] PASSED tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer 
+tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association 
+[gw1] [ 50%] PASSED tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association 
+tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api 
+[gw0] [ 51%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_explicit_x3d_config_changes_model_and_cache_settings 
+[gw1] [ 53%] PASSED tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api 
+tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy 
+[gw1] [ 54%] PASSED tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1] 
+[gw0] [ 56%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_explicit_x3d_config_changes_model_and_cache_settings 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_missing_model_selection_fails_instead_of_guessing_checkpoint 
+[gw0] [ 57%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_missing_model_selection_fails_instead_of_guessing_checkpoint 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings 
+[gw1] [ 59%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan] 
+[gw0] [ 60%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings 
+[gw1] [ 62%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_methods_and_paint_measurements_change_cache_identity 
+[gw1] [ 64%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0] 
+[gw1] [ 65%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape] 
+[gw1] [ 67%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape] 
+[gw1] [ 68%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated] 
+[gw1] [ 70%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0] 
+[gw1] [ 71%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1] 
+[gw1] [ 73%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2] 
+[gw1] [ 75%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3] 
+[gw1] [ 76%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4] 
+[gw1] [ 78%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-] 
+[gw1] [ 79%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-+] 
+[gw0] [ 81%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_methods_and_paint_measurements_change_cache_identity 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18] 
+[gw1] [ 82%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-+] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-] 
+[gw0] [ 84%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected 
+[gw1] [ 85%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-+] 
+[gw0] [ 87%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs 
+[gw1] [ 89%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-+] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-] 
+[gw0] [ 90%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots 
+[gw1] [ 92%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-+] 
+[gw0] [ 93%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison 
+[gw1] [ 95%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-+] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_ball_detection_is_used_without_refiner_assets 
+[gw1] [ 96%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_ball_detection_is_used_without_refiner_assets 
+[gw0] [ 98%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_retired_refiner_config_is_rejected 
+[gw0] [100%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_retired_refiner_config_is_rejected 
+
+============================== slowest durations ===============================
+1.24s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_methods_and_paint_measurements_change_cache_identity
+0.39s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2]
+0.27s call     tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[min_inliers-9-3]
+0.24s call     tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[inlier_distance_ratio-0.01-1.0]
+0.18s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_explicit_x3d_config_changes_model_and_cache_settings
+0.16s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides
+0.16s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison
+0.11s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]
+0.10s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[region_search.max_projection_std_ratio-0.004]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[postprocess.boundary_margin_cells-2.0]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-+]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-+]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_ball_detection_is_used_without_refiner_assets
+0.07s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-+]
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_missing_model_selection_fails_instead_of_guessing_checkpoint
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_retired_refiner_config_is_rejected
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-]
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan]
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-]
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-]
+0.05s call     tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own
+0.05s call     tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction
+0.03s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root
+0.03s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]
+0.00s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]
+0.00s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]
+0.00s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[inlier_distance_ratio-0.01-1.0]
+0.00s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults
+0.00s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]
+0.00s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer
+0.00s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]
+0.00s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[region_search.max_projection_std_ratio-0.004]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[postprocess.boundary_margin_cells-2.0]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-+]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[min_inliers-9-3]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-+]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-+]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_methods_and_paint_measurements_change_cache_identity
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_ball_detection_is_used_without_refiner_assets
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_retired_refiner_config_is_rejected
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan]
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_missing_model_selection_fails_instead_of_guessing_checkpoint
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected
+0.00s setup    tests/unit/tennis_scene/test_pipeline_configuration.py::test_explicit_x3d_config_changes_model_and_cache_settings
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[min_inliers-9-3]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_retired_refiner_config_is_rejected
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-+]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_ball_detection_is_used_without_refiner_assets
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-+]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[region_search.max_projection_std_ratio-0.004]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_methods_and_paint_measurements_change_cache_identity
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges[inlier_distance_ratio-0.01-1.0]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_court_quality_settings_change_cache_identity[postprocess.boundary_margin_cells-2.0]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-+]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_explicit_x3d_config_changes_model_and_cache_settings
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4]
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_missing_model_selection_fails_instead_of_guessing_checkpoint
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides
+0.00s teardown tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]
+============================= 64 passed in 12.13s ==============================

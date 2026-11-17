@@ -1,0 +1,19 @@
+{
+  "schema": "scene_dpt_preflight.v1",
+  "parameters": 6008465,
+  "output_shape": [
+    1,
+    32,
+    180,
+    320
+  ],
+  "input_rgb_bytes": 88473600,
+  "fp32_5ch_bytes": 589824000,
+  "fp32_full_resolution_dpt_feature_bytes": 943718400,
+  "memory_estimate_note": "Batch1; concurrent RGB/MDD tensors about 1.2 GiB; DPT upsample128 + head64 about 1.4 GiB FP32. Conservative total estimate <=8 GiB FP32 / <=5 GiB BF16 including parameters, features and workspace. Estimates, not measured peaks.",
+  "reservation": "training queue all",
+  "torch_allocator_fraction": 0.7,
+  "encoder_source_sha256": "9f7faade143f44bdb6f61bb8f142cb91d0109d21969638005b8589c50a63f7de",
+  "training_encoder_sha256": "9f7faade143f44bdb6f61bb8f142cb91d0109d21969638005b8589c50a63f7de",
+  "pinned_13dff57d4_encoder_sha256": "9f7faade143f44bdb6f61bb8f142cb91d0109d21969638005b8589c50a63f7de"
+}

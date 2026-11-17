@@ -23,7 +23,7 @@ def test_register_keeps_native_runtime_private(parent_env: ParentEnv) -> None:
         "process": {"pid": 123, "boot_id": "test", "start_ticks": "456"},
     }
     source = (
-        "import json,lib.identity; from parent.cli import main; lib.identity.native_runtime=lambda:"
+        "import json,lib.identity; from parent.cli_impl import main; lib.identity.native_runtime=lambda:"
         + repr(runtime)
         + "; raise SystemExit(main())"
     )
@@ -115,7 +115,7 @@ def test_handoff_rebinds_or_invalidates_owner_runtime(
 
     def cli(*args: str, native: Any, extra: Any = None) -> None:
         source = (
-            "import lib.identity; from parent.cli import main; lib.identity.native_runtime=lambda:"
+            "import lib.identity; from parent.cli_impl import main; lib.identity.native_runtime=lambda:"
             + repr(native)
             + "; raise SystemExit(main())"
         )

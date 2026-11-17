@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -30,6 +31,215 @@ def finish() -> dict[str, Any]:
         "improvements": {"reviewed": True, "candidates": []},
         "summary": "全体受入済み。",
     }
+
+
+def acceptance_requirements(
+    api: Any,
+    accepted: str,
+    current: str | None = None,
+    heading: str = "全体の完了条件",
+) -> dict[str, Any]:
+    basis = {
+        "event": "agreed",
+        "revision": 1,
+        "agreement": {"acceptance": "合意した条件を検証する。"},
+        "acceptance_snapshot": {heading: accepted},
+    }
+    body = f"## {heading}\n\n{accepted if current is None else current}"
+    session = SimpleNamespace(
+        parent=1,
+        history=lambda: [basis],
+        gh=SimpleNamespace(issue=lambda parent: {"body": body}),
+    )
+    return dict(api.requirements(session))
+
+
+@pytest.mark.parametrize(
+    "heading", ["全体の完了条件", "Acceptance checklist"], ids=["parent", "checklist"]
+)
+def test_plain_acceptance_preserves_ids_and_continuation_lines(
+    api: Any, heading: str
+) -> None:
+    accepted = "- [ ] 保存できる。\n  文脈と証拠を確認する。\n* [x] 失敗を表示する。"
+    required = acceptance_requirements(
+        api, accepted, accepted.replace("[ ]", "[X]"), heading
+    )
+    assert required["criteria"] == [
+        {"id": "agreement", "criterion": "合意した条件を検証する。"},
+        {"id": "ac-1", "criterion": "保存できる。 文脈と証拠を確認する。"},
+        {"id": "ac-2", "criterion": "失敗を表示する。"},
+    ]
+    with pytest.raises(ValueError, match="acceptance criteria changed"):
+        acceptance_requirements(api, accepted, "- [ ] 条件が変わった。", heading)
+
+
+def test_grouped_acceptance_identifies_candidates_and_validates_finish(
+    api: Any,
+) -> None:
+    accepted = (
+        "### I-1878-result-access\n\n- [ ] 保存できる。\n* [ ] 失敗を表示する。\n\n"
+        "### I-2007-result-access\n\n- [ ] 保存できる。"
+    )
+    expected = [
+        {"id": "agreement", "criterion": "合意した条件を検証する。"},
+        {
+            "id": "ac-I-1878-result-access-1",
+            "criterion": "[I-1878-result-access] 保存できる。",
+        },
+        {
+            "id": "ac-I-1878-result-access-2",
+            "criterion": "[I-1878-result-access] 失敗を表示する。",
+        },
+        {
+            "id": "ac-I-2007-result-access-1",
+            "criterion": "[I-2007-result-access] 保存できる。",
+        },
+    ]
+    required = acceptance_requirements(
+        api, accepted, accepted.replace("[ ]", "[X]").replace("\n\n", "\n\n\n")
+    )
+    assert required["criteria"] == expected
+    assert required["basis_ref"] == acceptance_requirements(api, accepted)["basis_ref"]
+    spec = finish()
+    spec.update(
+        basis_ref=required["basis_ref"],
+        acceptance=[
+            {"id": row["id"], "state": "met", "evidence": "各候補の結果を確認。"}
+            for row in expected
+        ],
+    )
+    api.validate_finish(spec, required, {}, 1)
+    spec["acceptance"].pop()
+    with pytest.raises(
+        ValueError, match="each agreed acceptance criterion exactly once"
+    ):
+        api.validate_finish(spec, required, {}, 1)
+
+
+@pytest.mark.parametrize(
+    "indent",
+    [" ", "  ", "    ", "\t"],
+    ids=["one-space", "two-spaces", "four-spaces", "tab"],
+)
+def test_grouped_acceptance_combines_indented_continuations(
+    api: Any, indent: str
+) -> None:
+    accepted = (
+        "### I-1878-first\n- [ ] 保存できる。\n"
+        f"{indent}再読込できる。\n{indent}内容が一致する。\n"
+        "### I-1878-second\n- [ ] 失敗を表示する。\n"
+        f"{indent}保存した内容を保持する。"
+    )
+    required = acceptance_requirements(api, accepted)
+    assert required["criteria"] == [
+        {"id": "agreement", "criterion": "合意した条件を検証する。"},
+        {
+            "id": "ac-I-1878-first-1",
+            "criterion": "[I-1878-first] 保存できる。 再読込できる。 内容が一致する。",
+        },
+        {
+            "id": "ac-I-1878-second-1",
+            "criterion": "[I-1878-second] 失敗を表示する。 保存した内容を保持する。",
+        },
+    ]
+    with pytest.raises(ValueError, match="acceptance criteria changed since agreement"):
+        acceptance_requirements(
+            api, accepted, accepted.replace("内容が一致する。", "内容を変換する。")
+        )
+
+
+@pytest.mark.parametrize(
+    "section",
+    [
+        "説明文。\n### I-1-first\n- [ ] 条件。",
+        "### Other\n- [ ] 条件。",
+        "#### I-1-first\n- [ ] 条件。",
+        "### I-0-first\n- [ ] 条件。",
+        "### I-1-First\n- [ ] 条件。",
+        "### I-1-" + "a" * 65 + "\n- [ ] 条件。",
+        "### I-1-first 説明\n- [ ] 条件。",
+        "### I-1-first\n### I-1-second\n- [ ] 条件。",
+        "### I-1-first\n- [ ] 条件。\n### I-1-second\n### I-1-third\n- [ ] 別条件。",
+        "### I-1-first\n- [ ] 条件。\n### I-1-second",
+        "### I-1-first",
+        "### I-1-first\n- [ ] 条件。\n* [X] 条件。",
+        "### I-1-first\n- [ ] 条件。\n### I-1-first\n- [ ] 別条件。",
+        "### I-1-first\n- [ ] 条件。\n### Other\n- [ ] 別条件。",
+        "### I-1-first\n- [ ] 条件。\n自由文。",
+        "### I-1-first\n  自由文。\n- [ ] 条件。",
+        "### I-1-first\n- [ ] 条件。\n### I-1-second\n  自由文。\n- [ ] 別条件。",
+        "### I-1-first\n- [ ] 条件。\n  ### Other",
+        "### I-1-first\n- [ ] 条件。\n  続きの条件。\n- [ ] 条件。 続きの条件。",
+        "- [ ] 所属不明の条件。\n### I-1-first\n- [ ] 条件。",
+    ],
+    ids=[
+        "leading-prose",
+        "unknown-heading",
+        "heading-level",
+        "zero-parent",
+        "uppercase-key",
+        "long-key",
+        "heading-suffix",
+        "empty-first",
+        "empty-middle",
+        "empty-last",
+        "empty-only",
+        "duplicate-item",
+        "repeated-group",
+        "unknown-heading-after-item",
+        "prose-after-item",
+        "indented-prose-before-item",
+        "indented-prose-in-next-group",
+        "indented-heading",
+        "duplicate-multiline-item",
+        "mixed-format",
+    ],
+)
+def test_grouped_acceptance_rejects_ambiguous_sections(api: Any, section: str) -> None:
+    with pytest.raises(ValueError, match="acceptance snapshot"):
+        api._criteria(section)
+
+
+@pytest.mark.parametrize(
+    "section",
+    ["", "説明文。\n- [ ] 条件。", "- [ ] 条件。\n- [x] 条件。"],
+    ids=["empty", "prose", "duplicate"],
+)
+def test_plain_acceptance_still_requires_unique_checklist_items(
+    api: Any, section: str
+) -> None:
+    with pytest.raises(ValueError, match="acceptance snapshot"):
+        api._criteria(section)
+
+
+@pytest.mark.parametrize(
+    "current",
+    [
+        "### I-1878-first\n- [ ] 条件Aを変更。\n- [ ] 条件B。\n### I-1878-second\n- [ ] 条件C。",
+        "### I-1878-renamed\n- [ ] 条件A。\n- [ ] 条件B。\n### I-1878-second\n- [ ] 条件C。",
+        "### I-1878-first\n- [ ] 条件A。\n### I-1878-second\n- [ ] 条件B。\n- [ ] 条件C。",
+        "### I-1878-second\n- [ ] 条件C。\n### I-1878-first\n- [ ] 条件A。\n- [ ] 条件B。",
+        "### I-1878-first\n- [ ] 条件A。\n- [ ] 条件B。",
+        "### I-1878-first\n- [ ] 条件A。\n- [ ] 条件B。\n### I-1878-second\n- [ ] 条件C。\n### I-1878-third\n- [ ] 条件D。",
+    ],
+    ids=[
+        "text",
+        "candidate",
+        "moved-item",
+        "group-order",
+        "removed-group",
+        "added-group",
+    ],
+)
+def test_grouped_acceptance_detects_changes_since_agreement(
+    api: Any, current: str
+) -> None:
+    accepted = (
+        "### I-1878-first\n- [ ] 条件A。\n- [ ] 条件B。\n"
+        "### I-1878-second\n- [ ] 条件C。"
+    )
+    with pytest.raises(ValueError, match="acceptance criteria changed since agreement"):
+        acceptance_requirements(api, accepted, current)
 
 
 @pytest.mark.parametrize(

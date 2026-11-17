@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.review_tools.retrieval import TEXT, RetrievalError, Retrieved, Tool, text_page
-from lib.review_tools.review_server import ReviewRetrieval
+from lib.review_tools.review_server_impl import ReviewRetrieval
 from worker_logs.journal import atomic, locked
 
 from .catalog import (
