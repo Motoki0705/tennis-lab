@@ -20,14 +20,14 @@ import numpy as np
 import torch
 from hydra import compose, initialize_config_dir
 
-from src.tasks.person_tracking.archive import save_features
+from src.tasks.person_tracking.archive import load_features, save_features
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tennis_scene.configuration import PipelineRuntimeConfig
-from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
+from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule, PersonDetectionOutput
 from src.tennis_scene.pipeline.components.person_features import (
     PersonPoseFeaturesModule, PersonAppearanceFeaturesModule,
 )
-from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingModule
+from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingModule, PersonTrackingOutput
 from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource, SourceVideo
 from src.tennis_scene.pipeline.execution_plan import ClipExecution, ComponentNode, ExecutionPlan
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
@@ -74,6 +74,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input-root', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--reuse-baseline', type=Path, help='Explicitly reuse an intact failed attempt baseline; never infer a fallback')
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -95,7 +96,8 @@ def main():
         'scope': 'video_000/clip_037 cam0 full 292 frames; not full scene or all cameras',
         'vitpose_batch_size': cfg.people.runtime.vitpose.batch_size,
         'appearance_batch_size': cfg.tracking.features.appearance_batch_size, 'dtype': 'float32',
-        'flip_test': cfg.people.runtime.vitpose.flip_test, 'allocator_limit_gib': 10}, indent=2))
+        'flip_test': cfg.people.runtime.vitpose.flip_test, 'allocator_limit_gib': 10,
+        'reuse_baseline': None if args.reuse_baseline is None else str(args.reuse_baseline.resolve())}, indent=2))
     torch.set_num_threads(2)
     total = torch.cuda.get_device_properties(0).total_memory
     torch.cuda.set_per_process_memory_fraction(10 * 2**30 / total, device=0)
@@ -117,24 +119,54 @@ def main():
                               external_root=cfg.roots.external_asset_root, device=cfg.device))
     hook = recorder.model_event
     with recorder.InferenceRecorder(output / 'recording.json', devices=('cuda:0',)):
-        # Freeze detector outputs once; both feature variants consume identical rows.
-        detector = PersonDetectionModule(cfg.people, merge_duplicates=cfg.merge_duplicate_person_boxes)
-        detector_node = ComponentNode('person_detection/cam0', detector, detector.io, PersonDetectionInputAssembler(), {}, context, {}, 'acceptance')
-        detection_plan = ExecutionPlan([ClipExecution(source.clip_id, (detector_node,), ClipStore(output / 'detection-store', {}))])
-        detection_executor = PlanExecutor(detection_plan, model_event=hook)
-        detection_executor.run()
-        detections = detection_executor.output((source.clip_id, detector_node.name))
-        if not len(detections.confidence):
-            raise ValueError('Fixed clip produced no detections; cannot establish inference acceptance')
-        with recorder.recording_context(variant='pre_split'):
-            old_tracker = legacy_tracking.PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=encoder,
-                aflink_checkpoint=cfg.aflink_checkpoint, show_progress=False)
-            from src.tennis_scene.pipeline.inference_runtime import InferenceRuntime
-            with InferenceRuntime({('legacy','tracking'): old_tracker.model_specs()}, model_event=hook) as runtime:
-                with runtime.node(('legacy','tracking')) as models:
-                    old_tracks = old_tracker.process_with_models(legacy_tracking.PersonTrackingInput(video,detections), models)
-            save_features(output / 'pre-split-features.npz', captured, {'source': video.sha256, 'revision': LEGACY})
-            save_output('pre-split-tracks', old_tracks, output)
+        if args.reuse_baseline is not None:
+            baseline = args.reuse_baseline.resolve()
+            previous = json.loads((baseline / 'plan.json').read_text())
+            expected = {'legacy': LEGACY, 'inputs': selected, 'dtype': 'float32',
+                'vitpose_batch_size': cfg.people.runtime.vitpose.batch_size,
+                'appearance_batch_size': cfg.tracking.features.appearance_batch_size,
+                'flip_test': cfg.people.runtime.vitpose.flip_test}
+            if any(previous[key] != value for key, value in expected.items()):
+                raise ValueError('Reused baseline differs from the fixed protocol')
+            previous_recording = json.loads((baseline / 'recording.json').read_text())
+            for item in previous_recording['models']:
+                for asset in item['weights'].values():
+                    if sha(Path(asset['path'])) != asset['sha256']:
+                        raise ValueError('Reused baseline model assets changed')
+            captured, provenance = load_features(baseline / 'pre-split-features.npz')
+            if provenance != {'source': video.sha256, 'revision': LEGACY}:
+                raise ValueError('Reused baseline feature provenance mismatch')
+            store = ClipStore(baseline / 'detection-store', {})
+            reference = store.active('person_detection/cam0')
+            if reference is None:
+                raise ValueError('Reused baseline detections are missing')
+            detections = store.load(reference, ArtifactCodec(PersonDetectionOutput))
+            serialized = json.loads((baseline / 'pre-split-tracks/artifact.json').read_text())
+            old_tracks = ArtifactCodec(PersonTrackingOutput).load(serialized['payload'], baseline / 'pre-split-tracks', serialized['arrays'])
+            (output / 'reused-baseline.json').write_text(json.dumps({
+                'root': str(baseline), 'features_sha256': sha(baseline / 'pre-split-features.npz'),
+                'plan_sha256': sha(baseline / 'plan.json'), 'recording_sha256': sha(baseline / 'recording.json'),
+                'detection_artifact_id': reference.artifact_id}, indent=2))
+            detector = PersonDetectionModule(cfg.people, merge_duplicates=cfg.merge_duplicate_person_boxes)
+        else:
+            # Freeze detector outputs once; both feature variants consume identical rows.
+            detector = PersonDetectionModule(cfg.people, merge_duplicates=cfg.merge_duplicate_person_boxes)
+            detector_node = ComponentNode('person_detection/cam0', detector, detector.io, PersonDetectionInputAssembler(), {}, context, {}, 'acceptance')
+            detection_plan = ExecutionPlan([ClipExecution(source.clip_id, (detector_node,), ClipStore(output / 'detection-store', {}))])
+            detection_executor = PlanExecutor(detection_plan, model_event=hook)
+            detection_executor.run()
+            detections = detection_executor.output((source.clip_id, detector_node.name))
+            if not len(detections.confidence):
+                raise ValueError('Fixed clip produced no detections; cannot establish inference acceptance')
+            with recorder.recording_context(variant='pre_split'):
+                old_tracker = legacy_tracking.PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=encoder,
+                    aflink_checkpoint=cfg.aflink_checkpoint, show_progress=False)
+                from src.tennis_scene.pipeline.inference_runtime import InferenceRuntime
+                with InferenceRuntime({('legacy','tracking'): old_tracker.model_specs()}, model_event=hook) as runtime:
+                    with runtime.node(('legacy','tracking')) as models:
+                        old_tracks = old_tracker.process_with_models(legacy_tracking.PersonTrackingInput(video,detections), models)
+                save_features(output / 'pre-split-features.npz', captured, {'source': video.sha256, 'revision': LEGACY})
+                save_output('pre-split-tracks', old_tracks, output)
         gc.collect()
         torch.cuda.empty_cache()
         with recorder.recording_context(variant='split'):
