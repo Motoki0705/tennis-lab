@@ -21,7 +21,10 @@ from src.tennis_scene.pipeline.clip_inputs import (
     resolve_dataset_clip,
     select_dataset_clips,
 )
-from src.tennis_scene.pipeline.dataset_publication import completed_annotation
+from src.tennis_scene.pipeline.dataset_publication import (
+    completed_annotation,
+    publish_annotation,
+)
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     standard_definition,
@@ -369,11 +372,10 @@ def test_shared_artifact_change_is_part_of_dataset_marker_identity(tmp_path, mon
     record = select_dataset_clips((tmp_path / 'dataset').resolve())[0]
     bound = resolve_dataset_clip((tmp_path / 'dataset').resolve(), record)
     identity = pipeline.publication_identity()
-    destination = bound.clip_dir / 'annotations/tennis_scene/annotation.json'
-    destination.parent.mkdir(parents=True)
-    from src.tennis_scene.pipeline.artifacts import document_digest
-    write_json_atomic(destination, {'publication_identity_sha256': document_digest(identity),
-                                    'clip_manifest_sha256': bound.manifest_sha256, 'media_sha256': bound.media_sha256})
+    result = pipeline.run(bound.video_paths, video_role=PathRole.DATA, camera_ids=CAMERAS,
+                          store_root=bound.clip_dir / 'annotations/tennis_scene', clip_id=record.clip_id)
+    destination = publish_annotation(bound, result, pipeline_config_yaml='fixture: video_court\n',
+                                     publication_identity=identity)
     assert completed_annotation(bound, identity) == destination
     docs['cam0']['matrix'][0][2] += 1
     with store.lock():

@@ -9,11 +9,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import runpy
 import shutil
 import subprocess
 import sys
+import traceback
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 
@@ -25,6 +29,12 @@ C1 = REPOSITORY / "knowledge/runs/run-video-batch-baseline-20261116/benchmark.py
 def write(path: Path, document: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n")
+
+
+def operation(root: Path, **details: object) -> None:
+    event = {"utc": datetime.now(UTC).isoformat(), **details}
+    write(root / "current-operation.json", event)
+    print(json.dumps(event, ensure_ascii=False), flush=True)
 
 
 def copy_dataset(root: Path, name: str, clips: list[str]) -> Path:
@@ -89,7 +99,14 @@ def run(root: Path, clips: list[str], court_settings: Path | None) -> int:
     from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
     from src.tennis_scene.pipeline.video_batch import run_video_batch
     from src.utils.configuration import PathRole
-    from src.utils.inference_recording import InferenceRecorder
+    from src.utils.inference_recording import InferenceRecorder, model_event
+
+    @contextmanager
+    def lifecycle(action, model, **attributes):
+        operation(root, operation=f"model_{action}", model=model, state="started")
+        with model_event(action, model, **attributes):
+            yield
+        operation(root, operation=f"model_{action}", model=model, state="finished")
 
     c1 = runpy.run_path(str(C1))
     manifest = c1["verify"](root)
@@ -119,23 +136,27 @@ def run(root: Path, clips: list[str], court_settings: Path | None) -> int:
             random.seed(42)
             np.random.seed(42)
             torch.manual_seed(42)
-            orchestrator = TennisSceneOrchestrator(runtime)
+            orchestrator = TennisSceneOrchestrator(runtime, model_event=lifecycle)
             condition = f"{name}-{cache}"
+            operation(root, operation="condition", condition=condition, state="started")
             entry_started = perf_counter()
             if name == "single":
                 recorder = InferenceRecorder(root / "recordings" / f"{condition}.json", devices=("cuda:0",),
                     metadata={"entry": "generate_dataset", "cache": cache, "commit": head, "clip_order": clips})
                 with recorder:
-                    def reconstruct(paths, cameras, directory, scene_orchestrator=orchestrator):
-                        return scene_orchestrator.run(paths, video_role=PathRole.DATA, camera_ids=cameras,
+                    def reconstruct(paths, cameras, directory, scene_orchestrator=orchestrator, phase=condition):
+                        operation(root, operation="clip", condition=phase, clip_id=f"video_000/{directory.name}", state="started")
+                        scene = scene_orchestrator.run(paths, video_role=PathRole.DATA, camera_ids=cameras,
                             store_root=directory / "annotations/tennis_scene", clip_id=f"video_000/{directory.name}")
+                        operation(root, operation="clip", condition=phase, clip_id=f"video_000/{directory.name}", state="finished")
+                        return scene
                     outcomes = generate_pseudo_annotations(dataset, reconstruct, pipeline_config_yaml=yaml,
-                        publication_identity=orchestrator.publication_identity(), overwrite=True)
+                        publication_identity=orchestrator.publication_identity(), overwrite=True, continue_on_error=False)
                     outcome = [{"clip_id": o.clip_id, "status": o.status, "error": o.error} for o in outcomes]
                 recording = recorder.destination
             else:
                 batch = run_video_batch(dataset, "video_000", orchestrator, pipeline_config_yaml=yaml, overwrite=True,
-                    progress_directory=root / "progress" / condition, recording_devices=("cuda:0",))
+                    continue_on_error=False, progress_directory=root / "progress" / condition, recording_devices=("cuda:0",))
                 outcome = [{"clip_id": o.clip_id, "status": o.status, "error": o.error} for o in batch.outcomes]
                 recording = batch.progress_path.with_name("recording.json")
             entry_seconds = perf_counter() - entry_started
@@ -163,7 +184,16 @@ def main() -> int:
     if options.action == "freeze":
         runpy.run_path(str(C1))["freeze"](root)
         return 0
-    return run(root, options.clip_ids, options.court_settings)
+    try:
+        return run(root, options.clip_ids, options.court_settings)
+    except BaseException as error:
+        current = root / "current-operation.json"
+        write(root / "failure.json", {
+            "utc": datetime.now(UTC).isoformat(), "pid": os.getpid(), "command": sys.argv,
+            "error_type": type(error).__name__, "error": str(error), "traceback": traceback.format_exc(),
+            "last_operation": json.loads(current.read_text()) if current.exists() else None,
+        })
+        raise
 
 
 if __name__ == "__main__":
