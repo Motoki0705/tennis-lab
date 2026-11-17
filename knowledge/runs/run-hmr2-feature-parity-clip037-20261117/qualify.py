@@ -14,6 +14,8 @@ import traceback
 import numpy as np
 import torch
 
+from cuda_guard import guard
+
 OUT = Path(os.environ['HMR2_ACCEPTANCE_ROOT'])
 EXPECTED = os.environ['HMR2_MAIN_COMMIT']
 
@@ -27,17 +29,18 @@ def main() -> None:
     source = Path(__file__).resolve()
     repro = Path(os.environ['TENNIS_REPRO_DIR'])
     shutil.copy2(source, repro / 'qualification-wrapper.py')
+    shutil.copy2(source.with_name('cuda_guard.py'), repro / 'cuda_guard.py')
     (OUT / 'driver.json').write_text(json.dumps({'main_commit': EXPECTED,
         'driver_commit': os.environ['HMR2_ACCEPTANCE_DRIVER_COMMIT'],
         'driver_sha256': hashlib.sha256(source.read_bytes()).hexdigest()}, indent=2))
-    torch.cuda.set_per_process_memory_fraction(10 * 1024**3 / torch.cuda.get_device_properties(0).total_memory)
     random.seed(42)
     np.random.seed(42)
     torch.manual_seed(42)
-    torch.cuda.manual_seed_all(42)
     code = 1
     try:
-        runpy.run_module('src.tennis_scene.scripts.run_pipeline', run_name='__main__', alter_sys=True)
+        with guard(OUT, 'main single-clip qualification'):
+            torch.cuda.set_per_process_memory_fraction(10 * 1024**3 / torch.cuda.get_device_properties(0).total_memory)
+            runpy.run_module('src.tennis_scene.scripts.run_pipeline', run_name='__main__', alter_sys=True)
     except SystemExit as exc:
         code = exc.code if isinstance(exc.code, int) else int(exc.code is not None)
         raise

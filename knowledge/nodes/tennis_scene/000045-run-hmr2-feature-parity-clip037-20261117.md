@@ -31,3 +31,5 @@ GPUは共有training queueのall枠で1clipずつ処理する。最初の候補�
 許容差は前回から維持し、rad/betas atol=1e-5・rtol=1e-5、位置/translation/mesh(m) atol=1e-4・rtol=1e-5、再投影(px) atol=1e-3・rtol=1e-5。ID/frame/mask/拒否コードは厳密一致を要求し、非空の有効身体配置を条件にする。各身体経路のseedは42、float32、既定batch上限、allocator cap 10GiBで固定する。
 
 この記録はC6の身体推論境界の受入であり、速度benchmarkや全69clipの受入には広げない。標準pipelineのcheckpoint・再構成方式は変えず、現在のsummaryの判断も変えないためsummary_impactはnone。独立validatorは指定/試行/完了0/0/0。
+
+2026-11-18の再開時、前回のqualification jobは未実行のcancelledとして照合した。CUDA異常で人間がWindowsを再起動し、再開後のbounded nvidia-smiはRTX 5060 Ti / driver 621.24 / 使用747MiBを返した。身体受入の成功には数えない。再投入では、開始前・60秒ごと・終了時のNVML health probeを10秒timeout付きで行い、再び無応答/エラーになれば時刻・処理・エラー全文・Python全thread stackを保存して当該queue workloadを終了する。CUDA例外が出た場合も再試行を繰り返さず親へ返す。これはモデル進捗のポーリングではなく、再起動後に要求されたGPU異常検知である。
