@@ -5,12 +5,28 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
+from dataclasses import fields
 from pathlib import Path
 
-from src.tennis_scene.archive import save_scene_result
+import numpy as np
+
+from src.tennis_scene.archive import load_scene_result, save_scene_result
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.schema import SceneResult
 from src.utils.inference_recording import measured, temporary_directory
+
+
+def validate_scene_export(scene: SceneResult, path: Path) -> None:
+    """An immutable export must still contain the scene being published."""
+    saved = load_scene_result(path)
+    for field in fields(SceneResult):
+        expected, actual = getattr(scene, field.name), getattr(saved, field.name)
+        if isinstance(expected, np.ndarray):
+            equal = isinstance(actual, np.ndarray) and expected.dtype == actual.dtype and np.array_equal(expected, actual)
+        else:
+            equal = expected == actual
+        if not equal:
+            raise ValueError(f"Scene export disagrees with reconstructed field {field.name}")
 
 
 @measured("save")
@@ -34,6 +50,7 @@ def export_scene(store: ClipStore, scene: SceneResult, reference: ArtifactRef) -
             if temporary.exists():
                 shutil.rmtree(temporary)
     scene_path: Path = destination / "scene.npz"
+    validate_scene_export(scene, scene_path)
     store.record_export("scene", {"scene": scene_path, "metadata": destination / "scene.metadata.json"},
         {"scene_assembly": reference})
     return scene_path

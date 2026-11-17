@@ -53,6 +53,44 @@ storeの採用済みartifactは、推論もstoreへの書き込みもせずにHT
 source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認する画面と、
 `--serve --port 8903`での起動方法は[visualization/review/README.md](visualization/review/README.md)を参照してください。
 
+## 登録済みvideoの一括再構成
+
+`run_video_batch`は`dataset.json`に登録された同じ`video_id`の全clipを1つの
+`ExecutionPlan`へまとめます。モデルを段階ごとに共有し、各推論はclip・cameraごとの
+既存windowとbatch設定を使います。既定は通常の`pipeline`設定です。
+meiji_4camで選んだX3D/CSN＋DPT T32は`pipeline_config=pipeline_x3d_dpt`で明示します。
+
+```bash
+# GPU実行はこのコマンドを共有training queueへ登録する。
+.venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
+  dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
+  video_id=video_000 \
+  pipeline_config=pipeline_x3d_dpt
+```
+
+`clip_ids=[video_000/clip_000,video_000/clip_001]`で明示subsetを指定できます。
+別video・未知・重複・空の指定、manifestと実mediaのcamera対応・FPS・解像度・frame数の
+不一致は、推論の開始前に拒否します。対象と展開済み設定は開始時に固定します。
+実行中に登録されたclipは次回の対象になります。
+
+clipの全nodeが完成すると、共通のexportとdataset publisherがそのclipの
+`annotations/tennis_scene/annotation.json`を公開します。`continue_on_error=true`では、
+`clip_too_long`などの入力・再構成失敗を記録し、そのclipの未完了nodeをblockedにして
+他のclipを続けます。共有モデルの読込・解放失敗、CUDA/deviceエラー、中断は実行を停止します。
+失敗が残ると終了コードは非0です。`continue_on_error=false`で最初の失敗時に停止できます。
+
+同じコマンドの再実行では、同じ設定・入力の完成markerをskipし、markerがないclipでも
+完成済みのcomponentをcacheから再利用します。古い設定のmarkerは`overwrite=true`を要求します。
+componentの強制再計算には`pipeline_overrides=["cache.overwrite=true"]`を指定します。
+壊れたartifactとexportは理由付きで拒否します。復旧時は破損箇所を確認し、対応する
+再生成・新しいstoreを明示してください。
+
+OUTPUT配下の`progress_directory/<実行ID>/progress.json`へ対象・設定・node状態・clipの
+成功／skip／失敗／blocked、モデルload/unload、実batch shapeごとの件数を保存します。
+隣の`recording.json`は[C1 recorder](../utils/inference_recording.md)の段階別計測です。
+再開時は新しい進捗記録を作り、component storeから状態を照合します。
+datasetの完成判定にはclipごとの`annotation.json`と採用中scene exportを使います。
+
 ## 座標・対応
 
 観測の正本はpixel座標、sceneの2D座標はpixel/(width,height)です。

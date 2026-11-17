@@ -18,6 +18,7 @@
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
 | `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
 | `orchestrator.py` | 共通入力部品への動画束縛、標準recipeから1clipの計画を作成・実行・最終化、実行receipt |
+| `video_batch.py` | 同じvideoの固定clip群を1計画へ束縛し、失敗を分離してclip完成直後に公開する入口 |
 | `direct_annotation/` | 白紙注釈request・固定幾何参照と、scene完了・公開だけの再開 |
 | `feature_flags.py` | 無効化できる出力機能（`OPTIONAL_FEATURES`）とその依存関係 |
 

@@ -3,6 +3,7 @@
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
+from weakref import ref
 
 import numpy as np
 import pytest
@@ -23,7 +24,10 @@ from src.tennis_scene.pipeline.storage.codec import (
 )
 from src.utils.data.heatmaps import heatmaps_to_argmax
 from src.utils.video import VideoWriter
-from tests.unit.tennis_scene.pipeline.config_factories import make_x3d_ball_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_x3d_ball_config,
+    materialize_model_weights,
+)
 
 
 def test_short_video_keeps_native_grid_evidence_and_presence_mask(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -48,9 +52,15 @@ def test_short_video_keeps_native_grid_evidence_and_presence_mask(tmp_path: Path
     base = make_x3d_ball_config(tmp_path)
     module = BallDetectionModule(replace(base, batch_size=1, score_threshold=.5, pin_memory=False,
                                          trajectory_gate=replace(base.trajectory_gate, enabled=False)))
-    monkeypatch.setattr(module, "load", lambda: setattr(module, "_pipeline", Predictor()))
+    materialize_model_weights(module)
+    predictors = []
+    def load():
+        predictor = Predictor()
+        predictors.append(ref(predictor))
+        return predictor
+    monkeypatch.setattr(module, "_load_predictor", load)
     out = module.process(BallDetectionInput(SourceVideo("cam", video, "fixture", 33, 30., 40, 24)))
-    assert calls == [1, 1] and not module.is_loaded
+    assert calls == [1, 1] and all(predictor() is None for predictor in predictors)
     assert out.observed.sum() == 32 and not out.observed[0]
     np.testing.assert_allclose(out.uv_px[1], [160 / 319 * 39, 90 / 179 * 23])
     assert out.evidence is not None

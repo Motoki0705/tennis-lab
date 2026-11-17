@@ -36,12 +36,13 @@ if TYPE_CHECKING:
 
 def _compose_pipeline_config(
     runtime: GenerateDatasetRuntimeConfig,
+    *, config_name: str = "pipeline",
 ) -> tuple[DictConfig, PipelineRuntimeConfig]:
     """Compose the canonical pipeline config and validate explicit overrides."""
     from src.tennis_scene.configuration import PipelineRuntimeConfig
 
     pipeline_cfg = compose(
-        config_name="pipeline",
+        config_name=config_name,
         overrides=list(runtime.pipeline_overrides),
     )
     paths = {

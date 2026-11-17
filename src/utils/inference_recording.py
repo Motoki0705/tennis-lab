@@ -31,6 +31,7 @@ _GPU_STAGES = {"transfer", "inference", "model_load", "model_unload"}
 _ACTIVE: ContextVar[InferenceRecorder | None] = ContextVar("inference_recorder", default=None)
 _ATTRIBUTES: ContextVar[dict[str, Any] | None] = ContextVar("inference_recording_attributes", default=None)
 _STACK: ContextVar[tuple[int, ...]] = ContextVar("inference_recording_stack", default=())
+_LIFECYCLE: ContextVar[bool] = ContextVar("inference_model_lifecycle", default=False)
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -294,15 +295,19 @@ def model_event(action: str, model: str, *, weights: Mapping[str, Path], device:
                 dtype: str, instance: str) -> Iterator[None]:
     """C3 runtime API: call at actual load/unload, never at model borrowing."""
     recorder = _ACTIVE.get()
-    if recorder is None:
+    if recorder is None or _LIFECYCLE.get():
         yield
         return
     if action not in {"load", "unload"}:
         raise ValueError("Model event action must be load or unload")
     hashes = recorder.weight_hashes(weights)
     attributes = dict(model=model, weights=hashes, device=device, dtype=dtype, instance=instance)
-    with span(f"model_{action}", **attributes):
-        yield
+    token = _LIFECYCLE.set(True)
+    try:
+        with span(f"model_{action}", **attributes):
+            yield
+    finally:
+        _LIFECYCLE.reset(token)
     if action == "load":
         recorder._models[instance] = attributes
     else:

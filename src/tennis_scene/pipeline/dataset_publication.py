@@ -12,7 +12,12 @@ import numpy as np
 
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs
-from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
+from src.tennis_scene.pipeline.storage.clip_store import clip_store_lock
+from src.tennis_scene.pipeline.storage.scene_export import validate_scene_export
+from src.tennis_scene.pipeline.storage.scene_index import (
+    annotation_scene_path,
+    indexed_scene_path,
+)
 from src.tennis_scene.schema import (
     SCENE_MASK_FIELDS,
     SCENE_REASON_FIELDS,
@@ -121,23 +126,35 @@ def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mappin
     destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR / "annotation.json"
     if not destination.exists() or overwrite:
         return None
-    marker = json.loads(destination.read_text())
-    if (marker.get("publication_identity_sha256") != document_digest(publication_identity)
-            or marker.get("clip_manifest_sha256") != inputs.manifest_sha256
-            or marker.get("media_sha256") != inputs.media_sha256):
-        raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
-    inputs.snapshot.assert_unchanged()
+    from src.tennis_scene.archive import load_scene_result
+
+    with clip_store_lock(destination.parent):
+        if not destination.exists():
+            return None
+        marker = json.loads(destination.read_text())
+        if (marker.get("publication_identity_sha256") != document_digest(publication_identity)
+                or marker.get("clip_manifest_sha256") != inputs.manifest_sha256
+                or marker.get("media_sha256") != inputs.media_sha256):
+            raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
+        scene = load_scene_result(annotation_scene_path(destination.parent, marker))
+        validate_dataset_result(scene, inputs.record)
+        if marker.get("arrays") != scene_array_manifest(scene):
+            raise ValueError("Annotation arrays disagree with the published scene")
+        inputs.snapshot.assert_unchanged()
     return destination
 
 
 def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeline_config_yaml: str,
-                       publication_identity: Mapping[str, object]) -> Path:
+                       publication_identity: Mapping[str, object], expected_scene: Path | None = None) -> Path:
     """Validate a complete clip and atomically publish its dataset marker."""
-    with span("publication"):
+    with span("publication"), clip_store_lock(inputs.clip_dir / ANNOTATION_RELATIVE_DIR):
         validate_dataset_result(result, inputs.record)
         inputs.snapshot.assert_unchanged()
         destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
         scene_path = indexed_scene_path(destination / "scene.json")
+        if expected_scene is not None and scene_path != expected_scene.resolve():
+            raise ValueError("Cannot publish a superseded scene export")
+        validate_scene_export(result, scene_path)
         config_bytes = pipeline_config_yaml.encode("utf-8")
         config_path = destination / "configs" / f"{hashlib.sha256(config_bytes).hexdigest()}.yaml"
         if not config_path.exists():

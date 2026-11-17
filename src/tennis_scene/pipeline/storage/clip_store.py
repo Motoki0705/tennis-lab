@@ -54,6 +54,18 @@ def _component_name(node: str) -> str:
     return parts[0]
 
 
+@contextmanager
+def clip_store_lock(root: Path) -> Iterator[None]:
+    """Use the same publication lock for components, exports and dataset markers."""
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / ".scene.lock").open("a") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
 class ClipStore:
     """Disk is authoritative; bounded in-memory entries never change semantics."""
 
@@ -76,12 +88,8 @@ class ClipStore:
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
-        with (self.root / ".scene.lock").open("a") as handle:
-            fcntl.flock(handle, fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(handle, fcntl.LOCK_UN)
+        with clip_store_lock(self.root):
+            yield
 
     def _index(self) -> dict[str, Any]:
         value = json.loads(self.index_path.read_text())
@@ -163,6 +171,7 @@ class ClipStore:
                     # lineage. Keep old export bytes immutable, but withdraw its
                     # active pointer as soon as any adopted component changes.
                     index["exports"].clear()
+                    (self.root / "annotation.json").unlink(missing_ok=True)
                 index["artifacts"][node] = encoded
                 index["revision"] += 1
                 write_json_atomic(self.index_path, index)

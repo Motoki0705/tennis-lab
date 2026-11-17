@@ -162,6 +162,12 @@ class ExecutionPlan:
             raise ValueError(f"Unknown clip: {clip_id}")
         return all(key in self.references for key in self.required if key[0] == clip_id)
 
+    def block_clip(self, clip_id: str) -> tuple[NodeKey, ...]:
+        """A failed clip cannot publish, so withdraw all of its unfinished work."""
+        blocked = tuple(key for key in self.order if key[0] == clip_id and key in self.required and key not in self.statuses)
+        self.statuses.update(dict.fromkeys(blocked, "blocked"))
+        return blocked
+
     def decide(self, key: NodeKey) -> NodeDecision:
         """Inspect a node's adopted artifact once, after all its inputs exist."""
         if key in self.decisions:
