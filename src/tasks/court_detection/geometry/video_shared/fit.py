@@ -28,7 +28,7 @@ class SharedPaintConfig:
 
     paint: PaintConfig = field(default_factory=PaintConfig)
     min_lines: int = 6
-    min_transverse: int = 3
+    min_transverse: int = 2
     min_longitudinal: int = 3
     min_clips_per_line: int = 3
     samples_per_group: int = 24
@@ -43,7 +43,7 @@ class SharedPaintConfig:
                     self.min_clips_per_line, self.samples_per_group, self.max_nfev)
         if any(type(v) is not int or v <= 0 for v in integers):
             raise ValueError("Shared court counts must be positive integers")
-        if not 3 <= self.min_transverse <= 4 or not 2 <= self.min_longitudinal <= 5 or not 5 <= self.min_lines <= 9:
+        if not 2 <= self.min_transverse <= 4 or not 2 <= self.min_longitudinal <= 5 or not 5 <= self.min_lines <= 9:
             raise ValueError("Insufficient independent court line families")
         if self.samples_per_group < 4:
             raise ValueError("Insufficient spatial samples")
@@ -58,12 +58,15 @@ class PaintGroup:
     frame_index: int
     line_index: int
     points: FloatArray
+    endings: tuple[str, str] = ("unobservable", "unobservable")
 
     def __post_init__(self) -> None:
         if (not self.clip_id or type(self.frame_index) is not int or self.frame_index < 0
                 or not 0 <= self.line_index < 9 or self.points.ndim != 2 or self.points.shape[1] != 2
                 or len(self.points) < 4 or not np.isfinite(self.points).all()):
             raise ValueError("Invalid paint observation group")
+        if len(self.endings) != 2 or any(value not in {"unobservable", "ended", "continues", "ambiguous"} for value in self.endings):
+            raise ValueError("Invalid endpoint evidence")
 
 
 @dataclass(frozen=True)
@@ -92,8 +95,8 @@ class HomographyChart:
         return np.asarray(np.linalg.solve(self.image, np.r_[parameters, 1.].reshape(3, 3)) @ self.world, dtype=np.float64)
 
 
-def fit_common_court(initial: FloatArray, groups: tuple[PaintGroup, ...], size_wh: tuple[int, int],
-                     config: SharedPaintConfig) -> SharedFit:
+def _fit_group_geometry(initial: FloatArray, groups: tuple[PaintGroup, ...], size_wh: tuple[int, int],
+                        config: SharedPaintConfig) -> SharedFit:
     """Use equal physical-line, clip, frame weights; never trim a whole epoch."""
     keys = [(g.clip_id, g.frame_index, g.line_index) for g in groups]
     if len(set(keys)) != len(keys):
@@ -104,7 +107,7 @@ def fit_common_court(initial: FloatArray, groups: tuple[PaintGroup, ...], size_w
     for group in groups:
         by_line[group.line_index].add(group.clip_id)
     supported = {i for i, clips in by_line.items() if len(clips) >= config.min_clips_per_line}
-    diagnostic: dict[str, Any] = {"schema": "video_court_fit_v1", "settings": asdict(config),
+    diagnostic: dict[str, Any] = {"schema": "video_court_fit_v2", "settings": asdict(config),
         "supported_lines": [PAINT_NAMES[i] for i in sorted(supported)],
         "line_clip_counts": {PAINT_NAMES[i]: len(clips) for i, clips in sorted(by_line.items())},
         "observed_groups": len(groups), "excluded_groups": [list(k) for k, g in zip(keys, groups, strict=True) if g.line_index not in supported]}
@@ -187,6 +190,31 @@ def fit_common_court(initial: FloatArray, groups: tuple[PaintGroup, ...], size_w
         reasons.append("inconsistent_common_court")
     diagnostic.update(normalized_condition=condition, group_residuals=reports, max_group_p95_px=common_residual)
     return SharedFit(None if reasons else matrix, matrix, tuple(reasons), diagnostic)
+
+
+def fit_common_court(initial: FloatArray, groups: tuple[PaintGroup, ...], size_wh: tuple[int, int],
+                     config: SharedPaintConfig) -> SharedFit:
+    """Certify finite baseline/service identities as well as an identifiable grid."""
+    numerical = _fit_group_geometry(initial, groups, size_wh, config)
+    endings: dict[int, set[str]] = defaultdict(set)
+    continued = []
+    for group in groups:
+        if group.line_index not in TRANSVERSE:
+            continue
+        if "continues" in group.endings:
+            continued.append((group.clip_id, group.frame_index, PAINT_NAMES[group.line_index]))
+        if "ended" in group.endings and "continues" not in group.endings:
+            endings[group.line_index].add(group.clip_id)
+    verified = {index for index, clips in endings.items() if len(clips) >= config.min_clips_per_line}
+    reasons = list(numerical.reasons)
+    if not verified & {0, 1} or not verified & {6, 7}:
+        reasons.append("unverified_finite_line_identity")
+    if continued:
+        reasons.append("paint_continues_beyond_template")
+    diagnostic = {**numerical.diagnostic, "endpoint_checked": True,
+                  "verified_finite_transverse_lines": [PAINT_NAMES[i] for i in sorted(verified)],
+                  "continued_transverse_groups": continued}
+    return SharedFit(None if reasons else numerical.matrix, numerical.fitted_matrix, tuple(reasons), diagnostic)
 
 
 def choose_common_solution(results: tuple[SharedFit, ...], config: SharedPaintConfig) -> SharedFit:

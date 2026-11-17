@@ -20,7 +20,8 @@ from ..paint_observations import (
     image_lines,
 )
 from .candidates import CourtSeed
-from .fit import TRANSVERSE, PaintGroup, SharedPaintConfig, fit_common_court
+from .endpoints import measure_endings
+from .fit import TRANSVERSE, PaintGroup, SharedPaintConfig, _fit_group_geometry
 
 
 @dataclass(frozen=True)
@@ -158,6 +159,7 @@ def measure_frame(image: NDArray[np.uint8], initial: FloatArray, *, clip_id: str
     # numerical initializers, not different physical courts. Refit each unique
     # set with all its observations before testing geometric ambiguity.
     refined = []
+    extent_attempts: list[dict[str, Any]] = []
     seen_assignments = set()
     for key, matrix, choices in choices_by_h:
         if key[:2] != choices_by_h[0][0][:2]:
@@ -166,27 +168,55 @@ def measure_frame(image: NDArray[np.uint8], initial: FloatArray, *, clip_id: str
         if assignment in seen_assignments:
             continue
         seen_assignments.add(assignment)
-        groups = tuple(PaintGroup(clip_id, frame_index, i, value.points) for i, value in sorted(choices.items()))
-        fitted = fit_common_court(matrix, groups, (image.shape[1], image.shape[0]), replace(config, min_clips_per_line=1))
-        if fitted.matrix is not None:
-            refined.append((float(fitted.diagnostic['max_group_p95_px']), fitted.matrix, choices))
+        active = dict(choices)
+        rejected_extents: dict[str, Any] = {}
+        for _ in range(3):
+            groups = tuple(PaintGroup(clip_id, frame_index, i, value.points) for i, value in sorted(active.items()))
+            fitted = _fit_group_geometry(matrix, groups, (image.shape[1], image.shape[0]), replace(config, min_clips_per_line=1))
+            if fitted.matrix is None:
+                extent_attempts.append({'status': 'reduced_geometry_failed', 'reasons': list(fitted.reasons),
+                                        'removed': rejected_extents})
+                break
+            matrix = fitted.matrix
+            endings = {}
+            extent = {}
+            for index in sorted(active.keys() & TRANSVERSE):
+                endings[index], extent[PAINT_NAMES[index]] = measure_endings(image, matrix, index, config.paint)
+            continued = {i for i, status in endings.items() if 'continues' in status}
+            if continued:
+                rejected_extents.update({PAINT_NAMES[i]: extent[PAINT_NAMES[i]] for i in continued})
+                active = {i: value for i, value in active.items() if i not in continued}
+                continue
+            verified = {i for i, status in endings.items() if 'ended' in status}
+            detail = {'status': 'verified' if verified & {0, 1} and verified & {6, 7} else 'unverified_finite_line_identity',
+                      'evidence': extent, 'removed': rejected_extents}
+            extent_attempts.append(detail)
+            if detail['status'] == 'verified':
+                refined.append((float(fitted.diagnostic['max_group_p95_px']), matrix, active, endings, detail))
+            break
+        else:
+            extent_attempts.append({'status': 'extent_selection_did_not_converge', 'removed': rejected_extents})
     diagnostic['distinct_correspondence_sets'] = len(seen_assignments)
+    diagnostic['extent_attempts'] = extent_attempts
     if not refined:
         diagnostic['reason'] = 'frame_correspondence_fit_failed'
         return FramePaint((), diagnostic)
     refined.sort(key=lambda item: item[0])
-    _, matrix, choices = refined[0]
+    _, matrix, choices, endings, extent_detail = refined[0]
     final = project_candidate(matrix, court_template_xy().astype(float))
     assert final is not None
     alternatives = []
-    for _, other, _ in refined[1:]:
+    for _, other, _, _, _ in refined[1:]:
         other_points = project_candidate(other, court_template_xy().astype(float))
         assert other_points is not None
         if float(np.linalg.norm(final - other_points, axis=1).max()) > config.equivalent_projection_px:
             alternatives.append(other.tolist())
+    diagnostic['alternative_homographies'] = alternatives
+    diagnostic['finite_line_evidence'] = extent_detail
     if alternatives:
-        diagnostic.update(reason="ambiguous_frame_line_assignment", alternative_homographies=alternatives)
+        diagnostic.update(reason="ambiguous_frame_line_assignment")
         return FramePaint((), diagnostic)
     diagnostic.update(reason="measured", chosen_homography=matrix.tolist(),
                       supported_lines=[PAINT_NAMES[i] for i in sorted(choices)])
-    return FramePaint(tuple(PaintGroup(clip_id, frame_index, i, value.points) for i, value in sorted(choices.items())), diagnostic)
+    return FramePaint(tuple(PaintGroup(clip_id, frame_index, i, value.points, endings.get(i, ('unobservable', 'unobservable')))
+                            for i, value in sorted(choices.items())), diagnostic)

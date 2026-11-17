@@ -13,6 +13,7 @@ from src.tasks.court_detection.geometry.video_shared.candidates import (
     CourtSeed,
     read_frozen_candidates,
 )
+from src.tasks.court_detection.geometry.video_shared.endpoints import measure_endings
 from src.tasks.court_detection.geometry.video_shared.fit import (
     PaintGroup,
     SharedFit,
@@ -48,7 +49,7 @@ def observations(*, lines=range(9), shifts=(-2., 0., 2.), counts=(24, 24, 24)):
         for line in lines:
             a, b = WORLD[np.array(EDGES[line])]
             xy = a + np.linspace(.05, .95, count)[:, None] * (b - a)
-            groups.append(PaintGroup(f'video/clip_{frame}', frame, line, project(matrix, xy)))
+            groups.append(PaintGroup(f'video/clip_{frame}', frame, line, project(matrix, xy), ('ended', 'ended')))
     return tuple(groups)
 
 
@@ -70,7 +71,7 @@ def test_common_fit_balances_frames_and_preserves_all_residuals():
 def test_missing_semantic_or_temporal_support_has_no_initial_h_fallback(groups):
     result = fit_common_court(H, groups, (640, 480), CONFIG)
     assert result.matrix is None and result.fitted_matrix is None
-    assert result.reasons == ('insufficient_independent_line_support',)
+    assert 'insufficient_independent_line_support' in result.reasons
 
 
 def test_duplicate_measurements_cannot_create_temporal_support():
@@ -172,3 +173,24 @@ def test_rgb_two_transverse_lines_cannot_certify_static_net_identity():
                                   clip_id=f'video/{frame}', frame_index=frame, config=config) for frame in range(3)]
     result = fit_common_court(H, tuple(g for m in measurements for g in m.groups), (640, 480), config)
     assert result.matrix is None
+
+
+def test_visible_ground_end_is_not_the_end_of_the_search_window():
+    image = raster(0)
+    status, _ = measure_endings(image, H, 0, PaintConfig())
+    assert status == ('ended', 'ended')
+    start, end = project(H)[[0, 1]]
+    delta = end - start
+    cv2.line(image, tuple(np.rint(start - .2 * delta).astype(int)),
+             tuple(np.rint(end + .2 * delta).astype(int)), (255, 255, 255), 3, cv2.LINE_AA)
+    status, _ = measure_endings(image, H, 0, PaintConfig())
+    assert status == ('continues', 'continues')
+    missing, _ = measure_endings(np.full_like(image, 80), H, 0, PaintConfig())
+    assert missing == ('unobservable', 'unobservable')
+
+
+def test_algebraic_fit_needs_independent_endpoint_evidence():
+    groups = tuple(replace(g, endings=('unobservable', 'unobservable')) for g in observations())
+    result = fit_common_court(H, groups, (640, 480), CONFIG)
+    assert result.fitted_matrix is not None and result.matrix is None
+    assert 'unverified_finite_line_identity' in result.reasons
