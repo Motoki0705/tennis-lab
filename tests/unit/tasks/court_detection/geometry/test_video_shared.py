@@ -82,14 +82,18 @@ def test_duplicate_measurements_cannot_create_temporal_support():
         fit_common_court(H, (group, group), (640, 480), CONFIG)
 
 
-def test_failed_solve_and_inconsistent_epoch_are_explicit():
+def test_failed_solve_and_a_displaced_epoch_remain_explicit():
     initial = H.copy()
     initial[0, 2] += 9
     failed = fit_common_court(initial, observations(), (640, 480), replace(CONFIG, max_nfev=1))
     assert failed.matrix is None and failed.reasons == ('shared_optimization_failed',)
     changed = fit_common_court(H, observations(shifts=(0., 0., 30.)), (640, 480), CONFIG)
-    assert changed.matrix is None and 'inconsistent_common_court' in changed.reasons
+    assert changed.matrix is not None
+    assert changed.diagnostic['requires_clip_drift_inspection']
+    assert changed.diagnostic['large_common_residual_groups']
     assert len(changed.diagnostic['group_residuals']) == 27
+    moved_frame = tuple(g for g in observations(shifts=(0., 0., 30.)) if g.frame_index == 2)
+    assert inspect_drift(changed.matrix, moved_frame, (640, 480), CONFIG)['status'] == 'failed'
 
 
 def test_distinct_valid_courts_are_not_resolved_by_score_or_input_order():
@@ -194,7 +198,8 @@ def test_visible_ground_end_is_not_the_end_of_the_search_window():
 def test_algebraic_fit_needs_independent_endpoint_evidence():
     groups = tuple(replace(g, endings=('unobservable', 'unobservable')) for g in observations())
     result = fit_common_court(H, groups, (640, 480), CONFIG)
-    assert result.fitted_matrix is not None and result.matrix is None
+    assert result.matrix is None
+    assert result.diagnostic['unverified_transverse_groups']
     assert 'unverified_finite_line_identity' in result.reasons
 
 
@@ -217,6 +222,31 @@ def test_missing_drift_observations_are_failed_not_zero_motion():
     assert result['mean_displacement_px'] is None and result['max_displacement_px'] is None
 
 
+def test_local_projective_motion_can_fail_maximum_while_mean_stays_below_ten():
+    shared = np.diag([3., 2.25, 1.]) @ H
+    corners = project(shared)[:4]
+    corners[1] += [30., 0.]
+    moved = cv2.getPerspectiveTransform(WORLD[:4].astype(np.float32), corners.astype(np.float32)).astype(float)
+    groups = []
+    for index, (a, b) in enumerate(EDGES):
+        xy = WORLD[a] + np.linspace(.05, .95, 24)[:, None] * (WORLD[b] - WORLD[a])
+        groups.append(PaintGroup('video/clip', 0, index, project(moved, xy), ('ended', 'ended')))
+    expected = np.linalg.norm(project(moved) - project(shared), axis=1)
+    assert expected.mean() < 10 and expected.max() > 25
+    result = inspect_drift(shared, tuple(groups), (1920, 1080), CONFIG)
+    assert result['reason'] == 'camera_drift_exceeds_tolerance'
+    np.testing.assert_allclose([result['mean_displacement_px'], result['max_displacement_px']],
+                               [expected.mean(), expected.max()], atol=.01)
+
+
+def test_one_wrong_line_is_not_reported_as_coherent_camera_motion():
+    shared = np.diag([3., 2.25, 1.]) @ H
+    groups = tuple(replace(g, points=g.points * [3, 2.25] + ([0, 30] if g.line_index == 0 else [0, 0]))
+                   for g in observations(shifts=(0.,), counts=(24,)))
+    result = inspect_drift(shared, groups, (1920, 1080), CONFIG)
+    assert result['reason'] == 'drift_unobservable'
+
+
 def test_repeated_initializers_share_measurements_without_manufacturing_support():
     groups = observations(shifts=(0., 0., 0.))
     sparse = observations(shifts=(0., 0., 0.), counts=(12, 12, 12))
@@ -234,3 +264,24 @@ def test_different_static_stripes_are_not_averaged_into_a_shared_court():
     displaced = tuple(replace(g, points=g.points + [0, 12]) if g.line_index == 0 else g for g in groups)
     result = merge_measurements(H, (groups, displaced), (640, 480), CONFIG)
     assert result.matrix is None and result.reasons == ('ambiguous_observed_stripes',)
+
+
+def test_baseline_and_one_service_need_a_finite_centre_segment_for_order():
+    ambiguous = observations(lines=(1, 2, 3, 4, 5, 7))
+    result = fit_common_court(H, ambiguous, (640, 480), CONFIG)
+    assert result.matrix is None and result.reasons == ('unverified_service_order',)
+    supported = fit_common_court(H, observations(lines=(1, 2, 3, 4, 5, 7, 8)), (640, 480), CONFIG)
+    assert supported.matrix is not None
+
+
+def test_same_stripe_with_edge_outliers_is_not_a_semantic_alternative():
+    clean = observations(shifts=(0., 0., 0.))
+    noisy = []
+    for group in clean:
+        points = group.points.copy()
+        if group.line_index == 0:
+            points[[7, 17]] += [0, 5]
+        noisy.append(replace(group, points=points))
+    result = merge_measurements(H, (clean, tuple(noisy)), (640, 480), CONFIG)
+    assert result.matrix is not None, result.reasons
+    assert np.linalg.norm(project(result.matrix) - project(H), axis=1).max() < 1.

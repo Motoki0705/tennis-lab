@@ -8,7 +8,7 @@ from dataclasses import replace
 import numpy as np
 
 from ..line_evidence import FloatArray
-from .fit import PaintGroup, SharedFit, SharedPaintConfig, fit_common_court
+from .fit import TRANSVERSE, PaintGroup, SharedFit, SharedPaintConfig, fit_common_court
 
 
 def merge_measurements(initial: FloatArray, hypotheses: tuple[tuple[PaintGroup, ...], ...],
@@ -21,11 +21,15 @@ def merge_measurements(initial: FloatArray, hypotheses: tuple[tuple[PaintGroup, 
     clip/frame/physical line, and fit_common_court balances those groups.
     """
     by_key: dict[tuple[str, int, int], list[PaintGroup]] = defaultdict(list)
+    unverified = []
     for hypothesis in hypotheses:
         keys = [(g.clip_id, g.frame_index, g.line_index) for g in hypothesis]
         if len(set(keys)) != len(keys):
             raise ValueError('Duplicate observation within one hypothesis')
         for key, group in zip(keys, hypothesis, strict=True):
+            if group.line_index in TRANSVERSE and ('ended' not in group.endings or 'continues' in group.endings):
+                unverified.append(list(key))
+                continue
             by_key[key].append(group)
     merged = []
     incompatible = []
@@ -39,7 +43,12 @@ def merge_measurements(initial: FloatArray, hypotheses: tuple[tuple[PaintGroup, 
             for j, equation in enumerate(equations):
                 if i == j:
                     continue
-                distance = float(np.percentile(np.abs(np.c_[group.points, np.ones(len(group.points))] @ equation), 95))
+                # Compare fitted stripe locations rather than classifying a
+                # few normal-direction edge outliers as a second parallel line.
+                # Raw samples are retained for the subsequent robust common fit.
+                own = equations[i]
+                centres = group.points - (np.c_[group.points, np.ones(len(group.points))] @ own)[:, None] * own[:2]
+                distance = float(np.percentile(np.abs(np.c_[centres, np.ones(len(centres))] @ equation), 95))
                 if distance > config.paint.ambiguity_separation_px:
                     incompatible.append({'group': list(key), 'candidate_pair': [i, j], 'p95_px': distance})
         # Subpixel locations are observations, not extra votes for an initializer.
@@ -55,4 +64,4 @@ def merge_measurements(initial: FloatArray, hypotheses: tuple[tuple[PaintGroup, 
                                                                       'hypotheses': len(hypotheses)})
     fitted = fit_common_court(initial, tuple(merged), size_wh, config)
     return replace(fitted, diagnostic={**fitted.diagnostic, 'merged_hypotheses': len(hypotheses),
-                                       'merged_groups': len(merged)})
+                                       'merged_groups': len(merged), 'unverified_transverse_groups': unverified})

@@ -107,7 +107,7 @@ def _fit_group_geometry(initial: FloatArray, groups: tuple[PaintGroup, ...], siz
     for group in groups:
         by_line[group.line_index].add(group.clip_id)
     supported = {i for i, clips in by_line.items() if len(clips) >= config.min_clips_per_line}
-    diagnostic: dict[str, Any] = {"schema": "video_court_fit_v2", "settings": asdict(config),
+    diagnostic: dict[str, Any] = {"schema": "video_court_fit_v3", "settings": asdict(config),
         "supported_lines": [PAINT_NAMES[i] for i in sorted(supported)],
         "line_clip_counts": {PAINT_NAMES[i]: len(clips) for i, clips in sorted(by_line.items())},
         "observed_groups": len(groups), "excluded_groups": [list(k) for k, g in zip(keys, groups, strict=True) if g.line_index not in supported]}
@@ -186,16 +186,24 @@ def _fit_group_geometry(initial: FloatArray, groups: tuple[PaintGroup, ...], siz
                         "used": group.line_index in supported, "signed_median_px": float(np.median(r)),
                         "p95_px": float(np.percentile(np.abs(r), 95)), "points": len(r)})
     common_residual = max(float(r["p95_px"]) for r in reports if r["used"])
-    if common_residual > config.max_common_line_p95_px:
-        reasons.append("inconsistent_common_court")
-    diagnostic.update(normalized_condition=condition, group_residuals=reports, max_group_p95_px=common_residual)
+    distinct_frames = {(g.clip_id, g.frame_index) for g in groups}
+    if common_residual > config.max_common_line_p95_px and len(distinct_frames) == 1:
+        reasons.append("inconsistent_local_court")
+    # A coherent temporal displacement belongs to the explicit 3/10/25px drift
+    # policy. It must not silently become a stricter whole-camera 6px gate.
+    diagnostic.update(normalized_condition=condition, group_residuals=reports, max_group_p95_px=common_residual,
+                      requires_clip_drift_inspection=True,
+                      large_common_residual_groups=[r for r in reports if r['used'] and r['p95_px'] > config.max_common_line_p95_px])
     return SharedFit(None if reasons else matrix, matrix, tuple(reasons), diagnostic)
 
 
 def fit_common_court(initial: FloatArray, groups: tuple[PaintGroup, ...], size_wh: tuple[int, int],
                      config: SharedPaintConfig) -> SharedFit:
     """Certify finite baseline/service identities as well as an identifiable grid."""
-    numerical = _fit_group_geometry(initial, groups, size_wh, config)
+    # Unverified transverse stripes (notably the far net band) remain evidence,
+    # but cannot constrain the final common H just because other lines match.
+    trusted = tuple(g for g in groups if g.line_index not in TRANSVERSE or ('ended' in g.endings and 'continues' not in g.endings))
+    numerical = _fit_group_geometry(initial, trusted, size_wh, config)
     endings: dict[int, set[str]] = defaultdict(set)
     continued = []
     for group in groups:
@@ -209,11 +217,21 @@ def fit_common_court(initial: FloatArray, groups: tuple[PaintGroup, ...], size_w
     reasons = list(numerical.reasons)
     if not verified & {0, 1} or not verified & {6, 7}:
         reasons.append("unverified_finite_line_identity")
+    supported_indices = {i for i, name in enumerate(PAINT_NAMES) if name in numerical.diagnostic['supported_lines']}
+    if len(supported_indices & TRANSVERSE) == 2 and 8 not in supported_indices:
+        # A baseline and one service stripe, even with four sidelines and clear
+        # endpoints, admit a near/far-service alias. The finite centre segment
+        # or an independently supported third transverse marking resolves it.
+        reasons.append('unverified_service_order')
     if continued:
         reasons.append("paint_continues_beyond_template")
     diagnostic = {**numerical.diagnostic, "endpoint_checked": True,
                   "verified_finite_transverse_lines": [PAINT_NAMES[i] for i in sorted(verified)],
-                  "continued_transverse_groups": continued}
+                  "continued_transverse_groups": continued,
+                  "unverified_transverse_groups": [{'clip_id': g.clip_id, 'frame_index': g.frame_index,
+                                                      'line': PAINT_NAMES[g.line_index], 'endings': list(g.endings)}
+                                                     for g in groups if g.line_index in TRANSVERSE
+                                                     and ('ended' not in g.endings or 'continues' in g.endings)]}
     return SharedFit(None if reasons else numerical.matrix, numerical.fitted_matrix, tuple(reasons), diagnostic)
 
 
