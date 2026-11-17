@@ -204,7 +204,7 @@ ball_smoothing:
   seed: 42
 # ~30 fps full-clip grid for camera alignment and body-view selection; longer clips are rejected.
 frame_sampling:
-  max_frames: 1024
+  max_frames: 2048
 # camera_alignment's absolute check of the decided sides with player and ball evidence.
 camera_geometry:
   reference_camera: null

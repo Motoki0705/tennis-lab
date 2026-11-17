@@ -3,11 +3,14 @@
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
 import pytest
 from hydra import compose, initialize_config_dir
 from hydra.errors import ConfigCompositionException
 
 from src.tennis_scene.configuration import PipelineRuntimeConfig
+from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.tennis_scene.pipeline.frame_sampling import sampled_frame_indices
 from src.utils.configuration import UnknownConfigurationKeyError
 from src.utils.configuration.errors import PathContractError
 
@@ -33,11 +36,21 @@ def test_defaults_associate_players_and_decide_sides() -> None:
     doubles = _runtime(["player_association.players_per_side=2"]).player_association
     assert doubles.players_per_side == 2 and doubles.geometry == association.geometry
     assert runtime.court_side.reprojection_px > 0 and runtime.court_side.min_margin > 0
-    assert runtime.sampling_max_frames == 1024
     assert "blcs_association" not in runtime.enabled
     assert len(runtime.camera_ids) == 3
     assert runtime.player_placement.temporal_weight == 0.05
     assert runtime.player_placement.min_joints == 5
+
+
+def test_default_sampling_covers_long_meiji_clip_and_still_refuses_truncation() -> None:
+    runtime = _runtime([], bind_inputs=False)
+    indices = sampled_frame_indices(2108, 60000 / 1001, max_frames=runtime.sampling_max_frames)
+    assert len(indices) == 1055
+    np.testing.assert_array_equal(indices[[0, 250, 251, 500, 1000, 1054]], [0, 500, 501, 999, 1998, 2106])
+    boundary = sampled_frame_indices(4096, 60., max_frames=runtime.sampling_max_frames)
+    assert len(boundary) == 2048 and boundary[-1] == 4094
+    with pytest.raises(ReconstructionUnavailable, match="maximum"):
+        sampled_frame_indices(4098, 60., max_frames=runtime.sampling_max_frames)
 
 
 def test_explicit_x3d_config_changes_model_and_cache_settings() -> None:
