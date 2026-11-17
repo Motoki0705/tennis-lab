@@ -1,0 +1,6 @@
+{
+  "status": "failed",
+  "error_type": "ReconstructionUnavailable",
+  "error": "Identity 1 (290 frames) is too close to player identity 0 (290 frames)",
+  "continued": false
+}

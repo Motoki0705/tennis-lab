@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205081638961772343_2026-11-17T12-26-01-038227656Z_1037232_video-batch-candidate-037",
+  "name": "video-batch-candidate-037",
+  "command": "env TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/toolchain/MultiScaleDeformableAttention.so .venv/bin/python knowledge/runs/run-video-batch-candidate-037-20261117/benchmark.py run --root outputs/tennis_scene/evaluate/video-batch-candidate-037-20261117 --expect-commit 701165bd2deeddc20d4773b3dbacb6890f8c15ae --allocator-limit-gib 10",
+  "provider": "codex",
+  "session": "01a1dfbd-594e-7f72-9f3a-53d3f7f3a340",
+  "issue": "1748",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "701165bd2deeddc20d4773b3dbacb6890f8c15ae",
+  "branch": "codex/video-batch-baseline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline",
+  "captured_at": "2026-11-17T21:29:37+09:00"
+}

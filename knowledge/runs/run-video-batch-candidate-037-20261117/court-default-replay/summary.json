@@ -1,0 +1,274 @@
+{
+  "head": "701165bd2deeddc20d4773b3dbacb6890f8c15ae",
+  "seconds": 406.19494542700704,
+  "all_exact": true,
+  "cuda_initialized": false,
+  "inputs_unchanged": true,
+  "rows": [
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam0",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": null,
+      "new_selected_region": null,
+      "accepted": false,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 35.53725789900636,
+      "clip_id": "video_000/clip_000",
+      "camera_id": "cam0"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam1",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "new_selected_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "accepted": true,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 45.36172139199334,
+      "clip_id": "video_000/clip_000",
+      "camera_id": "cam1"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam2",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "new_selected_region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "accepted": true,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 29.10650133099989,
+      "clip_id": "video_000/clip_000",
+      "camera_id": "cam2"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_000/cam3",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": [
+        480,
+        0,
+        1920,
+        540
+      ],
+      "new_selected_region": [
+        480,
+        0,
+        1920,
+        540
+      ],
+      "accepted": true,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 25.624860388983507,
+      "clip_id": "video_000/clip_000",
+      "camera_id": "cam3"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_001/cam0",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "new_selected_region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "accepted": true,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 28.959334551007487,
+      "clip_id": "video_000/clip_001",
+      "camera_id": "cam0"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_001/cam1",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": null,
+      "new_selected_region": null,
+      "accepted": false,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 32.02635994501179,
+      "clip_id": "video_000/clip_001",
+      "camera_id": "cam1"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_001/cam2",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": [
+        480,
+        270,
+        1920,
+        810
+      ],
+      "new_selected_region": [
+        480,
+        270,
+        1920,
+        810
+      ],
+      "accepted": true,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 32.87407313400763,
+      "clip_id": "video_000/clip_001",
+      "camera_id": "cam2"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_001/cam3",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": null,
+      "new_selected_region": null,
+      "accepted": false,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 31.195824333000928,
+      "clip_id": "video_000/clip_001",
+      "camera_id": "cam3"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_002/cam0",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "new_selected_region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "accepted": true,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 43.074216776993126,
+      "clip_id": "video_000/clip_002",
+      "camera_id": "cam0"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_002/cam1",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": [
+        0,
+        270,
+        1440,
+        810
+      ],
+      "new_selected_region": [
+        0,
+        270,
+        1440,
+        810
+      ],
+      "accepted": true,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 36.96905757000786,
+      "clip_id": "video_000/clip_002",
+      "camera_id": "cam1"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_002/cam2",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": [
+        0,
+        270,
+        1440,
+        810
+      ],
+      "new_selected_region": [
+        0,
+        270,
+        1440,
+        810
+      ],
+      "accepted": true,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 34.42600259100436,
+      "clip_id": "video_000/clip_002",
+      "camera_id": "cam2"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_002/cam3",
+      "dataset": "meiji_4cam",
+      "regions": 12,
+      "mismatches": [],
+      "all_exact": true,
+      "old_selected_region": null,
+      "new_selected_region": null,
+      "accepted": false,
+      "any_h": true,
+      "historical_run73_choice_match": true,
+      "seconds": 30.494205610011704,
+      "clip_id": "video_000/clip_002",
+      "camera_id": "cam3"
+    }
+  ],
+  "all_cameras_accepted": {
+    "video_000/clip_000": false,
+    "video_000/clip_001": false,
+    "video_000/clip_002": false
+  }
+}

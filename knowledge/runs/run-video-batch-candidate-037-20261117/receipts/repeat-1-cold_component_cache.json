@@ -1,0 +1,1570 @@
+[
+  {
+    "schema": "tennis_scene_run_v3",
+    "status": "failed",
+    "clip_id": "video_000/clip_037",
+    "source": {
+      "clip_id": "video_000/clip_037",
+      "videos": [
+        {
+          "camera_id": "cam0",
+          "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-candidate-037-20261117/datasets/repeat-1/videos/video_000/clips/clip_037/media/cam0.mp4",
+          "sha256": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+          "num_frames": 292,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam1",
+          "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-candidate-037-20261117/datasets/repeat-1/videos/video_000/clips/clip_037/media/cam1.mp4",
+          "sha256": "c1b473a238719658a3caa6da81e4b6cae50396c18109956305db5ecba354c9b5",
+          "num_frames": 292,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam2",
+          "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-candidate-037-20261117/datasets/repeat-1/videos/video_000/clips/clip_037/media/cam2.mp4",
+          "sha256": "8149f06c609a6f209499abf4cd17055a4b8ac4e9be301285c8a5fad4956c5bfc",
+          "num_frames": 292,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam3",
+          "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-candidate-037-20261117/datasets/repeat-1/videos/video_000/clips/clip_037/media/cam3.mp4",
+          "sha256": "0112a64759ffd98bec0cfc529b779222dded555d883675794d78eba00f5049a1",
+          "num_frames": 292,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        }
+      ]
+    },
+    "scene_index": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-candidate-037-20261117/datasets/repeat-1/videos/video_000/clips/clip_037/annotations/tennis_scene/scene.json",
+    "error": "Identity 1 (290 frames) is too close to player identity 0 (290 frames)",
+    "error_type": "ReconstructionUnavailable",
+    "error_reason": "player_association_ambiguous_players",
+    "error_diagnostics": {
+      "association": {
+        "frames": 292,
+        "fps": 59.94005994005994,
+        "segments": [
+          {
+            "camera": "cam0",
+            "track_id": 0,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 283,
+            "footpoint_frames": 283,
+            "candidate": true
+          },
+          {
+            "camera": "cam0",
+            "track_id": 1,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam0",
+            "track_id": 2,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam0",
+            "track_id": 3,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam1",
+            "track_id": 0,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam1",
+            "track_id": 1,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam1",
+            "track_id": 2,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 259,
+            "footpoint_frames": 259,
+            "candidate": true
+          },
+          {
+            "camera": "cam1",
+            "track_id": 3,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 264,
+            "footpoint_frames": 264,
+            "candidate": true
+          },
+          {
+            "camera": "cam2",
+            "track_id": 0,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam2",
+            "track_id": 1,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam2",
+            "track_id": 2,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam3",
+            "track_id": 0,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam3",
+            "track_id": 1,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam3",
+            "track_id": 2,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          },
+          {
+            "camera": "cam3",
+            "track_id": 3,
+            "start": 0,
+            "end": 292,
+            "observed_frames": 290,
+            "footpoint_frames": 290,
+            "candidate": true
+          }
+        ],
+        "candidates": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ],
+        "pairs": [
+          {
+            "a": 0,
+            "b": 1,
+            "forbidden": "same_camera_283_shared_frames"
+          },
+          {
+            "a": 0,
+            "b": 2,
+            "forbidden": "same_camera_283_shared_frames"
+          },
+          {
+            "a": 0,
+            "b": 3,
+            "forbidden": "same_camera_283_shared_frames"
+          },
+          {
+            "a": 0,
+            "b": 4,
+            "shared_frames": 283,
+            "median_m": 8.392970312139505,
+            "geometry": -10.0,
+            "cosine": 0.8373207360468358,
+            "appearance": 0.27540067599829304
+          },
+          {
+            "a": 0,
+            "b": 5,
+            "shared_frames": 283,
+            "median_m": 0.16534873322076957,
+            "geometry": 5.034475600410113,
+            "cosine": 0.9716763244297905,
+            "appearance": 4.0
+          },
+          {
+            "a": 0,
+            "b": 6,
+            "shared_frames": 259,
+            "median_m": 19.223178323645833,
+            "geometry": -10.0,
+            "cosine": 0.8669611305592977,
+            "appearance": 1.363288071903646
+          },
+          {
+            "a": 0,
+            "b": 7,
+            "shared_frames": 257,
+            "median_m": 21.02047507149724,
+            "geometry": -10.0,
+            "cosine": 0.7700668986351125,
+            "appearance": -2.1930078337373162
+          },
+          {
+            "a": 0,
+            "b": 8,
+            "shared_frames": 283,
+            "median_m": 16.25332969538551,
+            "geometry": -10.0,
+            "cosine": 0.8623436284016832,
+            "appearance": 1.1938125139544233
+          },
+          {
+            "a": 0,
+            "b": 9,
+            "shared_frames": 283,
+            "median_m": 18.293182547602246,
+            "geometry": -10.0,
+            "cosine": 0.7796330063166726,
+            "appearance": -1.8419042757105404
+          },
+          {
+            "a": 0,
+            "b": 10,
+            "shared_frames": 283,
+            "median_m": 1.4699838181662892,
+            "geometry": 3.0767355315889366,
+            "cosine": 0.8805146229569573,
+            "appearance": 1.860740072541278
+          },
+          {
+            "a": 0,
+            "b": 11,
+            "shared_frames": 283,
+            "median_m": 0.26236165934213374,
+            "geometry": 4.9964006539397126,
+            "cosine": 0.9056387773235843,
+            "appearance": 2.7828685164370746
+          },
+          {
+            "a": 0,
+            "b": 12,
+            "shared_frames": 283,
+            "median_m": 18.220499292460257,
+            "geometry": -10.0,
+            "cosine": 0.8052561374922957,
+            "appearance": -0.9014619533969778
+          },
+          {
+            "a": 0,
+            "b": 13,
+            "shared_frames": 283,
+            "median_m": 8.024186435305298,
+            "geometry": -10.0,
+            "cosine": 0.8251940506848954,
+            "appearance": -0.16968341874337084
+          },
+          {
+            "a": 0,
+            "b": 14,
+            "shared_frames": 283,
+            "median_m": 15.872726209348789,
+            "geometry": -10.0,
+            "cosine": 0.8850318532039783,
+            "appearance": 2.0265353641009245
+          },
+          {
+            "a": 1,
+            "b": 2,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 1,
+            "b": 3,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 1,
+            "b": 4,
+            "shared_frames": 290,
+            "median_m": 0.28757502789828615,
+            "geometry": 4.983677245765851,
+            "cosine": 0.9759628271648961,
+            "appearance": 4.0
+          },
+          {
+            "a": 1,
+            "b": 5,
+            "shared_frames": 290,
+            "median_m": 8.53609433447544,
+            "geometry": -10.0,
+            "cosine": 0.8409366305388841,
+            "appearance": 0.4081143630974687
+          },
+          {
+            "a": 1,
+            "b": 6,
+            "shared_frames": 259,
+            "median_m": 27.530426629321113,
+            "geometry": -10.0,
+            "cosine": 0.7762133964872218,
+            "appearance": -1.9674137533529377
+          },
+          {
+            "a": 1,
+            "b": 7,
+            "shared_frames": 264,
+            "median_m": 27.800681389050688,
+            "geometry": -10.0,
+            "cosine": 0.7431809911977191,
+            "appearance": -3.179797662608216
+          },
+          {
+            "a": 1,
+            "b": 8,
+            "shared_frames": 290,
+            "median_m": 23.578709545177823,
+            "geometry": -10.0,
+            "cosine": 0.7716392135598983,
+            "appearance": -2.135299371444441
+          },
+          {
+            "a": 1,
+            "b": 9,
+            "shared_frames": 290,
+            "median_m": 25.556932915435674,
+            "geometry": -10.0,
+            "cosine": 0.7724403384413197,
+            "appearance": -2.105895793139231
+          },
+          {
+            "a": 1,
+            "b": 10,
+            "shared_frames": 290,
+            "median_m": 7.233599206659466,
+            "geometry": -10.0,
+            "cosine": 0.7981302902583545,
+            "appearance": -1.1630009618502037
+          },
+          {
+            "a": 1,
+            "b": 11,
+            "shared_frames": 290,
+            "median_m": 8.642856948491083,
+            "geometry": -10.0,
+            "cosine": 0.8120076916654241,
+            "appearance": -0.6536605725944913
+          },
+          {
+            "a": 1,
+            "b": 12,
+            "shared_frames": 290,
+            "median_m": 25.55296843458306,
+            "geometry": -10.0,
+            "cosine": 0.7974767375346349,
+            "appearance": -1.1869882191856358
+          },
+          {
+            "a": 1,
+            "b": 13,
+            "shared_frames": 290,
+            "median_m": 0.6791188186066889,
+            "geometry": 4.636357727760786,
+            "cosine": 0.9271824102362429,
+            "appearance": 3.573581565072079
+          },
+          {
+            "a": 1,
+            "b": 14,
+            "shared_frames": 290,
+            "median_m": 23.442285496518224,
+            "geometry": -10.0,
+            "cosine": 0.8085377919682424,
+            "appearance": -0.7810158324589537
+          },
+          {
+            "a": 2,
+            "b": 3,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 2,
+            "b": 4,
+            "shared_frames": 290,
+            "median_m": 25.558262875575892,
+            "geometry": -10.0,
+            "cosine": 0.7965268620250481,
+            "appearance": -1.2218513717028603
+          },
+          {
+            "a": 2,
+            "b": 5,
+            "shared_frames": 290,
+            "median_m": 16.808973831874987,
+            "geometry": -10.0,
+            "cosine": 0.8548699202353285,
+            "appearance": 0.9195060126885974
+          },
+          {
+            "a": 2,
+            "b": 6,
+            "shared_frames": 259,
+            "median_m": 2.2412730064907,
+            "geometry": 0.4501100854355,
+            "cosine": 0.99171150003446,
+            "appearance": 4.0
+          },
+          {
+            "a": 2,
+            "b": 7,
+            "shared_frames": 264,
+            "median_m": 7.011292136250059,
+            "geometry": -10.0,
+            "cosine": 0.7976115877307322,
+            "appearance": -1.18203883065412
+          },
+          {
+            "a": 2,
+            "b": 8,
+            "shared_frames": 290,
+            "median_m": 0.8182036997077283,
+            "geometry": 4.445260153599566,
+            "cosine": 0.9513621539671712,
+            "appearance": 4.0
+          },
+          {
+            "a": 2,
+            "b": 9,
+            "shared_frames": 290,
+            "median_m": 5.365174673153506,
+            "geometry": -10.0,
+            "cosine": 0.722310473545882,
+            "appearance": -3.945805452751085
+          },
+          {
+            "a": 2,
+            "b": 10,
+            "shared_frames": 290,
+            "median_m": 18.632073475484898,
+            "geometry": -10.0,
+            "cosine": 0.8397758069105182,
+            "appearance": 0.3655088102720018
+          },
+          {
+            "a": 2,
+            "b": 11,
+            "shared_frames": 290,
+            "median_m": 17.15911794314735,
+            "geometry": -10.0,
+            "cosine": 0.8567848728077463,
+            "appearance": 0.9897902582783107
+          },
+          {
+            "a": 2,
+            "b": 12,
+            "shared_frames": 290,
+            "median_m": 5.590784477582442,
+            "geometry": -10.0,
+            "cosine": 0.734713112277477,
+            "appearance": -3.4905930787593347
+          },
+          {
+            "a": 2,
+            "b": 13,
+            "shared_frames": 290,
+            "median_m": 24.846233921360277,
+            "geometry": -10.0,
+            "cosine": 0.8389883268458266,
+            "appearance": 0.3366060358320533
+          },
+          {
+            "a": 2,
+            "b": 14,
+            "shared_frames": 290,
+            "median_m": 0.8123885490065312,
+            "geometry": 4.453961094965324,
+            "cosine": 0.9554788894661166,
+            "appearance": 4.0
+          },
+          {
+            "a": 3,
+            "b": 4,
+            "shared_frames": 290,
+            "median_m": 26.878344222345618,
+            "geometry": -10.0,
+            "cosine": 0.764028292533161,
+            "appearance": -2.4146419777898935
+          },
+          {
+            "a": 3,
+            "b": 5,
+            "shared_frames": 290,
+            "median_m": 19.292894006234466,
+            "geometry": -10.0,
+            "cosine": 0.7653340060034355,
+            "appearance": -2.366718552668872
+          },
+          {
+            "a": 3,
+            "b": 6,
+            "shared_frames": 259,
+            "median_m": 4.612817775933141,
+            "geometry": -10.0,
+            "cosine": 0.7800048331113689,
+            "appearance": -1.8282571670919323
+          },
+          {
+            "a": 3,
+            "b": 7,
+            "shared_frames": 264,
+            "median_m": 1.3668486696539506,
+            "geometry": 3.3452083268897406,
+            "cosine": 0.9799608315367155,
+            "appearance": 4.0
+          },
+          {
+            "a": 3,
+            "b": 8,
+            "shared_frames": 290,
+            "median_m": 5.985245693910489,
+            "geometry": -10.0,
+            "cosine": 0.7543533405486174,
+            "appearance": -2.769740433566157
+          },
+          {
+            "a": 3,
+            "b": 9,
+            "shared_frames": 290,
+            "median_m": 1.2625272480992056,
+            "geometry": 3.5969099822779675,
+            "cosine": 0.8756721989021593,
+            "appearance": 1.683009236582643
+          },
+          {
+            "a": 3,
+            "b": 10,
+            "shared_frames": 290,
+            "median_m": 20.699954208500653,
+            "geometry": -10.0,
+            "cosine": 0.7477027193113182,
+            "appearance": -3.0138372864591356
+          },
+          {
+            "a": 3,
+            "b": 11,
+            "shared_frames": 290,
+            "median_m": 19.275690023276947,
+            "geometry": -10.0,
+            "cosine": 0.7561972770011827,
+            "appearance": -2.702062683030386
+          },
+          {
+            "a": 3,
+            "b": 12,
+            "shared_frames": 290,
+            "median_m": 1.3250691653665834,
+            "geometry": 3.4484095815187485,
+            "cosine": 0.8807054750206531,
+            "appearance": 1.8677448900544167
+          },
+          {
+            "a": 3,
+            "b": 13,
+            "shared_frames": 290,
+            "median_m": 25.971163664747728,
+            "geometry": -10.0,
+            "cosine": 0.7667509694548591,
+            "appearance": -2.3147119345176126
+          },
+          {
+            "a": 3,
+            "b": 14,
+            "shared_frames": 290,
+            "median_m": 6.398586475624308,
+            "geometry": -10.0,
+            "cosine": 0.7754252743787663,
+            "appearance": -1.9963400926384212
+          },
+          {
+            "a": 4,
+            "b": 5,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 4,
+            "b": 6,
+            "forbidden": "same_camera_259_shared_frames"
+          },
+          {
+            "a": 4,
+            "b": 7,
+            "forbidden": "same_camera_264_shared_frames"
+          },
+          {
+            "a": 4,
+            "b": 8,
+            "shared_frames": 290,
+            "median_m": 23.435490959483303,
+            "geometry": -10.0,
+            "cosine": 0.7783819656924709,
+            "appearance": -1.8878210507474744
+          },
+          {
+            "a": 4,
+            "b": 9,
+            "shared_frames": 290,
+            "median_m": 25.614249521858287,
+            "geometry": -10.0,
+            "cosine": 0.7888421832425526,
+            "appearance": -1.503901098994554
+          },
+          {
+            "a": 4,
+            "b": 10,
+            "shared_frames": 290,
+            "median_m": 6.980377058875844,
+            "geometry": -10.0,
+            "cosine": 0.8082749910584169,
+            "appearance": -0.7906613787525888
+          },
+          {
+            "a": 4,
+            "b": 11,
+            "shared_frames": 290,
+            "median_m": 8.39300470797885,
+            "geometry": -10.0,
+            "cosine": 0.8264574868618668,
+            "appearance": -0.12331169140754884
+          },
+          {
+            "a": 4,
+            "b": 12,
+            "shared_frames": 290,
+            "median_m": 25.471051785878856,
+            "geometry": -10.0,
+            "cosine": 0.7954223718098696,
+            "appearance": -1.2623893268737416
+          },
+          {
+            "a": 4,
+            "b": 13,
+            "shared_frames": 290,
+            "median_m": 0.6602734316953268,
+            "geometry": 4.659519550551784,
+            "cosine": 0.9500549896746608,
+            "appearance": 4.0
+          },
+          {
+            "a": 4,
+            "b": 14,
+            "shared_frames": 290,
+            "median_m": 23.296800739356023,
+            "geometry": -10.0,
+            "cosine": 0.8020869638123627,
+            "appearance": -1.0177797068730539
+          },
+          {
+            "a": 5,
+            "b": 6,
+            "forbidden": "same_camera_259_shared_frames"
+          },
+          {
+            "a": 5,
+            "b": 7,
+            "forbidden": "same_camera_264_shared_frames"
+          },
+          {
+            "a": 5,
+            "b": 8,
+            "shared_frames": 290,
+            "median_m": 15.840960236984202,
+            "geometry": -10.0,
+            "cosine": 0.8397102118303703,
+            "appearance": 0.3631012829060513
+          },
+          {
+            "a": 5,
+            "b": 9,
+            "shared_frames": 290,
+            "median_m": 18.161146158778323,
+            "geometry": -10.0,
+            "cosine": 0.7914056919812138,
+            "appearance": -1.4098129840435127
+          },
+          {
+            "a": 5,
+            "b": 10,
+            "shared_frames": 290,
+            "median_m": 1.5258107649390615,
+            "geometry": 2.923268249381573,
+            "cosine": 0.8813547915791056,
+            "appearance": 1.8915766679882793
+          },
+          {
+            "a": 5,
+            "b": 11,
+            "shared_frames": 290,
+            "median_m": 0.28924457365727874,
+            "geometry": 4.982793559243436,
+            "cosine": 0.9222241783462531,
+            "appearance": 3.391600249781959
+          },
+          {
+            "a": 5,
+            "b": 12,
+            "shared_frames": 290,
+            "median_m": 18.1843132651791,
+            "geometry": -10.0,
+            "cosine": 0.8154793869824181,
+            "appearance": -0.5262394083386147
+          },
+          {
+            "a": 5,
+            "b": 13,
+            "shared_frames": 290,
+            "median_m": 7.941929620186839,
+            "geometry": -10.0,
+            "cosine": 0.8265246002806741,
+            "appearance": -0.12084843666288429
+          },
+          {
+            "a": 5,
+            "b": 14,
+            "shared_frames": 290,
+            "median_m": 15.678212347139251,
+            "geometry": -10.0,
+            "cosine": 0.8613248086888172,
+            "appearance": 1.156418911657368
+          },
+          {
+            "a": 6,
+            "b": 7,
+            "forbidden": "same_camera_233_shared_frames"
+          },
+          {
+            "a": 6,
+            "b": 8,
+            "shared_frames": 259,
+            "median_m": 2.971483775994129,
+            "geometry": -3.0427049698078514,
+            "cosine": 0.9520488781732224,
+            "appearance": 4.0
+          },
+          {
+            "a": 6,
+            "b": 9,
+            "shared_frames": 259,
+            "median_m": 4.9650164081671395,
+            "geometry": -10.0,
+            "cosine": 0.7217925051160718,
+            "appearance": -3.9648163780621637
+          },
+          {
+            "a": 6,
+            "b": 10,
+            "shared_frames": 259,
+            "median_m": 20.75169193312149,
+            "geometry": -10.0,
+            "cosine": 0.8293134594278144,
+            "appearance": -0.0184893161102301
+          },
+          {
+            "a": 6,
+            "b": 11,
+            "shared_frames": 259,
+            "median_m": 19.25086403388727,
+            "geometry": -10.0,
+            "cosine": 0.8483466621964906,
+            "appearance": 0.6800837540642606
+          },
+          {
+            "a": 6,
+            "b": 12,
+            "shared_frames": 259,
+            "median_m": 5.170878465124059,
+            "geometry": -10.0,
+            "cosine": 0.7380829472846937,
+            "appearance": -3.366910479693715
+          },
+          {
+            "a": 6,
+            "b": 13,
+            "shared_frames": 259,
+            "median_m": 26.739240001555633,
+            "geometry": -10.0,
+            "cosine": 0.8310917726064699,
+            "appearance": 0.04677987226775639
+          },
+          {
+            "a": 6,
+            "b": 14,
+            "shared_frames": 259,
+            "median_m": 3.00992374267672,
+            "geometry": -3.2536873994652113,
+            "cosine": 0.9569319588476376,
+            "appearance": 4.0
+          },
+          {
+            "a": 7,
+            "b": 8,
+            "shared_frames": 264,
+            "median_m": 7.316290421818419,
+            "geometry": -10.0,
+            "cosine": 0.7799574102914535,
+            "appearance": -1.8299977204453164
+          },
+          {
+            "a": 7,
+            "b": 9,
+            "shared_frames": 264,
+            "median_m": 2.506859800026826,
+            "geometry": -0.7070387641327693,
+            "cosine": 0.8523013965280779,
+            "appearance": 0.8252338340228518
+          },
+          {
+            "a": 7,
+            "b": 10,
+            "shared_frames": 264,
+            "median_m": 22.29387111618149,
+            "geometry": -10.0,
+            "cosine": 0.7640890584091435,
+            "appearance": -2.4124116960520845
+          },
+          {
+            "a": 7,
+            "b": 11,
+            "shared_frames": 264,
+            "median_m": 20.786020143633912,
+            "geometry": -10.0,
+            "cosine": 0.7609257344641956,
+            "appearance": -2.5285147474951932
+          },
+          {
+            "a": 7,
+            "b": 12,
+            "shared_frames": 264,
+            "median_m": 2.527729261376617,
+            "geometry": -0.8034516676915651,
+            "cosine": 0.8653356583394973,
+            "appearance": 1.3036285845924485
+          },
+          {
+            "a": 7,
+            "b": 13,
+            "shared_frames": 264,
+            "median_m": 27.147439389210533,
+            "geometry": -10.0,
+            "cosine": 0.7649351226030721,
+            "appearance": -2.3813587162304195
+          },
+          {
+            "a": 7,
+            "b": 14,
+            "shared_frames": 264,
+            "median_m": 7.802184587455233,
+            "geometry": -10.0,
+            "cosine": 0.7956311123043243,
+            "appearance": -1.2547279527028692
+          },
+          {
+            "a": 8,
+            "b": 9,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 8,
+            "b": 10,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 8,
+            "b": 11,
+            "shared_frames": 290,
+            "median_m": 15.783761159447254,
+            "geometry": -10.0,
+            "cosine": 0.84387035033132,
+            "appearance": 0.5157902843463296
+          },
+          {
+            "a": 8,
+            "b": 12,
+            "shared_frames": 290,
+            "median_m": 5.5182196635040075,
+            "geometry": -10.0,
+            "cosine": 0.7423010327343069,
+            "appearance": -3.2120946592242308
+          },
+          {
+            "a": 8,
+            "b": 13,
+            "shared_frames": 290,
+            "median_m": 23.24275058468777,
+            "geometry": -10.0,
+            "cosine": 0.7997660921426618,
+            "appearance": -1.102962346257959
+          },
+          {
+            "a": 8,
+            "b": 14,
+            "shared_frames": 290,
+            "median_m": 0.4462150851322656,
+            "geometry": 4.876859204947723,
+            "cosine": 0.977897439026369,
+            "appearance": 4.0
+          },
+          {
+            "a": 9,
+            "b": 10,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 9,
+            "b": 11,
+            "shared_frames": 290,
+            "median_m": 18.121866154288398,
+            "geometry": -10.0,
+            "cosine": 0.7863894436698778,
+            "appearance": -1.5939236682093234
+          },
+          {
+            "a": 9,
+            "b": 12,
+            "shared_frames": 290,
+            "median_m": 0.23109485180785838,
+            "geometry": 5.010558341329491,
+            "cosine": 0.9576358556494904,
+            "appearance": 4.0
+          },
+          {
+            "a": 9,
+            "b": 13,
+            "shared_frames": 290,
+            "median_m": 24.775722362353477,
+            "geometry": -10.0,
+            "cosine": 0.7513820051374265,
+            "appearance": -2.8787969557889888
+          },
+          {
+            "a": 9,
+            "b": 14,
+            "shared_frames": 290,
+            "median_m": 5.705413612611869,
+            "geometry": -10.0,
+            "cosine": 0.748740202070979,
+            "appearance": -2.9757586968766105
+          },
+          {
+            "a": 10,
+            "b": 11,
+            "shared_frames": 290,
+            "median_m": 1.5911401498998363,
+            "geometry": 2.736415958357932,
+            "cosine": 0.9526085374521537,
+            "appearance": 4.0
+          },
+          {
+            "a": 10,
+            "b": 12,
+            "shared_frames": 290,
+            "median_m": 19.559142420801834,
+            "geometry": -10.0,
+            "cosine": 0.7664192588496395,
+            "appearance": -2.326886664052837
+          },
+          {
+            "a": 10,
+            "b": 13,
+            "shared_frames": 290,
+            "median_m": 6.5723498715553035,
+            "geometry": -10.0,
+            "cosine": 0.8171733201497771,
+            "appearance": -0.46406720811701846
+          },
+          {
+            "a": 10,
+            "b": 14,
+            "shared_frames": 290,
+            "median_m": 17.128456454361622,
+            "geometry": -10.0,
+            "cosine": 0.8331896917329701,
+            "appearance": 0.12377951457645489
+          },
+          {
+            "a": 11,
+            "b": 12,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 11,
+            "b": 13,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 11,
+            "b": 14,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 12,
+            "b": 13,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 12,
+            "b": 14,
+            "forbidden": "same_camera_290_shared_frames"
+          },
+          {
+            "a": 13,
+            "b": 14,
+            "forbidden": "same_camera_290_shared_frames"
+          }
+        ],
+        "clustering": {
+          "objective": 127.03002166393982,
+          "identity_of_candidate": [
+            0,
+            1,
+            2,
+            3,
+            1,
+            0,
+            2,
+            3,
+            2,
+            3,
+            0,
+            0,
+            3,
+            1,
+            2
+          ]
+        },
+        "identities": [
+          {
+            "identity": 0,
+            "candidates": [
+              0,
+              5,
+              10,
+              11
+            ],
+            "presence_frames": 290,
+            "seen_frames": 290,
+            "side": -1
+          },
+          {
+            "identity": 1,
+            "candidates": [
+              1,
+              4,
+              13
+            ],
+            "presence_frames": 290,
+            "seen_frames": 290,
+            "side": -1
+          },
+          {
+            "identity": 2,
+            "candidates": [
+              2,
+              6,
+              8,
+              14
+            ],
+            "presence_frames": 290,
+            "seen_frames": 290,
+            "side": 1
+          },
+          {
+            "identity": 3,
+            "candidates": [
+              3,
+              7,
+              9,
+              12
+            ],
+            "presence_frames": 290,
+            "seen_frames": 290,
+            "side": 1
+          }
+        ],
+        "selection": {
+          "-1": {
+            "players": [
+              0
+            ],
+            "runner_up": 1
+          }
+        }
+      },
+      "appearance": {
+        "enabled": true,
+        "encoder": "clipreid_vitb16_market1501",
+        "sampling": {
+          "min_height_px": 48.0,
+          "border_px": 4.0,
+          "max_overlap_iou": 0.1,
+          "max_samples": 16
+        },
+        "tracks": {
+          "cam0": [
+            {
+              "track_id": 0,
+              "samples": 16,
+              "rejected": {
+                "overlapped": 39
+              }
+            },
+            {
+              "track_id": 1,
+              "samples": 16,
+              "rejected": {
+                "overlapped": 39
+              }
+            },
+            {
+              "track_id": 2,
+              "samples": 16,
+              "rejected": {
+                "small": 6
+              }
+            },
+            {
+              "track_id": 3,
+              "samples": 16,
+              "rejected": {
+                "small": 35
+              }
+            }
+          ],
+          "cam1": [
+            {
+              "track_id": 0,
+              "samples": 16,
+              "rejected": {}
+            },
+            {
+              "track_id": 1,
+              "samples": 16,
+              "rejected": {}
+            },
+            {
+              "track_id": 2,
+              "samples": 16,
+              "rejected": {
+                "overlapped": 5
+              }
+            },
+            {
+              "track_id": 3,
+              "samples": 16,
+              "rejected": {
+                "small": 49
+              }
+            }
+          ],
+          "cam2": [
+            {
+              "track_id": 0,
+              "samples": 16,
+              "rejected": {}
+            },
+            {
+              "track_id": 1,
+              "samples": 16,
+              "rejected": {}
+            },
+            {
+              "track_id": 2,
+              "samples": 16,
+              "rejected": {}
+            }
+          ],
+          "cam3": [
+            {
+              "track_id": 0,
+              "samples": 16,
+              "rejected": {}
+            },
+            {
+              "track_id": 1,
+              "samples": 16,
+              "rejected": {}
+            },
+            {
+              "track_id": 2,
+              "samples": 16,
+              "rejected": {
+                "small": 2
+              }
+            },
+            {
+              "track_id": 3,
+              "samples": 16,
+              "rejected": {}
+            }
+          ]
+        }
+      }
+    },
+    "active_stage": "player_association",
+    "stage_status": {
+      "court_detection/cam0": "executed",
+      "court_detection/cam1": "executed",
+      "court_detection/cam2": "executed",
+      "court_detection/cam3": "executed",
+      "ball_detection/cam0": "executed",
+      "ball_points/cam0": "executed",
+      "ball_detection/cam1": "executed",
+      "ball_points/cam1": "executed",
+      "ball_detection/cam2": "executed",
+      "ball_points/cam2": "executed",
+      "ball_detection/cam3": "executed",
+      "ball_points/cam3": "executed",
+      "court_calibration": "executed",
+      "person_detection/cam0": "executed",
+      "person_tracking/cam0": "executed",
+      "player_selection/cam0": "executed",
+      "pose_estimation/cam0": "executed",
+      "person_detection/cam1": "executed",
+      "person_tracking/cam1": "executed",
+      "player_selection/cam1": "executed",
+      "pose_estimation/cam1": "executed",
+      "person_detection/cam2": "executed",
+      "person_tracking/cam2": "executed",
+      "player_selection/cam2": "executed",
+      "pose_estimation/cam2": "executed",
+      "person_detection/cam3": "executed",
+      "person_tracking/cam3": "executed",
+      "player_selection/cam3": "executed",
+      "pose_estimation/cam3": "executed",
+      "court_side": "executed",
+      "player_association": "failed"
+    },
+    "stage_seconds": {
+      "court_detection/cam0": 34.98496165400138,
+      "court_detection/cam1": 29.440883565024706,
+      "court_detection/cam2": 27.184337067010347,
+      "court_detection/cam3": 23.930414078989998,
+      "ball_detection/cam0": 7.221833225979935,
+      "ball_points/cam0": 0.36765765998279676,
+      "ball_detection/cam1": 5.845670013019117,
+      "ball_points/cam1": 1.1191218910098542,
+      "ball_detection/cam2": 4.084405475994572,
+      "ball_points/cam2": 0.6272080380003899,
+      "ball_detection/cam3": 4.699735831003636,
+      "ball_points/cam3": 0.28340562601806596,
+      "court_calibration": 0.05129385500913486,
+      "person_detection/cam0": 167.20196511401446,
+      "person_tracking/cam0": 241.70602892601164,
+      "player_selection/cam0": 0.3236863800266292,
+      "pose_estimation/cam0": 0.053372820984805,
+      "person_detection/cam1": 106.7032185390126,
+      "person_tracking/cam1": 211.2622138109873,
+      "player_selection/cam1": 0.21389227101462893,
+      "pose_estimation/cam1": 0.050261854979908094,
+      "person_detection/cam2": 95.31377451799926,
+      "person_tracking/cam2": 147.8147672190098,
+      "player_selection/cam2": 0.16815103200497106,
+      "pose_estimation/cam2": 0.04369472499820404,
+      "person_detection/cam3": 90.5972044490045,
+      "person_tracking/cam3": 169.15730427301605,
+      "player_selection/cam3": 0.19346151099307463,
+      "pose_estimation/cam3": 0.052017312991665676,
+      "court_side": 0.05827516200952232,
+      "player_association": 3.5887120940024033
+    },
+    "artifacts": {
+      "court_detection/cam0": {
+        "artifact_id": "fbb968685f207f6f9bd9c3a067fd9779bdd5e911ebf5ec2ad8b2e858378bbebe",
+        "path": "components/court_detection/fbb968685f207f6f9bd9c3a067fd9779bdd5e911ebf5ec2ad8b2e858378bbebe/court_detection.json",
+        "sha256": "72a139a1415f2756d1f6b7e23994916a63967df21645d8ff6559f6010638d661",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "0726f1e757607d5120eaa9e320f1a9449f7ba4a43eaf4ae06c844cf3758c70e3"
+      },
+      "court_detection/cam1": {
+        "artifact_id": "0465a2b9a55b9dce22ec9ee3840ef7d7028e917787fdcc24eda191ef97418fd7",
+        "path": "components/court_detection/0465a2b9a55b9dce22ec9ee3840ef7d7028e917787fdcc24eda191ef97418fd7/court_detection.json",
+        "sha256": "0fe97a623f86c95ba2608d63735c8827a9b3b353e0b9ed75dd2dc4d9d2b93c2d",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "8158b44f394a5f3c5a3745b9ac3a8f06d0281a0e976f5d20d931759e126498a5"
+      },
+      "court_detection/cam2": {
+        "artifact_id": "26919a862c6dbc857ac4edea149a8d5dbf581de7c85c23a85bde04401f1cdfa4",
+        "path": "components/court_detection/26919a862c6dbc857ac4edea149a8d5dbf581de7c85c23a85bde04401f1cdfa4/court_detection.json",
+        "sha256": "7126988ec1556bbca64695cbc51c27aa179023f8f85ff2bfb4aff540b6cd8220",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "6f5a4def81fc3e665675cdb281132702fbd67c16fca9c5cf3ef892a66dc5f926"
+      },
+      "court_detection/cam3": {
+        "artifact_id": "4125667b77261e9b1ebe9ece5ba17f5267e6e86cd8748c23e32a7d1f92301264",
+        "path": "components/court_detection/4125667b77261e9b1ebe9ece5ba17f5267e6e86cd8748c23e32a7d1f92301264/court_detection.json",
+        "sha256": "4f544e6acda9b36e01e0cd97f3faef9ea39951e6401e0436e6ddc59555f131a8",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "e0beae016b89cc95c6362b4ab3dd7325ec1256687333e385e3f72a157a479dd8"
+      },
+      "ball_detection/cam0": {
+        "artifact_id": "e8e835db3c1a06ebb3dab02773e2097a63e889225634d06081eae500582bfb1b",
+        "path": "components/ball_detection/e8e835db3c1a06ebb3dab02773e2097a63e889225634d06081eae500582bfb1b/ball_detection.json",
+        "sha256": "50ea8b5c1ac8917759864fdd91bf8ee5c8c6aa93b0846a1a0ccbb00cb3626e11",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "9b1f50fd6adc09ce9f577115c856c88459452f38f1b61325bd98edf5cdd65f78"
+      },
+      "ball_points/cam0": {
+        "artifact_id": "9460679b2087321ca38f287475fe2fe26eaafecdb4c4cf54cbeb0a9cda24e7e5",
+        "path": "components/ball_points/9460679b2087321ca38f287475fe2fe26eaafecdb4c4cf54cbeb0a9cda24e7e5/ball_points.json",
+        "sha256": "a3f43f5ecb928e68cc1d47a35e7dfe2bb54439c624da24c40ca3cbdab73c5acc",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "3ca70a7a0f736425938d69a583106850a97353d312e869f72cdc8db6d43c78f9"
+      },
+      "ball_detection/cam1": {
+        "artifact_id": "02af1ba961730326c1898d3e1dd4e434c5064bd052d8729ddc013af9704dd474",
+        "path": "components/ball_detection/02af1ba961730326c1898d3e1dd4e434c5064bd052d8729ddc013af9704dd474/ball_detection.json",
+        "sha256": "3253a9b00443c8a6c35138b6f03066120365b915a78ed371393ccd23b19d77b6",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "3688cec11d300e4e2afaaef6b4c8afc34fa582a2b558d04683f3770ac090f128"
+      },
+      "ball_points/cam1": {
+        "artifact_id": "b4e7434b4cd6af56a5b08b0b900a7d3901f728eb2ac4edc607704a62337a2431",
+        "path": "components/ball_points/b4e7434b4cd6af56a5b08b0b900a7d3901f728eb2ac4edc607704a62337a2431/ball_points.json",
+        "sha256": "6a005760f7478910e758fb967ca7206324be62eb911e94c1ccd4d8ce90f96af8",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "545971b4d4c88773be612f0ec8d65a88e278fb20c0d260015537172e40263602"
+      },
+      "ball_detection/cam2": {
+        "artifact_id": "47c7a5bec1329a70cc7bde5c7cf114c4b7912702f39cf941ef444cb03a68cde6",
+        "path": "components/ball_detection/47c7a5bec1329a70cc7bde5c7cf114c4b7912702f39cf941ef444cb03a68cde6/ball_detection.json",
+        "sha256": "7898186b355a09c5929671db2b172fb37e1c3f6a0587d8ebd585385e4f903276",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "89c47c37e1c526a39870df1791998f630832afda882da4f8f179894e5f42d221"
+      },
+      "ball_points/cam2": {
+        "artifact_id": "58919227e00b7ba5bcbc57c25ff0fd0e6fcd60de5a57ebc9d1c8019dbb3ffde6",
+        "path": "components/ball_points/58919227e00b7ba5bcbc57c25ff0fd0e6fcd60de5a57ebc9d1c8019dbb3ffde6/ball_points.json",
+        "sha256": "f661cdef5e311280b0179e15ef31bc555c7b8fdace562049ea2f72cc232f7143",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "83e09165d957b6a85203ea5ba705cc2e795884b23f3a02bdadd4e2c6e3b872ce"
+      },
+      "ball_detection/cam3": {
+        "artifact_id": "32bd899ea7628dde6a29c172916c207c9f44d9bc1cdcf22f4d3b27c65772923f",
+        "path": "components/ball_detection/32bd899ea7628dde6a29c172916c207c9f44d9bc1cdcf22f4d3b27c65772923f/ball_detection.json",
+        "sha256": "05aa44eda5b270bac389f279c92e9056a6baf02fef03600dc91e03b494f1c341",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "c169fa18ce6f41d46b35c7accc6e2740b2b369d1d075c8e67ad06cd4796b932f"
+      },
+      "ball_points/cam3": {
+        "artifact_id": "acc7c6a2e1c897566df27f64ff5bf33783a620cbd806af2c278a91a5b71056f2",
+        "path": "components/ball_points/acc7c6a2e1c897566df27f64ff5bf33783a620cbd806af2c278a91a5b71056f2/ball_points.json",
+        "sha256": "d0ad3e775d74b98fb48b336ce3c180c80e20ff6cb62e36d3cfac3efdd00f9d88",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "bdc20f0fa88e6d16b8b47354f24015cc95bcc2a9acc4fbd5e55c2736250d0c58"
+      },
+      "court_calibration": {
+        "artifact_id": "90abff54ed5f15442de741ef3c83cced42c7d584a46ad9297d585da2deeeb8bd",
+        "path": "components/court_calibration/90abff54ed5f15442de741ef3c83cced42c7d584a46ad9297d585da2deeeb8bd/court_calibration.json",
+        "sha256": "7141a4def96eda106b136ba5d62d3cb097799e91c1ce57013e9a3345f15e6f57",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "351fbdd3611f8e4552e9cc133f363748692639e10201abdd5e1942ab0946103e"
+      },
+      "person_detection/cam0": {
+        "artifact_id": "3d4f70743a45a19e3136777bcb534c88b17b1abe6241246fcc1b7666ec36b01a",
+        "path": "components/person_detection/3d4f70743a45a19e3136777bcb534c88b17b1abe6241246fcc1b7666ec36b01a/person_detection.json",
+        "sha256": "ae821becf39790c8c5c3e5019bd504f853ab22f08c4c6c97406278ab8f627422",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "fd712a8755d00d34622c7e0015d98a7db89627c6d3e689f498bb06e86703b0b0"
+      },
+      "person_tracking/cam0": {
+        "artifact_id": "6d36f580fae6de21c1ab89909653d410208504a8f7ef99ed93a8bdf775dacf38",
+        "path": "components/person_tracking/6d36f580fae6de21c1ab89909653d410208504a8f7ef99ed93a8bdf775dacf38/person_tracking.json",
+        "sha256": "4cf88640e4709491d4170d930ef5a2e140fe3797064febbbf1c6b238cbb50d85",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "1f702dc44454577613e5265b0b754b5ec1a58aa74c9f62bdbc85b2e394de21f8"
+      },
+      "player_selection/cam0": {
+        "artifact_id": "25316925c2eb34a14e512eeb4aae156f47aafab87e0979c4d6a7bcf833b755c0",
+        "path": "components/player_selection/25316925c2eb34a14e512eeb4aae156f47aafab87e0979c4d6a7bcf833b755c0/player_selection.json",
+        "sha256": "7c5a139ec7469dac40deabc0c580121e71d0dbe24783962d14d3ecd246963e8b",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "034271d19ab64aa64de4b2e68c868cfe4055c4d0e295e54500a7d9b299a73ea3"
+      },
+      "pose_estimation/cam0": {
+        "artifact_id": "614c641a5cc0bbab40709b1add4cd37eacf46947478e7f77e1ea82b024a5c2c9",
+        "path": "components/pose_estimation/614c641a5cc0bbab40709b1add4cd37eacf46947478e7f77e1ea82b024a5c2c9/pose_estimation.json",
+        "sha256": "8945b99052b1856b178496eb3f3a983f2df7931bd54c35677fbb65022b855a6e",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "fdea441fd96dfb111745e08e2ba01603305bfab8793bc9a583b6f4804bdd7e30"
+      },
+      "person_detection/cam1": {
+        "artifact_id": "42c457bf50205662aba56e5c2d12bda5ad652d47f0412dc4cbe7ea95aaf9a708",
+        "path": "components/person_detection/42c457bf50205662aba56e5c2d12bda5ad652d47f0412dc4cbe7ea95aaf9a708/person_detection.json",
+        "sha256": "92c6c1a933eb73e01e20d34e69f387f38c91314a31aba051cf9a36ccf5292d11",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "05a9c4f4b8857f13a6b50680ec021c67beac45cb14feaa41584eda4d241577c9"
+      },
+      "person_tracking/cam1": {
+        "artifact_id": "56ff6e6936c4487738902207cf0dd062f223325d057276ecd81e61c81beb4f5a",
+        "path": "components/person_tracking/56ff6e6936c4487738902207cf0dd062f223325d057276ecd81e61c81beb4f5a/person_tracking.json",
+        "sha256": "7a407b3fb7f994e114c794caa7a6c3069b4995d173eee2e502773dbd1ceefee2",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "1f65fa04ea814bdadc8623a1d0b2cc444d7563887030f2065999244d08e50cdf"
+      },
+      "player_selection/cam1": {
+        "artifact_id": "717e6879b335ef1b241f61ffc3ed65f214a6f26bd3395bd0e9770d6045531cb0",
+        "path": "components/player_selection/717e6879b335ef1b241f61ffc3ed65f214a6f26bd3395bd0e9770d6045531cb0/player_selection.json",
+        "sha256": "c06d4a28ccc61eba13f3b15c620c31a16431de1e3d1ef001d5486ad07bf9300d",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "c1d5a0d9de67aa3cae9843e15416d0ead81e9a962b6ef3afe1e9f3c403857b77"
+      },
+      "pose_estimation/cam1": {
+        "artifact_id": "341beb4968275f08e9e2ea2f4b1d15236e29a857c360872a7b1f5f8223b1e054",
+        "path": "components/pose_estimation/341beb4968275f08e9e2ea2f4b1d15236e29a857c360872a7b1f5f8223b1e054/pose_estimation.json",
+        "sha256": "fa284b66be2205db78aad942bbbafa68d9e52d4a0e8ac515a25a6c78d73c91e6",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "745a26e98cd23344ee79d77ef20a57c0a6699e29e8e4f8f500002ca7c7ddc95a"
+      },
+      "person_detection/cam2": {
+        "artifact_id": "516279cc331d330609d1acfa7fa7b1386a416788b3eb858f0253d2df265bb38e",
+        "path": "components/person_detection/516279cc331d330609d1acfa7fa7b1386a416788b3eb858f0253d2df265bb38e/person_detection.json",
+        "sha256": "61be77495d271fd7c409772afc7cca8443b3b3b7beef145e272c9eb13026de86",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "8fa75d71ec7f89ddceea9a61ae0ee7534cb4805d966a753d30bff5ded3f8ae76"
+      },
+      "person_tracking/cam2": {
+        "artifact_id": "36a185c34149fc9c58683a4b7c2043408d36ce7a463d75fa968464f7d43b0edd",
+        "path": "components/person_tracking/36a185c34149fc9c58683a4b7c2043408d36ce7a463d75fa968464f7d43b0edd/person_tracking.json",
+        "sha256": "3105bc300440e1398787af0ca0703eee8840dc1ce767a1190db1efe302b006d2",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "bd7f58a645c2af61c7e11bf62e8abad9a61628485d090e2c5d15f658c3594bee"
+      },
+      "player_selection/cam2": {
+        "artifact_id": "bc880d0e5159fbcde5c6d13cc1fa7e418af894b0b0c6b54ab3037cc61819383a",
+        "path": "components/player_selection/bc880d0e5159fbcde5c6d13cc1fa7e418af894b0b0c6b54ab3037cc61819383a/player_selection.json",
+        "sha256": "6667c52f805044d3622facb8f91608b34817fe06d74d523f23dc206a21c4fa93",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "04ac53326b733436e7129c325b1f8a5e66737324b746ea3570e6488fe57ced5f"
+      },
+      "pose_estimation/cam2": {
+        "artifact_id": "568f62137fd66592aa488ef2a2514987be2b2d22623a1ed3ebb5dfc2f873a32e",
+        "path": "components/pose_estimation/568f62137fd66592aa488ef2a2514987be2b2d22623a1ed3ebb5dfc2f873a32e/pose_estimation.json",
+        "sha256": "1ccb9aad5df060d8e89775426605fc98042d7131351c96a71b9205b7e5c1d361",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "cff8a88d2ab544660ccabdb41436a6131dcb57dbb03a59a7780463fca39c4689"
+      },
+      "person_detection/cam3": {
+        "artifact_id": "6523266db63c208d3ddfe0f1f59ff89e8eff8ee25b90cc505118b272324cf47a",
+        "path": "components/person_detection/6523266db63c208d3ddfe0f1f59ff89e8eff8ee25b90cc505118b272324cf47a/person_detection.json",
+        "sha256": "b3d14b5e667c97475755ba6eeb632952fd927b50a76abee928a1401eb1635a1b",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "a29ec01afd39983e62f6f8574e58b1b7ba107b112863274bde877b39367da67b"
+      },
+      "person_tracking/cam3": {
+        "artifact_id": "bebe5cbb1a630eaa08083566c7dfe7b2a237413820af332bf1b16f22a32e5760",
+        "path": "components/person_tracking/bebe5cbb1a630eaa08083566c7dfe7b2a237413820af332bf1b16f22a32e5760/person_tracking.json",
+        "sha256": "f600265ca8a25feb8a11cf7b1ebb1f7ea26674f39c3706f2b7fc6f279c5dac46",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "4c26cad83649a68b3bae32c2f03b9d483159600caaaf58f7bdf8dc823ab4fe48"
+      },
+      "player_selection/cam3": {
+        "artifact_id": "d214d611e75b65af4c620082a3bbd113d1f851a4c39d07a8fa926cdc79ab7bb9",
+        "path": "components/player_selection/d214d611e75b65af4c620082a3bbd113d1f851a4c39d07a8fa926cdc79ab7bb9/player_selection.json",
+        "sha256": "3ea2a8509e54b85597e4a722ba2550da50704b8e150788572f334cf97e33d1c2",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "20c2e264a30b481cf44bef1562aebf3e0cb0a10ed47d63a8be38b91cb6f36292"
+      },
+      "pose_estimation/cam3": {
+        "artifact_id": "db712d91c09a558253071521b16ad5acbfc362dc42c20c0c335fdb30b94912b7",
+        "path": "components/pose_estimation/db712d91c09a558253071521b16ad5acbfc362dc42c20c0c335fdb30b94912b7/pose_estimation.json",
+        "sha256": "abd6a53f54e64e464726d24582492e7dd0c63097ebce416e7c2fcfc181e0be8e",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "d767b9884a28b2fd011717193f83920efe4b19c6aeb7af1e9bd4284fa4b65c1a"
+      },
+      "court_side": {
+        "artifact_id": "af8ba6f68e25f913d59a937335de5ed577da26b20fe0dfc60cae6d640f03df70",
+        "path": "components/court_side/af8ba6f68e25f913d59a937335de5ed577da26b20fe0dfc60cae6d640f03df70/court_side.json",
+        "sha256": "032a30f6812f2a38ea0218ebbc1149d22d3a94f59980ce1951da852b25c2c287",
+        "schema": "court_side",
+        "version": 3,
+        "execution_key": "696f19655fee45a85f74cb92f83fd7bbd791c108ba4a70161ae8139b8566554a"
+      }
+    }
+  }
+]

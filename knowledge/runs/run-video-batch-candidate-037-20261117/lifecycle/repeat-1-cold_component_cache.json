@@ -1,0 +1,1680 @@
+[
+  {
+    "id": 3,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 76150803533,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "court_detection/cam0",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 111135822506
+  },
+  {
+    "id": 7,
+    "parent_id": 5,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 83051582988,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "court_detection/cam0",
+      "model": "Court",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+          "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424766949392"
+    },
+    "status": "ok",
+    "end_ns": 87690566591
+  },
+  {
+    "id": 75,
+    "parent_id": 5,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 110815737428,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "court_detection/cam0",
+      "model": "Court",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+          "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424766949392"
+    },
+    "status": "ok",
+    "end_ns": 111123027431
+  },
+  {
+    "id": 78,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 111135899392,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "court_detection/cam1",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 140576841448
+  },
+  {
+    "id": 82,
+    "parent_id": 80,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 111136295110,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "court_detection/cam1",
+      "model": "Court",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+          "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765337168"
+    },
+    "status": "ok",
+    "end_ns": 115857496228
+  },
+  {
+    "id": 150,
+    "parent_id": 80,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 140245143716,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "court_detection/cam1",
+      "model": "Court",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+          "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765337168"
+    },
+    "status": "ok",
+    "end_ns": 140526839307
+  },
+  {
+    "id": 153,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 140576919095,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "court_detection/cam2",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 167761309462
+  },
+  {
+    "id": 157,
+    "parent_id": 155,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 140577411897,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "court_detection/cam2",
+      "model": "Court",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+          "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424766958544"
+    },
+    "status": "ok",
+    "end_ns": 144850733850
+  },
+  {
+    "id": 225,
+    "parent_id": 155,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 167459929180,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "court_detection/cam2",
+      "model": "Court",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+          "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424766958544"
+    },
+    "status": "ok",
+    "end_ns": 167750651180
+  },
+  {
+    "id": 228,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 167761384695,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "court_detection/cam3",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 191691866652
+  },
+  {
+    "id": 232,
+    "parent_id": 230,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 167761751769,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "court_detection/cam3",
+      "model": "Court",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+          "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765394384"
+    },
+    "status": "ok",
+    "end_ns": 171852348188
+  },
+  {
+    "id": 300,
+    "parent_id": 230,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 191299894157,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "court_detection/cam3",
+      "model": "Court",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+          "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765394384"
+    },
+    "status": "ok",
+    "end_ns": 191607977389
+  },
+  {
+    "id": 303,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 191691953546,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "ball_detection/cam0",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 198913840965
+  },
+  {
+    "id": 307,
+    "parent_id": 305,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 192984590440,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "ball_detection/cam0",
+      "model": "Ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+          "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765394192"
+    },
+    "status": "ok",
+    "end_ns": 193360222258
+  },
+  {
+    "id": 983,
+    "parent_id": 305,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 198489990349,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "ball_detection/cam0",
+      "model": "Ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+          "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765394192"
+    },
+    "status": "ok",
+    "end_ns": 198816402168
+  },
+  {
+    "id": 986,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 198913946935,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "ball_points/cam0",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 199281652376
+  },
+  {
+    "id": 992,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 199281738178,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "ball_detection/cam1",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 205127453366
+  },
+  {
+    "id": 996,
+    "parent_id": 994,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 199282296905,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "ball_detection/cam1",
+      "model": "Ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+          "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765389200"
+    },
+    "status": "ok",
+    "end_ns": 200897729589
+  },
+  {
+    "id": 1672,
+    "parent_id": 994,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 204701335266,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "ball_detection/cam1",
+      "model": "Ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+          "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765389200"
+    },
+    "status": "ok",
+    "end_ns": 205019216900
+  },
+  {
+    "id": 1675,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 205127535762,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "ball_points/cam1",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 206246694542
+  },
+  {
+    "id": 1681,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 206246765577,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "ball_detection/cam2",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 210331211960
+  },
+  {
+    "id": 1685,
+    "parent_id": 1683,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 206247260493,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "ball_detection/cam2",
+      "model": "Ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+          "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765395472"
+    },
+    "status": "ok",
+    "end_ns": 206489806248
+  },
+  {
+    "id": 2361,
+    "parent_id": 1683,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 209940908740,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "ball_detection/cam2",
+      "model": "Ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+          "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765395472"
+    },
+    "status": "ok",
+    "end_ns": 210227848527
+  },
+  {
+    "id": 2364,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 210331291961,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "ball_points/cam2",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 210958531148
+  },
+  {
+    "id": 2370,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 210958603625,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "ball_detection/cam3",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 215658378270
+  },
+  {
+    "id": 2374,
+    "parent_id": 2372,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 210959087059,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "ball_detection/cam3",
+      "model": "Ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+          "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424767129808"
+    },
+    "status": "ok",
+    "end_ns": 211659494557
+  },
+  {
+    "id": 3050,
+    "parent_id": 2372,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 215282313942,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "ball_detection/cam3",
+      "model": "Ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+          "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424767129808"
+    },
+    "status": "ok",
+    "end_ns": 215571972047
+  },
+  {
+    "id": 3053,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 215658453833,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "ball_points/cam3",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 215941888123
+  },
+  {
+    "id": 3059,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 215941962243,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": null,
+      "node": "court_calibration",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 215993289171
+  },
+  {
+    "id": 3068,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 215993358843,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_detection/cam0",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 383195348082
+  },
+  {
+    "id": 3073,
+    "parent_id": 3070,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 229150561961,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_detection/cam0",
+      "model": "DinoPersonDetector",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424766963536"
+    },
+    "status": "ok",
+    "end_ns": 232931151381
+  },
+  {
+    "id": 4826,
+    "parent_id": 3070,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 321751930126,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_detection/cam0",
+      "model": "DinoPersonDetector",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424766963536"
+    },
+    "status": "ok",
+    "end_ns": 382920655523
+  },
+  {
+    "id": 4829,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 383195414508,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_tracking/cam0",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 624901478109
+  },
+  {
+    "id": 4834,
+    "parent_id": 4832,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 383220985807,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_tracking/cam0",
+      "model": "AFLink",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/person_tracking/AFLink_epoch20.pth",
+          "sha256": "b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4"
+        }
+      },
+      "device": "cpu",
+      "dtype": "float32",
+      "instance": "137424738089424"
+    },
+    "status": "ok",
+    "end_ns": 383261444708
+  },
+  {
+    "id": 4836,
+    "parent_id": 4832,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 385850541477,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_tracking/cam0",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424738077008"
+    },
+    "status": "ok",
+    "end_ns": 386327473021
+  },
+  {
+    "id": 4839,
+    "parent_id": 4832,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 399098072395,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_tracking/cam0",
+      "model": "ViTPosePose2D",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424738020624"
+    },
+    "status": "ok",
+    "end_ns": 434892743628
+  },
+  {
+    "id": 14373,
+    "parent_id": 4832,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 624123059121,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_tracking/cam0",
+      "model": "ViTPosePose2D",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424738020624"
+    },
+    "status": "ok",
+    "end_ns": 624465868671
+  },
+  {
+    "id": 14374,
+    "parent_id": 4832,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 624465925678,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "person_tracking/cam0",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424738077008"
+    },
+    "status": "ok",
+    "end_ns": 624741676707
+  },
+  {
+    "id": 14377,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 624901559624,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "player_selection/cam0",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 625225286360
+  },
+  {
+    "id": 14384,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 625225367403,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam0",
+      "node": "pose_estimation/cam0",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 625278766505
+  },
+  {
+    "id": 14390,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 625278836477,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_detection/cam1",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 731982091274
+  },
+  {
+    "id": 14395,
+    "parent_id": 14392,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 625330140354,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_detection/cam1",
+      "model": "DinoPersonDetector",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424740342416"
+    },
+    "status": "ok",
+    "end_ns": 629819009825
+  },
+  {
+    "id": 16148,
+    "parent_id": 14392,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 721093241564,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_detection/cam1",
+      "model": "DinoPersonDetector",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424740342416"
+    },
+    "status": "ok",
+    "end_ns": 721408290189
+  },
+  {
+    "id": 16151,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 731982207111,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_tracking/cam1",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 943244465976
+  },
+  {
+    "id": 16156,
+    "parent_id": 16154,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 731987782652,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_tracking/cam1",
+      "model": "AFLink",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/person_tracking/AFLink_epoch20.pth",
+          "sha256": "b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4"
+        }
+      },
+      "device": "cpu",
+      "dtype": "float32",
+      "instance": "137424532783632"
+    },
+    "status": "ok",
+    "end_ns": 732061186184
+  },
+  {
+    "id": 16158,
+    "parent_id": 16154,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 732061625759,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_tracking/cam1",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424732842192"
+    },
+    "status": "ok",
+    "end_ns": 796644310128
+  },
+  {
+    "id": 16161,
+    "parent_id": 16154,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 796700338517,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_tracking/cam1",
+      "model": "ViTPosePose2D",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424734460880"
+    },
+    "status": "ok",
+    "end_ns": 819339917595
+  },
+  {
+    "id": 23146,
+    "parent_id": 16154,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 942528155618,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_tracking/cam1",
+      "model": "ViTPosePose2D",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424734460880"
+    },
+    "status": "ok",
+    "end_ns": 942861008970
+  },
+  {
+    "id": 23147,
+    "parent_id": 16154,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 942861064656,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "person_tracking/cam1",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424732842192"
+    },
+    "status": "ok",
+    "end_ns": 943135657808
+  },
+  {
+    "id": 23150,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 943244552731,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "player_selection/cam1",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 943458480409
+  },
+  {
+    "id": 23157,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 943458551564,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam1",
+      "node": "pose_estimation/cam1",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 943508839669
+  },
+  {
+    "id": 23163,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 943508908439,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_detection/cam2",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1038822715678
+  },
+  {
+    "id": 23168,
+    "parent_id": 23165,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 943567428602,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_detection/cam2",
+      "model": "DinoPersonDetector",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424733926032"
+    },
+    "status": "ok",
+    "end_ns": 945502722210
+  },
+  {
+    "id": 24921,
+    "parent_id": 23165,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 1034135849652,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_detection/cam2",
+      "model": "DinoPersonDetector",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424733926032"
+    },
+    "status": "ok",
+    "end_ns": 1034436881624
+  },
+  {
+    "id": 24924,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1038822809105,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_tracking/cam2",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1186637614386
+  },
+  {
+    "id": 24929,
+    "parent_id": 24927,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 1038826767446,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_tracking/cam2",
+      "model": "AFLink",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/person_tracking/AFLink_epoch20.pth",
+          "sha256": "b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4"
+        }
+      },
+      "device": "cpu",
+      "dtype": "float32",
+      "instance": "137424735796496"
+    },
+    "status": "ok",
+    "end_ns": 1038866448839
+  },
+  {
+    "id": 24931,
+    "parent_id": 24927,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 1038866707770,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_tracking/cam2",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765384272"
+    },
+    "status": "ok",
+    "end_ns": 1088977606863
+  },
+  {
+    "id": 24934,
+    "parent_id": 24927,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 1089036315240,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_tracking/cam2",
+      "model": "ViTPosePose2D",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765687312"
+    },
+    "status": "ok",
+    "end_ns": 1094140466966
+  },
+  {
+    "id": 30907,
+    "parent_id": 24927,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 1185965808570,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_tracking/cam2",
+      "model": "ViTPosePose2D",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765687312"
+    },
+    "status": "ok",
+    "end_ns": 1186291972245
+  },
+  {
+    "id": 30908,
+    "parent_id": 24927,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 1186292037047,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "person_tracking/cam2",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424765384272"
+    },
+    "status": "ok",
+    "end_ns": 1186564469567
+  },
+  {
+    "id": 30911,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1186637688196,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "player_selection/cam2",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1186805878041
+  },
+  {
+    "id": 30918,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1186805956380,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam2",
+      "node": "pose_estimation/cam2",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1186849673938
+  },
+  {
+    "id": 30924,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1186849738490,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_detection/cam3",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1277446970010
+  },
+  {
+    "id": 30929,
+    "parent_id": 30926,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 1186900771829,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_detection/cam3",
+      "model": "DinoPersonDetector",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424660726992"
+    },
+    "status": "ok",
+    "end_ns": 1188864942635
+  },
+  {
+    "id": 32682,
+    "parent_id": 30926,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 1276489345792,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_detection/cam3",
+      "model": "DinoPersonDetector",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424660726992"
+    },
+    "status": "ok",
+    "end_ns": 1276803217037
+  },
+  {
+    "id": 32685,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1277447041095,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_tracking/cam3",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1446604380114
+  },
+  {
+    "id": 32690,
+    "parent_id": 32688,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 1277450361937,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_tracking/cam3",
+      "model": "AFLink",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/person_tracking/AFLink_epoch20.pth",
+          "sha256": "b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4"
+        }
+      },
+      "device": "cpu",
+      "dtype": "float32",
+      "instance": "137424392352016"
+    },
+    "status": "ok",
+    "end_ns": 1277490563045
+  },
+  {
+    "id": 32692,
+    "parent_id": 32688,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 1277490964554,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_tracking/cam3",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424391765712"
+    },
+    "status": "ok",
+    "end_ns": 1329511763780
+  },
+  {
+    "id": 32695,
+    "parent_id": 32688,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 1329563284867,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_tracking/cam3",
+      "model": "ViTPosePose2D",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424451395984"
+    },
+    "status": "ok",
+    "end_ns": 1334816019894
+  },
+  {
+    "id": 39434,
+    "parent_id": 32688,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 1445903341667,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_tracking/cam3",
+      "model": "ViTPosePose2D",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424451395984"
+    },
+    "status": "ok",
+    "end_ns": 1446263246370
+  },
+  {
+    "id": 39435,
+    "parent_id": 32688,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 1446263315040,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "person_tracking/cam3",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424391765712"
+    },
+    "status": "ok",
+    "end_ns": 1446532387368
+  },
+  {
+    "id": 39438,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1446604453763,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "player_selection/cam3",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1446797949098
+  },
+  {
+    "id": 39445,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1446798015904,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": "cam3",
+      "node": "pose_estimation/cam3",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1446850055148
+  },
+  {
+    "id": 39451,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1446850117074,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": null,
+      "node": "court_side",
+      "source": "execute",
+      "outcome": "executed"
+    },
+    "status": "ok",
+    "end_ns": 1446908416652
+  },
+  {
+    "id": 39461,
+    "parent_id": 2,
+    "depth": 1,
+    "thread_id": 137440029280064,
+    "stage": "node",
+    "start_ns": 1446908477387,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": null,
+      "node": "player_association",
+      "source": "execute",
+      "outcome": "failed"
+    },
+    "status": "error",
+    "error_type": "ReconstructionUnavailable",
+    "end_ns": 1450497211072
+  },
+  {
+    "id": 39471,
+    "parent_id": 39469,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_load",
+    "start_ns": 1447051375451,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": null,
+      "node": "player_association",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424660736464"
+    },
+    "status": "ok",
+    "end_ns": 1447521855280
+  },
+  {
+    "id": 40896,
+    "parent_id": 39469,
+    "depth": 3,
+    "thread_id": 137440029280064,
+    "stage": "model_unload",
+    "start_ns": 1450041277982,
+    "attributes": {
+      "clip_id": "video_000/clip_037",
+      "camera_id": null,
+      "node": "player_association",
+      "model": "CLIP-ReID",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "137424660736464"
+    },
+    "status": "ok",
+    "end_ns": 1450329154150
+  }
+]

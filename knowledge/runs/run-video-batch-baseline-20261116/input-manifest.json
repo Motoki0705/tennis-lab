@@ -1,0 +1,203 @@
+{
+  "main_commit": "e561377cec714ead088fc37569cd5fb5a893866c",
+  "source": "data/tennis_multiview/processed/meiji_4cam/dataset",
+  "clip_order": [
+    "video_000/clip_000",
+    "video_000/clip_001",
+    "video_000/clip_002"
+  ],
+  "source_dataset_sha256": "b04b0e3f68bec499dadff98c605c176d45784640c26135fa51446c34ff6b70c6",
+  "selected_records": [
+    {
+      "clip_id": "video_000/clip_000",
+      "video_id": "video_000",
+      "clip_name": "clip_000",
+      "path": "videos/video_000/clips/clip_000",
+      "num_cameras": 4,
+      "num_frames": 356,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "clip_id": "video_000/clip_001",
+      "video_id": "video_000",
+      "clip_name": "clip_001",
+      "path": "videos/video_000/clips/clip_001",
+      "num_cameras": 4,
+      "num_frames": 561,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "clip_id": "video_000/clip_002",
+      "video_id": "video_000",
+      "clip_name": "clip_002",
+      "path": "videos/video_000/clips/clip_002",
+      "num_cameras": 4,
+      "num_frames": 1516,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "files": [
+    {
+      "path": "videos/video_000/clips/clip_000/clip.json",
+      "sha256": "783f0ccd4acb849ef89be36869661a3cf36327e1781574ded7b1ce4731fee094",
+      "bytes": 2067,
+      "probe": null
+    },
+    {
+      "path": "videos/video_000/clips/clip_000/media/cam0.mp4",
+      "sha256": "33823be69af8a6940e85f10876781f616d8054d95e4ba3cea35f20700d37a759",
+      "bytes": 8109105,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "356"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_000/media/cam1.mp4",
+      "sha256": "49f70bef419efe8e75ed3275458fd86aa0a5832d19df04c3941e298b9eae148e",
+      "bytes": 6709880,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "356"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_000/media/cam2.mp4",
+      "sha256": "0fdd6844265b1c796e066bffbbde76af2d87ee667ec7687bbf64cacc97de32e0",
+      "bytes": 3462014,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "356"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_000/media/cam3.mp4",
+      "sha256": "1f2150db8799a2b33e089e40a9537b68e344e436512436308fbf0e9b16697c18",
+      "bytes": 6424801,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "356"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_001/clip.json",
+      "sha256": "c37aa5f5acaf301f2e30f493a3a89226c8e2ede695e0641127d2660d9fdfa42a",
+      "bytes": 2061,
+      "probe": null
+    },
+    {
+      "path": "videos/video_000/clips/clip_001/media/cam0.mp4",
+      "sha256": "200921df6f780821098d514eea70a2f12d7da9ffcd650cc68441cced6b8ec29b",
+      "bytes": 13946124,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "561"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_001/media/cam1.mp4",
+      "sha256": "2d0f829f4311d0f586d0e7f35adc821eadabbd8f908c4062a544b8a6b061beb2",
+      "bytes": 10244041,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "561"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_001/media/cam2.mp4",
+      "sha256": "4349b4daa2e89bf2f53de95d1642bfb2c593c09323b513402602cb7b443af5e4",
+      "bytes": 5539621,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "561"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_001/media/cam3.mp4",
+      "sha256": "c36459423e3ab66bb8d8170221943a94a65b929bb191410922485362c22a307c",
+      "bytes": 10680774,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "561"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_002/clip.json",
+      "sha256": "34d2058650962fe1a897e361f5c8128f40d95a74e6e7c1f28d9408255d4621eb",
+      "bytes": 2061,
+      "probe": null
+    },
+    {
+      "path": "videos/video_000/clips/clip_002/media/cam0.mp4",
+      "sha256": "467f44f38104b4134b9c1425f0022515c9f2b2fa3b8309116ebd1bee35585113",
+      "bytes": 34720678,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "1516"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_002/media/cam1.mp4",
+      "sha256": "bcb1df13e99605297a427e77db5e59bd53744b87146d31156e17b7a727787fc7",
+      "bytes": 25617444,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "1516"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_002/media/cam2.mp4",
+      "sha256": "f4a216010f607157ea14d3ab62f617460452c175c5ffcc697a79f63a19114a5d",
+      "bytes": 14636838,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "1516"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_002/media/cam3.mp4",
+      "sha256": "2de4983837d196d0aa8bc2d92f86b9f4642db36fa020d7eada34a318691ca274",
+      "bytes": 29027222,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "1516"
+      }
+    }
+  ],
+  "repetitions": 3,
+  "conditions": [
+    "cold_component_cache",
+    "cache_hit"
+  ],
+  "warm_definition": "repeat 1 includes initial imports/CUDA; repeats 2/3 reuse process, not models; OS cache not dropped"
+}

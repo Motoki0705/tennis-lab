@@ -1,0 +1,102 @@
+{
+  "hash_time": "after_screening",
+  "ctime_before_screening_start_verified": true,
+  "files": [
+    {
+      "path": "videos/video_000/clips/clip_003/clip.json",
+      "sha256": "0b9b3d8a2e259c7da680cefa47c29945b56ebc9a118922df635cd8ada6cf470e",
+      "bytes": 2069,
+      "ctime_ns": 1794751543114554327
+    },
+    {
+      "path": "videos/video_000/clips/clip_003/media/cam3.mp4",
+      "sha256": "37d4928b7b984a688416e92c83e3f082607839446db00299a926d6f334e75c9d",
+      "bytes": 6999720,
+      "ctime_ns": 1794751543058554631
+    },
+    {
+      "path": "videos/video_000/clips/clip_004/clip.json",
+      "sha256": "846154d5ef3ce170050a2809b2d977eef4df1e4fe27d620e26692de0932a5dcc",
+      "bytes": 2060,
+      "ctime_ns": 1794751657337901671
+    },
+    {
+      "path": "videos/video_000/clips/clip_004/media/cam3.mp4",
+      "sha256": "2c0ca07ec45c641a055aabaffbb0753dfc4e82559443d19c3486269d8c9b25c6",
+      "bytes": 10981972,
+      "ctime_ns": 1794751657293901910
+    },
+    {
+      "path": "videos/video_000/clips/clip_005/clip.json",
+      "sha256": "85680ecacfcbeb3d260df64f7326a762c563b0658be1e2e13e1f16c643e0b4b7",
+      "bytes": 2060,
+      "ctime_ns": 1794751718821548883
+    },
+    {
+      "path": "videos/video_000/clips/clip_005/media/cam3.mp4",
+      "sha256": "4da2f9864589ef122cdfa7181c8af2768ce6d07697b9711630ecaf94640bf737",
+      "bytes": 5737338,
+      "ctime_ns": 1794751718777549126
+    },
+    {
+      "path": "videos/video_000/clips/clip_006/clip.json",
+      "sha256": "b3240e69765a60741ae0b8bc4b40b5566b1d02e7e9b37bca3fc5e9f0c9a5e79d",
+      "bytes": 2061,
+      "ctime_ns": 1794751888688587531
+    },
+    {
+      "path": "videos/video_000/clips/clip_006/media/cam3.mp4",
+      "sha256": "9ad4d7a1089852f379028b07a35611931b18ba1815a97c7d2958057038af9a92",
+      "bytes": 16308587,
+      "ctime_ns": 1794751888648587752
+    },
+    {
+      "path": "videos/video_000/clips/clip_007/clip.json",
+      "sha256": "748e43829f4aa30570fad409ae5f2d092b9ea6c43606244009041b26945357d3",
+      "bytes": 2061,
+      "ctime_ns": 1794751977764069571
+    },
+    {
+      "path": "videos/video_000/clips/clip_007/media/cam3.mp4",
+      "sha256": "18a538ea3bae61fe82af3fe1721d6f75907ab69ef48885e9fc7286d3267f9eac",
+      "bytes": 7484802,
+      "ctime_ns": 1794751977716069839
+    },
+    {
+      "path": "videos/video_000/clips/clip_008/clip.json",
+      "sha256": "0d4a5425a306dd2e9758ee30382147e9c365e541c14b4916ad44227014fb3d71",
+      "bytes": 2061,
+      "ctime_ns": 1794752110395313475
+    },
+    {
+      "path": "videos/video_000/clips/clip_008/media/cam3.mp4",
+      "sha256": "2464b2597d79a53f7f605b236598cc55f16f302984bc088343244e9fa8ddd4af",
+      "bytes": 11526722,
+      "ctime_ns": 1794752110347313748
+    },
+    {
+      "path": "videos/video_000/clips/clip_009/clip.json",
+      "sha256": "5382823fea7736ef6ffc7e3337adc1b0b305f74d3d2b884c2015a861ad15a7e3",
+      "bytes": 2061,
+      "ctime_ns": 1794752336105081977
+    },
+    {
+      "path": "videos/video_000/clips/clip_009/media/cam3.mp4",
+      "sha256": "7282e79cf6ea41369961524715fa59f541950c117bdfaba02300b0a2b07c43dd",
+      "bytes": 17665919,
+      "ctime_ns": 1794752336045088546
+    },
+    {
+      "path": "videos/video_000/clips/clip_010/clip.json",
+      "sha256": "ebd4537798af402a29b0e83de60cbac055b1ab920d5414e557f536bc2a42be26",
+      "bytes": 2061,
+      "ctime_ns": 1794752461373362502
+    },
+    {
+      "path": "videos/video_000/clips/clip_010/media/cam3.mp4",
+      "sha256": "83d71aa24fcc0a40097f65f7534240f28a0c1afef337587b822c751d6b93067a",
+      "bytes": 10020749,
+      "ctime_ns": 1794752461329362788
+    }
+  ]
+}

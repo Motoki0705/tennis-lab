@@ -1,0 +1,8 @@
+{
+  "commit": "701165bd2deeddc20d4773b3dbacb6890f8c15ae",
+  "src_git_tree": "c61b12bda2b7081a1545ec0a32a4af7e3f6d1d12",
+  "src_and_driver_unchanged": true,
+  "benchmark_sha256": "7e4452bab2fddea5d0d53b605d3276b1b899d5d6412844bb35eb3949f95aca6b",
+  "input_manifest_sha256": "497f75bf338ec5a918f9011cea789b7375bd184ce9407a7b6583126c24194002",
+  "gpu_restarted_after_failure": false
+}

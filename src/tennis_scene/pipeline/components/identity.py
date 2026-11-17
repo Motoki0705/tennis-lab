@@ -46,6 +46,7 @@ from src.tennis_scene.pipeline.components.court_side import (
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.utils.inference_recording import model_release
 
 PLAYER_ASSOCIATION = "player_association"
 # Version 3: per-frame player IDs (a track may switch people) and the association evidence.
@@ -136,8 +137,9 @@ class PlayerAssociationModule:
                 record[camera.camera_id] = [{"track_id": int(track), "samples": len(sample.frames), "rejected": sample.rejected}
                                             for track, sample in zip(camera.track_ids.tolist(), samples, strict=True)]
         finally:
-            del encoder
-            release_inference_memory(self.device)
+            with model_release(str(id(encoder))):
+                del encoder
+                release_inference_memory(self.device)
         return appearances, {"enabled": True, "encoder": name, "sampling": asdict(sampling), "tracks": record}
 
     def process(self, inputs: PlayerAssociationInput) -> PlayerIdentitiesOutput:

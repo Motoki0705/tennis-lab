@@ -28,6 +28,7 @@ from src.tennis_scene.pipeline.components.base import (
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
 from src.utils.configuration import PathResolver
 from src.utils.geometry.keypoints import denormalize_grid_keypoints
+from src.utils.inference_recording import model_action
 from src.utils.video import (
     BgrToRgbUint8Transform,
     BgrToTensorTransform,
@@ -160,6 +161,8 @@ class BallDetectionModule(BasePipelineModule):
         self.enabled = enabled
         self._pipeline: BallDetectionPredictor | X3DDPTPredictor | None = None
 
+    @model_action("load", "Ball", weights=lambda owner: {"checkpoint": owner.config.checkpoint},
+                  device=lambda owner: owner.config.device, loaded=lambda owner: owner.is_loaded)
     def load(self) -> None:
         """Load the ball detection predictor."""
         if self._pipeline is not None:
@@ -199,6 +202,8 @@ class BallDetectionModule(BasePipelineModule):
         """Check if the model is loaded."""
         return self._pipeline is not None
 
+    @model_action("unload", "Ball", weights=lambda owner: {"checkpoint": owner.config.checkpoint},
+                  device=lambda owner: owner.config.device, loaded=lambda owner: owner.is_loaded)
     def unload(self) -> None:
         self._pipeline = None
         release_inference_memory(self.config.device)

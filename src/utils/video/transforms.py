@@ -8,6 +8,7 @@ import torch
 from numpy.typing import NDArray
 
 from src.utils.data.augmentation import normalize_tensor_images_imagenet
+from src.utils.inference_recording import measured
 
 
 class BgrToRgbUint8Transform:
@@ -37,6 +38,7 @@ class BgrToTensorTransform(BgrToRgbUint8Transform):
         super().__init__(image_size=image_size)
         self.normalize_imagenet = normalize_imagenet
 
+    @measured("preprocess")
     def __call__(self, frame_bgr: NDArray) -> torch.Tensor:
         tensor = super().__call__(frame_bgr)
         tensor = tensor.to(dtype=torch.float32).div_(255.0)

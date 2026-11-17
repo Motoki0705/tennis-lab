@@ -1,0 +1,74 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205081638961772343_2026-11-17T12-26-01-038227656Z_1037232_video-batch-candidate-037 (commit=701165bd2dee provider=codex session=01a1dfbd-594e-7f72-9f3a-53d3f7f3a340)
+Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/.venv/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/.venv/lib/python3.11/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/TensorShape.cpp:4215.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+person_tracking/cam0: 0/292 frames
+person_tracking/cam0: 1/292 frames
+person_tracking/cam0: 47/292 frames
+person_tracking/cam0: 94/292 frames
+person_tracking/cam0: 139/292 frames
+person_tracking/cam0: 189/292 frames
+person_tracking/cam0: 236/292 frames
+person_tracking/cam0: 283/292 frames
+person_tracking/cam0: 292/292 frames
+person_tracking/cam1: 0/292 frames
+person_tracking/cam1: 17/292 frames
+person_tracking/cam1: 96/292 frames
+person_tracking/cam1: 162/292 frames
+person_tracking/cam1: 234/292 frames
+person_tracking/cam1: 292/292 frames
+person_tracking/cam2: 0/292 frames
+person_tracking/cam2: 87/292 frames
+person_tracking/cam2: 178/292 frames
+person_tracking/cam2: 272/292 frames
+person_tracking/cam2: 292/292 frames
+person_tracking/cam3: 0/292 frames
+person_tracking/cam3: 63/292 frames
+person_tracking/cam3: 143/292 frames
+person_tracking/cam3: 223/292 frames
+person_tracking/cam3: 292/292 frames
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/pipeline/components/identity.py", line 170, in process
+    association = associate(cameras, source.fps, config)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tasks/player_association/association/associate.py", line 280, in associate
+    raise AssociationUndecided(AMBIGUOUS_PLAYERS, f"Identity {runner_up['identity']} ({runner_up['presence_frames']} frames) is too "
+src.tasks.player_association.association.associate.AssociationUndecided: Identity 1 (290 frames) is too close to player identity 0 (290 frames)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/knowledge/runs/run-video-batch-candidate-037-20261117/benchmark.py", line 254, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/knowledge/runs/run-video-batch-candidate-037-20261117/benchmark.py", line 240, in main
+    run(root, args.expect_commit, args.allocator_limit_gib)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/knowledge/runs/run-video-batch-candidate-037-20261117/benchmark.py", line 203, in run
+    outcomes = generate_pseudo_annotations(dataset.resolve(), clip_runner, pipeline_config_yaml=pipeline_yaml,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/generate_dataset/pseudo_annotation.py", line 65, in generate_pseudo_annotations
+    result = runner(inputs.video_paths, inputs.camera_ids, inputs.clip_dir)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/knowledge/runs/run-video-batch-candidate-037-20261117/benchmark.py", line 193, in clip_runner
+    return orchestrator.run(video_paths=video_paths, video_role=PathRole.DATA, camera_ids=camera_ids,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/pipeline/orchestrator.py", line 136, in run
+    runner.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/pipeline/runner.py", line 188, in run
+    self.executor.run(targets=None if targets is None else [(self.clip_id, name) for name in targets])
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/pipeline/runner.py", line 73, in run
+    self.execute(key)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/pipeline/runner.py", line 83, in execute
+    return self._execute(key)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/pipeline/runner.py", line 114, in _execute
+    output = node.component.process(inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline/src/tennis_scene/pipeline/components/identity.py", line 172, in process
+    raise ReconstructionUnavailable(f"player_association_{undecided.reason}", str(undecided), diagnostics={
+src.tennis_scene.pipeline.errors.ReconstructionUnavailable: Identity 1 (290 frames) is too close to player identity 0 (290 frames)
+exit_code=1
