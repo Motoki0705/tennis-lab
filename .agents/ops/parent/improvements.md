@@ -183,6 +183,8 @@ unitはmain checkoutと既存unitと同じPATH、通常のgh認証設定を使�
 合意コメントにあるagreementと本文snapshotの受入チェック項目を使う。別の受入台帳へ移さない。
 `status.completion.requirements` の `basis_ref` と全criteriaのIDを読み、次のfinishを作る。
 例の項目数は固定ではない。すべてのIDを一度ずつ、根拠とともに記録する。
+取り出し形式の `### I-<元親番号>-<key>` は候補ごとのグループとして読み、各グループに1件以上のチェック項目を要求する。同一候補の再出現・候補内の重複項目・それ以外の見出しや自由文は拒否する。
+取り出し形式のIDは `ac-I-<元親番号>-<key>-<候補内連番>`、criterionの表示は `[I-<元親番号>-<key>] 条件文`。通常形式は `ac-N` を使い、両形式で本文と合意snapshotを照合する。
 
 ```json
 {
