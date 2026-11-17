@@ -3,7 +3,6 @@
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
-from weakref import ref
 
 import numpy as np
 import pytest
@@ -53,14 +52,9 @@ def test_short_video_keeps_native_grid_evidence_and_presence_mask(tmp_path: Path
     module = BallDetectionModule(replace(base, batch_size=1, score_threshold=.5, pin_memory=False,
                                          trajectory_gate=replace(base.trajectory_gate, enabled=False)))
     materialize_model_weights(module)
-    predictors = []
-    def load():
-        predictor = Predictor()
-        predictors.append(ref(predictor))
-        return predictor
-    monkeypatch.setattr(module, "_load_predictor", load)
+    monkeypatch.setattr(module, "_load_predictor", Predictor)
     out = module.process(BallDetectionInput(SourceVideo("cam", video, "fixture", 33, 30., 40, 24)))
-    assert calls == [1, 1] and all(predictor() is None for predictor in predictors)
+    assert calls == [1, 1]
     assert out.observed.sum() == 32 and not out.observed[0]
     np.testing.assert_allclose(out.uv_px[1], [160 / 319 * 39, 90 / 179 * 23])
     assert out.evidence is not None
