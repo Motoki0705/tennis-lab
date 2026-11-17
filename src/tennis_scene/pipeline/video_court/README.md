@@ -80,8 +80,9 @@ values may be initializers, but failed solves are never fabricated.
 `prepare_video_court(config, resolver, code_identity=...)` is the shared API.
 Pass its artifact to `standard_definition(..., video_court=artifact)` for each
 `ClipExecution` in one `ExecutionPlan`. The orchestrator prepares and binds it for
-single-clip and existing dataset entry points. The future batch CLI owns its
-connection to this API; this module does not implement that CLI or model lifetime.
+single-clip and existing dataset entry points. `run_video_batch` acquires the
+artifact before building its multi-clip plan and binds it to every selected clip.
+The [batch CLI guide](../../README.md#登録済みvideoの一括再構成) documents its configuration.
 
 An unavailable common H remains a failure. A coherent shift above 3px is a
 warning; reliable measured displacement above mean 10px or maximum 25px fails

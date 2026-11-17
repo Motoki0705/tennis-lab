@@ -23,10 +23,16 @@ from src.tennis_scene.pipeline.inference_runtime import (
 )
 from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
 from src.tennis_scene.pipeline.video_batch import run_video_batch
+from src.tennis_scene.pipeline.video_court import VideoCourtConfig
 from src.tennis_scene.schema import SceneResult
 from src.utils.configuration import PathRole
 from src.utils.inference_recording import model_event, span
+from src.utils.io import save_json_atomic
 from src.utils.video import VideoReadError
+from tests.integration.tennis_scene.test_video_court import (
+    CLIPS as SHARED_CLIPS,
+)
+from tests.integration.tennis_scene.test_video_court import shared_fixture
 from tests.support.tennis_scene.video_dataset import add_clip
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     FixedStage,
@@ -84,6 +90,78 @@ def execute(pipeline, dataset: Path, **options):
 def scene(clip: Path) -> SceneResult:
     directory = clip / "annotations/tennis_scene"
     return load_scene_result(annotation_scene_path(directory, json.loads((directory / "annotation.json").read_text())))
+
+
+def shared_batch_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from src.tennis_scene.pipeline.definition import enabled_model_assets
+    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import materialize_assets
+
+    pipeline, paths, _, _, _, artifact = shared_fixture(tmp_path, monkeypatch)
+    dataset = tmp_path / "dataset"
+    clips = [add_clip(dataset, clip_id) for clip_id in SHARED_CLIPS]
+    for clip in clips:
+        for path in paths:
+            (clip / path.name).write_bytes(path.read_bytes())
+    for path in (dataset / "dataset.json", *(clip / "clip.json" for clip in clips)):
+        document = json.loads(path.read_text())
+        document["dataset_id"] = "fixture"
+        save_json_atomic(document, path)
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
+    return pipeline, dataset, clips, artifact
+
+
+@pytest.mark.parametrize("action", ["build", "load"])
+def test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, action: str) -> None:
+    import src.tennis_scene.pipeline.video_court as court_api
+    from src.utils.checksum import dual_sha256
+
+    pipeline, dataset, clips, artifact = shared_batch_fixture(tmp_path, monkeypatch)
+    expected = pipeline.run(tuple(clips[0] / f"cam{i}.mp4" for i in range(3)), video_role=PathRole.DATA,
+        camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "single", clip_id=SHARED_CLIPS[0])
+    request = tmp_path / "build-request.json"
+    request.write_text('{"fixture": "frozen build boundary"}')
+    if action == "build":
+        pipeline.config = replace(pipeline.config, video_court=VideoCourtConfig(
+            "build", artifact.root, "fixture", "video_000", request, dual_sha256(request), None, False))
+    pipeline.video_court, pipeline._video_court_key = None, None
+    prepare = court_api.prepare_video_court
+    acquired = []
+    stages = pipeline.components
+    assert stages is not None
+    for stage in stages.values():
+        stage.calls = 0
+
+    def acquire(config, resolver, *, code_identity):
+        acquired.append(config.action)
+        assert all(stage.calls == 0 for stage in stages.values())
+        assert not any((clip / "annotations/tennis_scene/scene.json").exists() for clip in clips)
+        # Numerical build/white-stripe fitting is covered by the shared-court
+        # tests. Substitute that boundary while executing the actual load path.
+        return artifact if action == "build" else prepare(config, resolver, code_identity=code_identity)
+
+    monkeypatch.setattr(court_api, "prepare_video_court", acquire)
+    result = execute(pipeline, dataset)
+    assert result.exit_code == 0 and acquired == [action]
+    assert tuple(result.plan.clips) == SHARED_CLIPS
+    assert all(stage.calls == 2 for stage in stages.values())
+    np.testing.assert_array_equal(scene(clips[0]).court_kp, expected.court_kp)
+    np.testing.assert_array_equal(scene(clips[0]).ball_3d, expected.ball_3d)
+    progress = json.loads(result.progress_path.read_text())
+    assert progress["video_court"]["artifact_digest"] == artifact.digest
+    assert progress["publication_identity"]["video_court_cameras"] == artifact.manifest["cameras"]
+    assert not progress["models"]
+
+
+@pytest.mark.parametrize("scope", [{"dataset_id": "foreign"}, {"video_id": "video_001"}])
+def test_shared_court_scope_is_rejected_before_acquisition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scope: dict) -> None:
+    import src.tennis_scene.pipeline.video_court as court_api
+
+    pipeline, dataset, clips, _ = shared_batch_fixture(tmp_path, monkeypatch)
+    pipeline.config = replace(pipeline.config, video_court=replace(pipeline.config.video_court, **scope))
+    monkeypatch.setattr(court_api, "prepare_video_court", lambda *a, **kw: pytest.fail("foreign scope must not load/build"))
+    with pytest.raises(ValueError, match="another dataset/video"):
+        execute(pipeline, dataset)
+    assert not any((clip / "annotations/tennis_scene/scene.json").exists() for clip in clips)
 
 
 @pytest.mark.parametrize("count", [1, 3])

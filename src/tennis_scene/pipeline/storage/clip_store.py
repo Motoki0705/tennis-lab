@@ -171,7 +171,6 @@ class ClipStore:
                     # lineage. Keep old export bytes immutable, but withdraw its
                     # active pointer as soon as any adopted component changes.
                     index["exports"].clear()
-                    (self.root / "annotation.json").unlink(missing_ok=True)
                 index["artifacts"][node] = encoded
                 index["revision"] += 1
                 write_json_atomic(self.index_path, index)

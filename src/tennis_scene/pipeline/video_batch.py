@@ -32,7 +32,7 @@ from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.utils.configuration import PathRole
-from src.utils.inference_recording import InferenceRecorder
+from src.utils.inference_recording import InferenceRecorder, span
 from src.utils.io import utc_now_iso
 
 
@@ -131,10 +131,9 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
     for clip in prepared:
         for video in clip.media.source.videos:
             cfg.resolver.validate(PathRole.DATA, video.path)
-    identity = orchestrator.publication_identity()
     directory = (dataset_directory / "videos" / video_id / "annotations" / "tennis_scene" / "batch"
                  if progress_directory is None else progress_directory)
-    progress = VideoBatchProgress(directory, dataset_id, video_id, prepared, pipeline_config_yaml, identity,
+    progress = VideoBatchProgress(directory, dataset_id, video_id, prepared, pipeline_config_yaml, {},
         overwrite=overwrite, continue_on_error=continue_on_error, recording_devices=recording_devices)
     bound = {clip.inputs.record.clip_id: clip for clip in prepared}
     clips = []
@@ -149,6 +148,23 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
 
     try:
         with progress.recorder:
+            progress.document["active_stage"] = "prepare_video_court"
+            with span("preprocess", operation="prepare_video_court"):
+                if cfg.video_court is not None and (cfg.video_court.dataset_id, cfg.video_court.video_id) != (dataset_id, video_id):
+                    raise ValueError("Shared court configuration belongs to another dataset/video")
+                video_court = orchestrator.prepare_video_court()
+                if video_court is not None:
+                    for clip in prepared:
+                        video_court.bind(clip.media.source)
+                    progress.document["video_court"] = {
+                        "artifact_digest": video_court.digest, "cameras": video_court.manifest["cameras"],
+                        "unobservable_policy": cfg.video_court_unobservable_policy,
+                        "drift_digest": None if cfg.video_court_drift is None else cfg.video_court_drift.digest,
+                    }
+            with span("measurement", operation="publication_identity"):
+                identity = orchestrator.publication_identity()
+            progress.document.update(publication_identity=json_value(identity), active_stage=None)
+            progress.flush()
             for clip in prepared:
                 inputs, source = clip.inputs, clip.media.source
                 key = inputs.record.clip_id
@@ -161,7 +177,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                     if reference is not None and reference not in source.camera_ids:
                         raise ValueError("Reference camera is not a source camera")
                     nodes = standard_definition(cfg, source, code_identity=orchestrator.code_identity,
-                                                overrides=orchestrator.components)
+                                                overrides=orchestrator.components, video_court=video_court)
                     # The plan retains every store. Keep decoded heatmaps/meshes
                     # clip-local so a whole video does not accumulate in RAM.
                     store = ClipStore(inputs.clip_dir / ANNOTATION_RELATIVE_DIR, json_value(source), memory_entries=0)

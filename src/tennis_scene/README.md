@@ -59,14 +59,32 @@ source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認�
 `ExecutionPlan`へまとめます。モデルを段階ごとに共有し、各推論はclip・cameraごとの
 既存windowとbatch設定を使います。既定は通常の`pipeline`設定です。
 meiji_4camで選んだX3D/CSN＋DPT T32は`pipeline_config=pipeline_x3d_dpt`で明示します。
+`court_kp.mode=clip`を選ぶ例です。
 
 ```bash
 # GPU実行はこのコマンドを共有training queueへ登録する。
 .venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
   video_id=video_000 \
-  pipeline_config=pipeline_x3d_dpt
+  pipeline_config=pipeline_x3d_dpt \
+  'pipeline_overrides=["court_kp.mode=clip"]'
 ```
+
+`court_kp.mode=video_shared`では、計画を組む前に`prepare_video_court`でvideo全体の
+共有コートをbuildまたはloadし、同じ成果物を全clipへ束縛します。次は準備済みbundleを
+ARTIFACT rootの`tennis_scene/court_shared/meiji_4cam`からloadする例です。
+`VIDEO_COURT_ARTIFACT_DIGEST`へ準備APIが返したdigestを設定して実行します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
+  dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
+  video_id=video_000 pipeline_config=pipeline_x3d_dpt \
+  "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\"]"
+```
+
+dataset/videoのscopeと各clipのmediaを共有成果物へ照合します。build用request、診断成果物の
+選択と検査不能時の方針は、共有コートの設定を使います。取得の規則は
+[共有コートのREADME](pipeline/video_court/README.ja.md)を参照してください。
 
 `clip_ids=[video_000/clip_000,video_000/clip_001]`で明示subsetを指定できます。
 別video・未知・重複・空の指定、manifestと実mediaのcamera対応・FPS・解像度・frame数の
