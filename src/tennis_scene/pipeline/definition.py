@@ -6,6 +6,7 @@ from collections.abc import Callable
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
+from src.submodules.smpl_assets import require_smpl_asset
 from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
@@ -125,6 +126,13 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         assets: dict[str, Any] = asset_identities(body_enabled, cfg.people.body_assets())
         return assets
 
+    def hmr2_assets() -> dict[str, Any]:
+        if body_enabled:
+            require_smpl_asset(cfg.people.smpl_assets.hmr2_mean_params, "hmr2_mean_params")
+        assets: dict[str, Any] = asset_identities(body_enabled, {
+            "checkpoint": cfg.people.hmr2_checkpoint, "mean_params": cfg.people.smpl_assets.hmr2_mean_params})
+        return assets
+
     for camera in ids:
         add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
             lambda: {"config": cfg.processing_settings["court_kp"], "checkpoint": file_identity(cfg.court_kp.checkpoint)}, camera=camera)
@@ -200,8 +208,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         lambda: {"policy": "coverage_confidence_camera_id", "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "enabled": body_enabled})
     add("hmr2_features", HMR2FeaturesModule(cfg.people, enabled=body_enabled), HMR2FeaturesInputAssembler(),
         {"selection": "body_view_selection"}, lambda: {
-            "assets": asset_identities(body_enabled, {"checkpoint": cfg.people.hmr2_checkpoint,
-                "mean_params": cfg.people.smpl_assets.hmr2_mean_params}),
+            "assets": hmr2_assets(),
             "runtime": cfg.people.runtime.hmr2, "enabled": body_enabled})
     add("gvhmr", GVHMRModule(cfg.people, enabled=body_enabled), GVHMRInputAssembler(),
         {"selection": "body_view_selection", "features": "hmr2_features"},

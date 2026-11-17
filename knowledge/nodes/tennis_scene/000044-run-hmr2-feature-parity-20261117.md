@@ -56,3 +56,5 @@ C6の実装についてはCPU回帰272caseが30.69秒で成功した。中心3�
 source frame metadataを保ったままHMR2特徴rowだけを反転する故障注入では、3行中2行の特徴値が異なり最大差4でunitが失敗した。注入を戻した同じnodeは成功した。pre-commit ruff/mypyも成功。独立validatorは未指定のため指定0・試行0・完了0。
 
 次の受入には、身体view選択まで一意に確定する固定入力または保存済みBodyViewSelectionが必要。今回は親の1clip制限を守り、別clipへのGPU実行、人物IDの手動統合、閾値・cameraの変更は行っていない。親が入力/対応方針を判断した後、同じ比較手順を使って身体出力と実モデル読込記録を取得する。C4の一括CLIをこの最適化の未達によって止める判断はworkerでは行わない。
+
+CIでHMR2 mean params欠落時の取得先URLが新nodeの汎用identity検査により失われた退行を検出した（[4a0bcca09 CPU shard 2](https://github.com/Motoki0705/tennis-lab/actions/runs/44081276599/job/134032912772)）。identity作成前に既存require_smpl_assetを通すよう修正し、既存の取得案内契約テストを含む279caseが29.74秒で成功した。正しい資産を使う推論の入力/数値処理は変わらず、GPUの上流停止は未解消である。

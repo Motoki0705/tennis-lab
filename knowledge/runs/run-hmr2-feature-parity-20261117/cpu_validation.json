@@ -15,5 +15,11 @@
     "requested": 0,
     "attempted": 0,
     "completed": 0
+  },
+  "asset_diagnostic_regression": {
+    "passed": 279,
+    "wall_seconds": 29.74,
+    "reused_node": "tests/unit/tennis_scene/test_person_model_assets.py::test_standard_pipeline_reports_acquisition_before_model_loading",
+    "finding": "CI detected loss of acquisition URL for missing HMR2 mean params; validate with require_smpl_asset before creating content identity."
   }
 }
