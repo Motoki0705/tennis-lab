@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import random
 import subprocess
-import time
 from collections import Counter
 from dataclasses import fields, is_dataclass
 from pathlib import Path
@@ -119,7 +118,7 @@ def main() -> None:
     encoder = appearance_model(cfg.player_association.appearance.encoder, cfg.association_encoder_weights, cfg.device,
         lambda: build_encoder(cfg.player_association.appearance.encoder, checkpoint_root=cfg.roots.checkpoint_root,
             external_root=cfg.roots.external_asset_root, device=cfg.device))
-    association = PlayerAssociationModule(ctx.source.camera_ids, cfg.player_association, sampling=CropSamplingConfig(), device=cfg.device, encoder=encoder)
+    association = PlayerAssociationModule(ctx.source.camera_ids, cfg.player_association, sampling=CropSamplingConfig(), device=cfg.device, encoder=encoder, enabled=True)
     with recording.InferenceRecorder(OUT / 'upstream_recorder.json', devices=['cuda'], metadata={'phase': 'C1 saved 2D replay'}):
         artifacts['identities'] = infer(association, PlayerAssociationInputAssembler().assemble(ctx, artifacts), 'player_association')
         print('association ready', flush=True)

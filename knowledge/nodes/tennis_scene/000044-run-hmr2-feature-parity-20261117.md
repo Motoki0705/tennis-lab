@@ -37,3 +37,5 @@ PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' PYTHONPATH=. .venv/bin/python 
 # 次は共有training queueへresource=allとして登録する。
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 .venv/bin/python knowledge/runs/run-hmr2-feature-parity-20261117/compare.py
 ```
+
+初回queue job（attempt-1）は受入スクリプトでPlayerAssociationModuleの必須enabled引数を渡し忘れ、モデル起動前にTypeErrorで終了した。実推論の成功には数えない。queueのrepro bundleと出力のattempt-1-failed/に原ログ/事前条件を保持し、引数だけを修正して同じ1clipを再試行する。比較条件は変更しない。
