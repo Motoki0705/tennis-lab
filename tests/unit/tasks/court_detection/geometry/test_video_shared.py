@@ -158,7 +158,9 @@ def raster(frame, lines=range(9)):
         a, b = xy[np.array(EDGES[i])]
         cv2.line(image, tuple(a.round().astype(int)), tuple(b.round().astype(int)), (235, 235, 235), 3, cv2.LINE_AA)
     cv2.line(image, (140, 215), (505, 225), (255, 255, 255), 3, cv2.LINE_AA)  # static net, never averaged away
+    image[100:430, 410:610] //= 2  # fixed shadow crosses visible ground markings
     cv2.rectangle(image, (190 + frame * 70, 200), (210 + frame * 70, 290), (25, 35, 40), -1)
+    cv2.circle(image, (200 + frame * 70, 194), 9, (25, 35, 40), -1)
     return image
 
 
@@ -285,3 +287,25 @@ def test_same_stripe_with_edge_outliers_is_not_a_semantic_alternative():
     result = merge_measurements(H, (clean, tuple(noisy)), (640, 480), CONFIG)
     assert result.matrix is not None, result.reasons
     assert np.linalg.norm(project(result.matrix) - project(H), axis=1).max() < 1.
+
+
+def test_estimator_checks_frozen_rgb_before_any_new_measurement(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from src.tennis_scene.pipeline.video_court import estimator
+
+    path, _, document = seed_manifest(tmp_path)
+    metadata = {'source_frames': {'video/clip/0': {'media_sha256': 'f' * 64, 'rgb_sha256': '0' * 64}}}
+    document['provenance'] = metadata
+    path.write_text(json.dumps(document))
+    monkeypatch.setattr(estimator, 'read_video_frame', lambda *args: SimpleNamespace(original_size=(640, 480), frame=np.zeros((480, 640, 3), np.uint8)))
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('RGB provenance was not checked')
+
+    monkeypatch.setattr(estimator, 'measure_frame', forbidden)
+    with pytest.raises(ValueError, match='source RGB'):
+        estimator.estimate_camera(camera='left', size_wh=(640, 480), sources={'video/clip': {'sha256': 'f' * 64}},
+                                  paths={'video/clip': tmp_path / 'video.mp4'}, seeds_path=path,
+                                  seeds_sha256=hashlib.sha256(path.read_bytes()).hexdigest(), seed_metadata=metadata,
+                                  dataset_id='set', video_id='video', request={'seed_clip_ids': None, 'fit_clip_ids': None})

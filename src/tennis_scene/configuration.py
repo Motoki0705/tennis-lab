@@ -6,7 +6,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -76,6 +76,10 @@ _PATH_FIELDS = {
     )
 }
 PATHS_SCHEMA = StrictConfigSchema(name="tennis_scene.paths", fields=_PATH_FIELDS)
+
+
+if TYPE_CHECKING:
+    from src.tennis_scene.pipeline.video_court.prepare import VideoCourtConfig
 
 
 def _mapping(value: object, *, name: str) -> Mapping[str, object]:
@@ -171,7 +175,10 @@ _COURT_REGION_SCHEMA = StrictConfigSchema(
 )
 _COURT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp",
-    fields={"checkpoint": ConfigField.of(str), "subpixel_refine": ConfigField.of(bool),
+    fields={"checkpoint": ConfigField.of(str), "subpixel_refine": ConfigField.of(bool), "mode": ConfigField.of(str),
+            "video_shared": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.court_kp.video_shared", fields={
+                **{name: ConfigField.of(str, type(None)) for name in ('action', 'directory', 'dataset_id', 'video_id', 'request', 'request_sha256', 'artifact_digest')},
+                'rebuild': ConfigField.of(bool)})),
             "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
             "region_search": ConfigField.mapping(_COURT_REGION_SCHEMA)},
 )
@@ -341,6 +348,7 @@ class PipelineRuntimeConfig:
     ball_method: str
     direct_annotation: DirectAnnotationConfig | None
     clip_id: str | None
+    video_court: VideoCourtConfig | None = None
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -367,6 +375,21 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Cache source must be execute/load; load forbids overwrite")
         cache_directory = resolver.resolve(PathRole.ARTIFACT, cast(str, cache["directory"]))
         court = _mapping(value["court_kp"], name="court_kp")
+        from src.tennis_scene.pipeline.video_court import VideoCourtConfig
+
+        if court['mode'] not in {'clip', 'video_shared'}:
+            raise SemanticConfigurationError('court_kp.mode must be clip or video_shared')
+        shared_values = _mapping(court['video_shared'], name='court_kp.video_shared')
+        video_court = VideoCourtConfig.from_mapping(shared_values, resolver) if court['mode'] == 'video_shared' else None
+        if video_court is not None:
+            direct_values = _mapping(value['direct_annotation'], name='direct_annotation')
+            if (_mapping(value['ball_detection'], name='ball_detection')['method'] == 'gpt_annotation'
+                    or any(direct_values[key] is not None for key in ('request', 'bundle'))):
+                raise SemanticConfigurationError('video_shared does not support direct_annotation/fixed geometry import')
+        if video_court is None and (any(shared_values[key] is not None for key in shared_values if key != 'rebuild') or shared_values['rebuild']):
+            raise SemanticConfigurationError('Shared court options require court_kp.mode=video_shared')
+        if video_court is not None and (max_frames is not None or (cache_source == 'load' and video_court.action != 'load')):
+            raise SemanticConfigurationError('Shared court requires complete clips and explicit load for load-only execution')
         from src.tasks.court_detection.geometry.paint_observations import PaintConfig
 
         region_config = dict(_mapping(court["region_search"], name="court.region_search"))
@@ -475,11 +498,15 @@ class PipelineRuntimeConfig:
             if cache_source == "load" and direct_config is not None and direct_config.resume != "publication":
                 raise SemanticConfigurationError("Use direct_annotation.resume=publication for publication-only recovery")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
+        if video_court is not None:
+            if direct_config is not None or ball_method == 'gpt_annotation':
+                raise SemanticConfigurationError('video_shared does not support direct_annotation/fixed geometry import')
+            settings['court_kp'] = {'mode': 'video_shared'}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
-            ball_method, direct_config, cast(str | None, value["clip_id"]))
+            ball_method, direct_config, cast(str | None, value["clip_id"]), video_court)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

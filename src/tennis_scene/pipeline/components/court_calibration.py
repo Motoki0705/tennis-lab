@@ -33,10 +33,13 @@ class CourtCalibrationOutput:
 
 
 class CourtCalibrationModule:
-    def __init__(self, camera_ids: tuple[str, ...], config: CameraGeometryConfig, *, roi_margins: tuple[float, float]) -> None:
+    def __init__(self, camera_ids: tuple[str, ...], config: CameraGeometryConfig, *, roi_margins: tuple[float, float], court_schema_version: int = 2) -> None:
         self.config, self.roi_margins = config, roi_margins
+        if court_schema_version not in (2, 3):
+            raise ValueError('Unsupported court observation version')
+        self.shared = court_schema_version == 3
         self.io = ComponentIO("court_calibration", CourtCalibrationInput, CourtCalibrationOutput,
-            {camera: InputPort("court_observations", 2) for camera in camera_ids}, "local_court_calibration")
+            {camera: InputPort("court_observations", court_schema_version) for camera in camera_ids}, "local_court_calibration")
 
     def process(self, inputs: CourtCalibrationInput) -> CourtCalibrationOutput:
         if len(inputs.courts) != len(inputs.source.videos):
@@ -47,8 +50,10 @@ class CourtCalibrationModule:
                 raise ValueError("Static court calibration requires exactly the first source frame")
             if court.diagnostics is None or court.diagnostics.get("output_keypoint_contract") != "camera_view_v2":
                 raise ValueError("Court output must declare camera-local schema")
-            if court.diagnostics.get("temporal_policy") != "static_first_frame":
-                raise ValueError("Court output must declare its static first-frame policy")
+            if court.diagnostics.get("temporal_policy") != ('static_video_shared' if self.shared else 'static_first_frame'):
+                raise ValueError('Court output must declare its video-shared policy' if self.shared else 'Court output must declare its static first-frame policy')
+            if self.shared and (court.diagnostics.get('observed_frame_indices') != [] or not court.diagnostics.get('shared_court') or court.diagnostics['drift']['status'] == 'failed'):
+                raise ValueError('Invalid shared court provenance/drift')
             diagnostics.extend(court.diagnostics["cameras"])
         result = CourtKPResult(np.concatenate([c.keypoints for c in inputs.courts]),
             np.concatenate([c.visibility for c in inputs.courts]), inputs.courts[0].frame_indices,
@@ -64,6 +69,8 @@ class CourtCalibrationModule:
         expanded = CourtKPResult(np.repeat(result.keypoints, inputs.source.num_frames, axis=1),
             np.repeat(result.visibility, inputs.source.num_frames, axis=1),
             np.arange(inputs.source.num_frames, dtype=np.int32),
-            {**(result.diagnostics or {}), "temporal_policy": "static_first_frame_broadcast",
-             "observed_frame_indices": [0], "source_frame_count": inputs.source.num_frames})
+            {**(result.diagnostics or {}), "temporal_policy": 'static_video_shared_broadcast' if self.shared else 'static_first_frame_broadcast',
+             "observed_frame_indices": [] if self.shared else [0], "source_frame_count": inputs.source.num_frames,
+             **({'shared_courts': [c.diagnostics['shared_court'] for c in inputs.courts if c.diagnostics is not None],
+                 'drift': [c.diagnostics['drift'] for c in inputs.courts if c.diagnostics is not None]} if self.shared else {})})
         return CourtCalibrationOutput(expanded, calibration, calibration.reference(self.config), polygons)

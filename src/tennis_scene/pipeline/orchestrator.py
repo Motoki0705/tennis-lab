@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from src.tasks.annotation.local_controller import LocalAnnotationController
     from src.tasks.base.annotation.paths import AnnotationLayout
     from src.tennis_scene.configuration import PipelineRuntimeConfig
+    from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
 
 
 class TennisSceneOrchestrator:
@@ -46,6 +47,8 @@ class TennisSceneOrchestrator:
         self.last_receipt: dict[str, Any] = {}
         self.last_runner: ComponentRunner | None = None
         self.last_store: ClipStore | None = None
+        self.video_court: VideoCourtArtifact | None = None
+        self._video_court_key: tuple[object, str] | None = None
         source = PROJECT_ROOT / "src"
         self.code_identity = document_digest({str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))})
 
@@ -60,9 +63,22 @@ class TennisSceneOrchestrator:
 
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
+        shared = self.prepare_video_court()
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
-            "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()}}
+            "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()},
+            **({'video_court_cameras': shared.manifest['cameras']} if shared is not None else {})}
+
+    def prepare_video_court(self) -> VideoCourtArtifact | None:
+        from src.tennis_scene.pipeline.video_court import prepare_video_court
+        if self.config.video_court is None:
+            return None
+        key = (self.config.video_court, self.code_identity)
+        if self.video_court is None or self._video_court_key != key:
+            self.video_court = prepare_video_court(self.config.video_court, self.config.resolver, code_identity=self.code_identity)
+            self._video_court_key = key
+        self.video_court.verify()
+        return self.video_court
 
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
             store_root: Path | None, max_frames: int | None = None, clip_id: str | None = None) -> SceneResult:
@@ -86,6 +102,11 @@ class TennisSceneOrchestrator:
         self.last_receipt = {"schema": "tennis_scene_run_v3", "status": "running", "clip_id": source.clip_id,
             "source": source_document, "scene_index": str(store.index_path)}
         try:
+            shared = self.prepare_video_court()
+            if shared is not None:
+                shared.bind(source)
+                self.last_receipt['video_court'] = {'directory': str(shared.root), 'artifact_digest': shared.digest,
+                                                   'camera_digests': shared.manifest['cameras']}
             direct = self.config.direct_annotation
             workflow = None
             if direct is not None:
@@ -129,12 +150,14 @@ class TennisSceneOrchestrator:
                     nodes = importer.bind_nodes(nodes)
                     importer.publish(nodes, store, source)
             else:
-                nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components)
+                nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components, video_court=shared)
             if direct is None or direct.resume != "publication":
                 runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite)
                 self.last_runner = runner
                 runner.run()
                 inputs.snapshot.assert_unchanged()
+                if shared is not None:
+                    shared.verify()
                 scene, archive = runner.finalize_clip()
                 if direct is not None and workflow is not None:
                     self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive)

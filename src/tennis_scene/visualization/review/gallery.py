@@ -276,11 +276,11 @@ class Review(StoreReader):
         return labels
 
 
-    @renders("court_detection", "court_observations", 2)
+    @renders("court_detection", "court_observations", (2, 3))
     def render_court_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         points, visible = _array(value["keypoints"])[0, 0], _array(value["visibility"])[0, 0]
         if _array(value["frame_indices"]).tolist() != [0]:
-            raise ValueError("Court reviewer expects an actual frame-zero observation")
+            raise ValueError("Court reviewer expects frame-zero coordinates")
         def draw(image: np.ndarray, _: int) -> None:
             for index, (point, score) in enumerate(zip(points, visible, strict=True)):
                 if score <= 0:
@@ -291,6 +291,10 @@ class Review(StoreReader):
         image = self.sheet(node, camera, draw, frames=(0,))
         diagnostics = value["diagnostics"]
         frame = diagnostics["cameras"][0]["frames"][0]
+        if diagnostics.get('temporal_policy') == 'static_video_shared':
+            return [image], [('source', 'video shared; applied at frame 0'),
+                             ('artifact', diagnostics['shared_court']['artifact_digest']),
+                             ('drift', diagnostics['drift']['status']), ('visible keypoints', f'{_count(visible)}/14')]
         return [image], [("observed frame", "0 only"), ("visible keypoints", f"{_count(visible)}/14"),
                          ("joint fitting", str(frame.get("status", "unknown")))]
 
