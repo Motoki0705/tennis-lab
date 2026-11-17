@@ -100,7 +100,8 @@ def _process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, num_frames: int
                                          trajectory_gate=replace(base.trajectory_gate, enabled=False)))
     materialize_model_weights(module)
     monkeypatch.setattr(module, "_load_predictor", _TypedBallPredictor)
-    output: BallDetectionOutput = module.process(BallDetectionInput(SourceVideo("near", tmp_path / "near.mp4", "hash", num_frames, 30.0, 6, 4)))
+    output = module.process(BallDetectionInput(SourceVideo("near", tmp_path / "near.mp4", "hash", num_frames, 30.0, 6, 4)))
+    assert isinstance(output, BallDetectionOutput)
     return output
 
 
@@ -302,6 +303,29 @@ def test_x3d_explicit_loader_does_not_try_convnext_on_error(tmp_path: Path, monk
     with pytest.raises(ValueError, match="bad native artifact"):
         module._load_predictor()
     assert called == ["x3d"]
+
+
+@pytest.mark.parametrize("precision,dtype", [("fp32", "float32"), ("bf16", "bfloat16")])
+def test_x3d_runtime_factory_preserves_precision_and_returns_predictor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str, dtype: str,
+) -> None:
+    predictor = object()
+    calls = []
+
+    def load(checkpoint, **kwargs):
+        calls.append((checkpoint, kwargs))
+        return predictor
+
+    monkeypatch.setattr(ball_component.X3DDPTPredictor, "load_from_checkpoint", load)
+    config = replace(make_x3d_ball_config(tmp_path), precision=precision)
+    spec = BallDetectionModule(config).model_specs()["ball"]
+    assert spec.dtype == dtype
+    assert spec.architecture == "x3d_csn_dpt"
+    assert spec.factory() is predictor
+    assert len(calls) == 1
+    assert calls[0][0] == config.checkpoint
+    assert calls[0][1]["precision"] == precision
+    assert calls[0][1]["compile_mode"] == config.compile_mode
 
 
 def test_fixed_presence_threshold_is_inclusive(tmp_path: Path) -> None:
