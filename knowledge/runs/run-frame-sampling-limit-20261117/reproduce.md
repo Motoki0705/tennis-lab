@@ -23,6 +23,7 @@ CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS
 CUDA_VISIBLE_DEVICES='' .venv/bin/python \
   knowledge/runs/run-frame-sampling-limit-20261117/check_identity.py
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -m pytest -n 0 \
+  tests/unit/tennis_scene/test_configuration.py \
   tests/unit/tennis_scene/test_pipeline_configuration.py \
   tests/unit/tennis_scene/pipeline/test_automatic_geometry.py \
   -q --durations=0 --durations-min=0

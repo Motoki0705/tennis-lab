@@ -44,12 +44,16 @@
     "sha256": "c86537213877eef17f7926dc66a9047b182df0572b3c5c3cf0a700aee9579d89"
   },
   "reproduce.md": {
-    "size_bytes": 2622,
-    "sha256": "319732c9e94bdd6fa06bbfee8cbd3d7e5ebaa3330ee51d31f50766a56c2d0af6"
+    "size_bytes": 2672,
+    "sha256": "66a68ef7d47cbeada78e17003f537c75aa36a0e3fb2bcabd86ee3711f2bcf4c8"
   },
   "benchmark.log": {
     "size_bytes": 21597,
     "sha256": "8ec8d73cd7baba4905d33aaa0da20d42605c132cf0273362f03f00b31e1b3a61"
+  },
+  "related-pytest.log": {
+    "size_bytes": 30434,
+    "sha256": "849e6358a37cf1247e5d2d95ab3305dbd1fe5126b005e978290a8c712c357aa2"
   },
   "numerical-validation.json": {
     "size_bytes": 1877,

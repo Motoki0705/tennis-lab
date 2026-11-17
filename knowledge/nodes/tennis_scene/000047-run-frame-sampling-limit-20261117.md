@@ -106,5 +106,8 @@ componentのexecuteは依存9部品を再計算し、旧identityの明示loadは
 既存のgeometry testには明示1024での拒否検査があり、そのまま再利用した。
 関連37件は9.28秒で成功（`pytest.log`）、collect-onlyは37件・6.09秒。
 追加nodeは1件・call 0.08秒・setup 0.00秒だった。実GPU・通常pytestへの長いfixture追加はない。
+別のconfiguration testに残る1024のliteral assertも削除し、上限の契約は上記の具体的な
+grid・境界検査へ集約した。そのmoduleも含めた関連71件は11.96秒で成功した
+（`related-pytest.log`）。他の既定設定の検査は維持した。
 現行mainの既定Courtはlegacyを保ち、#2191の動画共有はこの測定に含めていない。
 従って上限修正だけで全69clipのCourt停止が解消するとは扱わない。
