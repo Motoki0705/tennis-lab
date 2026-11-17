@@ -100,10 +100,16 @@ def estimate_camera(*, camera: str, size_wh: tuple[int, int], sources: dict[str,
         for task, measured in zip(tasks, executor.map(measure, tasks), strict=True):
             seed, clip, frame = task
             local = fit_common_court(seed.matrix, measured.groups, size_wh, replace(config, min_clips_per_line=1))
+            # A bootstrap is only an initializer. Requiring its single frame to
+            # certify service order would discard the very ambiguity that the
+            # later multi-frame fit is intended to resolve. This is the same
+            # eligibility as frozen rejected neural H values, not an adoption.
+            proposed = measured.diagnostic.get('chosen_homography') if measured.groups else None
             bootstrap_reports.append({'seed': seed.candidate_id, 'clip_id': clip, 'frame_index': frame,
-                                      'measurement_reason': measured.diagnostic['reason'], 'reasons': list(local.reasons)})
-            if local.matrix is not None:
-                proposals.append(CourtSeed(f'{seed.candidate_id}/measured/{clip}/{frame}', clip, frame, local.matrix, seed.model_accepted))
+                                      'measurement_reason': measured.diagnostic['reason'], 'reasons': list(local.reasons),
+                                      'used_as_initializer': proposed is not None, 'scope': 'initializer_only'})
+            if proposed is not None:
+                proposals.append(CourtSeed(f'{seed.candidate_id}/measured/{clip}/{frame}', clip, frame, np.asarray(proposed, float), seed.model_accepted))
     refined, refinement_diagnostics = clustered_initializers(tuple(proposals), config)
     LOGGER.info('Shared court %s: %d RGB initializers, %d fit frames each', camera, len(refined), len(fit_frames))
     solutions = []

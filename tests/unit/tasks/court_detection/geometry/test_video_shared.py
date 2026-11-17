@@ -215,6 +215,9 @@ def test_drift_measures_known_pixel_motion_without_replacing_the_common_h(shift,
     result = inspect_drift(shared, groups, (1920, 1080), CONFIG)
     assert result['status'] == expected, result
     assert abs(result['mean_displacement_px'] - shift) < .01
+    residuals = result['common_line_residuals']
+    assert len(residuals) == 9 and all(row['used_by_local_fit'] for row in residuals)
+    assert .95 * shift - .01 <= max(row['p95_px'] for row in residuals) <= shift + .01
     np.testing.assert_array_equal(shared, original)
 
 
@@ -222,6 +225,20 @@ def test_missing_drift_observations_are_failed_not_zero_motion():
     result = inspect_drift(H, (), (640, 480), CONFIG)
     assert result['status'] == 'failed' and result['reason'] == 'drift_unobservable'
     assert result['mean_displacement_px'] is None and result['max_displacement_px'] is None
+    assert result['common_line_residuals'] == []
+
+
+def test_unverified_stripe_cannot_reduce_drift_uncertainty():
+    shared = np.diag([3., 2.25, 1.]) @ H
+    groups = tuple(replace(g, points=g.points * [3, 2.25] + [5., 0.])
+                   for g in observations(shifts=(0.,), counts=(24,)))
+    without = inspect_drift(shared, groups[1:], (1920, 1080), CONFIG)
+    bad = replace(groups[0], endings=('unobservable', 'unobservable'), points=groups[0].points + [0, 30])
+    with_unverified = inspect_drift(shared, (bad, *groups[1:]), (1920, 1080), CONFIG)
+    assert with_unverified['status'] == without['status'] == 'warning'
+    assert with_unverified['max_visible_projection_std_px'] == without['max_visible_projection_std_px']
+    assert with_unverified['mean_displacement_std_px'] == without['mean_displacement_std_px']
+    assert not with_unverified['common_line_residuals'][0]['used_by_local_fit']
 
 
 def test_local_projective_motion_can_fail_maximum_while_mean_stays_below_ten():
@@ -309,3 +326,39 @@ def test_estimator_checks_frozen_rgb_before_any_new_measurement(tmp_path, monkey
                                   paths={'video/clip': tmp_path / 'video.mp4'}, seeds_path=path,
                                   seeds_sha256=hashlib.sha256(path.read_bytes()).hexdigest(), seed_metadata=metadata,
                                   dataset_id='set', video_id='video', request={'seed_clip_ids': None, 'fit_clip_ids': None})
+
+
+def test_bootstrap_is_an_initializer_and_semantic_adoption_uses_all_fit_frames(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from src.tasks.court_detection.geometry.video_shared.observations import FramePaint
+    from src.tennis_scene.pipeline.video_court import estimator
+
+    path, _, document = seed_manifest(tmp_path)
+    rgb: np.ndarray = np.zeros((480, 640, 3), np.uint8)
+    metadata = {'source_frames': {'video/clip/0': {'media_sha256': 'f' * 64, 'rgb_sha256': hashlib.sha256(rgb.tobytes()).hexdigest()}}}
+    document['provenance'] = metadata
+    document['candidates'][0]['region_xyxy'] = [0, 0, 640, 480]
+    path.write_text(json.dumps(document))
+    monkeypatch.setattr(estimator, 'read_video_frame', lambda *args: SimpleNamespace(original_size=(640, 480), frame=rgb))
+
+    def measured(image, initial, *, clip_id, frame_index, config):
+        # Bootstrap has baseline/service but no centre segment. Later frames
+        # reveal the centre line independently in each clip and fix its order.
+        lines = (1, 2, 3, 4, 5, 7) if frame_index == 1 else tuple(range(9)) if frame_index == 4 else (1, 2, 3, 4, 5, 7, 8)
+        groups = tuple(replace(g, clip_id=clip_id, frame_index=frame_index)
+                       for g in observations(lines=lines, shifts=(0.,), counts=(24,)))
+        return FramePaint(groups, {'reason': 'measured', 'chosen_homography': H.tolist()})
+
+    monkeypatch.setattr(estimator, 'measure_frame', measured)
+    clips = ('video/clip', 'video/clip_b', 'video/clip_c')
+    result = estimator.estimate_camera(camera='left', size_wh=(640, 480),
+        sources={clip: {'sha256': 'f' * 64, 'num_frames': 5} for clip in clips},
+        paths={clip: tmp_path / 'video.mp4' for clip in clips}, seeds_path=path,
+        seeds_sha256=hashlib.sha256(path.read_bytes()).hexdigest(), seed_metadata=metadata,
+        dataset_id='set', video_id='video', request={'seed_clip_ids': ['video/clip'], 'fit_clip_ids': None,
+        'bootstrap_clip_ids': None, 'fit_numerators': [1, 2, 3], 'diagnostic_numerators': [4], 'denominator': 4, 'workers': 1})
+    assert result['status'] == 'accepted', result['diagnostics']['reasons']
+    np.testing.assert_allclose(project(np.array(result['matrix'])), project(H), atol=.01)
+    assert all(row['used_as_initializer'] and row['reasons'] for row in result['diagnostics']['bootstrap'])
+    assert all(row['status'] == 'ok' for row in result['clips'].values())

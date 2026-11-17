@@ -10,7 +10,7 @@ import numpy as np
 from ..homography import court_template_xy
 from ..hybrid_homography import project_candidate
 from ..line_evidence import FloatArray
-from ..paint_observations import image_lines
+from ..paint_observations import PAINT_NAMES, image_lines
 from ..quality import projection_jacobian
 from .fit import HomographyChart, PaintGroup, SharedPaintConfig, fit_common_court
 
@@ -28,6 +28,13 @@ def inspect_drift(shared: FloatArray, groups: tuple[PaintGroup, ...], size_wh: t
     diagnostic: dict[str, Any] = {"schema": "video_court_drift_v1", "status": "failed", "reason": "drift_unobservable",
                                   "local_geometry": local.diagnostic, "geometry_reasons": list(local.reasons),
                                   "mean_displacement_px": None, "max_displacement_px": None}
+    used = {row['line'] for row in local.diagnostic.get('group_residuals', []) if row['used']}
+    shared_lines = image_lines(shared)
+    diagnostic['common_line_residuals'] = [
+        {'line': PAINT_NAMES[group.line_index], 'used_by_local_fit': PAINT_NAMES[group.line_index] in used,
+         'signed_median_px': float(np.median(np.c_[group.points, np.ones(len(group.points))] @ shared_lines[group.line_index])),
+         'p95_px': float(np.percentile(np.abs(np.c_[group.points, np.ones(len(group.points))] @ shared_lines[group.line_index]), 95)),
+         'points': len(group.points)} for group in groups]
     if local.matrix is None:
         return diagnostic
     world = court_template_xy().astype(float)
@@ -42,6 +49,8 @@ def inspect_drift(shared: FloatArray, groups: tuple[PaintGroup, ...], size_wh: t
     parameters = chart.pack(local.matrix)
     locations, labels = [], []
     for group in groups:
+        if PAINT_NAMES[group.line_index] not in used:
+            continue
         axis = int(np.argmax(np.ptp(group.points, axis=0)))
         ordered = group.points[np.argsort(group.points[:, axis], kind='stable')]
         locations.extend(ordered[np.rint(np.array([.1, .9]) * (len(ordered) - 1)).astype(int)])
