@@ -13,6 +13,8 @@ from src.tasks.court_detection.geometry.video_shared.candidates import (
     CourtSeed,
     read_frozen_candidates,
 )
+from src.tasks.court_detection.geometry.video_shared.consensus import merge_measurements
+from src.tasks.court_detection.geometry.video_shared.drift import inspect_drift
 from src.tasks.court_detection.geometry.video_shared.endpoints import measure_endings
 from src.tasks.court_detection.geometry.video_shared.fit import (
     PaintGroup,
@@ -169,7 +171,7 @@ def test_multiple_rgb_frames_recover_known_h_with_static_net_and_moving_occlusio
 
 def test_rgb_two_transverse_lines_cannot_certify_static_net_identity():
     config = replace(CONFIG, paint=replace(PaintConfig(), ransac_trials=100, sample_spacing_px=12.))
-    measurements = [measure_frame(raster(frame, lines=(0, 1, 2, 3, 4)), H,
+    measurements = [measure_frame(raster(frame, lines=(0, 1, 2, 3, 4, 5)), H,
                                   clip_id=f'video/{frame}', frame_index=frame, config=config) for frame in range(3)]
     result = fit_common_court(H, tuple(g for m in measurements for g in m.groups), (640, 480), config)
     assert result.matrix is None
@@ -194,3 +196,41 @@ def test_algebraic_fit_needs_independent_endpoint_evidence():
     result = fit_common_court(H, groups, (640, 480), CONFIG)
     assert result.fitted_matrix is not None and result.matrix is None
     assert 'unverified_finite_line_identity' in result.reasons
+
+
+@pytest.mark.parametrize('shift,expected', [(0., 'ok'), (5., 'warning'), (11., 'failed')])
+def test_drift_measures_known_pixel_motion_without_replacing_the_common_h(shift, expected):
+    # Use full-HD coordinates so the agreed 3/10/25px units apply directly.
+    enlargement = np.diag([3., 2.25, 1.])
+    shared = enlargement @ H
+    original = shared.copy()
+    groups = tuple(replace(g, points=g.points * [3, 2.25] + [shift, 0]) for g in observations(shifts=(0.,), counts=(24,)))
+    result = inspect_drift(shared, groups, (1920, 1080), CONFIG)
+    assert result['status'] == expected, result
+    assert abs(result['mean_displacement_px'] - shift) < .01
+    np.testing.assert_array_equal(shared, original)
+
+
+def test_missing_drift_observations_are_failed_not_zero_motion():
+    result = inspect_drift(H, (), (640, 480), CONFIG)
+    assert result['status'] == 'failed' and result['reason'] == 'drift_unobservable'
+    assert result['mean_displacement_px'] is None and result['max_displacement_px'] is None
+
+
+def test_repeated_initializers_share_measurements_without_manufacturing_support():
+    groups = observations(shifts=(0., 0., 0.))
+    sparse = observations(shifts=(0., 0., 0.), counts=(12, 12, 12))
+    result = merge_measurements(H, (groups, sparse, groups), (640, 480), CONFIG)
+    assert result.matrix is not None, result.reasons
+    assert np.linalg.norm(project(result.matrix) - project(H), axis=1).max() < .001
+    assert result.diagnostic['merged_groups'] == 27
+    one_frame = tuple(g for g in groups if g.frame_index == 0)
+    rejected = merge_measurements(H, (one_frame,) * 4, (640, 480), CONFIG)
+    assert rejected.matrix is None
+
+
+def test_different_static_stripes_are_not_averaged_into_a_shared_court():
+    groups = observations(shifts=(0., 0., 0.))
+    displaced = tuple(replace(g, points=g.points + [0, 12]) if g.line_index == 0 else g for g in groups)
+    result = merge_measurements(H, (groups, displaced), (640, 480), CONFIG)
+    assert result.matrix is None and result.reasons == ('ambiguous_observed_stripes',)
