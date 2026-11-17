@@ -1,0 +1,81 @@
+{
+  "main_commit": "486aa1ab09be857909d0fcf8c2b616c75a53f5b0",
+  "source": "data/tennis_multiview/processed/meiji_4cam/dataset",
+  "clip_order": [
+    "video_000/clip_037"
+  ],
+  "source_dataset_sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099",
+  "selected_records": [
+    {
+      "clip_id": "video_000/clip_037",
+      "video_id": "video_000",
+      "clip_name": "clip_037",
+      "path": "videos/video_000/clips/clip_037",
+      "num_cameras": 4,
+      "num_frames": 292,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "files": [
+    {
+      "path": "videos/video_000/clips/clip_037/clip.json",
+      "sha256": "dc89788e4406ba99a0d36c73491b077f6bb88b545385ba998d142d8d0be91a94",
+      "bytes": 2062,
+      "probe": null
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam0.mp4",
+      "sha256": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+      "bytes": 6617788,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam1.mp4",
+      "sha256": "c1b473a238719658a3caa6da81e4b6cae50396c18109956305db5ecba354c9b5",
+      "bytes": 4989172,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam2.mp4",
+      "sha256": "8149f06c609a6f209499abf4cd17055a4b8ac4e9be301285c8a5fad4956c5bfc",
+      "bytes": 2896798,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam3.mp4",
+      "sha256": "0112a64759ffd98bec0cfc529b779222dded555d883675794d78eba00f5049a1",
+      "bytes": 5528034,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    }
+  ],
+  "repetitions": 1,
+  "conditions": [
+    "cold_component_cache"
+  ],
+  "prefix_definition": "Only completed court_detection and court_calibration artifacts are adopted; downstream artifacts and exports are absent. Cache preparation is outside the timed interval.",
+  "all_hit_definition": "Force dataset marker publication (overwrite=True), keep every component artifact, require all runner nodes cached and no model load.",
+  "stop_on_error": true,
+  "warm_definition": "Single cold qualification; CUDA/models first use included, input verification imports excluded; OS cache not dropped"
+}
