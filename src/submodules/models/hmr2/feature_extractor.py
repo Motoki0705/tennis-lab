@@ -15,6 +15,7 @@ from src.submodules.models._base.inference_model import BaseInferenceModel
 from src.submodules.smpl_assets import require_smpl_asset
 from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
+from src.utils.inference_recording import span
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,9 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
         self.batch_size = batch_size
         self._model: torch.nn.Module | None = None
 
+    def recording_assets(self) -> dict[str, Path]:
+        return {"checkpoint": self.checkpoint, "mean_params": self.mean_params_path}
+
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"HMR2 checkpoint not found: {self.checkpoint}")
@@ -90,9 +94,12 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
             batches = iter_person_crops(request.video_path, request.bbx_xys, request.frame_indices, batch_size=self.batch_size)
         features = []
         for images, _ in tqdm(batches, desc="HMR2 features"):
-            imgs_batch = images.to(self._device)
-            feature = self._model({"img": imgs_batch})
-            features.append(feature.detach().cpu())
+            with span("transfer", model="HMR2"):
+                imgs_batch = images.to(self._device)
+            with span("inference", model="HMR2", batch_shape=list(imgs_batch.shape)):
+                feature = self._model({"img": imgs_batch})
+            with span("postprocess", model="HMR2"):
+                features.append(feature.detach().cpu())
 
         return ImageFeatureResult(
             features=torch.cat(features, dim=0).float() if features else torch.empty(0, 1024)

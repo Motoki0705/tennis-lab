@@ -1,0 +1,16 @@
+{
+  "route": "benchmark.verify_source: import generate_dataset.manifest before entering recorder",
+  "before": {
+    "torch": false,
+    "cv2": false,
+    "hydra": false,
+    "src.tennis_scene.pipeline.orchestrator": false
+  },
+  "after": {
+    "torch": true,
+    "cv2": true,
+    "hydra": false,
+    "src.tennis_scene.pipeline.orchestrator": false
+  },
+  "cuda_initialized": false
+}

@@ -30,6 +30,7 @@ from src.tennis_scene.pipeline.observation_types import (
     GroupedObservations,
     ObjectObservations,
 )
+from src.utils.inference_recording import model_event
 
 
 class SmplGeometry:
@@ -44,7 +45,9 @@ class SmplGeometry:
     @property
     def root_regressor(self) -> NDArray[np.float64]:
         if self._root is None:
-            value = torch.load(self.config.smpl_assets.smpl_neutral_joint_regressor, map_location="cpu", weights_only=True)
+            with model_event("load", "SMPL-root-regressor", weights={"regressor": self.config.smpl_assets.smpl_neutral_joint_regressor},
+                             device="cpu", dtype="float64", instance=f"{id(self)}:root"):
+                value = torch.load(self.config.smpl_assets.smpl_neutral_joint_regressor, map_location="cpu", weights_only=True)
             if not isinstance(value, torch.Tensor) or value.ndim not in (1, 2) or not bool(torch.isfinite(value).all()):
                 raise ValueError("Invalid SMPL root regressor")
             self._root = value.double().numpy()

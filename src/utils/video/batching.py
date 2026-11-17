@@ -6,6 +6,7 @@ from collections.abc import Iterable, Iterator
 
 import torch
 
+from src.utils.inference_recording import measured
 from src.utils.video.types import TemporalBatch, TemporalWindow
 
 
@@ -30,6 +31,7 @@ def iter_temporal_batches(
         yield _stack_batch(pending, pin_memory=pin_memory)
 
 
+@measured("preprocess")
 def _stack_batch(
     windows: list[TemporalWindow[torch.Tensor]],
     *,

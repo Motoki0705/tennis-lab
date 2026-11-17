@@ -1,0 +1,10 @@
+{
+  "main": {
+    "type": "ValueError",
+    "message": "Component is not ready: ('unknown', 'node')"
+  },
+  "instrumented": {
+    "type": "KeyError",
+    "message": "('unknown', 'node')"
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "main_commit": "2736a24a3fa643254f441f318ed9241bc2c73724",
+  "source": "data/tennis_multiview/processed/meiji_4cam/dataset",
+  "clip_order": [
+    "video_000/clip_035",
+    "video_000/clip_037"
+  ],
+  "source_dataset_sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099",
+  "selected_records": [
+    {
+      "clip_id": "video_000/clip_035",
+      "video_id": "video_000",
+      "clip_name": "clip_035",
+      "path": "videos/video_000/clips/clip_035",
+      "num_cameras": 4,
+      "num_frames": 2108,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "video_id": "video_000",
+      "clip_name": "clip_037",
+      "path": "videos/video_000/clips/clip_037",
+      "num_cameras": 4,
+      "num_frames": 292,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "files": [
+    {
+      "path": "videos/video_000/clips/clip_035/clip.json",
+      "sha256": "8ed7da3ae9812be8846d2c049814cfbd045bc59ba89707be35074ac5824f078c",
+      "bytes": 2064,
+      "probe": null
+    },
+    {
+      "path": "videos/video_000/clips/clip_035/media/cam0.mp4",
+      "sha256": "dadbd3db21b8b34e600f9153a8203df7399774c9c276fc2d00ff7a53e49fb456",
+      "bytes": 44014303,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "2108"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_035/media/cam1.mp4",
+      "sha256": "f4e84dbe56c7b1d47ad89747b090db9eb3ab33dfab65a787423f8d9645806ee1",
+      "bytes": 36391033,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "2108"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_035/media/cam2.mp4",
+      "sha256": "ef02b4e4eb838b9084b8254f3af9690280d98c72a3ed3c2df829d9a213f4a572",
+      "bytes": 19297031,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "2108"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_035/media/cam3.mp4",
+      "sha256": "5fc85ed417f69ae446a1b088381399dcdd5ea720c93646cc0ab34c68e469eaa1",
+      "bytes": 34246686,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "2108"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/clip.json",
+      "sha256": "dc89788e4406ba99a0d36c73491b077f6bb88b545385ba998d142d8d0be91a94",
+      "bytes": 2062,
+      "probe": null
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam0.mp4",
+      "sha256": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+      "bytes": 6617788,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam1.mp4",
+      "sha256": "c1b473a238719658a3caa6da81e4b6cae50396c18109956305db5ecba354c9b5",
+      "bytes": 4989172,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam2.mp4",
+      "sha256": "8149f06c609a6f209499abf4cd17055a4b8ac4e9be301285c8a5fad4956c5bfc",
+      "bytes": 2896798,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam3.mp4",
+      "sha256": "0112a64759ffd98bec0cfc529b779222dded555d883675794d78eba00f5049a1",
+      "bytes": 5528034,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    }
+  ],
+  "repetitions": 3,
+  "conditions": [
+    "cold_component_cache",
+    "completed_court_prefix",
+    "all_node_cache_hit"
+  ],
+  "prefix_definition": "Only completed court_detection and court_calibration artifacts are adopted; downstream artifacts and exports are absent. Cache preparation is outside the timed interval.",
+  "all_hit_definition": "Force dataset marker publication (overwrite=True), keep every component artifact, require all runner nodes cached and no model load.",
+  "stop_on_error": true,
+  "warm_definition": "repeat 1 includes initial imports/CUDA; repeats 2/3 reuse process, not models; OS cache not dropped"
+}
