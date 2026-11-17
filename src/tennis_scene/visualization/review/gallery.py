@@ -659,7 +659,27 @@ class Review(StoreReader):
         return [image], [(f"player {item['person_id']}", f"{item['camera_id']}; {len(item['requests'])} segments; {sum(item['observed_samples'])} observed samples")
                          for item in selections]
 
-    @renders("gvhmr", "body_parameters", 1)
+    @renders("hmr2_features", "hmr2_features", 1)
+    def render_hmr2_features(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        bodies = value["bodies"]
+        def plot(ax: Any) -> None:
+            for row, body in enumerate(bodies):
+                for segment in body["segments"]:
+                    ax.plot(_array(segment["source_frames"]), np.linalg.norm(_array(segment["features"]), axis=1),
+                        marker=".", lw=1, color=COLORS_MPL[row % len(COLORS_MPL)],
+                        label=f"player {body['person_id']} / {body['camera_id']} / segment {segment['segment_index']}")
+            ax.set(xlabel="source frame", ylabel="image feature L2 norm", title="Stored HMR2 image features by body segment")
+            if any(body["segments"] for body in bodies):
+                ax.legend()
+            ax.grid(alpha=.2)
+        image = _save_plot(self.output / "images" / "hmr2_feature_norms.png", plot)
+        details = [("clip", value["clip_id"])]
+        details.extend((f"player {body['person_id']}",
+            f"{body['camera_id']}; {len(body['segments'])} segments; {sum(len(s['source_frames']) for s in body['segments'])} feature frames")
+            for body in bodies)
+        return [image], details
+
+    @renders("gvhmr", "body_parameters", (1, 2))
     def render_gvhmr(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         bodies = value["bodies"]
         def plot(ax: Any) -> None:

@@ -21,5 +21,19 @@
     "wall_seconds": 29.74,
     "reused_node": "tests/unit/tennis_scene/test_person_model_assets.py::test_standard_pipeline_reports_acquisition_before_model_loading",
     "finding": "CI detected loss of acquisition URL for missing HMR2 mean params; validate with require_smpl_asset before creating content identity."
+  },
+  "gallery_regression": {
+    "passed": 297,
+    "wall_seconds": 31.57,
+    "finding": "Register the HMR2 artifact renderer and accept GVHMR body parameter v2 in the read-only gallery.",
+    "reused_node": "tests/unit/tennis_scene/visualization/review/test_gallery.py::test_gallery_renders_every_declared_component_without_writing_the_store",
+    "source_frame_node": "tests/unit/tennis_scene/visualization/review/test_gallery.py::test_gallery_renderers_keep_gaps_on_the_source_frame_axis"
+  },
+  "full_scene_regression": {
+    "passed": 1170,
+    "wall_seconds": 56.34,
+    "command": "CUDA_VISIBLE_DEVICES='' .venv/bin/python -m pytest -n 4 tests/unit/tennis_scene tests/integration/tennis_scene -q --durations=10",
+    "existing_gallery_case_call_seconds": 6.67,
+    "cost_reason": "The existing gallery case renders every declared artifact and verifies the store is unchanged; the new node adds one plot and no shared setup. Its complete render path is required to detect registry/schema and persistence integration failures."
   }
 }

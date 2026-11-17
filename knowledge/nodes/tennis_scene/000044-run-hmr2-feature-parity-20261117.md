@@ -58,3 +58,5 @@ source frame metadataを保ったままHMR2特徴rowだけを反転する故障�
 次の受入には、身体view選択まで一意に確定する固定入力または保存済みBodyViewSelectionが必要。今回は親の1clip制限を守り、別clipへのGPU実行、人物IDの手動統合、閾値・cameraの変更は行っていない。親が入力/対応方針を判断した後、同じ比較手順を使って身体出力と実モデル読込記録を取得する。C4の一括CLIをこの最適化の未達によって止める判断はworkerでは行わない。
 
 CIでHMR2 mean params欠落時の取得先URLが新nodeの汎用identity検査により失われた退行を検出した（[4a0bcca09 CPU shard 2](https://github.com/Motoki0705/tennis-lab/actions/runs/44081276599/job/134032912772)）。identity作成前に既存require_smpl_assetを通すよう修正し、既存の取得案内契約テストを含む279caseが29.74秒で成功した。正しい資産を使う推論の入力/数値処理は変わらず、GPUの上流停止は未解消である。
+
+続くCIは[4056ef5b7 CPU shard 1](https://github.com/Motoki0705/tennis-lab/actions/runs/44083406887/job/134040209733)でgalleryの新node登録漏れを検出した。HMR2特徴のsource frame別normとsegment/人物/cameraの表示を登録し、GVHMRのv2も明示対応した。既存の全component描画・store不変契約とsource frame/gap契約を拡張して確認し、関連297caseが31.57秒で成功。さらにtennis_sceneのunit/integration全体1,170caseが56.34秒で成功した。既存の全artifactを実描画するgallery 1caseはcall 6.67秒で5秒目安を超えた。新nodeは図1枚だけを追加しており、schema登録と実描画/store不変を一緒に検証する既存の固有契約を維持するため、この重いcaseを残した。
