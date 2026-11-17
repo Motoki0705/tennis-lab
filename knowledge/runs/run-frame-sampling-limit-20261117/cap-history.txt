@@ -1,0 +1,22 @@
+3879a27d7975c503ba1ba3f40f38948defdfe7f8
+feat(tennis_scene): declarative component pipeline without PLCS Re-ID/side models
+
+Extracted from PR #915 (9b8f7d3c, 382005b4, 4211b108, 2b084442 and the
+pipeline parts of 5d26aa0d/09b3c76b/04deb002). The fixed-track PLCS Re-ID
+and CourtSideModel are not included (#931 decision):
+
+- player_association / court_side nodes are defined by tennis_scene-owned
+  artifact contracts (components/identity.py, schema version 2) and are
+  load-only until #933 / #932 add implementations; requesting execution
+  fails when the definition is built.
+- The frame-sampling budget moves from the Re-ID inference policy to
+  frame_sampling.max_frames (pipeline/frame_sampling.py replaces
+  utilts/timeline.py).
+- The historical manual association decoder moves to
+  src/tasks/plcs/data/manual_association.py, removing the tasks ->
+  tennis_scene reverse dependency of the residual real-clip loader.
+- The colab job protects people_models.yolo_checkpoint instead of the
+  removed Re-ID/side checkpoints.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
