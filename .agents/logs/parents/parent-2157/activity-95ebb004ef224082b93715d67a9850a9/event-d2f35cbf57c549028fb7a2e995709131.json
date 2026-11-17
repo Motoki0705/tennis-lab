@@ -1,0 +1,88 @@
+{
+  "record": {
+    "data": {
+      "action_id": "f4e33f30edd34de3806ab91d5097a647",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=saved parent verification; content_sha256=8c326ff1b3d854c303a24bfd59fc356687e6fb44c6febda45608ea285c98676e; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=8c326ff1b3d854c303a24bfd59fc356687e6fb44c6febda45608ea285c98676e; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2214]; 最終成果: PR #2214 をHEAD fc21f448b でmerge（423900088、main CI成功、#2213 closed/completed）。新しい自動進行で major（複数行の受入条件）→ 同じworkerの修正 → 親の merge-continue（再レビューなし）→ merge後確認まで通過。修正後のコードで #2157 の completion.requirements が available=true（合意1件＋受入12項目）。",
+      "verifies": [
+        "03eda580588447389db2d1303c0d1091"
+      ]
+    },
+    "id": "d2f35cbf57c549028fb7a2e995709131",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "95ebb004ef224082b93715d67a9850a9",
+      "delegation": {
+        "key": "d-489631ace8c54682a3bfd2098539c998",
+        "turn": 2
+      },
+      "issue": 2213,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-17T02:06:17.742525+00:00"
+      },
+      "recorded_at": "2026-11-17T02:06:17.742542+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
