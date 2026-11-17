@@ -5,9 +5,11 @@ from __future__ import annotations
 import hashlib
 import logging
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Iterator
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, replace
 from functools import lru_cache
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, cast
 
@@ -35,6 +37,23 @@ from src.utils.video import read_video_frame
 
 PROFILE = 'temporal_rgb_candidate_consensus_v1'
 LOGGER = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=12)
+def _source_rgb(path: Path, frame: int, size_wh: tuple[int, int]) -> np.ndarray:
+    packet = read_video_frame(path, frame)
+    if tuple(packet.original_size) != size_wh:
+        raise ValueError('Shared court RGB size disagrees with source')
+    return cast(np.ndarray, cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB))
+
+
+def _measure_source(task: tuple[CourtSeed, str, int, Path, tuple[int, int], SharedPaintConfig]) -> tuple[FramePaint, str]:
+    """Spawn-safe CPU operation; source paths are pinned by the parent reader."""
+    cv2.setNumThreads(1)
+    seed, clip, frame, path, size_wh, config = task
+    rgb = _source_rgb(path, frame, size_wh)
+    measured = measure_frame(rgb, seed.matrix, clip_id=clip, frame_index=frame, config=config)
+    return measured, hashlib.sha256(rgb.tobytes()).hexdigest()
 
 
 def sample_indices(count: int, numerators: list[int], denominator: int) -> tuple[int, ...]:
@@ -93,11 +112,23 @@ def estimate_camera(*, camera: str, size_wh: tuple[int, int], sources: dict[str,
         seed, clip, frame = task
         return measure_frame(image(clip, frame), seed.matrix, clip_id=clip, frame_index=frame, config=config)
 
+    def measure_tasks(executor: ProcessPoolExecutor, tasks: list[tuple[CourtSeed, str, int]]) -> Iterator[FramePaint]:
+        if request['workers'] == 1:
+            yield from map(measure, tasks)
+            return
+        jobs = [(seed, clip, frame, paths[clip], size_wh, config) for seed, clip, frame in tasks]
+        for (_, clip, frame), (measured, digest) in zip(tasks, executor.map(_measure_source, jobs), strict=True):
+            key = f'{clip}/{frame}'
+            if key in decoded_hashes and decoded_hashes[key] != digest:
+                raise ValueError('Shared court source RGB changed between worker reads')
+            decoded_hashes[key] = digest
+            yield measured
+
     proposals = []
     bootstrap_reports = []
-    with ThreadPoolExecutor(max_workers=request['workers']) as executor:
+    with ProcessPoolExecutor(max_workers=request['workers'], mp_context=get_context('spawn')) as executor:
         tasks = [(seed, clip, frame) for seed in initializers for clip, frame in bootstrap]
-        for task, measured in zip(tasks, executor.map(measure, tasks), strict=True):
+        for task, measured in zip(tasks, measure_tasks(executor, tasks), strict=True):
             seed, clip, frame = task
             local = fit_common_court(seed.matrix, measured.groups, size_wh, replace(config, min_clips_per_line=1))
             # A bootstrap is only an initializer. Requiring its single frame to
@@ -114,10 +145,10 @@ def estimate_camera(*, camera: str, size_wh: tuple[int, int], sources: dict[str,
     LOGGER.info('Shared court %s: %d RGB initializers, %d fit frames each', camera, len(refined), len(fit_frames))
     solutions = []
     solution_reports = []
-    with ThreadPoolExecutor(max_workers=request['workers']) as executor:
+    with ProcessPoolExecutor(max_workers=request['workers'], mp_context=get_context('spawn')) as executor:
         for seed in refined:
             tasks = [(seed, clip, frame) for clip, frame in fit_frames]
-            measured_frames = list(executor.map(measure, tasks))
+            measured_frames = list(measure_tasks(executor, tasks))
             groups = tuple(group for measured in measured_frames for group in measured.groups)
             fitted = fit_common_court(seed.matrix, groups, size_wh, config)
             solutions.append(fitted)
