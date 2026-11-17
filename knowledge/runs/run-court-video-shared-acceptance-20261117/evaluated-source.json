@@ -1,0 +1,43 @@
+{
+  "build_head": "d6b70d4cdf6ac00f497ddd0368dc05f593932b38",
+  "unchanged_numeric_files": {
+    "src/tasks/court_detection/geometry/__init__.py": "732436a5b060ad3f63edf28ba267bc7645735a0ccbd5341b27233c1a7bea8001",
+    "src/tasks/court_detection/geometry/confidence_homography.py": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+    "src/tasks/court_detection/geometry/homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+    "src/tasks/court_detection/geometry/hybrid_homography.py": "3504859c4f0984f09057873a500cc2f5a85c614e6c69fdbaaf58062924f8fe55",
+    "src/tasks/court_detection/geometry/line_evidence.py": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+    "src/tasks/court_detection/geometry/observations.py": "ea704e5dc944154f3560e08f4f14db4ea0f45db9917da3e198c178e2b1245e17",
+    "src/tasks/court_detection/geometry/paint_correspondence.py": "3ab20414b1a43d0f03794603b5e17b61c3b3b55b6c98462754df27c063d6c81b",
+    "src/tasks/court_detection/geometry/paint_observations.py": "295041f2fa9e6a604bb0cd030af8023e0216a3e5ecb6557e53e6cf5445af33e3",
+    "src/tasks/court_detection/geometry/paint_refinement.py": "7a04ce8ad7dad1748bcf7069af56c0247f84bd48020ca36b1893d3762ff8c793",
+    "src/tasks/court_detection/geometry/pose.py": "43e1e20cdd1d436b97b25bcd86205ad71533747c0317984f3a6889f2fff6d7ad",
+    "src/tasks/court_detection/geometry/postprocess.py": "83360fe0115b3337adfce1f8ff55315ad7cc7dfced674521d19cf0ea4914dcf5",
+    "src/tasks/court_detection/geometry/quality.py": "ec15ea4582ad113b3358d02ba07bafbe322334b74a8c09ad4b047962dd0d6558",
+    "src/tasks/court_detection/geometry/video_shared/__init__.py": "33375011f63d3f8b1f13a2f672b6b19362735a6f87f2745fb8af4b042ef2b73f",
+    "src/tasks/court_detection/geometry/video_shared/candidates.py": "3bca3c90d0b245c8f1beeda1a32e7739ee9a5e5d96fe8049ffc071c43093d6f0",
+    "src/tasks/court_detection/geometry/video_shared/consensus.py": "df0b5e7ffcdff29f4c5319f944546e6f0fae84759851d6b1c4659cd7a79c3b0b",
+    "src/tasks/court_detection/geometry/video_shared/drift.py": "ffd404e6f2a3e12e849b7ef90f18ccb4512cc92a54907fe977f86f53d881dc11",
+    "src/tasks/court_detection/geometry/video_shared/endpoints.py": "591495e845adedc16600b8641d9ad6a3ad0022a4e6db692ef5b6d1aecd3a982e",
+    "src/tasks/court_detection/geometry/video_shared/fit.py": "948126c1769cbb3337848c2e568d8fb5cbc477f3d84e96c44e57765f6ff1e851",
+    "src/tasks/court_detection/geometry/video_shared/observations.py": "a0276294e775c719d613a4a81b6a7f413ea6b569328bd158ec7062fc30aa950e",
+    "src/tennis_scene/pipeline/video_court/__init__.py": "803965cc460598bbf189cd303c9852b4436cf1e127b4b14f9953ec0db2fe76f6",
+    "src/tennis_scene/pipeline/video_court/component.py": "9162e3cee343c34561efd2ed5a7e21efc2c4fbc2a72a4f93d35d93491e535090",
+    "src/tennis_scene/pipeline/video_court/prepare.py": "ac311aaa777cc4aa0d7ff6c51bcff23cc512efe0feb69052ebec88ad69a2f643",
+    "src/tennis_scene/pipeline/video_court/store.py": "a1abb38621d574ed0846fcf6601a4a66656338d2751976f78f85c2be47d3705a"
+  },
+  "changed_after_build": [
+    "src/tennis_scene/pipeline/orchestrator.py",
+    "src/tennis_scene/visualization/review/gallery.py",
+    "src/tennis_scene/pipeline/video_court/estimator.py"
+  ],
+  "after_build_change": "receipt/image presentation and a runtime-equivalent local variable type annotation; numeric bytecode unchanged",
+  "legacy_replay_source_files_still_exact": true,
+  "legacy_replay_head": "2debeca60b5173bf3feedfb93febad13a4a8e527",
+  "annotation_only_numeric_file": {
+    "source": "src/tennis_scene/pipeline/video_court/estimator.py",
+    "before_sha256": "9ffb9ddb0249932019675ba2e6f6ee5e0e5802b15e2ee237e5811551112c8976",
+    "after_sha256": "a8036115e39a94b96df21844aa534d9408478f6089fa4a2813bdad9dcd0898a3",
+    "module_and_nested_function_bytecode_constants_names_arguments_identical": true,
+    "change": "Local report variable type annotation only; fixes full-set mypy inference without runtime change"
+  }
+}

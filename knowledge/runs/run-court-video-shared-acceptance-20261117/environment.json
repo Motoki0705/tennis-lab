@@ -1,0 +1,16 @@
+{
+  "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "numpy": "2.3.5",
+  "scipy": "1.17.1",
+  "opencv": "5.0.0",
+  "torch": "2.13.0+cu130",
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "logical_cpu_affinity": 12,
+  "gpu_used": false
+}

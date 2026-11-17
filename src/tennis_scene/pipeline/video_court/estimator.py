@@ -174,7 +174,7 @@ def estimate_camera(*, camera: str, size_wh: tuple[int, int], sources: dict[str,
         frames = []
         for frame in sample_indices(sources[clip]['num_frames'], request['diagnostic_numerators'], request['denominator']):
             if selected.matrix is None:
-                report = {'status': 'failed', 'reason': 'shared_court_unavailable', 'mean_displacement_px': None, 'max_displacement_px': None}
+                report: dict[str, Any] = {'status': 'failed', 'reason': 'shared_court_unavailable', 'mean_displacement_px': None, 'max_displacement_px': None}
             else:
                 measured = measure_frame(image(clip, frame), selected.matrix, clip_id=clip, frame_index=frame, config=config)
                 report = inspect_drift(selected.matrix, measured.groups, size_wh, config)
