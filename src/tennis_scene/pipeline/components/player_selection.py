@@ -75,19 +75,20 @@ class PlayerSelectionOutput:
 
 class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelectionOutput]):
     io = ComponentIO('player_selection', PlayerSelectionInput, PlayerSelectionOutput,
-        {'tracks': InputPort('person_tracks', 5), 'calibration': InputPort('local_court_calibration')},
-        'selected_player_tracks', version=2)
+        {'tracks': InputPort('person_tracks', 6), 'calibration': InputPort('local_court_calibration')},
+        'selected_player_tracks', version=3)
 
     def __init__(self, config: LinkingConfig, *, footpoints: FootpointConfig,
                  sampling: CropSamplingConfig, encoder: ModelSpec[AppearanceEncoder] | None,
-                 encoder_name: str | None, device: str, enabled: bool) -> None:
+                 encoder_name: str | None, device: str, enabled: bool, require_evidence: bool = False) -> None:
         if (encoder is None) != (encoder_name is None):
             raise ValueError('Selection encoder and name must be provided together')
+        self.require_evidence = require_evidence
         self.config, self.footpoints, self.sampling = config, footpoints, sampling
         self.encoder, self.encoder_name, self.device, self.enabled = encoder, encoder_name, device, enabled
 
     def model_specs(self) -> dict[str, ModelSpec[AppearanceEncoder]]:
-        return {"encoder": self.encoder} if self.enabled and self.encoder is not None else {}
+        return {"encoder": self.encoder} if self.enabled and self.encoder is not None and not self.require_evidence else {}
 
     def process_with_models(self, inputs: PlayerSelectionInput, models: ModelBorrower) -> PlayerSelectionOutput:
         video, raw = inputs.video, inputs.tracks
@@ -112,6 +113,8 @@ class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelec
                                               (video.width, video.height), sampling))
             appearance_record.update(encoder=raw.evidence.encoder, sampling=asdict(sampling),
                                      source='tracked_detection_features')
+        elif self.require_evidence and self.encoder is not None:
+            raise ValueError('Selection lost compatible per-detection appearance evidence; regenerate upstream artifacts')
         elif self.encoder is not None and raw.observed.any():
             encoder: AppearanceEncoder = models.borrow("encoder")
             if encoder.name != self.encoder_name:

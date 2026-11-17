@@ -8,8 +8,8 @@ import pytest
 import torch
 
 from src.tasks.person_tracking.sequence import TrackingConfig
+from src.tennis_scene.pipeline.components import person_features, pose_estimation
 from src.tennis_scene.pipeline.components import person_tracking as module
-from src.tennis_scene.pipeline.components import pose_estimation
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import SourceVideo
 from src.tennis_scene.pipeline.definition import (
@@ -46,15 +46,15 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
     nodes = {n.name: n for n in standard_definition(cfg, source, code_identity='test')}
     node = nodes['person_tracking/cam0']
     assert node.component.config == cfg.tracking
-    assert node.io.version == 5 and node.io.inputs['detections'].version == 2
-    assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 5
+    assert node.io.version == 6 and node.io.inputs['detections'].version == 2
+    assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 6
     # The standard recipe declares the same runtime model across cameras and
     # across CLIP consumers; assembling it must not instantiate any model.
     for stage, alias in [('court_detection', 'court'), ('ball_detection', 'ball'),
-                         ('person_detection', 'detector'), ('person_tracking', 'pose')]:
+                         ('person_detection', 'detector'), ('person_pose_features', 'pose')]:
         assert len({nodes[f'{stage}/cam{i}'].component.model_specs()[alias].key for i in range(3)}) == 1
     encoder_keys = {nodes[f'{stage}/cam{i}'].component.model_specs()['encoder'].key
-                    for stage in ('person_tracking', 'player_selection') for i in range(3)}
+                    for stage in ('person_appearance_features',) for i in range(3)}
     encoder_keys.add(nodes['player_association'].component.model_specs()['encoder'].key)
     assert len(encoder_keys) == 1
     assert nodes['pose_estimation/cam0'].component.model_specs() == {}
@@ -79,7 +79,8 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
             assert kwargs['precision'] == 'float32'
         def predict(self, request: Any) -> Any:
             calls.append(1)
-            values = torch.zeros((1, 17, 3))
+            list(request.frames_bgr)
+            values = torch.zeros((len(request.bbx_xys), 17, 3))
             values[..., 0], values[..., 1], values[..., 2] = 30., 60., 1.4
             return SimpleNamespace(keypoints=values)
         def load(self) -> None:
@@ -98,18 +99,21 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
             pass
         def links(self, boxes: np.ndarray, observed: np.ndarray) -> tuple[dict[int, int], list[Any]]:
             return {i: i for i in range(len(boxes))}, []
-    monkeypatch.setattr(module, 'ViTPosePose2D', Pose)
+    monkeypatch.setattr(person_features, 'ViTPosePose2D', Pose)
     monkeypatch.setattr(module, 'AFLink', Link)
-    monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k:
+    monkeypatch.setattr(person_features, 'OpenCVVideoFrameReader', lambda *a, **k:
         [SimpleNamespace(index=i, frame=np.zeros((180, 180, 3), np.uint8)) for i in range(5)])
     video = SourceVideo('cam0', tmp_path / 'unused.mp4', 'hash', 5, 30., 180, 180)
     detections = PersonDetectionOutput('cam0', np.arange(6, dtype=np.int64),
         np.tile(np.array([[10, 20, 50, 120]], np.float32), (5, 1)), np.full(5, .9, np.float32),
         np.array([0, 2, 4, 6, 8], np.int64))
     people = make_people_config(tmp_path)
-    tracker = module.PersonTrackingModule(TrackingConfig(), people=people, encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'af.pth')
-    result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detections))
-    assert len(calls) == 5 and result.evidence is not None
+    poses = materialize_model_weights(person_features.PersonPoseFeaturesModule(people)).process(person_features.PersonFeaturesInput(video, detections))
+    appearance = materialize_model_weights(person_features.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder))).process(
+        person_features.PersonAppearanceFeaturesInput(video, detections, poses))
+    tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'af.pth')
+    result = tracker.process(module.PersonTrackingInput(video, detections, poses, appearance))
+    assert len(calls) == 1 and result.evidence is not None
     assert result.evidence.detection_rows.tolist() == [[-1, -1, 4, 6, 8]]
     def forbidden(*a: Any, **k: Any) -> Any:
         raise AssertionError('Pose must not be recomputed')
@@ -119,3 +123,17 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
     assert observed.confidence[0, 2, 0, 0] == np.float32(1.4)
     with pytest.raises(ValueError, match='lost per-detection'):
         pose.process(pose_estimation.PoseEstimationInput(video, replace(result, evidence=None)))
+
+
+@pytest.mark.parametrize('name,version', [('person_tracking/cam0', 5), ('player_selection/cam0', 2), ('pose_estimation/cam0', 1)])
+def test_pre_split_schema_cannot_bind_to_new_pipeline(tmp_path: Path, name: str, version: int) -> None:
+    from src.tennis_scene.pipeline.contracts import ClipSource
+    from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
+    from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+    cfg = runtime(tmp_path, overrides=('gvhmr.enabled=false',))
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
+    source = ClipSource('test', tuple(SourceVideo(f'cam{i}', tmp_path / f'{i}.mp4', 'hash', 5, 30., 1920, 1080) for i in range(3)))
+    nodes = standard_definition(cfg, source, code_identity='test')
+    incompatible = tuple(replace(node, io=replace(node.io, version=version)) if node.name == name else node for node in nodes)
+    with pytest.raises(ValueError, match='Incompatible artifact binding'):
+        ExecutionPlan([ClipExecution(source.clip_id, incompatible, ClipStore(tmp_path / 'store', {}))])

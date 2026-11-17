@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
@@ -28,6 +28,10 @@ from src.tennis_scene.pipeline.components.court_side import CourtSideModule
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
 from src.tennis_scene.pipeline.components.identity import PlayerAssociationModule
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
+from src.tennis_scene.pipeline.components.person_features import (
+    PersonAppearanceFeaturesModule,
+    PersonPoseFeaturesModule,
+)
 from src.tennis_scene.pipeline.components.person_tracking import (
     PersonTrackingModule,
 )
@@ -51,7 +55,9 @@ from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     BallDetectionInputAssembler,
     CourtCalibrationInputAssembler,
     CourtDetectionInputAssembler,
+    PersonAppearanceFeaturesInputAssembler,
     PersonDetectionInputAssembler,
+    PersonPoseFeaturesInputAssembler,
     PersonTrackingInputAssembler,
     PlayerSelectionInputAssembler,
     PoseEstimationInputAssembler,
@@ -114,13 +120,11 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     tracking_encoder = appearance_model(cfg.tracking.encoder, cfg.tracking_encoder_weights, cfg.device,
         partial(build_encoder, cfg.tracking.encoder, checkpoint_root=cfg.roots.checkpoint_root,
                 external_root=cfg.roots.external_asset_root, device=cfg.device))
-    tracking_assets = {'pose': cfg.people.vitpose_checkpoint, 'encoder': cfg.tracking_encoder_weights,
-                       'aflink': cfg.aflink_checkpoint}
 
     def body_assets() -> dict[str, Any]:
         if body_enabled:
             cfg.people.smpl_assets.require_files()
-        return asset_identities(body_enabled, cfg.people.body_assets())
+        return cast(dict[str, Any], asset_identities(body_enabled, cfg.people.body_assets()))
 
     for camera in ids:
         add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
@@ -152,13 +156,22 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
              "runtime": cfg.people.runtime.dino_detector,
              "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
              "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
-        add(f"person_tracking/{camera}", PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=tracking_encoder,
+        add(f"person_pose_features/{camera}", PersonPoseFeaturesModule(cfg.people, cfg.tracking.features, enabled=people_enabled),
+            PersonPoseFeaturesInputAssembler(), {"detections": f"person_detection/{camera}"},
+            lambda: {"features": cfg.tracking.features, "runtime": cfg.people.runtime.vitpose, "precision": "float32",
+                "assets": asset_identities(people_enabled, {"pose": cfg.people.vitpose_checkpoint}), "enabled": people_enabled}, camera=camera)
+        add(f"person_appearance_features/{camera}", PersonAppearanceFeaturesModule(tracking_encoder, cfg.tracking.features, enabled=people_enabled),
+            PersonAppearanceFeaturesInputAssembler(), {"detections": f"person_detection/{camera}", "poses": f"person_pose_features/{camera}"},
+            lambda: {"features": cfg.tracking.features, "encoder": cfg.tracking.encoder, "precision": "float32", "pose_prompt": False,
+                "assets": asset_identities(people_enabled, {"encoder": cfg.tracking_encoder_weights}), "enabled": people_enabled}, camera=camera)
+        add(f"person_tracking/{camera}", PersonTrackingModule(cfg.tracking,
             aflink_checkpoint=cfg.aflink_checkpoint, enabled=people_enabled), PersonTrackingInputAssembler(),
-            {"detections": f"person_detection/{camera}"}, lambda: {"profile": cfg.tracking.identity(),
-                "assets": asset_identities(people_enabled, tracking_assets), "pose_runtime": cfg.people.runtime.vitpose,
-                "pose_precision": "float32", "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
+            {"detections": f"person_detection/{camera}", "poses": f"person_pose_features/{camera}",
+             "appearance": f"person_appearance_features/{camera}"}, lambda: {"profile": cfg.tracking.identity(),
+                "assets": asset_identities(people_enabled, {"aflink": cfg.aflink_checkpoint}),
+                "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
         add(f"player_selection/{camera}", PlayerSelectionModule(selection, footpoints=association.footpoints,
-            sampling=sampling, encoder=encoder, encoder_name=encoder_name, device=cfg.device, enabled=people_enabled),
+            sampling=sampling, encoder=encoder, encoder_name=encoder_name, device=cfg.device, enabled=people_enabled, require_evidence=people_enabled),
             PlayerSelectionInputAssembler(), {"tracks": f"person_tracking/{camera}", "calibration": "court_calibration"},
             lambda: {"rule": selection, "footpoints": association.footpoints, "sampling": sampling, "encoder": encoder_name,
                 "enabled": people_enabled, "assets": asset_identities(people_enabled and weights is not None,

@@ -29,7 +29,7 @@ class PoseEstimationInput:
 
 class PoseEstimationModule(InferenceComponent[PoseEstimationInput, ObjectObservations]):
     io = ComponentIO("pose_estimation", PoseEstimationInput, ObjectObservations,
-        {"selection": InputPort("selected_player_tracks", 2)}, "person_poses")
+        {"selection": InputPort("selected_player_tracks", 3)}, "person_poses", version=2)
 
     def __init__(self, config: PeopleModelConfig, *, require_evidence: bool = False) -> None:
         self.config = config

@@ -27,6 +27,8 @@ execution:
   court_detection: execute
   court_calibration: execute
   person_detection: execute
+  person_pose_features: execute
+  person_appearance_features: execute
   person_tracking: execute
   player_selection: execute
   pose_estimation: execute
