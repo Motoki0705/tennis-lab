@@ -1,0 +1,23 @@
+Selected CPU validation durations above five seconds; complete raw log is referenced separately.
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+14.53s call     tests/e2e/tennis_scene/test_video_batch_cli.py::test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure[False]
+11.87s call     tests/e2e/tennis_scene/test_video_batch_cli.py::test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure[True]
+11.58s call     tests/unit/tennis_scene/generate_dataset/test_entrypoint.py::test_real_hydra_cli_fails_when_a_clip_fails
+10.77s call     tests/unit/tennis_scene/clip_studio/test_review_cli.py::test_review_package_help_without_dataset
+9.74s call     tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure1-True]
+8.05s call     tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure0-True]
+7.18s call     tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure2-False]
+7.06s call     tests/unit/tennis_scene/visualization/review/test_gallery.py::test_gallery_renders_every_declared_component_without_writing_the_store
+7.02s call     tests/integration/tennis_scene/test_video_batch.py::test_one_plan_reuses_each_model_once_and_records_real_batch_sizes[3]
+6.59s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[build]
+6.11s call     tests/integration/tennis_scene/test_video_batch.py::test_batch_matches_single_entry_and_reuses_mixed_cache
+6.04s call     tests/integration/tennis_scene/test_video_batch.py::test_single_entry_concurrent_export_cannot_mix_batch_publication[batch]
+6.00s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry[build]
+5.96s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[load]
+5.90s call     tests/integration/tennis_scene/test_clip_studio_web.py::test_batch_skips_verified_outputs_but_rejects_changed_edits
+5.75s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry[load]
+5.50s call     tests/integration/tennis_scene/test_video_batch.py::test_single_entry_concurrent_export_cannot_mix_batch_publication[single]
+5.35s call     tests/integration/tennis_scene/test_video_batch.py::test_clip_too_long_isolated_and_other_clip_publishes_immediately
+5.32s call     tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs
+5.22s call     tests/integration/tennis_scene/test_clip_studio_web.py::test_cancel_stops_active_encoder_and_removes_unpublished_output
+======================= 1551 passed in 148.99s (0:02:28) =======================

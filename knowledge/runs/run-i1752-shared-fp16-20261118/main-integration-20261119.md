@@ -16,7 +16,7 @@ tests/unit/tennis_scene全1,144件、関連integration212件、submodules193件�
 
 mainで共有side取得のimport先がprepareサブモジュールになったため、既存の取得回数テスト2件の監視先を修正した。初回の全体テストは移動ノードのstaging前にGit索引の旧パスを見て1件失敗したが、索引確定後に同じ全1,551件を再実行して成功した。Optional型の既存assertもNone確認を加えて明示した。
 
-実store・公開・障害注入と実Hydra CLIを検証する既存の層を維持しているため、5秒超のcaseがある。全caseのsetup/call/teardownは保存logへ、最大case/setupはtest-summaryへ記録した。ケース数・時間を減らすための削除やskipはしていない。
+実store・公開・障害注入と実Hydra CLIを検証する既存の層を維持しているため、5秒超のcaseがある。全caseのsetup/call/teardownは[OUTPUTのraw参照](main-integration-raw-reference-20261119.json)へ、5秒超の抜粋は[slow cases](main-integration-slow-cases-20261119.txt)へ、最大case/setupはtest-summaryへ記録した。Gitへコピーした全量logが256KiBを超えたため、未mergeのGitコピーは保存対象から外し、初回commit・size/hash・保持先をraw参照に記録した。mainのknowledge正本には元fileがないため、正本の削除記録は作っていない。raw自体はOUTPUTに保持している。ケース数・時間を減らすための削除やskipはしていない。
 
 ## 69clipコマンド
 
