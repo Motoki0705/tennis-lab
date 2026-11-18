@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
@@ -38,7 +38,11 @@ from src.tennis_scene.pipeline.components.triangulation import (
     BallTriangulationModule,
     PlayerTriangulationModule,
 )
-from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource
+from src.tennis_scene.pipeline.contracts import (
+    STANDARD_COMPONENTS,
+    AssemblyContext,
+    ClipSource,
+)
 from src.tennis_scene.pipeline.inference_runtime import InferenceComponent
 from src.tennis_scene.pipeline.input_assembly.ball_points import (
     BallPointsInputAssembler,
@@ -109,7 +113,7 @@ def standard_model_components(cfg: PipelineRuntimeConfig, ids: tuple[str, ...]) 
             aflink_checkpoint=cfg.aflink_checkpoint, enabled=people),
         "player_selection": PlayerSelectionModule(selection, footpoints=association.footpoints, sampling=sampling,
             encoder=encoder, encoder_name=name if encoder is not None else None, device=cfg.device, enabled=people),
-        "pose_estimation": PoseEstimationModule(cfg.people, require_evidence=people),
+        "pose_estimation": PoseEstimationModule(cfg.people, require_evidence=people, enabled=people),
         "player_association": PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people, encoder=encoder),
         "gvhmr": GVHMRModule(cfg.people, enabled=body),
         "body_placement": BodyPlacementModule(ids, cfg.people, cfg.player_placement, reprojection_px=cfg.player_reprojection_px, enabled=body),
@@ -132,6 +136,29 @@ def publication_model_identities(cfg: PipelineRuntimeConfig) -> dict[str, Any]:
         for stage, component in standard_model_components(cfg, ()).items()}
 
 
+def component_override_identity(cfg: PipelineRuntimeConfig, component: Any) -> dict[str, Any]:
+    """An injected implementation must declare its models or explicit settings.
+
+    ModelSpec covers effective model settings; additional processing knobs can
+    be bound with cache_identity(). Stateless non-inference implementations use
+    that method too. A class name alone never authorizes artifact reuse.
+    """
+    specs = component.model_specs() if isinstance(component, InferenceComponent) else {}
+    identity = getattr(component, 'cache_identity', None)
+    settings = identity() if callable(identity) else None
+    if (not specs and settings is None) or (settings is not None and not isinstance(settings, Mapping)):
+        raise ValueError('Injected component needs ModelSpec declarations or an explicit mapping from cache_identity()')
+    return {'override': f'{type(component).__module__}.{type(component).__qualname__}',
+        'models': model_identities(specs, cfg.court_kp.asset_catalog.file_identity),
+        'settings': {} if settings is None else json_value(settings)}
+
+
+def validate_override_names(overrides: Mapping[str, Any]) -> None:
+    unknown = {name for name in overrides if name.split('/')[0] not in STANDARD_COMPONENTS}
+    if unknown:
+        raise ValueError(f'Unknown component override: {sorted(unknown)}')
+
+
 def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_identity: str,
                         overrides: dict[str, Any] | None = None, video_court: VideoCourtArtifact | None = None) -> tuple[ComponentNode, ...]:
     """Overrides select implementations through the same declarations, including tests.
@@ -141,6 +168,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     for components that are not overridden.
     """
     ids = source.camera_ids
+    overrides = {} if overrides is None else overrides
+    validate_override_names(overrides)
     if (cfg.video_court is None) != (video_court is None):
         raise ValueError('Shared court must be prepared explicitly before building the clip plan')
     if video_court is not None:
@@ -150,7 +179,6 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             raise ValueError('Execution plan drift artifact disagrees with explicit configuration')
     nodes: list[ComponentNode] = []
     components = standard_model_components(cfg, ids)
-    overrides = {} if overrides is None else overrides
 
     def bound_assets(enabled: bool, paths: dict[str, Any]) -> dict[str, Any]:
         return {name: cfg.court_kp.asset_catalog.file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
@@ -161,7 +189,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         resolved: dict[str, Any]
         if name in overrides:
             component = overrides[name]
-            resolved = {"override": f"{type(component).__module__}.{type(component).__qualname__}"}
+            resolved = component_override_identity(cfg, component)
         elif cfg.direct_annotation is not None and stage in {"court_detection", "ball_detection"}:
             resolved = {"input": "fixed_geometry" if stage == "court_detection" else "saved_video_ball_annotation_v3"}
         else:
@@ -284,6 +312,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("scene_assembly", SceneAssemblyModule(ids, require_people=cfg.enabled["player_reconstruction"],
         require_ball=cfg.enabled["ball_reconstruction"], require_body=body_enabled), SceneAssemblyInputAssembler(cfg.human_vis_threshold),
         {**reconstructed, "skeleton": "player_triangulation", "ball": "ball_triangulation", "placement": "body_placement"}, lambda: {"enabled": cfg.enabled})
+    unknown = set(overrides) - {node.name for node in nodes}
+    if unknown:
+        raise ValueError(f'Unknown component override: {sorted(unknown)}')
     return tuple(nodes)
 
 

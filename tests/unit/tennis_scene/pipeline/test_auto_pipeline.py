@@ -78,6 +78,9 @@ class FixedStage:
     def process(self, *args: Any, **kwargs: Any) -> Any:
         self.calls += 1
         return self.result
+    def cache_identity(self) -> dict[str, Any]:
+        from src.tennis_scene.pipeline.artifacts import document_digest, json_value
+        return {'result': document_digest(json_value(self.result))}
     def unload(self) -> None:
         pass
 
@@ -197,6 +200,9 @@ class TrackIdentities:
             local[row, :count] = tracks[camera].track_ids
             players[row, :count] = np.where(tracks[camera].observed, tracks[camera].track_ids[:, None], -1)
         return PlayerIdentitiesOutput(cameras, local, players, {"stand_in": True})
+
+    def cache_identity(self) -> dict[str, Any]:
+        return {'policy': 'equal_tracker_ids', 'inputs': tuple(self.io.inputs)}
 
 
 def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bool = False) -> tuple[TennisSceneOrchestrator, tuple[Path, ...], dict[str, Any]]:
@@ -322,6 +328,8 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
     body = KnownBody()
     class KnownGVHMR:
         io = GVHMRModule.io
+        def cache_identity(self):
+            return {'fixture': 'known_world_motion'}
         def process(self, inputs):
             return GVHMROutput(tuple(RecoveredBody(selected.person_id, selected.camera_id,
                 tuple(RecoveredBodySegment(request.source_frames, body.recover(request), count)

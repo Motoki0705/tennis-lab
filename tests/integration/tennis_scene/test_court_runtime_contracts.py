@@ -30,6 +30,7 @@ from src.tennis_scene.pipeline.inference_runtime import InferenceRuntime
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     CourtDetectionInputAssembler,
 )
+from src.tennis_scene.pipeline.model_resources import model_identities
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from tests.unit.tennis_scene.pipeline.components.test_court_resources import (
@@ -185,7 +186,8 @@ def test_shared_court_records_each_nodes_checkpoint_provenance(tmp_path: Path, m
     def clip(clip_id: str, module: CourtKPModule, root: str) -> ClipExecution:
         bound_source = source(tmp_path, clip_id, 1)
         node = ComponentNode("court_detection/cam0", module, module.io, CourtDetectionInputAssembler(), {},
-            AssemblyContext(bound_source, "cam0"), {"assets": module.asset_identities()}, "fixed")
+            AssemblyContext(bound_source, "cam0"), {"assets": module.asset_identities(),
+                'models': model_identities(module.model_specs(), module.config.asset_catalog.file_identity)}, "fixed")
         return ClipExecution(clip_id, [node], ClipStore(tmp_path / root, {"clip_id": clip_id}, memory_entries=0))
     a, b = clip("A", first, "A"), clip("B", second, "B-shared")
     shared = PlanExecutor(ExecutionPlan([a, b]))

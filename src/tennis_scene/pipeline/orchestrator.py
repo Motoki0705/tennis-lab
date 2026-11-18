@@ -14,9 +14,11 @@ from src.tennis_scene.pipeline.artifacts import (
 from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.definition import (
+    component_override_identity,
     enabled_model_assets,
     publication_model_identities,
     standard_definition,
+    validate_override_names,
 )
 from src.tennis_scene.pipeline.direct_annotation import saved_scene, scene_receipt
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
@@ -73,11 +75,14 @@ class TennisSceneOrchestrator:
 
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
+        validate_override_names(self.components or {})
+        overrides = {name: component_override_identity(cfg, component) for name, component in (self.components or {}).items()}
         shared = self.prepare_video_court()
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             "models": publication_model_identities(cfg),
+            "component_overrides": overrides,
             **({"court_model_assets": CourtKPModule(cfg.court_kp).asset_identities()}
                if cfg.direct_annotation is None and cfg.video_court is None else {}),
             **({"court_model": CourtKPModule(cfg.court_kp).model_identity()}

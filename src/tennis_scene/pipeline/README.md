@@ -66,6 +66,13 @@ dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manif
 生成・初期化・解放のcallbackを持つ。`key`は資産のSHA-256と設定のcanonical JSONを含み、
 clip/camera IDと資産pathを含めない。同じ内容の別pathは共有でき、異なる重み・設定は共有しない。
 checkpoint内のarchitectureは重み全体の内容identityにも含まれる。
+手動の`ComponentNode`も、`settings.models`へ`model_identities(component.model_specs(), catalog.file_identity)`で
+モデル宣言を束縛する。execute/cache判定前に実際の宣言と照合し、未束縛・差し替えを拒否する。
+この照合は束縛済みdigestを使い、checkpointを読み直さない。明示loadは保存済みの契約・identityを照合する。
+`standard_definition(overrides=...)`とorchestratorの`components`は、選択したcomponentの実ModelSpecを
+nodeと完成markerの`component_overrides`へ含める。モデル宣言がない差し替えは、処理設定を返す
+`cache_identity() -> Mapping`が必要となる。モデル以外の追加設定もこのmethodで宣言する。
+クラス名だけの差し替え・未知のnode名は拒否し、標準componentへ置き換えない。
 runtimeはnodeの成果物settingsに`file_identity`で束縛したSHAを`expected_assets`として受け取り、
 初回借用時もそのSHAと照合する。宣言済み資産の置換・欠落は公開前に停止する。
 開始した計画内でキーを固定し、借用時・初期化直後の資産変更も停止する。
@@ -85,6 +92,10 @@ Court成果物の来歴は各nodeの束縛から記録する。
 外観DINOv3も外部Python実装の内容をキーに含める。実hub loaderはimport済み`dinov3` namespaceの
 実装identityをprocess内で固定し、安全に切り替えられない別実装や未管理の事前importは明示拒否する。
 実装を切り替えるときは新しいprocessを使う。同内容の別pathは共有できる。
+hubからimportした`dinov3.*`の`__file__`も宣言inventoryと照合する。外部package・外部子module・出自不明を拒否し、
+失敗したimportを同じprocessで再試行しない。既存namespaceを別repositoryから再loadする場合も、読込元が異なれば
+新しいprocessが必要となる。同内容のモデルをruntime内で共有する内容キーの契約は変わらない。
+人物検出DINOも、models/utilのimportとbuild後に同じ出自検査を行う。
 repository配下のsymlink（ディレクトリ・循環・切れたリンクを含む）は、Python import対象の全列挙を保証できないため生成前に拒否する。
 既知の制限: 実行中にPython sourceを追加・書換する運用と、dataset入口の完成marker identity取得後に
 checkpointを置き換える運用は対象外（親 #1734 の判断）。実行中の資産は固定する。
@@ -99,6 +110,8 @@ cache hitのnodeも需要を消費するが借用しない。明示的な`load` 
 全cache hit・全loadならモデルの生成・初期化・解放イベントは0となる。
 例外・KeyboardInterrupt・公開失敗でもcontext終了時に残るモデルを解放する。
 原因例外・抑制されたcontext・例外groupを含む失敗tracebackの完了済みframeからlocal参照を除去する。
+計測hookの`__exit__`が例外を抑制しても、factory・initialize・release・cleanupの失敗は外側へ伝播する。
+モデル操作とhookの双方が失敗した場合は例外groupへ保持する。
 例外の構造とstack位置は診断用に保持する。成果物の`store.publish`・active参照更新・成功statusは
 nodeの解放・hook完了後に行う。解放失敗では旧active参照を保持し、新しいexecutorでも失敗出力をcache hitしない。
 
@@ -149,7 +162,8 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 
 標準追跡は`person_tracking.method=strongsort_pp_pose`だけを受け付ける。StrongSORT++＋pose/CLIPのrun 10固定profileを
 productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。
-`person_tracks` v5は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+`person_tracks` v6は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+CLIP evidenceには`ModelBorrower.identity()`で得た内容SHA・設定を含むencoder identityも保存し、regroupで保持する。
 GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
 選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式はtaskの比較benchmarkで使用する。
 重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
@@ -173,7 +187,10 @@ v2の`source_rows`は間引き前のclip/camera通番、`duplicate_merges`はfra
 [`court_linking.py`](../../tasks/person_tracking/court_linking.py)のdocstringと`LinkingConfig`。
 連結後のdistinct core滞在で選別し、`person_observations.max_tracks_per_camera`は最後のgroup上限だけに使う。
 CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だけの成功に変えない。
-`selected_player_tracks` v2の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
+`selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
+追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
+設定した選別encoderで明示的に再計算し、appearance診断へsourceと理由を記録する。
+旧person_tracks v5/selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。

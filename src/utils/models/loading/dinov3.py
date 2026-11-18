@@ -12,11 +12,15 @@ import torch
 from torch import nn
 
 from src.utils.checksum import dual_sha256
-from src.utils.models.loading.source_assets import python_source_assets
+from src.utils.models.loading.source_assets import (
+    python_source_assets,
+    validate_source_modules,
+)
 from src.utils.models.lora import LoRAConfig, apply_lora
 
 _HUB_LOCK = RLock()
 _HUB_IMPLEMENTATION: tuple[tuple[str, str], ...] | None = None
+_HUB_INVALID = False
 """Process import-cache identity only. No model or tensor is retained here."""
 
 
@@ -29,17 +33,25 @@ def dinov3_source_assets(repository: Path) -> dict[str, Path]:
 
 
 def _guarded_hub_load(repository: Path, backbone_name: str) -> nn.Module:
-    global _HUB_IMPLEMENTATION
+    global _HUB_IMPLEMENTATION, _HUB_INVALID
     with _HUB_LOCK:
-        identity = tuple((name, dual_sha256(path)) for name, path in dinov3_source_assets(repository).items())
+        sources = dinov3_source_assets(repository)
+        identity = tuple((name, dual_sha256(path)) for name, path in sources.items())
         imported = any(name == "dinov3" or name.startswith("dinov3.") for name in tuple(sys.modules))
-        if (_HUB_IMPLEMENTATION is None and imported) or (_HUB_IMPLEMENTATION is not None and identity != _HUB_IMPLEMENTATION):
+        if _HUB_INVALID or (_HUB_IMPLEMENTATION is None and imported) or (_HUB_IMPLEMENTATION is not None and identity != _HUB_IMPLEMENTATION):
             raise RuntimeError("Cannot safely switch DINOv3 implementation in one process; use a fresh process")
+        if imported:
+            validate_source_modules(repository, sources, ('dinov3',))
         try:
             return cast(nn.Module, torch.hub.load(str(repository), backbone_name, source="local", pretrained=False))
         finally:
             # Partial imports after a failure also pin the Python namespace.
             if any(name == "dinov3" or name.startswith("dinov3.") for name in tuple(sys.modules)):
+                try:
+                    validate_source_modules(repository, sources, ('dinov3',))
+                except BaseException:
+                    _HUB_INVALID = True
+                    raise
                 _HUB_IMPLEMENTATION = identity
 
 DINOv3TrainMode = Literal["frozen", "last_n_blocks", "full"]

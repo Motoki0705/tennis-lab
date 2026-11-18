@@ -2,23 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 from src.submodules.models import ViTPosePose2D
 from src.tasks.player_association.appearance.encoders import AppearanceEncoder
 from src.tennis_scene.pipeline.inference_runtime import ModelSpec
+from src.tennis_scene.pipeline.inference_runtime import (
+    model_identities as model_identities,
+)
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.models.loading.dinov3 import dinov3_source_assets
-
-
-def model_identities(specs: Mapping[str, ModelSpec[Any]], identity: Callable[[Path], dict[str, Any]]) -> dict[str, Any]:
-    """Bind effective settings and assets from the declarations used by runtime."""
-    return {alias: {"kind": spec.kind, "architecture": spec.architecture,
-        "device": spec.device, "dtype": spec.dtype, "settings": dict(spec.settings),
-        "assets": {name: identity(path) for name, path in spec.weights.items()}}
-        for alias, spec in specs.items()}
 
 
 def vitpose_model(config: PeopleModelConfig, *, factory: Callable[..., ViTPosePose2D] = ViTPosePose2D,

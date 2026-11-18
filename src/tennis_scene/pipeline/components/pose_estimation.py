@@ -29,20 +29,23 @@ class PoseEstimationInput:
 
 class PoseEstimationModule(InferenceComponent[PoseEstimationInput, ObjectObservations]):
     io = ComponentIO("pose_estimation", PoseEstimationInput, ObjectObservations,
-        {"selection": InputPort("selected_player_tracks", 2)}, "person_poses")
+        {"selection": InputPort("selected_player_tracks", 3)}, "person_poses")
 
-    def __init__(self, config: PeopleModelConfig, *, require_evidence: bool = False) -> None:
+    def __init__(self, config: PeopleModelConfig, *, require_evidence: bool = False, enabled: bool = True) -> None:
         self.config = config
         self.require_evidence = require_evidence
+        self.enabled = enabled
 
     def model_specs(self) -> dict[str, ModelSpec[ViTPosePose2D]]:
-        return {} if self.require_evidence else {"pose": vitpose_model(self.config, factory=ViTPosePose2D, show_progress=True)}
+        return {} if self.require_evidence or not self.enabled else {"pose": vitpose_model(self.config, factory=ViTPosePose2D, show_progress=True)}
 
     def process_with_models(self, inputs: PoseEstimationInput, models: ModelBorrower) -> ObjectObservations:
         video, tracks = inputs.video, inputs.tracks
         if tracks.camera_id != video.camera_id or tracks.observed.shape[1] != video.num_frames:
             raise ValueError("Pose input camera/timeline mismatch")
         ids = tracks.track_ids.tolist()
+        if ids and not self.enabled:
+            raise ValueError('Disabled pose estimation cannot consume person tracks')
         tracked = TrackResult({i: torch.from_numpy(np.array(tracks.boxes_xyxy[p], copy=True)) for p, i in enumerate(ids)}, video.num_frames,
             {i: torch.from_numpy(np.array(tracks.observed[p], copy=True)) for p, i in enumerate(ids)})
         shape = (1, video.num_frames, len(ids), 17)

@@ -46,8 +46,8 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
     nodes = {n.name: n for n in standard_definition(cfg, source, code_identity='test')}
     node = nodes['person_tracking/cam0']
     assert node.component.config == cfg.tracking
-    assert node.io.version == 5 and node.io.inputs['detections'].version == 2
-    assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 5
+    assert node.io.version == 6 and node.io.inputs['detections'].version == 2
+    assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 6
     # The standard recipe declares the same runtime model across cameras and
     # across CLIP consumers; assembling it must not instantiate any model.
     for stage, alias in [('court_detection', 'court'), ('ball_detection', 'ball'),
@@ -110,6 +110,8 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
     tracker = module.PersonTrackingModule(TrackingConfig(), people=people, encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'af.pth')
     result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detections))
     assert len(calls) == 5 and result.evidence is not None
+    from src.tennis_scene.pipeline.artifacts import document_digest
+    assert result.evidence.encoder_identity == document_digest(tracker.model_specs()['encoder'].key)
     assert result.evidence.detection_rows.tolist() == [[-1, -1, 4, 6, 8]]
     def forbidden(*a: Any, **k: Any) -> Any:
         raise AssertionError('Pose must not be recomputed')

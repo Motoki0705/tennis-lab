@@ -130,6 +130,7 @@ def build_dino(
     """Build the official model and its training criterion (unloaded weights)."""
     build_function = load_dino_build_function(repository)
     model, criterion, _ = build_function(args)
+    _validate_dino_imports(repository)
     if not isinstance(model, torch.nn.Module) or not isinstance(
         criterion, torch.nn.Module
     ):
@@ -196,6 +197,7 @@ def load_dino_build_function(repository: Path) -> Callable[[Any], tuple[Any, ...
         raise RuntimeError(
             f"Official DINO module has no build_dino function: {models_init}"
         )
+    _validate_dino_imports(repository)
     return cast(Callable[[Any], tuple[Any, ...]], build_dino_function)
 
 
@@ -218,6 +220,12 @@ def dino_source_assets(repository: Path) -> dict[str, Path]:
 
     validate_dino_repository(repository)
     return python_source_assets(repository, prefix="dino_source")
+
+
+def _validate_dino_imports(repository: Path) -> None:
+    from src.utils.models.loading.source_assets import validate_source_modules
+
+    validate_source_modules(repository, dino_source_assets(repository), (_DINO_MODELS_PACKAGE, 'util'))
 
 
 def _load_dino_util_package(util_init: Path) -> None:

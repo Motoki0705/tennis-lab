@@ -9,11 +9,13 @@ import pytest
 
 from src.tasks.player_association.appearance import encoders
 from src.tennis_scene.pipeline.artifacts import document_digest
+from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     standard_definition,
 )
 from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
+from src.tennis_scene.pipeline.inference_runtime import ModelSpec
 from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef
@@ -31,6 +33,63 @@ def configured(tmp_path: Path) -> Any:
     cfg = runtime(tmp_path, overrides=("gvhmr.enabled=true",))
     materialize_assets(enabled_model_assets(cfg).values(), tmp_path, court=cfg.court_kp)
     return cfg
+
+
+class InjectedCourt(CourtKPModule):
+    def __init__(self, checkpoint: Path) -> None:
+        self.checkpoint = checkpoint
+    def model_specs(self) -> Any:
+        return {'court': ModelSpec('court', {'checkpoint': self.checkpoint}, 'tiny', 'cpu', 'float32', {}, object)}
+
+
+def test_override_model_specs_separate_cache_and_publication(tmp_path: Path) -> None:
+    cfg = configured(tmp_path)
+    paths = [tmp_path / 'A.weights', tmp_path / 'B.weights']
+    for path, content in zip(paths, [b'A', b'B'], strict=True):
+        path.write_bytes(content)
+    target = 'court_detection/cam0'
+    store = CachedCourtStore(tmp_path / 'store', 'clip')
+    markers, decisions = [], []
+    for index, path in enumerate(paths):
+        replacements = {target: InjectedCourt(path)}
+        nodes = standard_definition(cfg, source(tmp_path, 'clip', 1), code_identity='fixed', overrides=replacements)
+        plan = ExecutionPlan([ClipExecution('clip', nodes, store, targets=[target])])
+        current = plan.decide(('clip', target))
+        decisions.append(current)
+        pipeline = TennisSceneOrchestrator(cfg, components=replacements)
+        markers.append(pipeline.publication_identity())
+        if index == 0:
+            store.refs[target] = ArtifactRef('d' * 64, 'fake.json', 'e' * 64, current.identity['schema'],
+                current.identity['version'], document_digest(current.identity))
+    assert [d.action for d in decisions] == ['execute', 'execute']
+    assert markers[0] != markers[1]
+    assert paths[0] in asset_hashes(markers[0]) and paths[1] in asset_hashes(markers[1])
+
+
+@pytest.mark.parametrize('boundary', ['node', 'publication'])
+def test_unidentified_override_is_explicitly_rejected(tmp_path: Path, boundary: str) -> None:
+    cfg = configured(tmp_path)
+    class Unknown:
+        io = CourtKPModule.io
+        def process(self, inputs: Any) -> Any:
+            raise AssertionError('Cannot execute an unidentified replacement')
+    replacements = {'court_detection/cam0': Unknown()}
+    with pytest.raises(ValueError, match='cache_identity'):
+        if boundary == 'node':
+            standard_definition(cfg, source(tmp_path, 'clip', 1), code_identity='fixed', overrides=replacements)
+        else:
+            TennisSceneOrchestrator(cfg, components=replacements).publication_identity()
+
+
+@pytest.mark.parametrize('boundary', ['node', 'publication'])
+def test_unknown_override_cannot_silently_use_the_standard_component(tmp_path: Path, boundary: str) -> None:
+    cfg = configured(tmp_path)
+    replacements = {'not_a_stage': InjectedCourt(cfg.court_kp.checkpoint)}
+    with pytest.raises(ValueError, match='Unknown component override'):
+        if boundary == 'node':
+            standard_definition(cfg, source(tmp_path, 'clip', 1), code_identity='fixed', overrides=replacements)
+        else:
+            TennisSceneOrchestrator(cfg, components=replacements).publication_identity()
 
 
 def decision(cfg: Any, root: Path, store: CachedCourtStore, target: str) -> Any:

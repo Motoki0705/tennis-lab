@@ -1,7 +1,9 @@
 """Unit tests for DINO person-only decoding and checkpoint validation."""
 
+import sys
 from argparse import Namespace
 from pathlib import Path
+from types import ModuleType
 
 import numpy as np
 import pytest
@@ -270,3 +272,39 @@ def test_uninitialized_dino_submodule_is_explicit(tmp_path: Path) -> None:
 
     with pytest.raises(FileNotFoundError, match="git submodule update --init"):
         validate_dino_repository(repository)
+
+
+@pytest.mark.parametrize('namespace,phase', [('util', 'import'), ('models', 'import'), ('models', 'build')])
+def test_dino_refuses_external_submodules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, namespace: str, phase: str) -> None:
+    import src.submodules.models.dino.architecture as architecture
+    for name in list(sys.modules):
+        if name == 'util' or name.startswith(('util.', architecture._DINO_MODELS_PACKAGE)):
+            monkeypatch.delitem(sys.modules, name)
+    for relative in ('models/__init__.py', 'util/__init__.py'):
+        path = tmp_path / 'declared' / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('')
+    repo = tmp_path / 'declared'
+    package = ModuleType(architecture._DINO_MODELS_PACKAGE)
+    package.__file__ = str(repo / 'models/__init__.py')
+    utility = ModuleType('util')
+    utility.__file__ = str(repo / 'util/__init__.py')
+    monkeypatch.setitem(sys.modules, 'util', utility)
+    prefix = 'util' if namespace == 'util' else architecture._DINO_MODELS_PACKAGE
+    foreign = ModuleType(prefix + '.backend')
+    foreign.__file__ = str(tmp_path / 'outside.py')
+    (tmp_path / 'outside.py').write_text('# foreign backend\n')
+    monkeypatch.setattr(architecture, 'load_dino_extension', lambda: object())
+    def build(args):
+        if phase == 'build':
+            monkeypatch.setitem(sys.modules, foreign.__name__, foreign)
+        return torch.nn.Linear(1, 1), torch.nn.Linear(1, 1), None
+    monkeypatch.setattr(package, 'build_dino', build, raising=False)
+    monkeypatch.setitem(sys.modules, architecture._DINO_MODELS_PACKAGE, package)
+    if phase == 'import':
+        monkeypatch.setitem(sys.modules, foreign.__name__, foreign)
+    with pytest.raises(RuntimeError, match='declared'):
+        if phase == 'build':
+            architecture.build_dino(repo, architecture.dino_4scale_swin_args('cpu', use_checkpoint=False))
+        else:
+            architecture.load_dino_build_function(repo)
