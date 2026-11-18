@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.tasks.court_side.hypothesis import (
     CourtSideConfig,
@@ -31,7 +32,7 @@ class CourtSideOutput:
     """Per-camera half-turn of the camera-local court relative to the reference.
 
     ``hypotheses`` holds every assignment's score, best first; ``frames`` is
-    the number of sampled frames with the ball in two or more views.
+    the number of scored multi-view frames in the chosen clip or video scope.
     """
 
     camera_ids: tuple[str, ...]
@@ -60,31 +61,42 @@ class CourtSideInput:
     calibration: CourtCalibrationOutput
     balls: GroupedObservations  # calibrated views only
 
+    def sample(self, max_frames: int) -> tuple[NDArray[np.int64], NDArray[np.float32], NDArray[np.bool_]]:
+        source, calibration = self.source, self.calibration.calibration
+        sample = sampled_frame_indices(source.num_frames, source.fps, max_frames=max_frames)
+        count, views, frames, joints = self.balls.uv_px.shape[:4]
+        if count > 1 or joints != 1 or views != len(calibration.views) or frames != source.num_frames:
+            raise ValueError("Court side requires one ball stream over the calibrated cameras and the source timeline")
+        if count:
+            uv, visible = self.balls.uv_px[0][:, sample, 0], self.balls.visibility[0][:, sample, 0]
+        else:
+            uv, visible = np.zeros((views, len(sample), 2), np.float32), np.zeros((views, len(sample)), bool)
+        return sample, np.ascontiguousarray(uv), np.ascontiguousarray(visible)
+
+    def scaled_config(self, config: CourtSideConfig) -> CourtSideConfig:
+        scale = self.source.pixel_threshold_scale
+        return replace(config, reprojection_px=config.reprojection_px * scale, min_motion_px=config.min_motion_px * scale)
+
+
+def court_side_io(camera_ids: tuple[str, ...]) -> ComponentIO[CourtSideInput, CourtSideOutput]:
+    return ComponentIO(COURT_SIDE, CourtSideInput, CourtSideOutput,
+            {"calibration": InputPort("local_court_calibration"), **{f"ball_{c}": BALL_POINTS_PORT for c in camera_ids}},
+            SIDE_PORT.schema, SIDE_PORT.version)
+
 
 class CourtSideModule:
     """Pixel thresholds of ``config`` are configured at 1920x1080 and scaled to the source."""
 
     def __init__(self, camera_ids: tuple[str, ...], config: CourtSideConfig, *, max_frames: int) -> None:
         self.config, self.max_frames = config, max_frames
-        self.io = ComponentIO(COURT_SIDE, CourtSideInput, CourtSideOutput,
-            {"calibration": InputPort("local_court_calibration"), **{f"ball_{c}": BALL_POINTS_PORT for c in camera_ids}},
-            SIDE_PORT.schema, SIDE_PORT.version)
+        self.io = court_side_io(camera_ids)
 
     def process(self, inputs: CourtSideInput) -> CourtSideOutput:
-        source, calibration = inputs.source, inputs.calibration.calibration
-        sample = sampled_frame_indices(source.num_frames, source.fps, max_frames=self.max_frames)
-        count, views, frames, joints = inputs.balls.uv_px.shape[:4]
-        if count > 1 or joints != 1 or views != len(calibration.views) or frames != source.num_frames:
-            raise ValueError("Court side requires one ball stream over the calibrated cameras and the source timeline")
-        if count:
-            uv, visible = inputs.balls.uv_px[0][:, sample, 0], inputs.balls.visibility[0][:, sample, 0]
-        else:
-            uv, visible = np.zeros((views, len(sample), 2), np.float32), np.zeros((views, len(sample)), bool)
-        scale = source.pixel_threshold_scale
-        config = replace(self.config, reprojection_px=self.config.reprojection_px * scale, min_motion_px=self.config.min_motion_px * scale)
+        sample, uv, visible = inputs.sample(self.max_frames)
+        config = inputs.scaled_config(self.config)
         try:
-            decision = decide_court_side(tuple(v.camera for v in calibration.views), inputs.calibration.reference_camera,
-                                         np.ascontiguousarray(uv), np.ascontiguousarray(visible), config)
+            decision = decide_court_side(tuple(v.camera for v in inputs.calibration.calibration.views),
+                                         inputs.calibration.reference_camera, uv, visible, config)
         except CourtSideUndecided as undecided:
             raise ReconstructionUnavailable(f"court_side_{undecided.reason}", str(undecided), diagnostics={
                 "hypotheses": [{"view_half_turns": list(h.view_half_turns), "cost": h.cost, "support": h.support, "frames": h.frames}

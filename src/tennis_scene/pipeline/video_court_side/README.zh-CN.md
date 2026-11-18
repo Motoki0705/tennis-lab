@@ -1,0 +1,42 @@
+# 按视频估计固定相机的球场朝向
+
+[English](README.md) · [日本語](README.ja.md)
+
+`court_side.mode=video_shared` 为同一视频的固定相机估计一组180度旋转标记。它要求使用 `court_kp.mode=video_shared`，并沿用共享球场的数据集和视频 ID。默认模式为 `court_side.mode=clip`。
+
+每个片段分别使用原有的采样网格、像素阈值缩放、静止观测过滤和基于球的假设检验。片段 ID 与片段内的原始帧号共同标识一帧。对于每种朝向组合，系统按各片段的有效多视角帧数加权平均 cost 和 support，累加相机对的共同帧数，再用原有阈值作视频级判定。视频产物按内容哈希引用独立诊断对象，其中保存每个片段的有效帧号、假设排名、相机对帧数、margin 和未决原因。没有有效帧时，排名为空，margin 为 null。
+
+## 单片段入口
+
+提供[共享球场配置](../video_court/README.zh-CN.md)和目标 `clip_id`。在 `src.tennis_scene.scripts.run_pipeline` 中加入以下配置以加载已有结果。
+
+```bash
+court_side.mode=video_shared \
+court_side.video_shared.action=load \
+court_side.video_shared.directory=tennis_scene/court_side_shared/match \
+court_side.video_shared.artifact_digest="$SIDE_DIGEST"
+```
+
+构建时指定 `action=build`、`directory`、`request` 和 `request_sha256`。两个路径均相对于 ARTIFACT 根目录。请求必须列出共享球场的**每个片段**以及已经完成 `court_calibration` 和各相机 `ball_points/<camera>` 的存储目录。用 `PinnedSideInputs.from_store(directory).digest` 取得版本摘要。该摘要包含视频来源和输入组件的版本，同一目录后续发布的场景可以沿用它。下面是只有一个片段的视频示例。
+
+```json
+{
+  "schema": "video_court_side_inputs_v1",
+  "clips": {
+    "video_000/clip_000": {
+      "role": "data",
+      "directory": "match/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene",
+      "inputs_digest": "<revision digest>"
+    }
+  },
+  "evidence_clip_ids": null
+}
+```
+
+`role` 可选 `data` 或 `artifact`。默认使用全部片段。显式指定 `evidence_clip_ids` 可限制参与视频判定的片段，系统仍为所有片段计算独立诊断。相同输入的构建会复用结果。`rebuild=true` 显式重新计算并允许修复损坏的对象。加载时校验判定和诊断对象的内容哈希。
+
+## 片段结果与多片段调用
+
+片段节点核对当前采样的球观测、标定矩阵及参考相机。独立判定与视频结果冲突的片段以 `court_side_video_shared_conflict` 失败。未决片段采用视频结果并记录警告。设置 `court_side.video_shared.unobservable_policy=fail` 可以拒绝未决片段。如果视频本身未决，两种策略都会失败。`run.json` 记录两套排名、margin、处理结果和两个对象的摘要。节点与数据集标记的缓存标识包含共享判定的摘要及执行策略。
+
+批量调用方应先收集视频内所有片段的上游输入，再建立最终计划。将片段 ID 到 `PinnedSideInputs` 的映射传给 `build_video_court_side`，或通过 `prepare_video_court_side` 按配置构建或加载。对各片段调用 `standard_definition` 时传入共享球场和 `video_court_side`。媒体、标定、球观测及数值设置必须与证据匹配。通过 `artifact.clip_report(clip_id, policy)` 可获取片段诊断。

@@ -71,6 +71,8 @@ from src.tennis_scene.pipeline.video_court.component import (
 )
 from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
 from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
+from src.tennis_scene.pipeline.video_court_side.artifact import VideoCourtSideArtifact
+from src.tennis_scene.pipeline.video_court_side.component import SharedCourtSideModule
 from src.utils.checksum import dual_sha256
 
 if TYPE_CHECKING:
@@ -99,7 +101,8 @@ def asset_identities(enabled: bool, paths: Mapping[str, Path]) -> dict[str, Any]
 
 
 def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_identity: str,
-                        overrides: dict[str, Any] | None = None, video_court: VideoCourtArtifact | None = None) -> tuple[ComponentNode, ...]:
+                        overrides: dict[str, Any] | None = None, video_court: VideoCourtArtifact | None = None,
+                        video_court_side: VideoCourtSideArtifact | None = None) -> tuple[ComponentNode, ...]:
     """Overrides select implementations through the same declarations, including tests.
 
     ``settings`` of a standard component are built lazily so that asset
@@ -114,6 +117,21 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         requested_drift = None if cfg.video_court_drift is None else cfg.video_court_drift.digest
         if drift_identity(video_court).get('artifact_digest') != requested_drift:
             raise ValueError('Execution plan drift artifact disagrees with explicit configuration')
+    if (cfg.video_court_side is None) != (video_court_side is None):
+        raise ValueError("Shared court side must be prepared before building the clip plan")
+    if video_court_side is not None:
+        if cfg.video_court_side is None or cfg.video_court is None or video_court is None:
+            raise ValueError("Shared court side requires shared calibration")
+        if ((cfg.video_court_side.dataset_id, cfg.video_court_side.video_id)
+                != (video_court.manifest["dataset_id"], video_court.manifest["video_id"])
+                or cfg.video_court.action == "load" and cfg.video_court.artifact_digest != video_court.digest):
+            raise ValueError("Execution plan court disagrees with the configured shared side scope/geometry")
+        if cfg.video_court_side.action == "load" and cfg.video_court_side.artifact_digest != video_court_side.digest:
+            raise ValueError("Execution plan court side digest disagrees with configuration")
+        video_court_side.verify()
+        video_court_side.check_settings(video_court, cfg.court_side, cfg.sampling_max_frames)
+        if source.clip_id not in video_court_side.clips:
+            raise ValueError("Clip is missing from the shared court side artifact")
     nodes: list[ComponentNode] = []
     overrides = {} if overrides is None else overrides
 
@@ -209,9 +227,16 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
     balls = {f"ball_{c}": f"ball_points/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}
-    add("court_side", CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames), CourtSideInputAssembler(0.0),
-        {"calibration": "court_calibration", **balls}, lambda: {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames,
-        "ball_threshold": 0.0})
+    side_module: CourtSideModule | SharedCourtSideModule
+    if video_court_side is None:
+        side_module = CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames)
+        side_settings: dict[str, Any] = {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames, "ball_threshold": 0.0}
+    else:
+        assert video_court is not None
+        side_module = SharedCourtSideModule(ids, video_court_side, video_court, cfg.court_side_unobservable_policy)
+        report = video_court_side.clip_report(source.clip_id, cfg.court_side_unobservable_policy)
+        side_settings = {key: report[key] for key in ("artifact_digest", "unobservable_policy", "status", "reason")}
+    add("court_side", side_module, CourtSideInputAssembler(0.0), {"calibration": "court_calibration", **balls}, lambda: side_settings)
     add("player_association", PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people_enabled,
         encoder=encoder),
         PlayerAssociationInputAssembler(), {"calibration": "court_calibration", "side": "court_side", **{f"tracks_{c}": f"player_selection/{c}" for c in ids}},
