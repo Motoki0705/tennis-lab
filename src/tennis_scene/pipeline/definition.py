@@ -188,14 +188,14 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             merge_duplicates=cfg.merge_duplicate_person_boxes), PersonDetectionInputAssembler(),
             {}, lambda: {"detector": "dino",
              "assets": asset_identities(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
-             "runtime": cfg.people.runtime.dino_detector,
+             "runtime": cfg.people.runtime.dino_detector, "device": cfg.people.runtime.device,
              "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
              "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
         add(f"person_tracking/{camera}", PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=tracking_encoder,
             aflink_checkpoint=cfg.aflink_checkpoint, enabled=people_enabled), PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}"}, lambda: {"profile": cfg.tracking.identity(),
                 "assets": asset_identities(people_enabled, tracking_assets), "pose_runtime": cfg.people.runtime.vitpose,
-                "pose_precision": "float32", "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
+                "device": cfg.people.runtime.device, "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
         add(f"player_selection/{camera}", PlayerSelectionModule(selection, footpoints=association.footpoints,
             sampling=sampling, encoder=encoder, encoder_name=encoder_name, device=cfg.device, enabled=people_enabled),
             PlayerSelectionInputAssembler(), {"tracks": f"person_tracking/{camera}", "calibration": "court_calibration"},
@@ -205,7 +205,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people,
             require_evidence=people_enabled), PoseEstimationInputAssembler(),
             {"selection": f"player_selection/{camera}"}, lambda: {"assets": asset_identities(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
-             "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
+             "runtime": cfg.people.runtime.vitpose, "device": cfg.people.runtime.device,
+             "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
     balls = {f"ball_{c}": f"ball_points/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}

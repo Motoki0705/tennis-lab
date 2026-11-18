@@ -147,9 +147,10 @@ class PersonTrackingModule:
         assert self.people is not None and self.encoder is not None and self.aflink_checkpoint is not None
         people = self.people
         af = AFLink(self.aflink_checkpoint)
+        runtime = people.runtime.vitpose
         pose = ViTPosePose2D(people.vitpose_checkpoint, device=people.runtime.device,
-            flip_test=people.runtime.vitpose.flip_test, batch_size=people.runtime.vitpose.batch_size,
-            head_config=people.runtime.vitpose.head, precision='float32', show_progress=False)
+            flip_test=runtime.flip_test, batch_size=runtime.batch_size, head_config=runtime.head,
+            precision=runtime.precision, show_progress=False)
         encoder = None
         try:
             encoder = self.encoder()

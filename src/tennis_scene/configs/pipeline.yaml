@@ -140,9 +140,11 @@ people_models:
       confidence: 0.3
       short_side: 800
       max_long_side: 1333
+      precision: fp32
     vitpose:
       flip_test: true
       batch_size: 16
+      precision: fp32
       head:
         in_channels: 1280
         out_channels: 17
