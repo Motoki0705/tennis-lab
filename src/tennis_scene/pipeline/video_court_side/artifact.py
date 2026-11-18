@@ -16,6 +16,7 @@ from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.court_side import CourtSideOutput
 from src.tennis_scene.pipeline.storage.codec import restore_type
 from src.tennis_scene.pipeline.video_artifact import load_document
+from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
 from src.tennis_scene.pipeline.video_court.policy import validate_unobservable_policy
 from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
 
@@ -58,6 +59,7 @@ class VideoSideDecision:
     dataset_id: str
     video_id: str
     court_digest: str
+    court_drift_digest: str | None
     thresholds: dict[str, Any]
     max_frames: int
     implementation: str
@@ -106,6 +108,8 @@ class VideoCourtSideArtifact:
         d = self.decision
         if (d.dataset_id, d.video_id, d.court_digest) != (court.manifest["dataset_id"], court.manifest["video_id"], court.digest):
             raise ValueError("Shared court side artifact belongs to another video or court")
+        if d.court_drift_digest != drift_identity(court).get("artifact_digest"):
+            raise ValueError("Shared court side was measured with different court drift evidence")
         if d.thresholds != json_value(thresholds) or d.max_frames != max_frames:
             raise ValueError("Shared court side thresholds or sampling disagree with execution")
 

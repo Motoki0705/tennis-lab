@@ -104,7 +104,8 @@ class TennisSceneOrchestrator:
             return None
         if court is None:
             raise ValueError("Shared court side requires shared calibration")
-        key = (cfg.video_court_side, court.digest, cfg.court_side, cfg.sampling_max_frames, self.code_identity)
+        key = (cfg.video_court_side, court.digest, drift_identity(court).get("artifact_digest"),
+               cfg.court_side, cfg.sampling_max_frames, self.code_identity)
         if self.video_court_side is None or self._video_court_side_key != key:
             self.video_court_side = prepare_video_court_side(cfg.video_court_side, cfg.resolver, court=court,
                 thresholds=cfg.court_side, max_frames=cfg.sampling_max_frames, code_identity=self.code_identity)

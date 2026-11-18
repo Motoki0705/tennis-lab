@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
+from dataclasses import asdict, replace
 
 import numpy as np
 import pytest
@@ -223,6 +223,17 @@ def test_reject_foreign_missing_and_stale_inputs(tmp_path, monkeypatch):
     incorrect = replace(local.calibration, court=replace(local.calibration.court, diagnostics={"temporal_policy": "static_first_frame_broadcast"}))
     with pytest.raises(ValueError, match="pinned video_shared"):
         node.process(replace(local, calibration=incorrect))
+    from src.tasks.court_detection.geometry.video_drift import DriftConfig
+    from src.tennis_scene.pipeline.video_court.diagnostics import publish_video_drift
+    from tests.integration.tennis_scene.test_video_court import (
+        independent_drift_reports,
+    )
+    diagnosed = publish_video_drift(court, tmp_path / "drift", protocol={"settings": asdict(DriftConfig())},
+                                    reports=independent_drift_reports(court))
+    with pytest.raises(ValueError, match="drift evidence"):
+        build(pipeline, diagnosed, pins, tmp_path)
+    with pytest.raises(ValueError, match="drift evidence"):
+        artifact.check_settings(diagnosed, pipeline.config.court_side, pipeline.config.sampling_max_frames)
     # Matching court provenance alone cannot excuse a changed numerical calibration.
     calibration = local.calibration.calibration
     views = calibration.views

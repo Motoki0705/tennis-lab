@@ -48,6 +48,7 @@ allows repair of corrupt objects. Load reads the two content-addressed objects a
 
 ## Clip outcomes and multi-clip callers
 
+Build and load also check the pinned court drift revision used for calibration.
 The clip node checks its sampled ball observations, calibrated camera matrices and reference against the frozen inputs.
 A decided standalone result that disagrees with the video fails with `court_side_video_shared_conflict`.
 An undecided clip uses the video result and records a warning. `court_side.video_shared.unobservable_policy=fail`

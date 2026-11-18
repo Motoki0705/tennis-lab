@@ -26,6 +26,7 @@ from src.tennis_scene.pipeline.video_artifact import (
     publish_document,
     store_lock,
 )
+from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
 from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
 from src.utils.configuration import PathResolver, PathRole
 
@@ -49,6 +50,9 @@ def calibration_digest(inputs: CourtSideInput, court: VideoCourtArtifact) -> str
     if (diagnostics.get("temporal_policy") != "static_video_shared_broadcast"
             or [(r["dataset_id"], r["video_id"], r["camera_id"], r["artifact_digest"]) for r in refs] != expected):
         raise ValueError("Court side inputs require calibration from the pinned video_shared court")
+    drift = drift_identity(court).get("camera_digests", {})
+    if any(r["drift_digest"] != drift.get(r["camera_id"]) for r in refs):
+        raise ValueError("Frozen calibration disagrees with the selected court drift evidence")
     for view in calibration.calibration.views:
         if not 0 <= view.source_index < len(expected) or inputs.source.camera_ids[view.source_index] != view.camera.camera_id:
             raise ValueError("Calibrated court side cameras disagree with the source view order")
@@ -83,7 +87,8 @@ def build_video_court_side(
             raise ValueError("Court side input clip/camera membership mismatch")
         court.check_source(pin.source)
     identity: dict[str, Any] = dict(schema=SCHEMA, dataset_id=court.manifest["dataset_id"], video_id=court.manifest["video_id"],
-                    court_digest=court.digest, thresholds=json_value(thresholds), max_frames=max_frames,
+                    court_digest=court.digest, court_drift_digest=drift_identity(court).get("artifact_digest"),
+                    thresholds=json_value(thresholds), max_frames=max_frames,
                     implementation=code_identity, input_revisions={clip: pin.digest for clip, pin in stores.items()},
                     evidence_clip_ids=selected)
     cache = directory / "requests" / f"{document_digest(identity)}.json"
