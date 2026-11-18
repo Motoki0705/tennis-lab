@@ -59,6 +59,8 @@ source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認�
 `ExecutionPlan`へまとめます。モデルを段階ごとに共有し、各推論はclip・cameraごとの
 既存windowとbatch設定を使います。既定は通常の`pipeline`設定です。
 meiji_4camで選んだX3D/CSN＋DPT T32は`pipeline_config=pipeline_x3d_dpt`で明示します。
+この動画はダブルスなので、`player_association.players_per_side=2`も明示します。
+人物数の既定値は各side 1人です。
 `court_kp.mode=clip`を選ぶ例です。
 
 ```bash
@@ -67,7 +69,7 @@ meiji_4camで選んだX3D/CSN＋DPT T32は`pipeline_config=pipeline_x3d_dpt`で�
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
   video_id=video_000 \
   pipeline_config=pipeline_x3d_dpt \
-  'pipeline_overrides=["court_kp.mode=clip"]'
+  'pipeline_overrides=["court_kp.mode=clip","player_association.players_per_side=2"]'
 ```
 
 `court_kp.mode=video_shared`では、計画を組む前に`prepare_video_court`でvideo全体の
@@ -79,7 +81,7 @@ ARTIFACT rootの`tennis_scene/court_shared/meiji_4cam`からloadする例です�
 .venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
   video_id=video_000 pipeline_config=pipeline_x3d_dpt \
-  "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\"]"
+  "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"player_association.players_per_side=2\"]"
 ```
 
 dataset/videoのscopeと各clipのmediaを共有成果物へ照合します。build用request、診断成果物の
