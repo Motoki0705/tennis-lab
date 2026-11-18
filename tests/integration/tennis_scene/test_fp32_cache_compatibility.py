@@ -33,7 +33,7 @@ from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
 
-_BASELINE = "68b3bb4a491f6a7cca014c72d790a230a6a87894"
+_BASELINE = "dcd6534594f73cca12a45c2d9afaa8ac09d48bc7"
 _BASELINE_STORE = Path(__file__).with_name("fixtures") / "main_fp32_cache.tar.gz"
 _FIXTURE_HELPERS = "tests/unit/tennis_scene/pipeline/test_auto_pipeline.py"
 _CAMERAS = ("cam0", "cam1", "cam2")

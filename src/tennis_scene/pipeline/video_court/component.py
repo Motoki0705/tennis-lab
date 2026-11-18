@@ -16,11 +16,10 @@ from src.tennis_scene.pipeline.contracts import (
     ComponentIO,
     SourceVideo,
 )
-from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.utils.geometry.keypoints import normalize_grid_keypoints
 
 from .diagnostics import clip_report, drift_identity
-from .policy import apply_drift_policy, validate_unobservable_policy
+from .policy import require_accepted_drift, validate_unobservable_policy
 from .store import VideoCourtArtifact
 
 
@@ -59,13 +58,8 @@ class SharedCourtModule:
     def process(self, inputs: SharedCourtInput) -> CourtKPResult:
         camera, video = inputs.camera, inputs.video
         measured = camera['clips'][inputs.clip_id] if inputs.drift_report is None else inputs.drift_report
-        report = apply_drift_policy(measured, self.unobservable_policy, common_status=camera['status'])
-        if camera['status'] != 'accepted' or report['status'] == 'failed':
-            raise ReconstructionUnavailable('video_shared_court_failed', f'Shared court unavailable for {inputs.clip_id}/{video.camera_id}',
-                                            diagnostics={'camera_id': video.camera_id, 'camera_status': camera['status'],
-                                                         'artifact_digest': inputs.artifact_digest,
-                                                         'drift_digest': inputs.drift_digest,
-                                                         'camera_reasons': camera['diagnostics'].get('reasons', []), 'clip': report})
+        report = require_accepted_drift(camera, inputs.clip_id, measured, self.unobservable_policy,
+                                        artifact_digest=inputs.artifact_digest, drift_digest=inputs.drift_digest)
         matrix = np.asarray(camera['matrix'], float)
         points = project_candidate(matrix, court_template_xy().astype(float))
         if points is None:

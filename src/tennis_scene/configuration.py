@@ -44,6 +44,7 @@ from src.tennis_scene.pipeline.feature_flags import (
     validate_requested_features,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
 from src.tennis_scene.pipeline.video_court.diagnostics import DriftReference
 from src.tennis_scene.pipeline.video_court.policy import validate_unobservable_policy
 from src.tennis_scene.pipeline.video_court.prepare import VideoCourtConfig
@@ -56,6 +57,7 @@ from src.tennis_scene.visualization.blender.export.placement_ranking import (
 )
 from src.utils.configuration import (
     ConfigField,
+    MissingConfigurationKeyError,
     PathResolver,
     PathRole,
     RuntimePathRoots,
@@ -150,6 +152,12 @@ def _single_component(value: str, *, name: str) -> str:
     return value
 
 
+def _check_court_side_mode_fields(side: Mapping[str, object]) -> None:
+    if ("mode" in side) != ("video_shared" in side):
+        missing = "video_shared" if "mode" in side else "mode"
+        raise MissingConfigurationKeyError(f"Missing court_side.{missing}: mode and video_shared must be supplied together")
+
+
 _POSTPROCESS_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp.postprocess",
     fields={
@@ -172,13 +180,14 @@ _COURT_REGION_SCHEMA = StrictConfigSchema(
         for field in fields(CourtRegionSearchConfig)
     },
 )
+_ACQUISITION_FIELDS = {name: ConfigField.of(str, type(None)) for name in ("action", "directory", "request", "request_sha256", "artifact_digest")}
+_SHARED_FIELDS = {**_ACQUISITION_FIELDS, "rebuild": ConfigField.of(bool), "unobservable_policy": ConfigField.of(str)}
 _COURT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp",
     fields={"checkpoint": ConfigField.of(str), "subpixel_refine": ConfigField.of(bool), "mode": ConfigField.of(str),
             "video_shared": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.court_kp.video_shared", fields={
-                'unobservable_policy': ConfigField.of(str),
-                **{name: ConfigField.of(str, type(None)) for name in ('action', 'directory', 'dataset_id', 'video_id', 'request', 'request_sha256', 'artifact_digest', 'drift_directory', 'drift_digest')},
-                'rebuild': ConfigField.of(bool)})),
+                **_SHARED_FIELDS,
+                **{name: ConfigField.of(str, type(None)) for name in ('dataset_id', 'video_id', 'drift_directory', 'drift_digest')}})),
             "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
             "region_search": ConfigField.mapping(_COURT_REGION_SCHEMA)},
 )
@@ -248,7 +257,9 @@ _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", field
     "side_min_frames": ConfigField.of(int), "side_max_cost": ConfigField.of(float, int),
     "side_min_support": ConfigField.of(float, int),
 })
-_COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", fields={
+_COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", semantic_checks=(_check_court_side_mode_fields,), fields={
+    "mode": ConfigField.of(str, required=False),
+    "video_shared": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.court_side.video_shared", fields=_SHARED_FIELDS), required=False),
     "reprojection_px": ConfigField.of(float, int), "min_motion_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
     "max_cost": ConfigField.of(float, int),
     "min_support": ConfigField.of(float, int), "min_margin": ConfigField.of(float, int),
@@ -307,6 +318,28 @@ def pipeline_asset_configuration(
     return value, roots, resolver
 
 
+def _court_side_acquisition(
+    side: Mapping[str, object], court: VideoCourtConfig | None, resolver: PathResolver, cache_source: str,
+) -> tuple[VideoArtifactConfig | None, str]:
+    if "mode" not in side:
+        # The schema has recognized the saved clip format containing only the six thresholds.
+        return None, "warn"
+    options = _mapping(side["video_shared"], name="court_side.video_shared")
+    policy = validate_unobservable_policy(cast(str, options["unobservable_policy"]))
+    if side["mode"] == "clip":
+        if any(options[key] is not None for key in _ACQUISITION_FIELDS) or options["rebuild"] or policy != "warn":
+            raise SemanticConfigurationError("Shared side options require court_side.mode=video_shared")
+        return None, policy
+    if side["mode"] != "video_shared":
+        raise SemanticConfigurationError("court_side.mode must be clip or video_shared")
+    if court is None:
+        raise SemanticConfigurationError("court_side.mode=video_shared requires court_kp.mode=video_shared")
+    config = VideoArtifactConfig.from_mapping({**options, "dataset_id": court.dataset_id, "video_id": court.video_id}, resolver)
+    if cache_source == "load" and config.action != "load":
+        raise SemanticConfigurationError("Load-only execution requires court_side.video_shared.action=load")
+    return config, policy
+
+
 @dataclass(frozen=True, slots=True)
 class PipelineRuntimeConfig:
     """Automatic stage configuration; dataset callers can leave run inputs unbound."""
@@ -351,6 +384,8 @@ class PipelineRuntimeConfig:
     video_court: VideoCourtConfig | None
     video_court_drift: DriftReference | None
     video_court_unobservable_policy: str
+    video_court_side: VideoArtifactConfig | None
+    court_side_unobservable_policy: str
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -467,6 +502,7 @@ class PipelineRuntimeConfig:
         if bind_inputs and geometry.reference_camera is not None and geometry.reference_camera not in camera_ids:
             raise SemanticConfigurationError("Reference camera must be in the source camera IDs")
         side = _mapping(value["court_side"], name="court_side")
+        video_court_side, side_policy = _court_side_acquisition(side, video_court, resolver, cache_source)
         court_side = CourtSideConfig(reprojection_px=float(cast(float, side["reprojection_px"])),
             min_motion_px=float(cast(float, side["min_motion_px"])), min_frames=cast(int, side["min_frames"]),
             max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
@@ -507,6 +543,9 @@ class PipelineRuntimeConfig:
             if cache_source == "load" and direct_config is not None and direct_config.resume != "publication":
                 raise SemanticConfigurationError("Use direct_annotation.resume=publication for publication-only recovery")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
+        settings["court_side"] = {k: v for k, v in side.items() if k not in {"mode", "video_shared"}}
+        if video_court_side is not None:
+            settings["court_side"] = {**cast(dict[str, Any], settings["court_side"]), "mode": "video_shared", "unobservable_policy": side_policy}
         if video_court is not None:
             if direct_config is not None or ball_method == 'gpt_annotation':
                 raise SemanticConfigurationError('video_shared does not support direct_annotation/fixed geometry import')
@@ -515,7 +554,8 @@ class PipelineRuntimeConfig:
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
-            ball_method, direct_config, cast(str | None, value["clip_id"]), video_court, video_court_drift, unobservable_policy)
+            ball_method, direct_config, cast(str | None, value["clip_id"]), video_court, video_court_drift, unobservable_policy,
+            video_court_side, side_policy)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

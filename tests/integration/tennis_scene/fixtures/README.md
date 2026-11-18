@@ -1,6 +1,6 @@
 # FP32キャッシュ互換テスト
 
-`main_fp32_cache.tar.gz` は、精度設定追加前のmain `68b3bb4a491f6a7cca014c72d790a230a6a87894` の
+`main_fp32_cache.tar.gz` は、共有court sideを取り込んだmain `dcd6534594f73cca12a45c2d9afaa8ac09d48bc7` の
 `TennisSceneOrchestrator` と `ClipStore` が保存した3camera・24frameのfixture。
 既存の `test_auto_pipeline.py` の数値と仮の重みを使い、モデル推論を固定の出力に置き換えている。
 他のディレクトリで開けるよう、入力動画・重みのidentityに相対パスを使う。
@@ -12,7 +12,7 @@
 worktree=$(pwd)
 baseline=$(mktemp -d)
 scratch=$(mktemp -d)
-git archive 68b3bb4a491f6a7cca014c72d790a230a6a87894 src tests/unit/tennis_scene/pipeline/test_auto_pipeline.py |
+git archive dcd6534594f73cca12a45c2d9afaa8ac09d48bc7 src tests/unit/tennis_scene/pipeline/test_auto_pipeline.py |
     tar -x -C "$baseline"
 cd "$baseline"
 PYTHONPATH="$baseline" "$worktree/.venv/bin/python" \

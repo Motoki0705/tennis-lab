@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import fcntl
 import json
-from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -14,45 +12,14 @@ import numpy as np
 
 from src.tennis_scene.pipeline.artifacts import document_digest, write_json_atomic
 from src.tennis_scene.pipeline.contracts import ClipSource
+from src.tennis_scene.pipeline.video_artifact import (
+    load_document,
+    publish_document,
+    store_lock,
+    validate_digest,
+)
 
 from .estimator import PROFILE
-
-
-def _digest(value: str) -> str:
-    if len(value) != 64 or any(c not in '0123456789abcdef' for c in value):
-        raise ValueError('Invalid video court content digest')
-    return value
-
-
-def _object_path(root: Path, digest: str) -> Path:
-    path = root / 'objects' / f'{_digest(digest)}.json'
-    if not path.resolve().is_relative_to(root.resolve()):
-        raise ValueError('Video court object escapes its store')
-    return path
-
-
-def _load(root: Path, digest: str) -> dict[str, Any]:
-    path = _object_path(root, digest)
-    document = json.loads(path.read_text())
-    if not isinstance(document, dict) or document_digest(document) != digest:
-        raise ValueError('Video court artifact content changed')
-    return document
-
-
-def _publish(root: Path, document: dict[str, Any], *, repair: bool = False) -> str:
-    digest: str = document_digest(document)
-    target = _object_path(root, digest)
-    if target.exists():
-        try:
-            _load(root, digest)
-        except ValueError:
-            if not repair:
-                raise
-            write_json_atomic(target, document)
-    else:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        write_json_atomic(target, document)
-    return digest
 
 
 def validate_camera(document: dict[str, Any]) -> None:
@@ -77,7 +44,7 @@ def validate_camera(document: dict[str, Any]) -> None:
     for clip, source in document['sources'].items():
         if clip.split('/')[0] != document['video_id']:
             raise ValueError('Foreign video in shared court source')
-        _digest(source['sha256'])
+        validate_digest(source['sha256'])
         if type(source['num_frames']) is not int or source['num_frames'] < 1 or not np.isfinite(source['fps']) or source['fps'] <= 0:
             raise ValueError('Invalid shared court source timeline')
         report = document['clips'][clip]
@@ -99,16 +66,20 @@ class VideoCourtArtifact:
     cameras: dict[str, dict[str, Any]]
 
     def verify(self) -> None:
-        if _load(self.root, self.digest) != self.manifest:
+        if load_document(self.root, self.digest) != self.manifest:
             raise ValueError('Video court manifest changed in memory')
         for camera, digest in self.manifest['cameras'].items():
-            value = _load(self.root, digest)
+            value = load_document(self.root, digest)
             if value != self.cameras[camera]:
                 raise ValueError('Video court camera changed in memory')
             validate_camera(value)
 
     def bind(self, source: ClipSource) -> None:
         self.verify()
+        self.check_source(source)
+
+    def check_source(self, source: ClipSource) -> None:
+        """Check membership against this snapshot after the caller has verified its objects."""
         if source.clip_id.split('/')[0] != self.manifest['video_id']:
             raise ValueError('Clip belongs to another shared-court video')
         for video in source.videos:
@@ -129,21 +100,14 @@ class VideoCourtStore:
     def __init__(self, root: Path):
         self.root = root.resolve()
 
-    @contextmanager
-    def lock(self) -> Iterator[None]:
-        self.root.mkdir(parents=True, exist_ok=True)
-        with (self.root / '.video-court.lock').open('a') as handle:
-            fcntl.flock(handle, fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(handle, fcntl.LOCK_UN)
+    def lock(self) -> AbstractContextManager[None]:
+        return store_lock(self.root, '.video-court.lock')
 
     def load(self, digest: str) -> VideoCourtArtifact:
-        manifest = _load(self.root, digest)
+        manifest = load_document(self.root, digest)
         if set(manifest) != {'schema', 'dataset_id', 'video_id', 'cameras'} or manifest['schema'] != 'video_court_bundle_v1' or not manifest['cameras']:
             raise ValueError('Invalid video court manifest')
-        cameras = {camera: _load(self.root, ref) for camera, ref in manifest['cameras'].items()}
+        cameras = {camera: load_document(self.root, ref) for camera, ref in manifest['cameras'].items()}
         for camera, value in cameras.items():
             validate_camera(value)
             if (value['camera_id'], value['dataset_id'], value['video_id']) != (camera, manifest['dataset_id'], manifest['video_id']):
@@ -156,16 +120,16 @@ class VideoCourtStore:
         for value in cameras.values():
             validate_camera(value)
         first = next(iter(cameras.values()))
-        references = {camera: _publish(self.root, document, repair=repair) for camera, document in sorted(cameras.items())}
+        references = {camera: publish_document(self.root, document, repair=repair) for camera, document in sorted(cameras.items())}
         manifest = {'schema': 'video_court_bundle_v1', 'dataset_id': first['dataset_id'], 'video_id': first['video_id'], 'cameras': references}
-        return self.load(_publish(self.root, manifest, repair=repair))
+        return self.load(publish_document(self.root, manifest, repair=repair))
 
     def cached_camera(self, identity: dict[str, Any]) -> dict[str, Any] | None:
         path = self.root / 'requests' / f'{document_digest(identity)}.json'
         if not path.exists():
             return None
         ref = json.loads(path.read_text())
-        value = _load(self.root, ref['camera_digest'])
+        value = load_document(self.root, ref['camera_digest'])
         validate_camera(value)
         if value['identity'] != identity:
             raise ValueError('Video court request identity mismatch')
@@ -173,7 +137,7 @@ class VideoCourtStore:
 
     def remember(self, document: dict[str, Any], *, repair: bool = False) -> None:
         validate_camera(document)
-        digest = _publish(self.root, document, repair=repair)
+        digest = publish_document(self.root, document, repair=repair)
         path = self.root / 'requests' / f'{document_digest(document["identity"])}.json'
         path.parent.mkdir(parents=True, exist_ok=True)
         write_json_atomic(path, {'camera_digest': digest})

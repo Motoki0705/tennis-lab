@@ -44,7 +44,7 @@ DLTは外れviewを除外しない。誤った姿勢のcameraを多数決で無�
 | `ambiguous_margin` | `margin < min_margin` |
 
 閾値の正本はpipelineの設定 `court_side:`（[pipeline.yaml](../../tennis_scene/configs/pipeline.yaml)）。
-pipeline component は[tennis_scene pipeline](../../tennis_scene/pipeline/README.md)を参照。
+既定はclipごとの判定。固定カメラで同じ動画の証拠をまとめる設定・診断・build/loadは[動画共有のcourt side](../../tennis_scene/pipeline/video_court_side/README.ja.md)、下流の接続は[tennis_scene pipeline](../../tennis_scene/pipeline/README.md)を参照。
 
 ## 合成ベンチマークと閾値の選定（`benchmark.py`）
 

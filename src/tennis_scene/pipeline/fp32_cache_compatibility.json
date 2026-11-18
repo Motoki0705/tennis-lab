@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "68b3bb4a491f6a7cca014c72d790a230a6a87894",
+  "baseline_commit": "dcd6534594f73cca12a45c2d9afaa8ac09d48bc7",
   "files": {
     "submodules/configuration.py": {
       "before": "09361c782fb3eb0130e1e269e23a01f4b8a597f65ffc9d7482131b8be839d770",
@@ -34,16 +34,16 @@
       "after": "f04d0eb0977afaf4aa4f6fa400132cc433842ff7261634dab3f2ad1ec91be01d"
     },
     "tennis_scene/pipeline/definition.py": {
-      "before": "cc8c1257b6be512547f8a032a39186d4787cbad5c1c292b0764905754fa316d3",
-      "after": "a5bd1feffbfb313f94e9b28eaf0416c3e7cd1e2e4d36b794dacec1e5c7de36b4"
+      "before": "9549347259bc450d97cf901461fea4a7de7430e76a971f77385d6f3b17cb5a3d",
+      "after": "242e6e3cd5d015110a3f807edcf97fd0c63a942396597d4dfaf2ace1bf8203a6"
     },
     "tennis_scene/pipeline/direct_annotation/__init__.py": {
       "before": "3968670edcc5b10398e0aad6834b7a799519ad79d3c027cbe986eea8bfe21799",
       "after": "93907f99b28713077608f1e4e9ed374b362259c3a646d9ee2170f1b9064e0787"
     },
     "tennis_scene/pipeline/orchestrator.py": {
-      "before": "6ed0fa434a2ded63e7c1c0f1145f69de26dab35699a11867ed43893ee4943542",
-      "after": "e470cd88d796bfaba42e212e27f2e25aea40b2cba202acf71d9385a0882741d9"
+      "before": "1ae5a91fff634baeb3464d7ff3281c86711480da83324429bdb15e793da898cf",
+      "after": "777007f1da9e1f6bd91c88ff797d4f873aaa0361cff4eae21687244e276905b2"
     },
     "tennis_scene/pipeline/source_identity.py": {
       "before": null,
