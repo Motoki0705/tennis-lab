@@ -36,7 +36,6 @@ def test_full_frame_keeps_off_court_people_without_calibration(tmp_path: Path, m
             pass
 
     monkeypatch.setattr(module, 'DinoPersonDetector', Detector)
-    monkeypatch.setattr(module, 'release_inference_memory', lambda device: None)
     monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k: [SimpleNamespace(index=0, frame=np.zeros((480, 640, 3), np.uint8))])
     video = SourceVideo('cam2', tmp_path / 'x.mp4', 'hash', 1, 30., 640, 480)
     result = materialize_model_weights(module.PersonDetectionModule(people)).process(module.PersonDetectionInput(video))

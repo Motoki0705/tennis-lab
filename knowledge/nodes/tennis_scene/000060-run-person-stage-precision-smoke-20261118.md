@@ -2,7 +2,7 @@
 id: run-person-stage-precision-smoke-20261118
 type: run
 task: tennis_scene
-sequence: 48
+sequence: 60
 recorded_at: '2026-11-18'
 title: Meiji 4camの固定8画像で人物推論のFP32一致と混合精度を確認
 issue: 2238

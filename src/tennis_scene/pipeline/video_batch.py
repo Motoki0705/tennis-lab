@@ -161,6 +161,20 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                         "unobservable_policy": cfg.video_court_unobservable_policy,
                         "drift_digest": None if cfg.video_court_drift is None else cfg.video_court_drift.digest,
                     }
+            progress.document["active_stage"] = "prepare_video_court_side"
+            progress.flush()
+            with span("preprocess", operation="prepare_video_court_side"):
+                if cfg.video_court_side is not None and (cfg.video_court_side.dataset_id, cfg.video_court_side.video_id) != (dataset_id, video_id):
+                    raise ValueError("Shared court side configuration belongs to another dataset/video")
+                video_court_side = orchestrator.prepare_video_court_side(video_court)
+                if video_court_side is not None:
+                    progress.document["video_court_side"] = {
+                        "artifact_digest": video_court_side.digest,
+                        "diagnostics_digest": video_court_side.decision.diagnostics_digest,
+                        "unobservable_policy": cfg.court_side_unobservable_policy,
+                        "clips": {clip.inputs.record.clip_id: video_court_side.clip_report(
+                            clip.inputs.record.clip_id, cfg.court_side_unobservable_policy) for clip in prepared},
+                    }
             with span("measurement", operation="publication_identity"):
                 identity = orchestrator.publication_identity()
             progress.document.update(publication_identity=json_value(identity), active_stage=None)
@@ -177,7 +191,8 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                     if reference is not None and reference not in source.camera_ids:
                         raise ValueError("Reference camera is not a source camera")
                     nodes = standard_definition(cfg, source, code_identity=orchestrator.code_identity,
-                                                overrides=orchestrator.components, video_court=video_court)
+                                                overrides=orchestrator.components, video_court=video_court,
+                                                video_court_side=video_court_side)
                     # The plan retains every store. Keep decoded heatmaps/meshes
                     # clip-local so a whole video does not accumulate in RAM.
                     store = ClipStore(inputs.clip_dir / ANNOTATION_RELATIVE_DIR, json_value(source), memory_entries=0)

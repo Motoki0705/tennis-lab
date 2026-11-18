@@ -88,6 +88,17 @@ dataset/videoのscopeと各clipのmediaを共有成果物へ照合します。bu
 選択と検査不能時の方針は、共有コートの設定を使います。取得の規則は
 [共有コートのREADME](pipeline/video_court/README.ja.md)を参照してください。
 
+`court_side.mode=video_shared`では、その後に`prepare_video_court_side`で共有の
+コート向きを1回buildまたはloadしてから、全clipの計画を作ります。
+`court_side.video_shared.action`と`directory`、load時の`artifact_digest`を同じ
+`pipeline_overrides`へ追加します。個別clipのmargin不足などは進捗の
+`video_court_side.clips`へ残し、共有判定との矛盾はclip固有の失敗になります。
+設定とpinの契約は[共有court_sideのREADME](pipeline/video_court_side/README.ja.md)を参照してください。
+
+meiji_4camでは、同じoverridesへ`people_models.runtime.dino_detector.precision=fp16`と
+`people_models.runtime.vitpose.precision=fp16`も明示します。両方の既定値は`fp32`です。
+精度を変更すると対応するcomponentと下流のcacheが更新されます。
+
 `clip_ids=[video_000/clip_000,video_000/clip_001]`で明示subsetを指定できます。
 別video・未知・重複・空の指定、manifestと実mediaのcamera対応・FPS・解像度・frame数の
 不一致は、推論の開始前に拒否します。対象と展開済み設定は開始時に固定します。

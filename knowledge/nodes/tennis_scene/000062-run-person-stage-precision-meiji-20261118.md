@@ -2,7 +2,7 @@
 id: run-person-stage-precision-meiji-20261118
 type: run
 task: tennis_scene
-sequence: 50
+sequence: 62
 recorded_at: '2026-11-18'
 title: Meiji 4camの全尺2クリップで人物推論の精度・flip・追跡依存を比較
 issue: 2238

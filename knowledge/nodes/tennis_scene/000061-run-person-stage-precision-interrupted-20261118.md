@@ -2,7 +2,7 @@
 id: run-person-stage-precision-interrupted-20261118
 type: run
 task: tennis_scene
-sequence: 49
+sequence: 61
 recorded_at: '2026-11-18'
 title: 共有training queueの終了シグナルで人物推論の全尺計測を中断
 issue: 2238

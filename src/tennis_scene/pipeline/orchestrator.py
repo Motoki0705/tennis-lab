@@ -108,6 +108,7 @@ class TennisSceneOrchestrator:
         if self._scene_export is None:
             raise RuntimeError("No completed scene export for the last run")
         return self._scene_export
+
     def prepare_video_court_side(self, court: VideoCourtArtifact | None) -> VideoCourtSideArtifact | None:
         from src.tennis_scene.pipeline.video_court_side import prepare_video_court_side
 

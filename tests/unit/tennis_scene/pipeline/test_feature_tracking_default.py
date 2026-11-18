@@ -85,13 +85,21 @@ def test_person_settings_change_only_their_stage_cache_identities(
 ) -> None:
     baseline = runtime(tmp_path, overrides=("device=cuda",))
     candidate = runtime(tmp_path, overrides=("device=cuda", f"people_models.runtime.{setting}"))
-    materialize_assets(enabled_model_assets(baseline).values(), tmp_path)
+    materialize_assets(enabled_model_assets(baseline).values(), tmp_path, court=baseline.court_kp)
     source = ClipSource("test", tuple(SourceVideo(f"cam{i}", tmp_path / f"{i}.mp4", "hash", 5, 30., 640, 480) for i in range(3)))
     store = ClipStore(tmp_path / "store", json_value(source))
     base, changed = [
         ComponentRunner(standard_definition(cfg, source, code_identity="test"), store).plan
         for cfg in (baseline, candidate)
     ]
+    from src.tennis_scene.pipeline.model_resources import precision_dtype
+
+    for plan, cfg in ((base, baseline), (changed, candidate)):
+        for node, slot, precision in (
+            ("person_detection/cam0", "detector", cfg.people.runtime.dino_detector.precision),
+            ("person_tracking/cam0", "pose", cfg.people.runtime.vitpose.precision),
+        ):
+            assert plan.nodes[("test", node)].component.model_specs()[slot].dtype == precision_dtype(precision)
     # Keep the upstream references fixed to isolate the local identity changes.
     for key in base.order:
         reference = ArtifactRef(key[1], f"{key[1]}.json", "fixed-content",

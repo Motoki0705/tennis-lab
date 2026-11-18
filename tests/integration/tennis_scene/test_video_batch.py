@@ -394,3 +394,82 @@ def test_single_entry_concurrent_export_cannot_mix_batch_publication(tmp_path: P
             writer.terminate()
             writer.join(10)
     assert writer.exitcode == 0
+
+
+@pytest.mark.parametrize("action", ["build", "load"])
+def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_path, monkeypatch, action):
+    import src.tennis_scene.pipeline.video_court_side as side_api
+    from src.tennis_scene.pipeline.artifacts import json_value
+    from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
+    from src.tennis_scene.pipeline.definition import standard_definition
+    from src.tennis_scene.pipeline.runner import ComponentRunner
+    from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+    from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
+    from src.utils.checksum import dual_sha256
+
+    pipeline, dataset, clips, court = shared_batch_fixture(tmp_path, monkeypatch)
+    pipeline.config = replace(pipeline.config, court_side=replace(pipeline.config.court_side, min_frames=30))
+    pins = {}
+    for i, clip in enumerate(clips):
+        source = prepare_clip_source(tuple(clip / f"cam{c}.mp4" for c in range(3)),
+                                     ("cam0", "cam1", "cam2"), clip_id=SHARED_CLIPS[i]).source
+        store = ClipStore(tmp_path / f"prefix-{i}", json_value(source))
+        nodes = standard_definition(pipeline.config, source, code_identity=pipeline.code_identity,
+                                    overrides=pipeline.components, video_court=court)
+        ComponentRunner(nodes, store).run(["court_calibration", *(f"ball_points/cam{c}" for c in range(3))])
+        pins[source.clip_id] = side_api.PinnedSideInputs.from_store(store.root)
+    artifact = side_api.build_video_court_side(pins, court=court, directory=tmp_path / "side",
+        thresholds=pipeline.config.court_side, max_frames=pipeline.config.sampling_max_frames,
+        code_identity=pipeline.code_identity)
+    request = tmp_path / "side-inputs.json"
+    save_json_atomic({"schema": "video_court_side_inputs_v1", "evidence_clip_ids": None,
+        "clips": {clip_id: {"role": "artifact", "directory": pin.directory.name, "inputs_digest": pin.digest}
+                  for clip_id, pin in pins.items()}}, request)
+    pipeline.config = replace(pipeline.config, video_court_side=VideoArtifactConfig(
+        action=action, directory=tmp_path / "side", dataset_id="fixture", video_id="video_000", rebuild=False,
+        request=request if action == "build" else None,
+        request_sha256=dual_sha256(request) if action == "build" else None,
+        artifact_digest=artifact.digest if action == "load" else None))
+    expected = pipeline.run(tuple(clips[0] / f"cam{i}.mp4" for i in range(3)), video_role=PathRole.DATA,
+        camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "single-side", clip_id=SHARED_CLIPS[0])
+    pipeline.video_court_side, pipeline._video_court_side_key = None, None
+    stages = pipeline.components
+    for stage in stages.values():
+        stage.calls = 0
+    acquired = []
+    prepare = side_api.prepare_video_court_side
+
+    def acquire(*args, **kwargs):
+        assert all(stage.calls == 0 for stage in stages.values())
+        assert not any((clip / "annotations/tennis_scene/scene.json").exists() for clip in clips)
+        acquired.append(args[0].action)
+        return prepare(*args, **kwargs)
+
+    monkeypatch.setattr(side_api, "prepare_video_court_side", acquire)
+    result = execute(pipeline, dataset)
+    assert result.exit_code == 0 and acquired == [action]
+    assert tuple(result.plan.clips) == SHARED_CLIPS
+    assert [outcome.status for outcome in result.outcomes] == ["generated", "generated"]
+    np.testing.assert_array_equal(scene(clips[0]).court_kp, expected.court_kp)
+    np.testing.assert_array_equal(scene(clips[0]).ball_3d, expected.ball_3d)
+    assert all(scene(clip).metadata["court_reference"]["view_half_turns"] == [False, False, True] for clip in clips)
+    progress = json.loads(result.progress_path.read_text())
+    side = progress["video_court_side"]
+    assert side["artifact_digest"] == artifact.digest
+    assert progress["publication_identity"]["video_court_side_digest"] == artifact.digest
+    assert all(report["status"] == "warning" and report["reason"] == "court_side_insufficient_frames"
+               for report in side["clips"].values())
+
+
+def test_shared_side_scope_is_rejected_before_acquisition(tmp_path, monkeypatch):
+    import src.tennis_scene.pipeline.video_court_side as side_api
+    from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
+
+    pipeline, dataset, clips, _ = shared_batch_fixture(tmp_path, monkeypatch)
+    pipeline.config = replace(pipeline.config, video_court_side=VideoArtifactConfig(
+        action="load", directory=tmp_path / "side", dataset_id="foreign", video_id="video_000",
+        rebuild=False, request=None, request_sha256=None, artifact_digest="a" * 64))
+    monkeypatch.setattr(side_api, "prepare_video_court_side", lambda *a, **kw: pytest.fail("foreign scope must stop"))
+    with pytest.raises(ValueError, match="another dataset/video"):
+        execute(pipeline, dataset)
+    assert not any((clip / "annotations/tennis_scene/annotation.json").exists() for clip in clips)
