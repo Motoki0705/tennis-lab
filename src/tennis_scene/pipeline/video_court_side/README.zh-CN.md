@@ -4,6 +4,8 @@
 
 `court_side.mode=video_shared` 为同一视频的固定相机估计一组180度旋转标记。它要求使用 `court_kp.mode=video_shared`，并沿用共享球场的数据集和视频 ID。默认模式为 `court_side.mode=clip`。
 
+只保存了六个阈值的旧配置仍按片段处理。现行格式要求同时指定 `mode` 和 `video_shared`。
+
 每个片段分别使用原有的采样网格、像素阈值缩放、静止观测过滤和基于球的假设检验。片段 ID 与片段内的原始帧号共同标识一帧。对于每种朝向组合，系统按各片段的有效多视角帧数加权平均 cost 和 support，累加相机对的共同帧数，再用原有阈值作视频级判定。视频产物按内容哈希引用独立诊断对象，其中保存每个片段的有效帧号、假设排名、相机对帧数、margin 和未决原因。没有有效帧时，排名为空，margin 为 null。
 
 ## 单片段入口
@@ -40,3 +42,5 @@ court_side.video_shared.artifact_digest="$SIDE_DIGEST"
 构建和加载也会核对标定所用的球场漂移诊断版本。片段节点核对当前采样的球观测、标定矩阵及参考相机。独立判定与视频结果冲突的片段以 `court_side_video_shared_conflict` 失败。未决片段采用视频结果并记录警告。设置 `court_side.video_shared.unobservable_policy=fail` 可以拒绝未决片段。如果视频本身未决，两种策略都会失败。`run.json` 记录两套排名、margin、处理结果和两个对象的摘要。节点与数据集标记的缓存标识包含共享判定的摘要及执行策略。
 
 预备计划使用同一共享球场和 `court_side.mode=clip`，对所有片段只运行 `court_calibration` 与 `ball_points/<camera>`。将片段 ID 到 `PinnedSideInputs` 的映射传给 `build_video_court_side`，或通过 `prepare_video_court_side` 按配置构建或加载。对各片段调用 `standard_definition` 时传入共享球场和 `video_court_side`。媒体、标定、球观测及数值设置必须与证据匹配。通过 `artifact.clip_report(clip_id, policy)` 可获取片段诊断。
+
+同一 orchestrator 再次使用构建结果时，也会校验请求哈希和所有片段存储中的当前输入版本。计划要求参与视频判定的片段集合以及全部输入版本与构建请求相符，其中包括仅用于独立诊断的片段。加载时通过指定摘要校验判定和诊断。共享模式在创建计划时拒绝替换 `court_side` 组件，以保证执行配置规定的片段判定。

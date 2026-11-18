@@ -73,6 +73,9 @@ from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
 from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
 from src.tennis_scene.pipeline.video_court_side.artifact import VideoCourtSideArtifact
 from src.tennis_scene.pipeline.video_court_side.component import SharedCourtSideModule
+from src.tennis_scene.pipeline.video_court_side.prepare import (
+    verify_prepared_court_side,
+)
 from src.utils.checksum import dual_sha256
 
 if TYPE_CHECKING:
@@ -110,6 +113,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     for components that are not overridden.
     """
     ids = source.camera_ids
+    overrides = {} if overrides is None else overrides
+    if cfg.video_court_side is not None and "court_side" in overrides:
+        raise ValueError("A court_side override is incompatible with court_side.mode=video_shared")
     if (cfg.video_court is None) != (video_court is None):
         raise ValueError('Shared court must be prepared explicitly before building the clip plan')
     if video_court is not None:
@@ -126,14 +132,11 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                 != (video_court.manifest["dataset_id"], video_court.manifest["video_id"])
                 or cfg.video_court.action == "load" and cfg.video_court.artifact_digest != video_court.digest):
             raise ValueError("Execution plan court disagrees with the configured shared side scope/geometry")
-        if cfg.video_court_side.action == "load" and cfg.video_court_side.artifact_digest != video_court_side.digest:
-            raise ValueError("Execution plan court side digest disagrees with configuration")
-        video_court_side.verify()
+        verify_prepared_court_side(video_court_side, cfg.video_court_side, cfg.resolver, code_identity=code_identity)
         video_court_side.check_settings(video_court, cfg.court_side, cfg.sampling_max_frames)
         if source.clip_id not in video_court_side.clips:
             raise ValueError("Clip is missing from the shared court side artifact")
     nodes: list[ComponentNode] = []
-    overrides = {} if overrides is None else overrides
 
     def add(name: str, component: Any, assembler: Any, bindings: dict[str, str], settings: Callable[[], Any],
             *, camera: str | None = None) -> None:

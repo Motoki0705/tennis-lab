@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
+from src.tennis_scene.pipeline.components.court_side import CourtSideModule
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     standard_definition,
@@ -77,6 +78,20 @@ def acquisition(tmp_path, **kwargs):
     return VideoArtifactConfig(directory=tmp_path / "side", dataset_id="fixture", video_id="video_000", rebuild=False, **kwargs)
 
 
+def build_request(tmp_path, pins, selection=None):
+    path = tmp_path / "inputs.json"
+    rows = {clip: {"role": "artifact", "directory": pin.directory.name, "inputs_digest": pin.digest} for clip, pin in pins.items()}
+    write_json_atomic(path, {"schema": "video_court_side_inputs_v1", "clips": rows, "evidence_clip_ids": selection})
+    return acquisition(tmp_path, action="build", request=path, request_sha256=dual_sha256(path), artifact_digest=None)
+
+
+def republish_second_ball_stream(pipeline, court, store, source):
+    second_clip_balls(pipeline.components, "static")
+    nodes = standard_definition(replace(pipeline.config, video_court_side=None), source, code_identity=pipeline.code_identity,
+                                overrides=pipeline.components, video_court=court)
+    ComponentRunner(nodes, ClipStore(store, json_value(source)), overwrite=True).run([f"ball_points/{c}" for c in CAMERAS])
+
+
 @pytest.mark.parametrize(("kind", "status", "reason"), [
     ("agreement", "ok", None),
     ("static", "warning", "court_side_insufficient_frames"),
@@ -97,6 +112,15 @@ def test_clip_verdict_and_full_video_decision(tmp_path, monkeypatch, kind, statu
     pipeline.config = replace(pipeline.config, video_court_side=load)
     store = pins[CLIPS[1]].directory
     if status == "failed":
+        override = CourtSideModule(CAMERAS, pipeline.config.court_side, max_frames=pipeline.config.sampling_max_frames)
+        with monkeypatch.context() as patch:
+            patch.setitem(pipeline.components, "court_side", override)
+            clip_nodes = standard_definition(replace(pipeline.config, video_court_side=None), pins[CLIPS[1]].source,
+                code_identity=pipeline.code_identity, overrides=pipeline.components, video_court=court)
+            assert next(n.component for n in clip_nodes if n.name == "court_side") is override
+            with pytest.raises(ValueError, match="court_side.*override"):
+                pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=store, clip_id=CLIPS[1])
+            assert pipeline.last_runner is None and pipeline.last_store.active("court_side") is None
         with pytest.raises(ReconstructionUnavailable) as stopped:
             pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=store, clip_id=CLIPS[1])
         assert stopped.value.reason == reason and stopped.value.diagnostics["standalone"]["margin"] >= pipeline.config.court_side.min_margin
@@ -136,9 +160,7 @@ def test_short_clips_only_decide_together_and_warn_in_single_entry(tmp_path, mon
 
 def test_build_once_load_and_invalidate_only_side_consumers(tmp_path, monkeypatch):
     pipeline, paths, sources, court, pins = prefix_stores(tmp_path, monkeypatch, "agreement")
-    request = tmp_path / "inputs.json"
-    rows = {c: {"role": "artifact", "directory": pin.directory.name, "inputs_digest": pin.digest} for c, pin in pins.items()}
-    write_json_atomic(request, {"schema": "video_court_side_inputs_v1", "clips": rows, "evidence_clip_ids": None})
+    request = build_request(tmp_path, pins).request
     cfg = runtime(tmp_path, overrides=(
         "court_kp.mode=video_shared", "court_kp.video_shared.action=load", "court_kp.video_shared.directory=shared",
         "court_kp.video_shared.dataset_id=fixture", "court_kp.video_shared.video_id=video_000",
@@ -164,18 +186,16 @@ def test_build_once_load_and_invalidate_only_side_consumers(tmp_path, monkeypatc
     with monkeypatch.context() as cached:
         cached.setattr(scorer, cannot_score)
         assert build(pipeline, court, pins, tmp_path).digest == shared.digest
+        assert pipeline.publication_identity()["video_court_side_digest"] == shared.digest
 
     # Change evidence only in the other clip. Its new pin must invalidate the
     # decision for this clip, while the original pinned build request fails.
-    second_clip_balls(pipeline.components, "static")
-    nodes = standard_definition(replace(cfg, video_court_side=None), sources[1], code_identity=pipeline.code_identity,
-                                overrides=pipeline.components, video_court=court)
-    other = ClipStore(pins[CLIPS[1]].directory, json_value(sources[1]))
-    ComponentRunner(nodes, other, overwrite=True).run([f"ball_points/{c}" for c in CAMERAS])
+    other = pins[CLIPS[1]].directory
+    republish_second_ball_stream(pipeline, court, other, sources[1])
     with pytest.raises(ValueError, match="inputs changed"):
-        prepare_video_court_side(cfg.video_court_side, cfg.resolver, court=court, thresholds=cfg.court_side,
-                                max_frames=cfg.sampling_max_frames, code_identity=pipeline.code_identity)
-    pins[CLIPS[1]] = PinnedSideInputs.from_store(other.root)
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=root, clip_id=CLIPS[0])
+    assert pipeline.last_runner is None and pipeline.last_receipt["status"] == "failed"
+    pins[CLIPS[1]] = PinnedSideInputs.from_store(other)
     changed = build(pipeline, court, pins, tmp_path)
     assert changed.digest != shared.digest and changed.output().frames == shared.output().frames // 2 + 1
     monkeypatch.setattr(scorer, cannot_score)
@@ -204,6 +224,52 @@ def test_build_once_load_and_invalidate_only_side_consumers(tmp_path, monkeypatc
     path.write_text("{}")
     with pytest.raises(ValueError, match="content changed"):
         pipeline.prepare_video_court_side(court)
+
+
+def test_repeated_build_verifies_request_bytes_before_publication(tmp_path, monkeypatch):
+    pipeline, _, _, court, pins = prefix_stores(tmp_path, monkeypatch, "agreement")
+    config = build_request(tmp_path, pins)
+    pipeline.config = replace(pipeline.config, video_court_side=config)
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
+    assert pipeline.publication_identity()["video_court_side_digest"] == pipeline.video_court_side.digest
+    config.request.write_bytes(config.request.read_bytes() + b"\n")
+    with pytest.raises(ValueError, match="build request changed"):
+        pipeline.publication_identity()
+
+
+def test_prepared_decision_must_match_request_selection_and_every_revision(tmp_path, monkeypatch):
+    pipeline, _, sources, court, pins = prefix_stores(tmp_path, monkeypatch, "agreement")
+    subset = build(pipeline, court, pins, tmp_path, evidence_clip_ids=[CLIPS[0]])
+
+    def plan(config, artifact):
+        return standard_definition(replace(pipeline.config, video_court_side=config), sources[0], code_identity=pipeline.code_identity,
+                                   overrides=pipeline.components, video_court=court, video_court_side=artifact)
+
+    # Both clips have diagnostics and agree on the winner, even for a subset build.
+    full_request = build_request(tmp_path, pins)
+    with pytest.raises(ValueError, match="evidence clip"):
+        plan(full_request, subset)
+    full = build(pipeline, court, pins, tmp_path)
+    load_full = acquisition(tmp_path, action="load", artifact_digest=full.digest, request=None, request_sha256=None)
+    with pytest.raises(ValueError, match="digest"):
+        plan(load_full, subset)
+    subset_request = build_request(tmp_path, pins, [CLIPS[0]])
+    assert next(n for n in plan(subset_request, subset) if n.name == "court_side").settings["artifact_digest"] == subset.digest
+
+    # B is diagnostic-only, so its new ball revision leaves the pooled score unchanged.
+    republish_second_ball_stream(pipeline, court, pins[CLIPS[1]].directory, sources[1])
+    pins[CLIPS[1]] = PinnedSideInputs.from_store(pins[CLIPS[1]].directory)
+    revised = build_request(tmp_path, pins, [CLIPS[0]])
+    with pytest.raises(ValueError, match="input revisions"):
+        plan(revised, subset)
+    current = build(pipeline, court, pins, tmp_path, evidence_clip_ids=[CLIPS[0]])
+    assert current.output() == subset.output() and current.digest != subset.digest
+    # The load request pins the selection and revisions via the immutable digest.
+    load = acquisition(tmp_path, action="load", artifact_digest=current.digest, request=None, request_sha256=None)
+    revised.request.unlink()
+    with pytest.raises(ValueError, match="digest"):
+        plan(load, subset)
+    assert next(n for n in plan(load, current) if n.name == "court_side").settings["artifact_digest"] == current.digest
 
 
 def test_reject_foreign_missing_and_stale_inputs(tmp_path, monkeypatch):
@@ -262,6 +328,10 @@ def test_reject_foreign_missing_and_stale_inputs(tmp_path, monkeypatch):
     (("court_side.mode=video_shared",), "requires court_kp.mode=video_shared"),
     (("court_side.mode=guess",), "must be clip or video_shared"),
     (("court_side.video_shared.action=build",), "require court_side.mode=video_shared"),
+    (("court_kp.mode=video_shared", "court_kp.video_shared.action=load", "court_kp.video_shared.directory=shared",
+      "court_kp.video_shared.dataset_id=fixture", "court_kp.video_shared.video_id=video_000",
+      "court_kp.video_shared.artifact_digest=" + "a" * 64, "court_side.mode=video_shared",
+      "court_side.video_shared.directory=side"), "acquisition and scope must be explicit"),
 ])
 def test_mode_must_be_explicit_and_calibrated(tmp_path, overrides, message):
     with pytest.raises(ValueError, match=message):

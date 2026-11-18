@@ -4,6 +4,8 @@
 
 With fixed cameras, `court_side.mode=video_shared` estimates one set of half-turns for a video.
 It requires `court_kp.mode=video_shared` and inherits that court's dataset and video IDs. The default is `court_side.mode=clip`.
+Saved configurations containing just the six court-side thresholds retain their clip semantics. In the current format,
+`mode` and `video_shared` are a required pair.
 
 Each clip uses the ordinary sampled frame grid, pixel scaling, static-detection filter and ball-only hypothesis scores.
 Source frames are identified by clip ID and local frame index. For each assignment the builder weights cost and support by the
@@ -62,3 +64,8 @@ mapping of clip IDs to `PinnedSideInputs` to `build_video_court_side`, or use th
 `prepare_video_court_side`. Pass the returned artifact as `video_court_side` alongside `video_court` to
 `standard_definition` for each clip. A changed media source, geometry, ball stream or numerical setting requires
 matching evidence. The receipt for a prepared clip is available through `artifact.clip_report(clip_id, policy)`.
+
+A build rechecks the request hash and every clip store's current input revision when reusing a decision in the same
+orchestrator. Each plan binds its prepared decision to the build request's contributing clips and all input revisions,
+including diagnostic-only clips. A load pins those fields through the decision digest and checks its diagnostic object.
+The shared mode rejects a `court_side` component override so that each clip executes the configured verdict.

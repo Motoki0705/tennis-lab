@@ -97,7 +97,10 @@ class TennisSceneOrchestrator:
         return self.video_court
 
     def prepare_video_court_side(self, court: VideoCourtArtifact | None) -> VideoCourtSideArtifact | None:
-        from src.tennis_scene.pipeline.video_court_side import prepare_video_court_side
+        from src.tennis_scene.pipeline.video_court_side.prepare import (
+            prepare_video_court_side,
+            verify_prepared_court_side,
+        )
 
         cfg = self.config
         if cfg.video_court_side is None:
@@ -110,7 +113,9 @@ class TennisSceneOrchestrator:
             self.video_court_side = prepare_video_court_side(cfg.video_court_side, cfg.resolver, court=court,
                 thresholds=cfg.court_side, max_frames=cfg.sampling_max_frames, code_identity=self.code_identity)
             self._video_court_side_key = key
-        self.video_court_side.verify()
+        else:
+            verify_prepared_court_side(self.video_court_side, cfg.video_court_side, cfg.resolver,
+                                       code_identity=self.code_identity, recheck_stores=True)
         return self.video_court_side
 
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
