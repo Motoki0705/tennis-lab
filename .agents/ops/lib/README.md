@@ -502,7 +502,7 @@ timer・systemd操作やagent起動は含まない。
 
 `--role parent` は `--agent claude`、`--role implementation` は `--agent codex` と同じ。
 両方の指定は拒否する。既定値の正本は [`agents.conf`](agents.conf)。
-親はOpus / xhigh、実装子はSol / max。実装子は `--model gpt-6-astra` で代替モデルを明示選択でき、
+親はOpus / xhigh、実装子はSol / max。実装子は `--model gpt-6.2-astra` で代替モデルを明示選択でき、
 effortはmaxを必須とする。[修正ターン](../parent/README.md#自動進行の修正ターン)の専用resumeだけhighを使う。親effortは設定または `--effort` で変更できる。
 
 - プロファイルなし: 完全な役割既定値 → タスクの `--model` / `--effort` の順。
@@ -517,6 +517,12 @@ effortはmaxを必須とする。[修正ターン](../parent/README.md#自動進
 
 利用可能モデルへの事前アクセス確認は行わない。指定モデルを1回起動し、失敗を非ゼロ終了にする。
 review以外では選択値と異なる実効値もエラーにする。他モデルへの振替や自動再試行はしない。
+
+`CODEX_CONTINUATION_MODELS` は保存済み実装workerの照合と同一sessionの再開に使えるモデルを追加する。
+`REVIEW_CODEX_CONTINUATION_PAIRS` は保存済みreviewの同一sessionで再開できるmodel:effortの組を追加する。
+新規起動は現行のモデルpinだけを使う。実装workerのsession付替えは委任に保存されたモデルが現行pinにもある場合に受理する。
+再開では前回の `selected.model` を固定し、`selection_sources.model` と `overrides.model` は元の選択を表す。
+reviewは保存済みの選択と方針を復元する。継続専用の許可を使ったターンでは `contract.settings.model_continuation` に根拠となるpin名を記録する。
 
 ### レビュー専用の選択入力
 
@@ -538,12 +544,12 @@ JSONの`kind=run`は`policy,selected,specified_by,reason,human,handoff`を持つ
 選択・理由・拘束は`lib/review_settings.py`の共通検査を使う。
 
 fixedでは固定値と一致する明示指定だけを許し、selectでは明示選択と理由を必須とする。
-runnerは起動前に保存された方針と現在のreview設定を照合し、相違を黙って解決しない。
+runnerは新規起動前に保存された方針と現在のreview設定を照合する。
 選択を`contract.review_selection`と`review-selection.json`へ保存する。reviewの実効model・effort・tierは観測として保持し、選択値との一致は要求しない。
 実効tierが未取得なら理由付きunavailableを維持する。
-resumeで入力を省略した場合は保存選択を復元する。変更した選択・関連方針は起動前に拒否する。
+resumeで別の選択を指定すると起動前に拒否する。通常の許可組で再開する場合は関連方針の一致も必要。
 コメント・他profile・configパスだけの変更は引き続き実行契約を変えない。
-専用入力のない従来のreview呼出しはfixedでだけ使用でき、selectではエラーになる。
+専用入力を省略する新規reviewはfixedで受理する。
 `kind=recover`は元runの参照であり、runnerへの起動入力にはできない。
 
 ## 起動・継続

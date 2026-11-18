@@ -576,7 +576,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-result --child 1216 --evidence-file tmp/tests.md
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
   --prs 1250 --instruction-file tmp/review.md --evidence-file tmp/tests.md \
-  --review-model gpt-6-astra --review-effort xhigh \
+  --review-model gpt-6.2-astra --review-effort xhigh \
   --model-reason-file tmp/review-model-reason.md --wait
 ```
 
@@ -725,7 +725,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --prompt-file tmp/task.md
 # 高難度の委任で親が代替モデルを選ぶ場合。理由は証拠用Issueのnoteにも残す
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  run-worker --child 1217 --prompt-file tmp/task.md --model gpt-6-astra --model-reason-file tmp/model-reason.md
+  run-worker --child 1217 --prompt-file tmp/task.md --model gpt-6.2-astra --model-reason-file tmp/model-reason.md
 # 同じ委任・sessionの修正ターン。終了・回収は保存済みrunから照合する
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --resume --prompt-file tmp/fix.md
@@ -821,7 +821,7 @@ session ID・runの場所・証拠原文はprivate registryへ保存する。
 `worker_runs` は次の6キーに新しいターンの `preflight` snapshotを加え、記録順で保持する。導入前の4/6キー記録も読み取る。
 
 ```json
-[{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00","model":"gpt-6.1-sol","model_reason":"通常の実装として既定を選択。"}]
+[{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00","model":"gpt-6.2-sol","model_reason":"通常の実装として既定を選択。"}]
 ```
 
 `kind` は `initial` / `resume` / `registered` / `replacement`。`run_dir` は親state dir基準の相対パスで、
@@ -1090,8 +1090,8 @@ agent起動やGitHub変更を行わず、セッションIDなしでも使える�
 
 | 変更の性質 | model / effort |
 |---|---|
-| 影響が局所的で期待動作と確認方法が明確 | `gpt-6.1-sol / xhigh` |
-| 公開範囲・権限・永続状態・並行処理・merge等に影響する、または影響が不明 | `gpt-6-astra / xhigh` |
+| 影響が局所的で期待動作と確認方法が明確 | `gpt-6.2-sol / xhigh` |
+| 公開範囲・権限・永続状態・並行処理・merge等に影響する、または影響が不明 | `gpt-6.2-astra / xhigh` |
 
 人間の明示指定を優先する。`--review-model-source human_instruction --human-model-reference '元発言の参照'`、必要なら `--human-review-model` / `--human-review-effort` を渡す。
 許可外の組や人間の拘束との矛盾はエラーにする。fixedへ戻す場合は `REVIEW_SELECTION_MODE="fixed"` とreviewの固定値を設定し、指定値がある場合も固定値に従う。
@@ -1102,7 +1102,7 @@ agent起動やGitHub変更を行わず、セッションIDなしでも使える�
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
   --prs 1250 1251 --instruction-file tmp/review.md --evidence-file tmp/result.md \
-  --review-model gpt-6-astra --review-effort xhigh \
+  --review-model gpt-6.2-astra --review-effort xhigh \
   --model-reason-file tmp/review-model-reason.md --wait
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 merge-status
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 wait-merge --after 1

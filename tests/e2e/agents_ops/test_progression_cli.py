@@ -19,6 +19,7 @@ from tests.e2e.agents_ops.test_parent_session import (
 from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
 )
+from tests.support.agents_ops.model_pins import REVIEW_OTHER_MODEL
 
 
 def prepared(p: ParentEnv, *, count: int = 1) -> tuple[list[int], Path, Path]:
@@ -154,7 +155,7 @@ def test_public_major_continue_and_history_display(
                 [
                     "--rereview",
                     "--review-model",
-                    "gpt-6.1-sol",
+                    REVIEW_OTHER_MODEL,
                     "--review-config-file",
                     str(config),
                     "--model-reason-file",

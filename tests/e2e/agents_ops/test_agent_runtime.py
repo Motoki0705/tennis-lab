@@ -15,6 +15,15 @@ from typing import Any
 
 import pytest
 
+from tests.support.agents_ops.model_pins import (
+    OLD_ASTRA,
+    OLD_SOL,
+    REVIEW_OTHER_MODEL,
+    WORKER_ALTERNATE_MODEL,
+    WORKER_DEFAULT_MODEL,
+    previous_config,
+)
+
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / ".agents/ops/lib/agent_exec.sh"
 CONFIG = ROOT / ".agents/ops/lib/agents.conf"
@@ -148,8 +157,17 @@ def h(tmp_path: Path) -> Harness:
     return Harness(tmp_path)
 
 
-def test_repair_resumes_same_model_session_then_returns_to_max(h: Harness) -> None:
-    assert h.run(extra=("--mode", "write", "--model", "gpt-6-astra")).returncode == 0
+@pytest.mark.parametrize("legacy_default", [False, True])
+def test_repair_resumes_same_model_session_then_returns_to_max(
+    h: Harness, legacy_default: bool
+) -> None:
+    model = OLD_SOL if legacy_default else WORKER_ALTERNATE_MODEL
+    initial_options = (
+        ("--config-file", str(previous_config(h.root / "previous.conf")))
+        if legacy_default
+        else ("--model", model)
+    )
+    assert h.run(extra=("--mode", "write", *initial_options)).returncode == 0
     initial = h.result()
     proc = h.run(
         "repair",
@@ -165,11 +183,18 @@ def test_repair_resumes_same_model_session_then_returns_to_max(h: Harness) -> No
             "42",
             "--effort",
             "high",
+            "--model",
+            model,
         ),
     )
     assert proc.returncode == 0, proc.stderr
     repaired = h.result("repair")
-    assert repaired["contract"]["settings"]["selected"]["model"] == "gpt-6-astra"
+    settings = repaired["contract"]["settings"]
+    assert settings["selected"]["model"] == model
+    if legacy_default:
+        assert settings["overrides"] == {"effort": "high"}
+        assert settings["selection_sources"]["model"] == "CODEX_MODEL"
+        assert settings["model_continuation"] == "CODEX_CONTINUATION_MODELS"
     assert repaired["runtime"]["session_id"] == initial["runtime"]["session_id"]
     assert repaired["runtime"]["effective"]["effort"]["value"] == "high"
     assert repaired["contract"]["repair"] == {
@@ -186,6 +211,7 @@ def test_repair_resumes_same_model_session_then_returns_to_max(h: Harness) -> No
     normal = h.result("normal")
     assert normal["runtime"]["session_id"] == initial["runtime"]["session_id"]
     assert normal["runtime"]["effective"]["effort"]["value"] == "max"
+    assert normal["runtime"]["effective"]["model"]["value"] == model
     duplicate = h.run(
         "duplicate",
         action="resume",
@@ -204,6 +230,63 @@ def test_repair_resumes_same_model_session_then_returns_to_max(h: Harness) -> No
     assert not (h.root / "duplicate").exists()
 
 
+@pytest.mark.parametrize("override", [None, OLD_ASTRA], ids=["default", "alternate"])
+def test_worker_resume_keeps_saved_model_after_pin_change(
+    h: Harness, override: str | None
+) -> None:
+    config = previous_config(h.root / "previous.conf")
+    old_model = override or OLD_SOL
+    options = ["--mode", "write", "--config-file", str(config)]
+    if override is not None:
+        options += ["--model", override]
+    initial = h.run(extra=tuple(options))
+    assert initial.returncode == 0, initial.stderr
+    before = h.result()
+    proc = h.run(
+        "continued",
+        action="resume",
+        extra=("--mode", "write", "--resume-from", str(h.root / "initial")),
+    )
+    assert proc.returncode == 0, proc.stderr
+    result = h.result("continued")
+    saved = result["contract"]["settings"]
+    assert result["runtime"]["session_id"] == before["runtime"]["session_id"]
+    assert result["runtime"]["effective"]["model"]["value"] == old_model
+    assert h.args()[h.args().index("--model") + 1] == old_model
+    assert saved["selected"]["model"] == old_model
+    assert saved["defaults"]["model"] == WORKER_DEFAULT_MODEL
+    assert saved["overrides"] == ({} if override is None else {"model": override})
+    assert (
+        saved["selection_sources"]
+        == before["contract"]["settings"]["selection_sources"]
+    )
+    assert saved["model_continuation"] == "CODEX_CONTINUATION_MODELS"
+
+
+@pytest.mark.parametrize("model", [OLD_SOL, OLD_ASTRA])
+def test_initial_worker_rejects_continuation_model(h: Harness, model: str) -> None:
+    proc = h.run(extra=("--mode", "write", "--model", model))
+    assert proc.returncode == 2 and "continuation-only" in proc.stderr
+    assert not (h.root / "initial").exists() and not (h.root / "args.txt").exists()
+
+
+def test_worker_resume_rejects_unlisted_saved_model(h: Harness) -> None:
+    config = previous_config(h.root / "unlisted.conf")
+    config.write_text(
+        config.read_text().replace(
+            f'CODEX_MODEL="{OLD_SOL}"', 'CODEX_MODEL="retired-model"'
+        )
+    )
+    assert h.run(extra=("--config-file", str(config))).returncode == 0
+    proc = h.run(
+        "rejected",
+        action="resume",
+        extra=("--resume-from", str(h.root / "initial")),
+    )
+    assert proc.returncode == 2 and "default or configured alternate" in proc.stderr
+    assert not (h.root / "rejected").exists()
+
+
 @pytest.mark.parametrize(
     "mutation", ["initial", "readonly", "model", "effort", "missing_pr", "no_marker"]
 )
@@ -220,7 +303,7 @@ def test_repair_exception_cannot_change_other_contracts(
     if mutation == "readonly":
         options[1] = "read-only"
     elif mutation == "model":
-        options += ["--model", "gpt-6-astra"]
+        options += ["--model", WORKER_ALTERNATE_MODEL]
     elif mutation == "effort":
         options += ["--effort", "max"]
     elif mutation == "missing_pr":
@@ -521,8 +604,8 @@ def test_unpinned_schema_reference_fails_without_fetch(
 @pytest.mark.parametrize(
     ("agent", "extra", "model", "effort"),
     [
-        ("codex", (), "gpt-6.1-sol", "max"),
-        ("codex", ("--model", "gpt-6-astra"), "gpt-6-astra", "max"),
+        ("codex", (), WORKER_DEFAULT_MODEL, "max"),
+        ("codex", ("--model", WORKER_ALTERNATE_MODEL), WORKER_ALTERNATE_MODEL, "max"),
         ("claude", (), "claude-opus-5-5", "xhigh"),
         ("claude", ("--effort", "high"), "claude-opus-5-5", "high"),
     ],
@@ -538,7 +621,7 @@ def test_role_pins_and_runtime_evidence(
     assert settings["selected"]["model"] == model
     assert settings["selected"]["effort"] == effort
     assert settings["defaults"]["model"] == (
-        "gpt-6.1-sol" if agent == "codex" else "claude-opus-5-5"
+        WORKER_DEFAULT_MODEL if agent == "codex" else "claude-opus-5-5"
     )
     assert settings["selection_sources"]["model"] == (
         "task" if "--model" in extra else agent.upper() + "_MODEL"
@@ -598,7 +681,7 @@ def test_resume_preserves_identity_settings_and_new_prompt(
     h: Harness, agent: str, mode: str
 ) -> None:
     extra = (
-        ("--mode", mode, "--model", "gpt-6-astra")
+        ("--mode", mode, "--model", WORKER_ALTERNATE_MODEL)
         if agent == "codex"
         else ("--mode", mode)
     )
@@ -622,7 +705,7 @@ def test_resume_preserves_identity_settings_and_new_prompt(
     assert initial["runtime"]["session_id"] in h.args()
     if agent == "codex":
         assert second["runtime"]["turn_id"] != initial["runtime"]["turn_id"]
-        assert h.args()[h.args().index("--model") + 1] == "gpt-6-astra"
+        assert h.args()[h.args().index("--model") + 1] == WORKER_ALTERNATE_MODEL
         if mode == "read-only":
             assert h.args().index("--sandbox") < h.args().index("resume")
     stale = h.run(
@@ -660,7 +743,7 @@ def test_resume_refuses_changed_contract_before_launch(h: Harness, change: str) 
     elif change == "mode":
         extra += ("--mode", "write")
     elif change == "model":
-        extra += ("--model", "gpt-6-astra")
+        extra += ("--model", WORKER_ALTERNATE_MODEL)
     else:
         transcript = next((h.root / "codex-home/sessions").rglob("*.jsonl"))
         with transcript.open("a") as stream:
@@ -809,7 +892,7 @@ def test_read_dirs_do_not_change_codex_profile_arguments(
     if profile == "review":
         from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
-        _, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+        _, path, _ = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
         extra += ("--review-selection-file", str(path))
     initial = h.run(extra=extra)
     assert initial.returncode == 0, initial.stderr
@@ -839,7 +922,7 @@ def test_read_dirs_do_not_change_codex_profile_arguments(
         ("--timeout", "0"),
         ("--task-id", ""),
         ("--branch", "other-branch"),
-        ("--profile", "review", "--model", "gpt-6-astra"),
+        ("--profile", "review", "--model", WORKER_ALTERNATE_MODEL),
     ],
 )
 def test_invalid_selection_does_not_launch(h: Harness, extra: tuple[str, ...]) -> None:
@@ -857,18 +940,20 @@ def test_configuration_is_literal_complete_and_validated_before_overrides(
 ) -> None:
     text = CONFIG.read_text()
     if mutation == "missing":
-        text = text.replace('CODEX_MODEL="gpt-6.1-sol"', "")
+        text = text.replace(f'CODEX_MODEL="{WORKER_DEFAULT_MODEL}"', "")
     elif mutation == "empty":
         text = text.replace('CODEX_SERVICE_TIER="default"', 'CODEX_SERVICE_TIER=""', 1)
     elif mutation == "bad_effort":
         text = text.replace('CODEX_EFFORT="max"', 'CODEX_EFFORT="invalid"', 1)
     elif mutation == "duplicate":
-        text += '\nCODEX_MODEL="gpt-6-astra"\n'
+        text += f'\nCODEX_MODEL="{WORKER_ALTERNATE_MODEL}"\n'
     else:
         text += f"\ntouch {h.root / 'shell-executed'}\n"
     config = h.root / "invalid.conf"
     config.write_text(text)
-    proc = h.run(extra=("--config-file", str(config), "--model", "gpt-6-astra"))
+    proc = h.run(
+        extra=("--config-file", str(config), "--model", WORKER_ALTERNATE_MODEL)
+    )
     assert proc.returncode == 2
     assert (
         not (h.root / "args.txt").exists() and not (h.root / "shell-executed").exists()
@@ -926,7 +1011,7 @@ def test_web_search_completes_and_resumes_without_losing_raw_events(
     if profile == "review":
         from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
-        _, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+        _, path, _ = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
         extra += ("--review-selection-file", str(path))
     proc = h.run(scenario="web_search", extra=extra)
     assert proc.returncode == 0, proc.stderr
@@ -961,7 +1046,7 @@ def test_review_resume_rejects_missing_or_changed_search_contract_before_launch(
 ) -> None:
     from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
-    _, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+    _, path, _ = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
     extra = ("--profile", "review", "--review-selection-file", str(path))
     assert h.run(extra=extra).returncode == 0
     previous = h.result()

@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from lib.agent_settings import implementation_model
 from parent import worker_preflight
 from parent.adopted_tasks import check_task_adoptions
 from parent.execution import (
@@ -1077,6 +1078,13 @@ class Supervisor:
             raise ValueError("runner contract does not match the reserved job")
         if contract.get("repair") != job.get("repair"):
             raise ValueError("runner repair contract does not match the reserved job")
+        if job["role"] == "implementation":
+            implementation_model(
+                None,
+                previous=nonempty(
+                    settings.get("selected", {}).get("model"), "saved worker model"
+                ),
+            )
         if "repair" in contract:
             from lib.repair_turn import validate_contract
 
@@ -1156,6 +1164,19 @@ class Supervisor:
             if related:
                 previous = max(related, key=lambda j: j["sequence"])
                 resume_from = self.resume_source(row, previous)
+            if resume_from is None:
+                implementation_model(model)
+            else:
+                settings = load(Path(resume_from) / "result.json")["contract"][
+                    "settings"
+                ]
+                implementation_model(
+                    model,
+                    previous=nonempty(
+                        settings["selected"]["model"], "saved worker model"
+                    ),
+                )
+                model = settings["overrides"].get("model")
             cwd = nonempty(task.get("worktree"), "delegated worktree")
             nonempty(task.get("branch"), "delegated branch")
             if not Path(cwd).is_absolute():

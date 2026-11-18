@@ -6,7 +6,7 @@ import copy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from lib.agent_settings import implementation_model, session_contract
+from lib.agent_settings import session_contract
 from lib.repair_turn import instruction, request
 from parent import worker_preflight
 from parent.execution import authorization
@@ -45,12 +45,7 @@ def source(
     ):
         raise ValueError("repair source termination/evidence is unconfirmed")
     settings = record["contract"]["settings"]
-    implementation_model(settings["selected"]["model"])
-    if "repair" in record["contract"]:
-        from lib.repair_turn import validate_contract
-
-        validate_contract(record["contract"])
-    elif settings["selected"]["effort"] != "max":
+    if "repair" not in record["contract"] and settings["selected"]["effort"] != "max":
         raise ValueError("normal worker effort must be max")
     return directory, record
 
