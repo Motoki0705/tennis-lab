@@ -34,21 +34,18 @@ def read_pins(config: Path) -> dict[str, str]:
     return _parse_pins(config.read_bytes())
 
 
-def _implementation_models(pins: dict[str, str]) -> tuple[str, str]:
-    models = []
-    for key in ("CODEX_MODEL", "CODEX_ALTERNATE_MODEL"):
-        value = pins.get(key)
-        if not value:
-            raise ValueError(f"agents.conf must set {key}")
-        if not MODEL_NAME.fullmatch(value):
-            raise ValueError(f"invalid model pin: {key}")
-        models.append(value)
-    return models[0], models[1]
+def implementation_models(config: Path | None = None) -> tuple[str, ...]:
+    """Current model choices for a new implementation worker."""
+    model = read_pins(config or DEFAULT_CONFIG).get("CODEX_MODEL")
+    if not model or not MODEL_NAME.fullmatch(model):
+        raise ValueError("agents.conf must set a valid CODEX_MODEL")
+    return (model,)
 
 
-def implementation_models(config: Path | None = None) -> tuple[str, str]:
-    """The implementation CLI choices, from the runner's literal config."""
-    return _implementation_models(read_pins(config or DEFAULT_CONFIG))
+def check_saved_implementation_model(model: str) -> None:
+    """A retired model's terminal evidence can still be reconciled and handed off."""
+    if model not in {"gpt-6-astra", "gpt-6.2-astra"}:
+        implementation_model(None, previous=model)
 
 
 def _implementation_continuations(pins: dict[str, str]) -> set[str]:
@@ -156,10 +153,10 @@ def resolve(
             raise ValueError("invalid service tier")
         if profile is None:
             continuations = _implementation_continuations(pins)
-            if selected["model"] not in _implementation_models(pins):
+            if selected["model"] != pins["CODEX_MODEL"]:
                 if selected["model"] not in continuations:
                     raise ValueError(
-                        "implementation model must be the default or configured alternate"
+                        "implementation model must be the configured Sol model"
                     )
                 if saved_model is None:
                     raise ValueError("implementation model is continuation-only")

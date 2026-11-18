@@ -576,8 +576,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-result --child 1216 --evidence-file tmp/tests.md
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
   --prs 1250 --instruction-file tmp/review.md --evidence-file tmp/tests.md \
-  --review-model gpt-6.2-astra --review-effort xhigh \
-  --model-reason-file tmp/review-model-reason.md --wait
+  --wait
 ```
 
 直接実装にはdelegate・架空のworker・終了記録は不要。
@@ -715,6 +714,12 @@ dispatcher/親workflowはその実行枠内でこの計画を使い、必要な�
 予約枠を解放しても `delegated` は保持し、自動再起動はしない。新しい委任への再予約は従来の証拠付き `delegate --restart-evidence-file` を使う。
 停止・根拠・PR検査は再予約でも省略しない。稼働中workerの終了を推測する新しい台帳は作らない。
 
+### 同一Issueにワーカーを追加する
+
+最初の委任が成果PRを所有する `primary`。同じ基準commitを含む別branch・worktreeを準備し、`delegate --worker quality` または自律親の `start-worker --worker quality` で補助担当を追加する。PRがopenでも追加できる。複数人のときは実行・待機・継続・停止等に担当名を付ける。`status` の各Issueの `helpers` に追加担当を表示する。予約上限には各担当を1件ずつ数える。GPUの調停にはtraining queueを使う。
+
+旧Astraの継続が必要な場合、作成担当の終了後に元のbranch・worktreeで明示的にSolへ引き継ぐ。手動親は `delegate --handoff-from-astra 旧委任ID --restart-evidence-file 引継ぎ文`、続いて通常の `run-worker`。自律親は `start-worker --handoff-from-astra 旧委任ID --handoff-evidence-file 引継ぎ文`。どちらも通常の起動引数を併用する。修正対象のPR・指摘・検証結果を新しい指示に含める。
+
 ### 手動workerの起動・継続とrun記録
 
 activeな担当本人が `delegate` の予約を確認して次を呼ぶ。共通引数のstateは予約時と同じものを使う。
@@ -723,9 +728,6 @@ activeな担当本人が `delegate` の予約を確認して次を呼ぶ。共�
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --prompt-file tmp/task.md
-# 高難度の委任で親が代替モデルを選ぶ場合。理由は証拠用Issueのnoteにも残す
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  run-worker --child 1217 --prompt-file tmp/task.md --model gpt-6.2-astra --model-reason-file tmp/model-reason.md
 # 同じ委任・sessionの修正ターン。終了・回収は保存済みrunから照合する
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --resume --prompt-file tmp/fix.md
@@ -738,12 +740,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 ```
 
 `run-worker` は現在の32桁hexの委任ID・Codex担当・worktree・branchと、有効な根拠・要件・停止・依存を検査する。
-初回は終了未記録かつ当該委任のrun未登録に限る。`--model` の選択肢は
-[`agents.conf`](../lib/agents.conf) の `CODEX_MODEL`（既定Sol）と `CODEX_ALTERNATE_MODEL`（Astra）のみ。
-通常のeffortはmax固定で引数に出さない。highを使う例外の入口は[自動進行の修正ターン](#自動進行の修正ターン)。判断基準は [AGENTS.md](../../../AGENTS.md#開発ルール) を参照する。
-高難度の委任では親がAstraを明示選択でき、人間との合意による指定を優先する。
-選択理由は `note`（証拠用Issue）と `--model-reason-file` に残す。初回の代替選択には理由ファイルを必須とし、
-既定の採用で省略した場合は既定採用の理由を記録する。委任taskの `model` / privateな `model_reason` と各runへ保存する。
+初回は終了未記録かつ当該委任のrun未登録に限る。モデル設定は [agents.conf](../lib/agents.conf) を使う。
 共通ランナーを `--role implementation --mode write --task-id 委任ID --cwd worktree --branch branch --model 選択値`
 で呼ぶ。選択値・実効値・設定の出典はrunnerの `contract.settings` と `runtime.effective` で照合する。
 利用不可・実効値不一致はエラーとし、別モデルへのfallbackは行わない。
@@ -1085,25 +1082,14 @@ agent起動やGitHub変更を行わず、セッションIDなしでも使える�
 
 ## 正式レビューのモデル選択
 
-[`agents.conf`](../lib/agents.conf) の通常設定は `REVIEW_SELECTION_MODE="select"`。
-親が差分・受入条件・影響先を読み、モデルと1文の理由を指定する。行数やパスによる自動選択、失敗時の別モデルへの振替はしない。
-
-| 変更の性質 | model / effort |
-|---|---|
-| 影響が局所的で期待動作と確認方法が明確 | `gpt-6.2-sol / xhigh` |
-| 公開範囲・権限・永続状態・並行処理・merge等に影響する、または影響が不明 | `gpt-6.2-astra / xhigh` |
-
-人間の明示指定を優先する。`--review-model-source human_instruction --human-model-reference '元発言の参照'`、必要なら `--human-review-model` / `--human-review-effort` を渡す。
-許可外の組や人間の拘束との矛盾はエラーにする。fixedへ戻す場合は `REVIEW_SELECTION_MODE="fixed"` とreviewの固定値を設定し、指定値がある場合も固定値に従う。
-観測されたモデル・effort・使用量は保存runtimeから確認する。実効値と選択値の差をmergeの照合条件にはしない。
+正式レビューは [共通設定](../lib/agents.conf) のSol固定値を使う。モデル理由の指定は不要。
 
 ## レビュー要求と自動進行
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
   --prs 1250 1251 --instruction-file tmp/review.md --evidence-file tmp/result.md \
-  --review-model gpt-6.2-astra --review-effort xhigh \
-  --model-reason-file tmp/review-model-reason.md --wait
+  --wait
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 merge-status
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 wait-merge --after 1
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 merge-continue \
@@ -1113,9 +1099,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 merge-continue \
 `review-request` は作成workerの終了・cleanupと成果を確認して対象PR全体を登録し、プロセスを切り離して起動する。
 `--wait` は最初の通知まで待つ。省略時はrun IDを返す。手動親の背景待機は [wait-workerと同じ方法](#会話の背景実行で終了を待つ) を使う。
 各入口の `--run-id` 省略時は最新の自動進行を対象にする。`merge-continue --prs` は親待ちになった一部のPRだけを続行できる。
-majorを直した後は親が判断と確認内容をinstructionへ書いて続行する。変更が大きいと判断した場合だけ `--rereview` を付ける。
+majorを直した後は親が判断と確認内容をinstructionへ書いて続行する。現在のHEADが既存のマージ条件を満たせばCLIがマージする。
 同じworkerの継続来歴と終了を確認して委任ID・修正登録を更新するので、dispatcherの `continue-worker` 後も同じrunを続行できる。
-その際にモデルを変えるなら、同じモデル選択引数と理由を付ける。既存の人間指定は維持する。
 
 要求schema 4はrepo・親・対象PRとhead・Issue・依存・作成worker・実行根拠・モデル選択・親の指示を保存する。
 private state、段階、待機・修正上限・復旧・通知・merge条件の正本は [自動進行](../review/README.md)。このREADMEに状態表を複製しない。

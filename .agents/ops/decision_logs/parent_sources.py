@@ -45,14 +45,14 @@ def verification(session: Any, child: int) -> None:
     if op is None:
         return
     try:
-        proof = session.row["tasks"][str(child)]["verification"]
+        proof = session.worker_task(child)["verification"]
         targets = op.row.get("verification_targets", [])
         if not targets:
             from pathlib import Path
 
             from .parent_commands import capture_for_runtime
 
-            task = session.row["tasks"][str(child)]
+            task = session.worker_task(child)
             runtime = None
             if task.get("worker_runs"):
                 runtime = str(

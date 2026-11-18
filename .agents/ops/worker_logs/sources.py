@@ -95,7 +95,7 @@ def standard_reference(raw: bytes) -> dict[str, str]:
 
 
 def freeze(session: Any, child: int, prompt: str, standard: bytes) -> Path:
-    task = session.row["tasks"][str(child)]
+    task = session.worker_task(child)
     phase = task["preflight"]
     key = public_key(phase)
     turn = phase["turns"][-1]

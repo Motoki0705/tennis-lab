@@ -180,8 +180,8 @@ def test_relative_links_resolve(doc: Path) -> None:
         ".agents/ops/parent/development_workflow.md",
     ],
 )
-def test_new_review_examples_include_explicit_selection(relative: str) -> None:
-    """Executable examples must not stop at the new select policy's required flags."""
+def test_review_examples_use_fixed_model(relative: str) -> None:
+    """Normal review examples need only the PRs, evidence and instruction."""
     source = (ROOT / relative).read_text().replace("\\\n", " ")
     shell = re.findall(r"```bash\n(.*?)```", source, re.DOTALL)
     examples = [line for block in shell for line in block.splitlines()]
@@ -195,7 +195,8 @@ def test_new_review_examples_include_explicit_selection(relative: str) -> None:
         new_request = "review-request" in tokens and has_targets
         if not new_request:
             continue
-        for flag in ("--review-model", "--model-reason-file"):
+        assert "--review-model" not in tokens and "--model-reason-file" not in tokens
+        for flag in ("--instruction-file", "--evidence-file"):
             assert flag in tokens, f"{relative}: {example} requires {flag}"
             assert tokens.index(flag) + 1 < len(tokens)
         checked.append(example)

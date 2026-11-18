@@ -6,7 +6,7 @@ import copy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from lib.agent_settings import session_contract
+from lib.agent_settings import implementation_model, session_contract
 from lib.repair_turn import instruction, request
 from parent import worker_preflight
 from parent.execution import authorization
@@ -24,7 +24,11 @@ if TYPE_CHECKING:
 def source(
     control: Supervisor, row: dict[str, Any], child: int
 ) -> tuple[str, dict[str, Any]]:
-    jobs = [j for j in row["dispatch"]["jobs"].values() if j["child"] == child]
+    jobs = [
+        j
+        for j in row["dispatch"]["jobs"].values()
+        if j["child"] == child and j.get("worker_name", "primary") == "primary"
+    ]
     if not jobs or any(j["phase"] != "ended" for j in jobs):
         raise ValueError("repair requires the creating worker to have ended")
     previous = max(jobs, key=lambda j: j["sequence"])
@@ -74,7 +78,11 @@ def register_progression(
         or task.get("stopped")
     ):
         raise ValueError("progression requires the ended creating Codex worker")
-    jobs = [j for j in dispatch["jobs"].values() if j["child"] == child]
+    jobs = [
+        j
+        for j in dispatch["jobs"].values()
+        if j["child"] == child and j.get("worker_name", "primary") == "primary"
+    ]
     if not jobs:
         raise ValueError("creating worker runtime is missing")
     previous = max(jobs, key=lambda j: j["sequence"])
@@ -170,6 +178,9 @@ def reserve(
         ):
             raise ValueError("implementation runtime limit reached")
         directory, record = source(control, row, child)
+        implementation_model(
+            None, previous=record["contract"]["settings"]["selected"]["model"]
+        )
         if (
             session_contract(record["contract"]) != saved["source_contract"]
             or record["runtime"]["session_id"] != saved["source_session"]

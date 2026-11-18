@@ -9,14 +9,14 @@ PRのopen・push・時間経過からレビューを始めるtimerや常駐servi
 `parent_review_impl.py` は親・対象Issueの原要件とコメント、PRの本文とコメント、レビュー時のhead、全文diff、read-only checkoutを収集し、共通ランナーを1回だけ呼ぶ。
 番号で辿った親関係と保存済みの証拠用Issueを資料へ含め、合意・判断の原文を保持する。証拠用Issueと依存PR・そのCI headもMCPの取得範囲に入れる。
 証拠bindingがない関連Issueはその欠測を `evidence_bindings` に示す。担当親のbinding欠落・不確定な作成・既知bindingの不整合はエラーになる。
-モデル選択の方針は [正式レビューのモデル選択](../parent/README.md#正式レビューのモデル選択) が正本。
+固定モデルの設定は [正式レビューのモデル選択](../parent/README.md#正式レビューのモデル選択) が正本。
 選択値と観測した実効値を保存する。実行失敗、cleanup未確認、JSON形式不正は承認へ変換しない。
 
 結果は `approve` または `major` の一覧。各majorは対象PR番号、title、detailを持つ。
 majorでは親へ通知し、親が作成workerへ修正を依頼してから `merge-continue` する。
 明示続行時に、手動/dispatcherの終了・cleanup、元session・モデル/契約、委任の継続来歴を確認する。
 同じworkerの継続で委任IDが変わった場合は新しい修正登録へ結び直し、親の修正確認を成果へ記録する。自動修正の消費回数は戻さない。
-親が `--rereview` を付けたときだけ追加レビューする。CI修正・競合解消・head変更では再レビューしない。
+各PRのレビュー起動は1回。major解消、CI修正、競合解消後は現HEADのマージ条件を照合する。中断時は同じrunの保存済み出力と回収状態を確認し、回収不能なら親へ理由を返す。
 親の判断材料としてレビュー時head、現在head、変更ファイル数・追加削除行数を表示する。取得が不完全ならその範囲を明示する。
 PRへの結果コメントは表示用のコピーで、merge権限の正本には使わない。公開失敗は結果に残し、保存済みレビューを再実行しない。
 
@@ -94,6 +94,10 @@ merge commitの存在、default branchへのmerge、対象Issueのclosed/complet
 
 大局レビューのAPIは `lib.ops_review.parent_review_impl` へ置き、保護されたcontrollerから呼ぶ。単独の旧review CLIは廃止する。
 checkout保護とregistry/ownershipのlock順は [共通CLIの契約](../lib/README.md#対話cliの保護) に従う。
+
+## 時間と使用量の比較
+
+`merge-status --run-id ID` の `review_usage` に各回の起動意図・実起動の確認件数、開始時刻、所要秒数、入力・キャッシュ済み入力・出力トークン、初回開始からPRごとのマージ観測までの秒数を表示する。複数PRをまとめた場合、reviewerの時間・使用量はrun全体の値。旧runで取得できなかった測定値はnullになる。
 
 ## 検証と取得量
 

@@ -20,14 +20,10 @@
    parent CLIには `--state-dir <parent_state_dir>`、worker操作にはさらに
    `--dispatcher-state-dir <dispatcher_state_dir>` を渡し、review/mergeも同じprivate stateを使う。
    `start-worker` はparentのdelegate予約後にdispatcherのstart-childを呼び、supervisorが共通ランナーで起動する。
-   指定省略のSol/max、必要時のAstra/maxを使い、既存workerの修正は終了照合後に `continue-worker` で同じsessionへ戻す。
+   Solを使い、既存workerの修正は終了照合後に `continue-worker` で同じsessionへ戻す。
    差分・受入条件・テスト・PRを親が確認してrecord-resultを残す。停止した作業と依存作業だけを保留し、独立作業を進める。
    親がPR群を固定して既存の親単位レビューを明示要求し、指摘修正・通常検証とmerge gateを通す。
-   通常設定selectでは[モデル選択手順](../parent/README.md#正式レビューのモデル選択)に従い、
-   親が差分・受入条件・影響先を確認して `--review-model` と1文の `--model-reason-file` を渡す。
-   レビュー用の人間指定・復旧元も開発workflowの共通review-requestへ渡す。
-   dispatcherの実装子用モデル選択とは別に扱い、設定不整合や利用不能で別モデルへ振り替えない。
-   自動再レビュー・別session・無制限の修正で停止を回避しない。
+   majorの修正を確認して `merge-continue` し、マージ後確認まで待つ。
    最後に `workflow-report --spec <JSONファイル>` で理由・再開条件・検証証拠を保存し、その出力を最終文にする。
    completedの前に、全体の成果・未達/残件・成果物を固定completion通知へ記録する。
    completedの入力はversion 2と構造化finishを使う。合意時の全受入項目と次回改善を分け、候補なしも明示する。

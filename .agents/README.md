@@ -48,7 +48,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 | パス | 内容 |
 |---|---|
-| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | Claude（親、既定Opus）/ Codex（実装子、既定Sol・明示でAstra）を read-only または write で headless 起動・同一session継続・状態確認・停止する共通ランナー。既定値・選択値・実効値と終了理由をrun dirへ記録し、`task_success` は判定しない。`--profile` で job 別の固定値を選ぶ。契約は [ops/lib/README.md](ops/lib/README.md) |
+| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | Claude（親、既定Opus）/ Codex（実装子、Sol固定）を read-only または write で headless 起動・同一session継続・状態確認・停止する共通ランナー。既定値・選択値・実効値と終了理由をrun dirへ記録し、`task_success` は判定しない。`--profile` で job 別の固定値を選ぶ。契約は [ops/lib/README.md](ops/lib/README.md) |
 | [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する。job 別のプロファイル（例: レビュー用の `REVIEW_CODEX_*`）もここに置く |
 | [ops/lib/opsproc.py](ops/lib/opsproc.py) | ops job 共通のサブプロセス実行。agent はプロセスグループごと起動・停止し、子孫プロセスを残さない |
 | [ops/ops_control/](ops/ops_control/README.md) | `spin ops` の対象表と実処理。運用unitの状態・導入・対象ごとのON/OFF・単発実行・ログを扱う |
@@ -78,7 +78,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **親セッションの担当**: 担当登録の規則は [AGENTS.md](../AGENTS.md#開発ルール)、手順は [parent-session](skills/parent-session/SKILL.md) を参照する。担当指定と要件合意を区別する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
 - **自律割当された親**: dispatcherのbootstrapで予約と実行根拠を受理し、[開発workflow](ops/parent/development_workflow.md) で実装子から実merge/closeまで照合する。自律根拠を人間合意に読み替えない。委任先の既定とdshの明示指定は [AGENTS.md](../AGENTS.md#開発ルール) に従う。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
-- **merge**: pushごとにCIを実行し、コミットに `[skip ci]` を付けない。親がレビュー依頼を1回出し、大局レビュー、現headのPython CI、軽いgate、merge後確認をCLIが自動進行する。majorの修正方針と追加レビューの要否は親が判断する。人間の有効化判断後の `AGENT_AUTO_MERGE=1` とneeds-humanの制御を維持する。状態・修正上限・停止/復旧の正本は [自動進行](ops/review/README.md)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
+- **merge**: pushごとにCIを実行し、コミットに `[skip ci]` を付けない。親がレビュー依頼を1回出し、大局レビュー、現headのPython CI、軽いgate、merge後確認をCLIが自動進行する。親がmajorの対応を確認したらマージを続行する。人間の有効化判断後の `AGENT_AUTO_MERGE=1` とneeds-humanの制御を維持する。状態・修正上限・停止/復旧の正本は [自動進行](ops/review/README.md)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
 
 ## 研究ループ（概要）
 

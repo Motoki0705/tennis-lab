@@ -18,7 +18,7 @@ import pytest
 from tests.support.agents_ops.model_pins import (
     OLD_ASTRA,
     OLD_SOL,
-    REVIEW_OTHER_MODEL,
+    REVIEW_FIXED_MODEL,
     WORKER_ALTERNATE_MODEL,
     WORKER_DEFAULT_MODEL,
     previous_config,
@@ -161,7 +161,7 @@ def h(tmp_path: Path) -> Harness:
 def test_repair_resumes_same_model_session_then_returns_to_max(
     h: Harness, legacy_default: bool
 ) -> None:
-    model = OLD_SOL if legacy_default else WORKER_ALTERNATE_MODEL
+    model = OLD_SOL if legacy_default else WORKER_DEFAULT_MODEL
     initial_options = (
         ("--config-file", str(previous_config(h.root / "previous.conf")))
         if legacy_default
@@ -234,8 +234,8 @@ def test_repair_resumes_same_model_session_then_returns_to_max(
 def test_worker_resume_keeps_saved_model_after_pin_change(
     h: Harness, override: str | None
 ) -> None:
-    config = previous_config(h.root / "previous.conf")
     old_model = override or OLD_SOL
+    config = previous_config(h.root / "previous.conf", worker_model=old_model)
     options = ["--mode", "write", "--config-file", str(config)]
     if override is not None:
         options += ["--model", override]
@@ -247,6 +247,9 @@ def test_worker_resume_keeps_saved_model_after_pin_change(
         action="resume",
         extra=("--mode", "write", "--resume-from", str(h.root / "initial")),
     )
+    if old_model == OLD_ASTRA:
+        assert proc.returncode == 2 and not (h.root / "continued").exists()
+        return
     assert proc.returncode == 0, proc.stderr
     result = h.result("continued")
     saved = result["contract"]["settings"]
@@ -266,7 +269,8 @@ def test_worker_resume_keeps_saved_model_after_pin_change(
 @pytest.mark.parametrize("model", [OLD_SOL, OLD_ASTRA])
 def test_initial_worker_rejects_continuation_model(h: Harness, model: str) -> None:
     proc = h.run(extra=("--mode", "write", "--model", model))
-    assert proc.returncode == 2 and "continuation-only" in proc.stderr
+    diagnostic = "continuation-only" if model == OLD_SOL else "configured Sol"
+    assert proc.returncode == 2 and diagnostic in proc.stderr
     assert not (h.root / "initial").exists() and not (h.root / "args.txt").exists()
 
 
@@ -283,7 +287,7 @@ def test_worker_resume_rejects_unlisted_saved_model(h: Harness) -> None:
         action="resume",
         extra=("--resume-from", str(h.root / "initial")),
     )
-    assert proc.returncode == 2 and "default or configured alternate" in proc.stderr
+    assert proc.returncode == 2 and "configured Sol model" in proc.stderr
     assert not (h.root / "rejected").exists()
 
 
@@ -605,7 +609,7 @@ def test_unpinned_schema_reference_fails_without_fetch(
     ("agent", "extra", "model", "effort"),
     [
         ("codex", (), WORKER_DEFAULT_MODEL, "max"),
-        ("codex", ("--model", WORKER_ALTERNATE_MODEL), WORKER_ALTERNATE_MODEL, "max"),
+        ("codex", ("--model", WORKER_DEFAULT_MODEL), WORKER_DEFAULT_MODEL, "max"),
         ("claude", (), "claude-opus-5-5", "xhigh"),
         ("claude", ("--effort", "high"), "claude-opus-5-5", "high"),
     ],
@@ -681,7 +685,7 @@ def test_resume_preserves_identity_settings_and_new_prompt(
     h: Harness, agent: str, mode: str
 ) -> None:
     extra = (
-        ("--mode", mode, "--model", WORKER_ALTERNATE_MODEL)
+        ("--mode", mode, "--model", WORKER_DEFAULT_MODEL)
         if agent == "codex"
         else ("--mode", mode)
     )
@@ -705,7 +709,7 @@ def test_resume_preserves_identity_settings_and_new_prompt(
     assert initial["runtime"]["session_id"] in h.args()
     if agent == "codex":
         assert second["runtime"]["turn_id"] != initial["runtime"]["turn_id"]
-        assert h.args()[h.args().index("--model") + 1] == WORKER_ALTERNATE_MODEL
+        assert h.args()[h.args().index("--model") + 1] == WORKER_DEFAULT_MODEL
         if mode == "read-only":
             assert h.args().index("--sandbox") < h.args().index("resume")
     stale = h.run(
@@ -892,7 +896,7 @@ def test_read_dirs_do_not_change_codex_profile_arguments(
     if profile == "review":
         from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
-        _, path, _ = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
+        _, path, _ = choice_files(h, monkeypatch, REVIEW_FIXED_MODEL, mode="fixed")
         extra += ("--review-selection-file", str(path))
     initial = h.run(extra=extra)
     assert initial.returncode == 0, initial.stderr
@@ -1011,7 +1015,7 @@ def test_web_search_completes_and_resumes_without_losing_raw_events(
     if profile == "review":
         from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
-        _, path, _ = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
+        _, path, _ = choice_files(h, monkeypatch, REVIEW_FIXED_MODEL, mode="fixed")
         extra += ("--review-selection-file", str(path))
     proc = h.run(scenario="web_search", extra=extra)
     assert proc.returncode == 0, proc.stderr
@@ -1046,7 +1050,7 @@ def test_review_resume_rejects_missing_or_changed_search_contract_before_launch(
 ) -> None:
     from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
-    _, path, _ = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
+    _, path, _ = choice_files(h, monkeypatch, REVIEW_FIXED_MODEL, mode="fixed")
     extra = ("--profile", "review", "--review-selection-file", str(path))
     assert h.run(extra=extra).returncode == 0
     previous = h.result()

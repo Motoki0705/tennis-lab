@@ -194,7 +194,7 @@ def parser() -> argparse.ArgumentParser:
     receipt.add_argument("--proposal", required=True)
     delegate = commands.add_parser("delegate")
     delegate.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
-    delegate.add_argument("--agent", choices=("claude", "codex"), required=True)
+    delegate.add_argument("--agent", choices=("codex",), required=True)
     delegate.add_argument("--branch", required=True)
     delegate.add_argument("--worktree", type=Path, required=True)
     delegate.add_argument("--dependencies", type=int, nargs="*")
@@ -240,7 +240,7 @@ def parser() -> argparse.ArgumentParser:
     )
     manual.add_argument(
         "--model-reason-file",
-        help="parent's selection reason; required for an initial alternate model",
+        help="optional note retained with the worker record",
     )
     run_record = commands.add_parser("record-worker-run")
     run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
@@ -310,14 +310,35 @@ def parser() -> argparse.ArgumentParser:
     resume = commands.add_parser("merge-continue")
     resume.add_argument("--run-id")
     resume.add_argument("--instruction-file", required=True)
-    resume.add_argument("--rereview", action="store_true")
     resume.add_argument("--prs", nargs="+", type=int)
     resume.add_argument("--wait", action="store_true")
-    review_choice_arguments(resume)
     waiting = commands.add_parser("wait-merge")
     waiting.add_argument("--run-id")
     waiting.add_argument("--after", type=int, default=0)
     waiting.add_argument("--timeout", type=float)
+    for name in (
+        "delegate",
+        "run-worker",
+        "wait-worker",
+        "record-worker-ended",
+        "record-worker-run",
+        "start-worker",
+        "continue-worker",
+        "inspect-worker",
+        "stop-worker",
+        "decide-worker-plan",
+        "refresh-worker-plan",
+        "worker-log-status",
+        "publish-worker-log",
+    ):
+        commands.choices[name].add_argument(
+            "--worker", help="primary or a named helper with its own worktree"
+        )
+    for name in ("delegate", "start-worker"):
+        commands.choices[name].add_argument(
+            "--handoff-from-astra", metavar="DELEGATION_ID"
+        )
+    commands.choices["start-worker"].add_argument("--handoff-evidence-file")
     decision_capture.add_parsers(commands)
     return root
 
@@ -335,7 +356,10 @@ def _main(argv: list[str] | None = None) -> int:
                     "--source-parent requires --all-parents; --pr requires --adopt-orphan-prs"
                 )
             if (args.all_parents or args.adopt_orphan_prs) and (
-                args.turn is not None or args.delegation_key is not None or args.retry
+                args.turn is not None
+                or args.delegation_key is not None
+                or args.worker is not None
+                or args.retry
             ):
                 raise ValueError(
                     "bulk recovery does not accept --turn, --delegation-key or --retry"
@@ -442,6 +466,7 @@ def _main(argv: list[str] | None = None) -> int:
                 f"{gh.repo.casefold()}#{parent}",
                 number(args.child),
                 timeout=args.timeout,
+                worker=args.worker,
             )
             print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
             return code
@@ -571,54 +596,12 @@ def _main(argv: list[str] | None = None) -> int:
 
             path = latest(store, gh.repo, parent, args.run_id)
             after = len(view(path)["events"])
-            chosen = None
-            if any(
-                getattr(args, name) is not None
-                for name in (
-                    "review_model",
-                    "review_effort",
-                    "model_reason_file",
-                    "review_model_source",
-                    "human_review_model",
-                    "human_review_effort",
-                    "human_model_reference",
-                    "review_config_file",
-                )
-            ):
-                if not args.rereview:
-                    raise ValueError("a model choice requires --rereview")
-                from lib.ops_review.progression import read as read_progression
-
-                from .review_choice import selection as review_choice
-
-                current_progression = read_progression(path)
-                saved = (
-                    current_progression["review"].get("selection")
-                    or current_progression["request"]["review_selection"]
-                )
-                human = saved.get("human")
-                if human:
-                    args.human_review_model = args.human_review_model or human.get(
-                        "model"
-                    )
-                    args.human_review_effort = args.human_review_effort or human.get(
-                        "effort"
-                    )
-                    args.human_model_reference = (
-                        args.human_model_reference or human["reference"]
-                    )
-                chosen = review_choice(None, args)
             continue_progression(
                 path,
                 store,
                 nonempty(identity, "parent identity"),
                 read_text(args.instruction_file),
-                rereview=args.rereview,
                 prs=args.prs,
-                review_selection=chosen,
-                review_config_file=str(args.review_config_file.resolve())
-                if args.review_config_file
-                else None,
             )
             value = wait(path, after=after) if args.wait else view(path)
             value = continuation.complete(args, value)
@@ -636,6 +619,7 @@ def _main(argv: list[str] | None = None) -> int:
                 publish_logs=args.command == "publish-worker-log",
                 sequence=number(args.turn) if args.turn is not None else None,
                 key=args.delegation_key,
+                worker=args.worker,
                 dry_run=getattr(args, "dry_run", False),
                 retry=getattr(args, "retry", False),
             )
@@ -671,6 +655,7 @@ def _main(argv: list[str] | None = None) -> int:
                 child=number(args.child),
                 prompt=args.prompt_file,
                 resume=args.resume,
+                worker=args.worker,
                 repair=repair_request(args.repair_id, args.repair_pr)
                 if args.repair_id is not None or args.repair_pr is not None
                 else None,
@@ -747,6 +732,15 @@ def _main(argv: list[str] | None = None) -> int:
             history_reads,
         ):
             session = ParentSession(gh, store, parent, identity)
+            if hasattr(args, "worker"):
+                from .worker_slots import select
+
+                session.worker = select(
+                    session.row,
+                    args.child,
+                    args.worker,
+                    creating=args.command == "delegate",
+                )
             command = args.command
             result: Any
             if command in {"project-setup", "project-sync"}:
@@ -892,7 +886,8 @@ def _main(argv: list[str] | None = None) -> int:
                     args.branch,
                     args.worktree,
                     args.dependencies,
-                    read_text(args.restart_evidence_file)
+                    handoff_from_astra=args.handoff_from_astra,
+                    restart=read_text(args.restart_evidence_file)
                     if args.restart_evidence_file
                     else None,
                 )

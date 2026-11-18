@@ -46,7 +46,10 @@ def main() -> int:
     store = importlib.import_module("parent.state").Store(state_dir)
     row = store.read_data()["parents"][os.environ.get("MANUAL_PARENT_KEY", "o/r#1")]
     task = next(
-        t for t in row["tasks"].values() if t.get("delegation_id") == opt("--task-id")
+        t
+        for issue in row["tasks"].values()
+        for t in [issue, *issue.get("helpers", {}).values()]
+        if t.get("delegation_id") == opt("--task-id")
     )
     saved = task["worker_runs"][-1]
     assert saved["delegation_id"] == opt("--task-id") == task["delegation_id"]

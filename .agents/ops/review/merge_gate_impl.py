@@ -43,6 +43,35 @@ def controller_lock(path: Path) -> Iterator[None]:
         yield
 
 
+def registered(session: ParentSession, prs: list[int]) -> dict[str, Any] | None:
+    if not prs or len(set(prs)) != len(prs):
+        raise ValueError("review needs a nonempty set of unique PRs")
+    # Reusing the request cannot restart a paused controller. That always needs
+    # merge-continue, even after the original process or WSL has disappeared.
+    wanted = set(prs)
+    for key, owner in session.store.parents.items():
+        if key.rpartition("#")[0] != session.gh.repo.casefold():
+            continue
+        for prior in reversed(owner.get("reviews", [])):
+            request = prior["request"]
+            if request.get("schema_version") != 4:
+                continue
+            numbers = {p["number"] for p in request["prs"]}
+            if not wanted.intersection(numbers):
+                continue
+            if key != session.key or wanted != numbers:
+                raise ValueError(
+                    f"PR is already managed by another progression: {request['review_run_id']}"
+                )
+            state = read(state_path(session.store, request["review_run_id"]))
+            return {
+                "review_run_id": state["id"],
+                "reused": True,
+                "status": state["status"],
+            }
+    return None
+
+
 def register(
     session: ParentSession,
     prs: list[int],
@@ -56,24 +85,9 @@ def register(
         raise ValueError("agent timeout must be positive and finite")
     session.gh.targeted_history = True
     row = session.agreed()
-    if not prs or len(set(prs)) != len(prs):
-        raise ValueError("review needs a nonempty set of unique PRs")
-    # Reusing the request cannot restart a paused controller. That always needs
-    # merge-continue, even after the original process or WSL has disappeared.
-    for prior in row["reviews"]:
-        request = prior["request"]
-        if request.get("schema_version") == 4 and set(prs) & {
-            p["number"] for p in request["prs"]
-        }:
-            state = read(state_path(session.store, request["review_run_id"]))
-            if state["status"] != "completed":
-                if set(prs) != {p["number"] for p in request["prs"]}:
-                    raise ValueError("PR is already managed by another progression")
-                return {
-                    "review_run_id": state["id"],
-                    "reused": True,
-                    "status": state["status"],
-                }
+    existing = registered(session, prs)
+    if existing:
+        return existing
     auth = authorization(session)
     parent, children = session.work_items()
     entries = []
@@ -167,6 +181,11 @@ def register(
                 child=worker["child"],
                 pr=entry["number"],
             )
+    # Network reads released the registry lock. Recheck all owners immediately
+    # before publishing the reservation, under the same lock as the registry save.
+    existing = registered(session, prs)
+    if existing:
+        return existing
     path = state_path(session.store, identifier)
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=False)
     save(path, state)
@@ -197,6 +216,54 @@ def latest(store: Store, repo: str, parent: int, identifier: str | None = None) 
     return state_path(store, identifier)
 
 
+def review_usage(path: Path, state: dict[str, Any]) -> dict[str, Any]:
+    """One row per launch, including legacy rounds. Missing measurements stay null."""
+    rounds = []
+    for directory in sorted(path.parent.glob("review-*"), key=lambda d: d.name):
+        if not (directory / "execution.json").exists():
+            continue
+        runtime = directory / "agent-runtime/result.json"
+        try:
+            record = read(runtime) if runtime.is_file() else {}
+        except (OSError, ValueError):
+            rounds.append(
+                {
+                    "round": int(directory.name.removeprefix("review-")),
+                    "started_at": None,
+                    "error": "runtime_record_unavailable",
+                }
+            )
+            continue
+        usage = (record.get("runtime") or {}).get("usage", {}).get("value") or {}
+        start, finish = record.get("started_at"), record.get("finished_at")
+        rounds.append(
+            {
+                "round": int(directory.name.removeprefix("review-")),
+                "started_at": start,
+                "agent_spawned": record.get("agent_spawned"),
+                "duration_seconds": finish - start
+                if finish is not None and start is not None
+                else None,
+                **{
+                    key: usage.get(key)
+                    for key in ("input_tokens", "cached_input_tokens", "output_tokens")
+                },
+            }
+        )
+    starts = [r["started_at"] for r in rounds if r["started_at"] is not None]
+    return {
+        "launch_intents": len(rounds),
+        "confirmed_launches": sum(r.get("agent_spawned") is True for r in rounds),
+        "rounds": rounds,
+        "seconds_to_observed_merge": {
+            n: t["merged_at"] - min(starts)
+            if starts and t.get("merged_at") is not None
+            else None
+            for n, t in state["targets"].items()
+        },
+    }
+
+
 def view(path: Path) -> dict[str, Any]:
     state = read(path)
     return {
@@ -209,6 +276,7 @@ def view(path: Path) -> dict[str, Any]:
             for t in state["targets"].values()
         ],
         "events": state["events"],
+        "review_usage": review_usage(path, state),
         "decisions": state["decisions"],
     }
 
@@ -251,26 +319,41 @@ def continue_progression(
     identity: str,
     instruction: str,
     *,
-    rereview: bool = False,
     prs: list[int] | None = None,
-    review_selection: dict[str, Any] | None = None,
-    review_config_file: str | None = None,
 ) -> None:
     from lib.ops_review.progression_backend import LiveBackend
     from lib.ops_review.progression_workers import refresh
 
     with controller_lock(path):
         state = read(path)
-        if state["owner"] != identity:
-            raise ValueError("only the registered parent may continue progression")
         backend = LiveBackend(state, store)
+        with store.consistent_snapshot():
+            session = ParentSession(backend.gh, store, backend.parent, identity)
+            current = authorization(session)
+            saved = state["request"]["authorization"]
+            if current != {**saved, "generation": current["generation"]}:
+                raise ValueError("progression execution authority changed")
+            if (
+                state["owner"] != identity
+                or state["generation"] != current["generation"]
+            ):
+                if current["generation"] <= state["generation"] or not any(
+                    event.get("event") == "handoff"
+                    and event.get("generation") == current["generation"]
+                    for event in session.history()
+                ):
+                    raise ValueError(
+                        "review progression requires a recorded owner handoff"
+                    )
+                state.setdefault("owner_history", []).append(
+                    {"owner": state["owner"], "generation": state["generation"]}
+                )
+                state.update(owner=identity, generation=current["generation"])
+                state["request"]["authorization"] = current
         backend.authorize()
         Engine(path, backend).continue_run(
             instruction,
-            rereview=rereview,
             prs=prs,
-            review_selection=review_selection,
-            review_config_file=review_config_file,
             prepare=lambda value: refresh(backend, value, prs, instruction),
         )
     start(path)

@@ -30,8 +30,11 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 def selection(
     session: ParentSession | None, args: argparse.Namespace
 ) -> dict[str, Any]:
+    policy = load_policy(args.review_config_file)
+    if policy != load_policy(None):
+        raise ValueError("parent review requires the configured Sol policy")
     return choose(
-        load_policy(args.review_config_file),
+        policy,
         model=args.review_model,
         effort=args.review_effort,
         reason=Path(args.model_reason_file).read_text(encoding="utf-8")

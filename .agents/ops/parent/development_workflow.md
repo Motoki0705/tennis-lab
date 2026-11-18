@@ -29,16 +29,12 @@
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
   --state-dir "$parent_state" --dispatcher-state-dir "$dispatcher_state" \
   start-worker --child 124 --branch codex/parser --worktree "$worker_tree" --prompt-file tmp/task.md
-# 必要な場合だけ末尾へ --model gpt-6.2-astra を付ける。既定の正本はlib/agents.conf。
 ```
 
 出力は `child/delegation_id/job_id/result=reserved`。起動の成功や成果物の合格ではない。
 担当issueの原文・親の具体指示と [worker prompt](worker_prompt.md) を共通ランナーへ渡す。
 親は子のscope・対象外・受入条件・依存・テスト条件・PR作成時点を指示ファイルへ書く。
-モデル選択は [AGENTS.md](../../../AGENTS.md#開発ルール) に従い、通常はSol/max、未解決の数理・幾何アルゴリズムや
-広範囲の統合設計などの高難度の委任では親がAstra/maxを選べる。人間との合意によるモデル指定を優先する。
-選択肢は `agents.conf` の既定・代替の2種で、通常のeffortはmax固定。[自動進行の修正ターン](README.md#自動進行の修正ターン)はhighを使う。理由は `note`（証拠用Issue）と具体指示へ残す。
-同一委任・sessionの途中では変更せず、利用不可・実効値不一致を別モデルへ振り替えない。
+各ワーカーのモデルは共通設定のSol。補助担当を追加するときは `--worker 名前` と別branch・worktreeを渡す。
 GPU・Blenderはtraining queueを使い、未指定の資源予算を作らない。
 
 予約後の障害は `reconcile` と保存jobを照合する。delegateだけ保存された場合は、同じdelegation_idで
@@ -100,17 +96,16 @@ CI待ち・情報不足・権限不足はwaiting、runtime/検証の失敗はfai
 
 ## 親単位レビューと自動進行
 
-親が準備できたopen PRの部分集合を選び、[モデル選択](README.md#正式レビューのモデル選択)と根拠を付けて1回依頼する。
+親が準備できたopen PRの部分集合を選び、受入条件と検証結果を付けて1回依頼する。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
   --state-dir "$parent_state" --dispatcher-state-dir "$dispatcher_state" review-request --prs 200 201 \
-  --instruction-file tmp/review.md --evidence-file tmp/result.md \
-  --review-model gpt-6.2-astra --review-effort xhigh --model-reason-file tmp/review-model-reason.md
+  --instruction-file tmp/review.md --evidence-file tmp/result.md
 ```
 
 親はwaitingへ戻り、保存された自動進行イベントで再開する。CLIがCI待機と修正worker、gate、merge後確認を担当する。
-major・判断要求を受けた親は必要な修正を同じworkerへ依頼し、`merge-continue` する。追加レビューは親が `--rereview` を指定したときだけ。
+major・判断要求を受けた親は必要な修正を同じworkerへ依頼し、`merge-continue` する。指摘の解消後はマージ条件の照合に進む。
 中断後も親の明示続行で保存段階から再開する。状態・通知・上限・復旧は [review README](../review/README.md) を正本とする。
 呼出元の `AGENT_AUTO_MERGE` とneeds-humanを維持し、workflow自身では有効化しない。pushごとにCIを実行し `[skip ci]` を付けない。
 

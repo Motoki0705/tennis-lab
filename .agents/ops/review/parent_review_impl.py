@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,66 @@ HERE = Path(__file__).resolve().parent
 OPS = HERE.parent
 
 
+def completed_result(review_dir: Path, materials: dict[str, Any]) -> dict[str, Any]:
+    runtime = review_dir / "agent-runtime"
+    record = read(runtime / "result.json")
+    final = runtime / "final.md"
+    # A transient reconnect may be reported as runtime_error even after a
+    # clean CLI exit. Require the terminal event and exact final in that case.
+    completed = record.get("result") == "completed" and record.get("exit_code") == 0
+    runtime_errors = (record.get("runtime") or {}).get("runtime_errors", [])
+    if (
+        not completed
+        and runtime_errors
+        and all(
+            e.get("type") == "error"
+            and e.get("message", "").startswith("Reconnecting...")
+            for e in runtime_errors
+        )
+        and record.get("turn_end_reason") == "runtime_error"
+        and record.get("cli_exit_code") == 0
+    ):
+        events = [
+            json.loads(line)
+            for line in (runtime / "events.jsonl").read_text().splitlines()
+            if line.strip()
+        ]
+        messages = [
+            e["item"]["text"]
+            for e in events
+            if e.get("type") == "item.completed"
+            and e.get("item", {}).get("type") == "agent_message"
+        ]
+        completed = bool(
+            events
+            and events[-1].get("type") == "turn.completed"
+            and messages
+            and messages[-1].strip() == final.read_text().strip()
+        )
+    if not completed or record.get("cleanup_complete") is not True:
+        raise ValueError("review runtime did not complete and clean up")
+    if (
+        record.get("final_path") != str(final)
+        or record.get("run_dir") != str(runtime)
+        or record.get("prompt_sha256")
+        != hashlib.sha256((review_dir / "prompt.md").read_bytes()).hexdigest()
+        or record.get("contract", {}).get("review_selection")
+        != materials["review_selection"]
+    ):
+        raise ValueError("saved review runtime does not match its request")
+    result = parse_output(
+        final.read_text(), [entry["number"] for entry in materials["prs"]]
+    )
+    result.update(
+        reviewed_heads={
+            str(entry["number"]): entry["head_sha"] for entry in materials["prs"]
+        },
+        runtime=runtime_view(record),
+    )
+    save(review_dir / "result.json", result)
+    return result
+
+
 def run_review(state: dict[str, Any], directory: Path, gh: GitHub) -> dict[str, Any]:
     from lib.opsproc import run_process_group
 
@@ -32,26 +94,48 @@ def run_review(state: dict[str, Any], directory: Path, gh: GitHub) -> dict[str, 
         return read(result_path)
     execution_path = review_dir / "execution.json"
     if execution_path.exists():
-        raise ValueError(
-            "recovery_required: reviewer launch has no saved completed result"
-        )
-    for previous in directory.glob("review-*"):
-        if previous == review_dir or not (previous / "execution.json").exists():
-            continue
+        if (
+            not (review_dir / "request.json").is_file()
+            or not (review_dir / "agent-runtime/result.json").is_file()
+        ):
+            raise ValueError(
+                "recovery_required: missing review launch or runtime evidence"
+            )
+        saved = read(review_dir / "request.json")
+        if (
+            saved.get("review_run_id") != request["review_run_id"]
+            or saved.get("repo") != request["repo"]
+            or [p["number"] for p in saved["prs"]]
+            != [p["number"] for p in request["prs"]]
+        ):
+            raise ValueError("saved review intent does not match progression")
         from dispatcher.runtime import Runtime
 
-        runner = Path(
-            state.get("options", {}).get("agent_exec", str(OPS / "lib/agent_exec.sh"))
+        runner = Runtime(
+            Path(state.get("options", {}).get("agent_exec", OPS / "lib/agent_exec.sh"))
         )
-        evidence = Runtime(runner).inspect(previous / "agent-runtime")
-        if not Runtime(runner).ended(evidence):
-            raise ValueError(
-                "recovery_required: previous reviewer termination is unconfirmed"
-            )
+        if not runner.ended(runner.inspect(review_dir / "agent-runtime")):
+            raise ValueError("recovery_required: reviewer termination is unconfirmed")
+        result = completed_result(review_dir, saved)
+        save(execution_path, {"status": "completed", "agent_invocations": 1})
+        return result
+    from lib.review_settings import choose, load_policy
+
+    policy = load_policy(None)
+    if any(
+        (previous / "execution.json").exists()
+        for previous in directory.glob("review-*")
+        if previous != review_dir
+    ):
+        raise ValueError("a previous review round already ran; recover its result")
     materials = dict(request)
     materials["review_selection"] = state["review"].get(
         "selection", request["review_selection"]
     )
+    upgrading = materials["review_selection"]["policy"] != policy
+    if upgrading:
+        # Old requests awaiting their first launch adopt the current Sol pin.
+        materials["review_selection"] = choose(policy)
     materials["prs"] = []
     diffs = {}
     prs: list[dict[str, Any]] = []
@@ -124,6 +208,8 @@ def run_review(state: dict[str, Any], directory: Path, gh: GitHub) -> dict[str, 
     config = dict(state.get("options", {}))
     if state["review"].get("config_file"):
         config["review_config_file"] = state["review"]["config_file"]
+    if upgrading:
+        config.pop("review_config_file", None)
     retrieval = {
         "repo": str(root),
         "repository": request["repo"],
@@ -218,22 +304,7 @@ def run_review(state: dict[str, Any], directory: Path, gh: GitHub) -> dict[str, 
             timeout=config.get("agent_timeout", 1800),
             env=runtime_env,
         )
-    record = read(runtime / "result.json")
-    if (
-        record.get("result") != "completed"
-        or record.get("exit_code") != 0
-        or record.get("cleanup_complete") is not True
-    ):
-        raise ValueError("review runtime did not complete and clean up")
-    result = parse_output(
-        (runtime / "final.md").read_text(encoding="utf-8"),
-        [p["number"] for p in materials["prs"]],
-    )
-    result.update(
-        reviewed_heads={str(p["number"]): p["head_sha"] for p in materials["prs"]},
-        runtime=runtime_view(record),
-    )
-    save(result_path, result)
+    result = completed_result(review_dir, materials)
     reviewed(operation, result)
     save(execution_path, {"status": "completed", "agent_invocations": 1})
     # Display copies are not merge evidence. Save the result first; a restarted

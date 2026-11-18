@@ -10,7 +10,7 @@ from .session import ParentSession
 
 
 def runner_ended(session: ParentSession, child: int, *, persist: bool = True) -> None:
-    task = session.row["tasks"].get(str(child), {})
+    task = session.worker_task(child)
     if not task.get("delegated"):
         return
     from .development import Runtime, managed, worker_jobs
@@ -22,7 +22,7 @@ def runner_ended(session: ParentSession, child: int, *, persist: bool = True) ->
             "delegation_id"
         ):
             return
-        jobs = worker_jobs(dispatch, child)
+        jobs = worker_jobs(dispatch, child, session.worker)
         if not jobs or jobs[-1]["delegation_id"] != task["delegation_id"]:
             raise ValueError("no runtime for the current delegation")
         job = jobs[-1]
@@ -75,6 +75,11 @@ def request(
 ) -> dict[str, Any]:
     session.gh.targeted_history = True
     session.agreed()
+    from lib.ops_review.merge_gate_impl import registered
+
+    previous = registered(session, prs)
+    if previous:
+        return previous
     parent, children = session.work_items()
     targets = set(children)
     linked: set[int] = set()

@@ -76,6 +76,7 @@ def parser() -> argparse.ArgumentParser:
     child.add_argument("--parent", type=int, required=True)
     child.add_argument("--child", type=int, required=True)
     child.add_argument("--delegation-id", required=True)
+    child.add_argument("--worker", help="primary or the named helper")
     child.add_argument("--prompt-file", type=Path, required=True)
     from lib.agent_settings import implementation_models
 
@@ -152,6 +153,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
             args.prompt_file.read_text(encoding="utf-8"),
             dict(os.environ),
             args.model,
+            worker=args.worker,
         )
         return {"result": "reserved", "job_id": job}
     elif args.command == "recover-judgement":
