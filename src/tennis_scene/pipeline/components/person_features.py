@@ -65,9 +65,12 @@ class PersonAppearanceFeaturesOutput:
     embeddings: NDArray[np.float32]  # N,1280; masked zero
     appearance_valid: NDArray[np.bool_]
     encoder: str
+    encoder_identity: str
 
     def __post_init__(self) -> None:
         _validate_axis(self.camera_id, self.frame_offsets, self.source_rows)
+        if not isinstance(self.encoder_identity, str) or len(self.encoder_identity) != 64 or any(c not in '0123456789abcdef' for c in self.encoder_identity):
+            raise ValueError('Appearance features require an explicit content/settings identity')
         n = len(self.source_rows)
         if self.encoder != CLIP_ENCODER or self.embeddings.shape != (n, CLIP_DIMENSION) \
                 or self.embeddings.dtype != np.float32 or not np.isfinite(self.embeddings).all() \
@@ -161,21 +164,25 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
 class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeaturesInput, PersonAppearanceFeaturesOutput]):
     io = ComponentIO('person_appearance_features', PersonAppearanceFeaturesInput, PersonAppearanceFeaturesOutput,
                      {'detections': InputPort('person_detections', 2), 'poses': InputPort('person_pose_features', 1)},
-                     'person_appearance_features', version=1)
+                     'person_appearance_features', version=2)
 
-    def __init__(self, encoder: ModelSpec[AppearanceEncoder], config: FeatureConfig = DEFAULT_CONFIG, *,
+    def __init__(self, encoder: ModelSpec[AppearanceEncoder] | None, config: FeatureConfig = DEFAULT_CONFIG, *,
                  enabled: bool = True, batch_size: int | None = None) -> None:
         from dataclasses import replace
         self.encoder = encoder
         self.config = config if batch_size is None else replace(config, appearance_batch_size=batch_size)
         self.enabled = enabled
+        if enabled and encoder is None:
+            raise ValueError('Appearance features require an explicit encoder declaration')
 
     def model_specs(self) -> dict[str, ModelSpec[AppearanceEncoder]]:
-        return {'encoder': self.encoder} if self.enabled else {}
+        return {'encoder': self.encoder} if self.enabled and self.encoder is not None else {}
 
     def process_with_models(self, inputs: PersonAppearanceFeaturesInput, models: ModelBorrower) -> PersonAppearanceFeaturesOutput:
         video, detections = inputs.video, inputs.detections
         rows = require_alignment(video, detections, inputs.poses)
+        from src.tennis_scene.pipeline.artifacts import document_digest
+        identity = models.identity('encoder') if self.enabled else document_digest({'enabled': False})
         embeddings: NDArray[np.float32] = np.zeros((len(rows), CLIP_DIMENSION), np.float32)
         valid: NDArray[np.bool_] = np.zeros(len(rows), bool)
         if not self.enabled and len(rows):
@@ -196,4 +203,4 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
                                                      None, encoder, self.config)
             for batch in appearance_batches(crops(), self.config.appearance_batch_size):
                 scatter_appearance(batch, infer_appearance(batch, encoder), row_indices, embeddings, valid)
-        return PersonAppearanceFeaturesOutput(video.camera_id, detections.frame_offsets, rows, embeddings, valid, CLIP_ENCODER)
+        return PersonAppearanceFeaturesOutput(video.camera_id, detections.frame_offsets, rows, embeddings, valid, CLIP_ENCODER, identity)

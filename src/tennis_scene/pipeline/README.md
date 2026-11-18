@@ -66,7 +66,39 @@ dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manif
 生成・初期化・解放のcallbackを持つ。`key`は資産のSHA-256と設定のcanonical JSONを含み、
 clip/camera IDと資産pathを含めない。同じ内容の別pathは共有でき、異なる重み・設定は共有しない。
 checkpoint内のarchitectureは重み全体の内容identityにも含まれる。
-runtimeは開始した計画内でキーを固定し、借用時・初期化直後に資産の変化を検出したら停止する。
+手動の`ComponentNode`も、`settings.models`へ`model_identities(component.model_specs(), catalog.file_identity)`で
+モデル宣言を束縛する。execute/cache判定前に実際の宣言と照合し、未束縛・差し替えを拒否する。
+この照合は束縛済みdigestを使い、checkpointを読み直さない。明示loadは保存済みの契約・identityを照合する。
+`standard_definition(overrides=...)`とorchestratorの`components`は、選択したcomponentの実ModelSpecを
+nodeと完成markerの`component_overrides`へ含める。モデル宣言がない差し替えは、処理設定を返す
+`cache_identity() -> Mapping`が必要となる。モデル以外の追加設定もこのmethodで宣言する。
+クラス名だけの差し替え・未知のnode名は拒否し、標準componentへ置き換えない。
+runtimeはnodeの成果物settingsに`file_identity`で束縛したSHAを`expected_assets`として受け取り、
+初回借用時もそのSHAと照合する。宣言済み資産の置換・欠落は公開前に停止する。
+開始した計画内でキーを固定し、借用時・初期化直後の資産変更も停止する。
+Courtはcheckpoint metadataをCPUで読み、同じresolverで解決した外部DINOv3 backboneとrepository内の
+全Python source（相対名と内容SHA）を共有キーと成果物settingsの`external_assets`に含める。
+通常clipの完成markerを照合するpublication identityにも同じCourt資産を含め、外部資産の変更を再利用で見逃さない。
+cache/loadでも資産の宣言・metadata検証は行うが、推論モデルは構築しない。
+同じ`CourtKPConfig`で構築するnode/clipは`asset_catalog`でmetadataと内容digestを共有する。
+checkpointのCPU metadata読込と全量hashは同じ資産につき各1回。statの変更でcacheを無効にし、
+metadata読込中の変更も拒否する。新しいconfig（`dataclasses.replace`を含む）は新しいcatalogを作る。
+全推論nodeの成果物settingsと完成markerは、標準のcomponent構築と同じ`ModelSpec`から有効な
+device・dtype・architecture・推論設定・資産を列挙する。標準poseはtrackingのevidenceとその依存identityを使う。
+Court成果物の来歴は各nodeの束縛から記録する。
+人物検出は外部DINOのPython sourceと、指定されている場合はDINO native extensionの内容も含める。
+未指定のextensionは実ローダーが明示的に停止し、宣言後のextension選択変更も初期化前に拒否する。
+外観encoderのfactoryには宣言・SHA照合に使ったcheckpoint pathをそのまま渡す。
+外観DINOv3も外部Python実装の内容をキーに含める。実hub loaderはimport済み`dinov3` namespaceの
+実装identityをprocess内で固定し、安全に切り替えられない別実装や未管理の事前importは明示拒否する。
+実装を切り替えるときは新しいprocessを使う。同内容の別pathは共有できる。
+hubからimportした`dinov3.*`の`__file__`も宣言inventoryと照合する。外部package・外部子module・出自不明を拒否し、
+失敗したimportを同じprocessで再試行しない。既存namespaceを別repositoryから再loadする場合も、読込元が異なれば
+新しいprocessが必要となる。同内容のモデルをruntime内で共有する内容キーの契約は変わらない。
+人物検出DINOも、models/utilのimportとbuild後に同じ出自検査を行う。
+repository配下のsymlink（ディレクトリ・循環・切れたリンクを含む）は、Python import対象の全列挙を保証できないため生成前に拒否する。
+既知の制限: 実行中にPython sourceを追加・書換する運用と、dataset入口の完成marker identity取得後に
+checkpointを置き換える運用は対象外（親 #1734 の判断）。実行中の資産は固定する。
 順序選択の未常駐モデルの宣言は、種類・設定・資産pathだけで必要数を見積もり、資産を要求しない。
 初回借用と、常駐モデルに対する同条件の残り需要を調べる段階で内容キーを解決する。
 分岐により借用されない任意モデルの資産が無くても、cache/loadや他モデルの処理を妨げない。
@@ -77,7 +109,11 @@ runtimeは開始した計画内でキーを固定し、借用時・初期化直�
 cache hitのnodeも需要を消費するが借用しない。明示的な`load` nodeには最初からモデル需要がない。
 全cache hit・全loadならモデルの生成・初期化・解放イベントは0となる。
 例外・KeyboardInterrupt・公開失敗でもcontext終了時に残るモデルを解放する。
-失敗tracebackの完了済みframeが重みを保持しないよう、local参照も除去する。
+原因例外・抑制されたcontext・例外groupを含む失敗tracebackの完了済みframeからlocal参照を除去する。
+計測hookの`__exit__`が例外を抑制しても、factory・initialize・release・cleanupの失敗は外側へ伝播する。
+モデル操作とhookの双方が失敗した場合は例外groupへ保持する。
+例外の構造とstack位置は診断用に保持する。成果物の`store.publish`・active参照更新・成功statusは
+nodeの解放・hook完了後に行う。解放失敗では旧active参照を保持し、新しいexecutorでも失敗出力をcache hitしない。
 
 共有対象はCourt、DINO、Ball、ViTPose、CLIP（追跡・選別の画像推論経路・人物対応）、HMR2、GVHMR、
 身体配置のSMPL-X/変換行列/関節・root regressor。tracker・AFLink・時系列入力は共有モデルへ混ぜない。
@@ -98,7 +134,8 @@ C1のrecorder統合時はその`model_event`を渡し、管理下のモデルで
 ## 処理単位
 
 `court_detection`・`person_detection`・`person_pose_features`・`person_appearance_features`・`person_tracking`・`player_selection`・`pose_estimation`・`ball_detection`はcameraごとに独立する。
-`court_detection`は各cameraのframe 0だけをKP＋LINE共同推定し、`court_observations` schema v2で保存する。
+既定の `court_kp.mode=clip` では、`court_detection`は各cameraのframe 0だけをKP＋LINE共同推定し、`court_observations` schema v2で保存する。
+明示的な `video_shared` は[動画共有コート成果物](video_court/README.ja.md)をbuild/loadし、同じvideo・cameraの共通Hとdrift診断をschema v3で入力する。
 `court_calibration`はこの1frameから初期校正・ROIを作り、固定cameraのコート座標を全frameへ明示的にbroadcastする。
 `observed_frame_indices=[0]`と`temporal_policy`を保存し、他frameでモデルを実行したとは扱わない。
 人物検出は校正成否に依存せず全画面で実行する。未校正cameraの選手選別は理由付きの空結果を保存する。
@@ -132,8 +169,8 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 | node / schema | version | 数値配列と契約 |
 |---|---|---|
 | `person_pose_features/<camera>` / `person_pose_features` | 1 | `frame_offsets` int64 (T+1)、`source_rows` int64 (N)、`keypoints` float32 (N,17,3)。元画素x/yと加工しないheatmap peak |
-| `person_appearance_features/<camera>` / `person_appearance_features` | 1 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、明示したCLIP encoder名。無効cropはzero＋false |
-| `person_tracking/<camera>` / `person_tracks` | 6 | 検出v2と両特徴v1のcamera・全frame offset・元rowを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
+| `person_appearance_features/<camera>` / `person_appearance_features` | 2 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、明示したCLIP encoder名とModelSpec由来の`encoder_identity`。無効cropはzero＋false |
+| `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v1・外観特徴v2のcamera・全frame offset・元rowを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
 | `player_selection/<camera>` / `selected_player_tracks` | 3 | 保存した追跡特徴の選別とgroup軸への対応付け |
 | `pose_estimation/<camera>` / `person_poses` | 2 | 選別groupの実観測poseを再利用。標準経路で再推論しない |
 
@@ -143,7 +180,7 @@ ViTPoseとCLIPはruntimeの別passで借り、それぞれ最終需要後に解�
 追跡・選別・poseの旧schemaは新しいidentityとして読み替えず、executeで再生成し、loadは不一致で停止する。
 特徴のsource・重み・前処理・batch上限・dtype・実装identityと上流artifact参照は既存storeに保持する。
 
-ViTPoseは従来のsquare box/enlarge、半解像度のcrop、float32、設定済みflip_testを保持する。
+ViTPoseは従来のsquare box/enlarge、半解像度のcrop、設定済みflip_testを保持し、設定されたforward精度を共通ModelSpecから受け取る。保存するkeypointとconfidenceは常にfloat32。
 複数frameのcropを`people_models.runtime.vitpose.batch_size`まで集約する。
 appearanceは従来のrounded/clipped box、RGB crop、画像対角に応じた最低高さを保持し、
 `FeatureConfig.appearance_batch_size`（既定64）まで複数frameを集約する。
@@ -151,9 +188,21 @@ appearanceは従来のrounded/clipped box、RGB crop、画像対角に応じた�
 動画は各passで順次decodeし、RGB/crop全体を保持しない。空frame・端数batch・空の末尾も保ち、
 各cameraの数値特徴をnode完了時に直ちに原子的に保存する。clip/cameraをまたぐcrop batchは扱わない。
 
+`people_models.runtime.dino_detector.precision` と `people_models.runtime.vitpose.precision` に
+`fp32`（既定）、`bf16`、`fp16` を個別に指定できる。半精度はモデルforwardのautocastで選び、
+ViTPoseのheatmap復号とDINOのscore・box復号はFP32で行う。DINOの変形可能アテンションは
+CUDA拡張の入力dtypeに合わせて、混合精度条件でもブロック全体をFP32で実行する。
+CUDAのBF16にはネイティブ対応GPUが必要で、ViTPoseのBF16はCPUでも利用できる。
+BF16・FP16と `people_models.runtime.vitpose.flip_test` は各段のartifact identityに反映される。
+既定と明示のFP32は同じ設定identityを使う。
+`fp32_cache_compatibility.json` に記録したソース差分の全ファイルが一致する場合は、その差分を
+旧版のハッシュで表す。C3のモデルruntimeと追跡schemaの変更を含む現行構成では、この精度変更だけの
+互換条件は成立しない。旧schemaの成果物は再生成する。ほかのソース、入力、重み、設定、上流参照の変更もidentityに反映される。
+
 標準追跡は`person_tracking.method=strongsort_pp_pose`だけを受け付ける。StrongSORT++＋pose/CLIPのrun 10固定profileを
 productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。
-`person_tracks` v6は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+`person_tracks` v7は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+CLIP evidenceには`ModelBorrower.identity()`で得た内容SHA・設定を含むencoder identityも保存し、regroupで保持する。
 GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
 選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式はtaskの比較benchmarkで使用する。
 重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
@@ -178,6 +227,9 @@ v2の`source_rows`は間引き前のclip/camera通番、`duplicate_merges`はfra
 連結後のdistinct core滞在で選別し、`person_observations.max_tracks_per_camera`は最後のgroup上限だけに使う。
 CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だけの成功に変えない。
 `selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
+追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
+設定した選別encoderで明示的に再計算し、appearance診断へsourceと理由を記録する。
+旧person_tracks v5/v6・外観特徴v1・selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。
@@ -193,7 +245,8 @@ player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switc
 
 `court_side`は[src/tasks/court_side](../../tasks/court_side/README.md)の仮説検定を、校正済みcameraと単一ball観測の
 ~30fps格子に適用する（schema version 3）。成果物は採用したhalf-turn、全仮説のcost/support/使用frame数、marginを持つ。
-決まらないclipは`ReconstructionUnavailable`（reason `court_side_<停止理由>`、仮説ごとの証跡）で停止する。
+既定のclipモードで決まらない場合は`ReconstructionUnavailable`（reason `court_side_<停止理由>`、仮説ごとの証跡）で停止する。
+固定カメラでは[動画共有のcourt side](video_court_side/README.ja.md)を選べる。全clipの有効frameで一度判定し、単独判定が矛盾するclipを失敗、単独未決を既定でwarningにする。
 ball検出を無効にした構成では実行できず、definition構築時に停止する（`load`は可）。
 `camera_alignment`は決まったsideを1仮説として、人物とballの観測で絶対的な整合性だけを再検証する。
 

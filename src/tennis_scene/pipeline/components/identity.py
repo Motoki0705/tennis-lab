@@ -117,7 +117,7 @@ class PlayerAssociationModule(InferenceComponent[PlayerAssociationInput, PlayerI
 
     def __init__(self, camera_ids: tuple[str, ...], config: AssociationConfig, *, sampling: CropSamplingConfig,
                  encoder: ModelSpec[AppearanceEncoder] | None, device: str, enabled: bool) -> None:
-        if (config.appearance is None) != (encoder is None):
+        if enabled and (config.appearance is None) != (encoder is None):
             raise ValueError("An appearance encoder is required exactly when the association config scores appearance")
         self.config, self.sampling, self.encoder, self.device, self.enabled = config, sampling, encoder, device, enabled
         self.io = player_association_io(camera_ids)

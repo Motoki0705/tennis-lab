@@ -54,7 +54,7 @@ def test_pose_and_appearance_keep_rows_empty_frames_and_tail(tmp_path: Path, mon
     seen: list[int] = []
     class Pose:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
-            assert kwargs['precision'] == 'float32'
+            assert kwargs['precision'] == 'fp32'
             assert kwargs['flip_test'] == make_people_config(tmp_path).runtime.vitpose.flip_test
         def load(self) -> None: pass
         def unload(self) -> None: pass
@@ -131,6 +131,8 @@ def test_separate_passes_publish_reload_and_cache_without_model_overlap(tmp_path
         PersonDetectionInputAssembler,
         PersonPoseFeaturesInputAssembler,
     )
+    from src.tennis_scene.pipeline.model_assets import file_identity
+    from src.tennis_scene.pipeline.model_resources import model_identities
     from src.tennis_scene.pipeline.runner import PlanExecutor
     from src.tennis_scene.pipeline.storage.clip_store import ClipStore
     original = inputs(tmp_path)
@@ -157,9 +159,9 @@ def test_separate_passes_publish_reload_and_cache_without_model_overlap(tmp_path
         pose = materialize_model_weights(module.PersonPoseFeaturesModule(people))
         appearance = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=3))
         nodes.append(ComponentNode(f'person_pose_features/{camera}', pose, pose.io, PersonPoseFeaturesInputAssembler(),
-            {'detections': f'person_detection/{camera}'}, context, {}, 'test'))
+            {'detections': f'person_detection/{camera}'}, context, {'models': model_identities(pose.model_specs(), file_identity)}, 'test'))
         nodes.append(ComponentNode(f'person_appearance_features/{camera}', appearance, appearance.io, PersonAppearanceFeaturesInputAssembler(),
-            {'detections': f'person_detection/{camera}', 'poses': f'person_pose_features/{camera}'}, context, {}, 'test'))
+            {'detections': f'person_detection/{camera}', 'poses': f'person_pose_features/{camera}'}, context, {'models': model_identities(appearance.model_specs(), file_identity)}, 'test'))
     active: set[str] = set()
     events: list[tuple[str, str]] = []
     @contextmanager

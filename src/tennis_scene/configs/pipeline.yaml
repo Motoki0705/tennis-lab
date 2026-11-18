@@ -44,6 +44,19 @@ execution:
   body_placement: execute
   scene_assembly: execute
 court_kp:
+  mode: clip
+  video_shared:
+    unobservable_policy: warn
+    action: null
+    directory: null
+    dataset_id: null
+    video_id: null
+    request: null
+    request_sha256: null
+    artifact_digest: null
+    drift_directory: null
+    drift_digest: null
+    rebuild: false
   checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt
   subpixel_refine: true
   # Only frame 0 of each fixed camera is inferred. The region search picks the court
@@ -129,9 +142,11 @@ people_models:
       confidence: 0.3
       short_side: 800
       max_long_side: 1333
+      precision: fp32
     vitpose:
       flip_test: true
       batch_size: 16
+      precision: fp32
       head:
         in_channels: 1280
         out_channels: 17
@@ -206,7 +221,7 @@ ball_smoothing:
   seed: 42
 # ~30 fps full-clip grid for camera alignment and body-view selection; longer clips are rejected.
 frame_sampling:
-  max_frames: 1024
+  max_frames: 2048
 # camera_alignment's absolute check of the decided sides with player and ball evidence.
 camera_geometry:
   reference_camera: null
@@ -217,6 +232,15 @@ camera_geometry:
 # Ball-only half-turn hypothesis test (src/tasks/court_side). Pixels at 1920x1080. Thresholds
 # from the synthetic benchmark (knowledge court_side/000001, #932).
 court_side:
+  mode: clip
+  video_shared:
+    action: null
+    directory: null
+    request: null
+    request_sha256: null
+    artifact_digest: null
+    rebuild: false
+    unobservable_policy: warn
   reprojection_px: 20.0
   min_motion_px: 5.0
   min_frames: 8

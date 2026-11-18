@@ -1,0 +1,40 @@
+{
+  "queue_job": "0-8205064145120710330_2026-11-17T17-17-34-879289669Z_313929_i1751-runtime-main-pair-20261118-a5",
+  "status": "failed",
+  "started_at_utc": "2026-11-17T17:17:35.431540+00:00",
+  "outcomes": {
+    "main": {
+      "variant": "main",
+      "started_at_utc": "2026-11-17T17:17:35.468178+00:00",
+      "status": "complete",
+      "device_memory_sampling_ms": 1000,
+      "device_memory_samples": 2124,
+      "query_timeout_seconds": 10.0,
+      "heartbeat_timeout_seconds": 180.0,
+      "driver": "621.24",
+      "pid": 314196,
+      "returncode": 0,
+      "finished_at_utc": "2026-11-17T17:54:47.417910+00:00",
+      "device_memory_peak_mib": 4533,
+      "device_memory_min_mib": 757
+    },
+    "runtime": {
+      "variant": "runtime",
+      "started_at_utc": "2026-11-17T17:54:47.420170+00:00",
+      "status": "complete",
+      "device_memory_sampling_ms": 1000,
+      "device_memory_samples": 2163,
+      "query_timeout_seconds": 10.0,
+      "heartbeat_timeout_seconds": 180.0,
+      "driver": "621.24",
+      "pid": 415129,
+      "returncode": 0,
+      "finished_at_utc": "2026-11-17T18:32:40.211572+00:00",
+      "device_memory_peak_mib": 4568,
+      "device_memory_min_mib": 771
+    }
+  },
+  "comparison_returncode": 1,
+  "finished_at_utc": "2026-11-17T18:32:47.665984+00:00",
+  "anomaly": null
+}

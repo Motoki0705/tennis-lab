@@ -1,0 +1,15 @@
+{
+  "variant": "runtime",
+  "started_at_utc": "2026-11-17T17:54:47.420170+00:00",
+  "status": "complete",
+  "device_memory_sampling_ms": 1000,
+  "device_memory_samples": 2163,
+  "query_timeout_seconds": 10.0,
+  "heartbeat_timeout_seconds": 180.0,
+  "driver": "621.24",
+  "pid": 415129,
+  "returncode": 0,
+  "finished_at_utc": "2026-11-17T18:32:40.211572+00:00",
+  "device_memory_peak_mib": 4568,
+  "device_memory_min_mib": 771
+}

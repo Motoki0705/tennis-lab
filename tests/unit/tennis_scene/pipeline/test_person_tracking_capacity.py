@@ -32,7 +32,7 @@ def test_more_than_six_people_keep_their_raw_rows(tmp_path: Path, monkeypatch: p
     embeddings: np.ndarray = np.zeros((32, 1280), np.float32)
     embeddings[:, :8] = np.tile(np.eye(8, dtype=np.float32), (4, 1))
     pose_features = PersonPoseFeaturesOutput('cam0', detection.frame_offsets, detection.source_rows, poses)
-    appearance = PersonAppearanceFeaturesOutput('cam0', detection.frame_offsets, detection.source_rows, embeddings, np.ones(32, bool), TrackingConfig().encoder)
+    appearance = PersonAppearanceFeaturesOutput('cam0', detection.frame_offsets, detection.source_rows, embeddings, np.ones(32, bool), TrackingConfig().encoder, "a" * 64)
     tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'aflink.pth')
     result = tracker.process(module.PersonTrackingInput(video, detection, pose_features, appearance))
     assert result.track_ids.tolist() == list(range(1, 9))

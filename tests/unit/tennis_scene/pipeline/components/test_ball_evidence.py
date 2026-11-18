@@ -15,6 +15,8 @@ from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource, Sou
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     BallDetectionInputAssembler,
 )
+from src.tennis_scene.pipeline.model_assets import file_identity
+from src.tennis_scene.pipeline.model_resources import model_identities
 from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from tests.unit.tennis_scene.pipeline.components.test_ball_detection import (
@@ -32,11 +34,12 @@ def test_artifact_roundtrip_is_exact_and_load_only_does_not_infer(
 ) -> None:
     output = _process(tmp_path, monkeypatch, num_frames=3)
     module = BallDetectionModule(make_ball_config(tmp_path))
+    materialize_model_weights(module)
     monkeypatch.setattr(module, "process_with_models", lambda _inputs, _models: output)
     source = ClipSource("clip", (SourceVideo("near", tmp_path / "near.mp4", "hash", 3, 30., 6, 4),))
     context = AssemblyContext(source, "near")
     node = ComponentNode("ball_detection/near", module, module.io, BallDetectionInputAssembler(), {},
-                         context, {}, "test")
+                         context, {'models': model_identities(module.model_specs(), file_identity)}, "test")
     store = ClipStore(tmp_path / "store", json_value(source), memory_entries=0)
     runner = ComponentRunner([node], store)
     runner.run()

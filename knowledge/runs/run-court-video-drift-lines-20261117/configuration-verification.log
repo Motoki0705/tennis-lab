@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-video-shared
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [464 items]
+
+........................................................................ [ 15%]
+........................................................................ [ 31%]
+........................................................................ [ 46%]
+........................................................................ [ 62%]
+........................................................................ [ 77%]
+........................................................................ [ 93%]
+................................                                         [100%]
+============================= slowest 8 durations ==============================
+64.77s call     tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]
+64.15s call     tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]
+24.92s call     tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit
+4.02s call     tests/integration/tennis_scene/test_video_court.py::test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint
+3.71s call     tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity
+2.60s call     tests/integration/tennis_scene/test_video_court.py::test_separate_drift_changes_consumers_and_marker_without_mutating_shared_h
+2.54s call     tests/integration/tennis_scene/test_video_court.py::test_camera_content_change_invalidates_its_court_and_descendants_only
+1.57s call     tests/integration/tennis_scene/test_video_court.py::test_warning_keeps_shared_geometry_and_is_visible_in_receipt_and_overlay
+======================= 464 passed in 205.68s (0:03:25) ========================

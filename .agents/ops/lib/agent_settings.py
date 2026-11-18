@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_CONFIG = Path(__file__).with_name("agents.conf")
+MODEL_NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._:/-]*")
+CONTINUATION_MODELS_PIN = "CODEX_CONTINUATION_MODELS"
 
 
 def _parse_pins(raw: bytes) -> dict[str, str]:
@@ -38,7 +40,7 @@ def _implementation_models(pins: dict[str, str]) -> tuple[str, str]:
         value = pins.get(key)
         if not value:
             raise ValueError(f"agents.conf must set {key}")
-        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._:/-]*", value):
+        if not MODEL_NAME.fullmatch(value):
             raise ValueError(f"invalid model pin: {key}")
         models.append(value)
     return models[0], models[1]
@@ -49,19 +51,30 @@ def implementation_models(config: Path | None = None) -> tuple[str, str]:
     return _implementation_models(read_pins(config or DEFAULT_CONFIG))
 
 
+def _implementation_continuations(pins: dict[str, str]) -> set[str]:
+    raw = pins.get(CONTINUATION_MODELS_PIN)
+    if raw is None:
+        return set()
+    models = raw.split(",")
+    if len(models) != len(set(models)) or any(
+        not MODEL_NAME.fullmatch(model) for model in models
+    ):
+        raise ValueError(f"invalid model list: {CONTINUATION_MODELS_PIN}")
+    return set(models)
+
+
 def implementation_model(
     model: str | None, *, previous: str | None = None, config: Path | None = None
 ) -> str:
     """Validate a selection and preserve the original model on continuation."""
-    if previous is not None and model is not None and model != previous:
-        raise ValueError("continuation cannot change the worker model")
     settings = resolve(
         config or DEFAULT_CONFIG,
         "codex",
         None,
-        previous if previous is not None else model,
+        model,
         None,
         "write",
+        saved_model=previous,
     )
     return str(settings["selected"]["model"])
 
@@ -76,6 +89,8 @@ def resolve(
     *,
     review_selection: dict[str, Any] | None = None,
     repair: dict[str, Any] | None = None,
+    saved_model: str | None = None,
+    saved_review: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     if repair is not None:
         from lib.repair_turn import validate_request
@@ -109,6 +124,13 @@ def resolve(
         k: v for k, v in {"model": model, "effort": effort}.items() if v is not None
     }
     selected.update(overrides)
+    if saved_model is not None:
+        if (agent, profile) != ("codex", None):
+            raise ValueError("saved worker model requires implementation Codex")
+        if model is not None and model != saved_model:
+            raise ValueError("continuation cannot change the worker model")
+        selected["model"] = saved_model
+    continuation_pin = None
     if review_selection is not None and (agent, profile, mode) != (
         "codex",
         "review",
@@ -116,15 +138,13 @@ def resolve(
     ):
         raise ValueError("review selection requires read-only Codex review profile")
     if agent == "codex" and profile == "review":
-        from lib.review_settings import launch_selection, policy_from_pins
+        from lib.review_settings import CONTINUATION_PAIRS_PIN, runner_selection
 
-        policy = policy_from_pins(pins)
-        if review_selection is not None:
-            selected = dict(launch_selection(review_selection, pins)["selected"])
-        elif policy["mode"] != "fixed":
-            raise ValueError("select review profile requires --review-selection-file")
+        selected, continuing = runner_selection(pins, review_selection, saved_review)
+        if continuing:
+            continuation_pin = CONTINUATION_PAIRS_PIN
     if any(
-        not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._:/-]*", value)
+        not isinstance(value, str) or not MODEL_NAME.fullmatch(value)
         for value in (defaults["model"], selected["model"])
     ):
         raise ValueError("invalid model pin/override")
@@ -135,10 +155,15 @@ def resolve(
         if selected["service_tier"] not in {"default", "fast", "flex", "priority"}:
             raise ValueError("invalid service tier")
         if profile is None:
+            continuations = _implementation_continuations(pins)
             if selected["model"] not in _implementation_models(pins):
-                raise ValueError(
-                    "implementation model must be the default or configured alternate"
-                )
+                if selected["model"] not in continuations:
+                    raise ValueError(
+                        "implementation model must be the default or configured alternate"
+                    )
+                if saved_model is None:
+                    raise ValueError("implementation model is continuation-only")
+                continuation_pin = CONTINUATION_MODELS_PIN
             if defaults["effort"] != "max" or selected["effort"] != (
                 "high" if repair is not None else "max"
             ):
@@ -175,6 +200,8 @@ def resolve(
     }
     if agent == "codex" and profile == "review":
         settings["web_search"] = "disabled"
+    if continuation_pin is not None:
+        settings["model_continuation"] = continuation_pin
     return settings
 
 
@@ -184,7 +211,14 @@ def execution_contract(contract: dict[str, Any]) -> dict[str, Any]:
     A configuration path, comment or unrelated profile does not change the
     selected agent/model/effort/permissions. Unknown fields remain significant.
     """
-    provenance = {"source", "sha256", "defaults", "overrides", "selection_sources"}
+    provenance = {
+        "source",
+        "sha256",
+        "defaults",
+        "overrides",
+        "selection_sources",
+        "model_continuation",
+    }
     return {
         **contract,
         "settings": {

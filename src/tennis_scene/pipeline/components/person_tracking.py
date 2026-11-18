@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from time import monotonic
 from typing import Any
@@ -117,7 +117,7 @@ class PersonTrackingModule:
 
     io = ComponentIO("person_tracking", PersonTrackingInput, PersonTrackingOutput,
         {"detections": InputPort("person_detections", 2), "poses": InputPort("person_pose_features", 1),
-         "appearance": InputPort("person_appearance_features", 1)}, "person_tracks", version=6)
+         "appearance": InputPort("person_appearance_features", 2)}, "person_tracks", version=7)
 
     def __init__(self, config: TrackingConfig, *, aflink_checkpoint: Path | None = None,
                  enabled: bool = True, show_progress: bool = True) -> None:
@@ -154,4 +154,5 @@ class PersonTrackingModule:
         finally:
             progress.close()
         return PersonTrackingOutput(video.camera_id, result.track_ids, result.boxes, result.observed,
-            result.source_track_ids, (), result.evidence, result.reconstruction, result.link_candidates)
+            result.source_track_ids, (), replace(result.evidence, encoder_identity=inputs.appearance.encoder_identity),
+            result.reconstruction, result.link_candidates)

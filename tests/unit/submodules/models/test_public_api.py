@@ -28,6 +28,7 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "TrackRequest",
         "TrackResult",
         "ViTPosePose2D",
+        "dino_source_assets",
         "filter_detections_by_footpoint",
         "select_and_complete_tracks",
         "validate_dino_extension",

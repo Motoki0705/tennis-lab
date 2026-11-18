@@ -1,0 +1,235 @@
+[
+  {
+    "status": "failed",
+    "error_type": "ReconstructionUnavailable",
+    "reason": "clip_too_long",
+    "error": "Full clip has 1055 sampled frames; maximum is 1024",
+    "diagnostics": {},
+    "limit": 1024,
+    "seconds": 0.00047535900375805795,
+    "rss_sampled_peak": 925974528,
+    "process_peak_rss": 926367744
+  },
+  {
+    "status": "complete",
+    "camera_ids": [
+      "cam0",
+      "cam1",
+      "cam2",
+      "cam3"
+    ],
+    "turns": [
+      false,
+      false,
+      true,
+      true
+    ],
+    "frames": 456,
+    "margin": 0.23132368376254958,
+    "hypotheses": [
+      {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.4204142407248987,
+        "support": 0.6096491228070176,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          false
+        ],
+        "cost": 0.6517379244874483,
+        "support": 0.34210526315789475,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          true,
+          false,
+          false
+        ],
+        "cost": 0.7245268505375589,
+        "support": 0.2807017543859649,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          true,
+          true,
+          false
+        ],
+        "cost": 0.7352399507426264,
+        "support": 0.24342105263157895,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          true,
+          true,
+          true
+        ],
+        "cost": 0.7875391371922452,
+        "support": 0.20833333333333334,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          false,
+          false,
+          true
+        ],
+        "cost": 0.8024020705404851,
+        "support": 0.19078947368421054,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          true,
+          false,
+          true
+        ],
+        "cost": 0.8463616516637417,
+        "support": 0.14912280701754385,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          false,
+          false,
+          false
+        ],
+        "cost": 0.869448962594717,
+        "support": 0.14692982456140352,
+        "frames": 456
+      }
+    ],
+    "limit": 2048,
+    "seconds": 0.03897688401048072,
+    "rss_sampled_peak": 927023104,
+    "process_peak_rss": 927023104
+  },
+  {
+    "status": "complete",
+    "camera_ids": [
+      "cam0",
+      "cam1",
+      "cam2",
+      "cam3"
+    ],
+    "turns": [
+      false,
+      false,
+      true,
+      true
+    ],
+    "frames": 456,
+    "margin": 0.23132368376254958,
+    "hypotheses": [
+      {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.4204142407248987,
+        "support": 0.6096491228070176,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          false
+        ],
+        "cost": 0.6517379244874483,
+        "support": 0.34210526315789475,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          true,
+          false,
+          false
+        ],
+        "cost": 0.7245268505375589,
+        "support": 0.2807017543859649,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          true,
+          true,
+          false
+        ],
+        "cost": 0.7352399507426264,
+        "support": 0.24342105263157895,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          true,
+          true,
+          true
+        ],
+        "cost": 0.7875391371922452,
+        "support": 0.20833333333333334,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          false,
+          false,
+          true
+        ],
+        "cost": 0.8024020705404851,
+        "support": 0.19078947368421054,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          true,
+          false,
+          true
+        ],
+        "cost": 0.8463616516637417,
+        "support": 0.14912280701754385,
+        "frames": 456
+      },
+      {
+        "view_half_turns": [
+          false,
+          false,
+          false,
+          false
+        ],
+        "cost": 0.869448962594717,
+        "support": 0.14692982456140352,
+        "frames": 456
+      }
+    ],
+    "limit": 4096,
+    "seconds": 0.03675213400856592,
+    "rss_sampled_peak": 927023104,
+    "process_peak_rss": 927023104
+  }
+]

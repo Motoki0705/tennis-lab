@@ -29,7 +29,7 @@
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
   --state-dir "$parent_state" --dispatcher-state-dir "$dispatcher_state" \
   start-worker --child 124 --branch codex/parser --worktree "$worker_tree" --prompt-file tmp/task.md
-# 必要な場合だけ末尾へ --model gpt-6-astra を付ける。既定の正本はlib/agents.conf。
+# 必要な場合だけ末尾へ --model gpt-6.2-astra を付ける。既定の正本はlib/agents.conf。
 ```
 
 出力は `child/delegation_id/job_id/result=reserved`。起動の成功や成果物の合格ではない。
@@ -106,7 +106,7 @@ CI待ち・情報不足・権限不足はwaiting、runtime/検証の失敗はfai
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
   --state-dir "$parent_state" --dispatcher-state-dir "$dispatcher_state" review-request --prs 200 201 \
   --instruction-file tmp/review.md --evidence-file tmp/result.md \
-  --review-model gpt-6-astra --review-effort xhigh --model-reason-file tmp/review-model-reason.md
+  --review-model gpt-6.2-astra --review-effort xhigh --model-reason-file tmp/review-model-reason.md
 ```
 
 親はwaitingへ戻り、保存された自動進行イベントで再開する。CLIがCI待機と修正worker、gate、merge後確認を担当する。

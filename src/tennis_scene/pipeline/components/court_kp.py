@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -24,6 +24,7 @@ from src.tasks.court_detection.inference.regions import (
     select_court_region,
 )
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
+from src.tennis_scene.pipeline.court_assets import CourtAssetCatalog
 from src.tennis_scene.pipeline.inference_runtime import (
     InferenceComponent,
     ModelBorrower,
@@ -68,6 +69,7 @@ class CourtKPConfig:
     postprocess: CourtKPPostprocessConfig
     region_search: CourtRegionSearchConfig
     resolver: PathResolver
+    asset_catalog: CourtAssetCatalog = field(default_factory=CourtAssetCatalog, init=False, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         validate_hybrid_inference_config(self.postprocess)
@@ -116,11 +118,23 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
 
     def __init__(self, config: CourtKPConfig) -> None:
         self.config = config
+        self._checkpoint_identity: dict[str, Any] | None = None
 
     def model_specs(self) -> dict[str, ModelSpec[CourtPredictor]]:
-        return {"court": ModelSpec("court", {"checkpoint": self.config.checkpoint}, "checkpoint_target_bundle",
+        self._checkpoint_identity = self.config.asset_catalog.checkpoint_identity(self.config.checkpoint, self.config.resolver)
+        return {"court": self._model_spec(self.config.asset_catalog.paths(self.config.checkpoint, self.config.resolver))}
+
+    def _model_spec(self, weights: dict[str, Path]) -> ModelSpec[CourtPredictor]:
+        return ModelSpec("court", weights, "checkpoint_target_bundle",
             self.config.device, "float32", {"subpixel_refine": self.config.subpixel_refine,
-                "postprocess": self.config.postprocess, "region_search": self.config.region_search}, self._load_predictor)}
+                "postprocess": self.config.postprocess, "region_search": self.config.region_search}, self._load_predictor)
+
+    def asset_identities(self) -> dict[str, Any]:
+        return self.config.asset_catalog.identities(self.config.checkpoint, self.config.resolver)
+
+    def model_identity(self) -> dict[str, Any]:
+        spec = self._model_spec({})
+        return {"architecture": spec.architecture, "device": spec.device, "dtype": spec.dtype, "settings": dict(spec.settings)}
 
     def _load_predictor(self) -> CourtPredictor:
         LOGGER.info("Loading Court KP model from %s", self.config.checkpoint)
@@ -144,7 +158,9 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
             raise ValueError(f"Court frame size {packet.original_size} disagrees with source {(video.width, video.height)}")
         rgb = cast("NDArray[np.uint8]", cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB))
         prediction = self.predict_image(rgb, predictor)
-        checkpoint = predictor.checkpoint_identity
+        if self._checkpoint_identity is None:
+            raise RuntimeError("Court assets must be bound before inference")
+        checkpoint = self._checkpoint_identity
         keypoints = normalize_grid_keypoints(prediction.points_px, video.width, video.height)
         result = CourtKPResult(
             keypoints[None, None].astype(np.float32), prediction.valid[None, None].astype(np.float32), np.array([0], np.int32),

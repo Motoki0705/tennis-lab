@@ -1,0 +1,40 @@
+{
+  "previous_head": "5ec8e30e3119304227f43b1854cb493ec4cd5e0d",
+  "existing_geometry_and_estimator_source_bytes": {
+    "src/tasks/court_detection/geometry/__init__.py": true,
+    "src/tasks/court_detection/geometry/confidence_homography.py": true,
+    "src/tasks/court_detection/geometry/homography.py": true,
+    "src/tasks/court_detection/geometry/hybrid_homography.py": true,
+    "src/tasks/court_detection/geometry/line_evidence.py": true,
+    "src/tasks/court_detection/geometry/observations.py": true,
+    "src/tasks/court_detection/geometry/paint_correspondence.py": true,
+    "src/tasks/court_detection/geometry/paint_observations.py": true,
+    "src/tasks/court_detection/geometry/paint_refinement.py": true,
+    "src/tasks/court_detection/geometry/pose.py": true,
+    "src/tasks/court_detection/geometry/postprocess.py": true,
+    "src/tasks/court_detection/geometry/quality.py": true,
+    "src/tasks/court_detection/geometry/video_shared/__init__.py": true,
+    "src/tasks/court_detection/geometry/video_shared/candidates.py": true,
+    "src/tasks/court_detection/geometry/video_shared/consensus.py": true,
+    "src/tasks/court_detection/geometry/video_shared/drift.py": true,
+    "src/tasks/court_detection/geometry/video_shared/endpoints.py": true,
+    "src/tasks/court_detection/geometry/video_shared/fit.py": true,
+    "src/tasks/court_detection/geometry/video_shared/observations.py": true,
+    "src/tennis_scene/pipeline/video_court/estimator.py": true
+  },
+  "all_equal": true,
+  "pipeline_yaml_difference": "Only two null acquisition fields drift_directory/drift_digest. Every existing default equals run 77.",
+  "legacy_replay_reused": true,
+  "images": 3545,
+  "regions": 8530,
+  "mismatch_images": 0,
+  "evidence": "knowledge/runs/run-court-video-shared-acceptance-20261117/legacy-replay-summary.json",
+  "inference_and_component_bytes": {
+    "src/tasks/court_detection/inference/__init__.py": true,
+    "src/tasks/court_detection/inference/checkpoint.py": true,
+    "src/tasks/court_detection/inference/contracts.py": true,
+    "src/tasks/court_detection/inference/predictor.py": true,
+    "src/tasks/court_detection/inference/regions.py": true,
+    "src/tennis_scene/pipeline/components/court_kp.py": true
+  }
+}

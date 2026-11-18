@@ -52,12 +52,23 @@ def runtime(tmp_path: Path, *, overrides: tuple[str, ...] = ()) -> PipelineRunti
     return PipelineRuntimeConfig.from_config(cfg)
 
 
-def materialize_assets(paths: Any, tmp_path: Path) -> None:
+def materialize_assets(paths: Any, tmp_path: Path, *, court: Any = None) -> None:
     """Create stand-ins only for test-owned assets, including SMPL auxiliary files."""
     for path in paths:
         assert path.is_relative_to(tmp_path), f"test asset escapes tmp_path: {path}"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"asset")
+    if court is not None:
+        from tests.unit.tennis_scene.pipeline.config_factories import (
+            materialize_court_assets,
+        )
+        materialize_court_assets(court)
+    # Test detectors replace inference, but the declared external implementation
+    # must still exist so cache/publication identities exercise the real path.
+    from tests.unit.tennis_scene.pipeline.config_factories import (
+        materialize_dino_sources,
+    )
+    materialize_dino_sources(tmp_path / "third_party/DINO")
 
 
 class FixedStage:
@@ -67,6 +78,9 @@ class FixedStage:
     def process(self, *args: Any, **kwargs: Any) -> Any:
         self.calls += 1
         return self.result
+    def cache_identity(self) -> dict[str, Any]:
+        from src.tennis_scene.pipeline.artifacts import document_digest, json_value
+        return {'result': document_digest(json_value(self.result))}
     def unload(self) -> None:
         pass
 
@@ -152,7 +166,7 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
             detection.frame_offsets, detection.source_rows, np.zeros((frames * count, 17, 3), np.float32)))
         fixed(f"person_appearance_features/{camera}", PersonAppearanceFeaturesModule.io, PersonAppearanceFeaturesOutput(camera,
             detection.frame_offsets, detection.source_rows, np.zeros((frames * count, 1280), np.float32),
-            np.zeros(frames * count, bool), "clipreid_vitb16_market1501"))
+            np.zeros(frames * count, bool), "clipreid_vitb16_market1501", "a" * 64))
         fixed(f"person_tracking/{camera}", PersonTrackingModule.io, PersonTrackingOutput(camera,
             np.arange(count, dtype=np.int64), boxes, people.observed[v].T,
             tuple((i,) for i in range(count)), ()))
@@ -198,6 +212,9 @@ class TrackIdentities:
             local[row, :count] = tracks[camera].track_ids
             players[row, :count] = np.where(tracks[camera].observed, tracks[camera].track_ids[:, None], -1)
         return PlayerIdentitiesOutput(cameras, local, players, {"stand_in": True})
+
+    def cache_identity(self) -> dict[str, Any]:
+        return {'policy': 'equal_tracker_ids', 'inputs': tuple(self.io.inputs)}
 
 
 def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bool = False) -> tuple[TennisSceneOrchestrator, tuple[Path, ...], dict[str, Any]]:
@@ -323,6 +340,8 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
     body = KnownBody()
     class KnownGVHMR:
         io = GVHMRModule.io
+        def cache_identity(self):
+            return {'fixture': 'known_world_motion'}
         def process(self, inputs):
             return GVHMROutput(tuple(RecoveredBody(selected.person_id, selected.camera_id,
                 tuple(RecoveredBodySegment(request.source_frames, body.recover(request), count)

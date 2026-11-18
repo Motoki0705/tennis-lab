@@ -1,0 +1,18 @@
+{
+  "reference_source_frames": 60,
+  "phases": {
+    "seed": {
+      "frames": 256,
+      "reference_source_frame_overlap": 0
+    },
+    "fit": {
+      "frames": 828,
+      "reference_source_frame_overlap": 0
+    },
+    "evaluation": {
+      "frames": 276,
+      "reference_source_frame_overlap": 0
+    }
+  },
+  "split_sha256": "1c2908886ddc03d0e42aecd01fbe27bd1e355f17de739f5812111f2e21af25df"
+}

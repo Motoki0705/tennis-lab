@@ -2,7 +2,7 @@
 id: run-person-feature-artifacts-20261117
 type: run
 task: tennis_scene
-sequence: 44
+sequence: 56
 recorded_at: '2026-11-17'
 title: 人物pose/CLIP特徴の分離受入：固定特徴のCPU一致と単一clip GPU比較
 issue: 1753

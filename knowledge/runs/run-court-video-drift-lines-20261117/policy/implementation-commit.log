@@ -1,0 +1,9 @@
+[WARNING] Unstaged files detected.
+[INFO] Stashing unstaged files to /home/kamimura/.cache/pre-commit/patch1794916239-921631.
+ruff (fix)...............................................................Passed
+mypy.....................................................................Passed
+[INFO] Restored changes from /home/kamimura/.cache/pre-commit/patch1794916239-921631.
+[codex/court-video-shared 56656531c] Make unobservable shared-court drift an explicit warning policy
+ 15 files changed, 252 insertions(+), 20 deletions(-)
+ create mode 100644 src/tennis_scene/pipeline/video_court/policy.py
+ create mode 100644 tests/unit/tennis_scene/pipeline/video_court/test_policy.py

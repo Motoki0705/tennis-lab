@@ -69,7 +69,7 @@ class _TrackingHarness:
         embeddings[:, 0] = 1
         pose_features = PersonPoseFeaturesOutput(self.video.camera_id, detections.frame_offsets, detections.source_rows, poses)
         appearance = PersonAppearanceFeaturesOutput(self.video.camera_id, detections.frame_offsets, detections.source_rows,
-            embeddings, np.ones(n, bool), TrackingConfig().encoder)
+            embeddings, np.ones(n, bool), TrackingConfig().encoder, "a" * 64)
         tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=self.tmp_path / 'af.pth', show_progress=show_progress)
         return tracker.process(module.PersonTrackingInput(self.video, detections, pose_features, appearance))
 

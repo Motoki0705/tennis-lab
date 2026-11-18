@@ -12,13 +12,31 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Generic, Literal, Protocol, TypeVar
 
-from src.tennis_scene.pipeline.artifacts import json_value
+from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.utils.checksum import dual_sha256
 
 ModelT = TypeVar("ModelT")
 InputT = TypeVar("InputT")
 OutputT = TypeVar("OutputT")
 NodeKey = tuple[str, str]
+
+
+def _clear_exception_frames(error: BaseException) -> None:
+    """Drop completed-frame locals throughout a retained exception graph.
+
+    Preserve tracebacks and the original exception structure for diagnostics.
+    Causes, suppressed contexts and groups can share nodes or form cycles.
+    """
+    pending, seen = [error], set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        traceback.clear_frames(current.__traceback__)
+        pending.extend(link for link in (current.__cause__, current.__context__) if link is not None)
+        if isinstance(current, BaseExceptionGroup):
+            pending.extend(current.exceptions)
 
 
 @dataclass(frozen=True)
@@ -49,6 +67,7 @@ class ModelSpec(Generic[ModelT]):
     initialize: Callable[[ModelT], None] = field(default=lambda _: None, repr=False, compare=False)
     release: Callable[[ModelT], None] = field(default=lambda _: None, repr=False, compare=False)
     _settings_json: str = field(init=False, repr=False)
+    _scheduling_key: tuple[Any, ...] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         from types import MappingProxyType
@@ -59,6 +78,8 @@ class ModelSpec(Generic[ModelT]):
         settings_json = json.dumps(json_value(self.settings), sort_keys=True, separators=(",", ":"), allow_nan=False)
         object.__setattr__(self, "_settings_json", settings_json)
         object.__setattr__(self, "settings", MappingProxyType(json.loads(settings_json)))
+        object.__setattr__(self, "_scheduling_key", (self.kind, self.architecture, self.device, self.dtype, settings_json,
+                                                    tuple(sorted(self.weights.items()))))
 
     @property
     def key(self) -> ModelKey:
@@ -73,8 +94,15 @@ class ModelSpec(Generic[ModelT]):
     @property
     def scheduling_key(self) -> tuple[Any, ...]:
         """Cheap affinity hint, never used to decide model equivalence."""
-        return (self.kind, self.architecture, self.device, self.dtype, self._settings_json,
-                tuple(sorted(self.weights.items())))
+        return self._scheduling_key
+
+
+def model_identities(specs: Mapping[str, ModelSpec[Any]], identity: Callable[[Path], dict[str, Any]]) -> dict[str, Any]:
+    """Bind effective settings and assets from runtime declarations."""
+    return {alias: {"kind": spec.kind, "architecture": spec.architecture,
+        "device": spec.device, "dtype": spec.dtype, "settings": dict(spec.settings),
+        "assets": {name: identity(path) for name, path in spec.weights.items()}}
+        for alias, spec in specs.items()}
 
 
 class ModelEventHook(Protocol):
@@ -110,6 +138,10 @@ class ModelBorrower:
     def borrow(self, alias: str) -> Any:
         return self._runtime.borrow(self._node, alias)
 
+    def identity(self, alias: str) -> str:
+        """Content/settings identity for evidence reuse, without loading a model."""
+        return self._runtime.model_identity(self._node, alias)
+
 
 class InferenceRuntime:
     """Own models until their last remaining declared node finishes.
@@ -120,12 +152,14 @@ class InferenceRuntime:
     """
 
     def __init__(self, declarations: Mapping[NodeKey, Mapping[str, ModelSpec[Any]]], *,
+                 expected_assets: Mapping[NodeKey, Mapping[Path, str]] | None = None,
                  model_event: ModelEventHook | None = None,
                  cleanup: Callable[[str], None] = release_inference_memory) -> None:
         self._remaining = {node: dict(specs) for node, specs in declarations.items()}
         self._owned: dict[ModelKey, _OwnedModel] = {}
         self._keys: dict[NodeKey, dict[str, ModelKey]] = {}
         self._assets: dict[Path, tuple[tuple[int, ...], str]] = {}
+        self._expected_assets = {node: dict(assets) for node, assets in (expected_assets or {}).items()}
         self._active: NodeKey | None = None
         self._closed = False
         self._serial = 0
@@ -141,8 +175,18 @@ class InferenceRuntime:
     def _key_for(self, node: NodeKey, alias: str) -> ModelKey:
         keys = self._keys.setdefault(node, {})
         if alias not in keys:
-            keys[alias] = self._remaining[node][alias]._key_with(self._weight_hash)
+            keys[alias] = self._remaining[node][alias]._key_with(lambda path: self._declared_weight_hash(node, path))
         return keys[alias]
+
+    def _declared_weight_hash(self, node: NodeKey, path: Path) -> str:
+        digest = self._weight_hash(path)
+        bound = self._expected_assets.get(node, {})
+        if bound and path not in bound:
+            raise ValueError(f"Model asset has no bound artifact identity: {path}")
+        expected = bound.get(path)
+        if expected is not None and expected != digest:
+            raise ValueError(f"Model assets changed since artifact identity was bound: {path}")
+        return digest
 
     def _has_demand(self, key: ModelKey) -> bool:
         for node, declarations in self._remaining.items():
@@ -188,7 +232,7 @@ class InferenceRuntime:
 
     def __exit__(self, kind: Any, error: Any, tb: Any) -> None:
         if error is not None:
-            traceback.clear_frames(tb)
+            _clear_exception_frames(error)
         self.close()
 
     @contextmanager
@@ -199,7 +243,7 @@ class InferenceRuntime:
         try:
             yield ModelBorrower(self, node)
         except BaseException as error:
-            traceback.clear_frames(error.__traceback__)
+            _clear_exception_frames(error)
             self.close()
             raise
         else:
@@ -211,21 +255,49 @@ class InferenceRuntime:
         finally:
             self._active = None
 
-    def _event(self, action: Literal["load", "unload"], owned: _OwnedModel) -> AbstractContextManager[Any]:
+    @contextmanager
+    def _event(self, action: Literal["load", "unload"], owned: _OwnedModel) -> Iterator[None]:
         spec = owned.spec
-        return nullcontext() if self._model_event is None else self._model_event(
+        event = nullcontext() if self._model_event is None else self._model_event(
             action, spec.kind, weights=spec.weights, device=spec.device, dtype=spec.dtype, instance=owned.instance)
+        failure: BaseException | None = None
+        try:
+            with event:
+                try:
+                    yield
+                except BaseException as error:
+                    failure = error
+                    raise
+        except BaseException as error:
+            if failure is not None and error is not failure:
+                raise BaseExceptionGroup("Model operation and measurement hook failed", [failure, error]) from None
+            raise
+        # A recorder may suppress the body exception. It cannot decide whether
+        # a model was initialized/released or whether its outputs may publish.
+        if failure is not None:
+            raise failure
 
-    def borrow(self, node: NodeKey, alias: str) -> Any:
+    def _require_alias(self, node: NodeKey, alias: str) -> None:
         if self._closed or self._active != node:
             raise RuntimeError("Models may be borrowed only during their node")
         if alias not in self._remaining[node]:
             raise ValueError(f"Undeclared inference model: {node}.{alias}")
+
+    def model_identity(self, node: NodeKey, alias: str) -> str:
+        self._require_alias(node, alias)
+        return str(document_digest(self._key_for(node, alias)))
+
+    def borrow(self, node: NodeKey, alias: str) -> Any:
+        self._require_alias(node, alias)
         spec = self._remaining[node][alias]
+        # Validate the complete bound inventory, including sources removed
+        # since planning and assets a backend opens inside its initializer.
+        for path in self._expected_assets.get(node, {}):
+            self._declared_weight_hash(node, path)
         # Pin content on first demand. Other branches may never borrow their
         # optional models, so do not hash all potential declarations eagerly.
         key = self._key_for(node, alias)
-        if spec._key_with(self._weight_hash) != key:
+        if spec._key_with(lambda path: self._declared_weight_hash(node, path)) != key:
             raise ValueError(f"Model assets changed during the inference plan: {node}.{alias}")
         if key not in self._owned:
             self._serial += 1
@@ -242,7 +314,7 @@ class InferenceRuntime:
                     if spec._key_with(self._weight_hash) != key:
                         raise ValueError(f"Model assets changed while loading: {node}.{alias}")
             except BaseException as error:
-                traceback.clear_frames(error.__traceback__)
+                _clear_exception_frames(error)
                 if key in self._owned:
                     self._release(key)
                 else:
@@ -277,11 +349,12 @@ class InferenceRuntime:
             try:
                 self._release(key)
             except BaseException as error:
-                traceback.clear_frames(error.__traceback__)
+                _clear_exception_frames(error)
                 errors.append(error)
         self._remaining.clear()
         self._keys.clear()
         self._assets.clear()
+        self._expected_assets.clear()
         if errors:
             raise BaseExceptionGroup("Inference model cleanup failed", errors)
 

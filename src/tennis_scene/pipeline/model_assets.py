@@ -28,6 +28,25 @@ def asset_identities(enabled: bool, paths: Mapping[str, Path]) -> dict[str, Any]
     return {name: file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
 
 
+def asset_hashes(settings: Mapping[str, Any]) -> dict[Path, str]:
+    """Read file_identity snapshots already bound to an artifact's settings."""
+    hashes: dict[Path, str] = {}
+    def collect(value: Any) -> None:
+        if isinstance(value, Mapping):
+            if isinstance(value.get("path"), str) and isinstance(value.get("sha256"), str):
+                path, digest = Path(value["path"]), value["sha256"]
+                if path in hashes and hashes[path] != digest:
+                    raise ValueError(f"Conflicting artifact asset identities: {path}")
+                hashes[path] = digest
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, (tuple, list)):
+            for child in value:
+                collect(child)
+    collect(settings)
+    return hashes
+
+
 @dataclass(frozen=True)
 class PeopleModelConfig:
     dino_checkpoint: Path

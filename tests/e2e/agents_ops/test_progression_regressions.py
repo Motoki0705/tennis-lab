@@ -21,6 +21,12 @@ from tests.e2e.agents_ops.test_parent_session import (
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_progression_cli import prepared, request
+from tests.support.agents_ops.model_pins import (
+    CONFIG,
+    OLD_SOL,
+    REVIEW_FIXED_MODEL,
+    previous_config,
+)
 
 
 def registry(p: ParentEnv) -> Any:
@@ -157,7 +163,9 @@ def test_legacy_merged_prs_can_be_confirmed_without_review_or_merge(
         if fault is None:
             with registry(p).locked() as saved:
                 # The production completion consumer reads the new receipt, not legacy approval.
-                check = importlib.import_module("lib.ops_review.merge_gate_impl").completion
+                check = importlib.import_module(
+                    "lib.ops_review.merge_gate_impl"
+                ).completion
                 for n in numbers:
                     assert check(saved, "o/r", 1, n)["issues_confirmed"]
     if fault is None:
@@ -244,9 +252,9 @@ def test_review_context_and_mcp_include_bound_evidence_and_dependency_pr(
     assert dependency_head in config["github_scope"]["ci_heads"]
     for k, v in p.env.items():
         monkeypatch.setenv(k, v)
-    server = importlib.import_module("lib.review_tools.review_server_impl").ReviewRetrieval(
-        config
-    )
+    server = importlib.import_module(
+        "lib.review_tools.review_server_impl"
+    ).ReviewRetrieval(config)
     response = server.call("github_item", {"kind": "issue", "number": evidence})
     assert response["ok"], response
     assert server.call("github_item", {"kind": "pr", "number": numbers[1]})["ok"]
@@ -262,7 +270,7 @@ def major_progression(session: Any, pr: int, options: dict[str, Any]) -> Path:
     gate = importlib.import_module("lib.ops_review.merge_gate_impl")
     settings = importlib.import_module("lib.review_settings")
     choice = settings.choose(
-        settings.load_policy(), model="gpt-6-astra", reason="Fixture broad review"
+        settings.load_policy(), model=REVIEW_FIXED_MODEL, reason="Fixture broad review"
     )
     with session.store.locked():
         response = gate.register(
@@ -307,6 +315,20 @@ def test_dispatcher_major_continuation_rebinds_same_worker_then_merges(
 
     mod, session, env = workflow(d, monkeypatch, family=True)
     tree = child_tree(d)
+    config = previous_config(d.h.root / "worker-agents.conf")
+    shim = d.h.root / "configured-runner"
+    with d.h.store.locked():
+        schedule = d.schedule.read()
+        runner = schedule["config"]["runner"]
+        shim.write_text(
+            f"#!{sys.executable}\n"
+            "import os, sys\n"
+            f"os.execv({runner!r}, [{runner!r}, *sys.argv[1:], "
+            f"'--config-file', {str(config)!r}])\n"
+        )
+        shim.chmod(0o700)
+        schedule["config"]["runner"] = str(shim)
+        d.schedule.write(schedule)
     first = mod.start_worker(
         session,
         d.schedule.directory,
@@ -320,6 +342,7 @@ def test_dispatcher_major_continuation_rebinds_same_worker_then_merges(
     try:
         launch(d, monkeypatch)
         previous = drain(d, first["job_id"])
+        config.write_bytes(CONFIG.read_bytes())
         head = d.h.git("rev-parse", "HEAD")
         d.h.gh.prs = [
             {
@@ -367,6 +390,14 @@ def test_dispatcher_major_continuation_rebinds_same_worker_then_merges(
         current = drain(d, second["job_id"])
         assert current["delegation_id"] != previous["delegation_id"]
         assert current["resume_from"] == str(Path(previous["directory"]) / "runtime")
+        result = json.loads(
+            (Path(current["directory"]) / "runtime/result.json").read_text()
+        )
+        assert result["runtime"]["effective"]["model"]["value"] == OLD_SOL
+        assert (
+            result["contract"]["settings"]["model_continuation"]
+            == "CODEX_CONTINUATION_MODELS"
+        )
         # Exercise the public continuation/controller with the actual scoped HTTP adapter.
         state_file = d.h.root / "continuation-github.json"
         state_file.write_text(

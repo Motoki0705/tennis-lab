@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import gc
 import weakref
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -11,6 +13,7 @@ from typing import Any
 
 import pytest
 
+from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.inference_runtime import InferenceRuntime, ModelSpec
 
 
@@ -60,6 +63,59 @@ class Resource:
         self.loaded = False
 
 
+@pytest.mark.parametrize('phase', ['factory', 'initialize', 'release', 'cleanup'])
+@pytest.mark.parametrize('failure', [ValueError, KeyboardInterrupt])
+def test_hook_cannot_suppress_model_operation_failure(tmp_path: Path, phase: str, failure: type[BaseException]) -> None:
+    references = []
+    released = []
+    @contextmanager
+    def suppress(action: str, model: str, **attributes: Any) -> Iterator[None]:
+        with contextlib.suppress(BaseException):
+            yield
+    def broken(value: Any = None) -> Any:
+        raise failure('model operation failed')
+    def create() -> Resource:
+        model = Resource()
+        references.append(weakref.ref(model))
+        return model
+    def release(model: Resource) -> None:
+        released.append(True)
+        if phase == 'release':
+            broken()
+    request = spec(tmp_path, factory=broken if phase == 'factory' else create,
+        initialize=broken if phase == 'initialize' else lambda _: None, release=release)
+    node = ('clip', 'node')
+    runtime = InferenceRuntime({node: {'model': request}}, model_event=suppress,
+        cleanup=broken if phase == 'cleanup' else lambda _: None)
+    with pytest.raises(failure, match='model operation failed') as retained, runtime, runtime.node(node) as models:
+        models.borrow('model')
+    assert retained.value.__traceback__ is not None and not runtime.loaded_keys
+    assert released == ([] if phase == 'factory' else [True])
+    gc.collect()
+    assert all(reference() is None for reference in references)
+
+
+def test_model_and_hook_failures_are_both_retained(tmp_path: Path) -> None:
+    @contextmanager
+    def event(action: str, model: str, **attributes: Any) -> Iterator[None]:
+        if action == 'load':
+            try:
+                yield
+            finally:
+                raise RuntimeError('recorder also failed')
+        else:
+            yield
+    def initialize(model: Resource) -> None:
+        raise ValueError('initialization failed')
+    request = spec(tmp_path, factory=Resource, initialize=initialize)
+    node = ('clip', 'node')
+    with pytest.raises(BaseExceptionGroup) as retained, \
+            InferenceRuntime({node: {'model': request}}, model_event=event, cleanup=lambda _: None) as runtime, runtime.node(node) as models:
+        models.borrow('model')
+    assert [str(error) for error in retained.value.exceptions] == ['initialization failed', 'recorder also failed']
+    assert not runtime.loaded_keys
+
+
 def test_lazy_borrow_last_demand_and_recorded_actual_lifetimes(tmp_path: Path) -> None:
     events: list[tuple[str, str]] = []
     references: list[weakref.ReferenceType[Resource]] = []
@@ -88,6 +144,8 @@ def test_lazy_borrow_last_demand_and_recorded_actual_lifetimes(tmp_path: Path) -
                           model_event=event, cleanup=lambda _: None) as runtime:
         assert not events
         with runtime.node(a) as borrowed:
+            assert borrowed.identity('model') == document_digest(request.key)
+            assert not events and not references and not runtime.loaded_keys
             assert borrowed.borrow("model").loaded
             assert borrowed.borrow("model") is references[0]()
         assert runtime.select_ready((b, cached)) == b  # Same content at another path is a resident peer.
@@ -195,6 +253,8 @@ def test_borrower_cannot_access_other_nodes_or_undeclared_models(tmp_path: Path)
             models.borrow("other")
         with pytest.raises(RuntimeError, match="only during their node"):
             models.borrow("allowed")
+        with pytest.raises(RuntimeError, match="only during their node"):
+            models.identity("allowed")
 
 
 def test_weight_change_after_plan_pinning_fails_instead_of_mixing_models(tmp_path: Path) -> None:
@@ -225,3 +285,38 @@ def test_recorder_failure_cannot_skip_unloading(tmp_path: Path) -> None:
             runtime.node(node) as models:
         models.borrow("model")
     assert released == [True] and not runtime.loaded_keys
+
+
+@pytest.mark.parametrize("chain", ["cause", "context", "suppressed", "group", "cycle"])
+def test_retained_exception_graph_does_not_retain_models(tmp_path: Path, chain: str) -> None:
+    references: list[weakref.ReferenceType[Resource]] = []
+    def create() -> Resource:
+        resource = Resource()
+        references.append(weakref.ref(resource))
+        return resource
+    def backend(resource: Resource) -> None:
+        assert resource is not None
+        raise ValueError("backend stopped")
+    def process(models: Any) -> None:
+        try:
+            backend(models.borrow("model"))
+        except ValueError as error:
+            if chain == "cause":
+                raise RuntimeError("wrapped") from error
+            if chain == "suppressed":
+                raise RuntimeError("wrapped") from None
+            if chain == "group":
+                raise ExceptionGroup("wrapped", [ExceptionGroup("inner", [error])]) from None
+            if chain == "cycle":
+                wrapper = RuntimeError("wrapped")
+                error.__cause__ = wrapper
+                raise wrapper from error
+            raise RuntimeError("wrapped")  # noqa: B904 - deliberately exercise implicit exception context.
+    node = ("clip", "fails")
+    runtime = InferenceRuntime({node: {"model": spec(tmp_path, factory=create)}}, cleanup=lambda _: None)
+    with pytest.raises((RuntimeError, ExceptionGroup), match="wrapped") as caught, runtime, runtime.node(node) as models:
+        process(models)
+    assert caught.value.__traceback__ is not None  # Keep the complete exception graph alive.
+    gc.collect()
+    assert not runtime.loaded_keys
+    assert references[0]() is None

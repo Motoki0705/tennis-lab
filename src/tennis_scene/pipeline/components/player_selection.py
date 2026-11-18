@@ -75,20 +75,19 @@ class PlayerSelectionOutput:
 
 class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelectionOutput]):
     io = ComponentIO('player_selection', PlayerSelectionInput, PlayerSelectionOutput,
-        {'tracks': InputPort('person_tracks', 6), 'calibration': InputPort('local_court_calibration')},
+        {'tracks': InputPort('person_tracks', 7), 'calibration': InputPort('local_court_calibration')},
         'selected_player_tracks', version=3)
 
     def __init__(self, config: LinkingConfig, *, footpoints: FootpointConfig,
                  sampling: CropSamplingConfig, encoder: ModelSpec[AppearanceEncoder] | None,
-                 encoder_name: str | None, device: str, enabled: bool, require_evidence: bool = False) -> None:
+                 encoder_name: str | None, device: str, enabled: bool) -> None:
         if (encoder is None) != (encoder_name is None):
             raise ValueError('Selection encoder and name must be provided together')
-        self.require_evidence = require_evidence
         self.config, self.footpoints, self.sampling = config, footpoints, sampling
         self.encoder, self.encoder_name, self.device, self.enabled = encoder, encoder_name, device, enabled
 
     def model_specs(self) -> dict[str, ModelSpec[AppearanceEncoder]]:
-        return {"encoder": self.encoder} if self.enabled and self.encoder is not None and not self.require_evidence else {}
+        return {"encoder": self.encoder} if self.enabled and self.encoder is not None else {}
 
     def process_with_models(self, inputs: PlayerSelectionInput, models: ModelBorrower) -> PlayerSelectionOutput:
         video, raw = inputs.video, inputs.tracks
@@ -108,13 +107,13 @@ class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelec
         footpoints = replace(self.footpoints, bottom_border_px=self.footpoints.bottom_border_px * scale)
         appearances: tuple[TrackAppearance, ...] | None = None
         appearance_record: dict[str, Any] = {'enabled': self.encoder is not None}
-        if raw.evidence is not None and self.encoder_name == raw.evidence.encoder:
+        identity = models.identity('encoder') if self.encoder is not None and raw.observed.any() else None
+        if (identity is not None and raw.evidence is not None and self.encoder_name == raw.evidence.encoder
+                and identity == raw.evidence.encoder_identity):
             appearances = tuple(evidence_appearance(raw.boxes_xyxy, raw.observed, raw.evidence,
                                               (video.width, video.height), sampling))
             appearance_record.update(encoder=raw.evidence.encoder, sampling=asdict(sampling),
                                      source='tracked_detection_features')
-        elif self.require_evidence and self.encoder is not None:
-            raise ValueError('Selection lost compatible per-detection appearance evidence; regenerate upstream artifacts')
         elif self.encoder is not None and raw.observed.any():
             encoder: AppearanceEncoder = models.borrow("encoder")
             if encoder.name != self.encoder_name:
@@ -122,6 +121,7 @@ class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelec
             appearances, samples = embed_tracks(video.path, raw.boxes_xyxy, raw.observed,
                 (video.width, video.height), encoder, sampling)
             appearance_record.update(encoder=encoder.name, sampling=asdict(sampling),
+                source='recomputed_features', reason='tracked_encoder_identity_mismatch_or_missing',
                 samples=[{'frames': s.frames.tolist(), 'rejected': s.rejected} for s in samples])
         camera_tracks = CameraTracks(cameras[video.camera_id], (video.width, video.height),
             raw.track_ids, raw.boxes_xyxy, raw.observed, appearances)

@@ -136,7 +136,10 @@ def parser() -> argparse.ArgumentParser:
                 "--additional-instruction-file",
                 help="extra instructions appended separately to a pending planning answer",
             )
-            worker.add_argument("--model", choices=models)
+            if name == "start-worker":
+                worker.add_argument("--model", choices=models)
+            else:
+                worker.add_argument("--model", help="must match the saved worker model")
             worker.add_argument(
                 "--planning",
                 action="store_true",
@@ -233,8 +236,7 @@ def parser() -> argparse.ArgumentParser:
     manual.add_argument("--repair-pr", type=int)
     manual.add_argument(
         "--model",
-        choices=models,
-        help="initial model; resume inherits the saved model and rejects changes",
+        help=f"initial model ({', '.join(models)}); resume inherits the saved model",
     )
     manual.add_argument(
         "--model-reason-file",
