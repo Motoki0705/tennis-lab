@@ -1,0 +1,49 @@
+{
+  "baseline_commit": "68b3bb4a491f6a7cca014c72d790a230a6a87894",
+  "files": {
+    "submodules/configuration.py": {
+      "before": "09361c782fb3eb0130e1e269e23a01f4b8a597f65ffc9d7482131b8be839d770",
+      "after": "b3dddbd691b8546102a85bc72e72f07b2502150cd6a52c9f25950bb5fea7a591"
+    },
+    "submodules/models/_base/precision.py": {
+      "before": null,
+      "after": "80b813edcbc48ee54500e1e0b17fabec9de0950e7f0cbfc667270c39bbf9d94c"
+    },
+    "submodules/models/dino/architecture.py": {
+      "before": "263bf8aabadf7aa315f492b774ddb52ce7a8ff43b02c37735bbaa02a0c9607aa",
+      "after": "3c83ca7d2e880a431eb666a8f011c8bd1911223938bf845d93d4a33ce84df657"
+    },
+    "submodules/models/dino/person_detector.py": {
+      "before": "b025124a2b747b9e3aa3387d51b8ad7cecc474995e06e4bec04bd76ab63f63ac",
+      "after": "7ca73f1341aec2ad3c346b7fada4b2b6d6e471496ef4bed80fdcd4f4ce963b01"
+    },
+    "submodules/models/vitpose/pose2d.py": {
+      "before": "6eb7b2408d996bd60c2835d56e6008c6406f727eab59f55c675d8fbbaa88cf1d",
+      "after": "26f1250416992682bfd3444f49f4e8392543d4ff03d8a86cf07ce98b4392e9c7"
+    },
+    "tennis_scene/pipeline/components/person_detection.py": {
+      "before": "98287ad8c46b38f2d6619b6cfb8e4e1c4a37b3d4cdf724a11d0800ef0189c701",
+      "after": "f0b3a5266b6ffa4b129ad89e2776ede101ef4cf05013d0e2a6cccc1901350c52"
+    },
+    "tennis_scene/pipeline/components/person_tracking.py": {
+      "before": "571e77f54280de5e04a7abd8e492133d3cefeb6eacbec8aba2dbd20c05f61448",
+      "after": "f4357d192b4a3d6f9dcdafec23158f9bd101778a2d9029e7df1d726a24414a8b"
+    },
+    "tennis_scene/pipeline/components/pose_estimation.py": {
+      "before": "de554f49977ed54da0b1d6ce8a7eccc108e10589d5ecb7def641fbb12c9d15a1",
+      "after": "f04d0eb0977afaf4aa4f6fa400132cc433842ff7261634dab3f2ad1ec91be01d"
+    },
+    "tennis_scene/pipeline/definition.py": {
+      "before": "cc8c1257b6be512547f8a032a39186d4787cbad5c1c292b0764905754fa316d3",
+      "after": "a5bd1feffbfb313f94e9b28eaf0416c3e7cd1e2e4d36b794dacec1e5c7de36b4"
+    },
+    "tennis_scene/pipeline/orchestrator.py": {
+      "before": "6ed0fa434a2ded63e7c1c0f1145f69de26dab35699a11867ed43893ee4943542",
+      "after": "6074e79bff7293de7f7bf17b5f92ef585124e3aec07d284241b2b43a861f12ff"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": null,
+      "after": "96a9eae0927e2826050c038a8e615e8819e55f2c72cd4f629256e1c64769c3fb"
+    }
+  }
+}

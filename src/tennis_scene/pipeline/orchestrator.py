@@ -21,6 +21,10 @@ from src.tennis_scene.pipeline.direct_annotation import saved_scene, scene_recei
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.imports import BallAnnotationImporter
 from src.tennis_scene.pipeline.runner import ComponentRunner
+from src.tennis_scene.pipeline.source_identity import (
+    compatible_source_digests,
+    source_digests,
+)
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.video_court.diagnostics import (
     clip_report,
@@ -29,7 +33,6 @@ from src.tennis_scene.pipeline.video_court.diagnostics import (
 )
 from src.tennis_scene.pipeline.video_court.policy import apply_drift_policy
 from src.tennis_scene.schema import SceneResult
-from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
 
@@ -55,8 +58,7 @@ class TennisSceneOrchestrator:
         self.last_store: ClipStore | None = None
         self.video_court: VideoCourtArtifact | None = None
         self._video_court_key: tuple[object, object, str] | None = None
-        source = PROJECT_ROOT / "src"
-        self.code_identity = document_digest({str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))})
+        self.code_identity = document_digest(compatible_source_digests(source_digests(PROJECT_ROOT / "src")))
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig) -> TennisSceneOrchestrator:
@@ -70,8 +72,14 @@ class TennisSceneOrchestrator:
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
         shared = self.prepare_video_court()
+        settings = json_value(cfg.processing_settings)
+        people_runtime = settings.get("people_models", {}).get("runtime", {})
+        for name in ("dino_detector", "vitpose"):
+            options = people_runtime.get(name, {})
+            if options.get("precision") == "fp32":
+                del options["precision"]
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
-            "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
+            "settings": settings, "execution": dict(cfg.component_sources),
             "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             **({'video_court_cameras': shared.manifest['cameras'],
                 'video_court_unobservable_policy': cfg.video_court_unobservable_policy,

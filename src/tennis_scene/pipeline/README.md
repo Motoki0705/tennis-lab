@@ -88,7 +88,10 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 ViTPoseのheatmap復号とDINOのscore・box復号はFP32で行う。DINOの変形可能アテンションは
 CUDA拡張の入力dtypeに合わせて、混合精度条件でもブロック全体をFP32で実行する。
 CUDAのBF16にはネイティブ対応GPUが必要で、ViTPoseのBF16はCPUでも利用できる。
-精度と `people_models.runtime.vitpose.flip_test` は各段のartifact identityに含まれる。
+BF16・FP16と `people_models.runtime.vitpose.flip_test` は各段のartifact identityに反映される。
+既定と明示のFP32は、旧版と同じ設定identityを使う。
+`fp32_cache_compatibility.json` に記録したソース差分の全ファイルが一致する場合は、その差分を
+旧版のハッシュで表す。ほかのソース、入力、重み、設定、上流参照の変更は従来どおりidentityに反映される。
 
 標準追跡は`person_tracking.method=strongsort_pp_pose`だけを受け付ける。StrongSORT++＋pose/CLIPのrun 10固定profileを
 productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。

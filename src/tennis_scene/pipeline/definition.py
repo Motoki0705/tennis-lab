@@ -76,6 +76,10 @@ from src.utils.checksum import dual_sha256
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from src.submodules.configuration import (
+        DinoDetectorRuntimeConfig,
+        ViTPoseRuntimeConfig,
+    )
     from src.tennis_scene.configuration import PipelineRuntimeConfig
 
 
@@ -96,6 +100,15 @@ def file_identity(path: Path) -> dict[str, Any]:
 def asset_identities(enabled: bool, paths: Mapping[str, Path]) -> dict[str, Any]:
     """Identities of a feature's assets; a disabled feature neither needs nor records them."""
     return {name: file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
+
+
+def _person_runtime_identity(runtime: DinoDetectorRuntimeConfig | ViTPoseRuntimeConfig,
+                             device: str, *, key: str = "runtime") -> dict[str, Any]:
+    options = json_value(runtime)
+    if runtime.precision == "fp32":
+        del options["precision"]
+        return {key: options}
+    return {key: options, "device": device}
 
 
 def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_identity: str,
@@ -144,6 +157,12 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                                external_root=cfg.roots.external_asset_root, device=cfg.device)
     tracking_assets = {'pose': cfg.people.vitpose_checkpoint, 'encoder': cfg.tracking_encoder_weights,
                        'aflink': cfg.aflink_checkpoint}
+    runtime = cfg.people.runtime
+    detector_runtime = _person_runtime_identity(runtime.dino_detector, runtime.device)
+    pose_runtime = _person_runtime_identity(runtime.vitpose, runtime.device)
+    tracking_pose_runtime = _person_runtime_identity(runtime.vitpose, runtime.device, key="pose_runtime")
+    if runtime.vitpose.precision == "fp32":
+        tracking_pose_runtime["pose_precision"] = "float32"
 
     def body_assets() -> dict[str, Any]:
         if body_enabled:
@@ -188,14 +207,14 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             merge_duplicates=cfg.merge_duplicate_person_boxes), PersonDetectionInputAssembler(),
             {}, lambda: {"detector": "dino",
              "assets": asset_identities(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
-             "runtime": cfg.people.runtime.dino_detector, "device": cfg.people.runtime.device,
+             **detector_runtime,
              "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
              "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
         add(f"person_tracking/{camera}", PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=tracking_encoder,
             aflink_checkpoint=cfg.aflink_checkpoint, enabled=people_enabled), PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}"}, lambda: {"profile": cfg.tracking.identity(),
-                "assets": asset_identities(people_enabled, tracking_assets), "pose_runtime": cfg.people.runtime.vitpose,
-                "device": cfg.people.runtime.device, "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
+                "assets": asset_identities(people_enabled, tracking_assets), **tracking_pose_runtime,
+                "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
         add(f"player_selection/{camera}", PlayerSelectionModule(selection, footpoints=association.footpoints,
             sampling=sampling, encoder=encoder, encoder_name=encoder_name, device=cfg.device, enabled=people_enabled),
             PlayerSelectionInputAssembler(), {"tracks": f"person_tracking/{camera}", "calibration": "court_calibration"},
@@ -205,8 +224,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people,
             require_evidence=people_enabled), PoseEstimationInputAssembler(),
             {"selection": f"player_selection/{camera}"}, lambda: {"assets": asset_identities(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
-             "runtime": cfg.people.runtime.vitpose, "device": cfg.people.runtime.device,
-             "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
+             **pose_runtime, "bbox_enlarge": runtime.tracking.bbox_enlarge}, camera=camera)
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
     balls = {f"ball_{c}": f"ball_points/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}
