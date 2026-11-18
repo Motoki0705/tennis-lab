@@ -102,7 +102,7 @@ def test_person_settings_change_only_their_stage_cache_identities(
         base.references[key] = changed.references[key] = reference
 
 
-@pytest.mark.parametrize('precision', ['fp32', 'bf16'])
+@pytest.mark.parametrize('precision', ['fp32', 'bf16', 'fp16'])
 def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str) -> None:
     calls: list[int] = []
     class Pose:
@@ -138,10 +138,10 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
         np.tile(np.array([[10, 20, 50, 120]], np.float32), (5, 1)), np.full(5, .9, np.float32),
         np.array([0, 2, 4, 6, 8], np.int64))
     people = make_people_config(tmp_path)
-    people = replace(people, runtime=replace(people.runtime,
+    people = replace(people, runtime=replace(people.runtime, device='cuda' if precision == 'fp16' else 'cpu',
         vitpose=replace(people.runtime.vitpose, precision=precision)))
     tracker = module.PersonTrackingModule(TrackingConfig(), people=people, encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'af.pth')
-    assert tracker.model_specs()['pose'].dtype == ('float32' if precision == 'fp32' else 'bfloat16')
+    assert tracker.model_specs()['pose'].dtype == {'fp32': 'float32', 'bf16': 'bfloat16', 'fp16': 'float16'}[precision]
     result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detections))
     assert len(calls) == 5 and result.evidence is not None
     from src.tennis_scene.pipeline.artifacts import document_digest
