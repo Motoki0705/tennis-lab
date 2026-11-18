@@ -89,7 +89,8 @@ The component store's `run.json` reports independent `annotation`, `scene`,
 `dataset` and `learning` states. Scene metadata retains its normal `ok`/`partial`
 meaning. Annotation completion is saved under the campaign's
 `scene-workflow/annotations.json`, including per-camera completion and measurement
-references. `scene-completion.json` pins the scene artifact and exported archive.
+references. `scene-completion.json` pins the scene artifact, exported archive, and
+configured DINO and ViTPose precision.
 `scene-workflow/publication-request.json` and `publication.json` identify the
 optional publisher request and receipt. `dataset=not_requested` is successful;
 `learning=not_requested` never starts training.
@@ -101,7 +102,9 @@ The integrated annotation CLI's `run`, `tick`, `status`, `recover`, `resume-budg
 and `report` accept the saved `LocalAnnotationRuntime` and its digest.
 
 If only publication failed, rerun the same scene command with
-`direct_annotation.resume=publication` and the same request, geometry and store.
+`direct_annotation.resume=publication` and the same request, geometry, store, and
+DINO and ViTPose precision. A legacy receipt without a precision field is treated
+as FP32 for both models. A precision mismatch stops recovery before publication.
 This validates completed annotations and the saved scene export, then resumes
 the publisher without building scene stages or admitting a worker. Interruption
 after publisher commit but before the workflow receipt resolves to the original

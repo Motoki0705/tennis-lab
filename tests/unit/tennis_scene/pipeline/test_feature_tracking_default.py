@@ -8,14 +8,17 @@ import pytest
 import torch
 
 from src.tasks.person_tracking.sequence import TrackingConfig
+from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.components import person_tracking as module
 from src.tennis_scene.pipeline.components import pose_estimation
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
-from src.tennis_scene.pipeline.contracts import SourceVideo
+from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     standard_definition,
 )
+from src.tennis_scene.pipeline.runner import ComponentRunner
+from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from tests.unit.tennis_scene.pipeline.config_factories import (
     fake_encoder_spec,
     make_people_config,
@@ -72,11 +75,39 @@ def test_standard_pipeline_rejects_comparison_methods(method: str) -> None:
         _runtime([f'person_tracking.method={method}'])
 
 
-def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("setting", "changed_nodes"),
+    [("dino_detector.precision=bf16", {"person_detection"}),
+     ("vitpose.precision=fp16", {"person_tracking", "pose_estimation"}),
+     ("vitpose.flip_test=false", {"person_tracking", "pose_estimation"})],
+)
+def test_person_settings_change_only_their_stage_cache_identities(
+    tmp_path: Path, setting: str, changed_nodes: set[str],
+) -> None:
+    baseline = runtime(tmp_path, overrides=("device=cuda",))
+    candidate = runtime(tmp_path, overrides=("device=cuda", f"people_models.runtime.{setting}"))
+    materialize_assets(enabled_model_assets(baseline).values(), tmp_path, court=baseline.court_kp)
+    source = ClipSource("test", tuple(SourceVideo(f"cam{i}", tmp_path / f"{i}.mp4", "hash", 5, 30., 640, 480) for i in range(3)))
+    store = ClipStore(tmp_path / "store", json_value(source))
+    base, changed = [
+        ComponentRunner(standard_definition(cfg, source, code_identity="test"), store).plan
+        for cfg in (baseline, candidate)
+    ]
+    # Keep the upstream references fixed to isolate the local identity changes.
+    for key in base.order:
+        reference = ArtifactRef(key[1], f"{key[1]}.json", "fixed-content",
+                                base.nodes[key].io.output_schema, base.nodes[key].io.version, "fixed-execution")
+        expected = key[1].split("/")[0] in changed_nodes
+        assert (document_digest(base.decide(key).identity) != document_digest(changed.decide(key).identity)) == expected
+        base.references[key] = changed.references[key] = reference
+
+
+@pytest.mark.parametrize('precision', ['fp32', 'bf16'])
+def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str) -> None:
     calls: list[int] = []
     class Pose:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
-            assert kwargs['precision'] == 'float32'
+            assert kwargs['precision'] == precision
         def predict(self, request: Any) -> Any:
             calls.append(1)
             values = torch.zeros((1, 17, 3))
@@ -107,7 +138,10 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
         np.tile(np.array([[10, 20, 50, 120]], np.float32), (5, 1)), np.full(5, .9, np.float32),
         np.array([0, 2, 4, 6, 8], np.int64))
     people = make_people_config(tmp_path)
+    people = replace(people, runtime=replace(people.runtime,
+        vitpose=replace(people.runtime.vitpose, precision=precision)))
     tracker = module.PersonTrackingModule(TrackingConfig(), people=people, encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'af.pth')
+    assert tracker.model_specs()['pose'].dtype == ('float32' if precision == 'fp32' else 'bfloat16')
     result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detections))
     assert len(calls) == 5 and result.evidence is not None
     from src.tennis_scene.pipeline.artifacts import document_digest

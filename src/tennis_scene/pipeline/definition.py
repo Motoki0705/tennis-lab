@@ -88,6 +88,10 @@ from src.tennis_scene.pipeline.video_court_side.prepare import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from src.submodules.configuration import (
+        DinoDetectorRuntimeConfig,
+        ViTPoseRuntimeConfig,
+    )
     from src.tennis_scene.configuration import PipelineRuntimeConfig
 
 
@@ -162,6 +166,15 @@ def validate_override_names(overrides: Mapping[str, Any]) -> None:
     unknown = {name for name in overrides if name.split('/')[0] not in STANDARD_COMPONENTS}
     if unknown:
         raise ValueError(f'Unknown component override: {sorted(unknown)}')
+
+
+def _person_runtime_identity(runtime: DinoDetectorRuntimeConfig | ViTPoseRuntimeConfig,
+                             device: str, *, key: str = "runtime") -> dict[str, Any]:
+    options = json_value(runtime)
+    if runtime.precision == "fp32":
+        del options["precision"]
+        return {key: options}
+    return {key: options, "device": device}
 
 
 def check_shared_side_execution(cfg: PipelineRuntimeConfig, overrides: Mapping[str, Any] | None) -> None:
@@ -243,6 +256,13 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                        'aflink': cfg.aflink_checkpoint,
                        **({} if tracking_encoder is None else {name: path for name, path in tracking_encoder.weights.items() if name != "checkpoint"})}
 
+    runtime = cfg.people.runtime
+    detector_runtime = _person_runtime_identity(runtime.dino_detector, runtime.device)
+    pose_runtime = _person_runtime_identity(runtime.vitpose, runtime.device)
+    tracking_pose_runtime = _person_runtime_identity(runtime.vitpose, runtime.device, key="pose_runtime")
+    if runtime.vitpose.precision == "fp32":
+        tracking_pose_runtime["pose_precision"] = "float32"
+
     def body_assets() -> dict[str, Any]:
         if body_enabled:
             cfg.people.smpl_assets.require_files()
@@ -291,13 +311,12 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add(f"person_detection/{camera}", components["person_detection"], PersonDetectionInputAssembler(),
             {}, lambda: {"detector": "dino",
              "assets": bound_assets(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
-             "runtime": cfg.people.runtime.dino_detector,
+             **detector_runtime,
              "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
              "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
         add(f"person_tracking/{camera}", components["person_tracking"], PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}"}, lambda: {"profile": cfg.tracking.identity(),
-                "assets": bound_assets(people_enabled, tracking_assets), "pose_runtime": cfg.people.runtime.vitpose,
-                "pose_precision": "float32", "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
+                "assets": bound_assets(people_enabled, tracking_assets), **tracking_pose_runtime, "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
         add(f"player_selection/{camera}", components["player_selection"],
             PlayerSelectionInputAssembler(), {"tracks": f"person_tracking/{camera}", "calibration": "court_calibration"},
             lambda: {"rule": selection, "footpoints": association.footpoints, "sampling": sampling, "encoder": encoder_name,
@@ -305,7 +324,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                     encoder_assets)}, camera=camera)
         add(f"pose_estimation/{camera}", components["pose_estimation"], PoseEstimationInputAssembler(),
             {"selection": f"player_selection/{camera}"}, lambda: {"assets": bound_assets(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
-             "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
+             **pose_runtime, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
     balls = {f"ball_{c}": f"ball_points/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}

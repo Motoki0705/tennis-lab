@@ -19,10 +19,10 @@ def vitpose_model(config: PeopleModelConfig, *, factory: Callable[..., ViTPosePo
                   show_progress: bool = False) -> ModelSpec[ViTPosePose2D]:
     runtime = config.runtime
     return ModelSpec("vitpose", {"checkpoint": config.vitpose_checkpoint}, "vitpose_huge_coco17",
-        runtime.device, "float32", {"runtime": runtime.vitpose, "show_progress": show_progress},
+        runtime.device, {"fp32": "float32", "bf16": "bfloat16", "fp16": "float16"}[runtime.vitpose.precision], {"runtime": runtime.vitpose, "show_progress": show_progress},
         lambda: factory(config.vitpose_checkpoint, device=runtime.device, flip_test=runtime.vitpose.flip_test,
             batch_size=runtime.vitpose.batch_size, head_config=runtime.vitpose.head,
-            precision="float32", show_progress=show_progress),
+            precision=runtime.vitpose.precision, show_progress=show_progress),
         initialize=lambda model: model.load(), release=lambda model: model.unload())
 
 

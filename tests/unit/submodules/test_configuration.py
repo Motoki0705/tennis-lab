@@ -23,10 +23,12 @@ def _runtime_mapping() -> dict[str, object]:
             "confidence": 0.35,
             "short_side": 800,
             "max_long_side": 1333,
+            "precision": "fp32",
         },
         "vitpose": {
             "flip_test": True,
             "batch_size": 8,
+            "precision": "fp32",
             "head": {
                 "in_channels": 1280,
                 "out_channels": 17,

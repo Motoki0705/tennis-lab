@@ -5,7 +5,6 @@ import os
 import subprocess
 import sys
 from contextlib import redirect_stdout
-from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -18,6 +17,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.snapshot i
 )
 from src.tasks.base.annotation.artifacts import read_document
 from src.tasks.base.annotation.contracts import ArtifactRef, PublicationReceipt
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline import TennisSceneOrchestrator
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
@@ -32,6 +32,23 @@ def test_optional_publication_and_receipt_interruption_resume_only_publication(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, publish: bool
 ) -> None:
     fixture = direct_fixture(tmp_path, publish=publish)
+    # Use valid CUDA settings without constructing a model for empty pose inputs.
+    fixture.hydra_config.device = "cuda"
+    empty_pose = Mock()
+    empty_pose.predict.side_effect = AssertionError("Empty pose stage requested inference")
+    monkeypatch.setattr(
+        "src.tennis_scene.pipeline.components.pose_estimation.ViTPosePose2D",
+        Mock(return_value=empty_pose),
+    )
+    person_runtime = fixture.hydra_config.people_models.runtime
+    precision = (
+        {"dino_detector": "fp32", "vitpose": "fp32"}
+        if publish
+        else {"dino_detector": "bf16", "vitpose": "fp16"}
+    )
+    for model, value in precision.items():
+        person_runtime[model].precision = value
+    fixture.config = PipelineRuntimeConfig.from_config(fixture.hydra_config)
     workflow = complete_annotations(fixture)
     before = {
         ref: fixture.layout.artifact_path(ref).read_bytes()
@@ -75,22 +92,34 @@ def test_optional_publication_and_receipt_interruption_resume_only_publication(
             fixture.layout.repository
             / "data/ball_detection/tiny-active/frames/snapshot.json"
         ).exists()
-        assert fixture.config.direct_annotation is not None
-        resumed = replace(
-            fixture.config,
-            direct_annotation=replace(
-                fixture.config.direct_annotation, resume="publication"
-            ),
-        )
-        orchestrator = TennisSceneOrchestrator(
-            resumed,
-            annotation_layout=fixture.layout,
-            annotation_controller_factory=forbidden,
-        )
-        monkeypatch.setattr(
-            "src.tennis_scene.pipeline.orchestrator.standard_definition",
-            Mock(side_effect=AssertionError("Publication recovery rebuilt scene")),
-        )
+    else:
+        orchestrator.run(**args)
+        assert orchestrator.last_receipt["dataset"]["status"] == "not_requested"
+
+    completion = fixture.store / "scene-completion.json"
+    original_completion = completion.read_text()
+    saved = json.loads(original_completion)
+    assert saved["person_precision"] == precision
+    fixture.hydra_config.direct_annotation.resume = "publication"
+    resumed = PipelineRuntimeConfig.from_config(fixture.hydra_config)
+    orchestrator.config = resumed
+    monkeypatch.setattr(
+        "src.tennis_scene.pipeline.orchestrator.standard_definition",
+        Mock(side_effect=AssertionError("Publication recovery rebuilt scene")),
+    )
+    if publish:
+        for legacy, model in ((False, "dino_detector"), (False, "vitpose"), (True, "vitpose")):
+            if legacy:
+                del saved["person_precision"]
+                completion.write_text(json.dumps(saved))
+            with monkeypatch.context() as patch:
+                patch.setitem(person_runtime[model], "precision", "fp16")
+                orchestrator.config = PipelineRuntimeConfig.from_config(fixture.hydra_config)
+                with pytest.raises(ValueError, match="Saved scene person precision differs"):
+                    orchestrator.run(**args)
+        assert not (workflow.directory / "publication.json").exists()
+        orchestrator.config = resumed
+
     scene = orchestrator.run(**args)
     assert scene.ball_3d_valid.tolist() == [True, True, True, False]
     status = orchestrator.last_receipt
@@ -101,6 +130,8 @@ def test_optional_publication_and_receipt_interruption_resume_only_publication(
         publication = read_document(fixture.layout, receipt, PublicationReceipt)
         _, store = load_snapshot(fixture.layout, publication.snapshot)
         assert len(store.clips) == 3 and len(store) == 12
+        assert json.loads(completion.read_text()) == saved
+        completion.write_text(original_completion)
         orchestrator.run(**args)
         assert orchestrator.last_receipt["dataset"]["receipt"] == receipt.model_dump(
             mode="json"

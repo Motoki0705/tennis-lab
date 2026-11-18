@@ -78,11 +78,13 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
             model.load()
         return {"detector": ModelSpec(
             "dino", {"checkpoint": config.dino_checkpoint, **dino_source_assets(config.dino_repository), **native},
-            "dino_4scale_swin_l", config.runtime.device, "float32",
+            "dino_4scale_swin_l", config.runtime.device,
+            {"fp32": "float32", "bf16": "bfloat16", "fp16": "float16"}[config.runtime.dino_detector.precision],
             {"runtime": config.runtime.dino_detector, "extension": extension},
             lambda: DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
                 device=config.runtime.device, confidence=config.runtime.dino_detector.confidence,
-                short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side),
+                short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side,
+                precision=config.runtime.dino_detector.precision),
             initialize=initialize, release=lambda model: model.unload())}
 
     def process_with_models(self, inputs: PersonDetectionInput, models: ModelBorrower) -> PersonDetectionOutput:
