@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -33,11 +33,16 @@ from src.tennis_scene.pipeline.components.hmr2_features import (
 from src.tennis_scene.pipeline.components.triangulation import PlayerTriangulationOutput
 from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource, SourceVideo
 from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
-from src.tennis_scene.pipeline.inference_runtime import InferenceRuntime
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    InferenceRuntime,
+    model_identities,
+)
 from src.tennis_scene.pipeline.input_assembly.body import (
     GVHMRInputAssembler,
     HMR2FeaturesInputAssembler,
 )
+from src.tennis_scene.pipeline.model_assets import file_identity
 from src.tennis_scene.pipeline.runner import ComponentNode, PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
@@ -121,7 +126,8 @@ def body_plan(tmp_path: Path, clips: int) -> ExecutionPlan:
         mesh = materialize_model_weights(GVHMRModule(cfg))
         ctx = AssemblyContext(inputs.source)
         def node(name: str, module: Any, assembler: Any, bindings: dict[str, str], ctx: AssemblyContext = ctx) -> ComponentNode:
-            return ComponentNode(name, module, module.io, assembler, bindings, ctx, {}, 'split-v2')
+            settings = {'models': model_identities(module.model_specs(), file_identity)} if isinstance(module, InferenceComponent) else {}
+            return ComponentNode(name, module, module.io, assembler, bindings, ctx, settings, 'split-v2')
         nodes = (node('body_view_selection', selection, NoInput(), {}),
             node('hmr2_features', features, HMR2FeaturesInputAssembler(), {'selection': 'body_view_selection'}),
             node('gvhmr', mesh, GVHMRInputAssembler(), {'selection': 'body_view_selection', 'features': 'hmr2_features'}))
@@ -253,3 +259,128 @@ def test_load_rejects_pre_separation_body_parameter_version(tmp_path: Path, monk
     loaded = replace(clip, nodes=tuple(replace(n, source='load') for n in clip.nodes))
     with pytest.raises(ValueError, match='Loaded component contract mismatch: gvhmr'):
         PlanExecutor(ExecutionPlan([loaded])).run()
+
+
+@pytest.mark.parametrize('precision,dtype', [('fp32', 'float32'), ('fp16', 'float16')])
+def test_standard_body_declarations_with_person_precision_cache_and_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str, dtype: str,
+) -> None:
+    from src.tennis_scene.pipeline.definition import (
+        enabled_model_assets,
+        standard_definition,
+    )
+    from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
+    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
+        materialize_assets,
+        runtime,
+    )
+
+    factories: list[tuple[str, str]] = []
+    class Features(FakeFeatures):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            factories.append(('hmr2', kwargs['device']))
+    class Mesh(FeatureMesh):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            factories.append(('gvhmr', kwargs['device']))
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.hmr2_features.Hmr2FeatureExtractor', Features)
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.gvhmr.GvhmrMeshRecovery', Mesh)
+    cfg = runtime(tmp_path, overrides=('device=cuda', 'gvhmr.enabled=true',
+        f'people_models.runtime.dino_detector.precision={precision}',
+        f'people_models.runtime.vitpose.precision={precision}'))
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path, court=cfg.court_kp)
+    value = asymmetric_selection(tmp_path, 'clip-0')
+    nodes = {n.name: n for n in standard_definition(cfg, value.source, code_identity='fixed')}
+    marker = TennisSceneOrchestrator(cfg).publication_identity()
+    for name in ('hmr2_features', 'gvhmr', 'body_placement'):
+        assert marker['models'][name] == nodes[name].settings['models']
+        assert {spec.dtype for spec in nodes[name].component.model_specs().values()} == {'float32'}
+    assert marker['models']['person_detection']['detector']['dtype'] == dtype
+    assert marker['models']['person_tracking']['pose']['dtype'] == dtype
+    assert not factories  # Planning and publication identities cannot load a model.
+    selected = StoredSelection(value.selection)
+    selection = ComponentNode('body_view_selection', selected, selected.io, NoInput(), {},
+        AssemblyContext(value.source), {}, 'fixed')
+    body_nodes = (selection, nodes['hmr2_features'], nodes['gvhmr'])
+    store = ClipStore(tmp_path / 'body-store', {'clip': value.source.clip_id}, memory_entries=0)
+    plan = ExecutionPlan([ClipExecution(value.source.clip_id, body_nodes, store)])
+    executor = PlanExecutor(plan)
+    executor.run()
+    assert factories == [('hmr2', 'cuda'), ('gvhmr', 'cuda')]
+    result = executor.output(('clip-0', 'gvhmr'))
+    assert [b.person_id for b in result.bodies] == [9, 2, 17]
+    np.testing.assert_array_equal(result.bodies[0].segments[1].source_frames, [10, 14])
+    np.testing.assert_array_equal(result.bodies[0].segments[1].parameters.transl[:, 0], [20030, 20034])
+    factories.clear()
+    cached = ExecutionPlan([ClipExecution(value.source.clip_id, body_nodes, store)])
+    PlanExecutor(cached).run()
+    assert set(cached.statuses.values()) == {'cached'} and not factories
+    loaded = ExecutionPlan([ClipExecution(value.source.clip_id,
+        tuple(replace(n, source='load') for n in body_nodes), store)])
+    PlanExecutor(loaded).run()
+    assert set(loaded.statuses.values()) == {'loaded'} and not factories
+
+
+@pytest.mark.parametrize('stage,failure', [
+    ('hmr2_features', 'initialize'), ('hmr2_features', 'release'),
+    ('gvhmr', 'initialize'), ('gvhmr', 'release'),
+])
+def test_body_failure_survives_measurement_suppression_without_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stage: str, failure: str,
+) -> None:
+    import weakref
+
+    calls: list[str] = []
+    instances: list[weakref.ReferenceType[Any]] = []
+    class Failing(FakeFeatures, FeatureMesh):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            instances.append(weakref.ref(self))
+        def load(self) -> None:
+            calls.append('load')
+            if failure == 'initialize':
+                raise RuntimeError(f'{stage} {failure} failed')
+        def unload(self) -> None:
+            calls.append('unload')
+            if failure == 'release':
+                raise RuntimeError(f'{stage} {failure} failed')
+        def predict(self, request: Any) -> Any:
+            calls.append('predict')
+            return FakeFeatures.predict(self, request) if stage == 'hmr2_features' else FeatureMesh.predict(self, request)
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.hmr2_features.Hmr2FeatureExtractor',
+        Failing if stage == 'hmr2_features' else FakeFeatures)
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.gvhmr.GvhmrMeshRecovery',
+        Failing if stage == 'gvhmr' else FeatureMesh)
+    plan = body_plan(tmp_path, 1)
+    @contextmanager
+    def suppressing_event(*args: Any, **kwargs: Any) -> Iterator[None]:
+        with suppress(RuntimeError):
+            yield
+    completed: list[str] = []
+    with pytest.raises(RuntimeError, match=f'{stage} {failure} failed') as caught:
+        PlanExecutor(plan, model_event=suppressing_event).run(on_clip_complete=completed.append)
+    assert caught.value.__traceback__ is not None
+    assert calls.count('load') == calls.count('unload') == 1
+    assert calls.count('predict') == (3 if failure == 'release' else 0)
+    assert all(instance() is None for instance in instances)
+    assert plan.statuses[('clip-0', stage)] == 'failed'
+    assert ('clip-0', stage) not in plan.references
+    assert plan.clips['clip-0'].store.active(stage) is None and not completed
+
+
+@pytest.mark.parametrize('stage', ['hmr2_features', 'gvhmr'])
+def test_body_model_declaration_mutation_is_rejected_before_cache_reuse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stage: str,
+) -> None:
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.hmr2_features.Hmr2FeatureExtractor', FakeFeatures)
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.gvhmr.GvhmrMeshRecovery', FeatureMesh)
+    PlanExecutor(body_plan(tmp_path, 1)).run()
+    fresh = body_plan(tmp_path, 1)
+    module = fresh.nodes[('clip-0', stage)].component
+    module.config = replace(module.config, runtime=replace(module.config.runtime, device='cuda'))
+    events: list[tuple[Any, ...]] = []
+    @contextmanager
+    def recorder(*args: Any, **kwargs: Any) -> Iterator[None]:
+        events.append(args)
+        yield
+    with pytest.raises(ValueError, match='differs from bound node identity'):
+        PlanExecutor(fresh, model_event=recorder).run()
+    assert fresh.statuses[('clip-0', stage)] == 'failed' and not events

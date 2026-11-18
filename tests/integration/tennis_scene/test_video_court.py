@@ -81,6 +81,22 @@ def shared_fixture(tmp_path, monkeypatch):
     return pipeline, paths, sources, docs, store, artifact
 
 
+def test_shared_court_marker_tracks_appearance_implementation(tmp_path, monkeypatch):
+    pipeline, _, _, _, _, _ = shared_fixture(tmp_path, monkeypatch)
+    cfg = pipeline.config
+    cfg = replace(cfg, player_association=replace(cfg.player_association,
+        appearance=replace(cfg.player_association.appearance, encoder='dinov3_vitb16')))
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
+    repository = cfg.roots.external_asset_root / 'dinov3'
+    repository.mkdir(parents=True, exist_ok=True)
+    source = repository / 'hubconf.py'
+    source.write_text('# appearance implementation A\n')
+    pipeline.config = cfg
+    first = pipeline.publication_identity()
+    source.write_text('# appearance implementation B\n')
+    assert pipeline.publication_identity() != first
+
+
 @pytest.mark.parametrize('separate_drift', [False, True])
 def test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint(tmp_path, monkeypatch, separate_drift):
     pipeline, paths, sources, _, _, artifact = shared_fixture(tmp_path, monkeypatch)

@@ -71,20 +71,21 @@ def encode_value(value: Any, directory: Path, arrays: dict[str, Any]) -> Any:
     raise TypeError(f"Unsupported artifact value: {type(value).__name__}")
 
 
+def verified_array_path(directory: Path, name: str, arrays: Mapping[str, Any]) -> Path:
+    if not isinstance(name, str) or Path(name).name != name or name not in arrays:
+        raise ValueError("Invalid artifact array reference")
+    path = directory / name
+    if not path.is_file() or dual_sha256(path) != arrays[name]["sha256"]:
+        raise ValueError(f"Artifact array checksum mismatch: {path}")
+    return path
+
+
 def unpack_value(value: Any, directory: Path, arrays: Mapping[str, Any]) -> Any:
     if isinstance(value, dict):
         if set(value) == {"array"}:
             name = value["array"]
-            if (
-                not isinstance(name, str)
-                or Path(name).name != name
-                or name not in arrays
-            ):
-                raise ValueError("Invalid artifact array reference")
-            path = directory / name
+            path = verified_array_path(directory, name, arrays)
             declaration = arrays[name]
-            if not path.is_file() or dual_sha256(path) != declaration["sha256"]:
-                raise ValueError(f"Artifact array checksum mismatch: {path}")
             array = np.load(path, allow_pickle=False, mmap_mode="r")
             if (
                 list(array.shape) != declaration["shape"]

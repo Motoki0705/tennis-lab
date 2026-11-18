@@ -18,6 +18,7 @@ from typing import Any, cast
 import pytest
 
 from tests.support.agents_ops.directory_seed import DirectorySeed
+from tests.support.agents_ops.model_pins import REVIEW_FIXED_MODEL
 from tests.support.agents_ops.worker_preflight import completed_implementation
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -365,7 +366,7 @@ class ParentEnv:
         path.write_text("永続状態・復旧・merge gateの境界を確認するためAstraを選ぶ。")
         return (
             "--review-model",
-            "gpt-6-astra",
+            REVIEW_FIXED_MODEL,
             "--review-effort",
             "xhigh",
             "--model-reason-file",

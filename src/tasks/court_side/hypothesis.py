@@ -184,6 +184,15 @@ def collect_side_evidence(cameras: tuple[PinholeCamera, ...], reference_camera: 
     Only ``reprojection_px``, ``min_motion_px`` and the plausibility bounds of
     ``config`` are used.
     """
+    evidence, _ = collect_side_evidence_with_frames(cameras, reference_camera, uv_px, visible, config)
+    return evidence
+
+
+def collect_side_evidence_with_frames(
+    cameras: tuple[PinholeCamera, ...], reference_camera: str, uv_px: NDArray[np.floating],
+    visible: NDArray[np.bool_], config: CourtSideConfig,
+) -> tuple[BallSideEvidence, NDArray[np.int64]]:
+    """Also return the indices actually scored, on the supplied observation grid."""
     ids = tuple(camera.camera_id for camera in cameras)
     if len(set(ids)) != len(ids) or reference_camera not in ids:
         raise ValueError("Court side needs unique camera IDs including the reference")
@@ -191,13 +200,14 @@ def collect_side_evidence(cameras: tuple[PinholeCamera, ...], reference_camera: 
         raise ValueError("Ball observations must be (V,T,2) pixels with (V,T) boolean visibility")
     distinct = distinct_observation_frames(uv_px, visible, config.min_motion_px)
     uv_px, visible = uv_px[:, distinct], visible[:, distinct]
-    frames = int((visible.sum(0) >= 2).sum())
+    scored = np.flatnonzero(distinct)[visible.sum(0) >= 2]
+    frames = len(scored)
     hypotheses: tuple[HypothesisScore, ...] = ()
     if frames:
         hypotheses = tuple(sorted((score_hypothesis(cameras, turns, uv_px, visible, config)
                                    for turns in half_turn_hypotheses(len(ids), ids.index(reference_camera))),
                                   key=lambda h: (h.cost, h.view_half_turns)))
-    return BallSideEvidence(ids, reference_camera, frames, pair_frame_counts(visible), hypotheses)
+    return BallSideEvidence(ids, reference_camera, frames, pair_frame_counts(visible), hypotheses), scored
 
 
 def judge_side_evidence(evidence: BallSideEvidence, config: CourtSideConfig) -> CourtSideDecision:

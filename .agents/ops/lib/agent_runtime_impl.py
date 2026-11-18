@@ -343,16 +343,35 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         if previous
         else None
     )
+    saved_model = None
+    saved_review = None
     if previous:
+        prior_settings = previous["contract"]["settings"]
+        if (
+            agent == prior_settings["agent"] == "codex"
+            and args.profile == prior_settings["profile"]
+        ):
+            if args.profile is None:
+                saved_model = prior_settings["selected"]["model"]
+                if not isinstance(saved_model, str) or not saved_model:
+                    raise ValueError("saved worker model is missing or invalid")
+                if args.model is not None and args.model != saved_model:
+                    raise ValueError("resume model differs from the saved contract")
+                # An explicit same-model check on resume is not a new override.
+                args.model = prior_settings["overrides"].get("model")
+            elif args.profile == "review":
+                if review_selection != previous["contract"].get("review_selection"):
+                    raise ValueError(
+                        "resume review selection differs from the saved contract"
+                    )
+                saved_review = prior_settings["selected"]
         for key in ("model", "effort"):
             if key == "effort" and (
                 repair is not None or "repair" in previous["contract"]
             ):
                 continue
             if getattr(args, key) is None:
-                setattr(
-                    args, key, previous["contract"]["settings"]["overrides"].get(key)
-                )
+                setattr(args, key, prior_settings["overrides"].get(key))
     settings = resolve(
         args.config_file,
         agent,
@@ -362,6 +381,8 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         args.mode,
         review_selection=review_selection,
         repair=repair,
+        saved_model=saved_model,
+        saved_review=saved_review,
     )
     home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).resolve()
     branch = branch_at(cwd, bool(args.task_id))

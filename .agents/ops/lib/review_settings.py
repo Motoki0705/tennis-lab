@@ -1,7 +1,7 @@
 """Review-only policy and immutable choices shared by producers and consumers.
 
-Historical verification uses the policy frozen in the request. Only an actual
-launch compares it with the current configuration. No runtime is invoked here.
+Historical verification uses the policy frozen in the request. An actual launch
+checks the current policy or the explicit continuation pin for a saved session.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from typing import Any
 FIELDS = {"model", "effort", "service_tier"}
 LEGACY_FIXED = {"model": "gpt-6-astra", "effort": "xhigh", "service_tier": "default"}
 SOURCES = {"settings", "parent_choice", "human_instruction"}
+CONTINUATION_PAIRS_PIN = "REVIEW_CODEX_CONTINUATION_PAIRS"
 
 
 def obj(value: Any) -> dict[str, Any]:
@@ -111,25 +112,29 @@ def validate_policy(value: Any) -> dict[str, Any]:
     return policy
 
 
+def _parse_pairs(value: str) -> list[dict[str, str]]:
+    pairs = []
+    for raw in value.split(","):
+        if ":" not in raw:
+            raise ValueError("invalid review allowed pair")
+        model, effort = raw.rsplit(":", 1)
+        pairs.append({"model": model, "effort": effort})
+    pairs.sort(key=lambda pair: (pair["model"], pair["effort"]))
+    return pairs
+
+
 def policy_from_pins(pins: dict[str, str]) -> dict[str, Any]:
     def pin(key: str) -> str:
         return text(pins.get(key), key)
 
     if pin("REVIEW_SELECTION_POLICY_VERSION") != "1":
         raise ValueError("unknown review selection policy version")
-    pairs = []
-    for raw in pin("REVIEW_CODEX_ALLOWED_PAIRS").split(","):
-        if ":" not in raw:
-            raise ValueError("invalid review allowed pair")
-        model, effort = raw.rsplit(":", 1)
-        pairs.append({"model": model, "effort": effort})
-    pairs.sort(key=lambda pair: (pair["model"], pair["effort"]))
     return validate_policy(
         {
             "version": 1,
             "mode": pin("REVIEW_SELECTION_MODE"),
             "fixed": {k: pin("REVIEW_CODEX_" + k.upper()) for k in FIELDS},
-            "allowed_pairs": pairs,
+            "allowed_pairs": _parse_pairs(pin("REVIEW_CODEX_ALLOWED_PAIRS")),
         }
     )
 
@@ -274,9 +279,12 @@ def choose(
     elif human_effort is not None or human_reference is not None:
         raise ValueError("human review model is required")
     if policy["mode"] == "select" and model is None:
+        allowed = ", ".join(
+            f"{pair['model']}/{pair['effort']}" for pair in policy["allowed_pairs"]
+        )
         raise ValueError(
             "select requires --review-model and --model-reason-file "
-            "(gpt-6.1-sol/xhigh or gpt-6-astra/xhigh; parent chooses the impact)"
+            f"(allowed pairs: {allowed})"
         )
     selected_model = model if model is not None else policy["fixed"]["model"]
     efforts = [
@@ -327,13 +335,40 @@ def choose(
     )
 
 
-def launch_selection(selection: Any, pins: dict[str, str]) -> dict[str, Any]:
-    data = validate_selection(selection)
-    if data["kind"] != "run":
+def _allows_continuation(pins: dict[str, str], saved: dict[str, str]) -> bool:
+    raw = pins.get(CONTINUATION_PAIRS_PIN)
+    if raw is None:
+        return False
+    pairs = _parse_pairs(raw)
+    for pair in pairs:
+        validate_values({**pair, "service_tier": saved["service_tier"]})
+    if len(pairs) != len({(p["model"], p["effort"]) for p in pairs}):
+        raise ValueError("review continuation pairs must be unique")
+    return {k: saved[k] for k in ("model", "effort")} in pairs
+
+
+def runner_selection(
+    pins: dict[str, str], selection: Any, saved: dict[str, str] | None
+) -> tuple[dict[str, str], bool]:
+    """Resolve new launches and the exact selection from a previous run."""
+    policy = policy_from_pins(pins)
+    data = validate_selection(selection) if selection is not None else None
+    if data is not None and data["kind"] != "run":
         raise ValueError("recovery request cannot launch an agent")
-    if data["policy"] != policy_from_pins(pins):
+    if saved is not None:
+        validate_values(saved)
+        if data is not None and data["selected"] != saved:
+            raise ValueError("resume review selection differs from the saved contract")
+        pair = {k: saved[k] for k in ("model", "effort")}
+        if pair not in policy["allowed_pairs"] and _allows_continuation(pins, saved):
+            return dict(saved), True
+    if data is None:
+        if policy["mode"] != "fixed":
+            raise ValueError("select review profile requires --review-selection-file")
+        return dict(policy["fixed"]), False
+    if data["policy"] != policy:
         raise ValueError("review selection policy changed since preparation")
-    return data
+    return dict(data["selected"]), False
 
 
 def runtime_view(runtime: dict[str, Any]) -> dict[str, Any]:

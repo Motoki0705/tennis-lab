@@ -21,6 +21,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.model_pins import WORKER_DEFAULT_MODEL
 
 
 @dataclass
@@ -41,7 +42,7 @@ class CompletionWorkflow:
         directory = Path(job["directory"]) / "runtime"
         directory.mkdir(exist_ok=True)
         parent = job["role"] == "parent"
-        record = {
+        record: dict[str, Any] = {
             "schema_version": 1,
             "run_id": job["id"],
             "result": "running"
@@ -80,6 +81,11 @@ class CompletionWorkflow:
                 (Path(job["directory"]) / "prompt.md").read_bytes()
             ).hexdigest(),
         }
+        if not parent:
+            record["contract"]["settings"].update(
+                selected={"model": WORKER_DEFAULT_MODEL, "effort": "max"},
+                overrides={},
+            )
         (directory / "result.json").write_text(json.dumps(record))
         (directory / "final.md").write_text(
             json.dumps(

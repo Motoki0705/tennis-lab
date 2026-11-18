@@ -141,9 +141,11 @@ people_models:
       confidence: 0.3
       short_side: 800
       max_long_side: 1333
+      precision: fp32
     vitpose:
       flip_test: true
       batch_size: 16
+      precision: fp32
       head:
         in_channels: 1280
         out_channels: 17
@@ -229,6 +231,15 @@ camera_geometry:
 # Ball-only half-turn hypothesis test (src/tasks/court_side). Pixels at 1920x1080. Thresholds
 # from the synthetic benchmark (knowledge court_side/000001, #932).
 court_side:
+  mode: clip
+  video_shared:
+    action: null
+    directory: null
+    request: null
+    request_sha256: null
+    artifact_digest: null
+    rebuild: false
+    unobservable_policy: warn
   reprojection_px: 20.0
   min_motion_px: 5.0
   min_frames: 8

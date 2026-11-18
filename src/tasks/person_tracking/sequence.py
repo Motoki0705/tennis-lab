@@ -75,8 +75,12 @@ class TrackEvidence:
     embeddings: np.ndarray
     appearance_valid: np.ndarray
     encoder: str
+    encoder_identity: str | None = None
 
     def __post_init__(self) -> None:
+        if self.encoder_identity is not None and (len(self.encoder_identity) != 64
+                or any(c not in '0123456789abcdef' for c in self.encoder_identity)):
+            raise ValueError('Invalid appearance model identity')
         shape = self.detection_rows.shape
         if len(shape) != 2 or self.detection_rows.dtype != np.int64 or (self.detection_rows < -1).any() \
                 or (self.poses is not None and (self.poses.shape != (*shape, 17, 3) or self.poses.dtype != np.float32)) \
@@ -112,7 +116,7 @@ class TrackEvidence:
         if poses is not None:
             poses[g, f] = self.require_poses()[source, f]
         embeddings[g, f], valid[g, f] = self.embeddings[source, f], self.appearance_valid[source, f]
-        return TrackEvidence(rows, poses, embeddings, valid, self.encoder)
+        return TrackEvidence(rows, poses, embeddings, valid, self.encoder, self.encoder_identity)
 
 
 @dataclass(frozen=True)

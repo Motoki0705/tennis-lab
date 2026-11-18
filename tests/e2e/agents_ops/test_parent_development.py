@@ -32,6 +32,10 @@ from tests.e2e.agents_ops.test_parent_session import (
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.improvements import finish_for
+from tests.support.agents_ops.model_pins import (
+    WORKER_ALTERNATE_MODEL,
+    WORKER_DEFAULT_MODEL,
+)
 from tests.support.agents_ops.worker_preflight import completed_implementation
 
 
@@ -108,7 +112,7 @@ def launch(d: DispatchHarness, monkeypatch: pytest.MonkeyPatch) -> None:
     d.control.launch_reserved()
 
 
-@pytest.mark.parametrize("model", [None, "gpt-6-astra"])
+@pytest.mark.parametrize("model", [None, WORKER_ALTERNATE_MODEL])
 @pytest.mark.parametrize("family", [False, True])
 def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zero(
     d: DispatchHarness,
@@ -138,7 +142,7 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
         )
         assert record["result"] == "completed" and record["task_success"] is None
         assert record["contract"]["settings"]["selected"]["model"] == (
-            model or "gpt-6.1-sol"
+            model or WORKER_DEFAULT_MODEL
         )
         assert record["contract"]["settings"]["selected"]["effort"] == "max"
         assert record["contract"]["cwd"] == str(tree)
@@ -189,9 +193,9 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
 @pytest.mark.parametrize(
     "cancel_fix,initial_model,resume_model",
     [
-        (False, "gpt-6-astra", None),
-        (True, "gpt-6-astra", None),
-        (False, None, "gpt-6.1-sol"),
+        (False, WORKER_ALTERNATE_MODEL, None),
+        (True, WORKER_ALTERNATE_MODEL, None),
+        (False, None, WORKER_DEFAULT_MODEL),
     ],
     ids=["False", "True", "sol_same"],
 )
@@ -239,7 +243,9 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
                 env,
                 child=10,
                 prompt="修正。",
-                model="gpt-6-astra" if initial_model is None else "gpt-6.1-sol",
+                model=WORKER_ALTERNATE_MODEL
+                if initial_model is None
+                else WORKER_DEFAULT_MODEL,
                 continuation="終了・差分を確認した。",
             )
         assert d.row() == reserved  # No delegation, job or slot may be reserved.
@@ -323,7 +329,7 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
         assert before["runtime"]["session_id"] == after["runtime"]["session_id"]
         assert before["contract"] == after["contract"]
         assert after["contract"]["settings"]["selected"]["model"] == (
-            initial_model or "gpt-6.1-sol"
+            initial_model or WORKER_DEFAULT_MODEL
         )
         assert first["delegation_id"] != second["delegation_id"]
         assert len((d.h.root / "runtime-calls.jsonl").read_text().splitlines()) == 2
@@ -360,7 +366,7 @@ def test_cancelled_initial_reservation_keeps_model_and_restarts_only_if_unstarte
         env,
         child=10,
         prompt="実装する。",
-        model="gpt-6-astra",
+        model=WORKER_ALTERNATE_MODEL,
         branch="codex/parser",
         worktree=child_tree(d),
     )
@@ -395,7 +401,10 @@ def test_cancelled_initial_reservation_keeps_model_and_restarts_only_if_unstarte
             (Path(job["directory"]) / "runtime/result.json").read_text()
         )
         assert job["resume_from"] is None
-        assert record["contract"]["settings"]["selected"]["model"] == "gpt-6-astra"
+        assert (
+            record["contract"]["settings"]["selected"]["model"]
+            == WORKER_ALTERNATE_MODEL
+        )
         assert len((d.h.root / "runtime-calls.jsonl").read_text().splitlines()) == 1
     finally:
         d.control.reconcile(stop=True)
@@ -1624,7 +1633,7 @@ def test_preflight_decision_paths(
         assert metadata["turn"]["phase"] == job["preflight"]["phase"]
         assert metadata["decision"] == {"action": action, "source_sequence": 1}
         assert metadata["worker"]["selected"] == {
-            "model": "gpt-6.1-sol",
+            "model": WORKER_DEFAULT_MODEL,
             "effort": "max",
         }
         assert len((d.h.root / "runtime-calls.jsonl").read_text().splitlines()) == 2

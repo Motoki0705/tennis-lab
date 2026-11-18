@@ -12,9 +12,10 @@ import torch
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from src.submodules.configuration import require_absolute_path
+from src.submodules.configuration import InferencePrecision, require_absolute_path
 from src.submodules.models._base.crops import iter_frame_person_crops, iter_person_crops
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.models._base.precision import autocast_dtype
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
 from src.submodules.vendor.gvhmr.vitpose import build_vitpose_huge
 from src.submodules.vendor.gvhmr.vitpose.flip_utils import flip_heatmap_coco17
@@ -79,7 +80,7 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         flip_test: bool,
         batch_size: int,
         head_config: ViTPoseHeadConfig,
-        precision: Literal["float32", "bfloat16"] = "float32",
+        precision: InferencePrecision | Literal["float32", "bfloat16"] = "float32",
         show_progress: bool = True,
     ) -> None:
         super().__init__(device)
@@ -95,9 +96,12 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         self.flip_test = flip_test
         self.batch_size = batch_size
         self.show_progress = show_progress
-        if precision not in {"float32", "bfloat16"}:
-            raise ValueError(f"Unsupported ViTPose precision: {precision}")
         self.precision = precision
+        if precision == "float32":
+            precision = "fp32"
+        elif precision == "bfloat16":
+            precision = "bf16"
+        self._autocast_dtype = autocast_dtype(precision, self.device)
         if not isinstance(head_config, ViTPoseHeadConfig):
             raise TypeError("head_config must be a validated ViTPoseHeadConfig.")
         self.head_config = head_config
@@ -137,8 +141,8 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
             imgs_batch = images[:, :, :, 32:224].to(self._device)
             with torch.autocast(
                 self.device.type,
-                dtype=torch.bfloat16,
-                enabled=self.precision == "bfloat16",
+                dtype=self._autocast_dtype,
+                enabled=self._autocast_dtype is not None,
             ):
                 if self.flip_test:
                     heatmap, heatmap_flipped = self._pose(

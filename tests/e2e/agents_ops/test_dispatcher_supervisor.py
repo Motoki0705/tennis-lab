@@ -27,6 +27,12 @@ from tests.e2e.agents_ops.test_dispatcher_judgement import (
     issue,
 )
 from tests.support.agents_ops.locks import available
+from tests.support.agents_ops.model_pins import (
+    OLD_ASTRA,
+    WORKER_ALTERNATE_MODEL,
+    WORKER_DEFAULT_MODEL,
+    previous_config,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -228,7 +234,7 @@ class DispatchHarness:
     ) -> None:
         directory = Path(job["directory"]) / "runtime"
         directory.mkdir(exist_ok=True)
-        record = {
+        record: dict[str, Any] = {
             "schema_version": 1,
             "run_id": job["id"],
             "result": "running" if live else "completed",
@@ -248,6 +254,12 @@ class DispatchHarness:
                 },
             },
         }
+        if job["role"] == "implementation":
+            model = job.get("model")
+            record["contract"]["settings"].update(
+                selected={"model": model or WORKER_DEFAULT_MODEL, "effort": "max"},
+                overrides={"model": model} if model is not None else {},
+            )
         (directory / "result.json").write_text(json.dumps(record))
         (directory / "final.md").write_text(
             json.dumps(
@@ -1032,7 +1044,7 @@ def test_children_redelegation_cannot_hide_live_workers(
     row["tasks"].pop("12")
     d.update(row)
     first = d.control.start_child(1, 10, "10", "task", env)
-    d.control.start_child(1, 11, "11", "task", env, "gpt-6-astra")
+    d.control.start_child(1, 11, "11", "task", env, WORKER_ALTERNATE_MODEL)
     row = d.row()
     row["tasks"]["10"]["delegation_id"] = "new-delegation"
     row["tasks"]["10"]["worker_ended"] = {
@@ -1469,7 +1481,6 @@ def registered_repair(
     fixture_runtime(d, monkeypatch)
     runtime_module = importlib.import_module("dispatcher.runtime")
     runtime_type = runtime_module.Runtime
-    monkeypatch.setattr(runtime_module, "Runtime", FixtureRuntime)
     repairs = importlib.import_module("dispatcher.repairs")
     settings = importlib.import_module("lib.agent_settings")
     d.prepare_family(10)
@@ -1490,7 +1501,12 @@ def registered_repair(
     record["contract"].update(
         branch="test",
         settings=settings.resolve(
-            settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
+            previous_config(d.h.root / "previous.conf"),
+            "codex",
+            None,
+            OLD_ASTRA,
+            None,
+            "write",
         ),
     )
     record_path.write_text(json.dumps(record))
@@ -1510,6 +1526,9 @@ def registered_repair(
         row = d.h.store.parents["o/r#1"]
         session = d.control._session("o/r#1", row)
         repairs.register_progression(session, "pipeline-1", child=10, pr=42)
+    # Keep the class binding stable for modules imported inside a repair test.
+    monkeypatch.setattr(runtime_type, "inspect", FixtureRuntime.inspect)
+    monkeypatch.setattr(runtime_type, "ended", FixtureRuntime.ended)
     return d, runtime_type
 
 
@@ -1535,7 +1554,7 @@ def test_registered_progression_reserves_repair_without_parent_runtime_environme
     )
     job = d.row()["dispatch"]["jobs"][repair_id]
     assert job["resume_from"] == str(record_path.parent)
-    assert job["model"] == "gpt-6-astra"
+    assert job["model"] == OLD_ASTRA
     assert job["task_id"] == creator["task_id"]
     assert job["repair"] == {"schema_version": 1, "repair_id": "ci-1", "pr": 42}
     with pytest.raises(ValueError, match="another request"):
@@ -1554,7 +1573,7 @@ def test_registered_progression_reserves_repair_without_parent_runtime_environme
     argv = json.loads(captured.read_text())
     assert argv[:3] == ["resume", "--resume-from", str(record_path.parent)]
     assert argv[argv.index("--effort") + 1] == "high"
-    assert argv[argv.index("--model") + 1] == "gpt-6-astra"
+    assert argv[argv.index("--model") + 1] == OLD_ASTRA
     assert argv[argv.index("--repair-id") + 1] == "ci-1"
     # Registration is checked again at admission, before another runtime starts.
     row = d.row()
@@ -1848,7 +1867,9 @@ def test_real_implementation_slots_and_sol_astra_wiring(
         d.update(row)
         jobs = [
             d.control.start_child(1, 10, "10", "implementation", env),
-            d.control.start_child(1, 11, "11", "implementation", env, "gpt-6-astra"),
+            d.control.start_child(
+                1, 11, "11", "implementation", env, WORKER_ALTERNATE_MODEL
+            ),
         ]
         d.control.launch_reserved()
         wait_until(
@@ -1881,7 +1902,7 @@ def test_real_implementation_slots_and_sol_astra_wiring(
             assert evidence["contract"]["settings"]["selected"]["effort"] == "max"
             assert evidence["cleanup_complete"] is True
             assert job["phase"] == "ended"
-        assert selected == ["gpt-6.1-sol", "gpt-6-astra"]
+        assert selected == [WORKER_DEFAULT_MODEL, WORKER_ALTERNATE_MODEL]
     finally:
         d.control.reconcile(stop=True)
         wait_until(
@@ -2842,7 +2863,9 @@ def test_run_replacement_during_final_github_check_is_not_applied(
 def test_repair_completion_wakes_progression_and_final_notice_wakes_parent_once(
     registered_repair: tuple[DispatchHarness, Any],
 ) -> None:
-    LiveBackend = importlib.import_module("lib.ops_review.progression_backend").LiveBackend
+    LiveBackend = importlib.import_module(
+        "lib.ops_review.progression_backend"
+    ).LiveBackend
 
     d, _ = registered_repair
     row = d.row()
@@ -2859,9 +2882,15 @@ def test_repair_completion_wakes_progression_and_final_notice_wakes_parent_once(
     record = json.loads(record_path.read_text())
     settings = importlib.import_module("lib.agent_settings")
     record["contract"]["settings"] = settings.resolve(
-        settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
+        settings.DEFAULT_CONFIG,
+        "codex",
+        None,
+        job["model"],
+        None,
+        "write",
+        saved_model=job["model"],
+        repair=job["repair"],
     )
-    record["contract"]["settings"]["selected"]["effort"] = "high"
     record["contract"]["repair"] = job["repair"]
     record_path.write_text(json.dumps(record))
     row = d.row()

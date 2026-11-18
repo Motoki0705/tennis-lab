@@ -408,7 +408,7 @@ class Review(StoreReader):
         timeline = _save_plot(self.output / "images" / f"{camera}_detections_timeline.png", plot)
         return [image, timeline], [("detections", str(len(scores))), ("max in one frame", str(int(counts.max())))]
 
-    @renders("person_tracking", "person_tracks", 5)
+    @renders("person_tracking", "person_tracks", (5, 6))
     def render_person_tracking(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         boxes, observed, ids = (_array(value[key]) for key in ("boxes_xyxy", "observed", "track_ids"))
         confirmed = self.player_labels(camera, ids) if node.startswith("player_selection/") else None
@@ -444,7 +444,7 @@ class Review(StoreReader):
                             f"clothing ΔLab {item['appearance_lab_distance']:.1f}"))
         return [image, timeline], details
 
-    @renders("player_selection", "selected_player_tracks", 2)
+    @renders("player_selection", "selected_player_tracks", (2, 3))
     def render_player_selection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         images, details = self.render_person_tracking(node, camera, value["tracks"])
         details.append(("retained raw observations", str(_count(value["selected"]))))

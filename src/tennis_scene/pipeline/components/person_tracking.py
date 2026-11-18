@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from time import monotonic
 from typing import Any
@@ -120,7 +120,7 @@ class PersonTrackingModule(InferenceComponent[PersonTrackingInput, PersonTrackin
     """Shared feature tracking; court selection alone owns the candidate cap."""
 
     io = ComponentIO("person_tracking", PersonTrackingInput, PersonTrackingOutput,
-        {"detections": InputPort("person_detections", 2)}, "person_tracks", version=5)
+        {"detections": InputPort("person_detections", 2)}, "person_tracks", version=6)
 
     def __init__(self, config: TrackingConfig, *, people: PeopleModelConfig | None = None,
                  encoder: ModelSpec[AppearanceEncoder] | None = None,
@@ -183,4 +183,5 @@ class PersonTrackingModule(InferenceComponent[PersonTrackingInput, PersonTrackin
         finally:
             progress.close()
         return PersonTrackingOutput(video.camera_id, result.track_ids, result.boxes, result.observed,
-            result.source_track_ids, (), result.evidence, result.reconstruction, result.link_candidates)
+            result.source_track_ids, (), replace(result.evidence, encoder_identity=models.identity('encoder')),
+            result.reconstruction, result.link_candidates)

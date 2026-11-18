@@ -7,11 +7,12 @@ import numpy as np
 import pytest
 from hydra import compose, initialize_config_dir
 from hydra.errors import ConfigCompositionException
+from omegaconf import OmegaConf
 
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.frame_sampling import sampled_frame_indices
-from src.utils.configuration import UnknownConfigurationKeyError
+from src.utils.configuration import ConfigurationError, UnknownConfigurationKeyError
 from src.utils.configuration.errors import PathContractError
 
 
@@ -40,6 +41,57 @@ def test_defaults_associate_players_and_decide_sides() -> None:
     assert len(runtime.camera_ids) == 3
     assert runtime.player_placement.temporal_weight == 0.05
     assert runtime.player_placement.min_joints == 5
+    assert runtime.people.runtime.dino_detector.precision == "fp32"
+    assert runtime.people.runtime.vitpose.precision == "fp32"
+    assert runtime.people.runtime.vitpose.flip_test is True
+
+
+@pytest.mark.parametrize("precision", ["bf16", "fp16"])
+def test_person_precision_accepts_explicit_cuda_autocast(precision: str) -> None:
+    runtime = _runtime([f"people_models.runtime.{model}.precision={precision}" for model in ("dino_detector", "vitpose")])
+    assert runtime.people.runtime.dino_detector.precision == precision
+    assert runtime.people.runtime.vitpose.precision == precision
+
+
+@pytest.mark.parametrize(
+    ("overrides", "error"),
+    [
+        (["people_models.runtime.dino_detector.precision=half"], "dino_detector.precision"),
+        (["people_models.runtime.vitpose.precision=32"], "vitpose.precision"),
+        (["~people_models.runtime.vitpose.precision"], "vitpose.precision"),
+        (["device=cpu", "people_models.runtime.dino_detector.precision=bf16"], "DINO requires a CUDA device"),
+        (["device=cpu", "people_models.runtime.vitpose.precision=fp16"], "ViTPose requires CUDA"),
+    ],
+)
+def test_person_precision_rejects_invalid_configuration(overrides: list[str], error: str) -> None:
+    with pytest.raises(ConfigurationError, match=error):
+        _runtime(overrides)
+
+
+def test_saved_six_threshold_court_side_config_restores_clip_mode(tmp_path: Path) -> None:
+    directory = Path(__file__).parents[3] / "src/tennis_scene/configs"
+    with initialize_config_dir(version_base="1.3", config_dir=str(directory)):
+        cfg = compose(config_name="pipeline", overrides=["court_side.min_margin=0.31"])
+    current = PipelineRuntimeConfig.from_config(cfg)
+    thresholds = {"reprojection_px": 20.0, "min_motion_px": 5.0, "min_frames": 8,
+                  "max_cost": 0.8, "min_support": 0.2, "min_margin": 0.31}
+    cfg.court_side = thresholds
+    saved = tmp_path / "composed.yaml"
+    OmegaConf.save(cfg, saved, resolve=True)
+    restored = PipelineRuntimeConfig.from_config(OmegaConf.load(saved))
+    assert restored.video_court_side is None
+    assert restored.court_side == current.court_side and restored.court_side.min_margin == 0.31
+    assert restored.processing_settings["court_side"] == current.processing_settings["court_side"] == thresholds
+
+
+@pytest.mark.parametrize("overrides,missing", [
+    (["~court_side.mode"], "mode"),
+    (["~court_side.video_shared"], "video_shared"),
+    (["~court_side.mode", "~court_side.video_shared", "~court_side.min_margin"], "min_margin"),
+])
+def test_partial_court_side_formats_are_rejected(overrides: list[str], missing: str) -> None:
+    with pytest.raises(ValueError, match=rf"court_side\.{missing}\b"):
+        _runtime(overrides)
 
 
 def test_default_sampling_covers_long_meiji_clip_and_still_refuses_truncation() -> None:

@@ -11,6 +11,7 @@ from typing import Any, Literal
 from src.tennis_scene.pipeline.execution_plan import (
     ClipExecution,
     ExecutionPlan,
+    NodeDecision,
     NodeKey,
 )
 from src.tennis_scene.pipeline.execution_plan import ComponentNode as ComponentNode
@@ -20,6 +21,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelBorrower,
     ModelEventHook,
 )
+from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
@@ -90,7 +92,9 @@ class PlanExecutor:
             node = self.plan.nodes[key]
             declarations[key] = (node.component.model_specs()
                                  if node.source == "execute" and isinstance(node.component, InferenceComponent) else {})
-        return InferenceRuntime(declarations, model_event=self.model_event)
+        return InferenceRuntime(declarations,
+            expected_assets={key: asset_hashes(self.plan.nodes[key].settings) for key in declarations},
+            model_event=self.model_event)
 
     def execute(self, key: NodeKey) -> ArtifactRef:
         """Run or load one ready node; completed nodes are never reconsidered."""
@@ -107,7 +111,22 @@ class PlanExecutor:
         started = time.monotonic()
         try:
             with runtime.node(key) as models:
-                reference = self._execute_node(key, models)
+                output, decision = self._execute_node(key, models)
+            node, store = plan.nodes[key], plan.clips[key[0]].store
+            reference = decision.reference
+            if decision.action == "execute":
+                reference = store.publish(key[1], output, ArtifactCodec(node.io.output_type),
+                    schema=node.io.output_schema, version=node.io.version, identity=decision.identity,
+                    dependencies=decision.dependencies, provenance={"origin": "component", "implementation": node.implementation})
+                status = "executed"
+            else:
+                status = "loaded" if decision.action == "load" else "cached"
+            if reference is None:
+                raise RuntimeError("Completed component has no artifact reference")
+            # Unload/recorder/cleanup must succeed before dependencies or clip
+            # publication can observe this node as completed, including resume.
+            plan.references[key] = reference
+            plan.statuses[key] = status
             plan.active_node = None
             return reference
         except BaseException:
@@ -116,7 +135,7 @@ class PlanExecutor:
         finally:
             plan.seconds[key] = time.monotonic() - started
 
-    def _execute_node(self, key: NodeKey, models: ModelBorrower) -> ArtifactRef:
+    def _execute_node(self, key: NodeKey, models: ModelBorrower) -> tuple[Any, NodeDecision]:
         plan = self.plan
         node, store = plan.nodes[key], plan.clips[key[0]].store
         decision = plan.decide(key)
@@ -125,7 +144,7 @@ class PlanExecutor:
             if reference is None:
                 raise RuntimeError("Reused component has no artifact reference")
             store.load(reference, ArtifactCodec(node.io.output_type))
-            status = "loaded" if decision.action == "load" else "cached"
+            output = None
         else:
             artifacts = {port: store.load(ref, ArtifactCodec(plan.nodes[plan.dependencies[key][port]].io.output_type))
                          for port, ref in decision.dependencies.items()}
@@ -134,13 +153,7 @@ class PlanExecutor:
                 raise TypeError(f"Assembler returned wrong input type for {key[1]}")
             output = (node.component.process_with_models(inputs, models)
                       if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
-            reference = store.publish(key[1], output, ArtifactCodec(node.io.output_type),
-                schema=node.io.output_schema, version=node.io.version, identity=decision.identity,
-                dependencies=decision.dependencies, provenance={"origin": "component", "implementation": node.implementation})
-            status = "executed"
-        plan.references[key] = reference
-        plan.statuses[key] = status
-        return reference
+        return output, decision
 
     def output(self, key: NodeKey) -> Any:
         return self.plan.clips[key[0]].store.load(self.plan.references[key], ArtifactCodec(self.plan.nodes[key].io.output_type))

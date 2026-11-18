@@ -165,7 +165,7 @@ def model_settings(task: dict[str, Any], record: dict[str, Any]) -> dict[str, An
     selected = object_value(settings.get("selected"))
     overrides = object_value(settings.get("overrides"))
     model = nonempty(selected.get("model"), "saved worker model")
-    implementation_model(model)
+    implementation_model(None, previous=model)
     if "repair" in contract:
         validate_repair_contract(contract)
     if (
@@ -593,6 +593,9 @@ def prepare_run(
         with session.gh.io_scope():
             settings = validate_run(task, previous)
         model = implementation_model(model, previous=settings["selected"]["model"])
+        if replace_session:
+            # The delegation keeps its model, but a replacement starts a new session.
+            implementation_model(model)
         # A legacy default run has no model override. Adding one would change
         # the runner's frozen selection_sources/overrides even for the same model.
         runner_model = settings["overrides"].get("model")

@@ -187,8 +187,8 @@ def start_worker(
     failure between the two claims intentionally leaves the delegation intact.
     """
     require_client(session.gh, session.store)
-    implementation_model(model)
     if continuation is None:
+        implementation_model(model)
         nonempty(prompt, "initial worker instruction")
         if additional is not None:
             raise ValueError(
@@ -255,7 +255,12 @@ def start_worker(
                     record = load(Path(source) / "result.json")
                     previous_record = record
                     settings = record["contract"]["settings"]
-                    implementation_model(model, previous=settings["selected"]["model"])
+                    implementation_model(
+                        model,
+                        previous=nonempty(
+                            settings["selected"]["model"], "saved worker model"
+                        ),
+                    )
                     # A same-value request must retain the original override provenance.
                     model = settings["overrides"].get("model")
                 task = session.row["tasks"][str(child)]

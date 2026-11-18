@@ -104,7 +104,7 @@ def player_association_io(camera_ids: tuple[str, ...]) -> ComponentIO[PlayerAsso
     """The node's contract: calibration, the decided side and the tracks of every source camera."""
     return ComponentIO(PLAYER_ASSOCIATION, PlayerAssociationInput, PlayerIdentitiesOutput,
         {"calibration": InputPort("local_court_calibration"), "side": SIDE_PORT,
-         **{f"tracks_{c}": InputPort("selected_player_tracks", 2) for c in camera_ids}},
+         **{f"tracks_{c}": InputPort("selected_player_tracks", 3) for c in camera_ids}},
         IDENTITIES_PORT.schema, IDENTITIES_PORT.version)
 
 
@@ -117,7 +117,7 @@ class PlayerAssociationModule(InferenceComponent[PlayerAssociationInput, PlayerI
 
     def __init__(self, camera_ids: tuple[str, ...], config: AssociationConfig, *, sampling: CropSamplingConfig,
                  encoder: ModelSpec[AppearanceEncoder] | None, device: str, enabled: bool) -> None:
-        if (config.appearance is None) != (encoder is None):
+        if enabled and (config.appearance is None) != (encoder is None):
             raise ValueError("An appearance encoder is required exactly when the association config scores appearance")
         self.config, self.sampling, self.encoder, self.device, self.enabled = config, sampling, encoder, device, enabled
         self.io = player_association_io(camera_ids)

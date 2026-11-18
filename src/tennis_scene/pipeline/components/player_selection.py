@@ -75,8 +75,8 @@ class PlayerSelectionOutput:
 
 class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelectionOutput]):
     io = ComponentIO('player_selection', PlayerSelectionInput, PlayerSelectionOutput,
-        {'tracks': InputPort('person_tracks', 5), 'calibration': InputPort('local_court_calibration')},
-        'selected_player_tracks', version=2)
+        {'tracks': InputPort('person_tracks', 6), 'calibration': InputPort('local_court_calibration')},
+        'selected_player_tracks', version=3)
 
     def __init__(self, config: LinkingConfig, *, footpoints: FootpointConfig,
                  sampling: CropSamplingConfig, encoder: ModelSpec[AppearanceEncoder] | None,
@@ -107,7 +107,9 @@ class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelec
         footpoints = replace(self.footpoints, bottom_border_px=self.footpoints.bottom_border_px * scale)
         appearances: tuple[TrackAppearance, ...] | None = None
         appearance_record: dict[str, Any] = {'enabled': self.encoder is not None}
-        if raw.evidence is not None and self.encoder_name == raw.evidence.encoder:
+        identity = models.identity('encoder') if self.encoder is not None and raw.observed.any() else None
+        if (identity is not None and raw.evidence is not None and self.encoder_name == raw.evidence.encoder
+                and identity == raw.evidence.encoder_identity):
             appearances = tuple(evidence_appearance(raw.boxes_xyxy, raw.observed, raw.evidence,
                                               (video.width, video.height), sampling))
             appearance_record.update(encoder=raw.evidence.encoder, sampling=asdict(sampling),
@@ -119,6 +121,7 @@ class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelec
             appearances, samples = embed_tracks(video.path, raw.boxes_xyxy, raw.observed,
                 (video.width, video.height), encoder, sampling)
             appearance_record.update(encoder=encoder.name, sampling=asdict(sampling),
+                source='recomputed_features', reason='tracked_encoder_identity_mismatch_or_missing',
                 samples=[{'frames': s.frames.tolist(), 'rejected': s.rejected} for s in samples])
         camera_tracks = CameraTracks(cameras[video.camera_id], (video.width, video.height),
             raw.track_ids, raw.boxes_xyxy, raw.observed, appearances)

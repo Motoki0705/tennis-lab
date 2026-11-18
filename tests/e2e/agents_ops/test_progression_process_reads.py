@@ -196,9 +196,15 @@ def test_progression_dispatcher_adapter_starts_repair_without_repository_listing
         record = json.loads(record_path.read_text())
         settings = importlib.import_module("lib.agent_settings")
         record["contract"]["settings"] = settings.resolve(
-            settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
+            settings.DEFAULT_CONFIG,
+            "codex",
+            None,
+            job["model"],
+            None,
+            "write",
+            saved_model=job["model"],
+            repair=job["repair"],
         )
-        record["contract"]["settings"]["selected"]["effort"] = "high"
         record["contract"]["repair"] = job["repair"]
         record["contract"]["branch"] = job["branch"]
         record_path.write_text(json.dumps(record))
