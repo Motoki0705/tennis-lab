@@ -39,4 +39,4 @@ court_side.video_shared.artifact_digest="$SIDE_DIGEST"
 
 片段节点核对当前采样的球观测、标定矩阵及参考相机。独立判定与视频结果冲突的片段以 `court_side_video_shared_conflict` 失败。未决片段采用视频结果并记录警告。设置 `court_side.video_shared.unobservable_policy=fail` 可以拒绝未决片段。如果视频本身未决，两种策略都会失败。`run.json` 记录两套排名、margin、处理结果和两个对象的摘要。节点与数据集标记的缓存标识包含共享判定的摘要及执行策略。
 
-批量调用方应先收集视频内所有片段的上游输入，再建立最终计划。将片段 ID 到 `PinnedSideInputs` 的映射传给 `build_video_court_side`，或通过 `prepare_video_court_side` 按配置构建或加载。对各片段调用 `standard_definition` 时传入共享球场和 `video_court_side`。媒体、标定、球观测及数值设置必须与证据匹配。通过 `artifact.clip_report(clip_id, policy)` 可获取片段诊断。
+预备计划使用同一共享球场和 `court_side.mode=clip`，对所有片段只运行 `court_calibration` 与 `ball_points/<camera>`。将片段 ID 到 `PinnedSideInputs` 的映射传给 `build_video_court_side`，或通过 `prepare_video_court_side` 按配置构建或加载。对各片段调用 `standard_definition` 时传入共享球场和 `video_court_side`。媒体、标定、球观测及数值设置必须与证据匹配。通过 `artifact.clip_report(clip_id, policy)` 可获取片段诊断。

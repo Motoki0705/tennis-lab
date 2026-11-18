@@ -133,6 +133,7 @@ def prepare_video_court_side(
     if (config.dataset_id, config.video_id) != (court.manifest["dataset_id"], court.manifest["video_id"]):
         raise ValueError("Shared court and side dataset/video must match")
     if config.action == "load":
+        court.verify()
         assert config.artifact_digest is not None
         artifact = VideoCourtSideArtifact.load(config.directory, config.artifact_digest)
     else:

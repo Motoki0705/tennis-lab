@@ -34,6 +34,10 @@ class PinnedSideInputs:
     source_digest: str
     references: dict[str, Any]
 
+    def __post_init__(self) -> None:
+        if document_digest(self.source) != self.source_digest:
+            raise ValueError("Court side clip/source membership disagrees with its pinned revision")
+
     @property
     def digest(self) -> str:
         digest: str = document_digest({"source_sha256": self.source_digest, "artifacts": self.references})
@@ -42,8 +46,8 @@ class PinnedSideInputs:
     @classmethod
     def from_store(cls, directory: Path) -> PinnedSideInputs:
         index = json.loads((directory / "scene.json").read_text())
-        if index.get("schema") != "tennis_scene_index_v1" or document_digest(index["source"]) != index["source_sha256"]:
-            raise ValueError("Invalid court side input store/source")
+        if index.get("schema") != "tennis_scene_index_v1":
+            raise ValueError("Invalid court side input store schema")
         source: ClipSource = restore_type(index["source"], ClipSource)
         nodes = ["court_calibration", *(f"ball_points/{c}" for c in source.camera_ids)]
         refs = {node: index["artifacts"][node] for node in nodes}

@@ -20,6 +20,7 @@ class SharedCourtSideModule:
 
     def process(self, inputs: CourtSideInput) -> CourtSideOutput:
         self.artifact.verify()
+        self.court.check_source(inputs.source)
         clip = inputs.source.clip_id
         decision = self.artifact.decision
         if (calibration_digest(inputs, self.court) != decision.calibration_digest

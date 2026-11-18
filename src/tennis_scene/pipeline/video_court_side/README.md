@@ -55,7 +55,8 @@ also rejects undecided clips. An undecided video fails for every clip under eith
 rankings, margins, the effective verdict and the two object digests. The side node and dataset marker include the
 video artifact digest and execution policy in their identities.
 
-A batch caller collects the upstream targets for the video before constructing the final plan. It can pass the
+For the preliminary plan, use the same shared court and set `court_side.mode=clip`. Run only `court_calibration` and
+`ball_points/<camera>` for every clip. When the inputs are ready, the batch caller can pass the
 mapping of clip IDs to `PinnedSideInputs` to `build_video_court_side`, or use the configured build/load API
 `prepare_video_court_side`. Pass the returned artifact as `video_court_side` alongside `video_court` to
 `standard_definition` for each clip. A changed media source, geometry, ball stream or numerical setting requires
