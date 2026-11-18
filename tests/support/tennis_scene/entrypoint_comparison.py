@@ -71,7 +71,7 @@ def prepare_fixture(checkout: Path, root: Path, patch: Any) -> dict[str, Any]:
 
     fixture = importlib.import_module(FIXTURE_MODULE)
     pipeline, paths, stages = fixture.setup_pipeline(root, patch)
-    fixture.materialize_assets(enabled_model_assets(pipeline.config).values(), root)
+    fixture.materialize_assets(enabled_model_assets(pipeline.config).values(), root, court=pipeline.config.court_kp)
     dataset = root / "dataset"
     clip = dataset / "videos/video_000/clips/clip_000"
     clip.mkdir(parents=True)
