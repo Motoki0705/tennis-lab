@@ -1,0 +1,130 @@
+{
+  "status": "complete",
+  "queue_job": "0-8204992254522521003_2026-11-18T13-15-45-477478996Z_3300292_i2253-ball-model-compare",
+  "commit": "e40b041cfc616c6ae6735704f881876e35f00275",
+  "base_commit": "d392dd375776de72f604aca7be0bbb81025b7b2c",
+  "started_at_utc": "2026-11-18T13:15:53.577153+00:00",
+  "finished_at_utc": "2026-11-18T13:29:29.830607+00:00",
+  "wall_seconds": 816.253454,
+  "manifest_sha256": "e0d564760354a990104ae8166cb64bec001259fad1a80562bc05e07dbe0c5a95",
+  "ground_truth_2d": {
+    "available": false,
+    "matched_camera_clips": 0,
+    "local_clip_json_files": {
+      "clip_000": [
+        "videos/video_000/clips/clip_000/clip.json"
+      ],
+      "clip_027": [
+        "videos/video_000/clips/clip_027/clip.json"
+      ],
+      "clip_037": [
+        "videos/video_000/clips/clip_037/clip.json"
+      ]
+    },
+    "v3_correspondence_rows_checked": 123,
+    "v3_correspondence_sha256": "97f84c1eaa249345f3c0900c7d8b9ccd5463b6594c26da68db676c935d76eb75",
+    "v3_recordings": [
+      "meiji_3cam/video_000",
+      "meiji_3cam/video_001",
+      "meiji_3cam/video_002"
+    ],
+    "note": "Four-camera clips have only source metadata. The migrated labels are bound to meiji_3cam media."
+  },
+  "frozen_side": [
+    false,
+    false,
+    true,
+    true
+  ],
+  "clips": [
+    {
+      "clip_id": "clip_000",
+      "num_frames": 356,
+      "fps": 59.94005994005994,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "store_index_sha256": "caf1a32d507ee073a826cdf86adee41cd0e0f3a229206b55cf53ab5adce602a0"
+    },
+    {
+      "clip_id": "clip_027",
+      "num_frames": 235,
+      "fps": 59.94005994005994,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "store_index_sha256": "76f81121385cf99d71432b01ad34b45696997bf8c069de66daf39345f9bf0cef"
+    },
+    {
+      "clip_id": "clip_037",
+      "num_frames": 292,
+      "fps": 59.94005994005994,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "store_index_sha256": "e3f7013ecb4fc5ab9dc15cc3a95aa66edae569295a47b682511e053353d492a7"
+    }
+  ],
+  "cpu_checks": {
+    "pytest_collected": 59,
+    "pytest_passed": 59,
+    "pytest_wall_seconds": 12.75,
+    "fixed_store_replay_clips": 3
+  },
+  "gpu_results": {
+    "pipeline_x3d_dpt": {
+      "status": "complete",
+      "returncode": 0,
+      "started_at_utc": "2026-11-18T13:15:53.598030+00:00",
+      "finished_at_utc": "2026-11-18T13:17:18.120299+00:00",
+      "device_memory_peak_mib": 2906,
+      "heartbeat_timeout_seconds": 300,
+      "driver": "621.24"
+    },
+    "i935-convnext": {
+      "status": "complete",
+      "returncode": 0,
+      "started_at_utc": "2026-11-18T13:17:38.961796+00:00",
+      "finished_at_utc": "2026-11-18T13:18:30.332818+00:00",
+      "device_memory_peak_mib": 3074,
+      "heartbeat_timeout_seconds": 300,
+      "driver": "621.24"
+    },
+    "convnext-dpt-t64": {
+      "status": "complete",
+      "returncode": 0,
+      "started_at_utc": "2026-11-18T13:18:42.932827+00:00",
+      "finished_at_utc": "2026-11-18T13:21:58.755323+00:00",
+      "device_memory_peak_mib": 4164,
+      "heartbeat_timeout_seconds": 300,
+      "driver": "621.24"
+    },
+    "convnext-query-t64": {
+      "status": "complete",
+      "returncode": 0,
+      "started_at_utc": "2026-11-18T13:22:13.807816+00:00",
+      "finished_at_utc": "2026-11-18T13:24:16.880393+00:00",
+      "device_memory_peak_mib": 3503,
+      "heartbeat_timeout_seconds": 300,
+      "driver": "621.24"
+    },
+    "x3d-query-d512-l8": {
+      "status": "complete",
+      "returncode": 0,
+      "started_at_utc": "2026-11-18T13:24:35.353727+00:00",
+      "finished_at_utc": "2026-11-18T13:29:06.428618+00:00",
+      "device_memory_peak_mib": 4724,
+      "heartbeat_timeout_seconds": 300,
+      "driver": "621.24"
+    }
+  }
+}

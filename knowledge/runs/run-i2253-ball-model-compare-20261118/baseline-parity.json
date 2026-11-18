@@ -1,0 +1,956 @@
+{
+  "clip_000": {
+    "cam0": {
+      "raw_uv_px": {
+        "differing_values": 245,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam1": {
+      "raw_uv_px": {
+        "differing_values": 209,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam2": {
+      "raw_uv_px": {
+        "differing_values": 231,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam3": {
+      "raw_uv_px": {
+        "differing_values": 220,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "ball_triangulation": {
+      "positions": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "valid": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "reasons": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "inliers": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "reprojection_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      }
+    },
+    "scene_assembly": {
+      "ball_uv": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_vis": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_3d": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_3d_valid": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_rejection_code": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      }
+    }
+  },
+  "clip_027": {
+    "cam0": {
+      "raw_uv_px": {
+        "differing_values": 136,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam1": {
+      "raw_uv_px": {
+        "differing_values": 159,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam2": {
+      "raw_uv_px": {
+        "differing_values": 177,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam3": {
+      "raw_uv_px": {
+        "differing_values": 169,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "ball_triangulation": {
+      "positions": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "valid": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "reasons": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "inliers": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "reprojection_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      }
+    },
+    "scene_assembly": {
+      "ball_uv": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_vis": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_3d": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_3d_valid": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_rejection_code": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      }
+    }
+  },
+  "clip_037": {
+    "cam0": {
+      "raw_uv_px": {
+        "differing_values": 174,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam1": {
+      "raw_uv_px": {
+        "differing_values": 203,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam2": {
+      "raw_uv_px": {
+        "differing_values": 186,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "cam3": {
+      "raw_uv_px": {
+        "differing_values": 187,
+        "max_abs": 0.0001220703125
+      },
+      "raw_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_uv_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_score": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "gate_observed": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_points": {
+        "uv_px": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "confidence": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.coordinates": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.source_observed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.accepted": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.rejected": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.interpolated": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.smoothed": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.consensus_supported": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        },
+        "smoothing.restored_turn": {
+          "differing_values": 0,
+          "max_abs": 0.0
+        }
+      }
+    },
+    "ball_triangulation": {
+      "positions": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "valid": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "reasons": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "inliers": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "reprojection_px": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      }
+    },
+    "scene_assembly": {
+      "ball_uv": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_vis": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_3d": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_3d_valid": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      },
+      "ball_rejection_code": {
+        "differing_values": 0,
+        "max_abs": 0.0
+      }
+    }
+  }
+}

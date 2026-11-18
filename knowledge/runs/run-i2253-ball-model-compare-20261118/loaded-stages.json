@@ -1,0 +1,794 @@
+{
+  "clip_000": {
+    "non_ball_scene_equal": true,
+    "nodes": {
+      "body_placement": {
+        "mode": "load",
+        "artifact_id": "54e35c27c7a1e761b244776df08cadba8b70a1a9725a15a33a054672d64d6d54",
+        "execution_key": "277a2f75a07dce542d0c2ddede037e98d8f871a97bb437622f41e3238b090964",
+        "path": "components/body_placement/54e35c27c7a1e761b244776df08cadba8b70a1a9725a15a33a054672d64d6d54/body_placement.json",
+        "schema": "placed_bodies",
+        "sha256": "d4cdd8825b5fda51fc7ce71e93ff489092f816155b3a53ba2d6e6ff784d97726",
+        "version": 1
+      },
+      "body_view_selection": {
+        "mode": "load",
+        "artifact_id": "2f0e83430d11498f963a76d12ee1e209b23af16f2ea7ab63f99d9aacd71ed874",
+        "execution_key": "9aaee4a2d8b3ba62f6df885afa70a41be86f2bc51cc9782f337fe0874b6b6b7a",
+        "path": "components/body_view_selection/2f0e83430d11498f963a76d12ee1e209b23af16f2ea7ab63f99d9aacd71ed874/body_view_selection.json",
+        "schema": "body_view_selection",
+        "sha256": "30bc5465ef350273f33b51ba92f16ecf784c8f625aa20998a54087a98b37c9ee",
+        "version": 1
+      },
+      "camera_alignment": {
+        "mode": "load",
+        "artifact_id": "94b91f9c11d21c0b6bade390de7f71a3368024ae680e5797c34c6379fbe57eeb",
+        "execution_key": "a9c00e9fadcfe982090f2c871241f3a70506203135d9f437f8557d98e496404d",
+        "path": "components/camera_alignment/94b91f9c11d21c0b6bade390de7f71a3368024ae680e5797c34c6379fbe57eeb/camera_alignment.json",
+        "schema": "aligned_cameras",
+        "sha256": "126e7b590d7d42d9ed32f2ab725121975b7ff085a57978d6a8248a7e37744be7",
+        "version": 1
+      },
+      "court_calibration": {
+        "mode": "load",
+        "artifact_id": "813c7674f1eedb69b1572a0403e65affe706d0b4a517a6b1711c456979b4540b",
+        "execution_key": "f8ad0ba1274de92f3e01a3eb909b6552e15fc9336f27061e005f7a04ca9db3c6",
+        "path": "components/court_calibration/813c7674f1eedb69b1572a0403e65affe706d0b4a517a6b1711c456979b4540b/court_calibration.json",
+        "schema": "local_court_calibration",
+        "sha256": "2677e54e5505c51c8aa44e390bf63b46eece047d84dfc5d458e3b1da9805ec03",
+        "version": 1
+      },
+      "court_detection/cam0": {
+        "mode": "load",
+        "artifact_id": "65f89d1d1e87e2393f95730afada53e5c9c3f6ba8d5eb2fb7d1dc4199daafadd",
+        "execution_key": "de558414d0c93d36bedc6a40dc1f6f9dd7e50373ae8963bc338fed2f541218dc",
+        "path": "components/court_detection/65f89d1d1e87e2393f95730afada53e5c9c3f6ba8d5eb2fb7d1dc4199daafadd/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "d74cf2f35c8a0186f5e5c72afc738b7ddfe0a3a034b2e3210943e7c5664d7bb4",
+        "version": 3
+      },
+      "court_detection/cam1": {
+        "mode": "load",
+        "artifact_id": "3ec943b60317a821ad1d3ac3c2deec3995df36674794110ac20305deeff8df30",
+        "execution_key": "1a2c55534fa39b408d4e467c7b65420f76ccd755462a341962f44a61a392bfad",
+        "path": "components/court_detection/3ec943b60317a821ad1d3ac3c2deec3995df36674794110ac20305deeff8df30/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "d4662b4ec00aab5572094ee691d013fbe134becc31ca9d49aad4e691645d5f7b",
+        "version": 3
+      },
+      "court_detection/cam2": {
+        "mode": "load",
+        "artifact_id": "b7d588e47691a80587e41db305b2d9b99a1b8ca755a62f74a3c8d3e06e935972",
+        "execution_key": "a7d47e987db0cca0ea56f8c8779452cc16b5f28a0f8b6095b93a3761f5fbb0cb",
+        "path": "components/court_detection/b7d588e47691a80587e41db305b2d9b99a1b8ca755a62f74a3c8d3e06e935972/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "83775543e7f4cbf17223bce2d92e4dcca1b695ab12ab1d3edd5c1838de824bff",
+        "version": 3
+      },
+      "court_detection/cam3": {
+        "mode": "load",
+        "artifact_id": "c737dc8ee54041bcff4018f6521285f0255718f7efca788a56dc5509d942b0cd",
+        "execution_key": "eb081a29bcd6acf43ae0c56f3310ee6af01d79ea4e779183953dc5a75464a79d",
+        "path": "components/court_detection/c737dc8ee54041bcff4018f6521285f0255718f7efca788a56dc5509d942b0cd/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "bfcd8d6a4b1b1df76a0295cb05d91e3fa7602da3a17a216d3fb0bd3b2dc88f0a",
+        "version": 3
+      },
+      "court_side": {
+        "mode": "load",
+        "artifact_id": "cfff0d7c0e1e172dc69bb869b0a337dfab09ea083f84719e5a08e8fccb82c181",
+        "execution_key": "b958091558438f24996c18e23b980e76b3ea53ef21e07a51f88d15891b3059e7",
+        "path": "components/court_side/cfff0d7c0e1e172dc69bb869b0a337dfab09ea083f84719e5a08e8fccb82c181/court_side.json",
+        "schema": "court_side",
+        "sha256": "54296201d5903789e73bf684167d671d4a7807adcf44c14f17083b1b444a386a",
+        "version": 3,
+        "shared_artifact_digest": "a5f987bd59d40a2f20d19d7802a4435748f9e23fb61cddc0bc3a7b704d4cd668",
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "gvhmr": {
+        "mode": "load",
+        "artifact_id": "b3d0cc06e3748fdeff643e8a9b20b7acb36f7488e15bf6b3a442ae3dbae33266",
+        "execution_key": "498d6b8661f42b53e17b931c993bf29e76370b4406d77fb5c3079edca49f71c9",
+        "path": "components/gvhmr/b3d0cc06e3748fdeff643e8a9b20b7acb36f7488e15bf6b3a442ae3dbae33266/gvhmr.json",
+        "schema": "body_parameters",
+        "sha256": "6a884a0756cfb956076d25cbe9250ab9d18c312e5e082de8491b6038a887e3df",
+        "version": 1
+      },
+      "person_detection/cam0": {
+        "mode": "load",
+        "artifact_id": "fb4dfd2e61771383be5ed04271614f107bf028b021ce4c2ffeeaa9cca4257882",
+        "execution_key": "a6e9ee319a2799548ed77fc8fadabcd5d11b3de070fa8b01c50814b4d957deae",
+        "path": "components/person_detection/fb4dfd2e61771383be5ed04271614f107bf028b021ce4c2ffeeaa9cca4257882/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "9d28102f8728ea22883780d6566c53b4cbaf03c7adf57988006a7390863285be",
+        "version": 2
+      },
+      "person_detection/cam1": {
+        "mode": "load",
+        "artifact_id": "00cf73861259a4992a383c9e4241861253f996d33e6afbfa8bee7d87a11cfe61",
+        "execution_key": "9a8e896e120f5a25cfc5596adc53eb7de682dff4036fc81dbb98d2488ff6927d",
+        "path": "components/person_detection/00cf73861259a4992a383c9e4241861253f996d33e6afbfa8bee7d87a11cfe61/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "ea58c5b9930a7056b879cd6f8cee89d0a4ecced02116fa9549ea00f33016ff84",
+        "version": 2
+      },
+      "person_detection/cam2": {
+        "mode": "load",
+        "artifact_id": "2528ccf1e4694e06b45e80e8485911e83bc8894537cf577f0cf21b66bbbf7986",
+        "execution_key": "a3ada46fe8bb612eed26e1f1a2b9425d9734f6cbdafd9c522b0f66af55bdfc9e",
+        "path": "components/person_detection/2528ccf1e4694e06b45e80e8485911e83bc8894537cf577f0cf21b66bbbf7986/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "f2a03d31e0e35666a58e43b33938c721d2bd4be0c5d03e8bd5051dbed78e5032",
+        "version": 2
+      },
+      "person_detection/cam3": {
+        "mode": "load",
+        "artifact_id": "3a4545c552086972c89022a88d097388a6a8c3ff904220b941c9108b0156a9fa",
+        "execution_key": "b043e3a388b9021ab03ddb64e79e74a021d1f6cf228ec01c189bb8d1e2dcb236",
+        "path": "components/person_detection/3a4545c552086972c89022a88d097388a6a8c3ff904220b941c9108b0156a9fa/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "7c56d99a3fc8bdae0fdb410d9d6a00926fe148ca88ba292f876a49c22b16042d",
+        "version": 2
+      },
+      "person_tracking/cam0": {
+        "mode": "load",
+        "artifact_id": "0582e4fbdc20441ba38eb092537c735c14dc71e11c44a7885d96c2c00af303d6",
+        "execution_key": "d3692e2cd3bb98acaa60c1f0b8454d223991579f51ade8ae48c26de517d5b98e",
+        "path": "components/person_tracking/0582e4fbdc20441ba38eb092537c735c14dc71e11c44a7885d96c2c00af303d6/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "e61dc98d34b972b78643ed84b76442ac1cbe10d82cc2018766ccf4dc5d5afa9c",
+        "version": 5
+      },
+      "person_tracking/cam1": {
+        "mode": "load",
+        "artifact_id": "ccc73fcefcd6b098f07c0ac67cd2e97ca4ce850f537d8164633c6fafe6fcd93b",
+        "execution_key": "f13dfbbb8d6ed40db84a6768c4e24cc7ea9daaa8e3f86a213463f735ea0db3aa",
+        "path": "components/person_tracking/ccc73fcefcd6b098f07c0ac67cd2e97ca4ce850f537d8164633c6fafe6fcd93b/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "9b7cbe3b8da8538cb1ef075518b3c85e906f140eb764ba05b087bf6b1abb9a07",
+        "version": 5
+      },
+      "person_tracking/cam2": {
+        "mode": "load",
+        "artifact_id": "9feabe880b7a3da5d61bcfd8a19d58300549f047213e01b0e016ae6a53777c4b",
+        "execution_key": "e179831026a0d4ec64165e7f1f34541a4d64aab4355d3f107ba44aa297023fa0",
+        "path": "components/person_tracking/9feabe880b7a3da5d61bcfd8a19d58300549f047213e01b0e016ae6a53777c4b/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "ef27aec98012f4e37416eefc5581dd3df8356863cf50d310a66b4359f3b43f17",
+        "version": 5
+      },
+      "person_tracking/cam3": {
+        "mode": "load",
+        "artifact_id": "06dd46ac670e6fa1a91d203226dacb5efe23795780ea4b7f457c73a4c2de6804",
+        "execution_key": "9118cf08e225b1e174a082eb803725e071cc12f4bfb655f8452a7a58d46091a7",
+        "path": "components/person_tracking/06dd46ac670e6fa1a91d203226dacb5efe23795780ea4b7f457c73a4c2de6804/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "d5d69190986842c1946d027385810b7478b76ceeaa1b7b40aa5d7ecb52d54dc7",
+        "version": 5
+      },
+      "player_association": {
+        "mode": "load",
+        "artifact_id": "9b0cb7c254461a65746aa44f38463cf1648806ec0faf0fb3bf04996a6709e321",
+        "execution_key": "c8a50d19afe59b68ea9dc9edd6eb0773739927acca47c9642ae7179d10339ffb",
+        "path": "components/player_association/9b0cb7c254461a65746aa44f38463cf1648806ec0faf0fb3bf04996a6709e321/player_association.json",
+        "schema": "person_identities",
+        "sha256": "f2cd1444c6c18641ad1eee7ae54b2bef1c7a74af27aac4f2f2b1a1ca2aa282a7",
+        "version": 3
+      },
+      "player_selection/cam0": {
+        "mode": "load",
+        "artifact_id": "e612708f23440e30a6040d2489df0f96de024d6d57329dd24f2c5ef4179708fd",
+        "execution_key": "2502416555352766cfeb223076f07d68f4dab2bc45cae9db1a7ec2c65ae8fd4f",
+        "path": "components/player_selection/e612708f23440e30a6040d2489df0f96de024d6d57329dd24f2c5ef4179708fd/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "75da8685b827ccec4786207c260a450a5de631025ca82554954181d145ced68e",
+        "version": 2
+      },
+      "player_selection/cam1": {
+        "mode": "load",
+        "artifact_id": "fede4eeeadd0d81ef9f1c603e9bd6b0c9b30cdd4e6c1d76cdc52fe983c9d8a29",
+        "execution_key": "162ed4896529d7a2148dfa14401902754d14aa5344321eaf675a14ea098f1b59",
+        "path": "components/player_selection/fede4eeeadd0d81ef9f1c603e9bd6b0c9b30cdd4e6c1d76cdc52fe983c9d8a29/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "a4563a7c48f6f8accba9eee9333a91b3c40c338451b1e3f5d3d020259539396b",
+        "version": 2
+      },
+      "player_selection/cam2": {
+        "mode": "load",
+        "artifact_id": "f47ad88a04addd1009b0967a05c8d84d4e1c90ebd2d896b081fc6b0e32fba645",
+        "execution_key": "c7a33566169261a6b12b744d1590d584daf3df0abe102cae504495f0ac04b17f",
+        "path": "components/player_selection/f47ad88a04addd1009b0967a05c8d84d4e1c90ebd2d896b081fc6b0e32fba645/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "8eb2082e6bd6692d3377cf597bfc3c8731ecdb3f5b1bb6fa1f01df8656e346b2",
+        "version": 2
+      },
+      "player_selection/cam3": {
+        "mode": "load",
+        "artifact_id": "0e305bf44a8f53f2c8dadc6b449e0c5f0dca8ef0783a3bf4f17cb23bc8b506f3",
+        "execution_key": "95dc3bee228dc2dd679e3cd92ddb7c606c83178d5d7052c6d8ff8285e04f45bc",
+        "path": "components/player_selection/0e305bf44a8f53f2c8dadc6b449e0c5f0dca8ef0783a3bf4f17cb23bc8b506f3/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "f23706812b1559cc9112ff9e086e5fa997f4485f4bc4db143aacfdbca1856964",
+        "version": 2
+      },
+      "player_triangulation": {
+        "mode": "load",
+        "artifact_id": "9336424a3c891b3a18f2d4fbfece48b043ff369c0be2a6b31d7247adf0df1b0c",
+        "execution_key": "b508a788c0c9dd6a794718c7e9c80d386a450f2c4be2044815cb1200a5e35661",
+        "path": "components/player_triangulation/9336424a3c891b3a18f2d4fbfece48b043ff369c0be2a6b31d7247adf0df1b0c/player_triangulation.json",
+        "schema": "player_skeletons",
+        "sha256": "b864062b7a02da230d085a4952aaf88bb462a223a65b9f10ff6038b156a343b5",
+        "version": 1
+      },
+      "pose_estimation/cam0": {
+        "mode": "load",
+        "artifact_id": "fa9aaf5bd9817da04f7ac3ad4d06413ecae97644d8f25592862c510500b96985",
+        "execution_key": "7f89d885fae67a6f87637da3751c418f238b1ca73f057c583e80e5a47b094617",
+        "path": "components/pose_estimation/fa9aaf5bd9817da04f7ac3ad4d06413ecae97644d8f25592862c510500b96985/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "08a3ccb8c794da09f8368d32ba8539bee5a9030ec5509591c6048d49f2ab5314",
+        "version": 1
+      },
+      "pose_estimation/cam1": {
+        "mode": "load",
+        "artifact_id": "5e0bb8ec00e854e8158c3ffedb3f16259929985ba90e4faf4f0a3bf4fd56a050",
+        "execution_key": "72b10364a25c4210b14c713f5b2e08ea1304926e21cb4599c1e6d0d2eeeec3fa",
+        "path": "components/pose_estimation/5e0bb8ec00e854e8158c3ffedb3f16259929985ba90e4faf4f0a3bf4fd56a050/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "7bfc9e860af39d34057ca95954753a7b7f84c851616fef74394b0a794a7e4e62",
+        "version": 1
+      },
+      "pose_estimation/cam2": {
+        "mode": "load",
+        "artifact_id": "6d2154ce60823fdd1ca5efd3adcf2a74da31ff05c52c9336755048d4307fa262",
+        "execution_key": "04805c8e3390a932a1bd04ad13e9bb21aad9e26c7074ecc609a0fba68d27fe8e",
+        "path": "components/pose_estimation/6d2154ce60823fdd1ca5efd3adcf2a74da31ff05c52c9336755048d4307fa262/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "aa10301b913374c3cbf80bd3abfe10dca2fa38bf75a24460f49d96c9e9edce1f",
+        "version": 1
+      },
+      "pose_estimation/cam3": {
+        "mode": "load",
+        "artifact_id": "969b97852ff916ad9fb08260d9f6febc1a340709a427a199ac0bb8b8a05f4a09",
+        "execution_key": "5f18cfd89b83891bcd0fc5d3690dc5f6641b40dc08dee3e5abfd53d8eb3a1f18",
+        "path": "components/pose_estimation/969b97852ff916ad9fb08260d9f6febc1a340709a427a199ac0bb8b8a05f4a09/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "c4c79c95508be9a574d9f9ecc61681d1ca40c4bf81d9715dea5cc01de5fee412",
+        "version": 1
+      }
+    }
+  },
+  "clip_027": {
+    "non_ball_scene_equal": true,
+    "nodes": {
+      "body_placement": {
+        "mode": "load",
+        "artifact_id": "f9bbf3954ec21ccada88d3f17cf077117d11841415b87f03d0556505ff9a6559",
+        "execution_key": "34409f68c05c6d05f22d03eaa0054086e75a81c6e53a8035c8aa451cf8ce96de",
+        "path": "components/body_placement/f9bbf3954ec21ccada88d3f17cf077117d11841415b87f03d0556505ff9a6559/body_placement.json",
+        "schema": "placed_bodies",
+        "sha256": "145f7bafd243fd5dfe8142ceed1ac267a566f7984969e759191da10d5682872e",
+        "version": 1
+      },
+      "body_view_selection": {
+        "mode": "load",
+        "artifact_id": "3cedccabf28dea0681e445dd1ab7f9b7d96165afb7ef722ca9325ec5117c13f5",
+        "execution_key": "2a982ca92e0a775d21a7130bd92ef944b39c294681d7db6046947d0609d96408",
+        "path": "components/body_view_selection/3cedccabf28dea0681e445dd1ab7f9b7d96165afb7ef722ca9325ec5117c13f5/body_view_selection.json",
+        "schema": "body_view_selection",
+        "sha256": "d271ef9ab77487df43cd5d3308248a3150e21141bff54d35cc036a29cb79062e",
+        "version": 1
+      },
+      "camera_alignment": {
+        "mode": "load",
+        "artifact_id": "4aca23493a6d0984266b973b27257b253aaba58cdeef191fb67e7445788fa00b",
+        "execution_key": "ef37ee93b934a47c8f6fb028d005d87d67ab522acece9099ec8346bf8db566bb",
+        "path": "components/camera_alignment/4aca23493a6d0984266b973b27257b253aaba58cdeef191fb67e7445788fa00b/camera_alignment.json",
+        "schema": "aligned_cameras",
+        "sha256": "5ea67d3d5ca8408d75d4c2bfb35d61dfabfe84059ff8588ddb6cf610fb26c925",
+        "version": 1
+      },
+      "court_calibration": {
+        "mode": "load",
+        "artifact_id": "922612953c3e930861e37b526aaf8dd3af6c85ebcd2ae49486b59c95101fac35",
+        "execution_key": "ed6cf1de1e5e22c92a8a882b18a11d5e0fa3fd390d8ea1f25c93a269673f4a74",
+        "path": "components/court_calibration/922612953c3e930861e37b526aaf8dd3af6c85ebcd2ae49486b59c95101fac35/court_calibration.json",
+        "schema": "local_court_calibration",
+        "sha256": "a6c390d9b5f4f80c91ff61135b2f2ff200055f56031c072d55709ae29758f377",
+        "version": 1
+      },
+      "court_detection/cam0": {
+        "mode": "load",
+        "artifact_id": "e61b34dad1125e76d743636e34ec47c36fb6b63b028d73e862e0fe95fa4a7620",
+        "execution_key": "f02f10de2ab43b4166975a3127c2e61e7b571462ed41cb493946595282bfd2b0",
+        "path": "components/court_detection/e61b34dad1125e76d743636e34ec47c36fb6b63b028d73e862e0fe95fa4a7620/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "ca8c55bcfc7933de0627eb3cdd484da25f1f742da7ce20e5c3c037e3cfa56fa1",
+        "version": 3
+      },
+      "court_detection/cam1": {
+        "mode": "load",
+        "artifact_id": "4d826a2d86c5428e2d57c851c653511483adc0fe5440e797f6f5d698dd015659",
+        "execution_key": "cfc0cb44edbfdbb8c7cb9687d94afb1ae245fb95544dcb0c00f636d1e4ea2f50",
+        "path": "components/court_detection/4d826a2d86c5428e2d57c851c653511483adc0fe5440e797f6f5d698dd015659/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "74976157b6b279b83dbde1657cbedf78b8df50273f47c575ebb424522b6660c9",
+        "version": 3
+      },
+      "court_detection/cam2": {
+        "mode": "load",
+        "artifact_id": "3749515a87d2636120cdecd1f19ecd63933e88e3bc5f3c99e69c5a02d31886bd",
+        "execution_key": "622af75f6910a987a49adce52f0139a3dabf9425682bcf936048b349f1a199c1",
+        "path": "components/court_detection/3749515a87d2636120cdecd1f19ecd63933e88e3bc5f3c99e69c5a02d31886bd/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "ab11dc14c0b0314e24c3a2f69ca207f684460e5125f53c8cd22c5d6aebe01fdd",
+        "version": 3
+      },
+      "court_detection/cam3": {
+        "mode": "load",
+        "artifact_id": "2f138ceac5359ee69aa2466a772db13ef994fce6699df14bce452453f88f89e3",
+        "execution_key": "2480a1596d405af616f0960de72ee0ebac8b93e1bc214ca46c2bf1afa937f270",
+        "path": "components/court_detection/2f138ceac5359ee69aa2466a772db13ef994fce6699df14bce452453f88f89e3/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "76ee7db80e13a5fdef335cf2acc9151df6c890a9a73aa259e56fbc62aef532e6",
+        "version": 3
+      },
+      "court_side": {
+        "mode": "load",
+        "artifact_id": "60a1d2aa041893631ef1f8314b602496b47d388650a70636ec817f7612a26a7f",
+        "execution_key": "53d85f6fc102a660a7088cdbca4aa3a35b11508115461d75f03b8a4bd16542f9",
+        "path": "components/court_side/60a1d2aa041893631ef1f8314b602496b47d388650a70636ec817f7612a26a7f/court_side.json",
+        "schema": "court_side",
+        "sha256": "ba259972ab85485c1e013869e8cdb7a207091b441be594dbb853ccc1923e72b0",
+        "version": 3,
+        "shared_artifact_digest": "a5f987bd59d40a2f20d19d7802a4435748f9e23fb61cddc0bc3a7b704d4cd668",
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "gvhmr": {
+        "mode": "load",
+        "artifact_id": "2bab530617cf3a9cbc0728c5e79d5986d302188a8ae4afb55f04b027a0dedb98",
+        "execution_key": "1daea790488e3cc608605e8a6dc866715a6c143be6036b3ed1decf4ff8719d44",
+        "path": "components/gvhmr/2bab530617cf3a9cbc0728c5e79d5986d302188a8ae4afb55f04b027a0dedb98/gvhmr.json",
+        "schema": "body_parameters",
+        "sha256": "82d67ce041ebcfdabde70bc7c17036e5bb12b25d75691b7dae5a2729d3a9b226",
+        "version": 1
+      },
+      "person_detection/cam0": {
+        "mode": "load",
+        "artifact_id": "96085ecd680a18f6e8b720803a5d7132ad3d21e051c1f513dd6aec3633d3f6fb",
+        "execution_key": "e520a54cb3315bda059f943bc325496c51657008d81863e69c38e1124bad956b",
+        "path": "components/person_detection/96085ecd680a18f6e8b720803a5d7132ad3d21e051c1f513dd6aec3633d3f6fb/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "670e912a9af3d2d138f57c80d3b1d32fa7f4505028c6e9eb0e75256fb620a10e",
+        "version": 2
+      },
+      "person_detection/cam1": {
+        "mode": "load",
+        "artifact_id": "5811e5402b350abdb2a412d1feb2cfd02f0f276b24b3d384141cf079832992a6",
+        "execution_key": "b8a3bf184c263f3b1133e965f4df477ce24508be48a14aa994741c2515d3078a",
+        "path": "components/person_detection/5811e5402b350abdb2a412d1feb2cfd02f0f276b24b3d384141cf079832992a6/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "8b3136af84ed031173dfb46b5aaa73eb07455560504fa7c6ffc409b9b19aa417",
+        "version": 2
+      },
+      "person_detection/cam2": {
+        "mode": "load",
+        "artifact_id": "a07a0006acba7e935c66bbad1974c77003b76722b7fac37e8bb7ae8a96d5feab",
+        "execution_key": "0924f41f7768aeffcdc2486b99fa32c414bceae67678ee780a771e03c577d9c9",
+        "path": "components/person_detection/a07a0006acba7e935c66bbad1974c77003b76722b7fac37e8bb7ae8a96d5feab/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "3543e3382b816b665391222ccf8357783399b3182c004f011578f3293217b412",
+        "version": 2
+      },
+      "person_detection/cam3": {
+        "mode": "load",
+        "artifact_id": "b46b6ebaf0f1f6356d9fcba3b6500cf32d322255b98dc5e8c3710750193665b8",
+        "execution_key": "d6dac5080d7e75fea68667c1d275a99738ebde159bfc81f0bf4e6509619e4d3a",
+        "path": "components/person_detection/b46b6ebaf0f1f6356d9fcba3b6500cf32d322255b98dc5e8c3710750193665b8/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "11e370b08bcaf17d58835bfff844a8f0106b3beca6676a83d94706a4871483c3",
+        "version": 2
+      },
+      "person_tracking/cam0": {
+        "mode": "load",
+        "artifact_id": "8a0ae990a0d6e0ada2fcc16a75cd0dab16964ac06c8326affee109b847e20e26",
+        "execution_key": "b825cd2561ec178aac35029e120a9232e310ab84f985074482e0072c0164b67f",
+        "path": "components/person_tracking/8a0ae990a0d6e0ada2fcc16a75cd0dab16964ac06c8326affee109b847e20e26/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "dbe8ada7f32c38c09eb4abc501db6626fd3a239e9c46075451f249f86299aa8e",
+        "version": 5
+      },
+      "person_tracking/cam1": {
+        "mode": "load",
+        "artifact_id": "3906813b9540612637cf2ac4dd1dbf260b6790eed2b557ed1f90a5dd1a97c20a",
+        "execution_key": "170007d0b59d973406d4048cdc6e387cbd989d0d6c50a90a959b507c8f65b6e8",
+        "path": "components/person_tracking/3906813b9540612637cf2ac4dd1dbf260b6790eed2b557ed1f90a5dd1a97c20a/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "e8c388b736c232cdb2e0859f96f08be49867055afa62b6871f6420844e41840f",
+        "version": 5
+      },
+      "person_tracking/cam2": {
+        "mode": "load",
+        "artifact_id": "9797850fe96877161b1cfb283c34ec593bc1505af8688b821be401c36e30a7cf",
+        "execution_key": "62ae397df91347c53ed5044391a13a9052456f2f62ea08eb5e4afaa8185a6006",
+        "path": "components/person_tracking/9797850fe96877161b1cfb283c34ec593bc1505af8688b821be401c36e30a7cf/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "b4354d5e9a390fdf75bb60c768d851add1b91cacff8c8ad45451e932afc8a7d0",
+        "version": 5
+      },
+      "person_tracking/cam3": {
+        "mode": "load",
+        "artifact_id": "8d6493cbb824edb3149ccd251af87696aa4f014a6d1484141e0c4e881780934e",
+        "execution_key": "9fc38e71798fbc29ac68353d64d05e025fbfa297f9da130e00e6e5e9b97d2633",
+        "path": "components/person_tracking/8d6493cbb824edb3149ccd251af87696aa4f014a6d1484141e0c4e881780934e/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "65e0ab1b2e63e2db682e0fc009581f2e2fffdd9e806d537fc414e2e3c0b624f5",
+        "version": 5
+      },
+      "player_association": {
+        "mode": "load",
+        "artifact_id": "13e05915df6f7189f07dc7b1e47cacf8536de599b46ce6c50f12216cddfd0cb3",
+        "execution_key": "e03a929b78750bfb8998ee28f88b8dfc08f048b3e0b78ea6cd5079d9ba97dc1f",
+        "path": "components/player_association/13e05915df6f7189f07dc7b1e47cacf8536de599b46ce6c50f12216cddfd0cb3/player_association.json",
+        "schema": "person_identities",
+        "sha256": "6baa58603f75a00afed0b2217fd596a67d7060e23b5c51030b8bac9662f72ecc",
+        "version": 3
+      },
+      "player_selection/cam0": {
+        "mode": "load",
+        "artifact_id": "ad15ad979ac79cf625e5ce6ef46d5d52cfe6726118bd4f2052aad68f53110268",
+        "execution_key": "df037fb6e593553a9797796c6695bebdc956d7940ad0a6b8db9203ae1fa843ff",
+        "path": "components/player_selection/ad15ad979ac79cf625e5ce6ef46d5d52cfe6726118bd4f2052aad68f53110268/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "8aa54122549243300fbfb14dacb098e9832d88490010604afbf89aea373b16d2",
+        "version": 2
+      },
+      "player_selection/cam1": {
+        "mode": "load",
+        "artifact_id": "2b81638bf0103dbac6037870ce9e090496fb09eb81692dffea4452c08a57e70f",
+        "execution_key": "9a71bda50260779052de7bf08d4b76b54c43f305426112c2ab154fec9a4bc39f",
+        "path": "components/player_selection/2b81638bf0103dbac6037870ce9e090496fb09eb81692dffea4452c08a57e70f/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "26a1cdb94f5cedf5f2d1e6255b5a92f84b56c7bc7c9544dda5481e7823bbeded",
+        "version": 2
+      },
+      "player_selection/cam2": {
+        "mode": "load",
+        "artifact_id": "7abec1c2388116918c16a7ed113a3486b196c4c9c3d015aae7f096d650d2dfc5",
+        "execution_key": "7af95ed9957926c6d374c838ca2e8bc0c2cd98c97b0fcd077bf1c1a7137117c9",
+        "path": "components/player_selection/7abec1c2388116918c16a7ed113a3486b196c4c9c3d015aae7f096d650d2dfc5/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "16e20864020eaf95b440b976f50fabbf3be0aec6f0aa9d55c486f27ba98808b3",
+        "version": 2
+      },
+      "player_selection/cam3": {
+        "mode": "load",
+        "artifact_id": "7a58e7b0a18e457622c994e21ae0e66995e83f3cd6d5a08a37095315a34317b2",
+        "execution_key": "174ef7fd5e1ead0691d2bc2a533831ee9bfe38d29059b8cd5cc6239a348c6282",
+        "path": "components/player_selection/7a58e7b0a18e457622c994e21ae0e66995e83f3cd6d5a08a37095315a34317b2/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "cc47271cff2d0cc54e4d0cca69c44b22b91c663ab77f6057fd3665046c1d7dc5",
+        "version": 2
+      },
+      "player_triangulation": {
+        "mode": "load",
+        "artifact_id": "5915819f23c7e8616c7c6032a0abfe3c9692154fe11691d4d13405d1ae3fa44c",
+        "execution_key": "55cbd1c5ffd1303f6f744eb6b106b4d7fcb56dea56f514c10103b7c7c8f5e1e4",
+        "path": "components/player_triangulation/5915819f23c7e8616c7c6032a0abfe3c9692154fe11691d4d13405d1ae3fa44c/player_triangulation.json",
+        "schema": "player_skeletons",
+        "sha256": "97737659f6978397f6f77af80b96475ccc46cc86f49c981f7a59faafdd5ea610",
+        "version": 1
+      },
+      "pose_estimation/cam0": {
+        "mode": "load",
+        "artifact_id": "bee1a73fabf833eeb5063375665302f1597ccfc43c7e967a230beb45454a3d3b",
+        "execution_key": "18db98ce99feafd1194aa944a730bfacd1e86d8240aa9e9e3b5f0c1340825c8b",
+        "path": "components/pose_estimation/bee1a73fabf833eeb5063375665302f1597ccfc43c7e967a230beb45454a3d3b/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "25bf2f12497a62274b58255451bd25c5f3bb4cbbdbd0b59ef2493719206e5c91",
+        "version": 1
+      },
+      "pose_estimation/cam1": {
+        "mode": "load",
+        "artifact_id": "f2a09fd5b20a785b5dc8bb39185f56ff2f41b005ec74453c224d0ed28c5935bf",
+        "execution_key": "326a14ea170623381ebf94b32ed7c184dabb3d5b4d249b52e3615cf25c830b02",
+        "path": "components/pose_estimation/f2a09fd5b20a785b5dc8bb39185f56ff2f41b005ec74453c224d0ed28c5935bf/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "63afdb295dfbe2c47f240f1c9ecfff7fe47a7658eef5b1f92669eefb14449b38",
+        "version": 1
+      },
+      "pose_estimation/cam2": {
+        "mode": "load",
+        "artifact_id": "ac8c1f563978e4cd734a4d480db77a907407148c4154566a97237ac6196eefe1",
+        "execution_key": "c34c583f97b42382648d6905c8b3ed7dcaedfb7b5689c01194dbdd31520b42cb",
+        "path": "components/pose_estimation/ac8c1f563978e4cd734a4d480db77a907407148c4154566a97237ac6196eefe1/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "937360524d19f5c157a7cad86511ffc575e05893351767f460d04acbb38326ec",
+        "version": 1
+      },
+      "pose_estimation/cam3": {
+        "mode": "load",
+        "artifact_id": "1c89c7ec31b58804c3acd863d2fd6bf5013c2fc8ca55220907fb8cb5416136b6",
+        "execution_key": "f92481b4f325c8f027051805897a5c9181acd7fa96fcbc64730f6755f5f4da6b",
+        "path": "components/pose_estimation/1c89c7ec31b58804c3acd863d2fd6bf5013c2fc8ca55220907fb8cb5416136b6/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "ea0b3ab760022066115266485d00e7608e68cb97198680c39acd43bc792983ae",
+        "version": 1
+      }
+    }
+  },
+  "clip_037": {
+    "non_ball_scene_equal": true,
+    "nodes": {
+      "body_placement": {
+        "mode": "load",
+        "artifact_id": "cee3e1d146bd5860f1f88d66bba4e283ff8050eeb61c46311a1f2b13ef6adaf4",
+        "execution_key": "3f0dd9bb30e57a7f7240876650533eddcf8b329b5b352e4d6acff76e66629601",
+        "path": "components/body_placement/cee3e1d146bd5860f1f88d66bba4e283ff8050eeb61c46311a1f2b13ef6adaf4/body_placement.json",
+        "schema": "placed_bodies",
+        "sha256": "01d00892ec4138013f34a13f5a1457a307a4785ebb8567d819b949cccb16201c",
+        "version": 1
+      },
+      "body_view_selection": {
+        "mode": "load",
+        "artifact_id": "02cb669e8b65d9080c1ef7c7e76db6d245b0180a11a6118413fe914ba9e98817",
+        "execution_key": "5aa13b77f3d4a8bad0ec907fd9c66d80ba52b615a4e2f5e33b554914eb40d56e",
+        "path": "components/body_view_selection/02cb669e8b65d9080c1ef7c7e76db6d245b0180a11a6118413fe914ba9e98817/body_view_selection.json",
+        "schema": "body_view_selection",
+        "sha256": "3a12afae77685467ea10cdc6f4f8ac02c9268173361775f87ca121e5be83b973",
+        "version": 1
+      },
+      "camera_alignment": {
+        "mode": "load",
+        "artifact_id": "fd7d5777c4090b5958e9bcb96b63e8f13703c9bcb8b1cacb657a248f22f7ded4",
+        "execution_key": "f43911c67787db488a794568e15bc1daf19a330f86841b0420f06c8015c96e5f",
+        "path": "components/camera_alignment/fd7d5777c4090b5958e9bcb96b63e8f13703c9bcb8b1cacb657a248f22f7ded4/camera_alignment.json",
+        "schema": "aligned_cameras",
+        "sha256": "e22fae3ce911902fcc3dccc30e08db7e78f55a54bf56ff936e6d72213ab957d0",
+        "version": 1
+      },
+      "court_calibration": {
+        "mode": "load",
+        "artifact_id": "9ea00c06c70455e08f2732dd005c515ce54d73135113c46bab0a797920e6faa7",
+        "execution_key": "1eec4a248c16a207d6fbc09bb6b7c8061dbdb07cca055febc67c5ca125b841fd",
+        "path": "components/court_calibration/9ea00c06c70455e08f2732dd005c515ce54d73135113c46bab0a797920e6faa7/court_calibration.json",
+        "schema": "local_court_calibration",
+        "sha256": "614b1459c5d87de37fd850094dcd3bcf77f50d8e455a630c87336bd89a5f9f33",
+        "version": 1
+      },
+      "court_detection/cam0": {
+        "mode": "load",
+        "artifact_id": "8cba12bb808d50f581d9ec2415561621df169290431c526243568743b461df5c",
+        "execution_key": "0f2a2c820f5f2f7b40078e6d82eabc1ec432d957f5ef1c63c6b716df47002c29",
+        "path": "components/court_detection/8cba12bb808d50f581d9ec2415561621df169290431c526243568743b461df5c/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "cbd4dcb7e382ca011a95c9f4d174fdeb09d6f4fe83f8f79861fda8132c2bfa93",
+        "version": 3
+      },
+      "court_detection/cam1": {
+        "mode": "load",
+        "artifact_id": "234bae38d2ef4b348a2a44efe6eda357c53a190c60faeefe883dd85cc47af2df",
+        "execution_key": "3d4a44bd5dbebe16576fc5855673a42c18d11afda1dad67dd878ac77b501c55e",
+        "path": "components/court_detection/234bae38d2ef4b348a2a44efe6eda357c53a190c60faeefe883dd85cc47af2df/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "3e0dfb7832ccdc4cd340791a8fd9009cd4e6c6ccc53b9dd5b883c775a97d0a32",
+        "version": 3
+      },
+      "court_detection/cam2": {
+        "mode": "load",
+        "artifact_id": "9a10370de403e280158d462f1db9af99b0f2e628a70c77421a6550c6ad365e13",
+        "execution_key": "4c5aa45d6cb60639548bfb261eabf0724dbfd8b83f11c0ff726d57914359fea6",
+        "path": "components/court_detection/9a10370de403e280158d462f1db9af99b0f2e628a70c77421a6550c6ad365e13/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "d07570ee9fb3ba9a83d5d8af9e1ba8735f42f05def91c4e4ee8457575b999dd6",
+        "version": 3
+      },
+      "court_detection/cam3": {
+        "mode": "load",
+        "artifact_id": "040b028a319bb34f611863804f4d3b2171c8bbde425953a32a30422562a99c46",
+        "execution_key": "1892d6f24e7b3599a4b9ae307e84e19062d81a8bf50b596734b0be6ead066b06",
+        "path": "components/court_detection/040b028a319bb34f611863804f4d3b2171c8bbde425953a32a30422562a99c46/court_detection.json",
+        "schema": "court_observations",
+        "sha256": "ea9c09b4b77f6e8b4ba6922c5753a3157a77c1350e4c2c0914dbb3e344fe29ad",
+        "version": 3
+      },
+      "court_side": {
+        "mode": "load",
+        "artifact_id": "08932be6ec62ebfe4ec9db9a9df4c01ec8ec5c966893ad7f4dc289ea21aaa44b",
+        "execution_key": "020aad7e5f7033280c8e3b10d3dfac1d94937467824d399c98c09cfb0490e06f",
+        "path": "components/court_side/08932be6ec62ebfe4ec9db9a9df4c01ec8ec5c966893ad7f4dc289ea21aaa44b/court_side.json",
+        "schema": "court_side",
+        "sha256": "27b843c086a53e652b0d23910fc578ee2d2d644b8498c1ac1ec141e7d935e727",
+        "version": 3,
+        "shared_artifact_digest": "a5f987bd59d40a2f20d19d7802a4435748f9e23fb61cddc0bc3a7b704d4cd668",
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "gvhmr": {
+        "mode": "load",
+        "artifact_id": "d96d8d5e720acff825ef3e11b844012e9d95972ac0e9f2b0a3a7ed3d127a5be6",
+        "execution_key": "e30cb7ff2ee1f748e25a2b20509ed83f09bb816126df7f40b09f732f14f2ec94",
+        "path": "components/gvhmr/d96d8d5e720acff825ef3e11b844012e9d95972ac0e9f2b0a3a7ed3d127a5be6/gvhmr.json",
+        "schema": "body_parameters",
+        "sha256": "c170b0de746ba19fbdb5cd1a3159f88b5b325442d388d0b2ea9d9491a4bdfb52",
+        "version": 1
+      },
+      "person_detection/cam0": {
+        "mode": "load",
+        "artifact_id": "502468fe8f8d3912d2b222fb126c61881115b9546ea7ecb35b5708f606745320",
+        "execution_key": "42dd5639297dbbbad9991d9e84ade68a052b7ec2d97ff6369c2567bd3339c66c",
+        "path": "components/person_detection/502468fe8f8d3912d2b222fb126c61881115b9546ea7ecb35b5708f606745320/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "d8392f46c88aae1943d854731d606d3c6c897e61e60dd8e8df5da676dbcbfe02",
+        "version": 2
+      },
+      "person_detection/cam1": {
+        "mode": "load",
+        "artifact_id": "26aa59390567f4029e36310bd2f3a466c64ee83f4069d390a8a9341c64816740",
+        "execution_key": "a6d98e7c5cd108e429ad579f53ca7a8d30bf0ab1b905cc0898715e0ed5db5bfa",
+        "path": "components/person_detection/26aa59390567f4029e36310bd2f3a466c64ee83f4069d390a8a9341c64816740/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "c3d3ae5bd175a6bb2559efdbfd82bc0046d9f41cc1fd4e4790e225e36ebd4d7a",
+        "version": 2
+      },
+      "person_detection/cam2": {
+        "mode": "load",
+        "artifact_id": "6e145a5a8c803563a7706e47fdda41eb29f79bfc428c26a5831f0008890462af",
+        "execution_key": "bd7ecfe96df18fd2bd4c92446eb0e772066b3e9f8606e27833cfde86a0032434",
+        "path": "components/person_detection/6e145a5a8c803563a7706e47fdda41eb29f79bfc428c26a5831f0008890462af/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "a091a14945bfa2bd68580719b5a70459a3a21dd278bd215ddf68ece1835a59e8",
+        "version": 2
+      },
+      "person_detection/cam3": {
+        "mode": "load",
+        "artifact_id": "1558e29e114f35e18f4283e26604f37411cc89b74966ce991d4fd5b20c644be4",
+        "execution_key": "17b15f58aa61d99f87c77f3671a34760d24500994e7aac45a91d21ec0c0e4325",
+        "path": "components/person_detection/1558e29e114f35e18f4283e26604f37411cc89b74966ce991d4fd5b20c644be4/person_detection.json",
+        "schema": "person_detections",
+        "sha256": "e85c9ba83f2cbd97b0500cd039fe16bd34f12d2a2766bfa176c1a917afa22c58",
+        "version": 2
+      },
+      "person_tracking/cam0": {
+        "mode": "load",
+        "artifact_id": "d5138880e87b014acb65f07c7caecfec6bcf14d1add8b2bf8bb305e0d00fb181",
+        "execution_key": "6fa2044585bfd33d46449a616b9e3ed2505ebdbbea58d15e7aa37a1cbdf02d2b",
+        "path": "components/person_tracking/d5138880e87b014acb65f07c7caecfec6bcf14d1add8b2bf8bb305e0d00fb181/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "02ded93553e68cdb92b8df13b139b942ab8bdb92dee4d6de2bad8d7b29a1a0fc",
+        "version": 5
+      },
+      "person_tracking/cam1": {
+        "mode": "load",
+        "artifact_id": "5ab3acdd98853c02c580a7506a778d85be08c39ad7c4147a1ab9599c3627378d",
+        "execution_key": "ab142707ac0fad660979d81afdb93c916403565a0a53510e10c2af11abf5c63d",
+        "path": "components/person_tracking/5ab3acdd98853c02c580a7506a778d85be08c39ad7c4147a1ab9599c3627378d/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "bf406d6ee3015d0a6404a834c3453ec820386373c1508ac2898d1d41ec459b60",
+        "version": 5
+      },
+      "person_tracking/cam2": {
+        "mode": "load",
+        "artifact_id": "a88ac856e5b656cb54e9840647fe957fd7eaef7831dcf8594d22a96b6e60ce7b",
+        "execution_key": "1ca6f01533a1a5f5acffe1face3ce91bbd10241c1d1a47e72bab9dc7de1276e3",
+        "path": "components/person_tracking/a88ac856e5b656cb54e9840647fe957fd7eaef7831dcf8594d22a96b6e60ce7b/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "7aeff7bc296b66946d84fdd99cf3e72bdb67ea9d172b81277bb29ca52ff720ab",
+        "version": 5
+      },
+      "person_tracking/cam3": {
+        "mode": "load",
+        "artifact_id": "3a1727bc434c9dc38f8aaa2549d70f92530961e275c5e48ddd608cbc79ae5031",
+        "execution_key": "a9edfcd8db3dd85c38d438183f4b8c9f42b663b239de84d20abb3534de5dd2f9",
+        "path": "components/person_tracking/3a1727bc434c9dc38f8aaa2549d70f92530961e275c5e48ddd608cbc79ae5031/person_tracking.json",
+        "schema": "person_tracks",
+        "sha256": "24030cd8a5db1954b823355a56a8410474f6542a759bee42e351e1c1e728b38e",
+        "version": 5
+      },
+      "player_association": {
+        "mode": "load",
+        "artifact_id": "95ca534f0614b876e94524e710c0903395cfe794f6df1d3ddf5c7fbd03165b28",
+        "execution_key": "259e1e704a72cb3c67b3974e6acd091b12800f0e22a64ceea68c8eb1280ff0f6",
+        "path": "components/player_association/95ca534f0614b876e94524e710c0903395cfe794f6df1d3ddf5c7fbd03165b28/player_association.json",
+        "schema": "person_identities",
+        "sha256": "7757006af52b4ca2dbe97b5b13cf184a59198fd7f976481d3ace71d05e4a9f8c",
+        "version": 3
+      },
+      "player_selection/cam0": {
+        "mode": "load",
+        "artifact_id": "c58896cc0b1d9c08678bd87e38a991eaae5eb287d2e8169f36b4a85391aa46ba",
+        "execution_key": "01c83cdc0fe4366ac83ef72be1235d8b434cbfeccd7d29b7da7e50f6314789f6",
+        "path": "components/player_selection/c58896cc0b1d9c08678bd87e38a991eaae5eb287d2e8169f36b4a85391aa46ba/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "0ab39947cc8193eec19226b409f05fb5818195fb44c244628b47108ba05dcc99",
+        "version": 2
+      },
+      "player_selection/cam1": {
+        "mode": "load",
+        "artifact_id": "f94e7fa4498a8595785d68d01914398e2c1adaa7049d920c32aa0a9dca45bfc0",
+        "execution_key": "eafd49e81c7620850a372aa714ba74d0c4aba2838052d67cb7208ceaec5220fa",
+        "path": "components/player_selection/f94e7fa4498a8595785d68d01914398e2c1adaa7049d920c32aa0a9dca45bfc0/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "62f0d834b297c094ce3b83cc956038c1c9d66159b6f7b5052c95a7fe074cd022",
+        "version": 2
+      },
+      "player_selection/cam2": {
+        "mode": "load",
+        "artifact_id": "e5007b1be3906401cd79d395671fe7b5e428db17a37a0d871bfcd4dccf63b9fa",
+        "execution_key": "f679c026e9313a988bc35c0b85c793f6a0c1b979f8d710420a101de7426471c4",
+        "path": "components/player_selection/e5007b1be3906401cd79d395671fe7b5e428db17a37a0d871bfcd4dccf63b9fa/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "1256b0b2e9b348aea5545a4b74a2bdd59dee1171cd3b2ca94754b0fa46c87974",
+        "version": 2
+      },
+      "player_selection/cam3": {
+        "mode": "load",
+        "artifact_id": "7b799fc724ba60c6018c4c2a3fb2b2c821ea21cdc26d3ddfa239149101071fe0",
+        "execution_key": "5d649168c6913c29525d79029f476004dc4737c69b621d764844ff5ba02f8582",
+        "path": "components/player_selection/7b799fc724ba60c6018c4c2a3fb2b2c821ea21cdc26d3ddfa239149101071fe0/player_selection.json",
+        "schema": "selected_player_tracks",
+        "sha256": "b65045c20274b0bdeebd1bed7fd447502a5f547645740191deea6a336003c18f",
+        "version": 2
+      },
+      "player_triangulation": {
+        "mode": "load",
+        "artifact_id": "07c113980a1b4f7e6649fceba35dbf01d06b9d71cbcac2f19349ddf93226420b",
+        "execution_key": "0053263908ba4d8efea4365762d167a31118acd038b36701b412713c6cc19e53",
+        "path": "components/player_triangulation/07c113980a1b4f7e6649fceba35dbf01d06b9d71cbcac2f19349ddf93226420b/player_triangulation.json",
+        "schema": "player_skeletons",
+        "sha256": "3b7c5a367f3028e563653c69779ed35013865ba928633008924ed9ec916df129",
+        "version": 1
+      },
+      "pose_estimation/cam0": {
+        "mode": "load",
+        "artifact_id": "c433e60a00dc84d05a66248df69e290c92bdb44340d37d8dcda71b5c943cf645",
+        "execution_key": "90b2d3bc31e03e7427c2cf52878e745b2ff67f0a4ce006578f5037475a3d2c19",
+        "path": "components/pose_estimation/c433e60a00dc84d05a66248df69e290c92bdb44340d37d8dcda71b5c943cf645/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "8771c9d2e6a60208be539c50a5e4cfd83d8f0bb8fdfe2b095fe814852fa4283e",
+        "version": 1
+      },
+      "pose_estimation/cam1": {
+        "mode": "load",
+        "artifact_id": "7b08f6c5d1fe5dedf6f1ff1e326f587d34f587b68aed418c6dc4e500b92379f7",
+        "execution_key": "b0974c4fabd26595dbc97213a355d1de7e77b6174b88295b62da99f1b86f751a",
+        "path": "components/pose_estimation/7b08f6c5d1fe5dedf6f1ff1e326f587d34f587b68aed418c6dc4e500b92379f7/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "027df7fa2f1453ce8456c414749820fafc77c820c501e62a3d61f2f12d574b40",
+        "version": 1
+      },
+      "pose_estimation/cam2": {
+        "mode": "load",
+        "artifact_id": "5be37ff766529bac25848116f18b67355806cafef8cd3cdea8258ed5ef119b9e",
+        "execution_key": "67ba84aafb67b746b158fd7d0b73ef52399fa2e341e9affc94b9a75c40902b3a",
+        "path": "components/pose_estimation/5be37ff766529bac25848116f18b67355806cafef8cd3cdea8258ed5ef119b9e/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "c525c12aaf44e9121ffcf20641669dbe5e2b6ea014686217d2734606a78150e0",
+        "version": 1
+      },
+      "pose_estimation/cam3": {
+        "mode": "load",
+        "artifact_id": "7b17b518947546cddbb4f3a81463ab4700415f265bd83357787db5460d30be5b",
+        "execution_key": "e7b4afe39ffd24b3dfe0bff7cb8a572ad5ee8cc43a2ab16a022a2d541bbe81db",
+        "path": "components/pose_estimation/7b17b518947546cddbb4f3a81463ab4700415f265bd83357787db5460d30be5b/pose_estimation.json",
+        "schema": "person_poses",
+        "sha256": "08b231448c5e548f9b39c46c77fcfb124681fafe5c94fe52284745957ec58ca2",
+        "version": 1
+      }
+    }
+  }
+}
