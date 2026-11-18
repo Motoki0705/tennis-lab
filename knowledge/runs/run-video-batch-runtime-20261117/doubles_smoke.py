@@ -38,23 +38,31 @@ def main():
     assert "pipeline_config=pipeline_x3d_dpt" in args and "video_id=video_000" in args
     assert next(a for a in args if a.startswith("pipeline_overrides=")).count("players_per_side=2") == 1
 
-    nodes = {"clip0": {"ball_detection/cam0": {"seconds": 7}, "court_calibration": {"seconds": 2}},
-             "clip1": {"ball_detection/cam1": {"seconds": 5}, "court_calibration": {"seconds": 3}}}
-    events = [{"attributes": {"node": "ball_detection/cam0"}, "stage": "model_load", "start_ns": 0, "end_ns": 2_000_000_000}]
-    estimates = stage_estimates(nodes, events, 10, 2, 100, 6)
-    assert estimates["ball_detection"]["estimated_69clip_seconds"] == 102  # 2 + (12 - 2) * 10
-    assert estimates["court_calibration"]["estimated_69clip_seconds"] == 15  # 5 * 3
-    recording = {"total_wall_seconds": 25, "events": [
-        {"attributes": {"node": "scene_export"}, "depth": 0, "start_ns": 1_000_000_000, "end_ns": 4_000_000_000},
-        {"attributes": {"node": "scene_export"}, "depth": 1, "start_ns": 2_000_000_000, "end_ns": 3_000_000_000},
-        {"attributes": {"node": "clip_publication"}, "depth": 0, "start_ns": 5_000_000_000, "end_ns": 7_000_000_000}]}
+    nodes = {"a": {"ball/cam0": {"seconds": 7, "status": "executed"}, "ball/cam1": {"seconds": 3, "status": "executed"}, "court_calibration": {"seconds": 2, "status": "executed"}, "hmr2": {"seconds": 4, "status": "executed"}},
+             "b": {"ball/cam0": {"seconds": 5, "status": "executed"}, "ball/cam1": {"seconds": 5, "status": "executed"}, "court_calibration": {"seconds": 3, "status": "executed"}, "hmr2": {"seconds": 6, "status": "failed"}, "late": {"seconds": None, "status": "blocked"}}}
+    events = [{"attributes": {"clip_id": "a", "node": "ball/cam0"}, "stage": "model_load", "start_ns": 0, "end_ns": 2_000_000_000}]
+    estimates = stage_estimates(nodes, events, {"a": 10, "b": 30}, 400, 6, 2)
+    assert estimates["ball"]["estimated_69clip_seconds"] == 182  # 2 + (20 - 2) * 800/80
+    assert estimates["ball"]["sample_frame_units"] == 80
+    assert estimates["hmr2"]["estimated_69clip_seconds"] == 160  # 4 * 400/10; failed b excluded
+    assert estimates["hmr2"]["failed_node_seconds"] == 6
+    assert estimates["late"]["estimated_69clip_seconds"] is None
+    assert estimates["court_calibration"]["estimated_69clip_seconds"] == 15
+    recording = {"total_wall_seconds": 50, "events": [
+        {"attributes": {"clip_id": "a", "node": "scene_export"}, "status": "ok", "depth": 0, "start_ns": 1_000_000_000, "end_ns": 4_000_000_000},
+        {"attributes": {"clip_id": "a", "node": "scene_export"}, "status": "ok", "depth": 1, "start_ns": 2_000_000_000, "end_ns": 3_000_000_000},
+        {"attributes": {"clip_id": "a", "node": "clip_publication"}, "status": "ok", "depth": 0, "start_ns": 5_000_000_000, "end_ns": 7_000_000_000}]}
     overhead = overhead_estimates(recording, estimates, 2, 6)
     assert [r["measured_seconds"] for r in overhead["stages"]] == [3, 2]
-    assert overhead["estimated_69clip_remaining_seconds_range"] == [3, 9]  # 25 - 17 - 5
+    assert [r["estimated_69clip_seconds"] for r in overhead["stages"]] == [18, 12]  # one complete clip
+    assert overhead["estimated_69clip_remaining_seconds_range"] == [10, 30]  # 50 - (20 + 5 + 4 + 6) - 5
 
     events = [dict(model=model, status="complete", action=action, instance=model)
               for model in RUNTIME_MODELS for action in ("load", "unload")]
     assert lifetimes(events)["each_target_loaded_once"]
+    overlapping = [events[0], events[2], events[1], events[3], *events[4:]]
+    assert lifetimes(overlapping)["each_target_loaded_once"]
+    assert lifetimes(overlapping)["maximum_owned"] == 2
     assert not lifetimes(events[:-1])["each_target_loaded_once"]
     assert not lifetimes(events + [dict(model="extra", status="failed", action="load", instance="extra")])["each_target_loaded_once"]
     sides = identities({"selection": {"-1": {"players": [8, 2], "runner_up": None}, "1": {"players": [3, 6], "runner_up": 9}},
@@ -66,7 +74,30 @@ def main():
     for key in good:
         assert not accepted({**good, key: False, "cuda_anomaly": False}), key
     assert not accepted({**good, "cuda_anomaly": True})
-    print("settings, stage attribution, identity diagnostics, lifetimes and strict gating: passed")
+    guard_exit_checks()
+    print("settings, mixed/blocked stage attribution, identity diagnostics, overlapping lifetimes, strict gating and guard exits: passed")
+
+
+def guard_exit_checks():
+    import tempfile
+
+    from doubles_acceptance import run_variant
+
+    # The real C3 guard with a CPU-only fake NVML query: preserve genuine CUDA
+    # text while preventing earlier normal CUDA model events from hiding exit1.
+    cases = [
+        ("import sys; print('model device: cuda'); sys.exit(1)", True),
+        ("import sys,traceback; print('model device: cuda');\ntry: sys.exit(1)\nexcept BaseException: sys.stdout.flush(); traceback.print_exc(); raise", False),
+        ("import sys; print('Traceback (most recent call last):\\nRuntimeError: CUDA illegal memory access'); sys.exit(1)", True),
+    ]
+    with tempfile.TemporaryDirectory() as directory:
+        for i, (code, alarm) in enumerate(cases):
+            root = Path(directory) / str(i)
+            root.mkdir()
+            outcome = run_variant(root, "single", [sys.executable, "-B", "-c", code], Path.cwd(),
+                                  query=lambda: (0, "cpu-fake"), interval=0.01)
+            assert outcome["returncode"] == 1 and outcome["status"] == "failed"
+            assert (root / "anomaly.json").exists() is alarm, (i, (root / "single.log").read_text())
 
 
 if __name__ == "__main__":

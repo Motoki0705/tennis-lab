@@ -50,9 +50,9 @@ def overrides():
     return [*settings["overrides"], "player_association.players_per_side=2"]
 
 
-def arguments(root, phase, clips):
+def arguments(root, phase, clips, *, data_root=None):
     settings = json.loads(SETTINGS.read_text())
-    values = [f"paths.data_root={root}", f"paths.output_root={root}",
+    values = [f"paths.data_root={root if data_root is None else data_root}", f"paths.output_root={root}",
         f"paths.artifact_root={common_root() / settings['artifact_root_from_main']}",
         f"dataset_directory=datasets/{phase}", "overwrite=true", "continue_on_error=true",
         "clip_ids=" + json.dumps(list(clips), separators=(",", ":")),
@@ -111,7 +111,7 @@ def verify(root):
     return manifest
 
 
-def worker(root, phase, clips):
+def worker(root, phase, clips, *, data_root=None):
     # C3's proven observer registers all-thread faulthandler before heavy imports.
     import benchmark as observer_module
     import numpy as np
@@ -139,6 +139,7 @@ def worker(root, phase, clips):
     state = {"phase": phase, "status": "running", "started_at_utc": utc(), "clips": list(clips),
         "pipeline_config": "pipeline_x3d_dpt", "pipeline_overrides": overrides(),
         "single_preset_adapter": phase == "single", "cuda_recording_devices": ["cuda:0"]}
+    state["data_root"] = str(root if data_root is None else data_root)
 
     @contextmanager
     def lifecycle(action, model, **attributes):
@@ -181,7 +182,7 @@ def worker(root, phase, clips):
               patch.object(video_batch, "publish_annotation", side_effect=publication),
               patch.object(pseudo_annotation, "publish_annotation", side_effect=publication),
               patch.object(PlanExecutor, "finalize_clip", finalize)):
-            sys.argv = [f"tennis_scene.{phase}", *arguments(root, phase, clips)]
+            sys.argv = [f"tennis_scene.{phase}", *arguments(root, phase, clips, data_root=data_root)]
             if phase == "batch":
                 from src.tennis_scene.scripts.run_video_batch import main
                 main()
@@ -198,6 +199,10 @@ def worker(root, phase, clips):
     except BaseException as error:
         sys.setprofile(None)
         detail = traceback.format_exc()
+        # SystemExit normally suppresses its traceback. The external guard must
+        # inspect the actual exit, not earlier normal model events saying cuda.
+        sys.stdout.flush()
+        print(detail, file=sys.stderr, flush=True)
         state.update(status="failed", error_type=type(error).__name__, error=str(error), traceback=detail)
         if observer_module.cuda_failure(detail):
             observer.cuda_error_seen = True
@@ -291,6 +296,7 @@ def main():
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--expect-commit")
     parser.add_argument("--phase", choices=("batch", "single"))
+    parser.add_argument("--data-root", type=Path)
     parser.add_argument("--clip-ids", nargs="+")
     options = parser.parse_args()
     root = options.root.resolve()
@@ -302,7 +308,7 @@ def main():
     if options.action == "worker":
         if options.phase is None or not options.clip_ids:
             parser.error("worker requires --phase and --clip-ids")
-        return worker(root, options.phase, tuple(options.clip_ids))
+        return worker(root, options.phase, tuple(options.clip_ids), data_root=options.data_root)
     if options.action == "report":
         from doubles_analysis import report
         print(json.dumps(report(root), indent=2))
