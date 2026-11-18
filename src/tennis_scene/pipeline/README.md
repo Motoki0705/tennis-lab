@@ -133,6 +133,13 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 `person_detections` v2のcheckpoint hash・全画面scopeがartifact identityと下流の依存参照を変える。
 旧ROI検出・pose・文脈を新しい経路の成果物として再利用できない。
 
+`people_models.runtime.dino_detector.precision` と `people_models.runtime.vitpose.precision` に
+`fp32`（既定）、`bf16`、`fp16` を個別に指定できる。半精度はモデルforwardのautocastで選び、
+ViTPoseのheatmap復号とDINOのscore・box復号はFP32で行う。DINOの変形可能アテンションは
+CUDA拡張の入力dtypeに合わせて、混合精度条件でもブロック全体をFP32で実行する。
+CUDAのBF16にはネイティブ対応GPUが必要で、ViTPoseのBF16はCPUでも利用できる。
+精度と `people_models.runtime.vitpose.flip_test` は各段のartifact identityに含まれる。
+
 標準追跡は`person_tracking.method=strongsort_pp_pose`だけを受け付ける。StrongSORT++＋pose/CLIPのrun 10固定profileを
 productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。
 `person_tracks` v5は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。

@@ -137,6 +137,47 @@ def build_dino(
     return model, criterion
 
 
+class _FP32DeformableAttention(torch.nn.Module):
+    """Run the pinned CUDA op and its attention block with FP32 operands."""
+
+    def __init__(self, attention: torch.nn.Module) -> None:
+        super().__init__()
+        self.attention = attention
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        reference_points: torch.Tensor,
+        input_flatten: torch.Tensor,
+        input_spatial_shapes: torch.Tensor,
+        input_level_start_index: torch.Tensor,
+        input_padding_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        with torch.autocast(query.device.type, enabled=False):
+            return self.attention(
+                query.float(), reference_points.float(), input_flatten.float(),
+                input_spatial_shapes, input_level_start_index, input_padding_mask,
+            )
+
+
+def use_fp32_deformable_attention(model: torch.nn.Module) -> None:
+    """Wrap this model's attention after strict checkpoint load.
+
+    The pinned kernel dispatches only float/double. Keeping the whole block in
+    FP32 also keeps its sampling locations and attention weights in the same
+    dtype as its values. The upstream package and training path stay untouched.
+    """
+    upstream = sys.modules[f"{_DINO_MODELS_PACKAGE}.dino.ops.modules"]
+    attention_type = upstream.MSDeformAttn
+    layers = [(name, module) for name, module in model.named_modules()
+              if isinstance(module, attention_type)]
+    if not layers:
+        raise RuntimeError("Mixed precision DINO requires the pinned MSDeformAttn layers")
+    for name, attention in layers:
+        parent, _, attribute = name.rpartition(".")
+        setattr(model.get_submodule(parent), attribute, _FP32DeformableAttention(attention))
+
+
 def load_dino_state_dict(checkpoint: Path) -> dict[str, torch.Tensor]:
     """Read a DINO-format checkpoint (``{"model", "args"}``) after validation."""
     if not checkpoint.is_file():

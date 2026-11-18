@@ -10,14 +10,16 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.submodules.configuration import require_absolute_path
+from src.submodules.configuration import InferencePrecision, require_absolute_path
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.models._base.precision import autocast_dtype
 from src.submodules.models.dino.architecture import (
     COCO_PERSON_CLASS_ID,
     build_dino,
     dino_4scale_swin_args,
     load_dino_state_dict,
     preprocess_frame,
+    use_fp32_deformable_attention,
 )
 from src.utils.inference_recording import span
 
@@ -55,6 +57,7 @@ class DinoPersonDetector(
         confidence: float,
         short_side: int,
         max_long_side: int,
+        precision: InferencePrecision = "fp32",
     ) -> None:
         super().__init__(device)
         if type(confidence) is not float:
@@ -73,6 +76,9 @@ class DinoPersonDetector(
         self.confidence = confidence
         self.short_side = short_side
         self.max_long_side = max_long_side
+        if precision != "fp32" and self.device.type != "cuda":
+            raise ValueError("Mixed precision DINO requires a CUDA device")
+        self._autocast_dtype = autocast_dtype(precision, self.device)
         self._model: torch.nn.Module | None = None
 
     def recording_assets(self) -> dict[str, Path]:
@@ -88,6 +94,8 @@ class DinoPersonDetector(
             self.repository, dino_4scale_swin_args(self.device, use_checkpoint=False)
         )
         model.load_state_dict(state_dict, strict=True)
+        if self._autocast_dtype is not None:
+            use_fp32_deformable_attention(model)
         self._model = model.to(self.device).eval()
 
     def _unload_impl(self) -> None:
@@ -161,10 +169,15 @@ class DinoPersonDetector(
             batch = torch.stack(list(images))
         with span("transfer", model="DINO"):
             batch = batch.to(self.device)
-        with span("inference", model="DINO", batch_shape=list(batch.shape)):
+        with (
+            span("inference", model="DINO", batch_shape=list(batch.shape)),
+            torch.autocast(self.device.type, dtype=self._autocast_dtype, enabled=self._autocast_dtype is not None),
+        ):
             output = self._model(batch)
         del batch
         with span("postprocess", model="DINO"):
+            if self._autocast_dtype is not None:
+                output = {key: output[key].float() for key in ("pred_logits", "pred_boxes")}
             return decode_person_detections(
                 output, image_sizes=image_sizes, confidence=self.confidence
             )

@@ -62,10 +62,12 @@ def make_submodule_runtime(
             confidence=dino_confidence,
             short_side=800,
             max_long_side=1333,
+            precision="fp32",
         ),
         vitpose=ViTPoseRuntimeConfig(
             flip_test=True,
             batch_size=8,
+            precision="fp32",
             head=ViTPoseHeadConfig(
                 in_channels=1280,
                 out_channels=17,

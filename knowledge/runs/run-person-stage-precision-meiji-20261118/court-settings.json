@@ -1,0 +1,14 @@
+{
+  "artifact_root_from_main": ".worktree-outputs/court-video-shared",
+  "overrides": [
+    "court_kp.mode=video_shared",
+    "court_kp.video_shared.action=load",
+    "court_kp.video_shared.directory=tennis_scene/evaluate/court-video-shared-acceptance-20261117/store",
+    "court_kp.video_shared.dataset_id=meiji_4cam",
+    "court_kp.video_shared.video_id=video_000",
+    "court_kp.video_shared.artifact_digest=4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+    "court_kp.video_shared.drift_directory=tennis_scene/evaluate/court-video-drift-lines-20261117/drift-store",
+    "court_kp.video_shared.drift_digest=7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+    "court_kp.video_shared.unobservable_policy=warn"
+  ]
+}

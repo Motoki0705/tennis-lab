@@ -19,6 +19,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_resources import precision_dtype
 from src.utils.video import OpenCVVideoFrameReader
 
 
@@ -64,11 +65,12 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
     def model_specs(self) -> dict[str, ModelSpec[DinoPersonDetector]]:
         config = self.config
         return {} if not self.enabled else {"detector": ModelSpec(
-            "dino", {"checkpoint": config.dino_checkpoint}, "dino_4scale_swin_l", config.runtime.device, "float32",
+            "dino", {"checkpoint": config.dino_checkpoint}, "dino_4scale_swin_l", config.runtime.device, precision_dtype(config.runtime.dino_detector.precision),
             {"runtime": config.runtime.dino_detector, "repository": str(config.dino_repository)},
             lambda: DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
                 device=config.runtime.device, confidence=config.runtime.dino_detector.confidence,
-                short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side),
+                short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side,
+                precision=config.runtime.dino_detector.precision),
             initialize=lambda model: model.load(), release=lambda model: model.unload())}
 
     def process_with_models(self, inputs: PersonDetectionInput, models: ModelBorrower) -> PersonDetectionOutput:
