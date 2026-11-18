@@ -40,6 +40,7 @@ execution:
   player_triangulation: execute
   ball_triangulation: execute
   body_view_selection: execute
+  hmr2_features: execute
   gvhmr: execute
   body_placement: execute
   scene_assembly: execute

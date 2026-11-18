@@ -23,6 +23,7 @@ from tests.unit.tennis_scene.pipeline.config_factories import (
     fake_encoder_spec,
     make_people_config,
     materialize_model_weights,
+    model_component,
 )
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     materialize_assets,
@@ -48,6 +49,7 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
     source = ClipSource('test', tuple(SourceVideo(f'cam{i}', tmp_path / f'{i}.mp4', 'hash', 5, 30., 1920, 1080) for i in range(3)))
     nodes = {n.name: n for n in standard_definition(cfg, source, code_identity='test')}
     node = nodes['person_tracking/cam0']
+    assert isinstance(node.component, module.PersonTrackingModule)
     assert node.component.config == cfg.tracking
     assert node.io.version == 7 and node.io.inputs['detections'].version == 2
     assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 7
@@ -55,14 +57,15 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
     # across CLIP consumers; assembling it must not instantiate any model.
     for stage, alias in [('court_detection', 'court'), ('ball_detection', 'ball'),
                          ('person_detection', 'detector'), ('person_pose_features', 'pose')]:
-        assert len({nodes[f'{stage}/cam{i}'].component.model_specs()[alias].key for i in range(3)}) == 1
-    encoder_keys = {nodes[f'{stage}/cam{i}'].component.model_specs()['encoder'].key
+        assert len({model_component(nodes[f'{stage}/cam{i}']).model_specs()[alias].key for i in range(3)}) == 1
+    encoder_keys = {model_component(nodes[f'{stage}/cam{i}']).model_specs()['encoder'].key
                     for stage in ('person_appearance_features', 'player_selection') for i in range(3)}
-    encoder_keys.add(nodes['player_association'].component.model_specs()['encoder'].key)
+    encoder_keys.add(model_component(nodes['player_association']).model_specs()['encoder'].key)
     assert len(encoder_keys) == 1
-    assert nodes['pose_estimation/cam0'].component.model_specs() == {}
-    assert set(nodes['gvhmr'].component.model_specs()) == ({'features', 'mesh'} if body_enabled else set())
-    assert set(nodes['body_placement'].component.model_specs()) == ({'body'} if body_enabled else set())
+    assert model_component(nodes['pose_estimation/cam0']).model_specs() == {}
+    assert set(model_component(nodes['hmr2_features']).model_specs()) == ({'features'} if body_enabled else set())
+    assert set(model_component(nodes['gvhmr']).model_specs()) == ({'mesh'} if body_enabled else set())
+    assert set(model_component(nodes['body_placement']).model_specs()) == ({'body'} if body_enabled else set())
     cfg.aflink_checkpoint.unlink()
     with pytest.raises(FileNotFoundError, match='AFLink'):
         standard_definition(cfg, source, code_identity='test')

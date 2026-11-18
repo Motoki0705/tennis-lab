@@ -1,0 +1,11 @@
+{
+  "base_ref": "1bef628a9c2c5761d241ddc5c1b98c0f89625b35",
+  "cpu_passed": 1216,
+  "cpu_wall_seconds": 50.18,
+  "central_case_max_call_seconds_displayed": 1.05,
+  "existing_gallery_case_seconds": 7.04,
+  "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' .venv/bin/python -B -m pytest tests/unit/tennis_scene tests/integration/tennis_scene --durations=0",
+  "raw_log": "outputs/hmr2_feature_acceptance_20261117/final-tests.log",
+  "raw_log_bytes": 443614,
+  "raw_log_sha256": "c938589ba205c08ec1e09c09a73612d4d4f4ee76248aa2b69633eb06141474aa"
+}

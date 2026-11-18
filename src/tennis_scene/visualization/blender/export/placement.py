@@ -381,7 +381,8 @@ def _read_placement_inputs(
         reader,
         "gvhmr",
         schema="body_parameters",
-        version=1,
+        # Identical parameter payload; v2 additionally binds saved HMR2 features.
+        version=(1, 2),
         output_type=GVHMROutput,
     )
     placed_output, placed_descriptor = _read_artifact(

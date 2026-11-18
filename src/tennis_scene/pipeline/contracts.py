@@ -16,7 +16,7 @@ OutputCo = TypeVar("OutputCo", covariant=True)
 STANDARD_COMPONENTS = (
     "court_detection", "court_calibration", "person_detection", "person_pose_features", "person_appearance_features", "person_tracking", "player_selection", "pose_estimation",
     "ball_detection", "ball_points", "player_association", "court_side", "camera_alignment", "player_triangulation",
-    "ball_triangulation", "body_view_selection", "gvhmr", "body_placement", "scene_assembly",
+    "ball_triangulation", "body_view_selection", "hmr2_features", "gvhmr", "body_placement", "scene_assembly",
 )
 
 
@@ -92,6 +92,13 @@ class ComponentIO(Generic[InputT, OutputT]):
     inputs: Mapping[str, InputPort]
     output_schema: str
     version: int = 1
+    # Scheduling only: finish all selected producers of these input schemas
+    # across clips before this component can start. Artifact lineage stays local.
+    after_all_inputs: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if len(set(self.after_all_inputs)) != len(self.after_all_inputs) or not set(self.after_all_inputs) <= self.inputs.keys():
+            raise ValueError("Stage barriers require distinct declared input ports")
 
 
 class Component(Protocol[InputContra, OutputCo]):

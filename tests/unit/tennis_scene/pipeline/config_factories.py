@@ -25,11 +25,17 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPModule,
     CourtKPPostprocessConfig,
 )
+from src.tennis_scene.pipeline.execution_plan import ComponentNode
 from src.tennis_scene.pipeline.inference_runtime import InferenceComponent, ModelSpec
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 
 ComponentT = TypeVar("ComponentT", bound=InferenceComponent[Any, Any])
+
+
+def model_component(node: ComponentNode) -> InferenceComponent[Any, Any]:
+    assert isinstance(node.component, InferenceComponent)
+    return node.component
 
 
 def fake_pose_spec() -> ModelSpec[Any]:

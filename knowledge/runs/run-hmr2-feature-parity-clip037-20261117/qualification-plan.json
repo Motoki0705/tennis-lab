@@ -1,0 +1,18 @@
+{
+  "main_commit": "18a2fea05",
+  "candidate_order": ["clip_037", "clip_038", "clip_036", "clip_040"],
+  "selection": "Start with the shortest nearby clip_037; run one clip at a time and stop screening after one reaches valid body placement. Record the exact stop reason for any unsuccessful candidate.",
+  "match_format": "doubles: two players visible per side in clip_037/cam0 source frame 0",
+  "explicit_setting": "player_association.players_per_side=2",
+  "other_inference_settings": "pipeline defaults; all four cameras; complete clip; frame_sampling.max_frames=1024; no threshold/weight/dtype/batch changes",
+  "allocator_cap_bytes": 10737418240,
+  "comparison_seed": 42,
+  "comparison_tolerances": {
+    "parameters_rad_and_betas": {"atol": 0.00001, "rtol": 0.00001},
+    "position_translation_vertices_m": {"atol": 0.0001, "rtol": 0.00001},
+    "reprojection_px": {"atol": 0.001, "rtol": 0.00001},
+    "ids_frames_masks_rejection_codes": "exact"
+  },
+  "original_reference": "codex/scene-inference-runtime at ab638fb2ab825e84275863552da3f47473e390ed",
+  "required_nonempty_outputs": ["body_view_selection", "gvhmr", "body_placement.players.smpl_valid"]
+}

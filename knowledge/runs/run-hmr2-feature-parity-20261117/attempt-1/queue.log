@@ -1,0 +1,9 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205082819512707576_2026-11-17T12-06-20-487292423Z_966480_hmr2-feature-parity (commit=da5e59e7bda0 provider=codex session=01a1e957-e495-7ef2-81cd-bf26c4ae465a)
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/knowledge/runs/run-hmr2-feature-parity-20261117/compare.py", line 184, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/knowledge/runs/run-hmr2-feature-parity-20261117/compare.py", line 122, in main
+    association = PlayerAssociationModule(ctx.source.camera_ids, cfg.player_association, sampling=CropSamplingConfig(), device=cfg.device, encoder=encoder)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PlayerAssociationModule.__init__() missing 1 required keyword-only argument: 'enabled'
+exit_code=1

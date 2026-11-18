@@ -13,12 +13,14 @@ from src.tennis_scene.pipeline.artifacts import (
     json_value,
     write_json_atomic,
 )
+from src.tennis_scene.pipeline.body_artifacts import require_current_body_artifacts
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.imports import (
     BallAnnotationImporter,
     FixedGeometryImporter,
 )
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
 from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
 
@@ -137,6 +139,9 @@ def saved_scene(
             f"(saved {saved_precision!r}, requested {requested_precision!r})"
         )
     archive = Path(receipt["archive"])
+    required = require_current_body_artifacts(store.root, json_value(store.references()['scene_assembly']))
+    if indexed_scene_path(store.root / 'scene.json', required_components=required) != archive.resolve():
+        raise ValueError('Saved scene archive differs from its current component export')
     if (
         dual_sha256(archive) != receipt["archive_sha256"]
         or dual_sha256(archive.with_suffix(".metadata.json"))

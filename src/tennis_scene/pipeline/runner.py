@@ -80,7 +80,7 @@ class PlanExecutor:
                 key = runtime.select_ready(ready) if self.select_ready is None else self.select_ready(ready)
                 if key not in ready:
                     raise ValueError(f"Selected component is not ready: {key}")
-                self._execute(key, runtime, required)
+                self._execute(key, runtime, required=required)
                 notify(key[0])
         return references
 
@@ -101,9 +101,9 @@ class PlanExecutor:
         if key not in self.plan.required:
             raise ValueError("Targets are outside the execution plan")
         with self._runtime(frozenset({key})) as runtime:
-            return self._execute(key, runtime, frozenset({key}))
+            return self._execute(key, runtime, required=frozenset({key}))
 
-    def _execute(self, key: NodeKey, runtime: InferenceRuntime, required: frozenset[NodeKey]) -> ArtifactRef:
+    def _execute(self, key: NodeKey, runtime: InferenceRuntime, *, required: frozenset[NodeKey] | None = None) -> ArtifactRef:
         plan = self.plan
         if key in plan.references:
             return plan.references[key]

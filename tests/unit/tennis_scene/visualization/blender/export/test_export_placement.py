@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -13,28 +13,63 @@ from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
 from src.submodules.configuration import SmplAssetPaths
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
+from src.tasks.base.generate_dataset import (
+    build_court_view_record,
+    resolve_court_keypoint_contract,
+)
 from src.tennis_scene.motion_alignment.mesh_placement import (
     canonicalize_incam_body,
     interpolate_rotations,
 )
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
-from src.tennis_scene.pipeline.body_types import BodyGeometry, BodyParameters
+from src.tennis_scene.pipeline.artifacts import json_value
+from src.tennis_scene.pipeline.body_types import (
+    BodyGeometry,
+    BodyParameters,
+    BodyRecoveryRequest,
+)
+from src.tennis_scene.pipeline.components.body_placement import BodyPlacementOutput
+from src.tennis_scene.pipeline.components.body_view_selection import (
+    BodySelection,
+    BodyViewSelectionOutput,
+)
+from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmentOutput
+from src.tennis_scene.pipeline.components.camera_geometry import (
+    CalibrationSet,
+    CameraGeometryResult,
+    LocalCourtCalibration,
+)
+from src.tennis_scene.pipeline.components.court_calibration import (
+    CourtCalibrationOutput,
+)
+from src.tennis_scene.pipeline.components.court_kp import CourtKPResult
 from src.tennis_scene.pipeline.components.gvhmr import (
+    GVHMRModule,
     GVHMROutput,
     RecoveredBody,
     RecoveredBodySegment,
 )
+from src.tennis_scene.pipeline.components.hmr2_features import (
+    HMR2BodyFeatures,
+    HMR2FeatureSegment,
+    HMR2FeaturesOutput,
+)
+from src.tennis_scene.pipeline.components.identity import PlayerIdentitiesOutput
 from src.tennis_scene.pipeline.components.player_reconstruction import (
     PlayerSkeleton,
     reconstruct_player_bodies,
     trace_player_placement,
 )
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
+from src.tennis_scene.pipeline.components.triangulation import PlayerTriangulationOutput
 from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
 from src.tennis_scene.pipeline.observation_types import (
     GroupedObservations,
     ObjectObservations,
 )
+from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
+from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.visualization.blender.export.placement import (
     PLACEMENT_BUNDLE_SCHEMA,
     PLACEMENT_SENSOR_WIDTH_MM,
@@ -45,6 +80,11 @@ from src.tennis_scene.visualization.blender.export.placement import (
     _asset_binding,
     _read_artifact,
     export_placement_bundle,
+    read_placement_inputs,
+)
+from src.tennis_scene.visualization.blender.export.placement_ranking import (
+    PlacementRankConfig,
+    rank_placement_candidates,
 )
 from src.tennis_scene.visualization.blender.export.pointcache import read_pc2
 from src.utils.checksum import dual_sha256
@@ -243,10 +283,11 @@ def _dense_parameters(
 
 
 def _build_case(
-    tmp_path: Path, *, adjacent: bool = False, t0: int = 2
+    tmp_path: Path, *, adjacent: bool = False, t0: int = 2,
+    cameras: tuple[PinholeCamera, ...] | None = None,
 ) -> _Case:
     geometry = _FakeGeometry()
-    cameras = _cameras()
+    cameras = _cameras() if cameras is None else cameras
     segments = _segments(adjacent)
     valid = _valid_mask()
     canonical_frames: NDArray[np.float64] = np.zeros((FRAMES, 17, 3), np.float64)
@@ -732,6 +773,94 @@ def test_target_joints_nan_comes_from_trace_not_zeros(tmp_path: Path) -> None:
     )
     invalid = ~case.skeleton.valid[0, trace.frames]
     assert np.isnan(trace.target_joints[invalid]).all()
+
+
+def _publish_placement_store(case: _Case, root: Path, *, body_version: int) -> ClipStore:
+    """Persist typed production outputs, with the current feature ancestry."""
+    inputs = case.inputs
+    store = ClipStore(root, json_value(inputs.source), memory_entries=0)
+    refs: dict[str, ArtifactRef] = {}
+
+    def publish(node: str, schema: str, value: Any, *, version: int = 1,
+                dependencies: Mapping[str, ArtifactRef] | None = None,
+                settings: Mapping[str, Any] | None = None) -> None:
+        refs[node] = store.publish(node, value, ArtifactCodec(type(value)), schema=schema, version=version,
+            identity={'settings': settings or {}}, dependencies=dependencies or {}, provenance={'origin': 'component'})
+
+    contract = resolve_court_keypoint_contract('camera_view_v2')
+    selection = ReferenceViewSelection.create(
+        stable_camera_id_table=StableCameraIdTable.from_complete_scene_camera_ids(inputs.source.camera_ids),
+        selected_views=tuple(build_court_view_record(camera_id=c.camera_id,
+            camera_center_court_m=c.center.tolist(), contract=contract) for c in inputs.cameras), reference_camera_id='cam0')
+    calibration = CalibrationSet(tuple(LocalCourtCalibration(camera, index, 0, np.eye(3), 0.0)
+        for index, camera in enumerate(inputs.cameras)), {})
+    courts = CourtKPResult(np.zeros((2, FRAMES, 14, 2), np.float32), np.ones((2, FRAMES, 14), np.float32),
+        np.arange(FRAMES, dtype=np.int32))
+    publish('court_calibration', 'local_court_calibration', CourtCalibrationOutput(courts, calibration, 'cam0', {}))
+    publish('camera_alignment', 'aligned_cameras', CameraAlignmentOutput(CameraGeometryResult(
+        inputs.source.camera_ids, 'cam0', (False, False), inputs.cameras, selection, {})),
+        dependencies={'calibration': refs['court_calibration']})
+    publish('player_association', 'person_identities', PlayerIdentitiesOutput(inputs.source.camera_ids,
+        np.zeros((2, 1), np.int64), np.full((2, 1, FRAMES), IDENTITY, np.int64), {}), version=3)
+    for index, camera_id in enumerate(inputs.source.camera_ids):
+        pose = ObjectObservations((camera_id,), SIZE, FPS, inputs.grouped.uv_px[:, index].transpose(1, 0, 2, 3)[None],
+            inputs.grouped.confidence[:, index].transpose(1, 0, 2)[None].astype(np.float32), np.ones((1, FRAMES, 1), bool),
+            np.zeros((1, 1), np.int64), np.full((1, FRAMES, 1, 3), 20, np.float32))
+        publish(f'pose_estimation/{camera_id}', 'person_poses', pose)
+    publish('player_triangulation', 'player_skeletons', PlayerTriangulationOutput(inputs.skeleton),
+        dependencies={'alignment': refs['camera_alignment']})
+    segments = inputs.recovered.bodies[0].segments
+    video = inputs.source.video('cam0')
+    requests = tuple(BodyRecoveryRequest(video.path, segment.source_frames,
+        np.full((len(segment.source_frames), 17, 3), 0.8, np.float32),
+        np.full((len(segment.source_frames), 3), 20, np.float32), SIZE, inputs.cameras[0].intrinsic) for segment in segments)
+    publish('body_view_selection', 'body_view_selection', BodyViewSelectionOutput((BodySelection(
+        IDENTITY, 'cam0', requests, tuple(len(s.source_frames) for s in segments)),)))
+    publish('hmr2_features', 'hmr2_features', HMR2FeaturesOutput(inputs.source.clip_id, (HMR2BodyFeatures(
+        IDENTITY, 'cam0', video.sha256, tuple(HMR2FeatureSegment(i, s.source_frames,
+            np.zeros((len(s.source_frames), 1024), np.float32)) for i, s in enumerate(segments))),)),
+        dependencies={'selection': refs['body_view_selection']})
+    publish('gvhmr', GVHMRModule.io.output_schema, inputs.recovered, version=body_version,
+        dependencies={'selection': refs['body_view_selection'], **({'features': refs['hmr2_features']} if body_version >= 2 else {})})
+    assets = {'body_model': inputs.body_models_dir / 'smplx' / 'SMPLX_NEUTRAL.npz',
+        **{f'smpl_{key}': value for key, value in asdict(inputs.body_assets).items()}}
+    for path in assets.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'fake asset, read only through the injected CPU geometry')
+    # The saved config precedes the production pixel-threshold scaling.
+    scale = inputs.source.pixel_threshold_scale
+    config = replace(inputs.placement_config,
+        max_reprojection_rms_px=inputs.placement_config.max_reprojection_rms_px / scale,
+        reprojection_weight_sigma_px=inputs.placement_config.reprojection_weight_sigma_px / scale)
+    publish('body_placement', 'placed_bodies', BodyPlacementOutput(inputs.placed),
+        dependencies={'recovered': refs['gvhmr']}, settings={'config': json_value(config),
+            'assets': {name: {'path': str(path), 'sha256': dual_sha256(path)} for name, path in assets.items()}})
+    return store
+
+
+@pytest.mark.parametrize('body_version', [1, GVHMRModule.io.version, 3], ids=['historical-v1', 'current-v2', 'unsupported-v3'])
+def test_saved_body_versions_feed_placement_export_and_ranking(tmp_path: Path, body_version: int) -> None:
+    import json
+
+    # The saved court-view contract rejects cameras on the court mid-plane.
+    cameras = tuple(replace(c, translation=c.translation + np.array([0.0, 1.0, 0.0])) for c in _cameras())
+    case = _build_case(tmp_path, cameras=cameras)
+    store = _publish_placement_store(case, tmp_path / 'store', body_version=body_version)
+    if body_version == 3:
+        with pytest.raises(ValueError, match='requires body_parameters'):
+            read_placement_inputs(store.root, human_vis_threshold=0.15, joint_regressor=case.inputs.joint_regressor)
+        return
+    restored = read_placement_inputs(store.root, human_vis_threshold=0.15, joint_regressor=case.inputs.joint_regressor)
+    assert restored.artifact_provenance['gvhmr']['version'] == body_version
+    np.testing.assert_array_equal(restored.recovered.bodies[0].segments[1].parameters.transl,
+        case.inputs.recovered.bodies[0].segments[1].parameters.transl)
+    manifest = export_placement_bundle(restored, body=case.geometry, output_dir=tmp_path / 'bundle',
+        config=case.config, smpl_faces_path=case.faces_path, git_commit='test')
+    assert json.loads(manifest.read_text())['provenance']['artifacts']['gvhmr']['version'] == body_version
+    ranking = rank_placement_candidates(restored, body=case.geometry, config=PlacementRankConfig(min_valid_ratio=0.5),
+        plate_camera_id='cam0', plate_video_path=case.video_path, output_path=tmp_path / 'ranking.json', git_commit='test')
+    result = json.loads(ranking.read_text())
+    assert result['candidates'] and result['artifacts']['gvhmr']['version'] == body_version
 
 
 class _StubReader:

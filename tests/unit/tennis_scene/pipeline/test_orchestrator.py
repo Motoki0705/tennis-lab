@@ -53,7 +53,10 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
         assert nodes[consumer].io.inputs["ball_cam0"].version == 4
         assert nodes[consumer].assembler.ball_threshold == 0
     assert order.index("court_side") < order.index("camera_alignment")
-    assert order.index("body_view_selection") < order.index("gvhmr") < order.index("body_placement")
+    assert nodes["gvhmr"].bindings == {"selection": "body_view_selection", "features": "hmr2_features"}
+    assert nodes["gvhmr"].io.version == 2
+    assert nodes["body_placement"].io.inputs["recovered"].version == 2
+    assert order.index("body_view_selection") < order.index("hmr2_features") < order.index("gvhmr") < order.index("body_placement")
 
 
 def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:

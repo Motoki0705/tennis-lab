@@ -88,7 +88,8 @@ scene metadataの`ok`/`partial`は従来の意味を保持する。cameraごと�
 
 公開だけが失敗した場合、同じrequest・幾何・storeとDINO・ViTPoseの設定精度を指定した元のsceneコマンドへ
 `direct_annotation.resume=publication`を追加する。精度欄がない旧receiptは両モデルともFP32として照合する。
-精度が異なる場合は公開前に停止する。完成注釈とscene exportを検証してpublisherを再開し、
+精度が異なる場合は公開前に停止する。身体成果物の現行版と保存HMR2特徴への依存も
+[通常の公開と同じ契約](../README.md#成果物)で検証する。完成注釈とscene exportを検証してpublisherを再開し、
 scene stageの構築・worker受付を行わない。publisher commit後、workflow receipt保存前の中断も
 同じsnapshotへ収束する。新しい公開要求で保存注釈を上書きしない。
 
