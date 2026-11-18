@@ -111,6 +111,14 @@ class ExecutionPlan:
             key: {port: (key[0], producer) for port, producer in node.bindings.items()}
             for key, node in self.nodes.items()
         }
+        producers: dict[tuple[str, int], list[NodeKey]] = {}
+        for key, node in self.nodes.items():
+            producers.setdefault((node.io.output_schema, node.io.version), []).append(key)
+        self.ordering_dependencies = {
+            key: tuple(dict.fromkeys(parent for port in node.io.after_all_inputs
+                for parent in producers.get((node.io.inputs[port].schema, node.io.inputs[port].version), ())))
+            for key, node in self.nodes.items()
+        }
         self.order = self._dependency_order()
         targets = [(clip.clip_id, name) for clip in clips
                    for name in (tuple(n.name for n in clip.nodes) if clip.targets is None else clip.targets)]
@@ -142,6 +150,8 @@ class ExecutionPlan:
                 if (declared.schema, declared.version) != (produced.output_schema, produced.version):
                     raise ValueError(f"Incompatible artifact binding {key[1]}.{port}")
                 visit(dependency)
+            for dependency in self.ordering_dependencies[key]:
+                visit(dependency)
             visiting.remove(key)
             visited.add(key)
             order.append(key)
@@ -169,7 +179,8 @@ class ExecutionPlan:
     def ready(self, required: frozenset[NodeKey] | None = None) -> tuple[NodeKey, ...]:
         selected = self.required if required is None else required
         return tuple(key for key in self.order if key in selected and key not in self.statuses
-                     and all(parent in self.references for parent in self.dependencies[key].values()))
+                     and all(parent in self.references for parent in self.dependencies[key].values())
+                     and all(parent in self.references for parent in self.ordering_dependencies[key] if parent in selected))
 
     def clip_complete(self, clip_id: str) -> bool:
         if clip_id not in self.clips:

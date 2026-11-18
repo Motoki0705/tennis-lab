@@ -1,0 +1,105 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205068496131617029_2026-11-17T16-05-03-868382970Z_33361_hmr2-main-qualify-037-reboot (commit=18a2fea05291 provider=codex session=01a1e957-e495-7ef2-81cd-bf26c4ae465a)
+[2026-11-18 01:05:12,811][__main__][INFO] - Configuration:
+[2026-11-18 01:05:12,811][__main__][INFO] -   Device: cuda
+[2026-11-18 01:05:12,811][__main__][INFO] -   Cameras: 4
+[2026-11-18 01:05:12,811][__main__][INFO] -     cam0: /home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam0.mp4
+[2026-11-18 01:05:12,811][__main__][INFO] -     cam1: /home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam1.mp4
+[2026-11-18 01:05:12,811][__main__][INFO] -     cam2: /home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam2.mp4
+[2026-11-18 01:05:12,811][__main__][INFO] -     cam3: /home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam3.mp4
+[2026-11-18 01:05:12,811][__main__][INFO] -   Max frames: None
+[2026-11-18 01:05:12,990][__main__][INFO] - Running pipeline...
+[2026-11-18 01:06:10,486][src.tennis_scene.pipeline.components.court_kp][INFO] - Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+[2026-11-18 01:06:11,535][src.tasks.court_detection.inference.checkpoint][WARNING] - Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+[2026-11-18 01:06:11,678][dinov3][INFO] - using base=100 for rope new
+[2026-11-18 01:06:11,678][dinov3][INFO] - using min_period=None for rope new
+[2026-11-18 01:06:11,678][dinov3][INFO] - using max_period=None for rope new
+[2026-11-18 01:06:11,679][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-11-18 01:06:11,679][dinov3][INFO] - using shift_coords=None for rope new
+[2026-11-18 01:06:11,679][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-11-18 01:06:11,679][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-11-18 01:06:11,679][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-11-18 01:06:11,679][dinov3][INFO] - using mlp layer as FFN
+[2026-11-18 01:06:53,732][src.tennis_scene.pipeline.components.court_kp][INFO] - Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+[2026-11-18 01:06:54,757][src.tasks.court_detection.inference.checkpoint][WARNING] - Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+[2026-11-18 01:06:54,762][dinov3][INFO] - using base=100 for rope new
+[2026-11-18 01:06:54,762][dinov3][INFO] - using min_period=None for rope new
+[2026-11-18 01:06:54,762][dinov3][INFO] - using max_period=None for rope new
+[2026-11-18 01:06:54,762][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-11-18 01:06:54,762][dinov3][INFO] - using shift_coords=None for rope new
+[2026-11-18 01:06:54,762][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-11-18 01:06:54,762][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-11-18 01:06:54,762][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-11-18 01:06:54,762][dinov3][INFO] - using mlp layer as FFN
+[2026-11-18 01:07:20,494][src.tennis_scene.pipeline.components.court_kp][INFO] - Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+[2026-11-18 01:07:21,519][src.tasks.court_detection.inference.checkpoint][WARNING] - Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+[2026-11-18 01:07:21,523][dinov3][INFO] - using base=100 for rope new
+[2026-11-18 01:07:21,523][dinov3][INFO] - using min_period=None for rope new
+[2026-11-18 01:07:21,523][dinov3][INFO] - using max_period=None for rope new
+[2026-11-18 01:07:21,523][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-11-18 01:07:21,523][dinov3][INFO] - using shift_coords=None for rope new
+[2026-11-18 01:07:21,523][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-11-18 01:07:21,523][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-11-18 01:07:21,523][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-11-18 01:07:21,523][dinov3][INFO] - using mlp layer as FFN
+[2026-11-18 01:07:44,118][src.tennis_scene.pipeline.components.court_kp][INFO] - Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+[2026-11-18 01:07:45,141][src.tasks.court_detection.inference.checkpoint][WARNING] - Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+[2026-11-18 01:07:45,145][dinov3][INFO] - using base=100 for rope new
+[2026-11-18 01:07:45,145][dinov3][INFO] - using min_period=None for rope new
+[2026-11-18 01:07:45,145][dinov3][INFO] - using max_period=None for rope new
+[2026-11-18 01:07:45,145][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-11-18 01:07:45,145][dinov3][INFO] - using shift_coords=None for rope new
+[2026-11-18 01:07:45,145][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-11-18 01:07:45,145][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-11-18 01:07:45,145][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-11-18 01:07:45,146][dinov3][INFO] - using mlp layer as FFN
+[2026-11-18 01:08:06,017][src.tennis_scene.pipeline.components.ball_detection][INFO] - Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+[2026-11-18 01:08:11,279][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+[2026-11-18 01:08:11,609][src.tennis_scene.pipeline.components.ball_detection][INFO] - Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+[2026-11-18 01:08:15,204][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 1 frame(s): [69]
+[2026-11-18 01:08:15,968][src.tennis_scene.pipeline.components.ball_detection][INFO] - Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+[2026-11-18 01:08:19,473][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 2 frame(s): [115, 114]
+[2026-11-18 01:08:20,104][src.tennis_scene.pipeline.components.ball_detection][INFO] - Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+[2026-11-18 01:08:23,601][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-parity-main-20261117/.venv/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-parity-main-20261117/.venv/lib/python3.11/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/TensorShape.cpp:4215.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+person_tracking/cam0: 0/292 frames
+person_tracking/cam0: 37/292 frames
+person_tracking/cam0: 85/292 frames
+person_tracking/cam0: 131/292 frames
+person_tracking/cam0: 180/292 frames
+person_tracking/cam0: 228/292 frames
+person_tracking/cam0: 274/292 frames
+person_tracking/cam0: 292/292 frames
+person_tracking/cam1: 0/292 frames
+person_tracking/cam1: 59/292 frames
+person_tracking/cam1: 136/292 frames
+person_tracking/cam1: 212/292 frames
+person_tracking/cam1: 284/292 frames
+person_tracking/cam1: 292/292 frames
+person_tracking/cam2: 0/292 frames
+person_tracking/cam2: 80/292 frames
+person_tracking/cam2: 175/292 frames
+person_tracking/cam2: 269/292 frames
+person_tracking/cam2: 292/292 frames
+person_tracking/cam3: 0/292 frames
+person_tracking/cam3: 63/292 frames
+person_tracking/cam3: 143/292 frames
+person_tracking/cam3: 223/292 frames
+person_tracking/cam3: 292/292 frames
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:01,  1.16s/it]HMR2 features: 2it [00:01,  1.34it/s]HMR2 features: 3it [00:02,  1.61it/s]HMR2 features: 4it [00:02,  1.80it/s]HMR2 features: 5it [00:02,  1.93it/s]HMR2 features: 6it [00:03,  2.01it/s]HMR2 features: 7it [00:03,  2.05it/s]HMR2 features: 8it [00:04,  2.06it/s]HMR2 features: 9it [00:04,  2.11it/s]HMR2 features: 10it [00:04,  2.04it/s]
+[2026-11-18 01:24:08,040][src.submodules.vendor.gvhmr.pipeline][INFO] - Loading GVHMR checkpoint: /home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.82it/s]HMR2 features: 2it [00:01,  1.99it/s]HMR2 features: 3it [00:01,  2.09it/s]HMR2 features: 4it [00:01,  2.13it/s]HMR2 features: 5it [00:02,  2.16it/s]HMR2 features: 6it [00:02,  2.16it/s]HMR2 features: 7it [00:03,  2.18it/s]HMR2 features: 8it [00:03,  2.18it/s]HMR2 features: 9it [00:04,  2.21it/s]HMR2 features: 10it [00:04,  2.36it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.96it/s]HMR2 features: 2it [00:00,  2.12it/s]HMR2 features: 3it [00:01,  2.15it/s]HMR2 features: 4it [00:01,  2.18it/s]HMR2 features: 5it [00:02,  2.19it/s]HMR2 features: 6it [00:02,  2.20it/s]HMR2 features: 7it [00:03,  2.19it/s]HMR2 features: 8it [00:03,  2.17it/s]HMR2 features: 9it [00:04,  2.20it/s]HMR2 features: 10it [00:04,  2.39it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.97it/s]HMR2 features: 2it [00:00,  2.12it/s]HMR2 features: 3it [00:01,  2.15it/s]HMR2 features: 4it [00:01,  2.17it/s]HMR2 features: 5it [00:02,  2.15it/s]HMR2 features: 6it [00:02,  2.17it/s]HMR2 features: 7it [00:03,  2.18it/s]HMR2 features: 8it [00:03,  2.16it/s]HMR2 features: 9it [00:04,  2.19it/s]HMR2 features: 10it [00:04,  2.38it/s]
+[2026-11-18 01:24:36,329][__main__][INFO] - Saving results...
+[2026-11-18 01:24:40,459][__main__][INFO] - Saved: /home/kamimura/projects/tennis-lab/.worktree-outputs/hmr2-parity-main-20261117/hmr2_qualification/clip_037/scene.npz
+[2026-11-18 01:24:40,459][__main__][INFO] - ============================================================
+[2026-11-18 01:24:40,459][__main__][INFO] - Pipeline Summary:
+[2026-11-18 01:24:40,459][__main__][INFO] -   Frames processed: 292
+[2026-11-18 01:24:40,459][__main__][INFO] -   FPS: 59.94
+[2026-11-18 01:24:40,459][__main__][INFO] -   Resolution: 1920x1080
+[2026-11-18 01:24:40,460][__main__][INFO] -   Ball 2D observed frames (>=1 view): 256/292
+[2026-11-18 01:24:40,460][__main__][INFO] -   Ball 3D valid frames: 160/292
+[2026-11-18 01:24:40,460][__main__][INFO] - ============================================================

@@ -1,0 +1,24 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205082698807717050_2026-11-17T12-08-21-192282949Z_970881_hmr2-feature-parity (commit=a9c684ed67ad provider=codex session=01a1e957-e495-7ef2-81cd-bf26c4ae465a)
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/src/tennis_scene/pipeline/components/identity.py", line 170, in process_with_models
+    association = associate(cameras, source.fps, config)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/src/tasks/player_association/association/associate.py", line 280, in associate
+    raise AssociationUndecided(AMBIGUOUS_PLAYERS, f"Identity {runner_up['identity']} ({runner_up['presence_frames']} frames) is too "
+src.tasks.player_association.association.associate.AssociationUndecided: Identity 3 (2106 frames) is too close to player identity 0 (2106 frames)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/knowledge/runs/run-hmr2-feature-parity-20261117/compare.py", line 183, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/knowledge/runs/run-hmr2-feature-parity-20261117/compare.py", line 123, in main
+    artifacts['identities'] = infer(association, PlayerAssociationInputAssembler().assemble(ctx, artifacts), 'player_association')
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/knowledge/runs/run-hmr2-feature-parity-20261117/compare.py", line 49, in infer
+    return component.process_with_models(value, models)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/src/tennis_scene/pipeline/components/identity.py", line 172, in process_with_models
+    raise ReconstructionUnavailable(f"player_association_{undecided.reason}", str(undecided), diagnostics={
+src.tennis_scene.pipeline.errors.ReconstructionUnavailable: Identity 3 (2106 frames) is too close to player identity 0 (2106 frames)
+exit_code=1
