@@ -1,0 +1,42 @@
+{
+  "archive_contract_validated": true,
+  "num_frames": 1010,
+  "scene_status": "ok",
+  "metadata_keys": [
+    "ball_observation_contract",
+    "body_placement",
+    "camera_ids",
+    "court_detection",
+    "court_keypoints",
+    "court_observation_order",
+    "court_reference",
+    "court_reference_provenance",
+    "dataset_clip_id",
+    "identity_scope",
+    "normalization",
+    "num_cameras",
+    "pipeline_contract",
+    "representation",
+    "scene_schema_version",
+    "status",
+    "sync_assumption",
+    "track_ids",
+    "validity_statistics",
+    "video_paths"
+  ],
+  "validity_statistics": {
+    "ball_3d_frames": 772,
+    "player_joint_frames": [
+      1008,
+      993
+    ],
+    "player_root_frames": [
+      1000,
+      993
+    ],
+    "player_smpl_frames": [
+      1000,
+      993
+    ]
+  }
+}
