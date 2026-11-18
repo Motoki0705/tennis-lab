@@ -2,7 +2,7 @@
 id: run-person-stage-precision-meiji-20261118
 type: run
 task: tennis_scene
-sequence: 62
+sequence: 50
 recorded_at: '2026-11-18'
 title: Meiji 4camの全尺2クリップで人物推論の精度・flip・追跡依存を比較
 issue: 2238
@@ -123,6 +123,9 @@ ViTPoseの混合精度は両クリップの追跡・選別・人物対応の割�
 44.1 cmで、同じ関節のcam3の2D差は55.3 pxだった。各条件JSONに最大差のframe・関節・各viewの観測を保存した。
 flipなしではViTPoseの推論が約2倍になり、clip_000の3D距離P95は16.3 mm、最大差は80.4 cmだった。
 
+2026-11-18に決定したmeiji_4cam本番の設定はDINO・ViTPoseともにFP16。標準パイプラインの既定はFP32。
+この比較で測ったのは、各モデルの精度を個別に変えた条件。
+
 clip_037の全4カメラのframe 146で、選別済みbox・COCO17を基準と各条件で重ねた。
 [ViTPose BF16](../../runs/run-person-stage-precision-meiji-20261118/clip_037-vitpose_bf16.png)、[ViTPose FP16](../../runs/run-person-stage-precision-meiji-20261118/clip_037-vitpose_fp16.png)、[DINO BF16](../../runs/run-person-stage-precision-meiji-20261118/clip_037-dino_bf16.png)、[DINO FP16](../../runs/run-person-stage-precision-meiji-20261118/clip_037-dino_fp16.png)、[ViTPose FP32・flipなし](../../runs/run-person-stage-precision-meiji-20261118/clip_037-vitpose_no_flip.png)
 
@@ -134,26 +137,32 @@ clip_037の全4カメラのframe 146で、選別済みbox・COCO17を基準と�
 
 選手選別と人物対応はbox・コート上の位置・外観から計算できる。三角測量と身体viewの選択は選別・対応後の
 COCO17座標とconfidenceを使う。GVHMRにはそこから選んだview・区間と人物box・2D姿勢が渡る。
-姿勢なしの既存データセット用profileをCPUで再生し、FP32で保存したDINO行とCLIP特徴を固定して追跡を比較した。
+姿勢なしの既存データセット用profileをCPUで再生し、FP32で保存したDINO検出行と追跡用CLIP特徴を固定して
+追跡・選手選別を比較した。
 [選別段](../../../src/tennis_scene/pipeline/components/player_selection.py)・[姿勢段](../../../src/tennis_scene/pipeline/components/pose_estimation.py)・[身体view選択](../../../src/tennis_scene/pipeline/components/body_view_selection.py)
 
-| clip | 全検出行 | 姿勢なし追跡の選別グループ行 | 選別後に推定する場合の対象減 | 追跡ID差 | 選別 減/増 | 人物ID差 |
-|---|---:|---:|---:|---:|---:|---:|
-| clip_037 | 9,356 | 4,506 | 51.8% | 106 | 0 / 0 | 0 |
-| clip_000 | 10,605 | 4,983 | 53.0% | 182 | 2 / 40 | 2 |
+| clip | 全検出行 | 姿勢なし追跡の選別グループ行 | 選別後に推定する場合の対象減 | 追跡ID差 | 選別 減/増 |
+|---|---:|---:|---:|---:|---:|
+| clip_037 | 9,356 | 4,506 | 51.8% | 106 | 0 / 0 |
+| clip_000 | 10,605 | 4,983 | 53.0% | 182 | 2 / 40 |
 
-clip_037は選別マスクと人物対応が一致した。clip_000では姿勢なし追跡により選別行と人物対応が変わった。
+固定特徴での比較では、両クリップの追跡IDが変わり、clip_000では選別行も変わった。
 選別後の候補にだけ姿勢を付ける順序は実装できる。標準パイプラインに接続する際は別の追跡profileとして評価が必要になる。
-表の削減幅は各グループの実観測を一度ずつ姿勢推定する場合の行数。実行時間や3D品質はこの再生の測定範囲外で、
-標準の追跡profileとFP32の採用判断は維持する（summary_impact: none）。
+表の削減幅は各グループの実観測を一度ずつ姿勢推定する場合の行数。再生では実行時間と3D品質を測っていない。
+
+カメラ間の人物対応では、保存した標準profileのCUDA結果に対し、姿勢なしprofileの選別を使って対応用CLIPもCPUで再推論した。
+追跡profileと対応用CLIPの実行deviceをともに変えた条件では、両方で割り当てられた検出行の人物ID差が
+clip_037で0件、clip_000で2件だった。この比較では人物ID差への各要因の寄与を分離できない。
+姿勢なしprofileの影響は、固定特徴で比較した追跡・選手選別まで確認した。
 [姿勢なし追跡の差分](../../runs/run-person-stage-precision-meiji-20261118/pose-scope.json)
 
 # 計測の来歴
 
 共有キューのTERMで最初のジョブが中断した。完了済み5件を保持し、媒体・重み・推論コード・GPU環境を照合して
 残りを完了した。原commandと実行HEADは各runの記録に保存した。
-[初回の中断記録](./000061-run-person-stage-precision-interrupted-20261118.md)・[再開のrun記録](../../runs/run-person-stage-precision-meiji-20261118/run.json)
+[初回の中断記録](./000049-run-person-stage-precision-interrupted-20261118.md)・[再開のrun記録](../../runs/run-person-stage-precision-meiji-20261118/run.json)
 
-全ケースを新規に測る場合は、固定入力に対するsmokeを共有キューで実行した後、全尺のコマンドには空の出力先を指定し、
-`--resume` を外す。比較・重ね描きは `compare.py`、姿勢なし追跡は `pose_scope.py` のCPU入口で再計算する。
-[計測入口](../../runs/run-person-stage-precision-meiji-20261118/benchmark.py)・[比較入口](../../runs/run-person-stage-precision-meiji-20261118/compare.py)・[姿勢なし追跡の再生入口](../../runs/run-person-stage-precision-meiji-20261118/pose_scope.py)
+再計測用の `repro.sh` は固定版からDINO拡張をビルドし、固定入力pinのSHA-256を照合する。
+全ケースを新規に測る場合は、共有キューでsmokeを実行し、同じ出力先で全尺の `repro.sh` を引数なしで実行する。
+比較・重ね描きは `compare.py`、姿勢なし追跡は `pose_scope.py` のCPU入口で再計算する。
+[全尺の再現入口](../../runs/run-person-stage-precision-meiji-20261118/repro.sh)・[ビルド環境と手順](../../runs/run-person-stage-precision-meiji-20261118/README.md)・[比較入口](../../runs/run-person-stage-precision-meiji-20261118/compare.py)・[姿勢なし追跡の再生入口](../../runs/run-person-stage-precision-meiji-20261118/pose_scope.py)

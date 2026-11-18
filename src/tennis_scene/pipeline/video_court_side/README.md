@@ -4,6 +4,8 @@
 
 With fixed cameras, `court_side.mode=video_shared` estimates one set of half-turns for a video.
 It requires `court_kp.mode=video_shared` and inherits that court's dataset and video IDs. The default is `court_side.mode=clip`.
+Saved configurations containing just the six court-side thresholds retain their clip semantics. In the current format,
+`mode` and `video_shared` are a required pair.
 
 Each clip uses the ordinary sampled frame grid, pixel scaling, static-detection filter and ball-only hypothesis scores.
 Source frames are identified by clip ID and local frame index. For each assignment the builder weights cost and support by the
@@ -62,3 +64,9 @@ mapping of clip IDs to `PinnedSideInputs` to `build_video_court_side`, or use th
 `prepare_video_court_side`. Pass the returned artifact as `video_court_side` alongside `video_court` to
 `standard_definition` for each clip. A changed media source, geometry, ball stream or numerical setting requires
 matching evidence. The receipt for a prepared clip is available through `artifact.clip_report(clip_id, policy)`.
+
+Reusing a build or binding a prepared build to a plan verifies the request hash, evidence selection, current revisions and array checksums of every calibration and ball_points input, including diagnostic-only clips. An explicit video load verifies the decision and diagnostics at the requested digest.
+
+Both actions apply the current `court_kp.video_shared.unobservable_policy` to every camera in every contributing clip. A rejected observation stops adoption and identifies the clip, camera and drift reason. Pass this setting as `court_policy` to the direct APIs (default `warn`). Each excluded clip must also pass its own court policy when it runs or publishes.
+
+Automatic clip cache hits and explicit component loads require the shared component's output with matching dependencies, shared digest and both execution policies. The shared side rejects imports and component overrides. Creating or reusing a dataset completion marker verifies the clip verdict and the scene export's dependency on that component.

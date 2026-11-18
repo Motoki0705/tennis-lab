@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -14,6 +14,11 @@ from src.tennis_scene.pipeline.contracts import (
     ComponentIO,
     InputAssembler,
 )
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    model_identities,
+)
+from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 
 NodeKey = tuple[str, str]
@@ -31,6 +36,9 @@ class ComponentNode:
     implementation: str
     source: str = "execute"
     required_import_identity: Mapping[str, Any] | None = None
+    # A guarded component must authorize adoption even when its process() is skipped.
+    # Only its own output, with the complete execution identity, can be reused.
+    require_component: Callable[[], None] | None = None
 
     def __post_init__(self) -> None:
         if self.source not in ("execute", "load"):
@@ -40,7 +48,13 @@ class ComponentNode:
         if self.required_import_identity is not None and self.source != "load":
             raise ValueError("Pinned external inputs must be load-only")
 
+    def require_importable(self) -> None:
+        if self.require_component is not None:
+            raise ValueError(f"{self.name} requires component origin")
+
     def validate_import_identity(self, identity: Mapping[str, Any], provenance: Mapping[str, Any]) -> None:
+        if provenance.get("origin") != "component":
+            self.require_importable()
         if self.required_import_identity is not None and (
                 provenance.get("origin") != "import"
                 or any(identity.get(key) != json_value(value) for key, value in self.required_import_identity.items())):
@@ -186,6 +200,19 @@ class ExecutionPlan:
 
     def _decide(self, key: NodeKey) -> NodeDecision:
         node, clip = self.nodes[key], self.clips[key[0]]
+        if node.source != 'load' and isinstance(node.component, InferenceComponent):
+            specs = node.component.model_specs()
+            expected = node.settings.get('models')
+            if specs or expected:
+                if not isinstance(expected, Mapping):
+                    raise ValueError(f'Inference node has no bound model declaration: {key}')
+                hashes = asset_hashes(node.settings)
+                def bound(path: Path) -> dict[str, Any]:
+                    if path not in hashes:
+                        raise ValueError(f'Inference model declaration contains an unbound asset: {path}')
+                    return {'path': str(path), 'sha256': hashes[path]}
+                if json_value(model_identities(specs, bound)) != json_value(expected):
+                    raise ValueError(f'Inference model declaration differs from bound node identity: {key}')
         dependencies = {port: self.references[parent] for port, parent in self.dependencies[key].items()}
         identity = {"component": node.io.name, "schema": node.io.output_schema, "version": node.io.version,
             "implementation": node.implementation, "component_class": f"{type(node.component).__module__}.{type(node.component).__qualname__}",
@@ -194,8 +221,11 @@ class ExecutionPlan:
             "dependencies": json_value(dependencies), "scope": node.context.camera_id,
             "source_sha256": clip.store.source_key}
         reference = clip.store.active(key[1])
-        action: Literal["execute", "load", "cached"] = "execute"
-        if node.source == "load":
+        cache_hit = reference is not None and not clip.overwrite and reference.execution_key == document_digest(identity)
+        action: Literal["execute", "load", "cached"] = "cached" if cache_hit else "execute"
+        if node.source == "load" or (cache_hit and node.require_component is not None):
+            if node.require_component is not None:
+                node.require_component()
             if reference is None:
                 raise FileNotFoundError(f"Required component artifact missing: {key[1]}")
             descriptor = clip.store.descriptor(reference)
@@ -204,9 +234,8 @@ class ExecutionPlan:
             if descriptor["dependencies"] != json_value(dependencies):
                 raise ValueError(f"Loaded artifact dependencies changed: {key[1]}")
             node.validate_import_identity(descriptor["identity"], descriptor["provenance"])
-            if descriptor["provenance"].get("origin") == "component" and reference.execution_key != document_digest(identity):
+            if descriptor["provenance"].get("origin") == "component" and (
+                    reference.execution_key != document_digest(identity) or descriptor["identity"] != identity):
                 raise ValueError(f"Loaded component identity changed: {key[1]}")
-            action = "load"
-        elif reference is not None and not clip.overwrite and reference.execution_key == document_digest(identity):
-            action = "cached"
+            action = "load" if node.source == "load" else "cached"
         return NodeDecision(key, action, identity, dependencies, reference)

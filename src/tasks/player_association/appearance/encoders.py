@@ -201,8 +201,12 @@ def encoder_weights(name: str, *, checkpoint_root: Path, external_root: Path) ->
     return weights[name]
 
 
-def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, device: str) -> AppearanceEncoder:
-    weights = encoder_weights(name, checkpoint_root=checkpoint_root, external_root=external_root)
+def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, device: str,
+                  checkpoint: Path | None = None) -> AppearanceEncoder:
+    default = encoder_weights(name, checkpoint_root=checkpoint_root, external_root=external_root)
+    # A pipeline declaration has already resolved and SHA-bound its checkpoint.
+    # Standalone callers may still explicitly select the profile's default.
+    weights = default if checkpoint is None else checkpoint
     if not weights.is_file():
         raise FileNotFoundError(f"Required appearance checkpoint is missing: {weights}")
     if name == "osnet_ain_x1_0_msmt17":

@@ -445,7 +445,7 @@ def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_pa
         acquired.append(args[0].action)
         return prepare(*args, **kwargs)
 
-    monkeypatch.setattr(side_api, "prepare_video_court_side", acquire)
+    monkeypatch.setattr("src.tennis_scene.pipeline.video_court_side.prepare.prepare_video_court_side", acquire)
     result = execute(pipeline, dataset)
     assert result.exit_code == 0 and acquired == [action]
     assert tuple(result.plan.clips) == SHARED_CLIPS
@@ -462,14 +462,14 @@ def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_pa
 
 
 def test_shared_side_scope_is_rejected_before_acquisition(tmp_path, monkeypatch):
-    import src.tennis_scene.pipeline.video_court_side as side_api
     from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
 
     pipeline, dataset, clips, _ = shared_batch_fixture(tmp_path, monkeypatch)
     pipeline.config = replace(pipeline.config, video_court_side=VideoArtifactConfig(
         action="load", directory=tmp_path / "side", dataset_id="foreign", video_id="video_000",
         rebuild=False, request=None, request_sha256=None, artifact_digest="a" * 64))
-    monkeypatch.setattr(side_api, "prepare_video_court_side", lambda *a, **kw: pytest.fail("foreign scope must stop"))
+    monkeypatch.setattr("src.tennis_scene.pipeline.video_court_side.prepare.prepare_video_court_side",
+                        lambda *a, **kw: pytest.fail("foreign scope must stop"))
     with pytest.raises(ValueError, match="another dataset/video"):
         execute(pipeline, dataset)
     assert not any((clip / "annotations/tennis_scene/annotation.json").exists() for clip in clips)

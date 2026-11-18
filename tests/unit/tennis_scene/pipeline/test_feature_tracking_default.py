@@ -33,6 +33,7 @@ from tests.unit.tennis_scene.test_pipeline_configuration import _runtime
 
 @pytest.mark.parametrize('body_enabled', [False, True])
 def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enabled: bool) -> None:
+    from src.tennis_scene.pipeline.contracts import ClipSource
     cfg = runtime(tmp_path, overrides=(f'gvhmr.enabled={str(body_enabled).lower()}',))
     assert cfg.tracking.method == 'strongsort_pp_pose' and not cfg.merge_duplicate_person_boxes
     assert cfg.tracking.online_config().pose_weight == .15
@@ -48,8 +49,8 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
     nodes = {n.name: n for n in standard_definition(cfg, source, code_identity='test')}
     node = nodes['person_tracking/cam0']
     assert node.component.config == cfg.tracking
-    assert node.io.version == 5 and node.io.inputs['detections'].version == 2
-    assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 5
+    assert node.io.version == 6 and node.io.inputs['detections'].version == 2
+    assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 6
     # The standard recipe declares the same runtime model across cameras and
     # across CLIP consumers; assembling it must not instantiate any model.
     for stage, alias in [('court_detection', 'court'), ('ball_detection', 'ball'),
@@ -92,14 +93,12 @@ def test_person_settings_change_only_their_stage_cache_identities(
         ComponentRunner(standard_definition(cfg, source, code_identity="test"), store).plan
         for cfg in (baseline, candidate)
     ]
-    from src.tennis_scene.pipeline.model_resources import precision_dtype
-
     for plan, cfg in ((base, baseline), (changed, candidate)):
         for node, slot, precision in (
             ("person_detection/cam0", "detector", cfg.people.runtime.dino_detector.precision),
             ("person_tracking/cam0", "pose", cfg.people.runtime.vitpose.precision),
         ):
-            assert plan.nodes[("test", node)].component.model_specs()[slot].dtype == precision_dtype(precision)
+            assert plan.nodes[("test", node)].component.model_specs()[slot].dtype == {"fp32": "float32", "bf16": "bfloat16", "fp16": "float16"}[precision]
     # Keep the upstream references fixed to isolate the local identity changes.
     for key in base.order:
         reference = ArtifactRef(key[1], f"{key[1]}.json", "fixed-content",
@@ -109,11 +108,12 @@ def test_person_settings_change_only_their_stage_cache_identities(
         base.references[key] = changed.references[key] = reference
 
 
-def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize('precision', ['fp32', 'bf16', 'fp16'])
+def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str) -> None:
     calls: list[int] = []
     class Pose:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
-            assert kwargs['precision'] == 'bf16'
+            assert kwargs['precision'] == precision
         def predict(self, request: Any) -> Any:
             calls.append(1)
             values = torch.zeros((1, 17, 3))
@@ -144,11 +144,14 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
         np.tile(np.array([[10, 20, 50, 120]], np.float32), (5, 1)), np.full(5, .9, np.float32),
         np.array([0, 2, 4, 6, 8], np.int64))
     people = make_people_config(tmp_path)
-    people = replace(people, runtime=replace(people.runtime,
-        vitpose=replace(people.runtime.vitpose, precision="bf16")))
+    people = replace(people, runtime=replace(people.runtime, device='cuda' if precision == 'fp16' else 'cpu',
+        vitpose=replace(people.runtime.vitpose, precision=precision)))
     tracker = module.PersonTrackingModule(TrackingConfig(), people=people, encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'af.pth')
+    assert tracker.model_specs()['pose'].dtype == {'fp32': 'float32', 'bf16': 'bfloat16', 'fp16': 'float16'}[precision]
     result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detections))
     assert len(calls) == 5 and result.evidence is not None
+    from src.tennis_scene.pipeline.artifacts import document_digest
+    assert result.evidence.encoder_identity == document_digest(tracker.model_specs()['encoder'].key)
     assert result.evidence.detection_rows.tolist() == [[-1, -1, 4, 6, 8]]
     def forbidden(*a: Any, **k: Any) -> Any:
         raise AssertionError('Pose must not be recomputed')

@@ -4,6 +4,8 @@
 
 `court_side.mode=video_shared` は、同じ動画に属する固定カメラのhalf-turnを一度決めます。校正には `court_kp.mode=video_shared` が必要です。dataset IDとvideo IDは共有コートから引き継ぎます。既定は `court_side.mode=clip` です。
 
+court_sideに従来の6閾値だけを保存した設定はclipモードで読みます。現行形式では `mode` と `video_shared` を対で指定します。
+
 各clipに従来のサンプリング、画素閾値の解像度補正、静止観測の除外、ballだけの仮説検定を適用します。frameはclip IDとclip内の元frame番号で識別します。同じhalf-turn仮説のcostとsupportを各clipの有効な多視点frame数で加重平均し、カメラ対の共通frame数を加算して、従来の閾値で動画を判定します。動画成果物から別の内容hashで参照する単独診断に、各clipの使用frame番号、全仮説の順位、対ごとのframe数、margin、停止理由を保存します。有効frameが0件なら順位は空、marginはnullです。
 
 ## 単一clipから使う
@@ -40,3 +42,9 @@ court_side.video_shared.artifact_digest="$SIDE_DIGEST"
 build/loadは校正に使ったコートのdrift診断の版も照合します。clip nodeは、現在のball観測・校正行列・reference cameraを固定した入力と照合します。単独で確定したhalf-turnが共有結果と矛盾したclipは `court_side_video_shared_conflict` で失敗します。単独で未決なら共有結果を使い、停止理由をwarningに残します。`court_side.video_shared.unobservable_policy=fail` を選ぶと単独未決も失敗します。動画全体が未決ならどちらの方針でも失敗します。`run.json` に両方の順位・margin、適用結果と両成果物のdigestを保存し、共有判定のdigestと実行方針をside node・dataset markerのidentityに含めます。
 
 一括処理の前段は同じ共有コートと `court_side.mode=clip` で組み、全clipの `court_calibration` と `ball_points/<camera>` だけを実行します。clip IDから `PinnedSideInputs` への辞書を `build_video_court_side` に渡すか、設定に従う `prepare_video_court_side` を使います。各clipの `standard_definition` に共有コートと `video_court_side` 成果物を渡します。観測や校正、数値設定が変わった場合は対応する成果物が必要です。clipごとの診断は `artifact.clip_report(clip_id, policy)` で取得できます。
+
+buildの再利用と準備済みbuildの計画作成では、requestのSHA・証拠集合・全clipの現行入力版を照合し、校正とball_pointsの全配列のchecksumを確認します。単独診断にだけ使うclipも対象です。動画判定の明示loadは、指定digestの判定と診断を読みます。
+
+build・loadともに、証拠に選んだ全clipの全cameraに現在の `court_kp.video_shared.unobservable_policy` を適用します。棄却された観測があればclip・camera・drift理由を返して停止します。直接APIでは `court_policy` にこの設定を渡します（既定 `warn`）。証拠集合から外したclipも、自身の実行・公開時には同じコート採否検査を受けます。
+
+clip側の自動cacheと明示loadは、共有digest・コートとsideの両方針・入力依存が一致する共有componentの出力を採用します。共有モードのcourt_sideへのimportとoverrideは拒否します。datasetの完成markerを作成・再利用する際も、clipの採否と、そのcomponentを依存に持つscene exportを確認します。

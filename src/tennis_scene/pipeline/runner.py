@@ -13,6 +13,7 @@ from src.tennis_scene.pipeline.errors import is_clip_failure
 from src.tennis_scene.pipeline.execution_plan import (
     ClipExecution,
     ExecutionPlan,
+    NodeDecision,
     NodeKey,
 )
 from src.tennis_scene.pipeline.execution_plan import ComponentNode as ComponentNode
@@ -144,7 +145,18 @@ class PlanExecutor:
         started = time.monotonic()
         try:
             with runtime.node(key, continue_on_error=continue_on_error) as models:
-                reference, status = self._execute_node(key, models)
+                output, decision = self._execute_node(key, models)
+            node, store = plan.nodes[key], plan.clips[key[0]].store
+            reference = decision.reference
+            if decision.action == "execute":
+                reference = store.publish(key[1], output, ArtifactCodec(node.io.output_type),
+                    schema=node.io.output_schema, version=node.io.version, identity=decision.identity,
+                    dependencies=decision.dependencies, provenance={"origin": "component", "implementation": node.implementation})
+                status = "executed"
+            else:
+                status = "loaded" if decision.action == "load" else "cached"
+            if reference is None:
+                raise RuntimeError("Completed component has no artifact reference")
             # Unload/recorder/cleanup must succeed before dependencies or clip
             # publication can observe this node as completed, including resume.
             plan.references[key] = reference
@@ -157,7 +169,7 @@ class PlanExecutor:
         finally:
             plan.seconds[key] = time.monotonic() - started
 
-    def _execute_node(self, key: NodeKey, models: ModelBorrower) -> tuple[ArtifactRef, str]:
+    def _execute_node(self, key: NodeKey, models: ModelBorrower) -> tuple[Any, NodeDecision]:
         plan = self.plan
         node, store = plan.nodes[key], plan.clips[key[0]].store
         decision = plan.decide(key)
@@ -166,7 +178,7 @@ class PlanExecutor:
             if reference is None:
                 raise RuntimeError("Reused component has no artifact reference")
             store.load(reference, ArtifactCodec(node.io.output_type))
-            status = "loaded" if decision.action == "load" else "cached"
+            output = None
         else:
             artifacts = {port: store.load(ref, ArtifactCodec(plan.nodes[plan.dependencies[key][port]].io.output_type))
                          for port, ref in decision.dependencies.items()}
@@ -177,11 +189,7 @@ class PlanExecutor:
             with span("postprocess", operation="component"):
                 output = (node.component.process_with_models(inputs, models)
                           if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
-            reference = store.publish(key[1], output, ArtifactCodec(node.io.output_type),
-                schema=node.io.output_schema, version=node.io.version, identity=decision.identity,
-                dependencies=decision.dependencies, provenance={"origin": "component", "implementation": node.implementation})
-            status = "executed"
-        return reference, status
+        return output, decision
 
     def output(self, key: NodeKey) -> Any:
         return self.plan.clips[key[0]].store.load(self.plan.references[key], ArtifactCodec(self.plan.nodes[key].io.output_type))

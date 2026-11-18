@@ -37,7 +37,11 @@ if os.environ['VIDEO_BATCH_TEST_FAIL'] == '1':
     def fail(*args):
         raise ReconstructionUnavailable('clip_too_long', 'fixture clip too long')
     monkeypatch.setattr(CourtSideModule, 'process', fail)
-with patch.object(TennisSceneOrchestrator, 'from_runtime_config', return_value=pipeline):
+def configured_pipeline(runtime):
+    assert runtime.people.runtime.dino_detector.precision == 'fp16'
+    assert runtime.people.runtime.vitpose.precision == 'fp16'
+    return pipeline
+with patch.object(TennisSceneOrchestrator, 'from_runtime_config', side_effect=configured_pipeline):
     runpy.run_module('src.tennis_scene.scripts.run_video_batch', run_name='__main__')
 """
 
@@ -48,7 +52,8 @@ def test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure(tmp_path: P
     clip = add_clip(dataset, "video_000/clip_000")
     result = subprocess.run([sys.executable, "-c", _HARNESS,
         f"paths.data_root={tmp_path}", f"paths.output_root={tmp_path / 'outputs'}",
-        "dataset_directory=dataset", "video_id=video_000", "progress_directory=progress"],
+        "dataset_directory=dataset", "video_id=video_000", "progress_directory=progress",
+        'pipeline_overrides=["device=cuda","people_models.runtime.dino_detector.precision=fp16","people_models.runtime.vitpose.precision=fp16"]'],
         cwd=PROJECT_ROOT, env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "VIDEO_BATCH_TEST_ROOT": str(tmp_path),
                               "VIDEO_BATCH_TEST_FAIL": str(int(failed)), "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
                               "OPENBLAS_NUM_THREADS": "1"},

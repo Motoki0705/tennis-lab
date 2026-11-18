@@ -58,6 +58,7 @@ def report(frames=24, *, failed=False):
 
 def matrices():
     court, _, _ = inputs()
+    assert court.diagnostics is not None
     return [np.asarray(camera['frames'][0]['homography_court_metres_to_image_pixels']) for camera in court.diagnostics['cameras']]
 
 
@@ -82,6 +83,22 @@ def shared_fixture(tmp_path, monkeypatch):
     pipeline.components = {name: stage for name, stage in stages.items() if not name.startswith('court_detection/')}
     pipeline.code_identity = 'stable-test-implementation'
     return pipeline, paths, sources, docs, store, artifact
+
+
+def test_shared_court_marker_tracks_appearance_implementation(tmp_path, monkeypatch):
+    pipeline, _, _, _, _, _ = shared_fixture(tmp_path, monkeypatch)
+    cfg = pipeline.config
+    cfg = replace(cfg, player_association=replace(cfg.player_association,
+        appearance=replace(cfg.player_association.appearance, encoder='dinov3_vitb16')))
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
+    repository = cfg.roots.external_asset_root / 'dinov3'
+    repository.mkdir(parents=True, exist_ok=True)
+    source = repository / 'hubconf.py'
+    source.write_text('# appearance implementation A\n')
+    pipeline.config = cfg
+    first = pipeline.publication_identity()
+    source.write_text('# appearance implementation B\n')
+    assert pipeline.publication_identity() != first
 
 
 @pytest.mark.parametrize('separate_drift', [False, True])
@@ -571,6 +588,7 @@ def test_runtime_configuration_loads_both_pinned_court_and_drift_references(tmp_
         'court_kp.video_shared.directory=shared', 'court_kp.video_shared.dataset_id=fixture',
         'court_kp.video_shared.video_id=video_000', 'court_kp.video_shared.artifact_digest=' + 'a' * 64,
         'court_kp.video_shared.drift_directory=drift', 'court_kp.video_shared.drift_digest=' + 'b' * 64))
+    assert cfg.video_court is not None and cfg.video_court_drift is not None
     assert cfg.video_court.artifact_digest == 'a' * 64
     assert cfg.video_court_drift.digest == 'b' * 64
     assert cfg.video_court_drift.directory.name == 'drift'

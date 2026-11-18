@@ -20,11 +20,13 @@ from tests.unit.tasks.court_detection.test_configuration import _compose
 from tests.unit.tennis_scene.pipeline.config_factories import make_court_kp_config
 
 
-def external_court_pair(tmp_path: Path) -> tuple[CourtKPModule, CourtKPModule, list[Path], list[Path]]:
+def external_court_pair(tmp_path: Path, *, legacy: bool = False) -> tuple[CourtKPModule, CourtKPModule, list[Path], list[Path]]:
     configs = [make_court_kp_config(tmp_path / name) for name in ("first", "second")]
     checkpoint = configs[0].checkpoint
     checkpoint.parent.mkdir(parents=True)
     config = OmegaConf.to_container(_compose("synthetic_court"), resolve=True)
+    if legacy:
+        config["model"]["encoder"]["checkpoint_path"] = "dinov3/checkpoints/" + Path(config["model"]["encoder"]["checkpoint_path"]).name
     bundle = serialize_target_bundle(_bundle())
     torch.save({"hyper_parameters": {"config": config, "target_bundle_state": bundle}}, checkpoint)
     configs[1] = replace(configs[1], checkpoint=checkpoint)
@@ -79,12 +81,16 @@ def test_external_assets_define_court_sharing(tmp_path: Path, monkeypatch: pytes
     assert len(created) == (2 if change in {"backbone", "implementation"} else 1)
 
 
-@pytest.mark.parametrize("change", ["backbone", "source_modified", "source_added", "source_removed"])
+@pytest.mark.parametrize("change", ["checkpoint", "backbone", "source_modified", "source_added", "source_removed"])
 def test_court_asset_changes_after_binding_fail_before_model_load(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: str) -> None:
     module, _, backbones, implementations = external_court_pair(tmp_path)
     bound = asset_hashes({"assets": module.asset_identities()})
     source = implementations[0].parent / "dinov3" / "model.py"
-    if change == "backbone":
+    if change == "checkpoint":
+        payload = torch.load(module.config.checkpoint, weights_only=False)
+        payload["global_step"] = 99
+        torch.save(payload, module.config.checkpoint)
+    elif change == "backbone":
         backbones[0].write_bytes(b"backbone-b")
     elif change == "source_added":
         source.with_name("extra.py").write_text("# extra implementation\n")
@@ -99,3 +105,15 @@ def test_court_asset_changes_after_binding_fail_before_model_load(tmp_path: Path
     with pytest.raises((ValueError, FileNotFoundError)), runtime, runtime.node(node) as models:
         models.borrow("court")
     assert not created and not runtime.loaded_keys
+
+
+def test_checkpoint_change_during_metadata_read_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    module, _, _, _ = external_court_pair(tmp_path)
+    load = torch.load
+    def changing_load(path: Path, **kwargs: Any) -> Any:
+        metadata = load(path, **kwargs)
+        torch.save({**metadata, "global_step": 33}, path)
+        return metadata
+    monkeypatch.setattr(torch, "load", changing_load)
+    with pytest.raises(ValueError, match="changed while reading metadata"):
+        module.model_specs()

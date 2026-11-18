@@ -74,7 +74,7 @@ GPU功能仍遵循repo的training queue规则。CPU球单独运行使用
 
 component store的 `run.json` 分别报告 `annotation`、`scene`、`dataset` 和 `learning`。
 scene metadata保留原有 `ok`/`partial` 含义。每相机完成引用和测量引用保存到campaign下的
-`scene-workflow/annotations.json`；场景artifact和archive保存到 `scene-completion.json`。
+`scene-workflow/annotations.json`。场景artifact、archive及DINO和ViTPose配置精度保存到 `scene-completion.json`。
 可选发布使用 `scene-workflow/publication-request.json` 和 `publication.json`。
 `dataset=not_requested` 视为成功；`learning=not_requested` 不启动训练。
 
@@ -83,7 +83,8 @@ scene metadata保留原有 `ok`/`partial` 含义。每相机完成引用和测�
 统一标注CLI的 `run`、`tick`、`status`、`recover`、`resume-budget`、`report`
 接受保存的 `LocalAnnotationRuntime` 及其digest。
 
-仅发布失败时，给原场景命令添加 `direct_annotation.resume=publication`，保持request、几何和store一致。
+仅发布失败时，给原场景命令添加 `direct_annotation.resume=publication`，保持request、几何、store及DINO和ViTPose的精度一致。
+缺少精度字段的旧收据按两个模型均为FP32验证。精度不一致时会在发布前停止。
 该操作验证已完成的标注和scene export，然后继续publisher，不构建scene stages或准入worker。
 publisher提交之后、workflow收据保存之前的中断也会回到原snapshot。新发布请求不覆盖已保存标注。
 

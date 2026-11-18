@@ -2,7 +2,7 @@
 id: run-person-stage-precision-smoke-20261118
 type: run
 task: tennis_scene
-sequence: 60
+sequence: 48
 recorded_at: '2026-11-18'
 title: Meiji 4camの固定8画像で人物推論のFP32一致と混合精度を確認
 issue: 2238
@@ -83,3 +83,6 @@ BF16・FP16は同じcrop数でもFP32より割当ピークが約1.1 GiB高かっ
 FP32との比較に使ったフレームは各カメラで1枚。標準の採用精度に関する判断は維持する（summary_impact: none）。
 全フレームでの検出、追跡、人物対応、三角測量の差は別runで計測する。
 [計測コード](../../runs/run-person-stage-precision-meiji-20261118/smoke.py)
+
+再計測用の `repro.sh` は固定版からDINO拡張をビルドし、固定入力pinのSHA-256を照合する。
+[固定8画像の再現入口](../../runs/run-person-stage-precision-smoke-20261118/repro.sh)・[ビルド環境と手順](../../runs/run-person-stage-precision-meiji-20261118/README.md)

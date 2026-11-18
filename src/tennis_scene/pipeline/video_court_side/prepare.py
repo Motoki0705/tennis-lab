@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +27,7 @@ from src.tennis_scene.pipeline.video_artifact import (
 )
 from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
 from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
-from src.utils.configuration import PathResolver, PathRole
+from src.utils.configuration import PathResolver
 
 from .artifact import (
     DIAGNOSTICS_SCHEMA,
@@ -37,8 +36,9 @@ from .artifact import (
     SideAssessment,
     VideoCourtSideArtifact,
     VideoSideDecision,
+    require_accepted_courts,
 )
-from .inputs import PinnedSideInputs
+from .inputs import CourtSideBuildRequest, PinnedSideInputs, selected_evidence_clips
 
 
 def calibration_digest(inputs: CourtSideInput, court: VideoCourtArtifact) -> str:
@@ -68,7 +68,7 @@ def observations_digest(indices: NDArray[np.int64], uv: NDArray[np.float32], vis
 def build_video_court_side(
     stores: Mapping[str, PinnedSideInputs], *, court: VideoCourtArtifact, directory: Path,
     thresholds: CourtSideConfig, max_frames: int, code_identity: str,
-    evidence_clip_ids: Sequence[str] | None = None, rebuild: bool = False,
+    evidence_clip_ids: Sequence[str] | None = None, rebuild: bool = False, court_policy: str = "warn",
 ) -> VideoCourtSideArtifact:
     """Build from saved calibration/ball points. By default every clip contributes.
 
@@ -79,9 +79,8 @@ def build_video_court_side(
     members = set(stores)
     if not members or any(set(camera["sources"]) != members for camera in court.cameras.values()):
         raise ValueError("Shared court side requires exactly all clips of the shared court video")
-    selected = sorted(members if evidence_clip_ids is None else evidence_clip_ids)
-    if not selected or len(set(selected)) != len(selected) or not set(selected) <= members:
-        raise ValueError("Empty, repeated or unknown court side evidence clip")
+    selected = selected_evidence_clips(members, evidence_clip_ids)
+    require_accepted_courts(court, selected, court_policy)
     for clip, pin in stores.items():
         if pin.source.clip_id != clip or set(pin.source.camera_ids) != set(court.cameras):
             raise ValueError("Court side input clip/camera membership mismatch")
@@ -90,7 +89,7 @@ def build_video_court_side(
                     court_digest=court.digest, court_drift_digest=drift_identity(court).get("artifact_digest"),
                     thresholds=json_value(thresholds), max_frames=max_frames,
                     implementation=code_identity, input_revisions={clip: pin.digest for clip, pin in stores.items()},
-                    evidence_clip_ids=selected)
+                    evidence_clip_ids=list(selected))
     cache = directory / "requests" / f"{document_digest(identity)}.json"
     with store_lock(directory, ".video-court-side.lock"):
         if cache.exists() and not rebuild:
@@ -131,36 +130,41 @@ def build_video_court_side(
         return artifact
 
 
+def verify_prepared_court_side(
+    artifact: VideoCourtSideArtifact, config: VideoArtifactConfig, resolver: PathResolver, *,
+    code_identity: str,
+) -> None:
+    """Bind a new plan or run to its requested, still-readable evidence."""
+    if config.action == "load":
+        # The verified object at this digest includes both the selection and all input revisions.
+        if artifact.digest != config.artifact_digest:
+            raise ValueError("Execution plan court side digest disagrees with configuration")
+    else:
+        request = CourtSideBuildRequest.read(config, resolver)
+        if artifact.decision.evidence_clip_ids != request.evidence_clip_ids:
+            raise ValueError("Prepared court side evidence clips disagree with the build request")
+        if artifact.decision.input_revisions != request.input_revisions:
+            raise ValueError("Prepared court side input revisions disagree with the build request")
+        if artifact.decision.implementation != code_identity:
+            raise ValueError("Prepared court side implementation disagrees with the requested build")
+        for pin in request.pin_inputs().values():
+            pin.assert_current()
+    artifact.verify()
+
+
 def prepare_video_court_side(
     config: VideoArtifactConfig, resolver: PathResolver, *, court: VideoCourtArtifact, thresholds: CourtSideConfig,
-    max_frames: int, code_identity: str,
+    max_frames: int, code_identity: str, court_policy: str = "warn",
 ) -> VideoCourtSideArtifact:
     if (config.dataset_id, config.video_id) != (court.manifest["dataset_id"], court.manifest["video_id"]):
         raise ValueError("Shared court and side dataset/video must match")
     if config.action == "load":
-        court.verify()
         assert config.artifact_digest is not None
         artifact = VideoCourtSideArtifact.load(config.directory, config.artifact_digest)
     else:
-        assert config.request is not None
-        raw = config.request.read_bytes()
-        if sha256(raw).hexdigest() != config.request_sha256:
-            raise ValueError("Shared court side build request changed")
-        request: dict[str, Any] = json.loads(raw)
-        if (set(request) != {"schema", "clips", "evidence_clip_ids"} or request["schema"] != "video_court_side_inputs_v1"
-                or not isinstance(request["clips"], dict)):
-            raise ValueError("Invalid shared court side build request")
-        pins = {}
-        for clip, record in request["clips"].items():
-            if set(record) != {"role", "directory", "inputs_digest"} or record["role"] not in {"data", "artifact"}:
-                raise ValueError("Court side build requires pinned data/artifact component stores")
-            directory = resolver.resolve(PathRole(record["role"]), record["directory"])
-            pin = PinnedSideInputs.from_store(directory)
-            if pin.digest != record["inputs_digest"]:
-                raise ValueError(f"Pinned court side inputs changed: {clip}")
-            pins[clip] = pin
-        artifact = build_video_court_side(pins, court=court, directory=config.directory, thresholds=thresholds,
+        request = CourtSideBuildRequest.read(config, resolver)
+        artifact = build_video_court_side(request.pin_inputs(), court=court, directory=config.directory, thresholds=thresholds,
                                           max_frames=max_frames, code_identity=code_identity,
-                                          evidence_clip_ids=request["evidence_clip_ids"], rebuild=config.rebuild)
-    artifact.check_settings(court, thresholds, max_frames)
+                                          evidence_clip_ids=request.evidence_clip_ids, rebuild=config.rebuild, court_policy=court_policy)
+    artifact.check_settings(court, thresholds, max_frames, court_policy=court_policy)
     return artifact

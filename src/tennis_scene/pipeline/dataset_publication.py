@@ -6,17 +6,19 @@ import hashlib
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs
+from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.storage.clip_store import clip_store_lock
 from src.tennis_scene.pipeline.storage.scene_export import validate_scene_export
 from src.tennis_scene.pipeline.storage.scene_index import (
     annotation_scene_path,
     indexed_scene_path,
+    read_component_descriptor,
 )
 from src.tennis_scene.schema import (
     SCENE_MASK_FIELDS,
@@ -121,6 +123,41 @@ def validate_dataset_result(result: SceneResult, record: DatasetClipRecord) -> N
         )
 
 
+def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
+    """A marker may only adopt the admitted side component of this clip's export."""
+    if "video_court_side_digest" not in identity:
+        return {}
+    from src.tennis_scene.pipeline.video_court_side.component import (
+        SharedCourtSideModule,
+    )
+    from src.tennis_scene.pipeline.video_court_side.inputs import PinnedSideInputs
+
+    clip = inputs.record.clip_id
+    clips = identity.get("video_court_side_clips")
+    if not isinstance(clips, Mapping) or clip not in clips:
+        raise ValueError(f"Clip missing from shared court side publication: {clip}")
+    expected = {"artifact_digest": identity["video_court_side_digest"], "unobservable_policy": identity["video_court_side_unobservable_policy"],
+                "court_unobservable_policy": identity["video_court_unobservable_policy"], **clips[clip]}
+    if expected["status"] == "failed":
+        raise ReconstructionUnavailable(expected["reason"], f"{clip}: {expected.get('detail', expected['reason'])}", diagnostics=expected)
+    root = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
+    index = json.loads((root / "scene.json").read_text())
+    videos = index["source"]["videos"]
+    if index["source"]["clip_id"] != clip or {v["camera_id"]: v["sha256"] for v in videos} != inputs.media_sha256:
+        raise ValueError(f"Published shared court side belongs to a different clip or media: {clip}")
+    ref = index["artifacts"]["court_side"]
+    descriptor = read_component_descriptor(root, ref, node="court_side", source_sha256=index["source_sha256"])
+    if descriptor["provenance"].get("origin") != "component":
+        raise ValueError("Published shared court side requires component origin")
+    component = descriptor["identity"]
+    if (component.get("settings") != expected or component.get("implementation") != identity["code_sha256"]
+            or component.get("component_class") != f"{SharedCourtSideModule.__module__}.{SharedCourtSideModule.__qualname__}"
+            or ref["execution_key"] != document_digest(component)):
+        raise ValueError(f"Published court side disagrees with the shared decision or policy: {clip}")
+    PinnedSideInputs.from_store(root).verify_arrays()
+    return {"court_side": ref}
+
+
 def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mapping[str, object], *, overwrite: bool = False) -> Path | None:
     """Return a reusable marker, rejecting stale inputs/settings as before."""
     destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR / "annotation.json"
@@ -136,7 +173,8 @@ def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mappin
                 or marker.get("clip_manifest_sha256") != inputs.manifest_sha256
                 or marker.get("media_sha256") != inputs.media_sha256):
             raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
-        scene = load_scene_result(annotation_scene_path(destination.parent, marker))
+        required = _required_scene_components(inputs, publication_identity)
+        scene = load_scene_result(annotation_scene_path(destination.parent, marker, required_components=required))
         validate_dataset_result(scene, inputs.record)
         if marker.get("arrays") != scene_array_manifest(scene):
             raise ValueError("Annotation arrays disagree with the published scene")
@@ -151,7 +189,8 @@ def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeli
         validate_dataset_result(result, inputs.record)
         inputs.snapshot.assert_unchanged()
         destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
-        scene_path = indexed_scene_path(destination / "scene.json")
+        required = _required_scene_components(inputs, publication_identity)
+        scene_path = indexed_scene_path(destination / "scene.json", required_components=required)
         if expected_scene is not None and scene_path != expected_scene.resolve():
             raise ValueError("Cannot publish a superseded scene export")
         validate_scene_export(result, scene_path)

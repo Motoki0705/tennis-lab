@@ -159,7 +159,9 @@ def test_component_infers_only_frame_zero_and_normalizes_by_last_pixel(tmp_path:
     assert result.diagnostics["observed_frame_indices"] == [0]
     assert result.diagnostics["source_frame_count"] == 1010
     assert result.diagnostics["temporal_policy"] == "static_first_frame"
-    assert result.diagnostics["checkpoint"] == {"checkpoint_sha256": "fixture"}
+    from src.tennis_scene.pipeline.model_assets import file_identity
+    assert result.diagnostics["checkpoint"]["checkpoint_path"] == str(module.config.checkpoint)
+    assert result.diagnostics["checkpoint"]["checkpoint_sha256"] == file_identity(module.config.checkpoint)["sha256"]
     assert result.diagnostics["cameras"][0]["frames"][0]["frame_index"] == 0
     assert result.diagnostics["cameras"][0]["frames"][0]["kp_only_prosac_orientation"] == "identity"
 

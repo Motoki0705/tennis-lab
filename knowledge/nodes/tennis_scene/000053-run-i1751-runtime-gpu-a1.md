@@ -2,7 +2,7 @@
 id: run-i1751-runtime-gpu-a1
 type: run
 task: tennis_scene
-sequence: 48
+sequence: 53
 recorded_at: '2026-11-17'
 title: runtime GPU比較の初回計測失敗（profilerとcompileの干渉）
 issue: 1751

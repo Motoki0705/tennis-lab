@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Generic, Literal, Protocol, TypeVar
 
-from src.tennis_scene.pipeline.artifacts import json_value
+from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.errors import is_clip_failure
 from src.utils.checksum import dual_sha256
 from src.utils.inference_recording import model_event
@@ -69,6 +69,7 @@ class ModelSpec(Generic[ModelT]):
     initialize: Callable[[ModelT], None] = field(default=lambda _: None, repr=False, compare=False)
     release: Callable[[ModelT], None] = field(default=lambda _: None, repr=False, compare=False)
     _settings_json: str = field(init=False, repr=False)
+    _scheduling_key: tuple[Any, ...] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         from types import MappingProxyType
@@ -79,6 +80,8 @@ class ModelSpec(Generic[ModelT]):
         settings_json = json.dumps(json_value(self.settings), sort_keys=True, separators=(",", ":"), allow_nan=False)
         object.__setattr__(self, "_settings_json", settings_json)
         object.__setattr__(self, "settings", MappingProxyType(json.loads(settings_json)))
+        object.__setattr__(self, "_scheduling_key", (self.kind, self.architecture, self.device, self.dtype, settings_json,
+                                                    tuple(sorted(self.weights.items()))))
 
     @property
     def key(self) -> ModelKey:
@@ -93,8 +96,15 @@ class ModelSpec(Generic[ModelT]):
     @property
     def scheduling_key(self) -> tuple[Any, ...]:
         """Cheap affinity hint, never used to decide model equivalence."""
-        return (self.kind, self.architecture, self.device, self.dtype, self._settings_json,
-                tuple(sorted(self.weights.items())))
+        return self._scheduling_key
+
+
+def model_identities(specs: Mapping[str, ModelSpec[Any]], identity: Callable[[Path], dict[str, Any]]) -> dict[str, Any]:
+    """Bind effective settings and assets from runtime declarations."""
+    return {alias: {"kind": spec.kind, "architecture": spec.architecture,
+        "device": spec.device, "dtype": spec.dtype, "settings": dict(spec.settings),
+        "assets": {name: identity(path) for name, path in spec.weights.items()}}
+        for alias, spec in specs.items()}
 
 
 class ModelEventHook(Protocol):
@@ -129,6 +139,10 @@ class ModelBorrower:
 
     def borrow(self, alias: str) -> Any:
         return self._runtime.borrow(self._node, alias)
+
+    def identity(self, alias: str) -> str:
+        """Content/settings identity for evidence reuse, without loading a model."""
+        return self._runtime.model_identity(self._node, alias)
 
 
 class InferenceRuntime:
@@ -260,11 +274,38 @@ class InferenceRuntime:
                     self._load_failed = True
                     raise
 
-    def _event(self, action: Literal["load", "unload"], owned: _OwnedModel) -> AbstractContextManager[Any]:
+    @contextmanager
+    def _event(self, action: Literal["load", "unload"], owned: _OwnedModel) -> Iterator[None]:
         spec = owned.spec
-        event = model_event if self._model_event is None else self._model_event
-        return event(
+        event_hook = model_event if self._model_event is None else self._model_event
+        event = event_hook(
             action, spec.kind, weights=spec.weights, device=spec.device, dtype=spec.dtype, instance=owned.instance)
+        failure: BaseException | None = None
+        try:
+            with event:
+                try:
+                    yield
+                except BaseException as error:
+                    failure = error
+                    raise
+        except BaseException as error:
+            if failure is not None and error is not failure:
+                raise BaseExceptionGroup("Model operation and measurement hook failed", [failure, error]) from None
+            raise
+        # A recorder may suppress the body exception. It cannot decide whether
+        # a model was initialized/released or whether its outputs may publish.
+        if failure is not None:
+            raise failure
+
+    def _require_alias(self, node: NodeKey, alias: str) -> None:
+        if self._closed or self._active != node:
+            raise RuntimeError("Models may be borrowed only during their node")
+        if alias not in self._remaining[node]:
+            raise ValueError(f"Undeclared inference model: {node}.{alias}")
+
+    def model_identity(self, node: NodeKey, alias: str) -> str:
+        self._require_alias(node, alias)
+        return str(document_digest(self._key_for(node, alias)))
 
     def borrow(self, node: NodeKey, alias: str) -> Any:
         try:
@@ -274,10 +315,7 @@ class InferenceRuntime:
             raise
 
     def _borrow(self, node: NodeKey, alias: str) -> Any:
-        if self._closed or self._active != node:
-            raise RuntimeError("Models may be borrowed only during their node")
-        if alias not in self._remaining[node]:
-            raise ValueError(f"Undeclared inference model: {node}.{alias}")
+        self._require_alias(node, alias)
         spec = self._remaining[node][alias]
         # Validate the complete bound inventory, including sources removed
         # since planning and assets a backend opens inside its initializer.

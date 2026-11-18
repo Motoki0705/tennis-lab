@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -161,30 +162,31 @@ class LoadedCourtModel:
     identity: dict[str, Any]
 
 
-def court_checkpoint_assets(path: Path, *, resolver: PathResolver) -> dict[str, Path]:
-    """Resolve saved inference assets without constructing/loading any model.
+@dataclass(frozen=True)
+class CourtCheckpointMetadata:
+    spec: CourtInferenceSpec
+    epoch: Any
+    global_step: Any
 
-    DINOv3's local torch.hub implementation is executable model input too.
-    Include its Python source inventory, rather than a path or Git HEAD that
-    would miss modified files. Checkpoint tensors stay CPU memory mapped.
+    def identity(self, path: Path, checkpoint_sha256: str, backbone_sha256: str | None) -> dict[str, Any]:
+        spec = self.spec
+        return {"schema": "court_inference_checkpoint_v1", "checkpoint_path": str(path),
+            "checkpoint_sha256": checkpoint_sha256, "backbone_sha256": backbone_sha256,
+            "backbone_asset_migration": deepcopy(spec.backbone_asset_migration), "architecture": deepcopy(spec.architecture),
+            "target_bundle": serialize_target_bundle(spec.target_bundle), "short_side": spec.short_side,
+            "pose_long_side": spec.pose_long_side, "patch_size": spec.patch_size,
+            "epoch": self.epoch, "global_step": self.global_step}
+
+
+def read_court_checkpoint_metadata(path: Path, *, resolver: PathResolver) -> CourtCheckpointMetadata:
+    """Read inference metadata without building a model; tensors stay CPU mapped.
+
+    The planning caller owns digest and before/after file-stability checks.
     """
-    digest = file_sha256(path)
     checkpoint = _mapping(torch.load(path, map_location="cpu", weights_only=False, mmap=True), "body")
     hyper = _mapping(checkpoint.get("hyper_parameters"), "hyper_parameters")
     spec = CourtInferenceSpec.from_checkpoint_config(hyper.get("config"), hyper.get("target_bundle_state"), resolver=resolver)
-    if file_sha256(path) != digest:
-        raise CourtModelIOError("Checkpoint changed while resolving inference assets")
-    encoder = spec.model.encoder
-    repository, backbone = encoder.repository_path, encoder.checkpoint_path
-    if repository is None or not repository.is_dir():
-        raise FileNotFoundError(f"DINOv3 repository not found: {repository}")
-    if backbone is None or not backbone.is_file():
-        raise FileNotFoundError(f"DINOv3 checkpoint not found: {backbone}")
-    if not (repository / "hubconf.py").is_file():
-        raise FileNotFoundError(f"DINOv3 hub implementation not found: {repository / 'hubconf.py'}")
-    return {"checkpoint": path, "backbone": backbone,
-        **{f"dinov3_source/{source.relative_to(repository).as_posix()}": source
-           for source in sorted(repository.rglob("*.py"))}}
+    return CourtCheckpointMetadata(spec, checkpoint.get("epoch"), checkpoint.get("global_step"))
 
 
 def load_court_checkpoint(
@@ -239,20 +241,8 @@ def load_court_checkpoint(
     if file_sha256(path) != digest:
         raise CourtModelIOError("Checkpoint changed while being loaded")
     backbone = spec.model.encoder.checkpoint_path
-    identity = {
-        "schema": "court_inference_checkpoint_v1",
-        "checkpoint_path": str(path),
-        "checkpoint_sha256": digest,
-        "backbone_sha256": file_sha256(backbone) if backbone is not None else None,
-        "backbone_asset_migration": spec.backbone_asset_migration,
-        "architecture": spec.architecture,
-        "target_bundle": serialize_target_bundle(spec.target_bundle),
-        "short_side": spec.short_side,
-        "pose_long_side": spec.pose_long_side,
-        "patch_size": spec.patch_size,
-        "epoch": checkpoint.get("epoch"),
-        "global_step": checkpoint.get("global_step"),
-    }
+    identity = CourtCheckpointMetadata(spec, checkpoint.get("epoch"), checkpoint.get("global_step")).identity(
+        path, digest, file_sha256(backbone) if backbone is not None else None)
     return LoadedCourtModel(pair, spec, identity)
 
 

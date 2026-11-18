@@ -2,7 +2,7 @@
 id: run-video-batch-input-qualification-20261116
 type: run
 task: tennis_scene
-sequence: 53
+sequence: 66
 recorded_at: '2026-11-16'
 date: '2026-11-16'
 title: meiji_4camの追加8clipもCourt cam3で停止

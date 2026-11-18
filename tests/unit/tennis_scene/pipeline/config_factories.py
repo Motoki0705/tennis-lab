@@ -154,12 +154,24 @@ def materialize_model_weights(component: ComponentT) -> ComponentT:
     """Dummy content identities for tests replacing model loading, never real weights."""
     if isinstance(component, CourtKPModule):
         materialize_court_assets(component.config)
+    from src.tennis_scene.pipeline.components.person_detection import (
+        PersonDetectionModule,
+    )
+    if isinstance(component, PersonDetectionModule):
+        materialize_dino_sources(component.config.dino_repository)
     for spec in component.model_specs().values():
         for path in spec.weights.values():
             path.parent.mkdir(parents=True, exist_ok=True)
             if not path.exists():
                 path.write_bytes(b"fake-model-identity")
     return component
+
+
+def materialize_dino_sources(repository: Path) -> None:
+    for relative in ("models/__init__.py", "util/__init__.py"):
+        path = repository / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# test-owned external DINO source\n")
 
 
 def materialize_court_assets(config: CourtKPConfig) -> None:
