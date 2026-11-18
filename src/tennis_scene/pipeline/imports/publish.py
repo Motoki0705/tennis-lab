@@ -66,6 +66,7 @@ def publish_import(bound: BoundImport, store: ClipStore, value: Any, *, importer
     import_identity = {"importer": importer, "importer_version": version, "source_sha256": store.source_key, **identity}
     node.validate_import_identity(import_identity,
                                   {"origin": IMPORT_ORIGIN, **provenance})
+    node.validate_output(value)
     return store.publish(node.name, value, ArtifactCodec(node.io.output_type), schema=node.io.output_schema,
         version=node.io.version, identity=import_identity,
         dependencies=bound.references,

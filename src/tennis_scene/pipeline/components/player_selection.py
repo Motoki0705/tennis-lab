@@ -89,6 +89,10 @@ class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelec
     def model_specs(self) -> dict[str, ModelSpec[AppearanceEncoder]]:
         return {"encoder": self.encoder} if self.enabled and self.encoder is not None else {}
 
+    def cache_identity(self) -> dict[str, Any]:
+        return {'selection': self.config, 'footpoints': self.footpoints, 'sampling': self.sampling,
+                'encoder_name': self.encoder_name, 'device': self.device, 'enabled': self.enabled}
+
     def process_with_models(self, inputs: PlayerSelectionInput, models: ModelBorrower) -> PlayerSelectionOutput:
         video, raw = inputs.video, inputs.tracks
         if raw.camera_id != video.camera_id or raw.observed.shape[1] != video.num_frames:

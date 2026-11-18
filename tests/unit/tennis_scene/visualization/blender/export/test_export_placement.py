@@ -29,6 +29,7 @@ from src.tennis_scene.pipeline.components.player_reconstruction import (
     reconstruct_player_bodies,
     trace_player_placement,
 )
+from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
 from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
 from src.tennis_scene.pipeline.observation_types import (
     GroupedObservations,
@@ -56,6 +57,41 @@ VERTICES = 12
 IDENTITY = 7
 FPS = 30.0
 SIZE = (1280, 720)
+
+
+@pytest.mark.parametrize('version', [1, PoseEstimationModule.io.version, 99])
+def test_placement_reader_accepts_current_and_historical_pose(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version: int) -> None:
+    from types import SimpleNamespace
+
+    from src.tennis_scene.pipeline.artifacts import json_value
+    from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+    from src.tennis_scene.visualization.blender.export import placement
+    source = ClipSource('reader', (SourceVideo('cam0', tmp_path / 'missing.mp4', 'media', 2, 30., 64, 48),))
+    pose = ObjectObservations(('cam0',), (64, 48), 30., np.full((1, 2, 1, 17, 2), [17, 23], np.float32),
+        np.ones((1, 2, 1, 17), np.float32), np.ones((1, 2, 1), bool), np.array([[42]], np.int64))
+    store = ClipStore(tmp_path / 'store', json_value(source))
+    store.publish('pose_estimation/cam0', pose, ArtifactCodec(ObjectObservations), schema='person_poses', version=version,
+                  identity={}, dependencies={}, provenance={'origin': 'import'})
+    original = placement._read_artifact
+    def read(reader: Any, node: str, **kwargs: Any) -> Any:
+        if node.startswith('pose_estimation/'):
+            return original(reader, node, **kwargs)
+        # Other artifact families are outside this pose-reader contract. Stop
+        # at assembly, after the real public reader and typed pose codec ran.
+        return SimpleNamespace(geometry=object(), skeleton=object(), players=object()), {}
+    def assembled(self: Any, context: Any, artifacts: Any) -> Any:
+        np.testing.assert_array_equal(artifacts['pose_cam0'].uv_px[0, 1, 0, 0], [17, 23])
+        assert artifacts['pose_cam0'].local_track_ids.tolist() == [[42]]
+        raise RuntimeError('pose adoption completed')
+    monkeypatch.setattr(placement, '_read_artifact', read)
+    monkeypatch.setattr(placement.BodyPlacementInputAssembler, 'assemble', assembled)
+    if version == 99:
+        with pytest.raises(ValueError, match='requires person_poses'):
+            placement.read_placement_inputs(store.root, human_vis_threshold=.3)
+    else:
+        with pytest.raises(RuntimeError, match='pose adoption completed'):
+            placement.read_placement_inputs(store.root, human_vis_threshold=.3)
 
 
 class _FakeGeometry:

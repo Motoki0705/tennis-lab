@@ -35,6 +35,9 @@ nodeを`(clip_id, node名)`で識別する。bindingsは同じclip内のproducer
 `PlanExecutor.run()`は依存が揃ったnodeを順次処理する。
 `select_ready(ready_keys) -> key`で、その時点で実行可能なnodeの選択方針を差し替えられる。
 既定はruntimeが常駐中のモデルを使うready nodeを優先し、次にモデル不要のnode、最後に宣言順を使う。
+`ComponentNode.after_components`はnode名の`/`より前で指定した、選択されたcomponent群の間に実行順の制約を置く。
+全clip/cameraの対象群が完了するまで後段をreadyにせず、部分cache/loadでもモデルのpassを揃える。
+この制約はartifactの入力依存・cache identityへ加えず、target閉包にも含めない。
 同順位では追加で必要なモデルが少ないnodeを先に選ぶ。依存の揃わないnodeは選ばない。
 cache/load判定は依存artifactが確定してから1回だけ行い、完了したnodeはoverwriteでも再実行しない。
 外側から`run(targets=...)`を繰り返してschedulerを作る必要はない。
@@ -168,14 +171,18 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 
 | node / schema | version | 数値配列と契約 |
 |---|---|---|
-| `person_pose_features/<camera>` / `person_pose_features` | 1 | `frame_offsets` int64 (T+1)、`source_rows` int64 (N)、`keypoints` float32 (N,17,3)。元画素x/yと加工しないheatmap peak |
-| `person_appearance_features/<camera>` / `person_appearance_features` | 2 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、明示したCLIP encoder名とModelSpec由来の`encoder_identity`。無効cropはzero＋false |
-| `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v1・外観特徴v2のcamera・全frame offset・元rowを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
+| `person_pose_features/<camera>` / `person_pose_features` | 2 | `frame_offsets` int64 (T+1)、`source_rows` int64 (N)、`keypoints` float32 (N,17,3)、`model_identity`・`preprocessing_identity`。元画素x/yと加工しないheatmap peak |
+| `person_appearance_features/<camera>` / `person_appearance_features` | 3 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、明示したCLIP encoder名・`encoder_identity`・`preprocessing_identity`。無効cropはzero＋false |
+| `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v2・外観特徴v3のcamera・全frame offset・元row・期待するモデル/前処理identityを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
 | `player_selection/<camera>` / `selected_player_tracks` | 3 | 保存した追跡特徴の選別とgroup軸への対応付け |
 | `pose_estimation/<camera>` / `person_poses` | 2 | 選別groupの実観測poseを再利用。標準経路で再推論しない |
 
-appearanceはpose成果物にも依存するが、標準CLIPへpose promptは渡さない。
-ViTPoseとCLIPはruntimeの別passで借り、それぞれ最終需要後に解放する。
+appearanceの入力は検出だけで、標準CLIPへpose promptは渡さない。外観だけのtargetはViTPoseを要求しない。
+`after_components`で、選択された全camera/clipの人物検出→pose→CLIPを順に処理する。
+ViTPoseとCLIPはruntimeの別passで借り、それぞれ最終需要後に解放する。部分cacheからの再開でも順序を保つ。
+両特徴の`cache_identity()`は各moduleが使う前処理だけを含み、override時と完成markerにも反映する。
+load/importの採用時は、宣言したModelSpec（重みの内容・精度・設定）と前処理を保存metadataへ照合する。
+CPU追跡も同じ照合をAFLink/StrongSORTの開始前に行い、不一致や不明な入力は拒否する。
 `execution.person_pose_features`・`execution.person_appearance_features`は他nodeと同じexecute/load契約。
 追跡・選別・poseの旧schemaは新しいidentityとして読み替えず、executeで再生成し、loadは不一致で停止する。
 特徴のsource・重み・前処理・batch上限・dtype・実装identityと上流artifact参照は既存storeに保持する。
@@ -229,7 +236,7 @@ CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だ�
 `selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
 追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
 設定した選別encoderで明示的に再計算し、appearance診断へsourceと理由を記録する。
-旧person_tracks v5/v6・外観特徴v1・selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
+旧person_tracks v5/v6・pose特徴v1・外観特徴v1/v2・selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。

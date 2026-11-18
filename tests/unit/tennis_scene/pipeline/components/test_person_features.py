@@ -72,7 +72,7 @@ def test_pose_and_appearance_keep_rows_empty_frames_and_tail(tmp_path: Path, mon
     np.testing.assert_array_equal(poses.keypoints[:, 0], np.array([[10, 19, 1.4], [43, 16, 1.4], [15, 25, 1.4], [46, 27, 1.4]], np.float32))
     Encoder.calls = []
     appearance = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=3))
-    features = appearance.process(module.PersonAppearanceFeaturesInput(request.video, request.detections, poses))
+    features = appearance.process(module.PersonAppearanceFeaturesInput(request.video, request.detections))
     assert Encoder.calls == [3, 1]  # crosses frames, including an incomplete final batch
     for artifact in (poses, features):
         np.testing.assert_array_equal(artifact.frame_offsets, [0, 2, 2, 3, 4, 4])
@@ -90,10 +90,10 @@ def test_no_detections_preserves_timeline_without_loading_models(tmp_path: Path,
                     confidence=np.empty(0, np.float32), source_rows=np.empty(0, np.int64))
     component = (module.PersonPoseFeaturesModule(make_people_config(tmp_path)) if stage == 'pose' else
                  module.PersonAppearanceFeaturesModule(fake_encoder_spec(lambda: pytest.fail('must not load'))))
-    # No assets or actual video are needed for an empty detection timeline.
+    # Provenance needs declared asset hashes even when no model/video is loaded.
     pose_input = replace(request, detections=empty)
-    pose_output = module.PersonPoseFeaturesModule(make_people_config(tmp_path)).process(pose_input)
-    result = component.process(pose_input if stage == "pose" else module.PersonAppearanceFeaturesInput(request.video, empty, pose_output))
+    materialize_model_weights(component)
+    result = component.process(pose_input if stage == "pose" else module.PersonAppearanceFeaturesInput(request.video, empty))
     assert len(result.source_rows) == 0 and result.frame_offsets.tolist() == [0] * 6
 
 
@@ -110,8 +110,7 @@ def test_feature_pass_rejects_decode_mismatch(tmp_path: Path, monkeypatch: pytes
     component = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=3))
     with pytest.raises(ValueError, match='timeline|order|size'):
         request = inputs(tmp_path)
-        poses = module.PersonPoseFeaturesOutput("cam", request.detections.frame_offsets, request.detections.source_rows, np.zeros((4, 17, 3), np.float32))
-        component.process(module.PersonAppearanceFeaturesInput(request.video, request.detections, poses))
+        component.process(module.PersonAppearanceFeaturesInput(request.video, request.detections))
 
 
 def test_separate_passes_publish_reload_and_cache_without_model_overlap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -159,9 +158,11 @@ def test_separate_passes_publish_reload_and_cache_without_model_overlap(tmp_path
         pose = materialize_model_weights(module.PersonPoseFeaturesModule(people))
         appearance = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=3))
         nodes.append(ComponentNode(f'person_pose_features/{camera}', pose, pose.io, PersonPoseFeaturesInputAssembler(),
-            {'detections': f'person_detection/{camera}'}, context, {'models': model_identities(pose.model_specs(), file_identity)}, 'test'))
+            {'detections': f'person_detection/{camera}'}, context, {'models': model_identities(pose.model_specs(), file_identity)}, 'test',
+            after_components=('person_detection',)))
         nodes.append(ComponentNode(f'person_appearance_features/{camera}', appearance, appearance.io, PersonAppearanceFeaturesInputAssembler(),
-            {'detections': f'person_detection/{camera}', 'poses': f'person_pose_features/{camera}'}, context, {'models': model_identities(appearance.model_specs(), file_identity)}, 'test'))
+            {'detections': f'person_detection/{camera}'}, context, {'models': model_identities(appearance.model_specs(), file_identity)}, 'test',
+            after_components=('person_detection', 'person_pose_features')))
     active: set[str] = set()
     events: list[tuple[str, str]] = []
     @contextmanager
@@ -196,11 +197,10 @@ def test_appearance_invalid_crops_stay_masked_and_unprompted(tmp_path: Path, mon
     boxes = request.detections.boxes_xyxy.copy()
     boxes[1] = [80, 4, 100, 20]  # entirely outside the decoded image
     detections = replace(request.detections, boxes_xyxy=boxes)
-    poses = module.PersonPoseFeaturesOutput('cam', detections.frame_offsets, detections.source_rows, np.full((4, 17, 3), 999., np.float32))
     monkeypatch.setattr(module, 'OpenCVVideoFrameReader', reader)
     Encoder.calls = []
     component = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=2))
-    result = component.process(module.PersonAppearanceFeaturesInput(request.video, detections, poses))
+    result = component.process(module.PersonAppearanceFeaturesInput(request.video, detections))
     assert Encoder.calls == [2, 1]
     assert result.appearance_valid.tolist() == [True, False, True, True]
     assert not result.embeddings[1].any()

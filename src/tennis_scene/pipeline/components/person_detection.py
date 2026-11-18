@@ -64,6 +64,9 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
         self.config, self.enabled = config, enabled
         self.merge_duplicates = merge_duplicates
 
+    def cache_identity(self) -> dict[str, bool]:
+        return {'enabled': self.enabled, 'merge_duplicates': self.merge_duplicates}
+
     def model_specs(self) -> dict[str, ModelSpec[DinoPersonDetector]]:
         config = self.config
         if not self.enabled:

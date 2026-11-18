@@ -74,7 +74,7 @@ def pose_reference(
     record["scene_index_sha256"] = sha256(index)
     if artifact is None:
         return reference, dict(record, status="missing_pose", known_distance_frames=0)
-    if (artifact["schema"], artifact["version"]) != ("person_poses", 1):
+    if artifact["schema"] != "person_poses" or artifact["version"] not in (1, 2):
         raise ValueError("Unsupported pose artifact schema")
     descriptor = read_component_descriptor(
         root, artifact, node=node, source_sha256=document["source_sha256"],

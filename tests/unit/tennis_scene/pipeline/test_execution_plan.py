@@ -98,6 +98,35 @@ def clip(tmp_path: Path, clip_id: str = "a", offset: float = 2) -> ClipExecution
     return ClipExecution(clip_id, nodes, RecordingStore(tmp_path / clip_id, clip_id))
 
 
+def test_scheduling_barriers_span_clips_without_changing_inputs_targets_or_cache(tmp_path: Path) -> None:
+    entries = []
+    for name in ('a', 'b'):
+        entry = clip(tmp_path, name)
+        first, second, separate = entry.nodes
+        entries.append(replace(entry, nodes=(first, second, replace(separate, after_components=('first',)))))
+    plan = ExecutionPlan(entries)
+    assert plan.target_nodes([('a', 'separate')]) == {('a', 'separate')}
+    executor = PlanExecutor(plan)
+    executor.run(targets=[('a', 'separate')])
+    assert tuple(plan.references) == (('a', 'separate'),)
+    executor.run()
+    order = tuple(plan.references)
+    assert max(order.index((name, 'first')) for name in ('a', 'b')) < order.index(('b', 'separate'))
+    without_barriers = [replace(entry, nodes=tuple(replace(node, after_components=()) for node in entry.nodes)) for entry in entries]
+    cached = ExecutionPlan(without_barriers)
+    PlanExecutor(cached).run()
+    assert set(cached.statuses.values()) == {'cached'}
+
+
+def test_scheduling_cycle_is_rejected_before_model_loading(tmp_path: Path) -> None:
+    entry = clip(tmp_path)
+    first, second, separate = entry.nodes
+    nodes = (replace(first, after_components=('separate',)), second,
+             replace(separate, after_components=('first',)))
+    with pytest.raises(ValueError, match='Cyclic component graph'):
+        ExecutionPlan([replace(entry, nodes=nodes)])
+
+
 @pytest.mark.parametrize("case,expected", [
     ("empty", ("executed", "executed", "executed")),
     ("cached", ("cached", "cached", "cached")),

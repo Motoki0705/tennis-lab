@@ -1,8 +1,9 @@
 """Camera-local, row-addressed inference artifacts, separate from CPU tracking."""
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -22,6 +23,7 @@ from src.tasks.person_tracking.features import (
 )
 from src.tasks.person_tracking.sequence import CLIP_ENCODER
 from src.tasks.player_association.appearance.encoders import AppearanceEncoder
+from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
 from src.tennis_scene.pipeline.inference_runtime import (
@@ -29,11 +31,49 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelBorrower,
     ModelSpec,
 )
-from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
-from src.tennis_scene.pipeline.model_resources import vitpose_model
+from src.tennis_scene.pipeline.model_assets import PeopleModelConfig, file_identity
+from src.tennis_scene.pipeline.model_resources import model_identities, vitpose_model
 from src.utils.video import OpenCVVideoFrameReader
 
 CLIP_DIMENSION = 1280
+
+
+def pose_feature_settings(config: FeatureConfig, enabled: bool = True) -> dict[str, Any]:
+    return {'bbox_enlarge': config.bbox_enlarge, 'enabled': enabled, 'output_precision': 'float32'}
+
+
+def appearance_feature_settings(config: FeatureConfig, enabled: bool = True) -> dict[str, Any]:
+    return {'min_appearance_height_px': config.min_appearance_height_px,
+            'batch_size': config.appearance_batch_size, 'enabled': enabled,
+            'pose_prompt': False, 'output_precision': 'float32'}
+
+
+def feature_model_identity(spec: ModelSpec[Any] | None) -> str:
+    # Use the signature-checked asset cache, rather than rereading large weights
+    # for every camera's CPU tracker. This has exactly ModelBorrower.identity's key.
+    return str(document_digest({'enabled': False} if spec is None else
+                               spec._key_with(lambda path: file_identity(path)['sha256'])))
+
+
+def require_feature_identity(model: str | None, preprocessing: str | None,
+                             spec: ModelSpec[Any] | None, settings: Mapping[str, Any]) -> None:
+    if model != feature_model_identity(spec) or preprocessing != document_digest(settings):
+        raise ValueError('Stored feature model/preprocessing identity differs from the expected declaration; regenerate features')
+
+
+def _validate_saved_metadata(payload: Mapping[str, Any], settings: Mapping[str, Any], *,
+                             specs: Mapping[str, ModelSpec[Any]], model_field: str,
+                             preprocessing: Mapping[str, Any]) -> None:
+    # Imports/load-only nodes never borrow a model. Still verify the complete
+    # bound declaration, including current asset SHA and dtype, before adoption.
+    if json_value(settings.get('models')) != json_value(model_identities(specs, file_identity)):
+        raise ValueError('Stored feature requires the expected bound ModelSpec declaration')
+    require_feature_identity(payload.get(model_field), payload.get('preprocessing_identity'),
+                             next(iter(specs.values()), None), preprocessing)
+
+
+def _is_digest(value: Any) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(c in '0123456789abcdef' for c in value)
 
 
 def _validate_axis(camera_id: str, offsets: NDArray[np.int64], rows: NDArray[np.int64]) -> None:
@@ -49,9 +89,13 @@ class PersonPoseFeaturesOutput:
     frame_offsets: NDArray[np.int64]
     source_rows: NDArray[np.int64]
     keypoints: NDArray[np.float32]  # N,17,3; source pixels and raw heatmap peaks
+    model_identity: str
+    preprocessing_identity: str
 
     def __post_init__(self) -> None:
         _validate_axis(self.camera_id, self.frame_offsets, self.source_rows)
+        if not _is_digest(self.model_identity) or not _is_digest(self.preprocessing_identity):
+            raise ValueError('Pose features require explicit model and preprocessing identities')
         if self.keypoints.shape != (len(self.source_rows), 17, 3) or self.keypoints.dtype != np.float32 \
                 or not np.isfinite(self.keypoints).all():
             raise ValueError('Pose features require finite float32 COCO17 values for every source row')
@@ -66,10 +110,11 @@ class PersonAppearanceFeaturesOutput:
     appearance_valid: NDArray[np.bool_]
     encoder: str
     encoder_identity: str
+    preprocessing_identity: str
 
     def __post_init__(self) -> None:
         _validate_axis(self.camera_id, self.frame_offsets, self.source_rows)
-        if not isinstance(self.encoder_identity, str) or len(self.encoder_identity) != 64 or any(c not in '0123456789abcdef' for c in self.encoder_identity):
+        if not _is_digest(self.encoder_identity) or not _is_digest(self.preprocessing_identity):
             raise ValueError('Appearance features require an explicit content/settings identity')
         n = len(self.source_rows)
         if self.encoder != CLIP_ENCODER or self.embeddings.shape != (n, CLIP_DIMENSION) \
@@ -104,7 +149,6 @@ class PersonFeaturesInput:
 class PersonAppearanceFeaturesInput:
     video: SourceVideo
     detections: PersonDetectionOutput
-    poses: PersonPoseFeaturesOutput
 
 
 def _frames(video: SourceVideo) -> Iterator[tuple[int, NDArray[np.uint8]]]:
@@ -122,7 +166,7 @@ def _frames(video: SourceVideo) -> Iterator[tuple[int, NDArray[np.uint8]]]:
 
 class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPoseFeaturesOutput]):
     io = ComponentIO('person_pose_features', PersonFeaturesInput, PersonPoseFeaturesOutput,
-                     {'detections': InputPort('person_detections', 2)}, 'person_pose_features', version=1)
+                     {'detections': InputPort('person_detections', 2)}, 'person_pose_features', version=2)
 
     def __init__(self, people: PeopleModelConfig, config: FeatureConfig = DEFAULT_CONFIG, *, enabled: bool = True) -> None:
         self.people, self.config, self.enabled = people, config, enabled
@@ -130,9 +174,21 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
     def model_specs(self) -> dict[str, ModelSpec[ViTPosePose2D]]:
         return {'pose': vitpose_model(self.people, factory=ViTPosePose2D)} if self.enabled else {}
 
+    def cache_identity(self) -> dict[str, Any]:
+        return pose_feature_settings(self.config, self.enabled)
+
+    def validate_artifact(self, descriptor: Mapping[str, Any], settings: Mapping[str, Any]) -> None:
+        _validate_saved_metadata(descriptor['payload'], settings, specs=self.model_specs(),
+                                 model_field='model_identity', preprocessing=self.cache_identity())
+
+    def validate_output(self, output: PersonPoseFeaturesOutput, settings: Mapping[str, Any]) -> None:
+        _validate_saved_metadata({'model_identity': output.model_identity, 'preprocessing_identity': output.preprocessing_identity},
+                                 settings, specs=self.model_specs(), model_field='model_identity', preprocessing=self.cache_identity())
+
     def process_with_models(self, inputs: PersonFeaturesInput, models: ModelBorrower) -> PersonPoseFeaturesOutput:
         video, detections = inputs.video, inputs.detections
         rows = require_alignment(video, detections)
+        identity = models.identity('pose') if self.enabled else feature_model_identity(None)
         poses: NDArray[np.float32] = np.zeros((len(rows), 17, 3), np.float32)
         if not self.enabled and len(rows):
             raise ValueError('Disabled pose features require empty detections')
@@ -158,13 +214,13 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
                 bad = np.argwhere(~np.isfinite(poses))
                 details = [(int(indices[i]), int(rows[i]), int(j), int(k), str(poses[i, j, k])) for i, j, k in bad]
                 raise ValueError(f'Nonfinite pose: (frame, detection row, joint, channel, value)={details}')
-        return PersonPoseFeaturesOutput(video.camera_id, detections.frame_offsets, rows, poses)
+        return PersonPoseFeaturesOutput(video.camera_id, detections.frame_offsets, rows, poses,
+                                        identity, document_digest(self.cache_identity()))
 
 
 class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeaturesInput, PersonAppearanceFeaturesOutput]):
     io = ComponentIO('person_appearance_features', PersonAppearanceFeaturesInput, PersonAppearanceFeaturesOutput,
-                     {'detections': InputPort('person_detections', 2), 'poses': InputPort('person_pose_features', 1)},
-                     'person_appearance_features', version=2)
+                     {'detections': InputPort('person_detections', 2)}, 'person_appearance_features', version=3)
 
     def __init__(self, encoder: ModelSpec[AppearanceEncoder] | None, config: FeatureConfig = DEFAULT_CONFIG, *,
                  enabled: bool = True, batch_size: int | None = None) -> None:
@@ -178,11 +234,21 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
     def model_specs(self) -> dict[str, ModelSpec[AppearanceEncoder]]:
         return {'encoder': self.encoder} if self.enabled and self.encoder is not None else {}
 
+    def cache_identity(self) -> dict[str, Any]:
+        return appearance_feature_settings(self.config, self.enabled)
+
+    def validate_artifact(self, descriptor: Mapping[str, Any], settings: Mapping[str, Any]) -> None:
+        _validate_saved_metadata(descriptor['payload'], settings, specs=self.model_specs(),
+                                 model_field='encoder_identity', preprocessing=self.cache_identity())
+
+    def validate_output(self, output: PersonAppearanceFeaturesOutput, settings: Mapping[str, Any]) -> None:
+        _validate_saved_metadata({'encoder_identity': output.encoder_identity, 'preprocessing_identity': output.preprocessing_identity},
+                                 settings, specs=self.model_specs(), model_field='encoder_identity', preprocessing=self.cache_identity())
+
     def process_with_models(self, inputs: PersonAppearanceFeaturesInput, models: ModelBorrower) -> PersonAppearanceFeaturesOutput:
         video, detections = inputs.video, inputs.detections
-        rows = require_alignment(video, detections, inputs.poses)
-        from src.tennis_scene.pipeline.artifacts import document_digest
-        identity = models.identity('encoder') if self.enabled else document_digest({'enabled': False})
+        rows = require_alignment(video, detections)
+        identity = models.identity('encoder') if self.enabled else feature_model_identity(None)
         embeddings: NDArray[np.float32] = np.zeros((len(rows), CLIP_DIMENSION), np.float32)
         valid: NDArray[np.bool_] = np.zeros(len(rows), bool)
         if not self.enabled and len(rows):
@@ -198,9 +264,10 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
                     start, end = detections.frame_offsets[frame:frame + 2]
                     # Same input validation as FeatureExtractor, before cropping.
                     DetectionFeatures(frame, rows[start:end], detections.boxes_xyxy[start:end], detections.confidence[start:end],
-                        inputs.poses.keypoints[start:end], embeddings[start:end], valid[start:end])
+                        None, embeddings[start:end], valid[start:end])
                     yield from iter_appearance_crops(frame, image, rows[start:end], detections.boxes_xyxy[start:end],
                                                      None, encoder, self.config)
             for batch in appearance_batches(crops(), self.config.appearance_batch_size):
                 scatter_appearance(batch, infer_appearance(batch, encoder), row_indices, embeddings, valid)
-        return PersonAppearanceFeaturesOutput(video.camera_id, detections.frame_offsets, rows, embeddings, valid, CLIP_ENCODER, identity)
+        return PersonAppearanceFeaturesOutput(video.camera_id, detections.frame_offsets, rows, embeddings, valid, CLIP_ENCODER, identity,
+                                               document_digest(self.cache_identity()))

@@ -102,9 +102,9 @@ class PersonPoseFeaturesInputAssembler:
 
 @dataclass(frozen=True)
 class PersonAppearanceFeaturesInputAssembler:
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PersonAppearanceFeaturesInput:
         if context.camera_id is None:
             raise ValueError("Appearance features require a camera scope")
-        return PersonAppearanceFeaturesInput(context.source.video(context.camera_id), artifacts["detections"], artifacts["poses"])
+        return PersonAppearanceFeaturesInput(context.source.video(context.camera_id), artifacts["detections"])

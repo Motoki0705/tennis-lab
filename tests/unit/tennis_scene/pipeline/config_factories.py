@@ -32,6 +32,11 @@ from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 ComponentT = TypeVar("ComponentT", bound=InferenceComponent[Any, Any])
 
 
+def fake_pose_spec() -> ModelSpec[Any]:
+    """Explicit no-assets provenance for saved CPU feature fixtures; never loaded."""
+    return ModelSpec('vitpose', {}, 'fixture_coco17', 'cpu', 'float32', {}, object)
+
+
 def make_resolver(root: Path) -> PathResolver:
     """Build all seven explicit path roots beneath one temporary project."""
     project = root.resolve()

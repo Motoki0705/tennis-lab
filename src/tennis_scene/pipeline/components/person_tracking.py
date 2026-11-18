@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 from time import monotonic
@@ -24,10 +24,14 @@ from src.tennis_scene.pipeline.components.person_detection import PersonDetectio
 from src.tennis_scene.pipeline.components.person_features import (
     PersonAppearanceFeaturesOutput,
     PersonPoseFeaturesOutput,
+    appearance_feature_settings,
+    pose_feature_settings,
     require_alignment,
+    require_feature_identity,
 )
 from src.tennis_scene.pipeline.components.tracking_identity import TrackletLink
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
+from src.tennis_scene.pipeline.inference_runtime import ModelSpec
 
 
 class _FrameProgress:
@@ -116,18 +120,25 @@ class PersonTrackingModule:
     """CPU tracking on stored features; no media decoding or inference models."""
 
     io = ComponentIO("person_tracking", PersonTrackingInput, PersonTrackingOutput,
-        {"detections": InputPort("person_detections", 2), "poses": InputPort("person_pose_features", 1),
-         "appearance": InputPort("person_appearance_features", 2)}, "person_tracks", version=7)
+        {"detections": InputPort("person_detections", 2), "poses": InputPort("person_pose_features", 2),
+         "appearance": InputPort("person_appearance_features", 3)}, "person_tracks", version=7)
 
     def __init__(self, config: TrackingConfig, *, aflink_checkpoint: Path | None = None,
+                 expected_pose: ModelSpec[Any] | None = None, expected_encoder: ModelSpec[Any] | None = None,
+                 pose_preprocessing: Mapping[str, Any] | None = None, appearance_preprocessing: Mapping[str, Any] | None = None,
                  enabled: bool = True, show_progress: bool = True) -> None:
         self.config = config
+        self.expected_pose, self.expected_encoder = expected_pose, expected_encoder
+        self.pose_preprocessing = dict(pose_feature_settings(config.features) if pose_preprocessing is None else pose_preprocessing)
+        self.appearance_preprocessing = dict(appearance_feature_settings(config.features) if appearance_preprocessing is None else appearance_preprocessing)
         self.aflink_checkpoint, self.enabled = aflink_checkpoint, enabled
         if type(show_progress) is not bool:
             raise TypeError('show_progress must be a bool')
         self.show_progress = show_progress
         if enabled and aflink_checkpoint is None:
             raise ValueError('AFLink/GSI tracking requires an explicit checkpoint')
+        if enabled and (expected_pose is None or expected_encoder is None):
+            raise ValueError('CPU tracking requires explicit expected pose and appearance declarations')
 
     def process(self, inputs: PersonTrackingInput) -> PersonTrackingOutput:
         video, detections = inputs.video, inputs.detections
@@ -137,6 +148,10 @@ class PersonTrackingModule:
         if not self.enabled:
             return PersonTrackingOutput(video.camera_id, np.empty(0, np.int64),
                 np.zeros((0, video.num_frames, 4), np.float32), np.zeros((0, video.num_frames), bool), (), ())
+        require_feature_identity(inputs.poses.model_identity, inputs.poses.preprocessing_identity,
+                                 self.expected_pose, self.pose_preprocessing)
+        require_feature_identity(inputs.appearance.encoder_identity, inputs.appearance.preprocessing_identity,
+                                 self.expected_encoder, self.appearance_preprocessing)
         assert self.aflink_checkpoint is not None
         af = AFLink(self.aflink_checkpoint)
         progress = _FrameProgress(video.camera_id, video.num_frames, enabled=self.show_progress)

@@ -30,6 +30,7 @@ from src.tennis_scene.pipeline.definition import (
     standard_model_components,
 )
 from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
+from src.tennis_scene.pipeline.inference_runtime import InferenceComponent
 from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
@@ -43,15 +44,16 @@ from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
 )
 
 
-def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str) -> Any:
+def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str, *, detector: bool = False) -> Any:
     cfg = runtime(tmp_path, overrides=('device=cuda', 'gvhmr.enabled=false', f'people_models.runtime.vitpose.precision={precision}'))
     materialize_assets(enabled_model_assets(cfg).values(), tmp_path, court=cfg.court_kp)
     source = ClipSource('clip', tuple(SourceVideo(f'cam{i}', tmp_path / f'{i}.mp4', 'media', 5, 30., 64, 48) for i in range(2)))
-    state = SimpleNamespace(failure=None, events=[], factories=[], references=[], encoder_factories=0)
+    state = SimpleNamespace(failure=None, events=[], factories=[], references=[], encoder_factories=0,
+                            expected_precision=precision, boxes=[])
 
     class Pose:
         def __init__(self, checkpoint: Path, **options: Any) -> None:
-            assert options['precision'] == precision and options['device'] == 'cuda'
+            assert options['precision'] == state.expected_precision and options['device'] == 'cuda'
             assert options['flip_test'] == cfg.people.runtime.vitpose.flip_test
             state.factories.append(options)
             state.references.append(weakref.ref(self))
@@ -65,6 +67,7 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str) -> 
                 raise RuntimeError('feature release failed')
         def predict(self, request: Any) -> Any:
             state.events.append('predict')
+            state.boxes.append(request.bbx_xys.numpy().copy())
             if state.failure == 'inference':
                 raise RuntimeError('feature inference failed')
             list(request.frames_bgr)
@@ -95,17 +98,57 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str) -> 
     monkeypatch.setattr(person_features, 'OpenCVVideoFrameReader', reader)
     monkeypatch.setattr(person_tracking, 'AFLink', Link)
     monkeypatch.setattr('src.tennis_scene.pipeline.definition.build_encoder', encoder)
+    detector_spec = replace(PersonDetectionModule(cfg.people).model_specs()['detector'], factory=object,
+                            initialize=lambda _: None, release=lambda _: None)
+    class Detection(InferenceComponent[Any, PersonDetectionOutput]):
+        io = PersonDetectionModule.io
+        def __init__(self, value: PersonDetectionOutput) -> None:
+            self.value = value
+        def model_specs(self) -> Any:
+            return {'detector': detector_spec}
+        def process_with_models(self, inputs: Any, models: Any) -> PersonDetectionOutput:
+            models.borrow('detector')
+            return self.value
     overrides = {}
     for video in source.videos:
         detection = PersonDetectionOutput(video.camera_id, np.arange(6, dtype=np.int64),
             np.tile(np.array([[2, 3, 18, 35]], np.float32), (5, 1)), np.full(5, .9, np.float32),
             np.array([2, 5, 8, 11, 14], np.int64))
-        fixed = FixedStage(detection)
+        fixed = Detection(detection) if detector else FixedStage(detection)
         fixed.io = PersonDetectionModule.io
         overrides[f'person_detection/{video.camera_id}'] = fixed
     nodes = standard_definition(cfg, source, code_identity='feature-runtime', overrides=overrides)
     store = ClipStore(tmp_path / 'store', json_value(source), memory_entries=0)
     return SimpleNamespace(cfg=cfg, source=source, nodes=nodes, store=store, state=state)
+
+
+@pytest.mark.parametrize('clips', [1, 2])
+def test_partial_detection_cache_keeps_global_model_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clips: int) -> None:
+    case = harness(tmp_path, monkeypatch, 'fp32', detector=True)
+    entries = []
+    for i in range(clips):
+        source = replace(case.source, clip_id=f'clip{i}')
+        nodes = tuple(replace(node, context=replace(node.context, source=source)) for node in case.nodes)
+        store = ClipStore(tmp_path / f'store{i}', json_value(source), memory_entries=0)
+        entry = ClipExecution(source.clip_id, nodes, store, targets=['person_tracking/cam0', 'person_tracking/cam1'])
+        PlanExecutor(ExecutionPlan([replace(entry, targets=['person_detection/cam0'])])).run()
+        entries.append(entry)
+    active: set[str] = set()
+    events = []
+    @contextmanager
+    def recorder(action: str, model: str, **kwargs: Any) -> Iterator[None]:
+        events.append((action, model))
+        if action == 'load':
+            assert not active, f'models overlapped: {active} and {model}'
+            active.add(model)
+        yield
+        if action == 'unload':
+            active.remove(model)
+    plan = ExecutionPlan(entries)
+    PlanExecutor(plan, model_event=recorder).run()
+    assert events == [(action, model) for model in ('dino', 'vitpose', 'appearance') for action in ('load', 'unload')]
+    assert not active
+    assert all(plan.statuses[(entry.clip_id, 'person_detection/cam0')] == 'cached' for entry in entries)
 
 
 @pytest.mark.parametrize('precision,dtype', [('fp32', 'float32'), ('fp16', 'float16')])

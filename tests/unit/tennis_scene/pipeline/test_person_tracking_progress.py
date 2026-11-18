@@ -56,9 +56,16 @@ class _TrackingHarness:
         monkeypatch.setattr(sequence.StrongSort, 'update', update)
 
     def run(self, *, show_progress: bool = True) -> module.PersonTrackingOutput:
+        from src.tennis_scene.pipeline.artifacts import document_digest
         from src.tennis_scene.pipeline.components.person_features import (
             PersonAppearanceFeaturesOutput,
             PersonPoseFeaturesOutput,
+            appearance_feature_settings,
+            pose_feature_settings,
+        )
+        from tests.unit.tennis_scene.pipeline.config_factories import (
+            fake_encoder_spec,
+            fake_pose_spec,
         )
         detections = self.detections
         n = len(detections.confidence)
@@ -67,10 +74,13 @@ class _TrackingHarness:
         poses[..., 2] = .8
         embeddings: np.ndarray = np.zeros((n, 1280), np.float32)
         embeddings[:, 0] = 1
-        pose_features = PersonPoseFeaturesOutput(self.video.camera_id, detections.frame_offsets, detections.source_rows, poses)
+        pose_features = PersonPoseFeaturesOutput(self.video.camera_id, detections.frame_offsets, detections.source_rows, poses,
+            document_digest(fake_pose_spec().key), document_digest(pose_feature_settings(TrackingConfig().features)))
         appearance = PersonAppearanceFeaturesOutput(self.video.camera_id, detections.frame_offsets, detections.source_rows,
-            embeddings, np.ones(n, bool), TrackingConfig().encoder, "a" * 64)
-        tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=self.tmp_path / 'af.pth', show_progress=show_progress)
+            embeddings, np.ones(n, bool), TrackingConfig().encoder, document_digest(fake_encoder_spec(object).key),
+            document_digest(appearance_feature_settings(TrackingConfig().features)))
+        tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=self.tmp_path / 'af.pth', show_progress=show_progress,
+            expected_pose=fake_pose_spec(), expected_encoder=fake_encoder_spec(object))
         return tracker.process(module.PersonTrackingInput(self.video, detections, pose_features, appearance))
 
 

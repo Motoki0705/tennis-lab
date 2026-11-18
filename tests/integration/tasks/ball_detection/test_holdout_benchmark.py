@@ -12,6 +12,7 @@ from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_detection.evaluation.holdout_inference import FramePredictions
 from src.tasks.ball_detection.evaluation.holdout_metrics import clip_references
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
+from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
 from src.tennis_scene.pipeline.observation_types import ObjectObservations
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
@@ -31,7 +32,7 @@ def fixture_clip(tmp_path):
     return clip, clip_references(store, clip)
 
 
-def publish_pose(tmp_path, clip, media_hash="fixture"):
+def publish_pose(tmp_path, clip, media_hash="fixture", *, version=PoseEstimationModule.io.version):
     root = tmp_path / "poses/video_001/clip_000"
     source = {"clip_id": "video_001/clip_000", "videos": [{
         "camera_id": "cam0", "sha256": media_hash, "width": clip.source_width,
@@ -46,17 +47,18 @@ def publish_pose(tmp_path, clip, media_hash="fixture"):
     pose = ObjectObservations(("cam0",), (64, 48), 30.0, uv, confidence,
                               np.asarray([[[True], [True], [False]]]), np.zeros((1, 1), np.int64))
     store.publish("pose_estimation/cam0", pose, ArtifactCodec(ObjectObservations), schema="person_poses",
-                  version=1, identity={}, dependencies={}, provenance={})
+                  version=version, identity={}, dependencies={}, provenance={})
     return root
 
 
-def test_pose_alignment_checksum_and_missing_support(tmp_path):
+@pytest.mark.parametrize('pose_version', [1, PoseEstimationModule.io.version])
+def test_pose_alignment_checksum_and_missing_support(tmp_path, pose_version):
     clip, ref = fixture_clip(tmp_path)
     poses = tmp_path / "poses"
     missing, record = pose_reference(ref, clip, poses, threshold=0.5)
     assert record["status"] == "missing_scene"
     assert np.isnan(missing.wrist_distance).all()
-    root = publish_pose(tmp_path, clip)
+    root = publish_pose(tmp_path, clip, version=pose_version)
     located, record = pose_reference(ref, clip, poses, threshold=0.5)
     np.testing.assert_allclose(located.wrist_distance, [5, np.nan, np.nan], equal_nan=True)
     assert record["known_distance_frames"] == 1
@@ -72,6 +74,13 @@ def test_pose_from_different_video_is_rejected(tmp_path):
     publish_pose(tmp_path, clip, media_hash="different-video")
     with pytest.raises(ValueError, match="media/size/timeline"):
         pose_reference(ref, clip, tmp_path / "poses", threshold=0.5)
+
+
+def test_unknown_pose_version_is_rejected(tmp_path):
+    clip, ref = fixture_clip(tmp_path)
+    publish_pose(tmp_path, clip, version=99)
+    with pytest.raises(ValueError, match='Unsupported pose artifact schema'):
+        pose_reference(ref, clip, tmp_path / 'poses', threshold=0.5)
 
 
 def test_saved_arrays_rescore_and_refuse_changed_frame_order(tmp_path):

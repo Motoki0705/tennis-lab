@@ -108,7 +108,14 @@ def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
     association = fixture["TrackIdentities"](_CAMERAS)
 
     def process(component: Any, request: Any, models: Any) -> Any:
-        return results[f"{component.io.name}/{request.video.camera_id}"].result
+        value = results[f"{component.io.name}/{request.video.camera_id}"].result
+        if isinstance(component, PersonPoseFeaturesModule):
+            return replace(value, model_identity=models.identity('pose'),
+                           preprocessing_identity=document_digest(component.cache_identity()))
+        if isinstance(component, PersonAppearanceFeaturesModule):
+            return replace(value, encoder_identity=models.identity('encoder'),
+                           preprocessing_identity=document_digest(component.cache_identity()))
+        return value
 
     for stage in _CAMERA_STAGES:
         if stage is PersonTrackingModule:
@@ -145,7 +152,7 @@ def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
 
     assert pipeline.last_runner is not None
     clip = pipeline.last_runner.nodes["person_detection/cam0"].context.source
-    affected = ("person_detection/cam0", "person_pose_features/cam0", "pose_estimation/cam0")
+    affected = ("person_detection/cam0", "person_pose_features/cam0")
     keys = {name: {legacy_refs[name].execution_key} for name in affected}
     for precision in ("bf16", "fp16"):
         cfg = fixture["runtime"](root, overrides=("device=cuda", *_precision(precision)))

@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from src.submodules.visualization.review.store import PoseReviewStore, exact_sample
+from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
 
 from .conftest import replace_payload
 
@@ -154,3 +155,15 @@ def test_source_frames_are_exact_and_ordered() -> None:
 def test_invalid_selection_is_rejected(snapshot: Path, person: int, camera: str, frame: int) -> None:
     with pytest.raises(ValueError):
         PoseReviewStore(snapshot).frame(person, camera, frame)
+@pytest.mark.parametrize('snapshot', [1, PoseEstimationModule.io.version, 99], indirect=True)
+def test_historical_and_current_pose_producer_versions(snapshot: Path, request: pytest.FixtureRequest) -> None:
+    version = request.node.callspec.params['snapshot']
+    if version == 99:
+        with pytest.raises(ValueError, match='Unsupported pose_estimation'):
+            PoseReviewStore(snapshot)
+    else:
+        reader = PoseReviewStore(snapshot)
+        assert reader.artifacts['pose_estimation/cam0']['version'] == version
+        observation = reader.observation(7, 'cam0', 0)
+        assert observation['state'] == 'observed' and observation['track_id'] == 42
+        np.testing.assert_allclose(observation['joints'][0], [30., 30., .8])

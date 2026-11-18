@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import torch
@@ -38,6 +39,10 @@ class PoseEstimationModule(InferenceComponent[PoseEstimationInput, ObjectObserva
 
     def model_specs(self) -> dict[str, ModelSpec[ViTPosePose2D]]:
         return {} if self.require_evidence or not self.enabled else {"pose": vitpose_model(self.config, factory=ViTPosePose2D, show_progress=True)}
+
+    def cache_identity(self) -> dict[str, Any]:
+        return {'bbox_enlarge': self.config.runtime.tracking.bbox_enlarge,
+                'require_evidence': self.require_evidence, 'enabled': self.enabled}
 
     def process_with_models(self, inputs: PoseEstimationInput, models: ModelBorrower) -> ObjectObservations:
         video, tracks = inputs.video, inputs.tracks

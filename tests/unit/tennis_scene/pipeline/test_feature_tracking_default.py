@@ -78,8 +78,8 @@ def test_standard_pipeline_rejects_comparison_methods(method: str) -> None:
 @pytest.mark.parametrize(
     ("setting", "changed_nodes"),
     [("dino_detector.precision=bf16", {"person_detection"}),
-     ("vitpose.precision=fp16", {"person_pose_features", "pose_estimation"}),
-     ("vitpose.flip_test=false", {"person_pose_features", "pose_estimation"})],
+     ("vitpose.precision=fp16", {"person_pose_features", "person_tracking"}),
+     ("vitpose.flip_test=false", {"person_pose_features", "person_tracking"})],
 )
 def test_person_settings_change_only_their_stage_cache_identities(
     tmp_path: Path, setting: str, changed_nodes: set[str],
@@ -145,8 +145,9 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
     assert feature_node.model_specs()['pose'].dtype == {'fp32': 'float32', 'bf16': 'bfloat16', 'fp16': 'float16'}[precision]
     poses = materialize_model_weights(person_features.PersonPoseFeaturesModule(people)).process(person_features.PersonFeaturesInput(video, detections))
     appearance = materialize_model_weights(person_features.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder))).process(
-        person_features.PersonAppearanceFeaturesInput(video, detections, poses))
-    tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'af.pth')
+        person_features.PersonAppearanceFeaturesInput(video, detections))
+    tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'af.pth',
+        expected_pose=feature_node.model_specs()['pose'], expected_encoder=fake_encoder_spec(Encoder))
     result = tracker.process(module.PersonTrackingInput(video, detections, poses, appearance))
     assert len(calls) == 1 and result.evidence is not None
     assert result.evidence.encoder_identity == document_digest(fake_encoder_spec(Encoder).key)
@@ -161,7 +162,7 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
         pose.process(pose_estimation.PoseEstimationInput(video, replace(result, evidence=None)))
 
 
-@pytest.mark.parametrize('name,version', [('person_tracking/cam0', 5), ('person_tracking/cam0', 6), ('person_appearance_features/cam0', 1), ('player_selection/cam0', 2), ('pose_estimation/cam0', 1)])
+@pytest.mark.parametrize('name,version', [('person_tracking/cam0', 5), ('person_tracking/cam0', 6), ('person_appearance_features/cam0', 1), ('person_appearance_features/cam0', 2), ('person_pose_features/cam0', 1), ('player_selection/cam0', 2), ('pose_estimation/cam0', 1)])
 def test_pre_split_schema_cannot_bind_to_new_pipeline(tmp_path: Path, name: str, version: int) -> None:
     from src.tennis_scene.pipeline.contracts import ClipSource
     from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan

@@ -18,6 +18,8 @@ from src.tennis_scene.pipeline.components.person_detection import PersonDetectio
 from src.tennis_scene.pipeline.components.person_features import (
     PersonAppearanceFeaturesOutput,
     PersonPoseFeaturesOutput,
+    appearance_feature_settings,
+    pose_feature_settings,
 )
 from src.tennis_scene.pipeline.components.player_selection import (
     PlayerSelectionInput,
@@ -26,7 +28,10 @@ from src.tennis_scene.pipeline.components.player_selection import (
 from src.tennis_scene.pipeline.contracts import SourceVideo
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from tests.unit.tennis_scene.pipeline.components.test_player_selection import _input
-from tests.unit.tennis_scene.pipeline.config_factories import fake_encoder_spec
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    fake_encoder_spec,
+    fake_pose_spec,
+)
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 
@@ -38,9 +43,11 @@ def saved_inputs(tmp_path: Path) -> tracking.PersonTrackingInput:
     rows = np.concatenate([f.rows for f in frames])
     detections = PersonDetectionOutput('cam0', offsets, np.concatenate([f.boxes for f in frames]),
                                        np.concatenate([f.scores for f in frames]), rows)
-    poses = PersonPoseFeaturesOutput('cam0', offsets, rows, np.concatenate([f.require_poses() for f in frames]))
+    poses = PersonPoseFeaturesOutput('cam0', offsets, rows, np.concatenate([f.require_poses() for f in frames]),
+        document_digest(fake_pose_spec().key), document_digest(pose_feature_settings(TrackingConfig().features)))
     appearance = PersonAppearanceFeaturesOutput('cam0', offsets, rows, np.concatenate([f.embeddings for f in frames]),
-        np.concatenate([f.appearance_valid for f in frames]), TrackingConfig().encoder, document_digest(fake_encoder_spec(object).key))
+        np.concatenate([f.appearance_valid for f in frames]), TrackingConfig().encoder, document_digest(fake_encoder_spec(object).key),
+        document_digest(appearance_feature_settings(TrackingConfig().features)))
     # Exercise real schema-directed persistence, with mmap inputs as in ClipStore.
     for name, artifact in [('pose', poses), ('appearance', appearance)]:
         directory = tmp_path / name
@@ -64,7 +71,8 @@ class NoLinks:
 def test_saved_features_exactly_match_pre_split_tracking_selection_and_gsi(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tracking, 'AFLink', NoLinks)
     inputs = saved_inputs(tmp_path)
-    component = tracking.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'fake-aflink', show_progress=False)
+    component = tracking.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'fake-aflink', show_progress=False,
+        expected_pose=fake_pose_spec(), expected_encoder=fake_encoder_spec(object))
     actual = component.process(inputs)
     assert actual.evidence is not None and actual.reconstruction is not None
     with np.load(FIXTURES / 'person-tracking-before-split.npz') as expected:
@@ -77,7 +85,6 @@ def test_saved_features_exactly_match_pre_split_tracking_selection_and_gsi(tmp_p
         assert actual.reconstruction.interpolated[:, 15:17].all()
         assert not actual.observed[:, 15:17].any()
         calibration = _input([(0., 5.)] * 2, np.ones((2, inputs.video.num_frames), bool)).calibration
-        from tests.unit.tennis_scene.pipeline.config_factories import fake_encoder_spec
         selection = PlayerSelectionModule(LinkingConfig(), footpoints=FootpointConfig(), sampling=CropSamplingConfig(),
             encoder=fake_encoder_spec(lambda: pytest.fail('selection must use saved embeddings')), encoder_name=inputs.appearance.encoder, device='cpu', enabled=True)
         # Supply an explicit declaration, but no inference may be borrowed.
@@ -101,4 +108,16 @@ def test_saved_features_reject_wrong_source_before_cpu_tracking(tmp_path: Path, 
     inputs = replace(inputs, poses=replace(pose, **changes))
     monkeypatch.setattr(tracking, 'AFLink', lambda *_: pytest.fail('must validate the join before tracking'))
     with pytest.raises(ValueError, match='camera/timeline/source row mismatch'):
-        tracking.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'fake').process(inputs)
+        tracking.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'fake',
+            expected_pose=fake_pose_spec(), expected_encoder=fake_encoder_spec(object)).process(inputs)
+
+
+@pytest.mark.parametrize('feature,field', [('poses', 'model_identity'), ('appearance', 'encoder_identity'),
+                                         ('poses', 'preprocessing_identity'), ('appearance', 'preprocessing_identity')])
+def test_wrong_feature_identity_cannot_enter_tracker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, feature: str, field: str) -> None:
+    inputs = saved_inputs(tmp_path)
+    inputs = replace(inputs, **{feature: replace(getattr(inputs, feature), **{field: '0' * 64})})
+    monkeypatch.setattr(tracking, 'AFLink', lambda *_: pytest.fail('identity must be checked before tracking'))
+    with pytest.raises(ValueError, match='feature model/preprocessing identity'):
+        tracking.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'fake',
+            expected_pose=fake_pose_spec(), expected_encoder=fake_encoder_spec(object)).process(inputs)
