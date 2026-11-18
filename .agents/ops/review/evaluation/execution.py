@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import re
 import shutil
 import sys
 import time
@@ -513,16 +512,6 @@ def execute(
         raise ValueError(
             "record the parent's per-case selection before the first launch"
         )
-    pins = (OPS / "lib/agents.conf").read_text()
-    baseline = load_policy(OPS / "lib/agents.conf")
-    if baseline["fixed"] != {
-        "model": "gpt-6-astra",
-        "effort": "xhigh",
-        "service_tier": "default",
-    }:
-        raise ValueError(
-            "evaluation baseline requires the approved Astra reference settings"
-        )
     binary = shutil.which("codex")
     if binary is None:
         raise ValueError("Codex CLI is unavailable")
@@ -566,19 +555,21 @@ def execute(
     git(directory / "reviewer", "init", "-q")
     private_directory(directory / "bin")
     config = directory / "agents.conf"
-    # The comparison always requires explicit choices for both models, regardless
-    # of the deployment policy in the source checkout.
-    pins = re.sub(
-        r'^REVIEW_SELECTION_MODE="(?:fixed|select)"$',
-        'REVIEW_SELECTION_MODE="select"',
-        pins,
-        flags=re.MULTILINE,
+    # Freeze the approved comparison policy in the private runner's config.
+    effort = "xhigh"
+    pairs = ",".join(f"{m}:{effort}" for m in MODELS)
+    config.write_text(
+        'REVIEW_SELECTION_MODE="select"\n'
+        "REVIEW_SELECTION_POLICY_VERSION=1\n"
+        'REVIEW_CODEX_MODEL="gpt-6-astra"\n'
+        f'REVIEW_CODEX_EFFORT="{effort}"\n'
+        'REVIEW_CODEX_SERVICE_TIER="default"\n'
+        f'REVIEW_CODEX_ALLOWED_PAIRS="{pairs}"\n'
     )
-    config.write_text(pins)
     selection = choose(
         load_policy(config),
         model=model,
-        effort="xhigh",
+        effort=effort,
         reason="Approved paired model qualification; no deployment policy change",
     )
     atomic(directory / "review-selection.json", selection)

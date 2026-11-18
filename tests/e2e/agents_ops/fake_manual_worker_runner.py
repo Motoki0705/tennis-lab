@@ -63,14 +63,24 @@ def main() -> int:
     else:
         assert "--effort" not in args
     resolver = importlib.import_module("lib.agent_settings")
+    previous = None
+    model = opt("--model") if "--model" in args else None
+    saved_model = None
+    if args[0] == "resume":
+        previous = json.loads((Path(opt("--resume-from")) / "result.json").read_text())
+        saved_settings = previous["contract"]["settings"]
+        saved_model = saved_settings["selected"]["model"]
+        assert model in (None, saved_model)
+        model = saved_settings["overrides"].get("model")
     settings = resolver.resolve(
         resolver.DEFAULT_CONFIG,
         "codex",
         None,
-        opt("--model") if "--model" in args else None,
+        model,
         None,
         "write",
         repair=repair,
+        saved_model=saved_model,
     )
     assert task["model"] == saved["model"] == settings["selected"]["model"]
     assert task["model_reason"] == saved["model_reason"]
@@ -102,8 +112,7 @@ def main() -> int:
         contract["repair"] = repair
     session_id = "offline-private-session-" + directory.name
     session_root = directory
-    if args[0] == "resume":
-        previous = json.loads((Path(opt("--resume-from")) / "result.json").read_text())
+    if previous is not None:
         assert resolver.session_contract(
             previous["contract"]
         ) == resolver.session_contract(contract)

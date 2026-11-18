@@ -18,6 +18,8 @@ from urllib.parse import parse_qs
 
 import pytest
 
+from tests.support.agents_ops.model_pins import WORKER_DEFAULT_MODEL
+
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
 sys.path.insert(0, str(OPS))
@@ -579,7 +581,7 @@ def test_parentless_adoption_creates_normal_standalone_once(harness: Harness) ->
     assert not h.run().errors
     assert len(h.calls()) == 1 and len(h.gh.writes) == count
     args = h.calls()[0]["args"]
-    assert "gpt-6.1-sol" in args and 'model_reasoning_effort="max"' in args
+    assert WORKER_DEFAULT_MODEL in args and 'model_reasoning_effort="max"' in args
     assert "read-only" in args and "--profile" not in args
     runtime = json.loads(
         h.tmp.joinpath("run-1/organization-runtime/result.json").read_text()

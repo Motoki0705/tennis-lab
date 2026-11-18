@@ -641,7 +641,7 @@ def test_private_execution_builds_the_shared_runner_contract_without_a_live_agen
     small_case: Any, modules: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     opsproc: Any = importlib.import_module("lib.opsproc")
-    command: Any = importlib.import_module("lib.agent_settings").command
+    agent_settings: Any = importlib.import_module("lib.agent_settings")
 
     e, c = modules.execution, modules.catalog
     e.initialize(small_case.state, data=small_case.data)
@@ -686,14 +686,27 @@ def test_private_execution_builds_the_shared_runner_contract_without_a_live_agen
         assert argv[argv.index("--timeout") + 1] == "1800"
         connection = Path(argv[argv.index("--mcp-config") + 1])
         assert set(c.read(connection)) == {"review_evaluation"}
-        selection = c.read(directory / "review-selection.json")["selected"]
-        raw = command(
-            {
-                "agent": "codex",
-                "profile": "review",
-                "selected": selection,
-                "web_search": "disabled",
-            },
+        choice = c.read(directory / "review-selection.json")
+        settings = agent_settings.resolve(
+            Path(argv[argv.index("--config-file") + 1]),
+            "codex",
+            "review",
+            None,
+            None,
+            "read-only",
+            review_selection=choice,
+        )
+        assert choice["policy"]["fixed"] == {
+            "model": "gpt-6-astra",
+            "effort": "xhigh",
+            "service_tier": "default",
+        }
+        assert {p["model"] for p in choice["policy"]["allowed_pairs"]} == {
+            "gpt-6-astra",
+            "gpt-6.1-sol",
+        }
+        raw = agent_settings.command(
+            settings,
             "read-only",
             cwd,
             directory / "agent_output.md",
@@ -705,7 +718,7 @@ def test_private_execution_builds_the_shared_runner_contract_without_a_live_agen
         guarded = modules.restrictions.restricted_arguments(raw[1:], ["live_github"])
         assert "project_doc_max_bytes=0" in guarded
         assert 'mcp_servers."live_github".enabled=false' in guarded
-        runner_evidence(directory, selection["model"])
+        runner_evidence(directory, settings["selected"]["model"])
 
     monkeypatch.setattr(opsproc, "run_process_group", fake_runner)
     row = e.execute(
@@ -877,9 +890,7 @@ def test_runtime_failure_before_agent_start_is_counted(modules: Any) -> None:
         output=None,
         output_sha256=None,
     )
-    result = modules.metrics.summarize(
-        [row], {"schema_version": 1, "cases": [gold]}
-    )
+    result = modules.metrics.summarize([row], {"schema_version": 1, "cases": [gold]})
     cost = result["conditions"]["astra_fixed"]
     assert cost["runtime_failures"] == 1
     assert cost["agent_invocations"] == 0

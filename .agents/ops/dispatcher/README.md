@@ -455,7 +455,7 @@ delegateで予約した後、受理済みの親環境から次を呼ぶ。起動
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher start-child \
   --parent 123 --child 124 --delegation-id <delegateが返すID> --prompt-file tmp/child.md
-# Astraを明示選択するときだけ --model gpt-6-astra を加える
+# Astraを明示選択するときだけ --model gpt-6.2-astra を加える
 ```
 
 モデル/effortの既定は共通ランナーを使う。既存子は終了照合後の証拠付き再delegateで新しいIDを得てからstart-childする。

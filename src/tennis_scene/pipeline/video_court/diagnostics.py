@@ -13,8 +13,13 @@ from typing import Any
 import numpy as np
 
 from src.tasks.court_detection.geometry.video_drift import DriftConfig, summarize_clip
+from src.tennis_scene.pipeline.video_artifact import (
+    load_document,
+    publish_document,
+    validate_digest,
+)
 
-from .store import VideoCourtArtifact, VideoCourtStore, _digest, _load, _publish
+from .store import VideoCourtArtifact, VideoCourtStore
 
 
 @dataclass(frozen=True)
@@ -23,7 +28,7 @@ class DriftReference:
     digest: str
 
     def __post_init__(self) -> None:
-        _digest(self.digest)
+        validate_digest(self.digest)
 
 
 def _validate_camera(document: dict[str, Any], base: VideoCourtArtifact, camera: str) -> None:
@@ -44,7 +49,7 @@ def _validate_camera(document: dict[str, Any], base: VideoCourtArtifact, camera:
                     or frame['status'] not in {'ok', 'warning', 'failed'}
                     or (frame['reason'] == 'drift_unobservable' and frame['status'] != 'failed')):
                 raise ValueError('Invalid drift frame evidence')
-            _digest(frame['rgb_sha256'])
+            validate_digest(frame['rgb_sha256'])
             reasons: dict[str, set[str | None]] = {'ok': {None}, 'warning': {'camera_moved_possible'},
                                                   'failed': {'drift_unobservable', 'camera_drift_exceeds_tolerance'}}
             if frame['reason'] not in reasons[frame['status']]:
@@ -63,7 +68,7 @@ class DiagnosedVideoCourt(VideoCourtArtifact):
 
     def verify(self) -> None:
         super().verify()
-        if _load(self.drift.directory, self.drift.digest) != self.drift_manifest:
+        if load_document(self.drift.directory, self.drift.digest) != self.drift_manifest:
             raise ValueError('Drift manifest changed in memory')
         if (set(self.drift_manifest) != {'schema', 'base_bundle_digest', 'cameras'}
                 or self.drift_manifest['schema'] != 'video_court_drift_bundle_v1'
@@ -71,15 +76,15 @@ class DiagnosedVideoCourt(VideoCourtArtifact):
                 or set(self.drift_manifest['cameras']) != set(self.manifest['cameras'])):
             raise ValueError('Drift bundle does not match shared H')
         for camera, ref in self.drift_manifest['cameras'].items():
-            document = _load(self.drift.directory, ref)
+            document = load_document(self.drift.directory, ref)
             if document != self.drift_cameras[camera]:
                 raise ValueError('Drift camera changed in memory')
             _validate_camera(document, self, camera)
 
 
 def load_video_drift(base: VideoCourtArtifact, reference: DriftReference) -> DiagnosedVideoCourt:
-    manifest = _load(reference.directory, reference.digest)
-    cameras = {camera: _load(reference.directory, ref) for camera, ref in manifest['cameras'].items()}
+    manifest = load_document(reference.directory, reference.digest)
+    cameras = {camera: load_document(reference.directory, ref) for camera, ref in manifest['cameras'].items()}
     result = DiagnosedVideoCourt(base.root, base.digest, base.manifest, base.cameras, reference, manifest, cameras)
     result.verify()
     return result
@@ -98,9 +103,9 @@ def publish_video_drift(base: VideoCourtArtifact, directory: Path, *, protocol: 
             document = {'schema': 'video_court_drift_camera_v1', 'base_camera_digest': base.manifest['cameras'][camera],
                         'camera_id': camera, 'protocol': protocol, 'clips': clips}
             _validate_camera(document, base, camera)
-            references[camera] = _publish(directory, document)
+            references[camera] = publish_document(directory, document)
         base.verify()
-        digest = _publish(directory, {'schema': 'video_court_drift_bundle_v1', 'base_bundle_digest': base.digest, 'cameras': references})
+        digest = publish_document(directory, {'schema': 'video_court_drift_bundle_v1', 'base_bundle_digest': base.digest, 'cameras': references})
     return load_video_drift(base, DriftReference(directory, digest))
 
 

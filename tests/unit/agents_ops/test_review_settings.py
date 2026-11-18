@@ -11,6 +11,13 @@ from typing import Any
 
 import pytest
 
+from tests.support.agents_ops.model_pins import (
+    OLD_ASTRA,
+    OLD_SOL,
+    REVIEW_FIXED_MODEL,
+    REVIEW_OTHER_MODEL,
+)
+
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 
 
@@ -43,16 +50,16 @@ def test_fixed_rollback_and_matching_choice_preserve_astra(
     policy = settings.load_policy(config)
     implicit = settings.choose(policy)
     assert implicit["selected"] == {
-        "model": "gpt-6-astra",
+        "model": REVIEW_FIXED_MODEL,
         "effort": "xhigh",
         "service_tier": "default",
     }
     assert implicit["specified_by"] == "settings"
-    explicit = settings.choose(policy, model="gpt-6-astra", reason="固定値を明示")
+    explicit = settings.choose(policy, model=REVIEW_FIXED_MODEL, reason="固定値を明示")
     assert explicit["selected"] == implicit["selected"]
     assert explicit["specified_by"] == "parent_choice"
     with pytest.raises(ValueError, match="fixed"):
-        settings.choose(policy, model="gpt-6.1-sol", reason="通常の確認")
+        settings.choose(policy, model=REVIEW_OTHER_MODEL, reason="通常の確認")
 
 
 def test_repository_defaults_require_explicit_model_and_reason(settings: Any) -> None:
@@ -62,7 +69,10 @@ def test_repository_defaults_require_explicit_model_and_reason(settings: Any) ->
         settings.choose(policy)
     for reason in (None, "", " \n"):
         with pytest.raises(ValueError, match="--model-reason-file"):
-            settings.choose(policy, model="gpt-6.1-sol", reason=reason)
+            settings.choose(policy, model=REVIEW_OTHER_MODEL, reason=reason)
+    for model in (OLD_SOL, OLD_ASTRA):
+        with pytest.raises(ValueError, match="allowed pair"):
+            settings.choose(policy, model=model, effort="xhigh", reason="旧モデル")
 
 
 def test_fixed_effort_stays_pinned_when_select_would_be_ambiguous(

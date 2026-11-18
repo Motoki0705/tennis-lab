@@ -25,6 +25,7 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.model_pins import WORKER_ALTERNATE_MODEL
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / ".agents/ops/lib/agent_exec.sh"
@@ -160,7 +161,11 @@ def test_session_replacement_rejects_without_changing_reservation(
     else:
         response = replacement(
             p,
-            *(["--model", "gpt-6-astra"] if condition == "changed_model" else []),
+            *(
+                ["--model", WORKER_ALTERNATE_MODEL]
+                if condition == "changed_model"
+                else []
+            ),
             ok=False,
             **extra,
         )
@@ -177,7 +182,13 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
     reserved: ParentEnv, missing_session: bool, legacy_phase: bool
 ) -> None:
     p = reserved
-    run(p, "--model", "gpt-6-astra", "--model-reason-file", p.note("幾何の設計。"))
+    run(
+        p,
+        "--model",
+        WORKER_ALTERNATE_MODEL,
+        "--model-reason-file",
+        p.note("幾何の設計。"),
+    )
     directory = corrupt_record(p)
     if missing_session:
         with store(p).locked() as registry:
@@ -207,7 +218,7 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
     replacement(p)
     saved = task(p)
     assert saved["delegation_id"] == before["delegation_id"]
-    assert saved["model"] == "gpt-6-astra"
+    assert saved["model"] == WORKER_ALTERNATE_MODEL
     assert saved["model_reason"] == before["model_reason"]
     assert saved["worker_runs"][:-1] == before["worker_runs"]
     assert saved["preflight"]["turns"][:-1] == before.get("preflight", {}).get(
