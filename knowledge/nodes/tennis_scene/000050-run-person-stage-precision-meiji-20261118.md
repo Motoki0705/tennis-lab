@@ -162,6 +162,7 @@ clip_037で0件、clip_000で2件だった。この比較では人物ID差への
 残りを完了した。原commandと実行HEADは各runの記録に保存した。
 [初回の中断記録](./000049-run-person-stage-precision-interrupted-20261118.md)・[再開のrun記録](../../runs/run-person-stage-precision-meiji-20261118/run.json)
 
-全ケースを新規に測る場合は、固定入力に対するsmokeを共有キューで実行した後、全尺のコマンドには空の出力先を指定し、
-`--resume` を外す。比較・重ね描きは `compare.py`、姿勢なし追跡は `pose_scope.py` のCPU入口で再計算する。
-[計測入口](../../runs/run-person-stage-precision-meiji-20261118/benchmark.py)・[比較入口](../../runs/run-person-stage-precision-meiji-20261118/compare.py)・[姿勢なし追跡の再生入口](../../runs/run-person-stage-precision-meiji-20261118/pose_scope.py)
+再計測用の `repro.sh` は固定版からDINO拡張をビルドし、固定入力pinのSHA-256を照合する。
+全ケースを新規に測る場合は、共有キューでsmokeを実行し、同じ出力先で全尺の `repro.sh` を引数なしで実行する。
+比較・重ね描きは `compare.py`、姿勢なし追跡は `pose_scope.py` のCPU入口で再計算する。
+[全尺の再現入口](../../runs/run-person-stage-precision-meiji-20261118/repro.sh)・[ビルド環境と手順](../../runs/run-person-stage-precision-meiji-20261118/README.md)・[比較入口](../../runs/run-person-stage-precision-meiji-20261118/compare.py)・[姿勢なし追跡の再生入口](../../runs/run-person-stage-precision-meiji-20261118/pose_scope.py)

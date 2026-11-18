@@ -67,3 +67,6 @@ guardの完了記録は生成されなかった。TERMの送信元は未確認�
 再開時は完了marker、入力メディア、重み、PyTorch・CUDA・GPU、pipelineコードを照合し、未完了のケースから実行する。
 この中断は計測条件の採否を変えない（summary_impact: none）。
 [全尺計測の固定入力](../../runs/run-person-stage-precision-meiji-20261118/full-inputs.json)
+
+再計測用の `repro.sh` は当初の計測commitを指定し、DINO拡張を固定入力pinに照合する。
+[中断前の全尺計測の再現入口](../../runs/run-person-stage-precision-interrupted-20261118/repro.sh)・[ビルド環境と手順](../../runs/run-person-stage-precision-meiji-20261118/README.md)
