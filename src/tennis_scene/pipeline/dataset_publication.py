@@ -6,13 +6,18 @@ import hashlib
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs
-from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
+from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.tennis_scene.pipeline.storage.scene_index import (
+    annotation_scene_path,
+    indexed_scene_path,
+    read_component_descriptor,
+)
 from src.tennis_scene.schema import (
     SCENE_MASK_FIELDS,
     SCENE_REASON_FIELDS,
@@ -115,9 +120,44 @@ def validate_dataset_result(result: SceneResult, record: DatasetClipRecord) -> N
         )
 
 
+def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
+    """A marker may only adopt the admitted side component of this clip's export."""
+    if "video_court_side_digest" not in identity:
+        return {}
+    from src.tennis_scene.pipeline.video_court_side.component import (
+        SharedCourtSideModule,
+    )
+    from src.tennis_scene.pipeline.video_court_side.inputs import PinnedSideInputs
+
+    clip = inputs.record.clip_id
+    clips = identity.get("video_court_side_clips")
+    if not isinstance(clips, Mapping) or clip not in clips:
+        raise ValueError(f"Clip missing from shared court side publication: {clip}")
+    expected = {"artifact_digest": identity["video_court_side_digest"], "unobservable_policy": identity["video_court_side_unobservable_policy"],
+                "court_unobservable_policy": identity["video_court_unobservable_policy"], **clips[clip]}
+    if expected["status"] == "failed":
+        raise ReconstructionUnavailable(expected["reason"], f"{clip}: {expected.get('detail', expected['reason'])}", diagnostics=expected)
+    root = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
+    index = json.loads((root / "scene.json").read_text())
+    videos = index["source"]["videos"]
+    if index["source"]["clip_id"] != clip or {v["camera_id"]: v["sha256"] for v in videos} != inputs.media_sha256:
+        raise ValueError(f"Published shared court side belongs to a different clip or media: {clip}")
+    ref = index["artifacts"]["court_side"]
+    descriptor = read_component_descriptor(root, ref, node="court_side", source_sha256=index["source_sha256"])
+    if descriptor["provenance"].get("origin") != "component":
+        raise ValueError("Published shared court side requires component origin")
+    component = descriptor["identity"]
+    if (component.get("settings") != expected or component.get("implementation") != identity["code_sha256"]
+            or component.get("component_class") != f"{SharedCourtSideModule.__module__}.{SharedCourtSideModule.__qualname__}"
+            or ref["execution_key"] != document_digest(component)):
+        raise ValueError(f"Published court side disagrees with the shared decision or policy: {clip}")
+    PinnedSideInputs.from_store(root).verify_arrays()
+    return {"court_side": ref}
+
+
 def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mapping[str, object], *, overwrite: bool = False) -> Path | None:
     """Return a reusable marker, rejecting stale inputs/settings as before."""
-    destination = inputs.clip_dir / ANNOTATION_RELATIVE_DIR / "annotation.json"
+    destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR / "annotation.json"
     if not destination.exists() or overwrite:
         return None
     marker = json.loads(destination.read_text())
@@ -125,6 +165,9 @@ def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mappin
             or marker.get("clip_manifest_sha256") != inputs.manifest_sha256
             or marker.get("media_sha256") != inputs.media_sha256):
         raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
+    required = _required_scene_components(inputs, publication_identity)
+    if required:
+        annotation_scene_path(destination.parent, marker, required_components=required)
     inputs.snapshot.assert_unchanged()
     return destination
 
@@ -132,10 +175,11 @@ def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mappin
 def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeline_config_yaml: str,
                        publication_identity: Mapping[str, object]) -> Path:
     """Validate a complete clip and atomically publish its dataset marker."""
+    required = _required_scene_components(inputs, publication_identity)
     validate_dataset_result(result, inputs.record)
     inputs.snapshot.assert_unchanged()
-    destination = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
-    scene_path = indexed_scene_path(destination / "scene.json")
+    destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
+    scene_path = indexed_scene_path(destination / "scene.json", required_components=required)
     config_bytes = pipeline_config_yaml.encode("utf-8")
     config_path = destination / "configs" / f"{hashlib.sha256(config_bytes).hexdigest()}.yaml"
     if not config_path.exists():

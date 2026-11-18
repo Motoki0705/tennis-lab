@@ -125,7 +125,8 @@ player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switc
 
 `court_side`は[src/tasks/court_side](../../tasks/court_side/README.md)の仮説検定を、校正済みcameraと単一ball観測の
 ~30fps格子に適用する（schema version 3）。成果物は採用したhalf-turn、全仮説のcost/support/使用frame数、marginを持つ。
-決まらないclipは`ReconstructionUnavailable`（reason `court_side_<停止理由>`、仮説ごとの証跡）で停止する。
+既定のclipモードで決まらない場合は`ReconstructionUnavailable`（reason `court_side_<停止理由>`、仮説ごとの証跡）で停止する。
+固定カメラでは[動画共有のcourt side](video_court_side/README.ja.md)を選べる。全clipの有効frameで一度判定し、単独判定が矛盾するclipを失敗、単独未決を既定でwarningにする。
 ball検出を無効にした構成では実行できず、definition構築時に停止する（`load`は可）。
 `camera_alignment`は決まったsideを1仮説として、人物とballの観測で絶対的な整合性だけを再検証する。
 

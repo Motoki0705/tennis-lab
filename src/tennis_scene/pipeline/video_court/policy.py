@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Any
 
 from src.tasks.court_detection.geometry.video_drift import summarize_clip
+from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 
 
 def validate_unobservable_policy(value: str) -> str:
@@ -35,3 +36,17 @@ def apply_drift_policy(report: dict[str, Any], policy: str, *, common_status: st
     result['measurement_status'] = report.get('measurement_status', report['status'])
     result['unobservable_policy'] = policy
     return result
+
+
+def require_accepted_drift(camera: dict[str, Any], clip_id: str, measured: dict[str, Any], policy: str, *,
+                           artifact_digest: str, drift_digest: str | None) -> dict[str, Any]:
+    """Apply the same admission rule to a clip calibration and to its use as evidence."""
+    report = apply_drift_policy(measured, policy, common_status=camera['status'])
+    if camera['status'] != 'accepted' or report['status'] == 'failed':
+        reasons = camera['diagnostics'].get('reasons', [])
+        reason = report['reason'] or ', '.join(reasons) or 'common court unavailable'
+        raise ReconstructionUnavailable('video_shared_court_failed', f"Shared court unavailable for {clip_id}/{camera['camera_id']}: {reason}",
+                                        diagnostics={'clip_id': clip_id, 'camera_id': camera['camera_id'], 'camera_status': camera['status'],
+                                                     'artifact_digest': artifact_digest, 'drift_digest': drift_digest,
+                                                     'camera_reasons': reasons, 'clip': report})
+    return report

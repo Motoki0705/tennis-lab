@@ -13,6 +13,7 @@ from src.tennis_scene.pipeline.artifacts import (
 )
 from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
 from src.tennis_scene.pipeline.definition import (
+    check_shared_side_execution,
     enabled_model_assets,
     file_identity,
     standard_definition,
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
     from src.tasks.base.annotation.paths import AnnotationLayout
     from src.tennis_scene.configuration import PipelineRuntimeConfig
     from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
+    from src.tennis_scene.pipeline.video_court_side import VideoCourtSideArtifact
 
 
 class TennisSceneOrchestrator:
@@ -55,6 +57,8 @@ class TennisSceneOrchestrator:
         self.last_store: ClipStore | None = None
         self.video_court: VideoCourtArtifact | None = None
         self._video_court_key: tuple[object, object, str] | None = None
+        self.video_court_side: VideoCourtSideArtifact | None = None
+        self._video_court_side_key: tuple[object, ...] | None = None
         source = PROJECT_ROOT / "src"
         self.code_identity = document_digest({str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))})
 
@@ -70,9 +74,13 @@ class TennisSceneOrchestrator:
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
         shared = self.prepare_video_court()
+        side = self.prepare_video_court_side(shared)
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
             "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()},
+            **({"video_court_side_digest": side.digest, "video_court_side_unobservable_policy": cfg.court_side_unobservable_policy,
+                "video_court_side_clips": side.publication_verdicts(shared, cfg.court_side_unobservable_policy, cfg.video_court_unobservable_policy)}
+               if side is not None and shared is not None else {}),
             **({'video_court_cameras': shared.manifest['cameras'],
                 'video_court_unobservable_policy': cfg.video_court_unobservable_policy,
                 'video_court_drift_cameras': drift_identity(shared).get('camera_digests', {})} if shared is not None else {})}
@@ -89,6 +97,32 @@ class TennisSceneOrchestrator:
             self._video_court_key = key
         self.video_court.verify()
         return self.video_court
+
+    def prepare_video_court_side(self, court: VideoCourtArtifact | None) -> VideoCourtSideArtifact | None:
+        from src.tennis_scene.pipeline.video_court_side.prepare import (
+            prepare_video_court_side,
+            verify_prepared_court_side,
+        )
+
+        cfg = self.config
+        if cfg.video_court_side is None:
+            return None
+        check_shared_side_execution(cfg, self.components)
+        if court is None:
+            raise ValueError("Shared court side requires shared calibration")
+        # The court policy governs adoption on each call. Measurements may be reused across policies.
+        key = (cfg.video_court_side, court.digest, drift_identity(court).get("artifact_digest"),
+               cfg.court_side, cfg.sampling_max_frames, self.code_identity)
+        if self.video_court_side is None or self._video_court_side_key != key:
+            self.video_court_side = prepare_video_court_side(cfg.video_court_side, cfg.resolver, court=court,
+                thresholds=cfg.court_side, max_frames=cfg.sampling_max_frames, code_identity=self.code_identity,
+                court_policy=cfg.video_court_unobservable_policy)
+            self._video_court_side_key = key
+        else:
+            verify_prepared_court_side(self.video_court_side, cfg.video_court_side, cfg.resolver,
+                                       code_identity=self.code_identity)
+            self.video_court_side.check_settings(court, cfg.court_side, cfg.sampling_max_frames, court_policy=cfg.video_court_unobservable_policy)
+        return self.video_court_side
 
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
             store_root: Path | None, max_frames: int | None = None, clip_id: str | None = None) -> SceneResult:
@@ -123,6 +157,9 @@ class TennisSceneOrchestrator:
                                                        clip_report(shared, camera, source.clip_id), self.config.video_court_unobservable_policy,
                                                        common_status=shared.cameras[camera]['status'])
                                                                                   for camera in source.camera_ids})}
+            side = self.prepare_video_court_side(shared)
+            if side is not None:
+                self.last_receipt["video_court_side"] = side.clip_report(source.clip_id, self.config.court_side_unobservable_policy)
             direct = self.config.direct_annotation
             workflow = None
             if direct is not None:
@@ -166,7 +203,8 @@ class TennisSceneOrchestrator:
                     nodes = importer.bind_nodes(nodes)
                     importer.publish(nodes, store, source)
             else:
-                nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components, video_court=shared)
+                nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components,
+                                            video_court=shared, video_court_side=side)
             if direct is None or direct.resume != "publication":
                 runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite)
                 self.last_runner = runner
@@ -174,6 +212,8 @@ class TennisSceneOrchestrator:
                 inputs.snapshot.assert_unchanged()
                 if shared is not None:
                     shared.verify()
+                if side is not None:
+                    side.verify()
                 scene, archive = runner.finalize_clip()
                 if direct is not None and workflow is not None:
                     self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive)
