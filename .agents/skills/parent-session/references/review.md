@@ -1,8 +1,20 @@
 # レビューとマージ
 
-1. 統合HEAD・受入条件・テスト結果・未確認事項を照合する。親が `review-request --prs … --instruction-file … --evidence-file … --wait` を1回出す。正式reviewerはSol。複数PRをまとめる場合も各PRの起動は1回。
-2. approveならCLIに進行を任せる。majorなら、統合担当から各指摘の修正commitと回帰テストまたは再現確認を受け取る。親は元の指摘と照合し、対応内容または対象外とした理由を `merge-continue --instruction-file` に渡す。
-3. CLIは現HEADのPython CI、対象PR・branch・依存、担当権限、人間の停止を確認し、条件が揃ったらそのHEADをマージする。失敗CIと競合への自動修正はPRごとに合算3回まで。修正後は新HEADのCIへ進む。
-4. `wait-merge --after 通知ID` で次の判断要求・完了を待つ。マージ後はmerge commitのmain CIとIssueの完了を確認する。人間がレビュー・マージを引き受けたPRはその指示に従う。
+## 依頼する前に
 
-`merge-status` にはPRごとの段階と `review_usage` がある。後者は起動・延べ時間・入力とキャッシュ・出力・マージまでの経過を区別する。応答を失ったら [復旧](recovery.md) を読む。
+人間がレビューするPRは、検証結果と残る判断を付けて人間へ渡す。自動マージを任されたPRでは、`AGENT_AUTO_MERGE=1`、担当・実行根拠、対象Issue・PRの `needs-human` と停止状態を確認する。自動進行自身がこれらの制御を変更することはない。
+
+統合担当の終了と回収を確認し、PRのclosing対象・branch・HEADを元の受入条件と照合する。`--instruction-file` に原要件・変更の影響先、`--evidence-file` に対象HEADでの検証結果・未確認事項を書く。`review-request --prs … --wait` で依頼すると、最初の通知または完了まで待つ。正式reviewerはSol。複数PRをまとめる場合も各PRの起動は1回で、再送には既存runが返る。
+
+## 通知を受けたら
+
+| 観測 | 次の操作 |
+|---|---|
+| approve、`ci_wait`、`dependency_wait` | CLIが現HEADのPython CI・先行Issue/PRを確認する。待ちの間は独立作業を進め、次の通知を `wait-merge --run-id RUN --after 通知ID` で受ける。 |
+| major | 採用した各指摘を統合担当へ戻す。親は修正commitと回帰テストまたは再現結果を元の指摘と照合する。対象外の指摘には理由を記す。受入条件の変更が必要なら人間に確認する。全件の処理後、同じrunに `merge-continue --run-id RUN --instruction-file fixes.md --wait`。 |
+| CI失敗・競合 | CLIは登録された作成ワーカーの同じsessionを修正ターンのhighで再開し、push後は新HEADのCIへ戻る。自動修正はPR単位でCI・gate合算3回。作成ワーカーがない場合や上限に達した場合は、親が失敗箇所と残作業を判断する。 |
+| `parent_wait` | `merge-status --run-id RUN` のイベントと理由を読む。停止・権限不足は解除条件を確認し、起動やマージの応答喪失は [保存状態から復旧](recovery.md) する。 |
+
+approveまたはmajor処理後、現HEADのCI・依存・マージ条件が揃えば、そのHEADを指定してマージする。マージ後は**merge commit**のmain CIと対象Issueの `closed/completed` を確認する。この後確認と、親全体の [受入](finish.md) は別の記録になる。
+
+回数・時間・コストを調べるときは `merge-status.review_usage` を読む。各回の起動、延べ実行時間、入力・キャッシュ済み入力・出力と、PRごとのマージ観測までの経過時間を区別する。

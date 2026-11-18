@@ -1,14 +1,38 @@
 # ワーカーの委任と統合
 
-担当Issueとワーカーは別々に決める。例えば「推論高速化と品質維持」は一つの成果として、実装と品質比較を分担できる。比較で劣化が出たら同じIssueに原因調査を追加する。比較結果によって採用手法を決めてから本番導入する場合は、採否を分割の境界にできる。
+## Issueと担当を決める
 
-| 場面 | 操作 |
-|---|---|
-| 担当を用意 | 親だけなら自身の番号を `--child` に使う。最初の委任が `primary`。各担当に同じ基準commitを含む専用branchとworktreeを作る。依存PRがあれば `launch_plan.stacked_on` のheadを含める。 |
-| 手動親から起動 | `delegate` で予約し、`run-worker --prompt-file` で実行。補助担当は両方に `--worker 名前` を付ける。独立したrunは背景で並行させる。 |
-| 自律親から起動 | `start-worker` で予約し、supervisorに起動を渡す。補助担当も1枠使う。pytestは共有lockなしで並行実行できる。GPU・Blenderはtraining queueの枠を使う。 |
-| 結果を受ける | `wait-worker` または `inspect-worker` で担当と終了・回収を照合し、`final_file` と成果物を読む。複数人のときは統合担当にも `--worker primary` を指定する。 |
-| 調査を追加・継続 | 調査専用は `--planning`。同じ担当への続きは手動の `run-worker --resume`、自律の `continue-worker`。計画に回答を結び付ける場合は `decide-worker-plan`。 |
-| 統合 | 補助担当は結論と根拠、またはcommitを返す。統合担当が競合を解消し、統合HEADを検証してIssueを閉じるPRを持つ。親は `record-result` に受入の証拠を残す。 |
+「推論を高速化し品質を維持する」は一つの成果。実装と品質比較を別ワーカーに任せ、劣化が見つかれば同じIssueに調査担当を足せる。一方、比較で手法の採否を決めてから本番導入するなら、採否を確定する地点で子Issueを分ける。
 
-ワーカーはSol固定。PR作成後も補助担当を追加できる。個別停止は `stop-worker --child N --worker 名前`、Issueそのものの保留・再開は `stop` / `resume` を使う。
+正式な直属子があれば `--child` は対象の子番号。上位親も直属子もないIssueでは、自身の番号を指定する。親が直接実装する場合は専用worktreeで変更し、PRと証拠を `record-result` へ渡す。新しい子を作る場合は、受入条件と先行依存を [子Issueの書式](../../../ops/issues/README.md#本文) で定める。同じ子の作成を再送するときは同じkeyとspecを使う。
+
+## 同じIssueに二人を割り当てる例
+
+親1216・担当Issue1217の例。メインcheckoutの `.claude/worktrees/` 配下に、同じ基準commitから `codex/impl` と `codex/quality` の専用worktreeを用意する。`$impl_tree` と `$quality_tree` はその絶対パス。[共有入力・venv・出力の準備](../../../ops/storage_tier/README.md#worktrees-and-service)
+
+```bash
+export PYTHONPATH=.agents/ops
+p=(.venv/bin/python -m parent --parent 1216)
+"${p[@]}" delegate --child 1217 --agent codex --branch codex/impl --worktree "$impl_tree"
+"${p[@]}" delegate --child 1217 --worker quality --agent codex --branch codex/quality --worktree "$quality_tree"
+```
+
+最初の委任が `primary`。各担当への指示には作業範囲・基準commit・受入条件・返す成果（commitまたは測定結果）を書く。手動親は予約後、Bashで次のように両方を起動して担当別に出力を残す。
+
+```bash
+run_logs=$(mktemp -d)
+setsid "${p[@]}" run-worker --child 1217 --worker primary --prompt-file impl.md </dev/null >"$run_logs/impl.log" 2>&1 &
+setsid "${p[@]}" run-worker --child 1217 --worker quality --prompt-file compare.md </dev/null >"$run_logs/quality.log" 2>&1 &
+```
+
+自律親は各担当に `start-worker` を使う。ワーカーはSol、通常max。補助担当も1枠を使い、GPU・Blenderの使用はtraining queueで調停する。
+
+## 待つ、追加する、受け入れる
+
+- `launch_plan` の `action=ready`、既存予約、依存・枠の待機理由を確認する。別の担当を同じIssueへ追加するときは、成果PRがopenでも新しい名前とworktreeを指定できる。複数人になったら、既存担当への操作にも `--worker primary` または補助担当名を付ける。
+- 手動runの登録を `inspect-worker` で確認したら、`wait-worker --child 1217 --worker quality` を会話のシェルツールで背景実行する。待機コマンド自体はシェルから切り離さず、終了通知を受け取る。`wait_state=ended` は終了・回収の確認。runの成否は `runner_summary`、実際に得た結果・未確認事項は `final_file` と成果物で確認する。待機が終了コード124なら待機時間の満了で、同じrunをもう一度待てる。
+- 調査だけを任せるターンは `--planning`。結果から次の方針を決め、必要に応じて `decide-worker-plan` で回答を結び付ける。同じ担当に続きやmajor修正を頼むときは、終了・回収を照合して手動の `run-worker --resume` または自律の `continue-worker` を使う。
+- 補助担当はcommitまたは測定結果を返す。統合担当が競合を解消して統合HEADを検証し、担当Issueを閉じるPRに `Closes #1217` を書く。親はPRのbranch・HEAD、受入条件ごとの証拠を確かめて `record-result`。これが [正式レビュー](review.md) に渡す成果になる。
+- 複数担当の一人を止めるには `stop-worker --worker 名前`。Issue全体の保留は `stop` を使う。自律親で担当が一人のときの `stop-worker` は、対象Issueを保留し、依存して保留されたjobにも停止を要求する。影響先は `launch_plan` で確認する。停止要求だけでは終了・枠解放は確定しない。[終了が不明な場合](recovery.md)
+
+**未マージの依存PRを土台にする場合**は、`stacked_on` の全headを取り込み、実際に積んだ境界commitを保存する。依存先が一つなら先行branchを後続PRのbaseにする。先行PRのマージ後、cleanな後続worktreeでその境界から後続のcommitだけをmainへ載せ替え、PRのbase・差分・CIを新HEADで確認する。先行がsquash mergeされても、保存した境界を使える。

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import importlib
+import json
 import re
 import shlex
 from pathlib import Path
@@ -189,6 +190,23 @@ def test_parent_cli_help_examples_match_the_parser(
             assert service.validate_summary(args.summary) == args.summary
         if name == "review-request":
             assert args.review_model is None and args.model_reason_file is None
+
+
+def test_parent_cli_completion_examples_cover_the_agreement_and_issue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    examples = importlib.import_module("parent.cli_help").EXAMPLES
+    notifications = importlib.import_module("parent.notifications")
+    completion = importlib.import_module("parent.completion")
+    notice = json.loads(examples["notify"].splitlines()[-1])
+    assert notifications.validate(notice)["kind"] == "completion"
+    finish = json.loads(examples["release"].splitlines()[-1])
+    requirements = {
+        "basis_ref": finish["basis_ref"],
+        "criteria": [{"id": "agreement"}, {"id": "ac-1"}],
+    }
+    completion.validate_finish(finish, requirements, {}, 1216)
 
 
 def test_skill_routes_each_cli_topic_to_a_reference(
