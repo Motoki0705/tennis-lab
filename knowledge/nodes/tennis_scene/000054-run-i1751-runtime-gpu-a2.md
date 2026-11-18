@@ -2,7 +2,7 @@
 id: run-i1751-runtime-gpu-a2
 type: run
 task: tennis_scene
-sequence: 49
+sequence: 54
 recorded_at: '2026-11-17'
 title: runtime GPU比較のservice環境での計測起動失敗
 issue: 1751

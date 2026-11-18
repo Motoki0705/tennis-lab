@@ -2,7 +2,7 @@
 id: run-i1751-runtime-gpu-a3
 type: run
 task: tennis_scene
-sequence: 50
+sequence: 55
 recorded_at: '2026-11-18'
 title: runtime GPU比較をCUDA異常の調査のため中断
 issue: 1751
