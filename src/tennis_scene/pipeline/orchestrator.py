@@ -12,6 +12,7 @@ from src.tennis_scene.pipeline.artifacts import (
     write_json_atomic,
 )
 from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
+from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     file_identity,
@@ -77,6 +78,8 @@ class TennisSceneOrchestrator:
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
             "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()},
+            **({"court_model_assets": CourtKPModule(cfg.court_kp).asset_identities()}
+               if cfg.direct_annotation is None and cfg.video_court is None else {}),
             **({'video_court_cameras': shared.manifest['cameras'],
                 'video_court_unobservable_policy': cfg.video_court_unobservable_policy,
                 'video_court_drift_cameras': drift_identity(shared).get('camera_digests', {})} if shared is not None else {})}

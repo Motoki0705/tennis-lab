@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import weakref
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -225,3 +226,38 @@ def test_recorder_failure_cannot_skip_unloading(tmp_path: Path) -> None:
             runtime.node(node) as models:
         models.borrow("model")
     assert released == [True] and not runtime.loaded_keys
+
+
+@pytest.mark.parametrize("chain", ["cause", "context", "suppressed", "group", "cycle"])
+def test_retained_exception_graph_does_not_retain_models(tmp_path: Path, chain: str) -> None:
+    references: list[weakref.ReferenceType[Resource]] = []
+    def create() -> Resource:
+        resource = Resource()
+        references.append(weakref.ref(resource))
+        return resource
+    def backend(resource: Resource) -> None:
+        assert resource is not None
+        raise ValueError("backend stopped")
+    def process(models: Any) -> None:
+        try:
+            backend(models.borrow("model"))
+        except ValueError as error:
+            if chain == "cause":
+                raise RuntimeError("wrapped") from error
+            if chain == "suppressed":
+                raise RuntimeError("wrapped") from None
+            if chain == "group":
+                raise ExceptionGroup("wrapped", [ExceptionGroup("inner", [error])]) from None
+            if chain == "cycle":
+                wrapper = RuntimeError("wrapped")
+                error.__cause__ = wrapper
+                raise wrapper from error
+            raise RuntimeError("wrapped")  # noqa: B904 - deliberately exercise implicit exception context.
+    node = ("clip", "fails")
+    runtime = InferenceRuntime({node: {"model": spec(tmp_path, factory=create)}}, cleanup=lambda _: None)
+    with pytest.raises((RuntimeError, ExceptionGroup), match="wrapped") as caught, runtime, runtime.node(node) as models:
+        process(models)
+    assert caught.value.__traceback__ is not None  # Keep the complete exception graph alive.
+    gc.collect()
+    assert not runtime.loaded_keys
+    assert references[0]() is None

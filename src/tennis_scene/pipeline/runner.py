@@ -22,6 +22,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelBorrower,
     ModelEventHook,
 )
+from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
@@ -114,7 +115,9 @@ class PlanExecutor:
             node = self.plan.nodes[key]
             declarations[key] = (node.component.model_specs()
                                  if node.source == "execute" and isinstance(node.component, InferenceComponent) else {})
-        return InferenceRuntime(declarations, model_event=self.model_event)
+        return InferenceRuntime(declarations,
+            expected_assets={key: asset_hashes(self.plan.nodes[key].settings) for key in declarations},
+            model_event=self.model_event)
 
     def execute(self, key: NodeKey) -> ArtifactRef:
         """Run or load one ready node; completed nodes are never reconsidered."""
@@ -141,7 +144,11 @@ class PlanExecutor:
         started = time.monotonic()
         try:
             with runtime.node(key, continue_on_error=continue_on_error) as models:
-                reference = self._execute_node(key, models)
+                reference, status = self._execute_node(key, models)
+            # Unload/recorder/cleanup must succeed before dependencies or clip
+            # publication can observe this node as completed, including resume.
+            plan.references[key] = reference
+            plan.statuses[key] = status
             plan.active_node = None
             return reference
         except BaseException:
@@ -150,7 +157,7 @@ class PlanExecutor:
         finally:
             plan.seconds[key] = time.monotonic() - started
 
-    def _execute_node(self, key: NodeKey, models: ModelBorrower) -> ArtifactRef:
+    def _execute_node(self, key: NodeKey, models: ModelBorrower) -> tuple[ArtifactRef, str]:
         plan = self.plan
         node, store = plan.nodes[key], plan.clips[key[0]].store
         decision = plan.decide(key)
@@ -174,9 +181,7 @@ class PlanExecutor:
                 schema=node.io.output_schema, version=node.io.version, identity=decision.identity,
                 dependencies=decision.dependencies, provenance={"origin": "component", "implementation": node.implementation})
             status = "executed"
-        plan.references[key] = reference
-        plan.statuses[key] = status
-        return reference
+        return reference, status
 
     def output(self, key: NodeKey) -> Any:
         return self.plan.clips[key[0]].store.load(self.plan.references[key], ArtifactCodec(self.plan.nodes[key].io.output_type))
