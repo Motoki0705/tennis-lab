@@ -103,6 +103,15 @@ def asset_identities(enabled: bool, paths: Mapping[str, Path]) -> dict[str, Any]
     return {name: file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
 
 
+def check_shared_side_execution(cfg: PipelineRuntimeConfig, overrides: Mapping[str, Any] | None) -> None:
+    if cfg.video_court_side is None:
+        return
+    if cfg.direct_annotation is not None:
+        raise ValueError("court_side.mode=video_shared is incompatible with direct_annotation and publication-only resume")
+    if overrides is not None and "court_side" in overrides:
+        raise ValueError("A court_side override is incompatible with court_side.mode=video_shared")
+
+
 def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_identity: str,
                         overrides: dict[str, Any] | None = None, video_court: VideoCourtArtifact | None = None,
                         video_court_side: VideoCourtSideArtifact | None = None) -> tuple[ComponentNode, ...]:
@@ -114,8 +123,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     """
     ids = source.camera_ids
     overrides = {} if overrides is None else overrides
-    if cfg.video_court_side is not None and "court_side" in overrides:
-        raise ValueError("A court_side override is incompatible with court_side.mode=video_shared")
+    check_shared_side_execution(cfg, overrides)
     if (cfg.video_court is None) != (video_court is None):
         raise ValueError('Shared court must be prepared explicitly before building the clip plan')
     if video_court is not None:
@@ -133,13 +141,13 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                 or cfg.video_court.action == "load" and cfg.video_court.artifact_digest != video_court.digest):
             raise ValueError("Execution plan court disagrees with the configured shared side scope/geometry")
         verify_prepared_court_side(video_court_side, cfg.video_court_side, cfg.resolver, code_identity=code_identity)
-        video_court_side.check_settings(video_court, cfg.court_side, cfg.sampling_max_frames)
+        video_court_side.check_settings(video_court, cfg.court_side, cfg.sampling_max_frames, court_policy=cfg.video_court_unobservable_policy)
         if source.clip_id not in video_court_side.clips:
             raise ValueError("Clip is missing from the shared court side artifact")
     nodes: list[ComponentNode] = []
 
     def add(name: str, component: Any, assembler: Any, bindings: dict[str, str], settings: Callable[[], Any],
-            *, camera: str | None = None) -> None:
+            *, camera: str | None = None, require_component: Callable[[], None] | None = None) -> None:
         stage = name.split("/")[0]
         if name in overrides:
             component = overrides[name]
@@ -150,7 +158,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             resolved = settings()
         mode = "load" if cfg.cache_source == "load" else cfg.component_sources[stage]
         nodes.append(ComponentNode(name, component, component.io, assembler, bindings,
-            AssemblyContext(source, camera), json_value(resolved), code_identity, mode))
+            AssemblyContext(source, camera), json_value(resolved), code_identity, mode, require_component=require_component))
 
     people_enabled = cfg.enabled["person_observations"]
     selection = LinkingConfig(max_candidates=cfg.max_tracks_per_camera)
@@ -231,15 +239,18 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     balls = {f"ball_{c}": f"ball_points/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}
     side_module: CourtSideModule | SharedCourtSideModule
+    require_side = None
     if video_court_side is None:
         side_module = CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames)
         side_settings: dict[str, Any] = {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames, "ball_threshold": 0.0}
     else:
         assert video_court is not None
-        side_module = SharedCourtSideModule(ids, video_court_side, video_court, cfg.court_side_unobservable_policy)
-        report = video_court_side.clip_report(source.clip_id, cfg.court_side_unobservable_policy)
-        side_settings = {key: report[key] for key in ("artifact_digest", "unobservable_policy", "status", "reason")}
-    add("court_side", side_module, CourtSideInputAssembler(0.0), {"calibration": "court_calibration", **balls}, lambda: side_settings)
+        side_module = SharedCourtSideModule(ids, video_court_side, video_court, cfg.court_side_unobservable_policy,
+                                           court_policy=cfg.video_court_unobservable_policy)
+        require_side = partial(side_module.require_clip, source.clip_id)
+        side_settings = video_court_side.node_settings(source.clip_id, cfg.court_side_unobservable_policy, cfg.video_court_unobservable_policy)
+    add("court_side", side_module, CourtSideInputAssembler(0.0), {"calibration": "court_calibration", **balls},
+        lambda: side_settings, require_component=require_side)
     add("player_association", PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people_enabled,
         encoder=encoder),
         PlayerAssociationInputAssembler(), {"calibration": "court_calibration", "side": "court_side", **{f"tracks_{c}": f"player_selection/{c}" for c in ids}},

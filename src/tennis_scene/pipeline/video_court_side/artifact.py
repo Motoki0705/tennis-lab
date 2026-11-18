@@ -1,6 +1,7 @@
 """Video-wide decision and standalone clip measurements, independent of execution policy."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -14,14 +15,29 @@ from src.tasks.court_side.hypothesis import (
 )
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.court_side import CourtSideOutput
+from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.storage.codec import restore_type
 from src.tennis_scene.pipeline.video_artifact import load_document
-from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
-from src.tennis_scene.pipeline.video_court.policy import validate_unobservable_policy
+from src.tennis_scene.pipeline.video_court.diagnostics import (
+    clip_report,
+    drift_identity,
+)
+from src.tennis_scene.pipeline.video_court.policy import (
+    require_accepted_drift,
+    validate_unobservable_policy,
+)
 from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
 
 SCHEMA = "video_court_side_v1"
 DIAGNOSTICS_SCHEMA = "video_court_side_diagnostics_v1"
+
+
+def require_accepted_courts(court: VideoCourtArtifact, clips: Iterable[str], policy: str) -> None:
+    drift_digests = drift_identity(court).get("camera_digests", {})
+    for clip in clips:
+        for camera, document in court.cameras.items():
+            require_accepted_drift(document, clip, clip_report(court, camera, clip), policy,
+                                   artifact_digest=court.manifest["cameras"][camera], drift_digest=drift_digests.get(camera))
 
 
 @dataclass(frozen=True)
@@ -105,20 +121,24 @@ class VideoCourtSideArtifact:
         if diagnostics != {"schema": DIAGNOSTICS_SCHEMA, "clips": json_value(self.clips)}:
             raise ValueError("Standalone court side diagnostics changed")
 
-    def check_settings(self, court: VideoCourtArtifact, thresholds: CourtSideConfig, max_frames: int) -> None:
+    def check_court(self, court: VideoCourtArtifact, court_policy: str) -> None:
+        court.verify()
         d = self.decision
         if (d.dataset_id, d.video_id, d.court_digest) != (court.manifest["dataset_id"], court.manifest["video_id"], court.digest):
             raise ValueError("Shared court side artifact belongs to another video or court")
         if d.court_drift_digest != drift_identity(court).get("artifact_digest"):
             raise ValueError("Shared court side was measured with different court drift evidence")
-        if d.thresholds != json_value(thresholds) or d.max_frames != max_frames:
+        require_accepted_courts(court, d.evidence_clip_ids, court_policy)
+
+    def check_settings(self, court: VideoCourtArtifact, thresholds: CourtSideConfig, max_frames: int, *, court_policy: str = "warn") -> None:
+        self.check_court(court, court_policy)
+        if self.decision.thresholds != json_value(thresholds) or self.decision.max_frames != max_frames:
             raise ValueError("Shared court side thresholds or sampling disagree with execution")
 
-    def clip_report(self, clip_id: str, policy: str) -> dict[str, Any]:
+    def clip_verdict(self, clip_id: str, policy: str) -> dict[str, Any]:
         validate_unobservable_policy(policy)
         d = self.decision
-        measurement = self.clips[clip_id]
-        local = measurement.standalone
+        local = self.clips[clip_id].standalone
         status, reason = "ok", None
         if d.shared.reason is not None:
             status, reason = "failed", f"court_side_video_shared_{d.shared.reason}"
@@ -127,10 +147,34 @@ class VideoCourtSideArtifact:
             reason = f"court_side_{local.reason}"
         elif local.hypotheses[0].view_half_turns != d.shared.hypotheses[0].view_half_turns:
             status, reason = "failed", "court_side_video_shared_conflict"
+        return {"status": status, "reason": reason}
+
+    def clip_report(self, clip_id: str, policy: str) -> dict[str, Any]:
+        d = self.decision
+        measurement = self.clips[clip_id]
         return {"directory": str(self.directory), "artifact_digest": self.digest, "diagnostics_digest": d.diagnostics_digest,
                 "camera_ids": list(d.camera_ids), "reference_camera": d.reference_camera, "clip_id": clip_id,
-                "sampled_frames": measurement.sampled_frames, "status": status, "reason": reason, "unobservable_policy": policy,
-                "standalone": json_value(local), "shared": json_value(d.shared)}
+                "sampled_frames": measurement.sampled_frames, **self.clip_verdict(clip_id, policy), "unobservable_policy": policy,
+                "standalone": json_value(measurement.standalone), "shared": json_value(d.shared)}
+
+    def require_clip(self, clip_id: str, policy: str) -> None:
+        if self.clip_verdict(clip_id, policy)["status"] == "failed":
+            report = self.clip_report(clip_id, policy)
+            raise ReconstructionUnavailable(report["reason"], f"{clip_id}: {report['reason']}", diagnostics=report)
+
+    def node_settings(self, clip_id: str, side_policy: str, court_policy: str) -> dict[str, Any]:
+        return {"artifact_digest": self.digest, "unobservable_policy": side_policy, "court_unobservable_policy": court_policy,
+                **self.clip_verdict(clip_id, side_policy)}
+
+    def publication_verdicts(self, court: VideoCourtArtifact, side_policy: str, court_policy: str) -> dict[str, dict[str, Any]]:
+        """Per-clip admission for markers, including clips outside the evidence selection."""
+        clips = {clip: self.clip_verdict(clip, side_policy) for clip in self.clips}
+        for clip in self.clips.keys() - set(self.decision.evidence_clip_ids):
+            try:
+                require_accepted_courts(court, (clip,), court_policy)
+            except ReconstructionUnavailable as error:
+                clips[clip].update(status="failed", reason=error.reason, detail=str(error))
+        return clips
 
     def output(self) -> CourtSideOutput:
         d = self.decision

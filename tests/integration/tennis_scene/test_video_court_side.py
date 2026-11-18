@@ -54,8 +54,26 @@ def second_clip_balls(stages, kind):
                                observed=observed, confidence=(observed * .9).astype(np.float32), point_kind=observed.astype(np.uint8))
 
 
-def prefix_stores(tmp_path, monkeypatch, kind):
+def prefix_stores(tmp_path, monkeypatch, kind, *, uncertain_drift=False):
     pipeline, paths, sources, _, _, court = shared_fixture(tmp_path, monkeypatch)
+    if uncertain_drift:
+        from src.tasks.court_detection.geometry.video_drift import (
+            DriftConfig,
+            summarize_clip,
+        )
+        from src.tennis_scene.pipeline.video_court.diagnostics import (
+            publish_video_drift,
+        )
+        from tests.integration.tennis_scene.test_video_court import (
+            independent_drift_reports,
+        )
+
+        reports = independent_drift_reports(court)
+        frame = reports["cam1"][CLIPS[1]]["frames"][0]
+        frame.update(status="failed", reason="drift_unobservable")
+        reports["cam1"][CLIPS[1]] = summarize_clip([frame])
+        court = publish_video_drift(court, tmp_path / "drift", protocol={"settings": asdict(DriftConfig())}, reports=reports)
+        pipeline.config = replace(pipeline.config, video_court_drift=court.drift, video_court_unobservable_policy="warn")
     pins = {}
     for i, source in enumerate(sources):
         if i == 1:
@@ -336,3 +354,241 @@ def test_reject_foreign_missing_and_stale_inputs(tmp_path, monkeypatch):
 def test_mode_must_be_explicit_and_calibrated(tmp_path, overrides, message):
     with pytest.raises(ValueError, match=message):
         runtime(tmp_path, overrides=overrides)
+
+
+@pytest.mark.parametrize("action", ["build", "load"])
+def test_current_drift_policy_covers_every_contributing_clip(tmp_path, monkeypatch, action):
+    pipeline, paths, sources, court, pins = prefix_stores(tmp_path, monkeypatch, "agreement", uncertain_drift=True)
+    full = build(pipeline, court, pins, tmp_path)
+    selected = build(pipeline, court, pins, tmp_path, evidence_clip_ids=[CLIPS[0]])
+
+    def configuration(artifact):
+        if action == "build":
+            return build_request(tmp_path, pins, list(artifact.decision.evidence_clip_ids))
+        return acquisition(tmp_path, action="load", artifact_digest=artifact.digest, request=None, request_sha256=None)
+
+    pipeline.config = replace(pipeline.config, video_court_side=configuration(full))
+    assert pipeline.prepare_video_court_side(court).digest == full.digest
+    pipeline.config = replace(pipeline.config, video_court_unobservable_policy="fail")
+    if action == "build":
+        # Reject both a disk hit and a forced fresh build before any scoring.
+        for rebuild in (False, True):
+            with pytest.raises(ReconstructionUnavailable, match="drift_unobservable"):
+                build(pipeline, court, pins, tmp_path, court_policy="fail", rebuild=rebuild)
+
+    def run_a():
+        return pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS,
+                            store_root=pins[CLIPS[0]].directory, clip_id=CLIPS[0])
+
+    def bind(artifact, source):
+        return standard_definition(pipeline.config, source, code_identity=pipeline.code_identity, overrides=pipeline.components,
+                                   video_court=court, video_court_side=artifact)
+
+    def prepare_from_disk():
+        cfg = pipeline.config
+        return prepare_video_court_side(cfg.video_court_side, cfg.resolver, court=court, thresholds=cfg.court_side,
+                                        max_frames=cfg.sampling_max_frames, code_identity=pipeline.code_identity,
+                                        court_policy=cfg.video_court_unobservable_policy)
+
+    for adopt in (run_a, prepare_from_disk, lambda: bind(full, sources[0]), pipeline.publication_identity):
+        with pytest.raises(ReconstructionUnavailable, match="drift_unobservable") as error:
+            adopt()
+        assert error.value.diagnostics["camera_id"] == "cam1" and error.value.diagnostics["clip_id"] == CLIPS[1]
+    assert pipeline.last_runner is None
+
+    # B keeps a standalone diagnostic. The strict court allows A to contribute and use its result.
+    pipeline.config = replace(pipeline.config, video_court_side=configuration(selected))
+    assert pipeline.prepare_video_court_side(court).digest == selected.digest
+    assert next(n for n in bind(selected, sources[0]) if n.name == "court_side").settings["artifact_digest"] == selected.digest
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
+    admitted = pipeline.publication_identity()["video_court_side_clips"]
+    assert admitted[CLIPS[0]]["status"] == "ok" and "drift_unobservable" in admitted[CLIPS[1]]["detail"]
+    with pytest.raises(ReconstructionUnavailable, match="drift_unobservable"):
+        run = ComponentRunner(bind(selected, sources[1]), ClipStore(pins[CLIPS[1]].directory, json_value(sources[1])))
+        run.run(["court_side"])
+
+
+@pytest.mark.parametrize("node", ["ball_points/cam1", "court_calibration"])
+def test_build_reuse_rejects_other_clips_damaged_array_without_rescoring(tmp_path, monkeypatch, node):
+    pipeline, paths, sources, court, pins = prefix_stores(tmp_path, monkeypatch, "agreement")
+    request = build_request(tmp_path, pins)
+    pipeline.config = replace(pipeline.config, video_court_side=request)
+    artifact = pipeline.prepare_video_court_side(court)
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
+    monkeypatch.setattr("src.tennis_scene.pipeline.video_court_side.prepare.collect_side_evidence_with_frames",
+                        lambda *a, **kw: pytest.fail("reused builds must not score"))
+    assert pipeline.publication_identity()["video_court_side_digest"] == artifact.digest
+    other = pins[CLIPS[1]]
+    descriptor = other.directory / other.references[node]["path"]
+    document = json.loads(descriptor.read_text())
+    if node == "court_calibration":
+        descriptor.with_name(next(iter(document["arrays"]))).unlink()
+    else:
+        descriptor.with_name(document["payload"]["uv_px"]["array"]).write_bytes(b"damaged ball coordinates")
+    assert PinnedSideInputs.from_store(other.directory).digest == other.digest
+
+    for adopt in (lambda: pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS,
+                                       store_root=pins[CLIPS[0]].directory, clip_id=CLIPS[0]),
+                  pipeline.publication_identity, lambda: build(pipeline, court, pins, tmp_path),
+                  lambda: standard_definition(pipeline.config, sources[0], code_identity=pipeline.code_identity,
+                      overrides=pipeline.components, video_court=court, video_court_side=artifact)):
+        with pytest.raises(ValueError, match="array checksum"):
+            adopt()
+    assert pipeline.last_runner is None
+    # Explicit load only needs the immutable video objects and the current clip's own inputs.
+    pipeline.config = replace(pipeline.config, video_court_side=acquisition(tmp_path, action="load", artifact_digest=artifact.digest,
+                                                                          request=None, request_sha256=None))
+    assert pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=pins[CLIPS[0]].directory,
+                        clip_id=CLIPS[0]).metadata["court_reference"]["view_half_turns"] == list(artifact.output().view_half_turns)
+
+
+@pytest.mark.parametrize("kind,global_load", [("agreement", False), ("conflict", True)])
+def test_shared_load_requires_its_component_and_an_admissible_clip(tmp_path, monkeypatch, kind, global_load):
+    from src.tennis_scene.pipeline.imports.publish import bind_import, publish_import
+
+    pipeline, _, sources, court, pins = prefix_stores(tmp_path, monkeypatch, kind)
+    source = sources[1]
+    store = ClipStore(pins[source.clip_id].directory, json_value(source))
+    artifact = build(pipeline, court, pins, tmp_path)
+    cfg = replace(pipeline.config, component_sources={**pipeline.config.component_sources, "court_side": "load"})
+    ordinary_nodes = standard_definition(cfg, source, code_identity=pipeline.code_identity, overrides=pipeline.components, video_court=court)
+    bound = bind_import(ordinary_nodes, "court_side", store)
+    alternate = tuple(replace(h, view_half_turns=(*h.view_half_turns[:-1], not h.view_half_turns[-1]))
+                      for h in artifact.output().hypotheses)
+    imported = replace(artifact.output(), view_half_turns=alternate[0].view_half_turns, hypotheses=alternate)
+    publish_import(bound, store, imported, importer="fixture", version=1, identity={"file_sha256": "a" * 64}, provenance={})
+    regular = ComponentRunner(ordinary_nodes, store)
+    regular.run(["court_side"])
+    assert regular.output("court_side") == imported
+
+    policy = acquisition(tmp_path, action="load", artifact_digest=artifact.digest, request=None, request_sha256=None)
+    cfg = replace(cfg, video_court_side=policy, cache_source="load" if global_load else cfg.cache_source)
+    nodes = standard_definition(cfg, source, code_identity=pipeline.code_identity, overrides=pipeline.components,
+                                video_court=court, video_court_side=artifact)
+    runner = ComponentRunner(nodes, store)
+    if kind == "conflict":
+        with pytest.raises(ReconstructionUnavailable, match="court_side_video_shared_conflict"):
+            runner.run(["court_side"])
+    else:
+        with pytest.raises(ValueError, match="component origin"):
+            runner.run(["court_side"])
+    assert runner.statuses["court_side"] == "failed" and "court_side" not in runner.references
+    with pytest.raises(ValueError, match="component origin"):
+        bind_import(nodes, "court_side", store)
+    with pytest.raises(ValueError, match="component origin"):
+        publish_import(replace(bound, node=runner.nodes["court_side"]), store, imported, importer="fixture",
+                       version=1, identity={}, provenance={})
+
+
+def test_shared_marker_requires_an_admitted_clip_and_its_published_component(tmp_path, monkeypatch):
+    import shutil
+
+    from src.tennis_scene.pipeline.artifacts import document_digest
+    from src.tennis_scene.pipeline.clip_inputs import (
+        resolve_dataset_clip,
+        select_dataset_clips,
+    )
+    from src.tennis_scene.pipeline.dataset_publication import (
+        ANNOTATION_RELATIVE_DIR,
+        completed_annotation,
+        publish_annotation,
+    )
+    from src.tennis_scene.pipeline.imports.publish import bind_import, publish_import
+    from tests.integration.tennis_scene.test_video_court import make_build_request
+
+    pipeline, paths, sources, court, pins = prefix_stores(tmp_path, monkeypatch, "conflict")
+    make_build_request(tmp_path, paths)
+    dataset = tmp_path / "dataset"
+    a, b = [resolve_dataset_clip(dataset, record) for record in select_dataset_clips(dataset, CLIPS)]
+    cfg = replace(pipeline.config, video_court_side=build_request(tmp_path, pins))
+    pipeline.config = cfg
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
+    identity = pipeline.publication_identity()
+    with monkeypatch.context() as patch:
+        patch.setitem(pipeline.components, "court_side", CourtSideModule(CAMERAS, cfg.court_side, max_frames=cfg.sampling_max_frames))
+        with pytest.raises(ValueError, match="court_side.*override"):
+            pipeline.publication_identity()
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=pins[CLIPS[0]].directory, clip_id=CLIPS[0])
+    directory = a.clip_dir / ANNOTATION_RELATIVE_DIR
+    shutil.copytree(pins[CLIPS[0]].directory, directory)
+    marker = publish_annotation(a, scene, pipeline_config_yaml="fixture: true\n", publication_identity=identity)
+    assert completed_annotation(a, identity) == marker
+    with pytest.raises(ValueError, match="shared decision or policy"):
+        publish_annotation(a, scene, pipeline_config_yaml="", publication_identity={**identity, "video_court_side_digest": "b" * 64})
+
+    # Even an otherwise matching completion marker cannot admit the conflicting clip.
+    other_marker = b.clip_dir / ANNOTATION_RELATIVE_DIR / "annotation.json"
+    other_marker.parent.mkdir(parents=True)
+    write_json_atomic(other_marker, {**json.loads(marker.read_text()), "clip_id": CLIPS[1],
+                                     "publication_identity_sha256": document_digest(identity),
+                                     "clip_manifest_sha256": b.manifest_sha256, "media_sha256": b.media_sha256})
+    with pytest.raises(ReconstructionUnavailable, match="court_side_video_shared_conflict"):
+        completed_annotation(b, identity)
+    with pytest.raises(ReconstructionUnavailable, match="court_side_video_shared_conflict"):
+        publish_annotation(b, scene, pipeline_config_yaml="", publication_identity=identity)
+
+    # Replacing A's active side withdraws its scene export, but leaves the old marker file on disk.
+    ordinary = replace(cfg, video_court_side=None, component_sources={**cfg.component_sources, "court_side": "load"})
+    nodes = standard_definition(ordinary, sources[0], code_identity=pipeline.code_identity, overrides=pipeline.components, video_court=court)
+    store = ClipStore(directory, json_value(sources[0]))
+    publish_import(bind_import(nodes, "court_side", store), store, pipeline.video_court_side.output(),
+                   importer="fixture", version=1, identity={}, provenance={})
+    with pytest.raises(ValueError, match="component origin"):
+        completed_annotation(a, identity)
+    with pytest.raises(ValueError, match="component origin"):
+        publish_annotation(a, scene, pipeline_config_yaml="", publication_identity=identity)
+
+
+def test_shared_component_reuse_matches_origin_digest_and_policy(tmp_path, monkeypatch):
+    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+    from src.tennis_scene.pipeline.video_court_side.component import (
+        SharedCourtSideModule,
+    )
+
+    pipeline, _, sources, court, pins = prefix_stores(tmp_path, monkeypatch, "agreement")
+    shared = build(pipeline, court, pins, tmp_path)
+    subset = build(pipeline, court, pins, tmp_path, evidence_clip_ids=[CLIPS[0]])
+    store = ClipStore(pins[CLIPS[0]].directory, json_value(sources[0]))
+
+    def runner(artifact, mode, *, policy="warn"):
+        cfg = replace(pipeline.config, video_court_side=acquisition(tmp_path, action="load", artifact_digest=artifact.digest,
+                      request=None, request_sha256=None), court_side_unobservable_policy=policy,
+                      component_sources={**pipeline.config.component_sources, "court_side": mode})
+        nodes = standard_definition(cfg, sources[0], code_identity=pipeline.code_identity, overrides=pipeline.components,
+                                    video_court=court, video_court_side=artifact)
+        return ComponentRunner(nodes, store)
+
+    fresh = runner(shared, "execute")
+    fresh.run(["court_side"])
+    assert fresh.statuses["court_side"] == "executed"
+    monkeypatch.setattr(SharedCourtSideModule, "process", lambda *a: pytest.fail("cache/load should reuse the shared component"))
+    for mode, status in (("execute", "cached"), ("load", "loaded")):
+        reuse = runner(shared, mode)
+        reuse.run(["court_side"])
+        assert reuse.statuses["court_side"] == status and reuse.output("court_side") == shared.output()
+    for mismatch in (runner(subset, "load"), runner(shared, "load", policy="fail")):
+        with pytest.raises(ValueError, match="component identity changed"):
+            mismatch.run(["court_side"])
+
+    # An execution key alone cannot authorize an import, even on an automatic cache hit.
+    decision = fresh.plan.decide((CLIPS[0], "court_side"))
+    node = fresh.nodes["court_side"]
+    ref = store.publish("court_side", shared.output(), ArtifactCodec(node.io.output_type), schema=node.io.output_schema,
+                        version=node.io.version, identity=decision.identity, dependencies=decision.dependencies, provenance={"origin": "import"})
+    assert ref.execution_key == fresh.references["court_side"].execution_key
+    with pytest.raises(ValueError, match="component origin"):
+        runner(shared, "execute").run(["court_side"])
+
+
+def test_shared_side_rejects_publication_only_resume_from_runtime_config(tmp_path, monkeypatch):
+    from src.tennis_scene.pipeline.direct_annotation import DirectAnnotationConfig
+
+    pipeline, paths, _, court, pins = prefix_stores(tmp_path, monkeypatch, "conflict")
+    shared = build(pipeline, court, pins, tmp_path)
+    direct = DirectAnnotationConfig(tmp_path / "request.json", "a" * 64, tmp_path / "bundle.json", "b" * 64,
+                                    "stored_artifact", True, "publication")
+    load = acquisition(tmp_path, action="load", artifact_digest=shared.digest, request=None, request_sha256=None)
+    pipeline.config = replace(pipeline.config, video_court_side=load, direct_annotation=direct)
+    with pytest.raises(ValueError, match="publication-only resume"):
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=pins[CLIPS[1]].directory, clip_id=CLIPS[1])
+    assert pipeline.last_runner is None and pipeline.last_receipt["status"] == "failed"

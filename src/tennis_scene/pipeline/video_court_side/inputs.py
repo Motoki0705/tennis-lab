@@ -22,7 +22,11 @@ from src.tennis_scene.pipeline.input_assembly.reconstruction import (
     CourtSideInputAssembler,
 )
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef
-from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, restore_type
+from src.tennis_scene.pipeline.storage.codec import (
+    ArtifactCodec,
+    restore_type,
+    verified_array_path,
+)
 from src.tennis_scene.pipeline.storage.scene_index import (
     assert_current_component_lineage,
     read_component_descriptor,
@@ -63,8 +67,16 @@ class PinnedSideInputs:
         return cls(directory, source, index["source_sha256"], refs)
 
     def assert_current(self) -> None:
+        self.verify_arrays()
         if self.from_store(self.directory).digest != self.digest:
             raise ValueError(f"Court side inputs changed: {self.source.clip_id}")
+
+    def verify_arrays(self) -> None:
+        for node, record in self.references.items():
+            descriptor = read_component_descriptor(self.directory, record, node=node, source_sha256=self.source_digest)
+            directory = (self.directory / record["path"]).parent
+            for name in descriptor["arrays"]:
+                verified_array_path(directory, name, descriptor["arrays"])
 
     def assemble(self) -> CourtSideInput:
         artifacts = {}

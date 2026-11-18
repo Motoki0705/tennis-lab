@@ -13,6 +13,7 @@ from src.tennis_scene.pipeline.artifacts import (
 )
 from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
 from src.tennis_scene.pipeline.definition import (
+    check_shared_side_execution,
     enabled_model_assets,
     file_identity,
     standard_definition,
@@ -77,8 +78,9 @@ class TennisSceneOrchestrator:
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
             "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()},
-            **({"video_court_side_digest": side.digest, "video_court_side_unobservable_policy": cfg.court_side_unobservable_policy}
-               if side is not None else {}),
+            **({"video_court_side_digest": side.digest, "video_court_side_unobservable_policy": cfg.court_side_unobservable_policy,
+                "video_court_side_clips": side.publication_verdicts(shared, cfg.court_side_unobservable_policy, cfg.video_court_unobservable_policy)}
+               if side is not None and shared is not None else {}),
             **({'video_court_cameras': shared.manifest['cameras'],
                 'video_court_unobservable_policy': cfg.video_court_unobservable_policy,
                 'video_court_drift_cameras': drift_identity(shared).get('camera_digests', {})} if shared is not None else {})}
@@ -105,17 +107,21 @@ class TennisSceneOrchestrator:
         cfg = self.config
         if cfg.video_court_side is None:
             return None
+        check_shared_side_execution(cfg, self.components)
         if court is None:
             raise ValueError("Shared court side requires shared calibration")
+        # The court policy governs adoption on each call. Measurements may be reused across policies.
         key = (cfg.video_court_side, court.digest, drift_identity(court).get("artifact_digest"),
                cfg.court_side, cfg.sampling_max_frames, self.code_identity)
         if self.video_court_side is None or self._video_court_side_key != key:
             self.video_court_side = prepare_video_court_side(cfg.video_court_side, cfg.resolver, court=court,
-                thresholds=cfg.court_side, max_frames=cfg.sampling_max_frames, code_identity=self.code_identity)
+                thresholds=cfg.court_side, max_frames=cfg.sampling_max_frames, code_identity=self.code_identity,
+                court_policy=cfg.video_court_unobservable_policy)
             self._video_court_side_key = key
         else:
             verify_prepared_court_side(self.video_court_side, cfg.video_court_side, cfg.resolver,
-                                       code_identity=self.code_identity, recheck_stores=True)
+                                       code_identity=self.code_identity)
+            self.video_court_side.check_settings(court, cfg.court_side, cfg.sampling_max_frames, court_policy=cfg.video_court_unobservable_policy)
         return self.video_court_side
 
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],

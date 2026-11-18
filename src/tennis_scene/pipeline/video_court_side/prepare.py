@@ -36,6 +36,7 @@ from .artifact import (
     SideAssessment,
     VideoCourtSideArtifact,
     VideoSideDecision,
+    require_accepted_courts,
 )
 from .inputs import CourtSideBuildRequest, PinnedSideInputs, selected_evidence_clips
 
@@ -67,7 +68,7 @@ def observations_digest(indices: NDArray[np.int64], uv: NDArray[np.float32], vis
 def build_video_court_side(
     stores: Mapping[str, PinnedSideInputs], *, court: VideoCourtArtifact, directory: Path,
     thresholds: CourtSideConfig, max_frames: int, code_identity: str,
-    evidence_clip_ids: Sequence[str] | None = None, rebuild: bool = False,
+    evidence_clip_ids: Sequence[str] | None = None, rebuild: bool = False, court_policy: str = "warn",
 ) -> VideoCourtSideArtifact:
     """Build from saved calibration/ball points. By default every clip contributes.
 
@@ -79,6 +80,7 @@ def build_video_court_side(
     if not members or any(set(camera["sources"]) != members for camera in court.cameras.values()):
         raise ValueError("Shared court side requires exactly all clips of the shared court video")
     selected = selected_evidence_clips(members, evidence_clip_ids)
+    require_accepted_courts(court, selected, court_policy)
     for clip, pin in stores.items():
         if pin.source.clip_id != clip or set(pin.source.camera_ids) != set(court.cameras):
             raise ValueError("Court side input clip/camera membership mismatch")
@@ -130,9 +132,9 @@ def build_video_court_side(
 
 def verify_prepared_court_side(
     artifact: VideoCourtSideArtifact, config: VideoArtifactConfig, resolver: PathResolver, *,
-    code_identity: str, recheck_stores: bool = False,
+    code_identity: str,
 ) -> None:
-    """Bind to the requested evidence. A new build run also checks every live store revision."""
+    """Bind a new plan or run to its requested, still-readable evidence."""
     if config.action == "load":
         # The verified object at this digest includes both the selection and all input revisions.
         if artifact.digest != config.artifact_digest:
@@ -145,25 +147,24 @@ def verify_prepared_court_side(
             raise ValueError("Prepared court side input revisions disagree with the build request")
         if artifact.decision.implementation != code_identity:
             raise ValueError("Prepared court side implementation disagrees with the requested build")
-        if recheck_stores:
-            request.pin_inputs()
+        for pin in request.pin_inputs().values():
+            pin.assert_current()
     artifact.verify()
 
 
 def prepare_video_court_side(
     config: VideoArtifactConfig, resolver: PathResolver, *, court: VideoCourtArtifact, thresholds: CourtSideConfig,
-    max_frames: int, code_identity: str,
+    max_frames: int, code_identity: str, court_policy: str = "warn",
 ) -> VideoCourtSideArtifact:
     if (config.dataset_id, config.video_id) != (court.manifest["dataset_id"], court.manifest["video_id"]):
         raise ValueError("Shared court and side dataset/video must match")
     if config.action == "load":
-        court.verify()
         assert config.artifact_digest is not None
         artifact = VideoCourtSideArtifact.load(config.directory, config.artifact_digest)
     else:
         request = CourtSideBuildRequest.read(config, resolver)
         artifact = build_video_court_side(request.pin_inputs(), court=court, directory=config.directory, thresholds=thresholds,
                                           max_frames=max_frames, code_identity=code_identity,
-                                          evidence_clip_ids=request.evidence_clip_ids, rebuild=config.rebuild)
-    artifact.check_settings(court, thresholds, max_frames)
+                                          evidence_clip_ids=request.evidence_clip_ids, rebuild=config.rebuild, court_policy=court_policy)
+    artifact.check_settings(court, thresholds, max_frames, court_policy=court_policy)
     return artifact

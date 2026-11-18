@@ -65,7 +65,8 @@ mapping of clip IDs to `PinnedSideInputs` to `build_video_court_side`, or use th
 `standard_definition` for each clip. A changed media source, geometry, ball stream or numerical setting requires
 matching evidence. The receipt for a prepared clip is available through `artifact.clip_report(clip_id, policy)`.
 
-A build rechecks the request hash and every clip store's current input revision when reusing a decision in the same
-orchestrator. Each plan binds its prepared decision to the build request's contributing clips and all input revisions,
-including diagnostic-only clips. A load pins those fields through the decision digest and checks its diagnostic object.
-The shared mode rejects a `court_side` component override so that each clip executes the configured verdict.
+Reusing a build or binding a prepared build to a plan verifies the request hash, evidence selection, current revisions and array checksums of every calibration and ball_points input, including diagnostic-only clips. An explicit video load verifies the decision and diagnostics at the requested digest.
+
+Both actions apply the current `court_kp.video_shared.unobservable_policy` to every camera in every contributing clip. A rejected observation stops adoption and identifies the clip, camera and drift reason. Pass this setting as `court_policy` to the direct APIs (default `warn`). Each excluded clip must also pass its own court policy when it runs or publishes.
+
+Automatic clip cache hits and explicit component loads require the shared component's output with matching dependencies, shared digest and both execution policies. The shared side rejects imports and component overrides. Creating or reusing a dataset completion marker verifies the clip verdict and the scene export's dependency on that component.
