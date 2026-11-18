@@ -12,15 +12,19 @@ from src.tennis_scene.pipeline.artifacts import (
     write_json_atomic,
 )
 from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
+from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.definition import (
     check_shared_side_execution,
+    component_override_identity,
     enabled_model_assets,
-    file_identity,
+    publication_model_identities,
     standard_definition,
+    validate_override_names,
 )
 from src.tennis_scene.pipeline.direct_annotation import saved_scene, scene_receipt
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.imports import BallAnnotationImporter
+from src.tennis_scene.pipeline.inference_runtime import ModelEventHook
 from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.source_identity import (
     compatible_source_digests,
@@ -51,10 +55,12 @@ class TennisSceneOrchestrator:
     def __init__(self, config: PipelineRuntimeConfig, *, components: dict[str, Any] | None = None,
                  annotation_layout: AnnotationLayout | None = None,
                  annotation_controller_factory: Callable[..., LocalAnnotationController] | None = None,
-                 annotation_wait: Callable[[LocalAnnotationController], None] | None = None) -> None:
+                 annotation_wait: Callable[[LocalAnnotationController], None] | None = None,
+                 model_event: ModelEventHook | None = None) -> None:
         self.config, self.components = config, components
         self.annotation_layout = annotation_layout
         self.annotation_controller_factory, self.annotation_wait = annotation_controller_factory, annotation_wait
+        self.model_event = model_event
         self.last_receipt: dict[str, Any] = {}
         self.last_runner: ComponentRunner | None = None
         self.last_store: ClipStore | None = None
@@ -65,16 +71,19 @@ class TennisSceneOrchestrator:
         self.code_identity = document_digest(compatible_source_digests(source_digests(PROJECT_ROOT / "src")))
 
     @classmethod
-    def from_runtime_config(cls, cfg: PipelineRuntimeConfig) -> TennisSceneOrchestrator:
-        return cls(cfg)
+    def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
+        return cls(cfg, model_event=model_event)
 
     @classmethod
-    def from_config(cls, cfg: DictConfig) -> TennisSceneOrchestrator:
+    def from_config(cls, cfg: DictConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
         from src.tennis_scene.configuration import PipelineRuntimeConfig
-        return cls.from_runtime_config(PipelineRuntimeConfig.from_config(cfg))
+        return cls.from_runtime_config(PipelineRuntimeConfig.from_config(cfg), model_event=model_event)
 
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
+        check_shared_side_execution(cfg, self.components)
+        validate_override_names(self.components or {})
+        overrides = {name: component_override_identity(cfg, component) for name, component in (self.components or {}).items()}
         shared = self.prepare_video_court()
         side = self.prepare_video_court_side(shared)
         settings = json_value(cfg.processing_settings)
@@ -85,7 +94,13 @@ class TennisSceneOrchestrator:
                 del options["precision"]
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": settings, "execution": dict(cfg.component_sources),
-            "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()},
+            "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
+            "models": publication_model_identities(cfg),
+            "component_overrides": overrides,
+            **({"court_model_assets": CourtKPModule(cfg.court_kp).asset_identities()}
+               if cfg.direct_annotation is None and cfg.video_court is None else {}),
+            **({"court_model": CourtKPModule(cfg.court_kp).model_identity()}
+               if cfg.direct_annotation is None and cfg.video_court is None else {}),
             **({"video_court_side_digest": side.digest, "video_court_side_unobservable_policy": cfg.court_side_unobservable_policy,
                 "video_court_side_clips": side.publication_verdicts(shared, cfg.court_side_unobservable_policy, cfg.video_court_unobservable_policy)}
                if side is not None and shared is not None else {}),
@@ -203,9 +218,7 @@ class TennisSceneOrchestrator:
                 self.last_receipt["annotation"]["summary"] = str(store.root / "annotation-summary.json")
                 write_json_atomic(store.root / "run.json", self.last_receipt)
                 if direct.resume == "publication":
-                    scene, saved = saved_scene(
-                        store, direct, workflow.reference.digest, people_runtime=self.config.people.runtime,
-                    )
+                    scene, saved = saved_scene(store, direct, workflow.reference.digest, people_runtime=self.config.people.runtime)
                     self.last_receipt["scene"] = saved
                 else:
                     annotations, expected = workflow.inputs(completed)
@@ -216,7 +229,7 @@ class TennisSceneOrchestrator:
                 nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components,
                                             video_court=shared, video_court_side=side)
             if direct is None or direct.resume != "publication":
-                runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite)
+                runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite, model_event=self.model_event)
                 self.last_runner = runner
                 runner.run()
                 inputs.snapshot.assert_unchanged()
@@ -226,9 +239,7 @@ class TennisSceneOrchestrator:
                     side.verify()
                 scene, archive = runner.finalize_clip()
                 if direct is not None and workflow is not None:
-                    self.last_receipt["scene"] = scene_receipt(
-                        store, direct, workflow.reference.digest, archive, people_runtime=self.config.people.runtime,
-                    )
+                    self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive, people_runtime=self.config.people.runtime)
             if workflow is not None:
                 write_json_atomic(store.root / "run.json", self.last_receipt)
                 try:

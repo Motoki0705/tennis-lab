@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import Any, TypeVar
 
 from src.submodules.configuration import (
     DinoDetectorRuntimeConfig,
@@ -20,10 +22,14 @@ from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
+    CourtKPModule,
     CourtKPPostprocessConfig,
 )
+from src.tennis_scene.pipeline.inference_runtime import InferenceComponent, ModelSpec
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+
+ComponentT = TypeVar("ComponentT", bound=InferenceComponent[Any, Any])
 
 
 def make_resolver(root: Path) -> PathResolver:
@@ -142,3 +148,56 @@ def make_people_config(root: Path, *, dino_confidence: float = .35) -> PeopleMod
             smplx_verts437=resolver.resolve(PathRole.CHECKPOINT, "smplx_verts437.npy"),
             smpl_neutral_joint_regressor=resolver.resolve(PathRole.CHECKPOINT, "smplx_neutral_joints.npy")),
         runtime=make_submodule_runtime(dino_confidence=dino_confidence))
+
+
+def materialize_model_weights(component: ComponentT) -> ComponentT:
+    """Dummy content identities for tests replacing model loading, never real weights."""
+    if isinstance(component, CourtKPModule):
+        materialize_court_assets(component.config)
+    from src.tennis_scene.pipeline.components.person_detection import (
+        PersonDetectionModule,
+    )
+    if isinstance(component, PersonDetectionModule):
+        materialize_dino_sources(component.config.dino_repository)
+    for spec in component.model_specs().values():
+        for path in spec.weights.values():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():
+                path.write_bytes(b"fake-model-identity")
+    return component
+
+
+def materialize_dino_sources(repository: Path) -> None:
+    for relative in ("models/__init__.py", "util/__init__.py"):
+        path = repository / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# test-owned external DINO source\n")
+
+
+def materialize_court_assets(config: CourtKPConfig) -> None:
+    """Real inference metadata and dummy external assets; no Court model build."""
+    import torch
+    from omegaconf import OmegaConf
+
+    from src.tasks.court_detection.data.bundle_state import serialize_target_bundle
+    from src.tasks.court_detection.inference.checkpoint import CourtInferenceSpec
+    from tests.unit.tasks.court_detection.inference.test_pose_output_predictors import (
+        _bundle,
+    )
+    from tests.unit.tasks.court_detection.test_configuration import _compose
+
+    saved = OmegaConf.to_container(_compose("synthetic_court"), resolve=True)
+    bundle = serialize_target_bundle(_bundle())
+    config.checkpoint.parent.mkdir(parents=True, exist_ok=True)
+    torch.save({"hyper_parameters": {"config": saved, "target_bundle_state": bundle}}, config.checkpoint)
+    spec = CourtInferenceSpec.from_checkpoint_config(saved, bundle, resolver=config.resolver)
+    backbone, repository = spec.model.encoder.checkpoint_path, spec.model.encoder.repository_path
+    assert backbone is not None and repository is not None
+    backbone.parent.mkdir(parents=True, exist_ok=True)
+    backbone.write_bytes(b"fake-backbone")
+    repository.mkdir(parents=True, exist_ok=True)
+    (repository / "hubconf.py").write_text("# test-owned DINOv3 implementation\n")
+
+
+def fake_encoder_spec(factory: Callable[[], Any]) -> ModelSpec[Any]:
+    return ModelSpec("appearance", {}, "fake-encoder", "cpu", "float32", {}, factory)

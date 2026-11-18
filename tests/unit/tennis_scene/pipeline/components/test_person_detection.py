@@ -10,7 +10,10 @@ import pytest
 from src.submodules.models import PersonDetectionResult
 from src.tennis_scene.pipeline.components import person_detection as module
 from src.tennis_scene.pipeline.contracts import SourceVideo
-from tests.unit.tennis_scene.pipeline.config_factories import make_people_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_people_config,
+    materialize_model_weights,
+)
 
 
 def test_full_frame_keeps_off_court_people_without_calibration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -27,14 +30,17 @@ def test_full_frame_keeps_off_court_people_without_calibration(tmp_path: Path, m
             calls.append(kwargs)
         def predict(self, request: Any) -> PersonDetectionResult:
             return PersonDetectionResult(boxes, np.array([.31, .95], np.float32))
+        def load(self) -> None:
+            pass
         def unload(self) -> None:
             pass
 
     monkeypatch.setattr(module, 'DinoPersonDetector', Detector)
-    monkeypatch.setattr(module, 'release_inference_memory', lambda device: None)
     monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k: [SimpleNamespace(index=0, frame=np.zeros((480, 640, 3), np.uint8))])
     video = SourceVideo('cam2', tmp_path / 'x.mp4', 'hash', 1, 30., 640, 480)
-    result = module.PersonDetectionModule(people).process(module.PersonDetectionInput(video))
+    component = materialize_model_weights(module.PersonDetectionModule(people))
+    assert component.model_specs()['detector'].dtype == 'float16'
+    result = component.process(module.PersonDetectionInput(video))
     assert result.frame_offsets.tolist() == [0, 2]
     np.testing.assert_array_equal(result.boxes_xyxy, boxes)
     assert calls == [{'device': people.runtime.device, 'confidence': people.runtime.dino_detector.confidence,
@@ -51,6 +57,8 @@ def test_optional_merge_records_original_clip_rows_and_roundtrips(tmp_path: Path
             pass
         def predict(self, request: Any) -> PersonDetectionResult:
             return PersonDetectionResult(boxes, np.array([.7, .9], np.float32))
+        def load(self) -> None:
+            pass
         def unload(self) -> None:
             pass
     monkeypatch.setattr(module, 'DinoPersonDetector', Detector)
@@ -58,7 +66,7 @@ def test_optional_merge_records_original_clip_rows_and_roundtrips(tmp_path: Path
         [SimpleNamespace(index=i, frame=np.zeros((480, 640, 3), np.uint8)) for i in range(2)])
     video = SourceVideo('cam0', tmp_path / 'x.mp4', 'hash', 2, 30., 640, 480)
     inputs = module.PersonDetectionInput(video)
-    result = module.PersonDetectionModule(make_people_config(tmp_path), merge_duplicates=True).process(inputs)
+    result = materialize_model_weights(module.PersonDetectionModule(make_people_config(tmp_path), merge_duplicates=True)).process(inputs)
     assert result.source_rows is not None and result.source_rows.tolist() == [1, 3]
     assert result.frame_offsets.tolist() == [0, 1, 2]
     assert [(m.kept_row, m.dropped_row, m.iou) for m in result.duplicate_merges] == [(1, 0, .8), (3, 2, .8)]
@@ -66,7 +74,7 @@ def test_optional_merge_records_original_clip_rows_and_roundtrips(tmp_path: Path
     payload, arrays = codec.dump(result, tmp_path)
     loaded = codec.load(payload, tmp_path, arrays)
     assert loaded.duplicate_merges == result.duplicate_merges
-    original = module.PersonDetectionModule(make_people_config(tmp_path)).process(inputs)
+    original = materialize_model_weights(module.PersonDetectionModule(make_people_config(tmp_path))).process(inputs)
     assert original.source_rows is not None and original.source_rows.tolist() == [0, 1, 2, 3]
     assert not original.duplicate_merges
 

@@ -1,0 +1,8 @@
+{
+  "original_unicode_failure_reproduced": true,
+  "cpu_checks": 5,
+  "sha256": "b0d1aec86cc44f77579669be2edb22a88a88ca97c853e9612a0ff0758f0081ab",
+  "reason": "Only floating/complex arrays use equal_nan; discrete and string values remain exact. Frozen compare.py is unchanged. No GPU rerun.",
+  "json_contract_checks": 7,
+  "metadata_storage": "Separate scene.metadata.json. Actual numeric arrays need no unicode fallback; corrected comparator additionally checks all payloads and metadata with unchanged float tolerance."
+}

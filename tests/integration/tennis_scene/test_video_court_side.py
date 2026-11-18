@@ -56,6 +56,13 @@ def second_clip_balls(stages, kind):
 
 def prefix_stores(tmp_path, monkeypatch, kind, *, uncertain_drift=False):
     pipeline, paths, sources, _, _, court = shared_fixture(tmp_path, monkeypatch)
+    first_balls = {name: stage.result for name, stage in pipeline.components.items() if name.startswith('ball_detection/')}
+    # These stubs stand in for source-owned observations, including a later
+    # explicit overwrite of another clip. Their model configuration stays fixed
+    # while the measured outputs differ per clip.
+    for camera in CAMERAS:
+        monkeypatch.setattr(pipeline.components[f'ball_detection/{camera}'], 'cache_identity',
+                            lambda: {'fixture': 'source_owned_ball_observations'})
     if uncertain_drift:
         from src.tasks.court_detection.geometry.video_drift import (
             DriftConfig,
@@ -84,6 +91,10 @@ def prefix_stores(tmp_path, monkeypatch, kind, *, uncertain_drift=False):
         runner = ComponentRunner(nodes, store)
         runner.run(targets=["court_calibration", *(f"ball_points/{c}" for c in CAMERAS)])
         pins[source.clip_id] = PinnedSideInputs.from_store(store.root)
+    # Each known output belongs to its source clip. Restoring clip A also keeps
+    # its explicit override identity stable when clip B has different results.
+    for name, output in first_balls.items():
+        pipeline.components[name].result = output
     return pipeline, paths, sources, court, pins
 
 
@@ -104,10 +115,13 @@ def build_request(tmp_path, pins, selection=None):
 
 
 def republish_second_ball_stream(pipeline, court, store, source):
+    previous = {name: stage.result for name, stage in pipeline.components.items() if name.startswith('ball_detection/')}
     second_clip_balls(pipeline.components, "static")
     nodes = standard_definition(replace(pipeline.config, video_court_side=None), source, code_identity=pipeline.code_identity,
                                 overrides=pipeline.components, video_court=court)
     ComponentRunner(nodes, ClipStore(store, json_value(source)), overwrite=True).run([f"ball_points/{c}" for c in CAMERAS])
+    for name, output in previous.items():
+        pipeline.components[name].result = output
 
 
 @pytest.mark.parametrize(("kind", "status", "reason"), [
@@ -145,6 +159,7 @@ def test_clip_verdict_and_full_video_decision(tmp_path, monkeypatch, kind, statu
         assert not (store / "exports").exists()
     else:
         # Only execute the side target: a static/ambiguous ball may independently fail a later 3D gate.
+        second_clip_balls(pipeline.components, kind)
         nodes = standard_definition(pipeline.config, pins[CLIPS[1]].source, code_identity=pipeline.code_identity,
                                     overrides=pipeline.components, video_court=court, video_court_side=artifact)
         runner = ComponentRunner(nodes, ClipStore(store, json_value(pins[CLIPS[1]].source)))

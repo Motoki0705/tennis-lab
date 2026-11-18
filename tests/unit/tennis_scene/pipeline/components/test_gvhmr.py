@@ -17,7 +17,10 @@ from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionOutput,
 )
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRInput, GVHMRModule
-from tests.unit.tennis_scene.pipeline.config_factories import make_people_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_people_config,
+    materialize_model_weights,
+)
 
 
 def selected(tmp_path: Path) -> GVHMRInput:
@@ -37,6 +40,8 @@ def test_only_feature_and_mesh_models_run_on_declared_source_frames(tmp_path: Pa
             assert request.frame_indices.tolist() == [0, 2, 4]
             assert request.video_path == tmp_path / 'cam1.mp4'
             return SimpleNamespace(features=torch.ones((3, 1024)))
+        def load(self) -> None:
+            pass
         def unload(self) -> None:
             calls.append('feature_unload')
     class Mesh:
@@ -48,11 +53,13 @@ def test_only_feature_and_mesh_models_run_on_declared_source_frames(tmp_path: Pa
             assert request.K_fullimg.shape == (3, 3)
             return SimpleNamespace(smpl_params_incam={name: torch.zeros((3, width)) for name, width in
                 [('body_pose', 63), ('global_orient', 3), ('betas', 10), ('transl', 3)]})
+        def load(self) -> None:
+            pass
         def unload(self) -> None:
             calls.append('mesh_unload')
     monkeypatch.setattr('src.tennis_scene.pipeline.components.gvhmr.Hmr2FeatureExtractor', Features)
     monkeypatch.setattr('src.tennis_scene.pipeline.components.gvhmr.GvhmrMeshRecovery', Mesh)
-    result = GVHMRModule(make_people_config(tmp_path)).process(selected(tmp_path))
+    result = materialize_model_weights(GVHMRModule(make_people_config(tmp_path))).process(selected(tmp_path))
     assert result.bodies[0].person_id == 7 and result.bodies[0].camera_id == 'cam1'
     assert result.bodies[0].segments[0].source_frames.tolist() == [0, 2, 4]
     assert calls == ['features', 'mesh', 'feature_unload', 'mesh_unload']

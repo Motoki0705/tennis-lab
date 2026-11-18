@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
@@ -10,10 +12,15 @@ from numpy.typing import NDArray
 from src.submodules.models import (
     DinoPersonDetector,
     PersonDetectionRequest,
+    dino_source_assets,
 )
 from src.tasks.person_tracking.duplicate_boxes import DuplicateMerge, merge_person_boxes
-from src.tennis_scene.pipeline.components.base import release_inference_memory
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    ModelBorrower,
+    ModelSpec,
+)
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.video import OpenCVVideoFrameReader
 
@@ -49,7 +56,7 @@ class PersonDetectionOutput:
             raise ValueError('Merged detections require original source rows')
 
 
-class PersonDetectionModule:
+class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetectionOutput]):
     io = ComponentIO("person_detection", PersonDetectionInput, PersonDetectionOutput,
         {}, "person_detections", version=2)
 
@@ -57,37 +64,51 @@ class PersonDetectionModule:
         self.config, self.enabled = config, enabled
         self.merge_duplicates = merge_duplicates
 
-    def process(self, inputs: PersonDetectionInput) -> PersonDetectionOutput:
+    def model_specs(self) -> dict[str, ModelSpec[DinoPersonDetector]]:
+        config = self.config
+        if not self.enabled:
+            return {}
+        extension = os.environ.get("TENNIS_LAB_DINO_EXTENSION")
+        native = {} if extension is None else {"extension": Path(extension)}
+        if extension is not None and not Path(extension).is_absolute():
+            raise ValueError("TENNIS_LAB_DINO_EXTENSION must be an absolute binary path")
+        def initialize(model: DinoPersonDetector) -> None:
+            if os.environ.get("TENNIS_LAB_DINO_EXTENSION") != extension:
+                raise ValueError("DINO extension selection changed since its model declaration")
+            model.load()
+        return {"detector": ModelSpec(
+            "dino", {"checkpoint": config.dino_checkpoint, **dino_source_assets(config.dino_repository), **native},
+            "dino_4scale_swin_l", config.runtime.device,
+            {"fp32": "float32", "bf16": "bfloat16", "fp16": "float16"}[config.runtime.dino_detector.precision],
+            {"runtime": config.runtime.dino_detector, "extension": extension},
+            lambda: DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
+                device=config.runtime.device, confidence=config.runtime.dino_detector.confidence,
+                short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side,
+                precision=config.runtime.dino_detector.precision),
+            initialize=initialize, release=lambda model: model.unload())}
+
+    def process_with_models(self, inputs: PersonDetectionInput, models: ModelBorrower) -> PersonDetectionOutput:
         if not self.enabled:
             return PersonDetectionOutput(inputs.video.camera_id, np.zeros(inputs.video.num_frames + 1, np.int64),
                 np.zeros((0, 4), np.float32), np.zeros(0, np.float32), np.empty(0, np.int64))
-        config = self.config
-        runtime = config.runtime.dino_detector
-        detector = DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
-            device=config.runtime.device, confidence=runtime.confidence, short_side=runtime.short_side,
-            max_long_side=runtime.max_long_side, precision=runtime.precision)
+        detector: DinoPersonDetector = models.borrow("detector")
         offsets = [0]
         boxes: list[NDArray[np.float32]] = []
         scores: list[NDArray[np.float32]] = []
         source_rows: list[NDArray[np.int64]] = []
         merges: list[DuplicateMerge] = []
         source_offset = 0
-        try:
-            for packet in OpenCVVideoFrameReader(inputs.video.path, max_frames=inputs.video.num_frames):
-                detections = detector.predict(PersonDetectionRequest(packet.frame))
-                rows: NDArray[np.int64] = np.arange(source_offset, source_offset + len(detections.scores), dtype=np.int64)
-                source_offset += len(rows)
-                keep, dropped = merge_person_boxes(packet.index, rows, detections.boxes_xyxy,
-                                                    detections.scores, enabled=self.merge_duplicates)
-                source_rows.append(rows[keep])
-                merges.extend(dropped)
-                boxes.append(detections.boxes_xyxy[keep])
-                scores.append(detections.scores[keep])
-                offsets.append(offsets[-1] + len(keep))
-        finally:
-            detector.unload()
-            del detector
-            release_inference_memory(config.runtime.device)
+        for packet in OpenCVVideoFrameReader(inputs.video.path, max_frames=inputs.video.num_frames):
+            detections = detector.predict(PersonDetectionRequest(packet.frame))
+            rows: NDArray[np.int64] = np.arange(source_offset, source_offset + len(detections.scores), dtype=np.int64)
+            source_offset += len(rows)
+            keep, dropped = merge_person_boxes(packet.index, rows, detections.boxes_xyxy,
+                                                detections.scores, enabled=self.merge_duplicates)
+            source_rows.append(rows[keep])
+            merges.extend(dropped)
+            boxes.append(detections.boxes_xyxy[keep])
+            scores.append(detections.scores[keep])
+            offsets.append(offsets[-1] + len(keep))
         if len(offsets) != inputs.video.num_frames + 1:
             raise ValueError("Detector did not decode the complete source timeline")
         return PersonDetectionOutput(inputs.video.camera_id, np.asarray(offsets, np.int64), np.concatenate(boxes),

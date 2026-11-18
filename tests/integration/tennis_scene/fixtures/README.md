@@ -6,7 +6,11 @@
 他のディレクトリで開けるよう、入力動画・重みのidentityに相対パスを使う。
 `baseline.json` は同じ実行の公開identityとソースファイルのSHA-256を保持する。
 
-再生成する場合は、このテストを含むworktreeから実行する。
+このfixtureはC3以前の追跡v5・選別v2を保持する。C3ではencoderの完全identityを追跡証拠へ保存するため、
+追跡v6・選別v3への再生成を要求する。過去fixtureは変更せず、この拒否条件を検証する。
+既定FP32と明示FP32の再利用は、現行schemaで生成したstoreで別に検証する。
+
+過去fixtureを再生成する場合は、このテストを含むworktreeから実行する。
 
 ```bash
 worktree=$(pwd)

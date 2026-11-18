@@ -14,6 +14,11 @@ from src.tennis_scene.pipeline.contracts import (
     ComponentIO,
     InputAssembler,
 )
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    model_identities,
+)
+from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 
 NodeKey = tuple[str, str]
@@ -189,6 +194,19 @@ class ExecutionPlan:
 
     def _decide(self, key: NodeKey) -> NodeDecision:
         node, clip = self.nodes[key], self.clips[key[0]]
+        if node.source != 'load' and isinstance(node.component, InferenceComponent):
+            specs = node.component.model_specs()
+            expected = node.settings.get('models')
+            if specs or expected:
+                if not isinstance(expected, Mapping):
+                    raise ValueError(f'Inference node has no bound model declaration: {key}')
+                hashes = asset_hashes(node.settings)
+                def bound(path: Path) -> dict[str, Any]:
+                    if path not in hashes:
+                        raise ValueError(f'Inference model declaration contains an unbound asset: {path}')
+                    return {'path': str(path), 'sha256': hashes[path]}
+                if json_value(model_identities(specs, bound)) != json_value(expected):
+                    raise ValueError(f'Inference model declaration differs from bound node identity: {key}')
         dependencies = {port: self.references[parent] for port, parent in self.dependencies[key].items()}
         identity = {"component": node.io.name, "schema": node.io.output_schema, "version": node.io.version,
             "implementation": node.implementation, "component_class": f"{type(node.component).__module__}.{type(node.component).__qualname__}",

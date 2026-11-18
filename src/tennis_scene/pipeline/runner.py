@@ -11,9 +11,17 @@ from typing import Any, Literal
 from src.tennis_scene.pipeline.execution_plan import (
     ClipExecution,
     ExecutionPlan,
+    NodeDecision,
     NodeKey,
 )
 from src.tennis_scene.pipeline.execution_plan import ComponentNode as ComponentNode
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    InferenceRuntime,
+    ModelBorrower,
+    ModelEventHook,
+)
+from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
@@ -32,9 +40,11 @@ class ClipCompletionResult:
 
 
 class PlanExecutor:
-    def __init__(self, plan: ExecutionPlan, *, select_ready: ReadySelector | None = None) -> None:
+    def __init__(self, plan: ExecutionPlan, *, select_ready: ReadySelector | None = None,
+                 model_event: ModelEventHook | None = None) -> None:
         self.plan = plan
         self.select_ready = select_ready
+        self.model_event = model_event
         self._completion_attempts: set[str] = set()
         self.completion_results: dict[str, ClipCompletionResult] = {}
 
@@ -60,57 +70,90 @@ class PlanExecutor:
                     raise
                 else:
                     self.completion_results[clip_id] = ClipCompletionResult("succeeded")
-        for clip_id in self.plan.clips:
-            notify(clip_id)
-        while required - references.keys():
-            ready = self.plan.ready(required)
-            if not ready:
-                raise ValueError("Execution plan is blocked by a failed component")
-            key = ready[0] if self.select_ready is None else self.select_ready(ready)
-            if key not in ready:
-                raise ValueError(f"Selected component is not ready: {key}")
-            self.execute(key)
-            notify(key[0])
+        with self._runtime(required) as runtime:
+            for clip_id in self.plan.clips:
+                notify(clip_id)
+            while required - references.keys():
+                ready = self.plan.ready(required)
+                if not ready:
+                    raise ValueError("Execution plan is blocked by a failed component")
+                key = runtime.select_ready(ready) if self.select_ready is None else self.select_ready(ready)
+                if key not in ready:
+                    raise ValueError(f"Selected component is not ready: {key}")
+                self._execute(key, runtime)
+                notify(key[0])
         return references
+
+    def _runtime(self, required: frozenset[NodeKey]) -> InferenceRuntime:
+        declarations = {}
+        for key in self.plan.order:
+            if key not in required or key in self.plan.statuses:
+                continue
+            node = self.plan.nodes[key]
+            declarations[key] = (node.component.model_specs()
+                                 if node.source == "execute" and isinstance(node.component, InferenceComponent) else {})
+        return InferenceRuntime(declarations,
+            expected_assets={key: asset_hashes(self.plan.nodes[key].settings) for key in declarations},
+            model_event=self.model_event)
 
     def execute(self, key: NodeKey) -> ArtifactRef:
         """Run or load one ready node; completed nodes are never reconsidered."""
+        with self._runtime(frozenset({key})) as runtime:
+            return self._execute(key, runtime)
+
+    def _execute(self, key: NodeKey, runtime: InferenceRuntime) -> ArtifactRef:
         plan = self.plan
         if key in plan.references:
             return plan.references[key]
         if key not in plan.ready():
             raise ValueError(f"Component is not ready: {key}")
-        node, store = plan.nodes[key], plan.clips[key[0]].store
         plan.active_node = key
         started = time.monotonic()
         try:
-            decision = plan.decide(key)
+            with runtime.node(key) as models:
+                output, decision = self._execute_node(key, models)
+            node, store = plan.nodes[key], plan.clips[key[0]].store
             reference = decision.reference
-            if decision.action in ("load", "cached"):
-                if reference is None:
-                    raise RuntimeError("Reused component has no artifact reference")
-                store.load(reference, ArtifactCodec(node.io.output_type))
-                status = "loaded" if decision.action == "load" else "cached"
-            else:
-                artifacts = {port: store.load(ref, ArtifactCodec(plan.nodes[plan.dependencies[key][port]].io.output_type))
-                             for port, ref in decision.dependencies.items()}
-                inputs = node.assembler.assemble(node.context, artifacts)
-                if not isinstance(inputs, node.io.input_type):
-                    raise TypeError(f"Assembler returned wrong input type for {key[1]}")
-                output = node.component.process(inputs)
+            if decision.action == "execute":
                 reference = store.publish(key[1], output, ArtifactCodec(node.io.output_type),
                     schema=node.io.output_schema, version=node.io.version, identity=decision.identity,
                     dependencies=decision.dependencies, provenance={"origin": "component", "implementation": node.implementation})
                 status = "executed"
+            else:
+                status = "loaded" if decision.action == "load" else "cached"
+            if reference is None:
+                raise RuntimeError("Completed component has no artifact reference")
+            # Unload/recorder/cleanup must succeed before dependencies or clip
+            # publication can observe this node as completed, including resume.
             plan.references[key] = reference
             plan.statuses[key] = status
-        except Exception:
+            plan.active_node = None
+            return reference
+        except BaseException:
             plan.statuses[key] = "failed"
             raise
         finally:
             plan.seconds[key] = time.monotonic() - started
-        plan.active_node = None
-        return reference
+
+    def _execute_node(self, key: NodeKey, models: ModelBorrower) -> tuple[Any, NodeDecision]:
+        plan = self.plan
+        node, store = plan.nodes[key], plan.clips[key[0]].store
+        decision = plan.decide(key)
+        reference = decision.reference
+        if decision.action in ("load", "cached"):
+            if reference is None:
+                raise RuntimeError("Reused component has no artifact reference")
+            store.load(reference, ArtifactCodec(node.io.output_type))
+            output = None
+        else:
+            artifacts = {port: store.load(ref, ArtifactCodec(plan.nodes[plan.dependencies[key][port]].io.output_type))
+                         for port, ref in decision.dependencies.items()}
+            inputs = node.assembler.assemble(node.context, artifacts)
+            if not isinstance(inputs, node.io.input_type):
+                raise TypeError(f"Assembler returned wrong input type for {key[1]}")
+            output = (node.component.process_with_models(inputs, models)
+                      if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
+        return output, decision
 
     def output(self, key: NodeKey) -> Any:
         return self.plan.clips[key[0]].store.load(self.plan.references[key], ArtifactCodec(self.plan.nodes[key].io.output_type))
@@ -133,12 +176,12 @@ class ComponentRunner:
     """Existing single-clip API, backed by the same plan as multi-clip callers."""
 
     def __init__(self, nodes: Sequence[ComponentNode], store: ClipStore, *, overwrite: bool = False,
-                 select_ready: ReadySelector | None = None) -> None:
+                 select_ready: ReadySelector | None = None, model_event: ModelEventHook | None = None) -> None:
         self.nodes = {node.name: node for node in nodes}
         self.store, self.overwrite = store, overwrite
         self.clip_id = nodes[0].context.source.clip_id if nodes else "standalone"
         self.plan = ExecutionPlan([ClipExecution(self.clip_id, tuple(nodes), store, overwrite)])
-        self.executor = PlanExecutor(self.plan, select_ready=select_ready)
+        self.executor = PlanExecutor(self.plan, select_ready=select_ready, model_event=model_event)
         self.order = tuple(name for _, name in self.plan.order)
         self._statuses: dict[str, str] = {}
         self._seconds: dict[str, float] = {}

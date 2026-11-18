@@ -22,7 +22,7 @@ def _runtime_with_assets(tmp_path: Path) -> Any:
         runtime,
     )
     cfg = runtime(tmp_path)
-    materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path, court=cfg.court_kp)
     return cfg
 
 
@@ -136,6 +136,19 @@ def test_every_standard_component_has_one_execution_mode_and_node(tmp_path: Path
     assert tuple(cfg.component_sources) == STANDARD_COMPONENTS
     nodes = standard_definition(cfg, _source(tmp_path), code_identity="test")
     assert {node.name.split("/")[0] for node in nodes} == set(STANDARD_COMPONENTS)
+
+
+@pytest.mark.parametrize("asset", ["backbone", "dinov3_source/hubconf.py"])
+def test_completed_clip_identity_includes_external_court_assets(tmp_path: Path, asset: str) -> None:
+    from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
+    from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
+
+    cfg = _runtime_with_assets(tmp_path)
+    pipeline = TennisSceneOrchestrator(cfg)
+    original = pipeline.publication_identity()
+    path = CourtKPModule(cfg.court_kp).model_specs()["court"].weights[asset]
+    path.write_bytes(b"changed external Court input")
+    assert pipeline.publication_identity() != original
 
 
 @pytest.mark.parametrize("different", [VideoInfo(25., 1920, 1080, 20), VideoInfo(30., 1280, 720, 20), VideoInfo(30., 1920, 1080, 19)])

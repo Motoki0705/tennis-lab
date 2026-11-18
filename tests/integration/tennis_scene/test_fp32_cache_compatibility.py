@@ -1,4 +1,4 @@
-"""Reopen a clip store written by main before the precision options existed."""
+"""Precision cache compatibility and the intentional C3 schema migration."""
 
 from __future__ import annotations
 
@@ -95,21 +95,35 @@ def _write_baseline(root: Path, destination: Path) -> None:
             bundle.add(root / "store" / directory, arcname=f"store/{directory}")
 
 
-def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch, publication: dict[str, Any]) -> None:
+def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
     fixture = runpy.run_path(str(PROJECT_ROOT / _FIXTURE_HELPERS))
-    paths = _portable_inputs(root, patch, fixture)
+    paths = fixture["patch_video_probe"](root, patch)
     cfg = fixture["runtime"](root, overrides=("device=cuda",))
-    fixture["materialize_assets"](enabled_model_assets(cfg).values(), root)
+    fixture["materialize_assets"](enabled_model_assets(cfg).values(), root, court=cfg.court_kp)
+    results = fixture["camera_stages"](*fixture["inputs"]())
+    association = fixture["TrackIdentities"](_CAMERAS)
+
+    def process(component: Any, request: Any, models: Any) -> Any:
+        return results[f"{component.io.name}/{request.video.camera_id}"].result
+
+    for stage in _CAMERA_STAGES:
+        patch.setattr(stage, "process_with_models", process)
+    patch.setattr(PlayerAssociationModule, "process_with_models", lambda _, request, models: association.process(request))
     store_root = root / "store"
-    index = json.loads((store_root / "scene.json").read_text(encoding="utf-8"))
-    store = ClipStore(store_root, index["source"])
+    pipeline = TennisSceneOrchestrator(cfg)
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=_CAMERAS, store_root=store_root)
+    assert pipeline.last_runner is not None
+    assert set(pipeline.last_runner.statuses.values()) == {"executed"}
+    publication = pipeline.publication_identity()
+    store = pipeline.last_store
+    assert store is not None
     legacy_refs = store.references()
 
     def no_prediction(*args: Any, **kwargs: Any) -> None:
         pytest.fail("FP32 is expected to adopt the main artifact from disk")
 
     for stage in (*_CAMERA_STAGES, PlayerAssociationModule):
-        patch.setattr(stage, "process", no_prediction)
+        patch.setattr(stage, "process_with_models", no_prediction)
 
     for explicit in ((), _precision("fp32")):
         cfg = fixture["runtime"](root, overrides=("device=cuda", *explicit))
@@ -143,8 +157,12 @@ def _precision(precision: str) -> tuple[str, ...]:
     return tuple(f"people_models.runtime.{model}.precision={precision}" for model in ("dino_detector", "vitpose"))
 
 
-def test_main_fp32_cache_is_adopted_in_execute_and_load_modes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from src.tennis_scene.pipeline import orchestrator, source_identity
+def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _assert_cache_compatibility(tmp_path, monkeypatch)
+
+
+def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_path: Path) -> None:
+    from src.tennis_scene.pipeline import source_identity
 
     with tarfile.open(_BASELINE_STORE) as bundle:
         bundle.extractall(tmp_path, filter="data")
@@ -154,14 +172,46 @@ def test_main_fp32_cache_is_adopted_in_execute_and_load_modes(tmp_path: Path, mo
     assert document_digest(baseline) == saved["publication"]["code_sha256"]
     manifest = Path(source_identity.__file__).with_name("fp32_cache_compatibility.json")
     compatible = json.loads(manifest.read_text(encoding="utf-8"))["files"]
-    # Fix the hash inputs at the reviewed transition, independent of later source changes.
     snapshot = {**baseline, **{path: versions["after"] for path, versions in compatible.items()}}
+    assert source_identity.compatible_source_digests(snapshot) == baseline
     edited_patch = {**snapshot, "tennis_scene/pipeline/source_identity.py": "0" * 64}
     assert source_identity.compatible_source_digests(edited_patch) == edited_patch
     unrelated_edit = {"tennis_scene/schema.py": "0" * 64}
     assert source_identity.compatible_source_digests({**snapshot, **unrelated_edit}) == {**baseline, **unrelated_edit}
-    monkeypatch.setattr(orchestrator, "source_digests", lambda _: snapshot)
-    _assert_cache_compatibility(tmp_path, monkeypatch, saved["publication"])
+    # The model runtime and tracking evidence schema are not precision-only changes.
+    current = source_identity.source_digests(PROJECT_ROOT / "src")
+    assert source_identity.compatible_source_digests(current) == current
+
+
+@pytest.mark.parametrize("name,old_version,new_version", [
+    ("person_tracking/cam0", 5, 6), ("player_selection/cam0", 2, 3),
+])
+def test_pre_runtime_cache_requires_schema_regeneration(
+    tmp_path: Path, name: str, old_version: int, new_version: int,
+) -> None:
+    from src.tennis_scene.pipeline.contracts import ClipSource
+    from src.tennis_scene.pipeline.storage.codec import restore_type
+
+    with tarfile.open(_BASELINE_STORE) as bundle:
+        bundle.extractall(tmp_path, filter="data")
+    index = json.loads((tmp_path / "store/scene.json").read_text(encoding="utf-8"))
+    store = ClipStore(tmp_path / "store", index["source"])
+    source = restore_type(index["source"], ClipSource)
+    cfg = runpy.run_path(str(PROJECT_ROOT / _FIXTURE_HELPERS))["runtime"](tmp_path)
+    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import materialize_assets
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path, court=cfg.court_kp)
+    nodes = standard_definition(cfg, source, code_identity="current-runtime")
+    node = next(n for n in nodes if n.name == name)
+    assert node.io.version == new_version
+    assert store.references()[name].version == old_version
+    plan = ComponentRunner(nodes, store).plan
+    plan.references.update({(source.clip_id, key): ref for key, ref in store.references().items()})
+    assert plan.decide((source.clip_id, name)).action == "execute"
+    load_nodes = [replace(n, source="load") for n in nodes]
+    load = ComponentRunner(load_nodes, store).plan
+    load.references.update(plan.references)
+    with pytest.raises(ValueError, match="contract mismatch"):
+        load.decide((source.clip_id, name))
 
 
 if __name__ == "__main__":

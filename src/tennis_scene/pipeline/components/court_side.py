@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -90,6 +91,9 @@ class CourtSideModule:
     def __init__(self, camera_ids: tuple[str, ...], config: CourtSideConfig, *, max_frames: int) -> None:
         self.config, self.max_frames = config, max_frames
         self.io = court_side_io(camera_ids)
+
+    def cache_identity(self) -> dict[str, Any]:
+        return {'inputs': tuple(self.io.inputs), 'config': self.config, 'max_frames': self.max_frames}
 
     def process(self, inputs: CourtSideInput) -> CourtSideOutput:
         sample, uv, visible = inputs.sample(self.max_frames)
