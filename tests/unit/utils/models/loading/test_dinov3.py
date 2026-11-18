@@ -14,6 +14,31 @@ from src.utils.models.loading import require_dinov3_patch_tokens
 pytestmark = pytest.mark.unit
 
 
+@pytest.mark.parametrize('external_namespace', [False, True])
+def test_namespace_packages_require_declared_search_directories(tmp_path: Path, external_namespace: bool) -> None:
+    repository = tmp_path / 'declared'
+    (repository / 'dinov3').mkdir(parents=True)
+    (repository / 'dinov3/backend.py').write_text('import torch\ndef make():\n    return torch.nn.Linear(1, 1)\n')
+    (repository / 'hubconf.py').write_text('from dinov3.backend import make\ndef tiny(pretrained=False):\n    return make()\n')
+    (tmp_path / 'outside/dinov3').mkdir(parents=True)
+    script = '''from pathlib import Path
+import sys
+from src.utils.models.loading.dinov3 import _guarded_hub_load
+root = Path(sys.argv[1]); external = sys.argv[2] == 'True'
+if external:
+    sys.path.insert(0, str(root/'outside'))
+try:
+    result = _guarded_hub_load(root/'declared', 'tiny')
+except RuntimeError as error:
+    assert external and 'declared' in str(error), str(error)
+else:
+    assert not external, 'External namespace directory was accepted'
+    assert result.in_features == 1
+'''
+    result = subprocess.run([sys.executable, '-c', script, str(tmp_path), str(external_namespace)], capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 @pytest.mark.parametrize('resolution', ['external_package', 'external_submodule', 'unverifiable'])
 def test_hub_rejects_modules_outside_the_declared_inventory(tmp_path: Path, resolution: str) -> None:
     declared, external = tmp_path / 'declared', tmp_path / 'external'
