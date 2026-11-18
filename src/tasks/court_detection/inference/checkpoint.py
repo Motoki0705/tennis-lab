@@ -161,6 +161,32 @@ class LoadedCourtModel:
     identity: dict[str, Any]
 
 
+def court_checkpoint_assets(path: Path, *, resolver: PathResolver) -> dict[str, Path]:
+    """Resolve saved inference assets without constructing/loading any model.
+
+    DINOv3's local torch.hub implementation is executable model input too.
+    Include its Python source inventory, rather than a path or Git HEAD that
+    would miss modified files. Checkpoint tensors stay CPU memory mapped.
+    """
+    digest = file_sha256(path)
+    checkpoint = _mapping(torch.load(path, map_location="cpu", weights_only=False, mmap=True), "body")
+    hyper = _mapping(checkpoint.get("hyper_parameters"), "hyper_parameters")
+    spec = CourtInferenceSpec.from_checkpoint_config(hyper.get("config"), hyper.get("target_bundle_state"), resolver=resolver)
+    if file_sha256(path) != digest:
+        raise CourtModelIOError("Checkpoint changed while resolving inference assets")
+    encoder = spec.model.encoder
+    repository, backbone = encoder.repository_path, encoder.checkpoint_path
+    if repository is None or not repository.is_dir():
+        raise FileNotFoundError(f"DINOv3 repository not found: {repository}")
+    if backbone is None or not backbone.is_file():
+        raise FileNotFoundError(f"DINOv3 checkpoint not found: {backbone}")
+    if not (repository / "hubconf.py").is_file():
+        raise FileNotFoundError(f"DINOv3 hub implementation not found: {repository / 'hubconf.py'}")
+    return {"checkpoint": path, "backbone": backbone,
+        **{f"dinov3_source/{source.relative_to(repository).as_posix()}": source
+           for source in sorted(repository.rglob("*.py"))}}
+
+
 def load_court_checkpoint(
     path: Path,
     *,

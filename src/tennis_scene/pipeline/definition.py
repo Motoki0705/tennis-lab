@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
@@ -133,7 +133,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     def body_assets() -> dict[str, Any]:
         if body_enabled:
             cfg.people.smpl_assets.require_files()
-        return cast(dict[str, Any], asset_identities(body_enabled, cfg.people.body_assets()))
+        return asset_identities(body_enabled, cfg.people.body_assets())
 
     def shared_settings(camera_id: str) -> dict[str, Any]:
         assert video_court is not None
@@ -141,10 +141,15 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                 'unobservable_policy': cfg.video_court_unobservable_policy,
                 'drift_artifact_digest': drift_identity(video_court).get('camera_digests', {}).get(camera_id)}
 
+    def court_settings() -> dict[str, Any]:
+        assets = CourtKPModule(cfg.court_kp).asset_identities()
+        checkpoint = assets.pop("checkpoint")
+        return {"config": cfg.processing_settings["court_kp"], "checkpoint": checkpoint, "external_assets": assets}
+
     for camera in ids:
         if video_court is None:
             add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
-                lambda: {"config": cfg.processing_settings["court_kp"], "checkpoint": file_identity(cfg.court_kp.checkpoint)}, camera=camera)
+                court_settings, camera=camera)
         else:
             add(f"court_detection/{camera}", SharedCourtModule(cfg.video_court_unobservable_policy), SharedCourtAssembler(video_court), {},
                 partial(shared_settings, camera), camera=camera)

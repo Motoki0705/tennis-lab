@@ -66,7 +66,13 @@ dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manif
 生成・初期化・解放のcallbackを持つ。`key`は資産のSHA-256と設定のcanonical JSONを含み、
 clip/camera IDと資産pathを含めない。同じ内容の別pathは共有でき、異なる重み・設定は共有しない。
 checkpoint内のarchitectureは重み全体の内容identityにも含まれる。
-runtimeは開始した計画内でキーを固定し、借用時・初期化直後に資産の変化を検出したら停止する。
+runtimeはnodeの成果物settingsに`file_identity`で束縛したSHAを`expected_assets`として受け取り、
+初回借用時もそのSHAと照合する。計画作成後・初回借用前の置換、宣言に無い資産の追加、欠落は公開前に停止する。
+開始した計画内でキーを固定し、借用時・初期化直後の資産変更も停止する。
+Courtはcheckpoint metadataをCPUで読み、同じresolverで解決した外部DINOv3 backboneとrepository内の
+全Python source（相対名と内容SHA）を共有キーと成果物settingsの`external_assets`に含める。
+通常clipの完成markerを照合するpublication identityにも同じCourt資産を含め、外部資産の変更を再利用で見逃さない。
+cache/loadでも資産の宣言・metadata検証は行うが、推論モデルは構築しない。
 順序選択の未常駐モデルの宣言は、種類・設定・資産pathだけで必要数を見積もり、資産を要求しない。
 初回借用と、常駐モデルに対する同条件の残り需要を調べる段階で内容キーを解決する。
 分岐により借用されない任意モデルの資産が無くても、cache/loadや他モデルの処理を妨げない。
@@ -77,7 +83,9 @@ runtimeは開始した計画内でキーを固定し、借用時・初期化直�
 cache hitのnodeも需要を消費するが借用しない。明示的な`load` nodeには最初からモデル需要がない。
 全cache hit・全loadならモデルの生成・初期化・解放イベントは0となる。
 例外・KeyboardInterrupt・公開失敗でもcontext終了時に残るモデルを解放する。
-失敗tracebackの完了済みframeが重みを保持しないよう、local参照も除去する。
+原因例外・抑制されたcontext・例外groupを含む失敗tracebackの完了済みframeからlocal参照を除去する。
+例外の構造とstack位置は診断用に保持する。nodeの参照と成功statusは解放・hook完了後に確定し、
+解放に失敗したnodeでは依存先とclip完成通知を進めない。同じexecutorを再開してもfailed状態を保持する。
 
 共有対象はCourt、DINO、Ball、ViTPose、CLIP（追跡・選別の画像推論経路・人物対応）、HMR2、GVHMR、
 身体配置のSMPL-X/変換行列/関節・root regressor。tracker・AFLink・時系列入力は共有モデルへ混ぜない。

@@ -41,7 +41,7 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
         expected.update(cfg.people.body_assets())
     assert set(assets) == expected
     assert assets['tracking_encoder'] == cfg.tracking_encoder_weights and assets['aflink'] == cfg.aflink_checkpoint
-    materialize_assets(assets.values(), tmp_path)
+    materialize_assets(assets.values(), tmp_path, court=cfg.court_kp)
     source = ClipSource('test', tuple(SourceVideo(f'cam{i}', tmp_path / f'{i}.mp4', 'hash', 5, 30., 1920, 1080) for i in range(3)))
     nodes = {n.name: n for n in standard_definition(cfg, source, code_identity='test')}
     node = nodes['person_tracking/cam0']

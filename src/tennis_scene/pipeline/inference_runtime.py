@@ -21,6 +21,24 @@ OutputT = TypeVar("OutputT")
 NodeKey = tuple[str, str]
 
 
+def _clear_exception_frames(error: BaseException) -> None:
+    """Drop completed-frame locals throughout a retained exception graph.
+
+    Preserve tracebacks and the original exception structure for diagnostics.
+    Causes, suppressed contexts and groups can share nodes or form cycles.
+    """
+    pending, seen = [error], set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        traceback.clear_frames(current.__traceback__)
+        pending.extend(link for link in (current.__cause__, current.__context__) if link is not None)
+        if isinstance(current, BaseExceptionGroup):
+            pending.extend(current.exceptions)
+
+
 @dataclass(frozen=True)
 class ModelKey:
     kind: str
@@ -120,12 +138,14 @@ class InferenceRuntime:
     """
 
     def __init__(self, declarations: Mapping[NodeKey, Mapping[str, ModelSpec[Any]]], *,
+                 expected_assets: Mapping[NodeKey, Mapping[Path, str]] | None = None,
                  model_event: ModelEventHook | None = None,
                  cleanup: Callable[[str], None] = release_inference_memory) -> None:
         self._remaining = {node: dict(specs) for node, specs in declarations.items()}
         self._owned: dict[ModelKey, _OwnedModel] = {}
         self._keys: dict[NodeKey, dict[str, ModelKey]] = {}
         self._assets: dict[Path, tuple[tuple[int, ...], str]] = {}
+        self._expected_assets = {node: dict(assets) for node, assets in (expected_assets or {}).items()}
         self._active: NodeKey | None = None
         self._closed = False
         self._serial = 0
@@ -141,8 +161,18 @@ class InferenceRuntime:
     def _key_for(self, node: NodeKey, alias: str) -> ModelKey:
         keys = self._keys.setdefault(node, {})
         if alias not in keys:
-            keys[alias] = self._remaining[node][alias]._key_with(self._weight_hash)
+            keys[alias] = self._remaining[node][alias]._key_with(lambda path: self._declared_weight_hash(node, path))
         return keys[alias]
+
+    def _declared_weight_hash(self, node: NodeKey, path: Path) -> str:
+        digest = self._weight_hash(path)
+        bound = self._expected_assets.get(node, {})
+        if bound and path not in bound:
+            raise ValueError(f"Model asset has no bound artifact identity: {path}")
+        expected = bound.get(path)
+        if expected is not None and expected != digest:
+            raise ValueError(f"Model assets changed since artifact identity was bound: {path}")
+        return digest
 
     def _has_demand(self, key: ModelKey) -> bool:
         for node, declarations in self._remaining.items():
@@ -188,7 +218,7 @@ class InferenceRuntime:
 
     def __exit__(self, kind: Any, error: Any, tb: Any) -> None:
         if error is not None:
-            traceback.clear_frames(tb)
+            _clear_exception_frames(error)
         self.close()
 
     @contextmanager
@@ -199,7 +229,7 @@ class InferenceRuntime:
         try:
             yield ModelBorrower(self, node)
         except BaseException as error:
-            traceback.clear_frames(error.__traceback__)
+            _clear_exception_frames(error)
             self.close()
             raise
         else:
@@ -222,10 +252,14 @@ class InferenceRuntime:
         if alias not in self._remaining[node]:
             raise ValueError(f"Undeclared inference model: {node}.{alias}")
         spec = self._remaining[node][alias]
+        # Validate the complete bound inventory, including sources removed
+        # since planning and assets a backend opens inside its initializer.
+        for path in self._expected_assets.get(node, {}):
+            self._declared_weight_hash(node, path)
         # Pin content on first demand. Other branches may never borrow their
         # optional models, so do not hash all potential declarations eagerly.
         key = self._key_for(node, alias)
-        if spec._key_with(self._weight_hash) != key:
+        if spec._key_with(lambda path: self._declared_weight_hash(node, path)) != key:
             raise ValueError(f"Model assets changed during the inference plan: {node}.{alias}")
         if key not in self._owned:
             self._serial += 1
@@ -242,7 +276,7 @@ class InferenceRuntime:
                     if spec._key_with(self._weight_hash) != key:
                         raise ValueError(f"Model assets changed while loading: {node}.{alias}")
             except BaseException as error:
-                traceback.clear_frames(error.__traceback__)
+                _clear_exception_frames(error)
                 if key in self._owned:
                     self._release(key)
                 else:
@@ -277,11 +311,12 @@ class InferenceRuntime:
             try:
                 self._release(key)
             except BaseException as error:
-                traceback.clear_frames(error.__traceback__)
+                _clear_exception_frames(error)
                 errors.append(error)
         self._remaining.clear()
         self._keys.clear()
         self._assets.clear()
+        self._expected_assets.clear()
         if errors:
             raise BaseExceptionGroup("Inference model cleanup failed", errors)
 

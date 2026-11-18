@@ -52,12 +52,17 @@ def runtime(tmp_path: Path, *, overrides: tuple[str, ...] = ()) -> PipelineRunti
     return PipelineRuntimeConfig.from_config(cfg)
 
 
-def materialize_assets(paths: Any, tmp_path: Path) -> None:
+def materialize_assets(paths: Any, tmp_path: Path, *, court: Any = None) -> None:
     """Create stand-ins only for test-owned assets, including SMPL auxiliary files."""
     for path in paths:
         assert path.is_relative_to(tmp_path), f"test asset escapes tmp_path: {path}"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"asset")
+    if court is not None:
+        from tests.unit.tennis_scene.pipeline.config_factories import (
+            materialize_court_assets,
+        )
+        materialize_court_assets(court)
 
 
 class FixedStage:

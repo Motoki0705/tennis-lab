@@ -31,6 +31,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelBorrower,
     ModelSpec,
 )
+from src.tennis_scene.pipeline.model_assets import file_identity
 from src.tennis_scene.pipeline.runner import ComponentRunner, PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 
@@ -221,3 +222,59 @@ def test_single_clip_partial_targets_close_each_drain_without_reexecution(tmp_pa
     assert runner.references["court/cam0"] == first
     assert [event for event in harness.events if event == ("node", "court/cam0")] == [("node", "court/cam0")]
     assert [action for action, name, _ in harness.lifetimes if name == "court"] == ["load", "unload", "load", "unload"]
+
+
+def test_checkpoint_changed_before_first_borrow_cannot_publish_under_old_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    harness = Harness(tmp_path, 1)
+    original = harness.nodes[0]
+    component = original.component
+    assert isinstance(component, Component)
+    path = harness.specs["court"].weights["checkpoint"]
+    path.write_text("17")
+    component.models = {"court": replace(harness.specs["court"],
+        factory=lambda: Model("court", int(path.read_text()), harness.events))}
+    node = replace(original, settings={"checkpoint": file_identity(path)})
+    plan = ExecutionPlan([ClipExecution("clip", [node], harness.store)])
+    published: list[Any] = []
+    publish = harness.store.publish
+    def record_publish(*args: Any, **kwargs: Any) -> Any:
+        published.append(kwargs["identity"])
+        return publish(*args, **kwargs)
+    monkeypatch.setattr(harness.store, "publish", record_publish)
+    path.write_text("29")
+    completed: list[str] = []
+    with pytest.raises(ValueError, match="assets changed"):
+        PlanExecutor(plan).run(on_clip_complete=completed.append)
+    assert not published and not plan.references and not completed
+    assert harness.store.active(node.name) is None
+    # Restoring A must never reuse an artifact produced with B.
+    path.write_text("17")
+    restored = PlanExecutor(ExecutionPlan([ClipExecution("clip", [node], harness.store)]))
+    restored.run()
+    np.testing.assert_array_equal(restored.output(("clip", node.name)).values, [17])
+
+
+@pytest.mark.parametrize("with_dependent", [False, True])
+def test_unload_failure_cannot_complete_or_notify_on_executor_resume(tmp_path: Path, with_dependent: bool) -> None:
+    harness = Harness(tmp_path, 1)
+    nodes = [harness.nodes[0]]
+    if with_dependent:
+        harness.add("after_court", (), {"court": nodes[0].name})
+        nodes.append(harness.nodes[-1])
+    plan = ExecutionPlan([ClipExecution("clip", nodes, harness.store)])
+    completed: list[str] = []
+    @contextmanager
+    def event(action: str, model: str, **attributes: Any) -> Iterator[None]:
+        yield
+        if action == "unload":
+            raise RuntimeError("unload hook failed")
+    executor = PlanExecutor(plan, model_event=event)
+    with pytest.raises(RuntimeError, match="unload hook failed"):
+        executor.run(on_clip_complete=completed.append)
+    assert plan.statuses[("clip", nodes[0].name)] == "failed"
+    assert ("clip", nodes[0].name) not in plan.references
+    assert not plan.ready() and not plan.clip_complete("clip")
+    assert ("node", "after_court") not in harness.events
+    with pytest.raises(ValueError, match="blocked by a failed component"):
+        executor.run(on_clip_complete=completed.append)
+    assert not completed and not executor.completion_attempts and not executor.completion_results

@@ -118,9 +118,18 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
         self.config = config
 
     def model_specs(self) -> dict[str, ModelSpec[CourtPredictor]]:
-        return {"court": ModelSpec("court", {"checkpoint": self.config.checkpoint}, "checkpoint_target_bundle",
+        from src.tasks.court_detection.inference.checkpoint import (
+            court_checkpoint_assets,
+        )
+
+        return {"court": ModelSpec("court", court_checkpoint_assets(self.config.checkpoint, resolver=self.config.resolver), "checkpoint_target_bundle",
             self.config.device, "float32", {"subpixel_refine": self.config.subpixel_refine,
                 "postprocess": self.config.postprocess, "region_search": self.config.region_search}, self._load_predictor)}
+
+    def asset_identities(self) -> dict[str, Any]:
+        from src.tennis_scene.pipeline.model_assets import asset_identities
+
+        return asset_identities(True, self.model_specs()["court"].weights)
 
     def _load_predictor(self) -> CourtPredictor:
         LOGGER.info("Loading Court KP model from %s", self.config.checkpoint)
