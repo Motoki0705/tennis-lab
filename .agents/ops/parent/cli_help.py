@@ -112,6 +112,7 @@ def configure(
     lines = [
         "実行例  PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 status",
         "操作の詳細  PYTHONPATH=.agents/ops .venv/bin/python -m parent delegate --help",
+        "日次jobのimprovement-expireはcheckout_job.py経由で実行する（helpを含む）。.agents/ops/parent/README.md「改善提案の期限」参照。",
         "",
     ]
     for reference, (title, names) in TOPICS.items():

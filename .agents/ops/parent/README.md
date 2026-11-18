@@ -24,4 +24,10 @@
 
 ## 改善提案の期限
 
-`improvement-expire --dry-run` で期限対象を確認する。作成から7日経過した未取り出しのopen提案を `not_planned` で閉じる。日次unitの導入・有効化は [ops control](../ops_control/README.md) の `proposal-expiry` を使う。
+期限処理は日次jobとしてcheckoutを固定する。手元でhelpを読む場合も、repoのcheckoutで同じ入口を使う。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python .agents/ops/checkout_job.py --repo . -- .venv/bin/python -m parent improvement-expire --help
+```
+
+末尾を `--dry-run` にすると期限対象を確認できる。作成から7日経過した未取り出しのopen提案を `not_planned` で閉じる。日次unitの導入・有効化は [ops control](../ops_control/README.md) の `proposal-expiry` を使う。
