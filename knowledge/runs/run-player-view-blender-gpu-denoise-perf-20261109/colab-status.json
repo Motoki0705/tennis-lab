@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "c3-perf-gpu-denoise",
+  "status": "completed",
+  "updated_at": "2026-11-08T18:55:07.706075+00:00",
+  "returncode": 0,
+  "worker_pid": 129017,
+  "worker_token": "944709",
+  "launch_guarded": true,
+  "pid": 129210,
+  "process_token": "947848",
+  "started_at": "2026-11-08T18:54:53.665994+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-11-08T18:56:48.995108+00:00",
+  "finished_at": "2026-11-08T18:56:48.995161+00:00"
+}

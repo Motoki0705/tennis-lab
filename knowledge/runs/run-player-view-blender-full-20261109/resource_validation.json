@@ -1,0 +1,13 @@
+{
+  "owned_session": "player-view-c3-20261109",
+  "phase": "stopped",
+  "owned_registry_empty": true,
+  "created_at": "2026-11-08T16:19:37.670427+00:00",
+  "stopped_at": "2026-11-08T19:37:02.294993+00:00",
+  "allocation_seconds": 11844.624566,
+  "allocation_hours": 3.2901734905555555,
+  "gpu_hours_limit": 4,
+  "source_recovery_diff_empty": true,
+  "global_active_assignment_is_other_session": true,
+  "evidence": "post-stop-sessions.txt plus a match in the other session registry; own registry is empty"
+}

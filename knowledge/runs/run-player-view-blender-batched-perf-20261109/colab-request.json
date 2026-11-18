@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "job_id": "c3-perf-batched",
+  "argv": [
+    "bash",
+    "outputs/tennis_scene/visualize/player_view/blender-acceptance/run_perf_batched_queue.sh"
+  ],
+  "cwd": "/content/tennis-lab",
+  "persist": [
+    "outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-batched/artifacts"
+  ],
+  "runner_outputs": [],
+  "execution_backend": "notebook_kernel",
+  "created_at": "2026-11-08T18:36:07.726120+00:00",
+  "source_commit": "caca7e69b71da55b8a4430b52d587e4c81992380",
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/player-view-c3-20261109/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/player-view-c3-20261109/remote.py",
+      "bytes": 28570,
+      "sha256": "75c4ef0817b51cfeb6771d26719bfa0bebcc612f409e9754167bd97c5868eb47"
+    }
+  }
+}

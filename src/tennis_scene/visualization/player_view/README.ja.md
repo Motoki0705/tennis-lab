@@ -182,3 +182,33 @@ readerは保存済み変換・maskを検証し、入力bundleを必要としま�
 `pinhole()`は無効sampleを拒否するため、描画側は時間枠を保持して欠測表示frameにします。
 Blenderのcamera回転は`T[:3,:3] @ diag(1,-1,-1)`、位置は`T[:3,3]`です。
 保存した解像度・内部行列・clip値を使い、両backendで頭部運動を再計算しません。
+
+## Blenderの選手視点動画
+
+対応する保存済みscene/camera bundleからportableなshot入力を作ります。cameraの入力digest・人物ID・元frame・FPS・maskを照合し、必要な数値資産をコピーします。Blender側は同梱PythonとNumPyだけで動き、camera再推定やrepoのimportを行いません。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.prepare_player_view_blender \
+  --bundle outputs/tennis_scene/visualize/player_view/example/bundle \
+  --cameras outputs/tennis_scene/visualize/player_view/example/cameras \
+  --output outputs/tennis_scene/visualize/player_view/example/shot
+
+blender --background --factory-startup --python-exit-code 1 --threads 4 \
+  --python src/tennis_scene/visualization/blender/shots/player_view.py -- \
+  --package outputs/tennis_scene/visualize/player_view/example/shot \
+  --output outputs/tennis_scene/visualize/player_view/example/renders/player_7 \
+  --player-id 7 --gpu-backend OPTIX
+
+.venv/bin/python -m src.tennis_scene.scripts.publish_player_views \
+  --package outputs/tennis_scene/visualize/player_view/example/shot \
+  --renders outputs/tennis_scene/visualize/player_view/example/renders \
+  --output outputs/tennis_scene/visualize/player_view/example/videos
+```
+
+Blenderコマンドは元の人物IDごとに実行し、出力名を`renders/player_<ID>`とします。解像度・内部行列・clip・元FPSは保存cameraを使います。仮の外観はmanifestへ記録します。本人のmesh全体を隠し、相手は灰色、球は緑色・半径0.05m、alpha=1・発光0、簡素なコート/ネット、Cycles 16sampleです。OpenImageDenoiseはGPU使用を明示し、設定と各frameの描画秒数を描画記録へ残します。OPTIX/CUDA GPUを明示使用し、CPUへのfallbackは拒否します。実行資源はプロジェクトの運用手順に従います。
+
+Blender/cache frame `i`は`source_frames[i]`と厳密に対応します。PC2は明示sampleで補間なし、camera/球はframeごとに直接設定し、animation curveとmotion blurを使いません。物体欠測は非表示、camera欠測は同じ長さの空白frameとして描画し、公開時に欠測表示を入れます。`render.json`は完成PNGごとのPC2評価誤差・camera姿勢・物体表示・球位置・GPU・材質を記録します。
+
+初回の少数frame確認はBlenderコマンドへ`--source-frames <最大12個の元frame番号>`を明示し、動画化に`--preview`を付けます。最終動画化では入力時間軸の切り詰めを拒否します。描画記録を照合し、各画面へ人物ID・元frame・camera有効性を表示して、人物別MP4と左右同期比較を生成します。全frameをdecodeして解像度・件数・FPS・長さを確認し、manifestへ入力・設定とcamera欠測frameを保存します。shot入力と描画記録も動画と一緒に保持してください。既存出力は上書きしません。
+
+描画・検証・CIが成功しても`human_acceptance: pending`のままです。第2フェーズの統合前に、人間の定性受入を別途記録します。

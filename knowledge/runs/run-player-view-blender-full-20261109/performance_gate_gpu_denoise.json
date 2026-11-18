@@ -1,0 +1,237 @@
+{
+  "git_ref": "993c7e2310a76ebc7145ca33b9698be5b4996ddc",
+  "package_sha256": "708affe5b630ba50014bf9f3f7a5ff4a730440906c1b1a4f99e920bfe5247280",
+  "source_frames": [
+    16,
+    17,
+    19,
+    731,
+    735
+  ],
+  "players": [
+    {
+      "player_id": 0,
+      "intervals_seconds": [
+        0.2210242748260498,
+        0.20402264595031738,
+        0.17001867294311523,
+        0.2500276565551758
+      ],
+      "mean_interval_seconds": 0.21127331256866455,
+      "max_interval_seconds": 0.2500276565551758,
+      "worst_valid_frame_seconds": 0.2500276565551758,
+      "valid_mtime_seconds": [
+        0.2210242748260498,
+        0.20402264595031738,
+        0.2500276565551758
+      ],
+      "valid_render_seconds": [
+        0.21693146399957186,
+        0.20048796800074342,
+        0.24675308500081883
+      ],
+      "initial_render_seconds": 0.7889094300007855,
+      "denoising": {
+        "enabled": true,
+        "denoiser": "OPENIMAGEDENOISE",
+        "use_gpu": true
+      },
+      "persistent_data": true,
+      "gpu_devices": [
+        {
+          "name": "NVIDIA L4",
+          "type": "OPTIX"
+        }
+      ],
+      "image_reference_match": true,
+      "images": [
+        {
+          "source_frame": 16,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.27432798032407407,
+          "pixel_span": 182
+        },
+        {
+          "source_frame": 17,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.2764261429398148,
+          "pixel_span": 173
+        },
+        {
+          "source_frame": 19,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.27807400173611113,
+          "pixel_span": 182
+        },
+        {
+          "source_frame": 731,
+          "camera_valid": false,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.45645073784722223,
+          "pixel_span": 2
+        },
+        {
+          "source_frame": 735,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.27945167824074074,
+          "pixel_span": 176
+        }
+      ]
+    },
+    {
+      "player_id": 1,
+      "intervals_seconds": [
+        0.2670295238494873,
+        0.23502588272094727,
+        0.20202231407165527,
+        0.1640181541442871
+      ],
+      "mean_interval_seconds": 0.21702396869659424,
+      "max_interval_seconds": 0.2670295238494873,
+      "worst_valid_frame_seconds": 0.2670295238494873,
+      "valid_mtime_seconds": [
+        0.2670295238494873,
+        0.23502588272094727,
+        0.20202231407165527
+      ],
+      "valid_render_seconds": [
+        0.262787263998689,
+        0.23167105100037588,
+        0.1987340529994981
+      ],
+      "initial_render_seconds": 0.8020605120000255,
+      "denoising": {
+        "enabled": true,
+        "denoiser": "OPENIMAGEDENOISE",
+        "use_gpu": true
+      },
+      "persistent_data": true,
+      "gpu_devices": [
+        {
+          "name": "NVIDIA L4",
+          "type": "OPTIX"
+        }
+      ],
+      "image_reference_match": true,
+      "images": [
+        {
+          "source_frame": 16,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.2813718894675926,
+          "pixel_span": 182
+        },
+        {
+          "source_frame": 17,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.280931712962963,
+          "pixel_span": 178
+        },
+        {
+          "source_frame": 19,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.28090422453703706,
+          "pixel_span": 184
+        },
+        {
+          "source_frame": 731,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.27731155960648146,
+          "pixel_span": 176
+        },
+        {
+          "source_frame": 735,
+          "camera_valid": false,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.45645073784722223,
+          "pixel_span": 2
+        }
+      ]
+    }
+  ],
+  "prefix_counts": [
+    388,
+    0
+  ],
+  "metadata_and_crc_passed": true,
+  "image_reference_match": true,
+  "passed": true,
+  "reviewed_at": "2026-11-08T19:01:50.263356+00:00",
+  "gpu_deadline": "2026-11-08T20:19:37.670427+00:00",
+  "reserve_seconds": 960,
+  "available_seconds": 3707.4070709999996,
+  "global_worst_valid_seconds": 0.2670295238494873,
+  "margin": 1.2,
+  "encode_budget_seconds": 180,
+  "initialization_budget_seconds": 60,
+  "fresh_conservative_forecast_seconds": 887.2795658111572,
+  "selected_policy": "fresh",
+  "old_prefix_adopted": false,
+  "old_prefix_counts_preserved": [
+    388,
+    0
+  ],
+  "reason": "Fresh 2020 frames with identical GPU OIDN settings fit including margin, encode, initialization and save/stop reserve. Existing 388 audited frames remain untouched and unused.",
+  "actual_devices": [
+    "| Path tracing on: NVIDIA L4 (OptiX) [CUDA_NVIDIA L4_0000:00:03_OptiX]",
+    "| Denoising on: NVIDIA L4 (OptiX) [CUDA_NVIDIA L4_0000:00:03_OptiX]"
+  ],
+  "semantic_image_review": "passed",
+  "green_ball_reference_iou": 1.0,
+  "visual_review_image": "outputs/tennis_scene/visualize/player_view/blender-acceptance/operations/gpu-denoise-comparison.png",
+  "image_checks": "outputs/tennis_scene/visualize/player_view/blender-acceptance/operations/gpu-denoise-image-check.json",
+  "human_acceptance": "pending",
+  "perf_job": {
+    "job_id": "c3-perf-gpu-denoise",
+    "status": "completed",
+    "returncode": 0,
+    "drive_saved_at": "2026-11-08T18:56:48.995108+00:00"
+  }
+}
