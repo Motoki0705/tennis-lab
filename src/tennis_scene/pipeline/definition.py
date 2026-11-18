@@ -79,6 +79,11 @@ from src.tennis_scene.pipeline.video_court.component import (
 )
 from src.tennis_scene.pipeline.video_court.diagnostics import drift_identity
 from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
+from src.tennis_scene.pipeline.video_court_side.artifact import VideoCourtSideArtifact
+from src.tennis_scene.pipeline.video_court_side.component import SharedCourtSideModule
+from src.tennis_scene.pipeline.video_court_side.prepare import (
+    verify_prepared_court_side,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -128,7 +133,7 @@ def declared_model_identities(cfg: PipelineRuntimeConfig, stage: str, component:
             or stage == "pose_estimation" and not cfg.enabled["person_observations"]
             or not isinstance(component, InferenceComponent)):
         return {}
-    return model_identities(component.model_specs(), cfg.court_kp.asset_catalog.file_identity)
+    return dict(model_identities(component.model_specs(), cfg.court_kp.asset_catalog.file_identity))
 
 
 def publication_model_identities(cfg: PipelineRuntimeConfig) -> dict[str, Any]:
@@ -159,8 +164,18 @@ def validate_override_names(overrides: Mapping[str, Any]) -> None:
         raise ValueError(f'Unknown component override: {sorted(unknown)}')
 
 
+def check_shared_side_execution(cfg: PipelineRuntimeConfig, overrides: Mapping[str, Any] | None) -> None:
+    if cfg.video_court_side is None:
+        return
+    if cfg.direct_annotation is not None:
+        raise ValueError("court_side.mode=video_shared is incompatible with direct_annotation and publication-only resume")
+    if overrides is not None and "court_side" in overrides:
+        raise ValueError("A court_side override is incompatible with court_side.mode=video_shared")
+
+
 def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_identity: str,
-                        overrides: dict[str, Any] | None = None, video_court: VideoCourtArtifact | None = None) -> tuple[ComponentNode, ...]:
+                        overrides: dict[str, Any] | None = None, video_court: VideoCourtArtifact | None = None,
+                        video_court_side: VideoCourtSideArtifact | None = None) -> tuple[ComponentNode, ...]:
     """Overrides select implementations through the same declarations, including tests.
 
     ``settings`` of a standard component are built lazily so that asset
@@ -170,6 +185,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     ids = source.camera_ids
     overrides = {} if overrides is None else overrides
     validate_override_names(overrides)
+    check_shared_side_execution(cfg, overrides)
     if (cfg.video_court is None) != (video_court is None):
         raise ValueError('Shared court must be prepared explicitly before building the clip plan')
     if video_court is not None:
@@ -177,6 +193,19 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         requested_drift = None if cfg.video_court_drift is None else cfg.video_court_drift.digest
         if drift_identity(video_court).get('artifact_digest') != requested_drift:
             raise ValueError('Execution plan drift artifact disagrees with explicit configuration')
+    if (cfg.video_court_side is None) != (video_court_side is None):
+        raise ValueError("Shared court side must be prepared before building the clip plan")
+    if video_court_side is not None:
+        if cfg.video_court_side is None or cfg.video_court is None or video_court is None:
+            raise ValueError("Shared court side requires shared calibration")
+        if ((cfg.video_court_side.dataset_id, cfg.video_court_side.video_id)
+                != (video_court.manifest["dataset_id"], video_court.manifest["video_id"])
+                or cfg.video_court.action == "load" and cfg.video_court.artifact_digest != video_court.digest):
+            raise ValueError("Execution plan court disagrees with the configured shared side scope/geometry")
+        verify_prepared_court_side(video_court_side, cfg.video_court_side, cfg.resolver, code_identity=code_identity)
+        video_court_side.check_settings(video_court, cfg.court_side, cfg.sampling_max_frames, court_policy=cfg.video_court_unobservable_policy)
+        if source.clip_id not in video_court_side.clips:
+            raise ValueError("Clip is missing from the shared court side artifact")
     nodes: list[ComponentNode] = []
     components = standard_model_components(cfg, ids)
 
@@ -184,7 +213,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         return {name: cfg.court_kp.asset_catalog.file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
 
     def add(name: str, component: Any, assembler: Any, bindings: dict[str, str], settings: Callable[[], Any],
-            *, camera: str | None = None) -> None:
+            *, camera: str | None = None, require_component: Callable[[], None] | None = None) -> None:
         stage = name.split("/")[0]
         resolved: dict[str, Any]
         if name in overrides:
@@ -198,7 +227,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                 resolved = {**resolved, "models": declared_model_identities(cfg, stage, component)}
         mode = "load" if cfg.cache_source == "load" else cfg.component_sources[stage]
         nodes.append(ComponentNode(name, component, component.io, assembler, bindings,
-            AssemblyContext(source, camera), json_value(resolved), code_identity, mode))
+            AssemblyContext(source, camera), json_value(resolved), code_identity, mode, require_component=require_component))
 
     people_enabled = cfg.enabled["person_observations"]
     selection = LinkingConfig(max_candidates=cfg.max_tracks_per_camera)
@@ -280,9 +309,19 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
     balls = {f"ball_{c}": f"ball_points/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}
-    add("court_side", CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames), CourtSideInputAssembler(0.0),
-        {"calibration": "court_calibration", **balls}, lambda: {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames,
-        "ball_threshold": 0.0})
+    side_module: CourtSideModule | SharedCourtSideModule
+    require_side = None
+    if video_court_side is None:
+        side_module = CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames)
+        side_settings: dict[str, Any] = {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames, "ball_threshold": 0.0}
+    else:
+        assert video_court is not None
+        side_module = SharedCourtSideModule(ids, video_court_side, video_court, cfg.court_side_unobservable_policy,
+                                           court_policy=cfg.video_court_unobservable_policy)
+        require_side = partial(side_module.require_clip, source.clip_id)
+        side_settings = video_court_side.node_settings(source.clip_id, cfg.court_side_unobservable_policy, cfg.video_court_unobservable_policy)
+    add("court_side", side_module, CourtSideInputAssembler(0.0), {"calibration": "court_calibration", **balls},
+        lambda: side_settings, require_component=require_side)
     add("player_association", components["player_association"],
         PlayerAssociationInputAssembler(), {"calibration": "court_calibration", "side": "court_side", **{f"tracks_{c}": f"player_selection/{c}" for c in ids}},
         lambda: {"config": association, "sampling": sampling, "enabled": people_enabled,

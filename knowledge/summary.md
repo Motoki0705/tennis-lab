@@ -56,9 +56,9 @@
 
 ## コートside（court_side）
 
-- **現行**: sideは学習モデルを使わず、ボールの2D観測だけを使う幾何的な仮説検定で決めます。閾値は[合成ベンチマーク](nodes/court_side/000001-run-i932-synthetic-side-thresholds.md)で決めました（min_margin 0.15）。誤判定を防いでいるのはmarginです。
-- **限界**: 決定できる割合は、ボール検出の見落としと誤検出に左右されます。ft-e13の時点では、Meiji 51clipのうち検出器のボールで決まったのは7clipでした（誤判定0、[記録](nodes/court_side/000002-run-i932-meiji-clips-side-20260927.md)）。現行の検出器での全clip評価は記録されていません。2026-10-02に信頼度フィルタを外す判断をしましたが、安全benchの全件は元datasetの欠測で未実施です（[記録](nodes/court_side/000006-run-i935-unfiltered-production-safety-20261002.md)）。
-- **次の実験**: 現行のボール検出器でのside決定率と誤判定の評価。
+- **現行**　ballだけの幾何仮説検定で決めます。既定はclip単位で、固定カメラと共有コートでは動画単位の判定を選べます。どちらも同じ閾値（min_margin 0.15）です。[合成ベンチマーク](nodes/court_side/000001-run-i932-synthetic-side-thresholds.md)
+- **固定4カメラの実測**　meiji_4cam/video_000全69 clipでX3D/CSN+DPTの観測を統合すると、cam2・cam3がhalf-turn、margin 0.267。単独で一致51、margin不足18、矛盾0で、共有court sideは全69 clipで利用できました。[実測と全件表](nodes/court_side/000007-run-court-side-video-shared-20261118.md)
+- **限界と次の確認**　この動画での正解ラベルに対する誤判定率、別収録への一般化、全69 clipの人物対応以降は未検証です。旧ft-e13では別の51 clip中7 clipが確定しました（誤判定0、[過去の比較](nodes/court_side/000002-run-i932-meiji-clips-side-20260927.md)）。confidenceフィルタ廃止時の安全benchは元dataset欠測のため未完です。[安全benchの記録](nodes/court_side/000006-run-i935-unfiltered-production-safety-20261002.md)
 
 ## PLCS・BLCS・SLCS（研究用の推定モデル）
 

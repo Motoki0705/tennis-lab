@@ -80,9 +80,13 @@ def parser() -> argparse.ArgumentParser:
     from lib.agent_settings import implementation_models
 
     try:
-        child.add_argument("--model", choices=implementation_models())
+        models = implementation_models()
     except (OSError, ValueError) as exc:
         result.error(str(exc))
+    child.add_argument(
+        "--model",
+        help=f"initial model ({', '.join(models)}); resume inherits the saved model",
+    )
     return result
 
 

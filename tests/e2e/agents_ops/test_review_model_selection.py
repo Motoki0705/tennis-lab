@@ -11,6 +11,13 @@ from typing import Any
 import pytest
 
 from tests.e2e.agents_ops.test_agent_runtime import CONFIG, Harness
+from tests.support.agents_ops.model_pins import (
+    OLD_ASTRA,
+    OLD_SOL,
+    REVIEW_FIXED_MODEL,
+    REVIEW_OTHER_MODEL,
+    previous_config,
+)
 
 
 def choice_files(
@@ -39,7 +46,7 @@ def choice_files(
         reason="人間の指定"
         if human
         else "表示文言だけの修正で該当画面で確認できるためSolを選ぶ。"
-        if model == "gpt-6.1-sol"
+        if model == REVIEW_OTHER_MODEL
         else "復旧後に採用する永続状態が変わるためAstraを選ぶ。",
         specified_by="human_instruction" if human else None,
         human_reference="親が元指示を確認済み" if human else None,
@@ -53,10 +60,10 @@ def choice_files(
 @pytest.mark.parametrize(
     "model,mode,human",
     [
-        ("gpt-6.1-sol", "select", False),
-        ("gpt-6-astra", "select", False),
-        ("gpt-6-astra", "select", True),
-        ("gpt-6-astra", "fixed", False),
+        (REVIEW_OTHER_MODEL, "select", False),
+        (REVIEW_FIXED_MODEL, "select", False),
+        (REVIEW_FIXED_MODEL, "select", True),
+        (REVIEW_FIXED_MODEL, "fixed", False),
     ],
 )
 def test_allowed_review_choice_keeps_tools_schema_and_observed_settings(
@@ -110,7 +117,7 @@ def test_review_observes_effective_settings_without_switching_models(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scenario: str, reason: str
 ) -> None:
     h = Harness(tmp_path)
-    config, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+    config, path, _ = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
     proc = h.run(
         scenario=scenario,
         extra=(
@@ -133,14 +140,14 @@ def test_review_observes_effective_settings_without_switching_models(
         for line in (h.root / "invocations.jsonl").read_text().splitlines()
     ]
     assert len(calls) == 1
-    assert calls[0][calls[0].index("--model") + 1] == "gpt-6.1-sol"
+    assert calls[0][calls[0].index("--model") + 1] == REVIEW_OTHER_MODEL
 
 
 def test_review_resume_preserves_choice_and_rejects_policy_change_before_launch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     h = Harness(tmp_path)
-    config, path, choice = choice_files(h, monkeypatch, "gpt-6.1-sol")
+    config, path, choice = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
     mutable_config = h.root / "mutable-review.conf"
     mutable_config.write_bytes(config.read_bytes())
     config = mutable_config
@@ -170,7 +177,7 @@ def test_review_resume_preserves_choice_and_rejects_policy_change_before_launch(
     )
     alternate = h.root / "alternate.json"
     changed = json.loads(path.read_text())
-    changed["selected"]["model"] = "gpt-6-astra"
+    changed["selected"]["model"] = REVIEW_FIXED_MODEL
     alternate.write_text(json.dumps(changed))
     changed_run = h.run(
         "different-choice",
@@ -212,6 +219,95 @@ def test_review_resume_preserves_choice_and_rejects_policy_change_before_launch(
 
 
 @pytest.mark.parametrize(
+    "mode,model",
+    [("select", OLD_SOL), ("select", OLD_ASTRA), ("fixed", OLD_ASTRA)],
+    ids=["selected-sol", "selected-astra", "fixed-astra"],
+)
+def test_review_resume_keeps_saved_selection_after_pin_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str, model: str
+) -> None:
+    h = Harness(tmp_path)
+    monkeypatch.syspath_prepend(str(CONFIG.parents[1]))
+    settings = importlib.import_module("lib.review_settings")
+    old_config = previous_config(h.root / "previous.conf", review_mode=mode)
+    profile = ("--profile", "review")
+    old_choice: tuple[str, ...] = ()
+    if mode == "select":
+        choice = settings.choose(
+            settings.load_policy(old_config), model=model, reason="Saved decision."
+        )
+        path = h.root / "previous-choice.json"
+        path.write_text(json.dumps(choice))
+        old_choice = ("--review-selection-file", str(path))
+        rejected = h.run("fresh", extra=(*profile, *old_choice))
+        assert rejected.returncode == 2 and "policy changed" in rejected.stderr
+        assert not (h.root / "fresh").exists() and not (h.root / "args.txt").exists()
+    initial = h.run(extra=(*profile, "--config-file", str(old_config), *old_choice))
+    assert initial.returncode == 0, initial.stderr
+    proc = h.run(
+        "continued",
+        action="resume",
+        extra=(*profile, "--resume-from", str(h.root / "initial")),
+    )
+    assert proc.returncode == 0, proc.stderr
+    before, after = h.result(), h.result("continued")
+    assert after["runtime"]["session_id"] == before["runtime"]["session_id"]
+    assert h.args()[h.args().index("--model") + 1] == model
+    assert after["contract"].get("review_selection") == before["contract"].get(
+        "review_selection"
+    )
+    saved = after["contract"]["settings"]
+    assert saved["selected"] == {
+        "model": model,
+        "effort": "xhigh",
+        "service_tier": "default",
+    }
+    assert (
+        saved["selection_sources"]
+        == before["contract"]["settings"]["selection_sources"]
+    )
+    assert saved["model_continuation"] == "REVIEW_CODEX_CONTINUATION_PAIRS"
+
+
+def test_review_resume_rejects_unlisted_saved_pair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    h = Harness(tmp_path)
+    monkeypatch.syspath_prepend(str(CONFIG.parents[1]))
+    settings = importlib.import_module("lib.review_settings")
+    config = previous_config(h.root / "previous.conf")
+    config.write_text(config.read_text().replace(f"{OLD_SOL}:xhigh", f"{OLD_SOL}:high"))
+    choice = settings.choose(
+        settings.load_policy(config),
+        model=OLD_SOL,
+        effort="high",
+        reason="Previous policy.",
+    )
+    path = h.root / "previous-choice.json"
+    path.write_text(json.dumps(choice))
+    profile = ("--profile", "review")
+    assert (
+        h.run(
+            extra=(
+                *profile,
+                "--config-file",
+                str(config),
+                "--review-selection-file",
+                str(path),
+            )
+        ).returncode
+        == 0
+    )
+    proc = h.run(
+        "rejected",
+        action="resume",
+        extra=(*profile, "--resume-from", str(h.root / "initial")),
+    )
+    assert proc.returncode == 2 and "policy changed" in proc.stderr
+    assert not (h.root / "rejected").exists()
+
+
+@pytest.mark.parametrize(
     "agent,profile,mode",
     [
         ("codex", None, "write"),
@@ -227,7 +323,7 @@ def test_review_selection_cannot_expand_other_profiles_or_permissions(
     mode: str,
 ) -> None:
     h = Harness(tmp_path)
-    config, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+    config, path, _ = choice_files(h, monkeypatch, REVIEW_OTHER_MODEL)
     extra = (
         "--mode",
         mode,

@@ -1,0 +1,158 @@
+{
+  "calibration_digest": "a7c39f26360bf202d0c2177b618dd3ebec80e9a93745c6676c4a43f27dfe0f4b",
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2",
+    "cam3"
+  ],
+  "checkpoint_sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+  "clips": 69,
+  "code_identity": "2d8dd0a9f1a45109034ce1a428bd621430837517d88d1d98432f4323d189eb68",
+  "court_digest": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "dataset_id": "meiji_4cam",
+  "dataset_sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099",
+  "diagnostics_digest": "2ce3d116bdaefc24e3d6a6d55180232a6d9b7d876e291c33c905b62071664b52",
+  "drift_digest": "7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+  "evaluation_seconds": 16.737358882004628,
+  "historical_rankings_exact": [
+    "clip_000",
+    "clip_027",
+    "clip_037"
+  ],
+  "independent_max_abs_cost_or_support_difference": 1.1102230246251565e-16,
+  "max_frames_per_clip": 2048,
+  "node_counts": {
+    "ok": 51,
+    "warning": 18
+  },
+  "reference_camera": "cam0",
+  "request_sha256": "e1eb2679e0eeb3a130a7e846a8468932020c952578199506f68417beb6aa0c00",
+  "sampled": 23153,
+  "shared": {
+    "frames": 13869,
+    "hypotheses": [
+      {
+        "cost": 0.4307287246444468,
+        "frames": 13869,
+        "support": 0.6141754993150191,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      {
+        "cost": 0.6980616686951241,
+        "frames": 13869,
+        "support": 0.29605595212344077,
+        "view_half_turns": [
+          false,
+          true,
+          true,
+          true
+        ]
+      },
+      {
+        "cost": 0.71194134898699,
+        "frames": 13869,
+        "support": 0.28834090417477826,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      {
+        "cost": 0.7584377839151859,
+        "frames": 13869,
+        "support": 0.23664287259355396,
+        "view_half_turns": [
+          false,
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "cost": 0.7932606386381279,
+        "frames": 13869,
+        "support": 0.2158050328069796,
+        "view_half_turns": [
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      {
+        "cost": 0.8180389381458374,
+        "frames": 13869,
+        "support": 0.18508904751604296,
+        "view_half_turns": [
+          false,
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "cost": 0.8367914184046015,
+        "frames": 13869,
+        "support": 0.1803302328935035,
+        "view_half_turns": [
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      {
+        "cost": 0.8693340003165856,
+        "frames": 13869,
+        "support": 0.1389429663277814,
+        "view_half_turns": [
+          false,
+          true,
+          false,
+          true
+        ]
+      }
+    ],
+    "margin": 0.2673329440506773,
+    "pair_frames": {
+      "cam0-cam1": 7808,
+      "cam0-cam2": 8953,
+      "cam0-cam3": 7943,
+      "cam1-cam2": 6636,
+      "cam1-cam3": 5907,
+      "cam2-cam3": 7620
+    },
+    "reason": null
+  },
+  "side_digest": "a5f987bd59d40a2f20d19d7802a4435748f9e23fb61cddc0bc3a7b704d4cd668",
+  "source_commit": "ac77e4b7444d2ffe900a9ea858b85b16f38ca46c",
+  "source_frames_per_camera": 46228,
+  "standalone_counts": {
+    "agreement": 51,
+    "ambiguous_margin": 18
+  },
+  "thresholds": {
+    "height_range_m": [
+      -0.2,
+      20.0
+    ],
+    "max_abs_xy_m": 40.0,
+    "max_cost": 0.8,
+    "min_frames": 8,
+    "min_margin": 0.15,
+    "min_motion_px": 5.0,
+    "min_ray_angle_deg": 1.0,
+    "min_support": 0.2,
+    "reprojection_px": 20.0
+  },
+  "unobservable_policy": "warn",
+  "video_id": "video_000"
+}

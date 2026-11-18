@@ -17,6 +17,13 @@ from tests.e2e.agents_ops.test_human_agreement import delegation_args
 from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.directory_seed import DirectorySeed
+from tests.support.agents_ops.model_pins import (
+    OLD_ASTRA,
+    OLD_SOL,
+    WORKER_ALTERNATE_MODEL,
+    WORKER_DEFAULT_MODEL,
+    previous_config,
+)
 
 ENTRY = """
 import os, sys
@@ -219,7 +226,7 @@ def test_manual_completion_preserves_worker_exit_after_publication_handoff(
     assert owner["tasks"]["10"]["worker_ended"]
 
 
-@pytest.mark.parametrize("version,model", [(1, None), (2, "gpt-6-astra")])
+@pytest.mark.parametrize("version,model", [(1, None), (2, WORKER_ALTERNATE_MODEL)])
 def test_launch_is_durable_private_and_preserves_registry(
     reserved: ParentEnv, version: int, model: str | None
 ) -> None:
@@ -269,7 +276,7 @@ def test_launch_is_durable_private_and_preserves_registry(
         "model_reason",
         "preflight",
     }
-    expected = model or "gpt-6.1-sol"
+    expected = model or WORKER_DEFAULT_MODEL
     assert after["model"] == record["model"] == expected
     assert after["model_reason"] == record["model_reason"]
     if model:
@@ -349,17 +356,32 @@ def test_run_paths_in_evidence_are_private_across_redelegation(
         for run in current["worker_runs"]
     )
     # A new delegation can select a different model; its old run keeps its own.
-    run(p, "--model", "gpt-6-astra", "--model-reason-file", p.note("統合設計のため。"))
-    assert task(p)["model"] == "gpt-6-astra"
+    run(
+        p,
+        "--model",
+        WORKER_ALTERNATE_MODEL,
+        "--model-reason-file",
+        p.note("統合設計のため。"),
+    )
+    assert task(p)["model"] == WORKER_ALTERNATE_MODEL
     assert [r["model"] for r in task(p)["worker_runs"]] == [
-        "gpt-6.1-sol",
-        "gpt-6-astra",
+        WORKER_DEFAULT_MODEL,
+        WORKER_ALTERNATE_MODEL,
     ]
     for command in ("status", "reconcile"):
         assert "worker_runs" not in p.cli(command).stdout
     before = p.state()
     assert "private" in p.cli("note", "--body-file", p.note(evidence), ok=False).stderr
     assert p.state() == before
+
+
+def test_manual_initial_worker_rejects_continuation_models(reserved: ParentEnv) -> None:
+    p = reserved
+    for model in (OLD_SOL, OLD_ASTRA):
+        result = run(p, "--model", model, ok=False)
+        assert "continuation-only" in result.stderr
+        assert task(p)["worker_runs"] == []
+    assert not (p.root / "runner-calls.jsonl").exists()
 
 
 def test_legacy_reservation_gains_run_tracking_only_when_redelegated(
@@ -509,7 +531,7 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
     assert plan["active_reservations"] == []
 
 
-@pytest.mark.parametrize("model", ["gpt-6.1-sol", "gpt-6-astra"])
+@pytest.mark.parametrize("model", [WORKER_DEFAULT_MODEL, WORKER_ALTERNATE_MODEL])
 def test_resume_uses_latest_run_without_implicitly_releasing_slot(
     reserved: ParentEnv,
     model: str,
@@ -546,7 +568,11 @@ def test_resume_uses_latest_run_without_implicitly_releasing_slot(
         json.loads((first / "result.json").read_text())["runtime"]["session_id"]
         == json.loads((latest(p) / "result.json").read_text())["runtime"]["session_id"]
     )
-    opposite = "gpt-6-astra" if model == "gpt-6.1-sol" else "gpt-6.1-sol"
+    opposite = (
+        WORKER_ALTERNATE_MODEL
+        if model == WORKER_DEFAULT_MODEL
+        else WORKER_DEFAULT_MODEL
+    )
     before = store(p).read_data()
     before_calls = (p.root / "runner-calls.jsonl").read_bytes()
     assert "cannot change" in run(p, "--resume", "--model", opposite, ok=False).stderr
@@ -563,23 +589,29 @@ def test_resume_uses_latest_run_without_implicitly_releasing_slot(
     assert first != latest(p)
 
 
-@pytest.mark.parametrize("mode", ["running", "ended", "invocation_only"])
+@pytest.mark.parametrize(
+    "mode", ["running", "ended", "invocation_only", "legacy_ended"]
+)
 def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
     reserved: ParentEnv, mode: str
 ) -> None:
     p = reserved
     path = p.root / "private-existing-run"
     path.mkdir()
+    legacy = mode == "legacy_ended"
+    config = importlib.import_module("lib.agent_settings").DEFAULT_CONFIG
+    if legacy:
+        config = previous_config(p.root / "previous.conf")
     contract = {
         "task_id": task(p)["delegation_id"],
         "cwd": task(p)["worktree"],
         "branch": task(p)["branch"],
         "mode": "write",
         "settings": importlib.import_module("lib.agent_settings").resolve(
-            Path(__file__).resolve().parents[3] / ".agents/ops/lib/agents.conf",
+            config,
             "codex",
             None,
-            "gpt-6-astra" if mode == "invocation_only" else None,
+            WORKER_ALTERNATE_MODEL if mode == "invocation_only" else None,
             None,
             "write",
         ),
@@ -613,7 +645,7 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
                 }
             )
         )
-    if mode == "ended":
+    if mode in {"ended", "legacy_ended"}:
         ended(p)
     args = ("record-worker-run", "--child", "10", "--run-dir", str(path))
     before = copy.deepcopy(task(p))
@@ -627,23 +659,35 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
         for k, v in task(p).items()
         if k not in {"worker_runs", "model", "model_reason"}
     } == before
-    assert (
-        task(p)["model"]
-        == record["model"]
-        == ("gpt-6-astra" if mode == "invocation_only" else "gpt-6.1-sol")
-    )
+    expected = {
+        "invocation_only": WORKER_ALTERNATE_MODEL,
+        "legacy_ended": OLD_SOL,
+    }.get(mode, WORKER_DEFAULT_MODEL)
+    assert task(p)["model"] == record["model"] == expected
     assert task(p)["model_reason"] is record["model_reason"] is None
     assert str(path) not in output.stdout + output.stderr + p.cli("status").stdout
     assert str(path) not in json.dumps(p.state())
-    if mode == "ended":
+    if mode in {"ended", "legacy_ended"}:
         before_registry = store(p).read_data()
+        if legacy:
+            for model_args in ((), ("--model", expected)):
+                result = run(
+                    p,
+                    "--replace-session",
+                    "--restart-evidence-file",
+                    p.note(),
+                    *model_args,
+                    ok=False,
+                )
+                assert "continuation-only" in result.stderr
+                assert store(p).read_data() == before_registry
         assert (
             "cannot change"
             in run(
                 p,
                 "--resume",
                 "--model",
-                "gpt-6-astra",
+                WORKER_ALTERNATE_MODEL,
                 "--restart-evidence-file",
                 p.note(),
                 ok=False,
@@ -652,13 +696,16 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
         assert (
             store(p).read_data() == before_registry
         )  # The released slot stays released.
-        run(
-            p, "--resume", "--model", "gpt-6.1-sol", "--restart-evidence-file", p.note()
-        )
+        run(p, "--resume", "--model", expected, "--restart-evidence-file", p.note())
         calls = json.loads((p.root / "runner-calls.jsonl").read_text())
         assert (
             "--model" not in calls
         )  # Preserve the legacy default's override provenance.
+        if legacy:
+            settings = json.loads((latest(p) / "result.json").read_text())["contract"][
+                "settings"
+            ]
+            assert settings["model_continuation"] == "CODEX_CONTINUATION_MODELS"
     # A settings-less legacy record must not be guessed as today's default.
     broken = p.root / "legacy-unknown-model"
     broken.mkdir()
@@ -1033,7 +1080,10 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
         "\n対象外の学習は起動しない。\r\n"
     ]
     assert meta["turn"]["phase"] == current["preflight"]["phase"]
-    assert meta["worker"]["selected"] == {"model": "gpt-6.1-sol", "effort": "max"}
+    assert meta["worker"]["selected"] == {
+        "model": WORKER_DEFAULT_MODEL,
+        "effort": "max",
+    }
     assert meta["decision"] == {"action": action, "source_sequence": 1}
     assert (
         json.loads((first / "result.json").read_text())["runtime"]
