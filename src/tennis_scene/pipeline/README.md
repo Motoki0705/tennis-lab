@@ -67,12 +67,20 @@ dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manif
 clip/camera IDと資産pathを含めない。同じ内容の別pathは共有でき、異なる重み・設定は共有しない。
 checkpoint内のarchitectureは重み全体の内容identityにも含まれる。
 runtimeはnodeの成果物settingsに`file_identity`で束縛したSHAを`expected_assets`として受け取り、
-初回借用時もそのSHAと照合する。計画作成後・初回借用前の置換、宣言に無い資産の追加、欠落は公開前に停止する。
+初回借用時もそのSHAと照合する。宣言済み資産の置換・欠落は公開前に停止する。
 開始した計画内でキーを固定し、借用時・初期化直後の資産変更も停止する。
 Courtはcheckpoint metadataをCPUで読み、同じresolverで解決した外部DINOv3 backboneとrepository内の
 全Python source（相対名と内容SHA）を共有キーと成果物settingsの`external_assets`に含める。
 通常clipの完成markerを照合するpublication identityにも同じCourt資産を含め、外部資産の変更を再利用で見逃さない。
 cache/loadでも資産の宣言・metadata検証は行うが、推論モデルは構築しない。
+同じ`CourtKPConfig`で構築するnode/clipは`asset_catalog`でmetadataと内容digestを共有する。
+checkpointのCPU metadata読込と全量hashは同じ資産につき各1回。statの変更でcacheを無効にし、
+metadata読込中の変更も拒否する。新しいconfig（`dataclasses.replace`を含む）は新しいcatalogを作る。
+Court成果物は有効なdevice・dtype・architecture・推論設定をidentityへ含め、来歴は各nodeの束縛から記録する。
+外観DINOv3も外部Python実装の内容をキーに含める。実hub loaderはimport済み`dinov3` namespaceの
+実装identityをprocess内で固定し、安全に切り替えられない別実装や未管理の事前importは明示拒否する。
+実装を切り替えるときは新しいprocessを使う。同内容の別pathは共有できる。
+既知の制限: runtimeへ宣言を渡した後にPython sourceを追加・書換する運用は対象外（親 #1734 の判断）。
 順序選択の未常駐モデルの宣言は、種類・設定・資産pathだけで必要数を見積もり、資産を要求しない。
 初回借用と、常駐モデルに対する同条件の残り需要を調べる段階で内容キーを解決する。
 分岐により借用されない任意モデルの資産が無くても、cache/loadや他モデルの処理を妨げない。
@@ -84,8 +92,8 @@ cache hitのnodeも需要を消費するが借用しない。明示的な`load` 
 全cache hit・全loadならモデルの生成・初期化・解放イベントは0となる。
 例外・KeyboardInterrupt・公開失敗でもcontext終了時に残るモデルを解放する。
 原因例外・抑制されたcontext・例外groupを含む失敗tracebackの完了済みframeからlocal参照を除去する。
-例外の構造とstack位置は診断用に保持する。nodeの参照と成功statusは解放・hook完了後に確定し、
-解放に失敗したnodeでは依存先とclip完成通知を進めない。同じexecutorを再開してもfailed状態を保持する。
+例外の構造とstack位置は診断用に保持する。成果物の`store.publish`・active参照更新・成功statusは
+nodeの解放・hook完了後に行う。解放失敗では旧active参照を保持し、新しいexecutorでも失敗出力をcache hitしない。
 
 共有対象はCourt、DINO、Ball、ViTPose、CLIP（追跡・選別の画像推論経路・人物対応）、HMR2、GVHMR、
 身体配置のSMPL-X/変換行列/関節・root regressor。tracker・AFLink・時系列入力は共有モデルへ混ぜない。

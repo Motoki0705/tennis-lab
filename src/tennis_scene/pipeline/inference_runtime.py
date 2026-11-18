@@ -67,6 +67,7 @@ class ModelSpec(Generic[ModelT]):
     initialize: Callable[[ModelT], None] = field(default=lambda _: None, repr=False, compare=False)
     release: Callable[[ModelT], None] = field(default=lambda _: None, repr=False, compare=False)
     _settings_json: str = field(init=False, repr=False)
+    _scheduling_key: tuple[Any, ...] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         from types import MappingProxyType
@@ -77,6 +78,8 @@ class ModelSpec(Generic[ModelT]):
         settings_json = json.dumps(json_value(self.settings), sort_keys=True, separators=(",", ":"), allow_nan=False)
         object.__setattr__(self, "_settings_json", settings_json)
         object.__setattr__(self, "settings", MappingProxyType(json.loads(settings_json)))
+        object.__setattr__(self, "_scheduling_key", (self.kind, self.architecture, self.device, self.dtype, settings_json,
+                                                    tuple(sorted(self.weights.items()))))
 
     @property
     def key(self) -> ModelKey:
@@ -91,8 +94,7 @@ class ModelSpec(Generic[ModelT]):
     @property
     def scheduling_key(self) -> tuple[Any, ...]:
         """Cheap affinity hint, never used to decide model equivalence."""
-        return (self.kind, self.architecture, self.device, self.dtype, self._settings_json,
-                tuple(sorted(self.weights.items())))
+        return self._scheduling_key
 
 
 class ModelEventHook(Protocol):

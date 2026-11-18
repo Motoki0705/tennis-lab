@@ -278,3 +278,9 @@ def test_unload_failure_cannot_complete_or_notify_on_executor_resume(tmp_path: P
     with pytest.raises(ValueError, match="blocked by a failed component"):
         executor.run(on_clip_complete=completed.append)
     assert not completed and not executor.completion_attempts and not executor.completion_results
+    assert harness.store.active(nodes[0].name) is None
+    restarted_store = ClipStore(harness.store.root, {"clip_id": "clip"}, memory_entries=0)
+    restarted_plan = ExecutionPlan([ClipExecution("clip", nodes, restarted_store)])
+    PlanExecutor(restarted_plan).run(on_clip_complete=completed.append)
+    assert restarted_plan.statuses[("clip", nodes[0].name)] == "executed"
+    assert completed == ["clip"]

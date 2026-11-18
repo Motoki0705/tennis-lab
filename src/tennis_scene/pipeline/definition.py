@@ -100,6 +100,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     nodes: list[ComponentNode] = []
     overrides = {} if overrides is None else overrides
 
+    def bound_assets(enabled: bool, paths: dict[str, Any]) -> dict[str, Any]:
+        return {name: cfg.court_kp.asset_catalog.file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
+
     def add(name: str, component: Any, assembler: Any, bindings: dict[str, str], settings: Callable[[], Any],
             *, camera: str | None = None) -> None:
         stage = name.split("/")[0]
@@ -120,20 +123,24 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     weights = cfg.association_encoder_weights
     encoder_name = None if association.appearance is None else association.appearance.encoder
     sampling = CropSamplingConfig()
-    encoder = None if encoder_name is None or weights is None else appearance_model(encoder_name, weights, cfg.device,
+    encoder = None if not people_enabled or encoder_name is None or weights is None else appearance_model(encoder_name, weights, cfg.device,
         partial(build_encoder, encoder_name,
-            checkpoint_root=cfg.roots.checkpoint_root, external_root=cfg.roots.external_asset_root, device=cfg.device))
+            checkpoint_root=cfg.roots.checkpoint_root, external_root=cfg.roots.external_asset_root, device=cfg.device),
+        repository=cfg.roots.external_asset_root / "dinov3" if encoder_name.startswith("dinov3_") else None)
     body_enabled = cfg.enabled["gvhmr"]
-    tracking_encoder = appearance_model(cfg.tracking.encoder, cfg.tracking_encoder_weights, cfg.device,
+    tracking_encoder = None if not people_enabled else appearance_model(cfg.tracking.encoder, cfg.tracking_encoder_weights, cfg.device,
         partial(build_encoder, cfg.tracking.encoder, checkpoint_root=cfg.roots.checkpoint_root,
-                external_root=cfg.roots.external_asset_root, device=cfg.device))
+                external_root=cfg.roots.external_asset_root, device=cfg.device),
+        repository=cfg.roots.external_asset_root / "dinov3" if cfg.tracking.encoder.startswith("dinov3_") else None)
+    encoder_assets = {} if encoder is None else {"encoder" if name == "checkpoint" else name: path for name, path in encoder.weights.items()}
     tracking_assets = {'pose': cfg.people.vitpose_checkpoint, 'encoder': cfg.tracking_encoder_weights,
-                       'aflink': cfg.aflink_checkpoint}
+                       'aflink': cfg.aflink_checkpoint,
+                       **({} if tracking_encoder is None else {name: path for name, path in tracking_encoder.weights.items() if name != "checkpoint"})}
 
     def body_assets() -> dict[str, Any]:
         if body_enabled:
             cfg.people.smpl_assets.require_files()
-        return asset_identities(body_enabled, cfg.people.body_assets())
+        return bound_assets(body_enabled, cfg.people.body_assets())
 
     def shared_settings(camera_id: str) -> dict[str, Any]:
         assert video_court is not None
@@ -142,9 +149,10 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                 'drift_artifact_digest': drift_identity(video_court).get('camera_digests', {}).get(camera_id)}
 
     def court_settings() -> dict[str, Any]:
-        assets = CourtKPModule(cfg.court_kp).asset_identities()
+        court = CourtKPModule(cfg.court_kp)
+        assets = court.asset_identities()
         checkpoint = assets.pop("checkpoint")
-        return {"config": cfg.processing_settings["court_kp"], "checkpoint": checkpoint, "external_assets": assets}
+        return {"config": cfg.processing_settings["court_kp"], "model": court.model_identity(), "checkpoint": checkpoint, "external_assets": assets}
 
     for camera in ids:
         if video_court is None:
@@ -166,7 +174,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add(f"ball_detection/{camera}", detector,
             BallDetectionInputAssembler(), {},
             lambda: {"config": cfg.processing_settings["ball_detection"],
-                     "checkpoint": file_identity(ball_config.checkpoint) if ball_config is not None else None}, camera=camera)
+                     "checkpoint": cfg.court_kp.asset_catalog.file_identity(ball_config.checkpoint) if ball_config is not None else None}, camera=camera)
         add(f"ball_points/{camera}", BallPointsModule(cfg.ball_smoothing), BallPointsInputAssembler(),
             {"detections": f"ball_detection/{camera}"},
             lambda: {"point": "motion_consensus_loess_observed_only", "smoothing": cfg.ball_smoothing}, camera=camera)
@@ -177,24 +185,24 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add(f"person_detection/{camera}", PersonDetectionModule(cfg.people, enabled=people_enabled,
             merge_duplicates=cfg.merge_duplicate_person_boxes), PersonDetectionInputAssembler(),
             {}, lambda: {"detector": "dino",
-             "assets": asset_identities(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
+             "assets": bound_assets(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
              "runtime": cfg.people.runtime.dino_detector,
              "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
              "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
         add(f"person_tracking/{camera}", PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=tracking_encoder,
             aflink_checkpoint=cfg.aflink_checkpoint, enabled=people_enabled), PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}"}, lambda: {"profile": cfg.tracking.identity(),
-                "assets": asset_identities(people_enabled, tracking_assets), "pose_runtime": cfg.people.runtime.vitpose,
+                "assets": bound_assets(people_enabled, tracking_assets), "pose_runtime": cfg.people.runtime.vitpose,
                 "pose_precision": "float32", "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
         add(f"player_selection/{camera}", PlayerSelectionModule(selection, footpoints=association.footpoints,
-            sampling=sampling, encoder=encoder, encoder_name=encoder_name, device=cfg.device, enabled=people_enabled),
+            sampling=sampling, encoder=encoder, encoder_name=encoder_name if encoder is not None else None, device=cfg.device, enabled=people_enabled),
             PlayerSelectionInputAssembler(), {"tracks": f"person_tracking/{camera}", "calibration": "court_calibration"},
             lambda: {"rule": selection, "footpoints": association.footpoints, "sampling": sampling, "encoder": encoder_name,
-                "enabled": people_enabled, "assets": asset_identities(people_enabled and weights is not None,
-                    {} if weights is None else {"encoder": weights})}, camera=camera)
+                "enabled": people_enabled, "assets": bound_assets(people_enabled and weights is not None,
+                    encoder_assets)}, camera=camera)
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people,
             require_evidence=people_enabled), PoseEstimationInputAssembler(),
-            {"selection": f"player_selection/{camera}"}, lambda: {"assets": asset_identities(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
+            {"selection": f"player_selection/{camera}"}, lambda: {"assets": bound_assets(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
              "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
     balls = {f"ball_{c}": f"ball_points/{c}" for c in ids}
@@ -206,7 +214,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         encoder=encoder),
         PlayerAssociationInputAssembler(), {"calibration": "court_calibration", "side": "court_side", **{f"tracks_{c}": f"player_selection/{c}" for c in ids}},
         lambda: {"config": association, "sampling": sampling, "enabled": people_enabled,
-                 "assets": asset_identities(people_enabled and weights is not None, {} if weights is None else {"encoder": weights})})
+                 "assets": bound_assets(people_enabled and weights is not None, encoder_assets)})
     identified = {**observations, "identities": "player_association"}
     add("camera_alignment", CameraAlignmentModule(ids, cfg.camera_geometry, player_reprojection_px=cfg.player_reprojection_px,
         ball_reprojection_px=cfg.ball_reprojection_px, joint_confidence=cfg.joint_confidence, max_frames=cfg.sampling_max_frames),
