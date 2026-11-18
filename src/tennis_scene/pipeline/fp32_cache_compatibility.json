@@ -37,9 +37,13 @@
       "before": "cc8c1257b6be512547f8a032a39186d4787cbad5c1c292b0764905754fa316d3",
       "after": "a5bd1feffbfb313f94e9b28eaf0416c3e7cd1e2e4d36b794dacec1e5c7de36b4"
     },
+    "tennis_scene/pipeline/direct_annotation/__init__.py": {
+      "before": "3968670edcc5b10398e0aad6834b7a799519ad79d3c027cbe986eea8bfe21799",
+      "after": "93907f99b28713077608f1e4e9ed374b362259c3a646d9ee2170f1b9064e0787"
+    },
     "tennis_scene/pipeline/orchestrator.py": {
       "before": "6ed0fa434a2ded63e7c1c0f1145f69de26dab35699a11867ed43893ee4943542",
-      "after": "6074e79bff7293de7f7bf17b5f92ef585124e3aec07d284241b2b43a861f12ff"
+      "after": "e470cd88d796bfaba42e212e27f2e25aea40b2cba202acf71d9385a0882741d9"
     },
     "tennis_scene/pipeline/source_identity.py": {
       "before": null,

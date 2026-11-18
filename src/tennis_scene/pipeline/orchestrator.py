@@ -166,7 +166,9 @@ class TennisSceneOrchestrator:
                 self.last_receipt["annotation"]["summary"] = str(store.root / "annotation-summary.json")
                 write_json_atomic(store.root / "run.json", self.last_receipt)
                 if direct.resume == "publication":
-                    scene, saved = saved_scene(store, direct, workflow.reference.digest)
+                    scene, saved = saved_scene(
+                        store, direct, workflow.reference.digest, people_runtime=self.config.people.runtime,
+                    )
                     self.last_receipt["scene"] = saved
                 else:
                     annotations, expected = workflow.inputs(completed)
@@ -184,7 +186,9 @@ class TennisSceneOrchestrator:
                     shared.verify()
                 scene, archive = runner.finalize_clip()
                 if direct is not None and workflow is not None:
-                    self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive)
+                    self.last_receipt["scene"] = scene_receipt(
+                        store, direct, workflow.reference.digest, archive, people_runtime=self.config.people.runtime,
+                    )
             if workflow is not None:
                 write_json_atomic(store.root / "run.json", self.last_receipt)
                 try:
