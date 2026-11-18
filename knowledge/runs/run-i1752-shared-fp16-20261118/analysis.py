@@ -115,6 +115,7 @@ def reference_report(root, destination):
     write(destination / 'comparison-completed.json', full)
     write(destination / 'comparison-summary.json', result)
     print(json.dumps({key: result[key] for key in ('numerical_acceptance', 'all_arrays_exact', 'components', 'arrays')}, indent=2))
+    return result['numerical_acceptance']
 
 
 if __name__ == '__main__':
@@ -123,4 +124,6 @@ if __name__ == '__main__':
     parser.add_argument('--reference', action='store_true')
     parser.add_argument('--destination', type=Path, default=Path(__file__).parent)
     args = parser.parse_args()
-    (reference_report if args.reference else report)(args.root.resolve(), args.destination.resolve())
+    if args.reference:
+        raise SystemExit(0 if reference_report(args.root.resolve(), args.destination.resolve()) else 1)
+    report(args.root.resolve(), args.destination.resolve())

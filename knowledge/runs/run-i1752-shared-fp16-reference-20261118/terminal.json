@@ -1,0 +1,27 @@
+{
+  "commit": "6bf5b7e132ddfe10a8914c7e75719da6f044f9da",
+  "batch_commit": "ba0fbdf1c16bd56d0852328db7e9f462f21b5ec3",
+  "source_tree_unchanged": true,
+  "clips": [
+    "video_000/clip_027"
+  ],
+  "queue_job": "0-8205000921071584958_2026-11-18T10-51-18-928415041Z_3122441_i1752-shared-fp16-reference-027",
+  "started_at_utc": "2026-11-18T10:51:19.858864+00:00",
+  "batch": {
+    "variant": "batch",
+    "started_at_utc": "2026-11-18T10:51:19.859884+00:00",
+    "status": "complete",
+    "device_memory_sampling_ms": 1000,
+    "device_memory_samples": 630,
+    "query_timeout_seconds": 10.0,
+    "heartbeat_timeout_seconds": 180.0,
+    "driver": "621.24",
+    "pid": 3122953,
+    "returncode": 0,
+    "finished_at_utc": "2026-11-18T11:02:24.974235+00:00",
+    "device_memory_peak_mib": 5719,
+    "device_memory_min_mib": 930
+  },
+  "status": "complete",
+  "finished_at_utc": "2026-11-18T11:02:24.975113+00:00"
+}

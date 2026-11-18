@@ -23,3 +23,5 @@
 69clipの投影は、成功したnodeのC3管理7resourceのload/unloadを固定費として残し、共有court/calibration/共有court_sideをclip数（camera別nodeはclip-camera数）、他の段をsource-frame数で換算する。export/publicationはclip数比例とframe数比例の両方を、残りの準備時間とrecorder開始前のCLI時間はvideo固定とclip比例を示す。import・外部guardの差分は固定費として加える。これは3clipの条件付き投影であり、信頼区間、全clip成功の保証、fp16単独の高速化率ではない。前回とは共有side・精度・profiler・成功clip数が同時に変わる。
 
 CPU AFLinkは既存の追跡node内で都度loadされ、C3管理7resourceとは別にC1のモデル表へ記録される。全モデルが1回loadされるという主張にはしない。
+
+単一入口027は `single_reference.py` で同じ設定・固定mediaを別storeへ処理した。比較は `analysis.py --root <3clip出力先> --reference`。既存の全component許容を超える補助Ball evidence差があるため、CPU比較CLIはexit1を返し、最終sceneのexact一致と厳密比較の不合格を両方保存する。GPU実行のexit0とは区別する。
