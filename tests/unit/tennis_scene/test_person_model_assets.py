@@ -14,7 +14,10 @@ from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     standard_definition,
 )
-from tests.unit.tennis_scene.pipeline.config_factories import materialize_court_assets
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    materialize_court_assets,
+    materialize_dino_sources,
+)
 from tests.unit.tennis_scene.test_configuration import _composed, _pipeline_config
 
 
@@ -61,6 +64,7 @@ def test_standard_pipeline_reports_acquisition_before_model_loading(tmp_path: Pa
             path.parent.mkdir(parents=True, exist_ok=True)
             path.touch()
     materialize_court_assets(cfg.court_kp)
+    materialize_dino_sources(cfg.people.dino_repository)
     source = ClipSource("test", (SourceVideo("cam0", tmp_path / "input.mp4", "test", 1, 30.0, 640, 480),))
     with pytest.raises(FileNotFoundError) as error:
         standard_definition(cfg, source, code_identity="test")

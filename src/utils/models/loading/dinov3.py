@@ -12,6 +12,7 @@ import torch
 from torch import nn
 
 from src.utils.checksum import dual_sha256
+from src.utils.models.loading.source_assets import python_source_assets
 from src.utils.models.lora import LoRAConfig, apply_lora
 
 _HUB_LOCK = RLock()
@@ -24,7 +25,7 @@ def dinov3_source_assets(repository: Path) -> dict[str, Path]:
         raise FileNotFoundError(f"DINOv3 repository not found: {repository}")
     if not (repository / "hubconf.py").is_file():
         raise FileNotFoundError(f"DINOv3 hub implementation not found: {repository / 'hubconf.py'}")
-    return {f"dinov3_source/{path.relative_to(repository).as_posix()}": path for path in sorted(repository.rglob("*.py"))}
+    return python_source_assets(repository, prefix="dinov3_source")
 
 
 def _guarded_hub_load(repository: Path, backbone_name: str) -> nn.Module:

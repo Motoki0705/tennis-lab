@@ -63,6 +63,12 @@ def materialize_assets(paths: Any, tmp_path: Path, *, court: Any = None) -> None
             materialize_court_assets,
         )
         materialize_court_assets(court)
+    # Test detectors replace inference, but the declared external implementation
+    # must still exist so cache/publication identities exercise the real path.
+    from tests.unit.tennis_scene.pipeline.config_factories import (
+        materialize_dino_sources,
+    )
+    materialize_dino_sources(tmp_path / "third_party/DINO")
 
 
 class FixedStage:

@@ -212,6 +212,14 @@ def validate_dino_repository(repository: Path) -> tuple[Path, Path]:
     return models_init, util_init
 
 
+def dino_source_assets(repository: Path) -> dict[str, Path]:
+    """The external Python implementation actually imported by DINO."""
+    from src.utils.models.loading.source_assets import python_source_assets
+
+    validate_dino_repository(repository)
+    return python_source_assets(repository, prefix="dino_source")
+
+
 def _load_dino_util_package(util_init: Path) -> None:
     """Expose DINO's upstream absolute ``util.*`` imports explicitly."""
     loaded = sys.modules.get("util")

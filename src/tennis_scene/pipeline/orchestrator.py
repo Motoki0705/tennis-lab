@@ -15,6 +15,7 @@ from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
+    publication_model_identities,
     standard_definition,
 )
 from src.tennis_scene.pipeline.direct_annotation import saved_scene, scene_receipt
@@ -76,6 +77,7 @@ class TennisSceneOrchestrator:
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
+            "models": publication_model_identities(cfg),
             **({"court_model_assets": CourtKPModule(cfg.court_kp).asset_identities()}
                if cfg.direct_annotation is None and cfg.video_court is None else {}),
             **({"court_model": CourtKPModule(cfg.court_kp).model_identity()}

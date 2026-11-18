@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
@@ -10,6 +12,7 @@ from numpy.typing import NDArray
 from src.submodules.models import (
     DinoPersonDetector,
     PersonDetectionRequest,
+    dino_source_assets,
 )
 from src.tasks.person_tracking.duplicate_boxes import DuplicateMerge, merge_person_boxes
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
@@ -63,13 +66,24 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
 
     def model_specs(self) -> dict[str, ModelSpec[DinoPersonDetector]]:
         config = self.config
-        return {} if not self.enabled else {"detector": ModelSpec(
-            "dino", {"checkpoint": config.dino_checkpoint}, "dino_4scale_swin_l", config.runtime.device, "float32",
-            {"runtime": config.runtime.dino_detector, "repository": str(config.dino_repository)},
+        if not self.enabled:
+            return {}
+        extension = os.environ.get("TENNIS_LAB_DINO_EXTENSION")
+        native = {} if extension is None else {"extension": Path(extension)}
+        if extension is not None and not Path(extension).is_absolute():
+            raise ValueError("TENNIS_LAB_DINO_EXTENSION must be an absolute binary path")
+        def initialize(model: DinoPersonDetector) -> None:
+            if os.environ.get("TENNIS_LAB_DINO_EXTENSION") != extension:
+                raise ValueError("DINO extension selection changed since its model declaration")
+            model.load()
+        return {"detector": ModelSpec(
+            "dino", {"checkpoint": config.dino_checkpoint, **dino_source_assets(config.dino_repository), **native},
+            "dino_4scale_swin_l", config.runtime.device, "float32",
+            {"runtime": config.runtime.dino_detector, "extension": extension},
             lambda: DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
                 device=config.runtime.device, confidence=config.runtime.dino_detector.confidence,
                 short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side),
-            initialize=lambda model: model.load(), release=lambda model: model.unload())}
+            initialize=initialize, release=lambda model: model.unload())}
 
     def process_with_models(self, inputs: PersonDetectionInput, models: ModelBorrower) -> PersonDetectionOutput:
         if not self.enabled:

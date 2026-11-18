@@ -14,6 +14,36 @@ from src.utils.models.loading import require_dinov3_patch_tokens
 pytestmark = pytest.mark.unit
 
 
+@pytest.mark.parametrize("layout", ["package", "nested", "broken", "cycle"])
+def test_unverifiable_directory_symlinks_stop_before_model_creation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, layout: str) -> None:
+    from src.utils.models.loading.dinov3 import (
+        dinov3_source_assets,
+        load_dinov3_backbone,
+    )
+
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / "hubconf.py").write_text("# valid hub stub\n")
+    target = tmp_path / "implementation"
+    if layout != "broken":
+        target.mkdir()
+        (target / "backend.py").write_text("# implementation\n")
+    link = repository / "dinov3"
+    if layout == "nested":
+        link.mkdir()
+        link = link / "hub"
+    link.symlink_to(repository if layout == "cycle" else target, target_is_directory=True)
+    checkpoint = tmp_path / "weights.pt"
+    torch.save({}, checkpoint)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Invalid source layout reached model construction")
+    monkeypatch.setattr(torch.hub, "load", forbidden)
+    with pytest.raises(ValueError, match="symlink"):
+        dinov3_source_assets(repository)
+    with pytest.raises(ValueError, match="symlink"):
+        load_dinov3_backbone(repository_path=repository, checkpoint_path=checkpoint, backbone_name="tiny", strict=True)
+
+
 @pytest.mark.parametrize("mode", ["different", "same", "untracked"])
 def test_hub_implementation_switch_is_explicitly_rejected(tmp_path: Path, mode: str) -> None:
     for label in ("a", "b"):

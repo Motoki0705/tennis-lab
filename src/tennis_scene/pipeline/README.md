@@ -76,11 +76,18 @@ cache/loadでも資産の宣言・metadata検証は行うが、推論モデル�
 同じ`CourtKPConfig`で構築するnode/clipは`asset_catalog`でmetadataと内容digestを共有する。
 checkpointのCPU metadata読込と全量hashは同じ資産につき各1回。statの変更でcacheを無効にし、
 metadata読込中の変更も拒否する。新しいconfig（`dataclasses.replace`を含む）は新しいcatalogを作る。
-Court成果物は有効なdevice・dtype・architecture・推論設定をidentityへ含め、来歴は各nodeの束縛から記録する。
+全推論nodeの成果物settingsと完成markerは、標準のcomponent構築と同じ`ModelSpec`から有効な
+device・dtype・architecture・推論設定・資産を列挙する。標準poseはtrackingのevidenceとその依存identityを使う。
+Court成果物の来歴は各nodeの束縛から記録する。
+人物検出は外部DINOのPython sourceと、指定されている場合はDINO native extensionの内容も含める。
+未指定のextensionは実ローダーが明示的に停止し、宣言後のextension選択変更も初期化前に拒否する。
+外観encoderのfactoryには宣言・SHA照合に使ったcheckpoint pathをそのまま渡す。
 外観DINOv3も外部Python実装の内容をキーに含める。実hub loaderはimport済み`dinov3` namespaceの
 実装identityをprocess内で固定し、安全に切り替えられない別実装や未管理の事前importは明示拒否する。
 実装を切り替えるときは新しいprocessを使う。同内容の別pathは共有できる。
-既知の制限: runtimeへ宣言を渡した後にPython sourceを追加・書換する運用は対象外（親 #1734 の判断）。
+repository配下のsymlink（ディレクトリ・循環・切れたリンクを含む）は、Python import対象の全列挙を保証できないため生成前に拒否する。
+既知の制限: 実行中にPython sourceを追加・書換する運用と、dataset入口の完成marker identity取得後に
+checkpointを置き換える運用は対象外（親 #1734 の判断）。実行中の資産は固定する。
 順序選択の未常駐モデルの宣言は、種類・設定・資産pathだけで必要数を見積もり、資産を要求しない。
 初回借用と、常駐モデルに対する同条件の残り需要を調べる段階で内容キーを解決する。
 分岐により借用されない任意モデルの資産が無くても、cache/loadや他モデルの処理を妨げない。
