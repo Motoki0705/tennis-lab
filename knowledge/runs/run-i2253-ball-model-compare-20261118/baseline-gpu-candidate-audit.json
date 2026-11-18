@@ -1,0 +1,92 @@
+{
+  "clip_000": {
+    "cam0": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 315,
+      "frames_in_camera": 356,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam1": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 302,
+      "frames_in_camera": 356,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam2": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 327,
+      "frames_in_camera": 356,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam3": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 312,
+      "frames_in_camera": 356,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    }
+  },
+  "clip_027": {
+    "cam0": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 223,
+      "frames_in_camera": 235,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam1": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 208,
+      "frames_in_camera": 235,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam2": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 217,
+      "frames_in_camera": 235,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam3": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 214,
+      "frames_in_camera": 235,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    }
+  },
+  "clip_037": {
+    "cam0": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 279,
+      "frames_in_camera": 292,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam1": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 266,
+      "frames_in_camera": 292,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam2": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 264,
+      "frames_in_camera": 292,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    },
+    "cam3": {
+      "top1_score_equals_saved_heatmap_max": true,
+      "frames_matching_rank1_gpu_candidate_grid_cell": 270,
+      "frames_in_camera": 292,
+      "raw_uv_equals_saved_gpu_candidate_used": true,
+      "max_abs_px_vs_saved_gpu_candidate": 0.0
+    }
+  }
+}

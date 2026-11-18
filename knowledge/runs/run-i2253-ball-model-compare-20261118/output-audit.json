@@ -1,0 +1,97 @@
+{
+  "complete_npz_files": 15,
+  "summary_rows": 15,
+  "source_camera_frames_per_model": 3532,
+  "source_store_loaded_artifacts_per_clip": 28,
+  "source_store_index_sha256": {
+    "clip_000": "caf1a32d507ee073a826cdf86adee41cd0e0f3a229206b55cf53ab5adce602a0",
+    "clip_027": "76f81121385cf99d71432b01ad34b45696997bf8c069de66daf39345f9bf0cef",
+    "clip_037": "e3f7013ecb4fc5ab9dc15cc3a95aa66edae569295a47b682511e053353d492a7"
+  },
+  "counts": {
+    "pipeline_x3d_dpt": {
+      "valid_3d_frames": 410,
+      "frames": 883,
+      "valid_3d_rate": 0.464326160815402,
+      "outside_court_count": 29,
+      "median_reprojection_px_all_finite": 4.587786674499512
+    },
+    "i935-convnext": {
+      "valid_3d_frames": 426,
+      "frames": 883,
+      "valid_3d_rate": 0.4824462061155153,
+      "outside_court_count": 0,
+      "median_reprojection_px_all_finite": 3.6995482444763184
+    },
+    "convnext-dpt-t64": {
+      "valid_3d_frames": 350,
+      "frames": 883,
+      "valid_3d_rate": 0.39637599093997733,
+      "outside_court_count": 0,
+      "median_reprojection_px_all_finite": 5.583271503448486
+    },
+    "convnext-query-t64": {
+      "valid_3d_frames": 595,
+      "frames": 883,
+      "valid_3d_rate": 0.6738391845979615,
+      "outside_court_count": 13,
+      "median_reprojection_px_all_finite": 10.641796112060547
+    },
+    "x3d-query-d512-l8": {
+      "valid_3d_frames": 609,
+      "frames": 883,
+      "valid_3d_rate": 0.6896942242355606,
+      "outside_court_count": 111,
+      "median_reprojection_px_all_finite": 8.996378898620605
+    }
+  },
+  "inference": {
+    "pipeline_x3d_dpt": {
+      "detector_seconds": 74.78385930298828,
+      "torch": "2.13.0+cu130",
+      "device_peak_mib": 2906,
+      "driver": "621.24"
+    },
+    "i935-convnext": {
+      "detector_seconds": 42.442906373005826,
+      "torch": "2.13.0+cu130",
+      "device_peak_mib": 3074,
+      "driver": "621.24"
+    },
+    "convnext-dpt-t64": {
+      "detector_seconds": 181.94671938300598,
+      "torch": "2.14.1+cu130",
+      "device_peak_mib": 4164,
+      "driver": "621.24"
+    },
+    "convnext-query-t64": {
+      "detector_seconds": 105.32799832201272,
+      "torch": "2.14.1+cu130",
+      "device_peak_mib": 3503,
+      "driver": "621.24"
+    },
+    "x3d-query-d512-l8": {
+      "detector_seconds": 254.4810341949924,
+      "torch": "2.14.1+cu130",
+      "device_peak_mib": 4724,
+      "driver": "621.24"
+    }
+  },
+  "npz_sha256": {
+    "pipeline_x3d_dpt/clip_000.npz": "5b9415101ee18bc46741e88d3a03fd29d519559c82edf28af4adde4d5c4486ac",
+    "pipeline_x3d_dpt/clip_027.npz": "64b991fd83462bd4e43a94f286685cf438bd96b07cd8f370a4e9f7179d5c60ec",
+    "pipeline_x3d_dpt/clip_037.npz": "6b0ab5f79879a70756c18c266dc588c724bfe1759cda2f679ddf3349f1a8c010",
+    "i935-convnext/clip_000.npz": "32c7b36a7f9c433fe62e615ea7f4a9562ca181e96eb1bec1723470259f6e1c5f",
+    "i935-convnext/clip_027.npz": "ca93e9fd4c15ed6a5c6d52dad78d3ddf0754aded0c07229be3d04be480b13364",
+    "i935-convnext/clip_037.npz": "b0ba1700b24cf7422c15263211a7a7009a923d9a2581a636c6abe4e0879a08e7",
+    "convnext-dpt-t64/clip_000.npz": "86adf504e955d71de003b2fe994a5726fe12d3e9a01defb28802697b4fe3e1ba",
+    "convnext-dpt-t64/clip_027.npz": "8dd9c888a731f580812a0d64bd04210f6d4cdb93df8b567cc6f9904d6607a31e",
+    "convnext-dpt-t64/clip_037.npz": "ae882b751704d4e727f47ee2ffb16e40dd53cd642d14d51024fb319ba2422f9a",
+    "convnext-query-t64/clip_000.npz": "8b8abb749c5782de4aeddaa00d7dc89552bebf6afa25fb3f0fb0489aaf8b576d",
+    "convnext-query-t64/clip_027.npz": "0909b004943566d874c27572e3da50e5e3130ec3d4d3a30dd72dfc9940605547",
+    "convnext-query-t64/clip_037.npz": "d5194f4deb069ad7673c1492479e51d3971804b447d55eedd0074926c73c88bf",
+    "x3d-query-d512-l8/clip_000.npz": "5a335f87b3672da97533f5a7e53cc240037f359e4bcc309ce603d58ff15a8536",
+    "x3d-query-d512-l8/clip_027.npz": "01eb3ba7cba60d98d67664a9b7d592b6446aa2800c674e7a521bc237989f3481",
+    "x3d-query-d512-l8/clip_037.npz": "d9b72c530705e4ac202a21feb5b9d7985058f6194030604892a75bcbaeb43a72"
+  }
+}
