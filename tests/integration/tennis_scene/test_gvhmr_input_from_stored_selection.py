@@ -136,8 +136,11 @@ def body_plan(tmp_path: Path, clips: int) -> ExecutionPlan:
     return ExecutionPlan(executions)
 
 
-@pytest.mark.parametrize('clips', [1, 3])
-def test_real_body_nodes_reuse_models_across_people_clips_and_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clips: int) -> None:
+@pytest.mark.parametrize('clips,cached_features', [(1, ()), (3, ()), (3, (0,)), (3, (2,)), (3, (0, 1, 2))],
+    ids=['1', '3', '3-first-cached', '3-last-cached', '3-all-features-cached'])
+def test_real_body_nodes_reuse_models_across_people_clips_and_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clips: int, cached_features: tuple[int, ...],
+) -> None:
     monkeypatch.setattr('src.tennis_scene.pipeline.components.hmr2_features.Hmr2FeatureExtractor', FakeFeatures)
     monkeypatch.setattr('src.tennis_scene.pipeline.components.gvhmr.GvhmrMeshRecovery', FeatureMesh)
     events = []
@@ -145,12 +148,17 @@ def test_real_body_nodes_reuse_models_across_people_clips_and_cache(tmp_path: Pa
     def recorder(action: Any, model: str, **attributes: Any) -> Iterator[None]:
         events.append((action, model, attributes['instance']))
         yield
+    if cached_features:
+        prefill = body_plan(tmp_path, clips)
+        PlanExecutor(prefill, model_event=recorder).run(targets=[(f'clip-{i}', 'hmr2_features') for i in cached_features])
+        assert {key[0] for key in prefill.references} == {f'clip-{i}' for i in cached_features}
+        assert all(key[1] != 'gvhmr' for key in prefill.references)
+        events.clear()
     plan = body_plan(tmp_path, clips)
     executor = PlanExecutor(plan, model_event=recorder)
     executor.run()
-    assert Counter((action, model) for action, model, _ in events) == {
-        ('load', 'hmr2'): 1, ('unload', 'hmr2'): 1, ('load', 'gvhmr'): 1, ('unload', 'gvhmr'): 1}
-    assert [action for action, _, _ in events] == ['load', 'unload', 'load', 'unload']
+    expected = ([] if len(cached_features) == clips else [('load', 'hmr2'), ('unload', 'hmr2')]) + [('load', 'gvhmr'), ('unload', 'gvhmr')]
+    assert [(action, model) for action, model, _ in events] == expected
     first = executor.output(('clip-0', 'gvhmr'))
     assert [b.person_id for b in first.bodies] == [9, 2, 17]
     np.testing.assert_array_equal(first.bodies[0].segments[0].parameters.transl[:, 0], [10011, 10013, 10015])
@@ -173,6 +181,32 @@ def test_real_body_nodes_reuse_models_across_people_clips_and_cache(tmp_path: Pa
     executions = [replace(clip, nodes=tuple(replace(n, source='load') for n in clip.nodes)) for clip in fresh.clips.values()]
     PlanExecutor(ExecutionPlan(executions), model_event=recorder).run()
     assert not events
+
+
+def test_body_target_does_not_run_unselected_clips(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.hmr2_features.Hmr2FeatureExtractor', FakeFeatures)
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.gvhmr.GvhmrMeshRecovery', FeatureMesh)
+    plan = body_plan(tmp_path, 3)
+    PlanExecutor(plan).run(targets=[('clip-0', 'gvhmr')])
+    assert set(plan.references) == {('clip-0', name) for name in ('body_view_selection', 'hmr2_features', 'gvhmr')}
+
+
+def test_current_gvhmr_output_can_be_opened_by_pose_review(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.submodules.visualization.review.store import PoseReviewStore
+    from src.tennis_scene.pipeline.artifacts import json_value
+
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.hmr2_features.Hmr2FeatureExtractor', FakeFeatures)
+    monkeypatch.setattr('src.tennis_scene.pipeline.components.gvhmr.GvhmrMeshRecovery', FeatureMesh)
+    clip = body_plan(tmp_path, 1).clips['clip-0']
+    source = clip.nodes[0].context.source
+    store = ClipStore(tmp_path / 'review-store', json_value(source), memory_entries=0)
+    PlanExecutor(ExecutionPlan([replace(clip, store=store)])).run()
+
+    review = PoseReviewStore(store.root)
+    assert review.metadata()['artifacts']['gvhmr']['version'] == 2
+    frame = review.frame(9, 'cam1', 3)
+    np.testing.assert_array_equal(frame['parameters']['transl'], [10013, 10013, 10013])
+    assert review.frame(9, 'cam1', 4)['parameters'] is None
 
 
 @pytest.mark.parametrize('clips', [1, 3])
@@ -375,6 +409,7 @@ def test_body_model_declaration_mutation_is_rejected_before_cache_reuse(
     PlanExecutor(body_plan(tmp_path, 1)).run()
     fresh = body_plan(tmp_path, 1)
     module = fresh.nodes[('clip-0', stage)].component
+    assert isinstance(module, (HMR2FeaturesModule, GVHMRModule))
     module.config = replace(module.config, runtime=replace(module.config.runtime, device='cuda'))
     events: list[tuple[Any, ...]] = []
     @contextmanager

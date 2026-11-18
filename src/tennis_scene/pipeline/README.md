@@ -238,6 +238,9 @@ SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が�
 `execution.hmr2_features=execute|load`は他nodeと同じcache・依存照合に従い、
 単一clipと複数clip計画は共通の`standard_definition`・assembler・runtimeを使う。
 HMR2・GVHMR・body geometry資産は各段階の最終需要まで共有し、人物ごとには読み直さない。
+`gvhmr`の段階barrierは、要求対象の全clipの`hmr2_features`完了後に時系列推論を開始する。
+保存特徴のあるclipと未計算のclipが混在する再開でも、HMR2の解放をGVHMRの読込より先に行う。
+この順序制約はclipをまたぐartifact依存には含めず、部分targetでは選択していないclipを実行しない。
 両推論nodeのModelSpecは共通のcomponent生成表から成果物settingsと完成markerへ束縛する。
 DINO・ViTPoseの精度設定とは独立して、HMR2特徴・GVHMR・身体配置はFP32を使う。
 上流の精度変更は依存artifactのidentityを通じて身体段のcacheへ反映する。
@@ -368,6 +371,9 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 `load_scene_result(scene.json)`またはstore directoryを指定すると、checksum検証後にその統合結果を読める。
 datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公開し、
 [generate_dataset](../generate_dataset/README.md)がclipごとの呼出しと結果を管理する。
+標準pipelineのmarker発行・再利用では、公開するsceneの依存を`body_placement`から
+`body_parameters` v2、`hmr2_features` v1、共通の`body_view_selection`までたどり、
+採用参照・checksumとclip/人物/segment/frameの対応を検証する。旧身体成果物は明示的に拒否する。
 
 モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。現行のコードfingerprintは`src`全体を保守的に含むため、
 コード変更は全componentを無効化する。設定・checkpointだけの変更は、そのcomponentと依存先だけを無効化する。

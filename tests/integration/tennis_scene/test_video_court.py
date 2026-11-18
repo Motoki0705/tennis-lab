@@ -379,17 +379,17 @@ def test_invalid_build_subset_stops_before_estimation(tmp_path, monkeypatch, sel
 
 
 def test_shared_artifact_change_is_part_of_dataset_marker_identity(tmp_path, monkeypatch):
+    from src.tennis_scene.pipeline.dataset_publication import publish_annotation
+
     pipeline, paths, _, docs, store, artifact = shared_fixture(tmp_path, monkeypatch)
     materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
     _, _ = make_build_request(tmp_path, paths)
     record = select_dataset_clips((tmp_path / 'dataset').resolve())[0]
     bound = resolve_dataset_clip((tmp_path / 'dataset').resolve(), record)
     identity = pipeline.publication_identity()
-    destination = bound.clip_dir / 'annotations/tennis_scene/annotation.json'
-    destination.parent.mkdir(parents=True)
-    from src.tennis_scene.pipeline.artifacts import document_digest
-    write_json_atomic(destination, {'publication_identity_sha256': document_digest(identity),
-                                    'clip_manifest_sha256': bound.manifest_sha256, 'media_sha256': bound.media_sha256})
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS,
+        store_root=bound.clip_dir / 'annotations/tennis_scene', clip_id=record.clip_id)
+    destination = publish_annotation(bound, scene, pipeline_config_yaml='fixture: true', publication_identity=identity)
     assert completed_annotation(bound, identity) == destination
     docs['cam0']['matrix'][0][2] += 1
     with store.lock():

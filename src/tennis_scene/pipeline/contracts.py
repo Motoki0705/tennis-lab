@@ -92,6 +92,13 @@ class ComponentIO(Generic[InputT, OutputT]):
     inputs: Mapping[str, InputPort]
     output_schema: str
     version: int = 1
+    # Scheduling only: finish all selected producers of these input schemas
+    # across clips before this component can start. Artifact lineage stays local.
+    after_all_inputs: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if len(set(self.after_all_inputs)) != len(self.after_all_inputs) or not set(self.after_all_inputs) <= self.inputs.keys():
+            raise ValueError("Stage barriers require distinct declared input ports")
 
 
 class Component(Protocol[InputContra, OutputCo]):

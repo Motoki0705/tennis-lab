@@ -69,7 +69,8 @@ class GVHMRInput:
 
 class GVHMRModule(InferenceComponent[GVHMRInput, GVHMROutput]):
     io = ComponentIO("gvhmr", GVHMRInput, GVHMROutput,
-        {"selection": InputPort("body_view_selection"), "features": InputPort("hmr2_features")}, "body_parameters", version=2)
+        {"selection": InputPort("body_view_selection"), "features": InputPort("hmr2_features")}, "body_parameters", version=2,
+        after_all_inputs=("features",))
 
     def __init__(self, config: PeopleModelConfig, *, enabled: bool = True) -> None:
         self.config, self.enabled = config, enabled
