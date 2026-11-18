@@ -22,7 +22,7 @@ from src.tennis_scene.pipeline.observation_types import ObjectObservations
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.utils.checksum import dual_sha256
-from src.utils.schema.player import COCO17_SKELETON
+from src.utils.schema.player import COCO17_SKELETON, COCO_KP_NAMES
 from src.utils.video import read_video_frame
 
 
@@ -242,6 +242,22 @@ def skeleton_identity_axis(case, threshold):
     return np.unique(np.concatenate(kept))
 
 
+def joint_observations(case, player_id, frame, joint):
+    identity = case.association
+    observations = {}
+    for view, camera in enumerate(identity.camera_ids):
+        carriers = np.flatnonzero(identity.player_ids[view, :, frame] == player_id)
+        if not len(carriers):
+            continue
+        track = carriers[0]
+        pose = case.load(f"pose_estimation/{camera}", ObjectObservations)
+        observations[camera] = {
+            "uv_px": pose.uv_px[0, frame, track, joint].tolist(),
+            "confidence": float(pose.confidence[0, frame, track, joint]),
+        }
+    return observations
+
+
 def triangulation(base, candidate, mapping, threshold):
     a, b = base.triangulation, candidate.triangulation
     if a is None or b is None or a.skeleton is None or b.skeleton is None:
@@ -255,12 +271,25 @@ def triangulation(base, candidate, mapping, threshold):
     j = np.array([np.searchsorted(ids_b, value) for _, value in paired], dtype=int)
     valid_a, valid_b = a.valid[i], b.valid[j]
     both = valid_a & valid_b
+    distances = np.linalg.norm(a.positions[i] - b.positions[j], axis=-1)
+    worst = None
+    if both.any():
+        row, frame, joint = (int(index) for index in np.unravel_index(
+            np.where(both, distances, -np.inf).argmax(), distances.shape,
+        ))
+        id_a, id_b = paired[row]
+        worst = {"frame": frame, "joint": COCO_KP_NAMES[joint], "distance_m": float(distances[row, frame, joint]),
+                 "fp32_player_id": id_a, "candidate_player_id": id_b,
+                 "fp32_observations": joint_observations(base, id_a, frame, joint),
+                 "candidate_observations": joint_observations(candidate, id_b, frame, joint)}
     return {
         "fp32_valid_joints": int(a.valid.sum()), "candidate_valid_joints": int(b.valid.sum()),
         "jointly_valid": int(both.sum()), "lost_valid_joints": int(a.valid.sum() - both.sum()),
         "gained_valid_joints": int(b.valid.sum() - both.sum()),
         "reasons_changed_on_matched_players": int((a.reasons[i] != b.reasons[j]).sum()),
-        "3d_distance_m": stats(np.linalg.norm(a.positions[i][both] - b.positions[j][both], axis=-1)),
+        "3d_distance_m": stats(distances[both]),
+        "jointly_valid_shift_over_5cm": int((distances[both] > .05).sum()),
+        "worst_observed_shift": worst,
     }
 
 
