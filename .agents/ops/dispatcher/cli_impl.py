@@ -65,14 +65,27 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--now")
     supervise = sub.add_parser("supervise")
     supervise.add_argument("--once", action="store_true")
-    accept = sub.add_parser("accept")
-    accept.add_argument("--input", type=Path, required=True)
+    accept = sub.add_parser(
+        "accept",
+        help="起動された親が予約を受理する",
+        description="bootstrapの両stateを共通引数に指定して予約を受理する。続きは .agents/skills/parent-session/references/dispatch.md",
+    )
+    accept.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="起動指示末尾のbootstrap_inputが指すJSONファイル",
+    )
     stop = sub.add_parser("stop")
     stop.add_argument("--parent", type=int, required=True)
     resume = sub.add_parser("resume")
     resume.add_argument("--parent", type=int, required=True)
     resume.add_argument("--reason-file", type=Path, required=True)
-    child = sub.add_parser("start-child")
+    child = sub.add_parser(
+        "start-child",
+        help="保存済み委任の起動を予約する",
+        description="delegate済みの委任IDを使う復旧入口。通常の自律親は parent start-worker を使う。",
+    )
     child.add_argument("--parent", type=int, required=True)
     child.add_argument("--child", type=int, required=True)
     child.add_argument("--delegation-id", required=True)

@@ -51,7 +51,7 @@
 - **不明点は積極的に質問する**: 方針を人間に明確にしてもらう必要があれば質問する。あいまいなまま動くだけのコードは技術負債になる。時間をかけて品質を追求する。
 - **モジュラーに作る**: 再利用が見込めるものは `src/utils` へ切り出す。タスクドメインに閉じたモジュールは、該当タスクのディレクトリ配下に新しいフォルダを作って置いてよい。
 - **ドキュメントを二重管理しない**: 同じ事柄を2か所に書かない。置き場所は [.agents/README.md](.agents/README.md#ファイル地図情報の住み分け) で決める。
-- **ワーカーはSolで起動する**: 親の実装・調査・検証は共通ランナー [agent_exec.sh](.agents/ops/lib/agent_exec.sh) を使い、モデルとeffortは [agents.conf](.agents/ops/lib/agents.conf) に従う。通常はmax、自動CI・gate修正はhigh。正式レビューもSolに固定する。委任と統合は [parent-session](.agents/skills/parent-session/SKILL.md#委任と継続) に従う。Claude Codeの組込みサブエージェント（Agent tool）とCodex CLIの直接起動は、ユーザーが明示した場合だけ使う。dshはユーザーがその案件で明示指定した場合だけ、[deepseek-harness skill](.agents/skills/deepseek-harness/SKILL.md) に従って使う。
+- **ワーカーはSolで起動する**: 親の実装・調査・検証は共通ランナー [agent_exec.sh](.agents/ops/lib/agent_exec.sh) を使い、モデルとeffortは [agents.conf](.agents/ops/lib/agents.conf) に従う。通常はmax、自動CI・gate修正はhigh。正式レビューもSolに固定する。委任と統合は [parent-session](.agents/skills/parent-session/references/workers.md) に従う。Claude Codeの組込みサブエージェント（Agent tool）とCodex CLIの直接起動は、ユーザーが明示した場合だけ使う。dshはユーザーがその案件で明示指定した場合だけ、[deepseek-harness skill](.agents/skills/deepseek-harness/SKILL.md) に従って使う。
 - **親issueの担当登録**: 親issue（`issue:parent`）の作業（残作業・実装・調査の続き）を指示されたら、子issueを作らずに直接実装する場合も、作業を始める前に [parent-session skill](.agents/skills/parent-session/SKILL.md) で担当登録する。説明・要約・参照だけの依頼は担当ではない。
 - **親同士の連絡**: 名前での連絡と受信への応答は [parent-board skill](.agents/skills/parent-board/SKILL.md) に従う。
 - **READMEから探索する**: 大きなディレクトリには実装を簡潔にまとめたREADMEがある。まずそれを読む。

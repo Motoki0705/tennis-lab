@@ -165,7 +165,7 @@ training queueは既存のシェル単語decoderで参照を探し、既存cance
 
 [cleanup.py](cleanup.py) は全scan/cleanupを同じflockで排他する。多重起動は終了コード3。
 親registryへの期限削除による更新は [registry.py](registry.py) が既存Storeを通して保存する。
-解除と保存済みjournalの回復は[共通の担当変更fence](../parent/README.md#担当変更と掲示板配送の排他)を
+解除と保存済みjournalの回復は[共通の担当変更fence](../parent/README.md#排他とio)を
 registryより先に取り、実行中の掲示板送信と結果保存を待つ。期限切れでもfenceを迂回しない。
 担当をreleasedにした後にrunner/nativeの停止へ進むため、送信途中のprocessを先に終了させない。
 分割registryの担当行と索引の間で停止した場合は専用intentを照合して次回に更新を完了する。

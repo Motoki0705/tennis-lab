@@ -17,7 +17,7 @@ from . import manual_workers, worker_slots
 from .policy import object_value
 from .state import Store
 
-RECOVERY = ".agents/ops/lib/README.md#状態確認停止中断からの復旧"
+RECOVERY = ".agents/skills/parent-session/references/recovery.md"
 LIVE_KEYS = ("runner_alive", "agent_alive", "agent_group_alive")
 
 

@@ -502,7 +502,7 @@ timer・systemd操作やagent起動は含まない。
 
 `--role parent` は `--agent claude`、`--role implementation` は `--agent codex` と同じ。
 両方の指定は拒否する。既定値の正本は [`agents.conf`](agents.conf)。
-親はOpus / xhigh、実装子はSol / max。[自動CI・gate修正](../parent/README.md#自動進行の修正ターン)にはhighを使う。親effortは設定または `--effort` で変更できる。
+親はOpus / xhigh、実装子はSol / max。[自動CI・gate修正](../../skills/parent-session/references/review.md)にはhighを使う。親effortは設定または `--effort` で変更できる。
 
 - プロファイルなし: 完全な役割既定値 → タスクの `--model` / `--effort` の順。
   overrideがあっても不足・不正な既定設定を許容しない。
@@ -529,7 +529,7 @@ reviewは保存済みの選択と方針を復元する。継続専用の許可�
 `REVIEW_SELECTION_POLICY_VERSION`と`REVIEW_CODEX_ALLOWED_PAIRS`は方針の版と許可するmodel:effortの組を定義する。
 固定値・tierは既存の`REVIEW_CODEX_*`を使い、固定値自身も許可された組であることを必須とする。
 select時の実行model/effortは明示選択を使い、`REVIEW_CODEX_MODEL`を省略時の振替先にしない。
-現行のモデル指定と使用量確認は[モデル選択手順](../parent/README.md#正式レビューのモデル選択)を参照。
+現行のモデル指定と使用量確認は[モデル選択手順](../../skills/parent-session/references/review.md)を参照。
 同名の環境変数を読まず、設定欠落・未知の版・不正な組・重複を拒否する。
 
 正式レビューは親CLIが固定した選択を`--review-selection-file FILE`で渡す。

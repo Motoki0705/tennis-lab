@@ -413,7 +413,7 @@ Python APIで通知関数を省略した場合だけ`notifier_unconfigured`と�
   起動はparent CLIの担当復帰callbackが行う。
 
 通知は専用flockで直列化し、宛先ごとにregistryの担当と引退を再確認する。
-1宛先の準備から結果保存まで[共通の担当変更fence](../parent/README.md#担当変更と掲示板配送の排他)を保持する。
+1宛先の準備から結果保存まで[共通の担当変更fence](../parent/README.md#排他とio)を保持する。
 順序はnotifications→ownership fence→短いregistry/SQLite transaction。
 呼び鈴の間はregistryとSQLite transactionを解放し、固定したsession/generationをadapterへ渡す。
 adapterはroutesロック内で最新の原子的な担当索引と照合し、別の担当を送信先に差し替えない。

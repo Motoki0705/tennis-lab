@@ -45,7 +45,7 @@ DOCS = [
     ROOT / ".agents/ops/lib/README.md",
     ROOT / ".agents/ops/review/README.md",
     ROOT / ".agents/ops/dispatcher/parent_bootstrap.md",
-    ROOT / ".agents/ops/parent/development_workflow.md",
+    *sorted((ROOT / ".agents/skills/parent-session/references").glob("*.md")),
     ROOT / ".agents/ops/board/README.md",
     ROOT / ".agents/ops/herdr_labels/README.md",
     ROOT / ".agents/skills/parent-session/SKILL.md",
@@ -173,55 +173,38 @@ def test_relative_links_resolve(doc: Path) -> None:
     assert not broken, f"{doc.relative_to(ROOT)}: broken links: {broken}"
 
 
-@pytest.mark.parametrize(
-    "relative",
-    [
-        ".agents/ops/parent/README.md",
-        ".agents/ops/parent/development_workflow.md",
-    ],
-)
-def test_review_examples_use_fixed_model(relative: str) -> None:
-    """Normal review examples need only the PRs, evidence and instruction."""
-    source = (ROOT / relative).read_text().replace("\\\n", " ")
-    shell = re.findall(r"```bash\n(.*?)```", source, re.DOTALL)
-    examples = [line for block in shell for line in block.splitlines()]
-    examples += re.findall(r"`([^`]+)`", "\n".join(_lines_outside_fences(source)))
-    checked = []
-    for example in examples:
-        if "review-request" not in example:
-            continue
-        tokens = shlex.split(example)
-        has_targets = "--prs" in tokens and tokens.index("--prs") + 1 < len(tokens)
-        new_request = "review-request" in tokens and has_targets
-        if not new_request:
-            continue
-        assert "--review-model" not in tokens and "--model-reason-file" not in tokens
-        for flag in ("--instruction-file", "--evidence-file"):
-            assert flag in tokens, f"{relative}: {example} requires {flag}"
-            assert tokens.index(flag) + 1 < len(tokens)
-        checked.append(example)
-    assert checked, f"{relative}: no concrete review example was checked"
-
-
-def test_parent_assignment_summary_examples_use_supported_cli(
+def test_parent_cli_help_examples_match_the_parser(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
     cli = importlib.import_module("parent.cli_impl")
+    guidance = importlib.import_module("parent.cli_help")
     service = importlib.import_module("herdr_labels.service")
-    readme = (ROOT / ".agents/ops/parent/README.md").read_text()
-    operations = set()
-    for block in re.findall(r"```bash\n(.*?)\n```", readme, re.DOTALL):
-        for line in block.replace("\\\n", " ").splitlines():
-            if "-m parent " not in line or "--summary" not in line:
-                continue
-            words = shlex.split(line)
-            args = cli.parser().parse_args(words[words.index("parent") + 1 :])
+    root = cli.parser()
+    for name, example in guidance.EXAMPLES.items():
+        tokens = shlex.split(example.splitlines()[0])
+        args = root.parse_args(["--parent", "1216", *tokens])
+        assert args.command == name
+        if name in {"register", "handoff"}:
             assert service.validate_summary(args.summary) == args.summary
-            if args.command == "handoff":
-                assert args.accept
-            operations.add(args.command)
-    assert operations == {"register", "handoff"}
+        if name == "review-request":
+            assert args.review_model is None and args.model_reason_file is None
+
+
+def test_skill_routes_each_cli_topic_to_a_reference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    topics = importlib.import_module("parent.cli_help").TOPICS
+    skill = ROOT / ".agents/skills/parent-session/SKILL.md"
+    references = {
+        path for _, path, _ in _links(skill) if path.startswith("references/")
+    }
+    assert references == {"references/" + name + ".md" for name in topics}
+    assert references == {
+        str(p.relative_to(skill.parent))
+        for p in (skill.parent / "references").glob("*.md")
+    }
 
 
 def test_entry_chain_from_agents_md_to_memory_summary() -> None:
@@ -244,9 +227,8 @@ def test_entry_chain_from_agents_md_to_memory_summary() -> None:
 def test_decision_record_entry_is_reachable_from_operational_docs() -> None:
     specification = ROOT / ".agents/ops/decision_logs/README.ja.md"
     for name in (
-        ".agents/skills/parent-session/SKILL.md",
+        ".agents/skills/parent-session/references/finish.md",
         ".agents/ops/parent/README.md",
-        ".agents/ops/parent/development_workflow.md",
         ".agents/ops/worker_logs/README.md",
         ".agents/ops/lib/README.md",
     ):
