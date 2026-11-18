@@ -27,6 +27,7 @@ def worker(directory, command):
     with (directory / "threads.log").open("w", buffering=1) as stream:
         faulthandler.enable(stream, all_threads=True)
         faulthandler.register(signal.SIGUSR1, stream, all_threads=True)
+        faulthandler.register(signal.SIGTERM, stream, all_threads=True, chain=True)
         heartbeat("worker import")
         try:
             runpy.run_path(command[0], run_name="__main__")
@@ -35,6 +36,7 @@ def worker(directory, command):
             raise
         finally:
             faulthandler.unregister(signal.SIGUSR1)
+            faulthandler.unregister(signal.SIGTERM)
             faulthandler.disable()
 
 
@@ -62,8 +64,14 @@ def supervise(directory, command):
     last_stamp = beat.stat().st_mtime_ns
     process = subprocess.Popen([sys.executable, "-u", __file__, "--worker", str(directory), *command])
     failure = None
+
+    def on_terminate(signum, frame):
+        nonlocal failure
+        failure = "supervisor_received_sigterm"
+
+    old_term = signal.signal(signal.SIGTERM, on_terminate)
     try:
-        while process.poll() is None:
+        while process.poll() is None and failure is None:
             stamp = beat.stat().st_mtime_ns
             if stamp != last_stamp:
                 last_change = time.monotonic()
@@ -93,6 +101,7 @@ def supervise(directory, command):
         print(json.dumps(status), flush=True)
         return 1
     finally:
+        signal.signal(signal.SIGTERM, old_term)
         if process.poll() is None:
             process.kill()
 

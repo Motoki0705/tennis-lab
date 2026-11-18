@@ -212,6 +212,7 @@ def run_nodes(runner, targets, run_dir, phase, case, keep_appearance):
                 if measurement.pose_rows:
                     result[stage]["pose_rows"] = measurement.save_poses(runner.output(stage))
         write_json_atomic(run_dir / f"{phase}.json", result)
+    write_json_atomic(run_dir / f"{phase}.json", result)
     return result
 
 
@@ -241,6 +242,27 @@ def run_case(cfg, clip_input, code_identity, shared, case_dir, baseline, clip_id
     write_json_atomic(case_dir / "complete.json", {"condition": condition, "clip_id": clip_id})
 
 
+def previous_case(case_dir, source, condition, resume, archive):
+    if not case_dir.exists():
+        return False
+    if not resume:
+        raise FileExistsError(case_dir)
+    marker = case_dir / "complete.json"
+    if marker.exists():
+        if json.loads(marker.read_text()) != {"condition": condition, "clip_id": source.clip_id}:
+            raise ValueError(f"Wrong completion receipt: {marker}")
+        if json.loads((case_dir / "store/scene.json").read_text())["source"] != json_value(source):
+            raise ValueError(f"Completed case source changed: {case_dir}")
+        return True
+    destination = archive / condition / case_dir.name
+    if destination.exists():
+        raise FileExistsError(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    case_dir.rename(destination)
+    print(f"Archived interrupted case {case_dir} at {destination}", flush=True)
+    return False
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", required=True, type=Path)
@@ -249,6 +271,7 @@ def main():
     parser.add_argument("--pin", required=True, type=Path)
     parser.add_argument("--smoke", type=Path)
     parser.add_argument("--freeze", action="store_true")
+    parser.add_argument("--resume", action="store_true", help="Retain complete cases after interruption")
     args = parser.parse_args()
     args.dataset, args.shared_root, args.output = args.dataset.resolve(), args.shared_root.resolve(), args.output.resolve()
     if not args.freeze:
@@ -262,18 +285,31 @@ def main():
     if json.loads(args.pin.read_text()) != pin:
         raise ValueError("Benchmark inputs changed")
     validate_dino_extension()
-    write_json_atomic(args.output / "environment.json", {
+    environment = {
         "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "run_id": os.environ["TENNIS_RUN_ID"], "gpu": torch.cuda.get_device_name(),
         "torch": str(torch.__version__), "cuda": torch.version.cuda, "code_identity": code_identity,
-    })
+    }
+    environment_path = args.output / "environment.json"
+    if args.resume:
+        saved = json.loads(environment_path.read_text())
+        for key in ("code_identity", "gpu", "torch", "cuda"):
+            if saved[key] != environment[key]:
+                raise ValueError(f"Cannot resume with changed {key}")
+        environment_path = args.output / f"environment-{environment['run_id']}.json"
+    if environment_path.exists():
+        raise FileExistsError(environment_path)
+    write_json_atomic(environment_path, environment)
+    archive = args.output / "interrupted" / environment["run_id"]
     for condition in CONDITIONS:
         cfg = config(args, condition)
         for clip_id, (clip, inputs) in clips.items():
             heartbeat(f"{condition}/{clip_id} preparing isolated store")
             name = clip_id.split("/")[-1]
-            run_case(cfg, inputs, code_identity, shared, args.output / condition / name,
-                     args.output / "fp32" / name / "store", clip_id, condition)
+            case_dir = args.output / condition / name
+            if not previous_case(case_dir, inputs.source, condition, args.resume, archive):
+                run_case(cfg, inputs, code_identity, shared, case_dir,
+                         args.output / "fp32" / name / "store", clip_id, condition)
             clip.snapshot.assert_unchanged()
     write_json_atomic(args.output / "complete.json", {"conditions": list(CONDITIONS), "clips": list(CLIP_IDS)})
 
