@@ -4,12 +4,12 @@ type: run
 task: tennis_scene
 sequence: 52
 recorded_at: '2026-11-18'
-title: runtime両版がGPU完走し読込は各1回、BF16 Ball差分で厳密比較は不合格
+title: 親がBF16 Ballの物理量条件を明示改訂し、GPU共有runtimeのa5を受入
 issue: 1751
 provider: codex
 session: 01a1e969-a58c-7d10-be3e-4e0795fd9e18
 date: '2026-11-18'
-status: failed
+status: done
 config:
   profile: pipeline_x3d_dpt
   clip: meiji_3cam/video_000/clip_000
@@ -67,6 +67,10 @@ metrics:
   ball_3d_max_l2_m: 0.00036189522009106684
   raw_detection_max_axis_px: 0.1287841796875
   raw_confidence_max_abs: 0.0008233785629272461
+  c3_parent_acceptance: true
+  ball_uv_limit_px: 0.5
+  ball_3d_l2_limit_m: 0.001
+  raw_detection_max_l2_px: 0.13514859957900016
 repro:
   commit: 1bef628a9c2c5761d241ddc5c1b98c0f89625b35
   branch: codex/scene-inference-runtime
@@ -89,7 +93,45 @@ tags:
 summary_impact: none
 ---
 
-## 結論と判定
+## 親の明示判断による受入（2026-11-18）
+
+親 #1734 の継続指示（turn `f6e27954492945258ae4abc0a89dbea6`）で、**a5をC3受入として合格**とした。
+これは当初の不合格を隠す変更ではなく、以下の根拠に基づく**親による受入条件の明示的な改訂**である。
+全mask・ID・人物系出力が完全一致し、差がBF16 Ballだけに限られ、
+検出の最大0.129px・最終3D位置L2最大0.362mmはモデルの検出誤差（数px）より2桁小さく
+下流の判断を変えない、と親が判断した。FP32の決定的経路を想定した当初の汎用条件はBF16には厳しすぎた、という判断である。
+
+| 対象 | 親が改訂したC3条件 | a5のCPU再判定 |
+|---|---|---|
+| BF16 Ball検出uv | 元画像で0.5px以内（再判定は各点の2D L2を使用） | 最大約0.135px、合格（成分最大0.129px） |
+| 最終Ball 3D位置 | 位置L2で1mm以内 | 最大0.362mm、合格 |
+| observed・mask・ID等の離散値 | 完全一致 | 全て一致 |
+| その他の出力 | 元のfloat atol=1e-6 / rtol=1e-5、離散値は完全一致 | 維持して合格 |
+
+Ballのheatmap・scoreと派生floatの元比較値も全て保存し、改訂後のBall判定は親が指定した
+uv・最終3D位置・observed/maskを用いる。他モデルやscene内の人物配列へ条件を広げていない。
+[改訂条件と判断理由](../../runs/run-i1751-runtime-gpu-a5/parent-acceptance-policy.json)と
+[保存済み成果物をCPUで再評価した判定](../../runs/run-i1751-runtime-gpu-a5/parent-acceptance.json)を追加した。
+新しい判定は `parent_acceptance=true`、元の `numerical_acceptance=false`、queue failed/比較exit1は保持する。
+本nodeのstatus doneはこの親のC3受入を表し、元の実行結果を成功へ変更するものではない。
+
+差分の説明として、モデル再利用による実行順・compile/kernel選択の違いに伴うBF16の丸め差が考えられる。
+両版のbatch sizeは1で同一であり、今回batch構成の差を観測したとはしていない。
+個別kernelの同定はしておらず、原因候補という範囲に留める。追加のGPU実行は行っていない。
+
+この改訂は推論srcを変更しない。通常pytestの追加はなく、保存済み結果のCPU再判定、
+物理量境界・他モデル差分拒否・mask差分拒否の6チェック、knowledge構造・再現入口の検証を用いる。
+再判定はrepo rootから次で再現できる（CPUのみ、原結果を上書きしない）。
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -B knowledge/runs/run-i1751-runtime-gpu-a5/assess_parent_acceptance.py \
+  outputs/tennis_scene/evaluate/runtime-i1751-20261118-a5 \
+  --output /tmp/i1751-parent-acceptance.json
+```
+
+
+
+## 当初の判定（元条件は不合格）
 
 親の指示によるa5を共有training queue（resource=all）から1回だけ実行した。
 main・runtimeの両版が全1010frameを完走し、31component成果物とSceneResult `ok` を保存した。
@@ -97,7 +139,7 @@ CUDAエラー・heartbeat停止・NVML無応答は検出せず、GPU再投入は
 モデル共有・最終需要後の解放は実GPUのload/unload記録で確認できたが、
 **事前のfloat atol=1e-6 / rtol=1e-5をBallの差分が超えたため、厳密な成果物比較は不合格**。
 比較処理exit1によりqueueもfailedとなった。GPU推論の終了コードは両方0であり、区別して扱う。
-PR #2182はDraftを維持し、差分の受入判断を親へ返す。数値条件を事後に広げて合格とはしていない。
+初回報告時はPR #2182をDraftとし、親へ受入判断を返した。元条件で合格だったという記録へ書き換えない。
 
 [集計と全モデルの計測値](../../runs/run-i1751-runtime-gpu-a5/acceptance-summary.json)、
 [全配列・JSONの比較](../../runs/run-i1751-runtime-gpu-a5/comparison-completed.json)、
@@ -173,7 +215,7 @@ JSON payloadと最終metadataも別途比較し、side検証costの差などは�
 両archiveを公開APIで再読込してschema検証した。
 ball 3D有効772frame、2人のSMPL有効1000/993frameなどのvalidity集計も両版で一致する。
 
-## 原因について分かった範囲と親への判断
+## 原因について分かった範囲
 
 全入力pin・dtype・batch・モデル重みは一致し、`src/tasks/ball_detection` は両commitでbyte変更なし。
 従ってBallの移植コード差を見つけた結果ではない。一方、この1組には同じmainの再実行対照がなく、
@@ -188,7 +230,7 @@ BF16 dense heatmap最大0.0004399512の差が残った記録がある。
 CUDA畳込みのalgorithm選択と演算自体の決定性を分けて説明する。参照文書は2.15、実行環境は2.13であり、
 これも今回の原因を証明する資料とはしない。
 
-親には、今回のBall差分をC3受入として許容するかの判断を返す。
+初回報告で親へ返した差分の受入判断は、下記の明示改訂によって解決した。
 追加のGPU対照実験は今回の「a5を1回だけ」の指示に含めず、未実施のまま残す。
 
 ## CPU検証・保存範囲
@@ -210,5 +252,5 @@ queueが作った原本は `queue-repro.sh` にbyte単位で保存し、run.json
 CPU再集計は新しい出力先で `compare_completed.py` → `analyze_completed.py` の順に行える。
 予測NPY/NPZ・NVMLの生sample・profileは元outputsへ保持し、knowledgeには移していない。
 
-`summary_impact: none`。実行基盤の受入比較であり、標準pipelineのcheckpoint・X3D採否・3D精度の現行判断を更新しない。
+`summary_impact: none`。statusを親のC3受入に合わせてdoneへ変更したが、標準pipelineのcheckpoint・X3D採否・3D精度についてsummary.mdの現行判断を更新する結果ではない。
 学習ではないためTensorBoard曲線は対象外。
