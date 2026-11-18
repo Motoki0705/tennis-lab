@@ -8,3 +8,6 @@ knowledge/runs/run-ball-detection-ui-gpu-smoke-20260915/uncommitted.patch -white
 knowledge/runs/run-court-detection-ui-gpu-smoke-20260915/uncommitted.patch -whitespace
 knowledge/runs/run-blcs-web-ui-gpu-smoke-20260914/uncommitted.patch -whitespace
 knowledge/runs/run-plcs-web-ui-gpu-smoke-20260914/uncommitted.patch -whitespace
+
+# Preserve the original bytes of captured GPU diagnostics.
+knowledge/runs/run-i1752-doubles-20261118/nvidia-smi-q.stdout.log -whitespace

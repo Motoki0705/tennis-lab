@@ -1,0 +1,15 @@
+{
+  "variant": "batch",
+  "started_at_utc": "2026-11-18T01:06:26.439578+00:00",
+  "status": "failed",
+  "device_memory_sampling_ms": 1000,
+  "device_memory_samples": 2216,
+  "query_timeout_seconds": 10.0,
+  "heartbeat_timeout_seconds": 180.0,
+  "driver": "621.24",
+  "pid": 1623769,
+  "returncode": 1,
+  "finished_at_utc": "2026-11-18T01:45:48.963894+00:00",
+  "device_memory_peak_mib": 4968,
+  "device_memory_min_mib": 791
+}

@@ -1,0 +1,22 @@
+{
+  "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/batch/progress/96c394a0bfed4019a4e1182d091be2d6/progress.json": {
+    "bytes": 47240,
+    "sha256": "1412a1883f567fc075a95018171aa707cc652f8c95c08539a40975644102f142"
+  },
+  "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/batch/progress/96c394a0bfed4019a4e1182d091be2d6/recording.json": {
+    "bytes": 13980389,
+    "sha256": "7daa49dbd1a7250f24d35bb22f9aaaf632d8f5db0fa3c0d685e5c7fdc814a701"
+  },
+  "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/batch.log": {
+    "bytes": 18065,
+    "sha256": "95ec1bb1a57b4600c6c1818edae5e400518d0c61fc7999aadcd10a1fb6f7bb14"
+  },
+  "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/source-dataset.json": {
+    "bytes": 19916,
+    "sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099"
+  },
+  "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/automatic-summary.json": {
+    "bytes": 34150,
+    "sha256": "a39d0811ccb5a7c27fca148f06538fcfda36e23edd71608d793d5a7964957e88"
+  }
+}

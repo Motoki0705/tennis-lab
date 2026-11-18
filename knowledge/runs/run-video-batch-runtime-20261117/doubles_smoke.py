@@ -38,8 +38,8 @@ def main():
     assert "pipeline_config=pipeline_x3d_dpt" in args and "video_id=video_000" in args
     assert next(a for a in args if a.startswith("pipeline_overrides=")).count("players_per_side=2") == 1
 
-    nodes = {"a": {"ball/cam0": {"seconds": 7, "status": "executed"}, "ball/cam1": {"seconds": 3, "status": "executed"}, "court_calibration": {"seconds": 2, "status": "executed"}, "hmr2": {"seconds": 4, "status": "executed"}},
-             "b": {"ball/cam0": {"seconds": 5, "status": "executed"}, "ball/cam1": {"seconds": 5, "status": "executed"}, "court_calibration": {"seconds": 3, "status": "executed"}, "hmr2": {"seconds": 6, "status": "failed"}, "late": {"seconds": None, "status": "blocked"}}}
+    nodes = {"a": {"ball/cam0": {"seconds": 7, "status": "executed"}, "ball/cam1": {"seconds": 3, "status": "executed"}, "court_calibration": {"seconds": 2, "status": "executed"}, "hmr2": {"seconds": 4, "status": "executed"}, "court_detection/cam0": {"seconds": 3, "status": "executed"}, "court_detection/cam1": {"seconds": 1, "status": "executed"}},
+             "b": {"ball/cam0": {"seconds": 5, "status": "executed"}, "ball/cam1": {"seconds": 5, "status": "executed"}, "court_calibration": {"seconds": 3, "status": "executed"}, "hmr2": {"seconds": 6, "status": "failed"}, "late": {"seconds": None, "status": "blocked"}, "court_detection/cam0": {"seconds": 2, "status": "executed"}, "court_detection/cam1": {"seconds": 4, "status": "executed"}}}
     events = [{"attributes": {"clip_id": "a", "node": "ball/cam0"}, "stage": "model_load", "start_ns": 0, "end_ns": 2_000_000_000}]
     estimates = stage_estimates(nodes, events, {"a": 10, "b": 30}, 400, 6, 2)
     assert estimates["ball"]["estimated_69clip_seconds"] == 182  # 2 + (20 - 2) * 800/80
@@ -48,14 +48,15 @@ def main():
     assert estimates["hmr2"]["failed_node_seconds"] == 6
     assert estimates["late"]["estimated_69clip_seconds"] is None
     assert estimates["court_calibration"]["estimated_69clip_seconds"] == 15
-    recording = {"total_wall_seconds": 50, "events": [
+    assert estimates["court_detection"]["estimated_69clip_seconds"] == 30  # 10s * (6 clips*2cam)/(2 clips*2cam)
+    recording = {"total_wall_seconds": 60, "events": [
         {"attributes": {"clip_id": "a", "node": "scene_export"}, "status": "ok", "depth": 0, "start_ns": 1_000_000_000, "end_ns": 4_000_000_000},
         {"attributes": {"clip_id": "a", "node": "scene_export"}, "status": "ok", "depth": 1, "start_ns": 2_000_000_000, "end_ns": 3_000_000_000},
         {"attributes": {"clip_id": "a", "node": "clip_publication"}, "status": "ok", "depth": 0, "start_ns": 5_000_000_000, "end_ns": 7_000_000_000}]}
-    overhead = overhead_estimates(recording, estimates, 2, 6)
+    overhead = overhead_estimates(recording, estimates, 2, 6, {"a": 10, "b": 30}, 400)
     assert [r["measured_seconds"] for r in overhead["stages"]] == [3, 2]
-    assert [r["estimated_69clip_seconds"] for r in overhead["stages"]] == [18, 12]  # one complete clip
-    assert overhead["estimated_69clip_remaining_seconds_range"] == [10, 30]  # 50 - (20 + 5 + 4 + 6) - 5
+    assert [r["estimated_69clip_seconds_range"] for r in overhead["stages"]] == [[18, 120], [12, 80]]  # one complete clip
+    assert overhead["estimated_69clip_remaining_seconds_range"] == [10, 30]  # 60 - (20 + 5 + 4 + 6 + 10) - 5
 
     events = [dict(model=model, status="complete", action=action, instance=model)
               for model in RUNTIME_MODELS for action in ("load", "unload")]

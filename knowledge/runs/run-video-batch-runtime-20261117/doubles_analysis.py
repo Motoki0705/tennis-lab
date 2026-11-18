@@ -14,7 +14,7 @@ sys.path.insert(0, str(C3))
 from health_guard import write  # noqa: E402
 
 RUNTIME_MODELS = ("ball", "dino", "vitpose", "appearance", "hmr2", "gvhmr", "body_geometry")
-PER_CLIP = {"court_calibration"}
+PER_CLIP = {"court_detection", "court_calibration"}
 
 
 def read(path):
@@ -90,7 +90,7 @@ def stage_estimates(nodes, events, frames_by_clip, full_frames, full_clips, came
         units = sum(frames_by_clip[clip] for clip, _, _ in success)
         clips = sorted({clip for clip, _, _ in success})
         if family in PER_CLIP:
-            ratio = full_clips / len(success) if success else None
+            ratio = full_clips * (cameras if camera_stage else 1) / len(success) if success else None
         else:
             ratio = full_frames * (cameras if camera_stage else 1) / units if units else None
         estimates[family] = {
@@ -107,7 +107,7 @@ def stage_estimates(nodes, events, frames_by_clip, full_frames, full_clips, came
     return estimates
 
 
-def overhead_estimates(recording, estimates, sample_clips, full_clips):
+def overhead_estimates(recording, estimates, sample_clips, full_clips, frames_by_clip, full_frames):
     spans = []
     for name in ('scene_export', 'clip_publication'):
         rows = [e for e in recording['events'] if e['attributes'].get('node') == name]
@@ -116,9 +116,12 @@ def overhead_estimates(recording, estimates, sample_clips, full_clips):
         complete = [e for e in outer if e['status'] == 'ok']
         seconds = sum((e['end_ns'] - e['start_ns']) / 1e9 for e in complete)
         clips = sorted({e['attributes']['clip_id'] for e in complete})
+        frame_units = sum(frames_by_clip[clip] for clip in clips)
+        scenarios = sorted((seconds * full_clips / len(clips), seconds * full_frames / frame_units)) if clips else None
         spans.append({'stage': name, 'measured_seconds': sum((e['end_ns'] - e['start_ns']) / 1e9 for e in outer),
                       'successful_seconds': seconds, 'successful_clip_ids': clips,
-                      'estimated_69clip_seconds': seconds * full_clips / len(clips) if clips else None})
+                      'sample_frame_units': frame_units, 'scaling': 'clip_count_and_source_frame_scenarios',
+                      'estimated_69clip_seconds_range': scenarios})
     node_seconds = sum(row['measured_node_seconds'] for row in estimates.values())
     remaining = recording['total_wall_seconds'] - node_seconds - sum(row['measured_seconds'] for row in spans)
     if remaining < -0.1:
@@ -217,18 +220,20 @@ def report(root):
             records = [v for v in dataset["clips"] if v["video_id"] == "video_000"]
             full_frames = sum(v["num_frames"] for v in records)
             result["full_video"] = {"clips": len(records), "frames_per_camera": full_frames}
-            estimates = stage_estimates(progress["nodes"], recording["events"],
-                {r["clip_id"]: r["num_frames"] for r in read(root / "input-manifest.json")["selected_records"]},
+            frames = {r["clip_id"]: r["num_frames"] for r in read(root / "input-manifest.json")["selected_records"]}
+            estimates = stage_estimates(progress["nodes"], recording["events"], frames,
                 full_frames, len(records), 4)
             result["stage_estimates"] = estimates
             result["estimated_69clip_node_hours"] = sum(row["estimated_69clip_seconds"] or 0 for row in estimates.values()) / 3600
-            result["overhead_estimates"] = overhead_estimates(recording, estimates, 3, len(records))
+            result["overhead_estimates"] = overhead_estimates(recording, estimates, 3, len(records), frames, full_frames)
             overhead = result["overhead_estimates"]
-            projected = [row["estimated_69clip_seconds"] for row in [*estimates.values(), *overhead["stages"]]]
-            base = None if any(value is None for value in projected) else sum(projected)
-            result["estimated_69clip_wall_hours_range"] = None if base is None else [(base + value) / 3600 for value in overhead["estimated_69clip_remaining_seconds_range"]]
+            projected = [row["estimated_69clip_seconds"] for row in estimates.values()]
+            complete_estimate = all(value is not None for value in projected) and all(row["estimated_69clip_seconds_range"] is not None for row in overhead["stages"])
+            result["estimated_69clip_wall_hours_range"] = None if not complete_estimate else [
+                (sum(projected) + sum(row["estimated_69clip_seconds_range"][i] for row in overhead["stages"]) + value) / 3600
+                for i, value in enumerate(overhead["estimated_69clip_remaining_seconds_range"])]
             result["estimate_complete_sample"] = result["all_three_completed"]
-            result["estimate_limits"] = "Conditional all-success projection from actually executed nodes: lifecycle fixed once, calibration/export/publication by successful clips, other nodes by successful source-frame units (camera units for camera nodes). Failed and blocked work is excluded from successful-stage rates. Remaining preparation overhead has fixed-to-clip-linear scenarios based on all 3 attempts. Includes first compile and global profiler overhead, no repeated trials. Entry import/preflight outside the recorder is additional. Not a confidence interval or a promise of full69 success; not a speedup ratio."
+            result["estimate_limits"] = "Conditional all-success projection from actually executed nodes: lifecycle fixed once, court/calibration by successful clip/camera units, other nodes by successful source-frame units. Export/publication has clip-linear to frame-linear scenarios; remaining preparation has video-fixed to clip-linear scenarios. Failed/blocked work is excluded from successful-stage rates. Includes first compile and global profiler overhead, no repeated trials. Entry import/preflight outside the recorder is additional. Not a confidence interval or a promise of full69 success; not a speedup ratio."
     reference = terminal.get("reference_clip")
     if reference and not result["cuda_anomaly"] and terminal["outcomes"].get("single", {}).get("status") == "complete":
         result["comparison"] = compare_reference(root, reference, terminal)

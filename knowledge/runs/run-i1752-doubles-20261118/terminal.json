@@ -1,0 +1,57 @@
+{
+  "queue_job": "0-8205036025841795872_2026-11-18T01-06-14-158204127Z_1621468_i1752-doubles-three-20261118-a1",
+  "commit": "e296a5fb358bee9ed9974821943d055f31c1e360",
+  "started_at_utc": "2026-11-18T01:06:26.438503+00:00",
+  "status": "failed",
+  "outcomes": {
+    "batch": {
+      "variant": "batch",
+      "started_at_utc": "2026-11-18T01:06:26.439578+00:00",
+      "status": "failed",
+      "device_memory_sampling_ms": 1000,
+      "device_memory_samples": 2216,
+      "query_timeout_seconds": 10.0,
+      "heartbeat_timeout_seconds": 180.0,
+      "driver": "621.24",
+      "pid": 1623769,
+      "returncode": 1,
+      "finished_at_utc": "2026-11-18T01:45:48.963894+00:00",
+      "device_memory_peak_mib": 4968,
+      "device_memory_min_mib": 791,
+      "diagnostics": {
+        "started_at_utc": "2026-11-18T01:45:48.964750+00:00",
+        "pid": 1623769,
+        "stack_file": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/health/batch-threads.log",
+        "stack_obtained_before_sigterm": true,
+        "command": [
+          "/usr/lib/wsl/lib/nvidia-smi",
+          "--id=0",
+          "-q",
+          "-d",
+          "PERFORMANCE,CLOCK,POWER,TEMPERATURE"
+        ],
+        "query_started_at_utc": "2026-11-18T01:45:48.964811+00:00",
+        "query_returncode": 0,
+        "finished_at_utc": "2026-11-18T01:45:49.105736+00:00",
+        "process_alive_before_sigterm": false,
+        "stack_bytes_before_sigterm": 9713
+      }
+    }
+  },
+  "players_per_side": 2,
+  "profile": "pipeline_x3d_dpt",
+  "clips": [
+    "video_000/clip_000",
+    "video_000/clip_037",
+    "video_000/clip_027"
+  ],
+  "qualification": {
+    "all_three_completed": false,
+    "doubles_identity_counts_ok": false,
+    "body_exports_present": false,
+    "comparison_strict": false,
+    "runtime_lifetimes_ok": false,
+    "cuda_anomaly": true
+  },
+  "finished_at_utc": "2026-11-18T01:45:51.814657+00:00"
+}
