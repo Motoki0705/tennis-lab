@@ -51,8 +51,10 @@ class PoseEstimationModule:
                 uv, confidence, tracks.observed.T[None], tracks.track_ids[None], boxes)
         if self.require_evidence:
             raise ValueError('Feature tracker lost per-detection pose evidence; regenerate upstream artifacts')
+        runtime = config.runtime.vitpose
         pose = ViTPosePose2D(config.vitpose_checkpoint, device=config.runtime.device,
-            flip_test=config.runtime.vitpose.flip_test, batch_size=config.runtime.vitpose.batch_size, head_config=config.runtime.vitpose.head)
+            flip_test=runtime.flip_test, batch_size=runtime.batch_size, head_config=runtime.head,
+            precision=runtime.precision)
         try:
             for p, track_id in enumerate(ids):
                 indices = tracked.observed_mask(track_id).nonzero().flatten()

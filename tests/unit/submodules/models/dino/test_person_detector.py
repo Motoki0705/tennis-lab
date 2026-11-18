@@ -1,7 +1,9 @@
 """Unit tests for DINO person-only decoding and checkpoint validation."""
 
+import sys
 from argparse import Namespace
 from pathlib import Path
+from types import ModuleType
 
 import numpy as np
 import pytest
@@ -11,11 +13,36 @@ from numpy.typing import NDArray
 from src.submodules.models import DinoPersonDetector, PersonDetectionRequest
 from src.submodules.models.dino.architecture import (
     preprocess_frame,
+    use_fp32_deformable_attention,
     validate_checkpoint_args,
     validate_dino_repository,
 )
 from src.submodules.models.dino.person_detector import decode_person_detections
 from src.tasks.person_tracking.duplicate_boxes import merge_person_boxes
+
+
+def test_mixed_dino_wraps_only_deformable_attention_in_fp32(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DeformableAttention(torch.nn.Module):
+        def forward(self, query, reference_points, value, shapes, starts, mask):
+            assert not torch.is_autocast_enabled("cpu")
+            assert query.dtype == reference_points.dtype == value.dtype == torch.float32
+            assert shapes.dtype == starts.dtype == torch.int64
+            assert mask.dtype == torch.bool
+            return query + reference_points + value
+
+    upstream = ModuleType("fake_dino_attention")
+    upstream.__dict__["MSDeformAttn"] = DeformableAttention
+    monkeypatch.setitem(sys.modules, "_tennis_lab_third_party_dino_models.dino.ops.modules", upstream)
+    model = torch.nn.Sequential(DeformableAttention(), torch.nn.Linear(2, 2)).eval()
+    use_fp32_deformable_attention(model)
+    args = [torch.ones(1, 2, dtype=torch.bfloat16)] * 3 + [
+        torch.ones(1, 2, dtype=torch.int64), torch.zeros(1, dtype=torch.int64), torch.ones(1, dtype=torch.bool),
+    ]
+    with torch.autocast("cpu", dtype=torch.bfloat16):
+        value = model[0](*args)
+        assert value.dtype == torch.float32
+        assert model[1](value).dtype == torch.bfloat16
+    torch.testing.assert_close(value, torch.full((1, 2), 3.0))
 
 
 def test_decode_person_detections_filters_sorts_and_scales() -> None:

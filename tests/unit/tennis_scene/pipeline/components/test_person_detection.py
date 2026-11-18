@@ -1,4 +1,5 @@
 """Full-frame detections do not depend on calibration or a court polygon."""
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -16,6 +17,8 @@ def test_full_frame_keeps_off_court_people_without_calibration(tmp_path: Path, m
     boxes = np.array([[1, 1, 20, 40], [600, 400, 630, 470]], np.float32)
     calls: list[dict[str, Any]] = []
     people = make_people_config(tmp_path)
+    people = replace(people, runtime=replace(people.runtime, device="cuda",
+        dino_detector=replace(people.runtime.dino_detector, precision="fp16")))
 
     class Detector:
         def __init__(self, checkpoint: Path, repository: Path, **kwargs: Any) -> None:
@@ -28,13 +31,15 @@ def test_full_frame_keeps_off_court_people_without_calibration(tmp_path: Path, m
             pass
 
     monkeypatch.setattr(module, 'DinoPersonDetector', Detector)
+    monkeypatch.setattr(module, 'release_inference_memory', lambda device: None)
     monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k: [SimpleNamespace(index=0, frame=np.zeros((480, 640, 3), np.uint8))])
     video = SourceVideo('cam2', tmp_path / 'x.mp4', 'hash', 1, 30., 640, 480)
     result = module.PersonDetectionModule(people).process(module.PersonDetectionInput(video))
     assert result.frame_offsets.tolist() == [0, 2]
     np.testing.assert_array_equal(result.boxes_xyxy, boxes)
     assert calls == [{'device': people.runtime.device, 'confidence': people.runtime.dino_detector.confidence,
-                      'short_side': people.runtime.dino_detector.short_side, 'max_long_side': people.runtime.dino_detector.max_long_side}]
+                      'short_side': people.runtime.dino_detector.short_side, 'max_long_side': people.runtime.dino_detector.max_long_side,
+                      'precision': 'fp16'}]
     assert not module.PersonDetectionModule.io.inputs
 
 

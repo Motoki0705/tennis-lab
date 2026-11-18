@@ -62,9 +62,10 @@ class PersonDetectionModule:
             return PersonDetectionOutput(inputs.video.camera_id, np.zeros(inputs.video.num_frames + 1, np.int64),
                 np.zeros((0, 4), np.float32), np.zeros(0, np.float32), np.empty(0, np.int64))
         config = self.config
+        runtime = config.runtime.dino_detector
         detector = DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
-            device=config.runtime.device, confidence=config.runtime.dino_detector.confidence,
-            short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side)
+            device=config.runtime.device, confidence=runtime.confidence, short_side=runtime.short_side,
+            max_long_side=runtime.max_long_side, precision=runtime.precision)
         offsets = [0]
         boxes: list[NDArray[np.float32]] = []
         scores: list[NDArray[np.float32]] = []

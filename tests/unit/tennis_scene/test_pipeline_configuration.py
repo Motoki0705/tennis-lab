@@ -12,7 +12,7 @@ from omegaconf import OmegaConf
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.frame_sampling import sampled_frame_indices
-from src.utils.configuration import UnknownConfigurationKeyError
+from src.utils.configuration import ConfigurationError, UnknownConfigurationKeyError
 from src.utils.configuration.errors import PathContractError
 
 
@@ -41,6 +41,31 @@ def test_defaults_associate_players_and_decide_sides() -> None:
     assert len(runtime.camera_ids) == 3
     assert runtime.player_placement.temporal_weight == 0.05
     assert runtime.player_placement.min_joints == 5
+    assert runtime.people.runtime.dino_detector.precision == "fp32"
+    assert runtime.people.runtime.vitpose.precision == "fp32"
+    assert runtime.people.runtime.vitpose.flip_test is True
+
+
+@pytest.mark.parametrize("precision", ["bf16", "fp16"])
+def test_person_precision_accepts_explicit_cuda_autocast(precision: str) -> None:
+    runtime = _runtime([f"people_models.runtime.{model}.precision={precision}" for model in ("dino_detector", "vitpose")])
+    assert runtime.people.runtime.dino_detector.precision == precision
+    assert runtime.people.runtime.vitpose.precision == precision
+
+
+@pytest.mark.parametrize(
+    ("overrides", "error"),
+    [
+        (["people_models.runtime.dino_detector.precision=half"], "dino_detector.precision"),
+        (["people_models.runtime.vitpose.precision=32"], "vitpose.precision"),
+        (["~people_models.runtime.vitpose.precision"], "vitpose.precision"),
+        (["device=cpu", "people_models.runtime.dino_detector.precision=bf16"], "DINO requires a CUDA device"),
+        (["device=cpu", "people_models.runtime.vitpose.precision=fp16"], "ViTPose requires CUDA"),
+    ],
+)
+def test_person_precision_rejects_invalid_configuration(overrides: list[str], error: str) -> None:
+    with pytest.raises(ConfigurationError, match=error):
+        _runtime(overrides)
 
 
 def test_saved_six_threshold_court_side_config_restores_clip_mode(tmp_path: Path) -> None:
