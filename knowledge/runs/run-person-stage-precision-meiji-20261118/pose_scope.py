@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from compare import Case, compare_labels, labels_by_detection
 from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.tasks.person_tracking.sequence import DatasetTrackingConfig, track_sequence
 from src.tasks.person_tracking.strongsort_offline import AFLink
-from src.tennis_scene.pipeline.artifacts import write_json_atomic
+from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
@@ -112,10 +113,13 @@ def main():
     parser.add_argument("--dataset", required=True, type=Path)
     parser.add_argument("--shared-root", required=True, type=Path)
     parser.add_argument("--run", required=True, type=Path)
+    parser.add_argument("--pin", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     args.dataset, args.shared_root, args.output = args.dataset.resolve(), args.shared_root.resolve(), args.output.resolve()
-    _, clips, identity, shared = prepare_cases(args)
+    pin, clips, identity, shared = prepare_cases(args)
+    if pin != json.loads(args.pin.read_text()):
+        raise ValueError("Pose scope inputs changed")
     cfg = replace(config(args, "fp32"), device="cpu")
     result = {}
     for clip_id, (_, inputs) in clips.items():
@@ -123,10 +127,13 @@ def main():
         if not (path / "complete.json").exists():
             continue
         source = inputs.source
+        baseline = Case(path)
+        if baseline.source != json_value(source):
+            raise ValueError("Pose scope observations and source disagree")
         nodes = {node.name: node.component for node in standard_definition(
             cfg, source, code_identity=identity, video_court=shared,
         )}
-        result[clip_id] = replay(Case(path), source, cfg, nodes)
+        result[clip_id] = replay(baseline, source, cfg, nodes)
         write_json_atomic(args.output / "pose-scope.json", result)
 
 

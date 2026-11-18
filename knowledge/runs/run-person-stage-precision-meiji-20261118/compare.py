@@ -21,6 +21,7 @@ from src.tennis_scene.pipeline.components.triangulation import PlayerTriangulati
 from src.tennis_scene.pipeline.observation_types import ObjectObservations
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+from src.utils.checksum import dual_sha256
 from src.utils.schema.player import COCO17_SKELETON
 from src.utils.video import read_video_frame
 
@@ -201,7 +202,10 @@ def compare_camera(base, candidate, camera, threshold, overlay_image):
     if overlay_image:
         video = base.videos[camera]
         index = video["num_frames"] // 2
-        frame = read_video_frame(Path(video["path"]), index).frame
+        path = Path(video["path"])
+        if dual_sha256(path) != video["sha256"]:
+            raise ValueError(f"Overlay video changed: {path}")
+        frame = read_video_frame(path, index).frame
         frame = cv2.convertScaleAbs(frame, alpha=.72)
         overlay(frame, select_a, index, (255, 230, 70), thickness=6, threshold=threshold)
         overlay(frame, select_b, index, (90, 160, 255), thickness=3, threshold=threshold)
