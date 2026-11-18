@@ -81,6 +81,7 @@ class VideoCourtSideArtifact:
 
     @classmethod
     def load(cls, directory: Path, digest: str) -> VideoCourtSideArtifact:
+        directory = directory.resolve()
         decision: VideoSideDecision = restore_type(load_document(directory, digest), VideoSideDecision)
         if decision.schema != SCHEMA:
             raise ValueError("Unknown shared court side artifact schema")

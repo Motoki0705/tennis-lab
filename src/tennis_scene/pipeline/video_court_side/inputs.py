@@ -45,6 +45,7 @@ class PinnedSideInputs:
 
     @classmethod
     def from_store(cls, directory: Path) -> PinnedSideInputs:
+        directory = directory.resolve()
         index = json.loads((directory / "scene.json").read_text())
         if index.get("schema") != "tennis_scene_index_v1":
             raise ValueError("Invalid court side input store schema")

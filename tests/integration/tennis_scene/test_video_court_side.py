@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict, replace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -206,6 +208,8 @@ def test_build_once_load_and_invalidate_only_side_consumers(tmp_path, monkeypatc
 
 def test_reject_foreign_missing_and_stale_inputs(tmp_path, monkeypatch):
     pipeline, _, sources, court, pins = prefix_stores(tmp_path, monkeypatch, "static")
+    local_pin = pins[CLIPS[0]]
+    assert PinnedSideInputs.from_store(Path(os.path.relpath(local_pin.directory))) == local_pin
     with pytest.raises(ValueError, match="all clips"):
         build(pipeline, court, {CLIPS[0]: pins[CLIPS[0]]}, tmp_path)
     with pytest.raises(ValueError, match="membership"):
