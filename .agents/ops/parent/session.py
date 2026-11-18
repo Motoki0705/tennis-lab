@@ -1342,7 +1342,15 @@ class ParentSession:
             )
         if restart:
             nonempty(restart, "restart evidence")
-            if previous.get("delegated") and (
+            previous_id = previous.get("delegation_id", "legacy")
+            launched = any(
+                r["delegation_id"] == previous_id
+                for r in previous.get("worker_runs", [])
+            ) or any(
+                job.get("delegation_id") == previous_id
+                for job in (self.row.get("dispatch") or {}).get("jobs", {}).values()
+            )
+            if launched and (
                 previous.get("worker_ended", {}).get("delegation_id")
                 != previous.get("delegation_id", "legacy")
             ):

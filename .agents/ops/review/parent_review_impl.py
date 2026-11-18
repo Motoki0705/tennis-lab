@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -27,39 +26,14 @@ def completed_result(review_dir: Path, materials: dict[str, Any]) -> dict[str, A
     runtime = review_dir / "agent-runtime"
     record = read(runtime / "result.json")
     final = runtime / "final.md"
-    # A transient reconnect may be reported as runtime_error even after a
-    # clean CLI exit. Require the terminal event and exact final in that case.
-    completed = record.get("result") == "completed" and record.get("exit_code") == 0
-    runtime_errors = (record.get("runtime") or {}).get("runtime_errors", [])
+    from lib.agent_events import runtime_errors_failed
+
     if (
-        not completed
-        and runtime_errors
-        and all(
-            e.get("type") == "error"
-            and e.get("message", "").startswith("Reconnecting...")
-            for e in runtime_errors
-        )
-        and record.get("turn_end_reason") == "runtime_error"
-        and record.get("cli_exit_code") == 0
+        record.get("result") != "completed"
+        or record.get("exit_code") != 0
+        or record.get("cleanup_complete") is not True
+        or runtime_errors_failed(record)
     ):
-        events = [
-            json.loads(line)
-            for line in (runtime / "events.jsonl").read_text().splitlines()
-            if line.strip()
-        ]
-        messages = [
-            e["item"]["text"]
-            for e in events
-            if e.get("type") == "item.completed"
-            and e.get("item", {}).get("type") == "agent_message"
-        ]
-        completed = bool(
-            events
-            and events[-1].get("type") == "turn.completed"
-            and messages
-            and messages[-1].strip() == final.read_text().strip()
-        )
-    if not completed or record.get("cleanup_complete") is not True:
         raise ValueError("review runtime did not complete and clean up")
     if (
         record.get("final_path") != str(final)

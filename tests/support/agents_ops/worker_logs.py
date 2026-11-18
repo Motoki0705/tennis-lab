@@ -283,6 +283,7 @@ class LogEnv:
             gh=SimpleNamespace(repo="o/r"),
             parent=parent,
         )
+        session.worker_task = lambda number: session.row["tasks"][str(number)]
         prompt = "standard\n" + str(tree) + "\n" + instruction
         path = sources.freeze(session, child, prompt, self.standard)
         self.sessions.append(session)
