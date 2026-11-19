@@ -128,7 +128,7 @@ class PersonAppearanceFeaturesOutput:
     encoder: str
     encoder_identity: str
     preprocessing_identity: str
-    frame_sha256: NDArray[np.uint8]  # T,32; zero for frames with no detections
+    frame_sha256: NDArray[np.uint8]  # T,32; zero when proof is disabled or the frame has no detections
 
     def __post_init__(self) -> None:
         _validate_axis(self.camera_id, self.frame_offsets, self.source_rows)
@@ -243,11 +243,12 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
                      {'detections': InputPort('person_detections', 2)}, APPEARANCE_FEATURES_PORT.schema, APPEARANCE_FEATURES_PORT.version)
 
     def __init__(self, encoder: ModelSpec[AppearanceEncoder] | None, config: FeatureConfig = DEFAULT_CONFIG, *,
-                 enabled: bool = True, batch_size: int | None = None) -> None:
+                 enabled: bool = True, batch_size: int | None = None, capture_frame_sha256: bool = False) -> None:
         from dataclasses import replace
         self.encoder = encoder
         self.config = config if batch_size is None else replace(config, appearance_batch_size=batch_size)
         self.enabled = enabled
+        self.capture_frame_sha256 = capture_frame_sha256
         if enabled and encoder is None:
             raise ValueError('Appearance features require an explicit encoder declaration')
 
@@ -255,15 +256,18 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
         return {'encoder': self.encoder} if self.enabled and self.encoder is not None else {}
 
     def cache_identity(self) -> dict[str, Any]:
+        return {**self.preprocessing_settings(), 'capture_frame_sha256': self.capture_frame_sha256}
+
+    def preprocessing_settings(self) -> dict[str, Any]:
         return appearance_feature_settings(self.config, self.enabled)
 
     def validate_artifact(self, descriptor: Mapping[str, Any], settings: Mapping[str, Any]) -> None:
         _validate_saved_metadata(descriptor['payload'], settings, specs=self.model_specs(),
-                                 model_field='encoder_identity', preprocessing=self.cache_identity())
+                                 model_field='encoder_identity', preprocessing=self.preprocessing_settings())
 
     def validate_output(self, output: PersonAppearanceFeaturesOutput, settings: Mapping[str, Any]) -> None:
         _validate_saved_metadata({'encoder_identity': output.encoder_identity, 'preprocessing_identity': output.preprocessing_identity},
-                                 settings, specs=self.model_specs(), model_field='encoder_identity', preprocessing=self.cache_identity())
+                                 settings, specs=self.model_specs(), model_field='encoder_identity', preprocessing=self.preprocessing_settings())
 
     def process_with_models(self, inputs: PersonAppearanceFeaturesInput, models: ModelBorrower) -> PersonAppearanceFeaturesOutput:
         video, detections = inputs.video, inputs.detections
@@ -286,11 +290,11 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
                     # Same input validation as FeatureExtractor, before cropping.
                     DetectionFeatures(frame, rows[start:end], detections.boxes_xyxy[start:end], detections.confidence[start:end],
                         None, embeddings[start:end], valid[start:end])
-                    if start != end:
+                    if self.capture_frame_sha256 and start != end:
                         frame_sha256[frame] = appearance_image_digest(image)
                     yield from iter_appearance_crops(frame, image, rows[start:end], detections.boxes_xyxy[start:end],
                                                      None, encoder, self.config)
             for batch in appearance_batches(crops(), self.config.appearance_batch_size):
                 scatter_appearance(batch, infer_appearance(batch, encoder), row_indices, embeddings, valid)
         return PersonAppearanceFeaturesOutput(video.camera_id, detections.frame_offsets, rows, embeddings, valid, CLIP_ENCODER, identity,
-                                               document_digest(self.cache_identity()), frame_sha256)
+                                               document_digest(self.preprocessing_settings()), frame_sha256)

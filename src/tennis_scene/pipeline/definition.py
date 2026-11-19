@@ -132,7 +132,8 @@ def standard_model_components(cfg: PipelineRuntimeConfig, ids: tuple[str, ...]) 
         "ball_detection": ImportedBallAnnotationModule() if cfg.ball_detection is None else BallDetectionModule(cfg.ball_detection),
         "person_detection": PersonDetectionModule(cfg.people, enabled=people, merge_duplicates=cfg.merge_duplicate_person_boxes),
         "person_pose_features": pose,
-        "person_appearance_features": PersonAppearanceFeaturesModule(tracking, cfg.tracking.features, enabled=people),
+        "person_appearance_features": PersonAppearanceFeaturesModule(tracking, cfg.tracking.features, enabled=people,
+            capture_frame_sha256=cfg.reuse_clip_embeddings),
         "person_tracking": PersonTrackingModule(cfg.tracking, aflink_checkpoint=cfg.aflink_checkpoint, enabled=people,
             expected_pose=pose.model_specs().get('pose'), expected_encoder=tracking),
         "player_selection": PlayerSelectionModule(selection, footpoints=association.footpoints, sampling=sampling,
@@ -360,7 +361,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         if isinstance(pose_component, PersonPoseFeaturesModule) and isinstance(appearance_component, PersonAppearanceFeaturesModule):
             tracker = PersonTrackingModule(cfg.tracking, aflink_checkpoint=cfg.aflink_checkpoint, enabled=people_enabled,
                 expected_pose=pose_component.model_specs().get('pose'), expected_encoder=appearance_component.model_specs().get('encoder'),
-                pose_preprocessing=pose_component.cache_identity(), appearance_preprocessing=appearance_component.cache_identity())
+                pose_preprocessing=pose_component.cache_identity(), appearance_preprocessing=appearance_component.preprocessing_settings())
         add(f"person_tracking/{camera}", tracker, PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}", "poses": f"person_pose_features/{camera}",
              "appearance": f"person_appearance_features/{camera}"}, partial(tracking_settings, tracker), camera=camera)

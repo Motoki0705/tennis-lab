@@ -122,6 +122,9 @@ def test_association_reuse_policy_separates_cache_and_publication(tmp_path: Path
     assert not fresh.identity['settings']['reuse_clip_embeddings']
     assert changed.identity['settings']['reuse_clip_embeddings']
     assert set(changed.dependencies) - set(fresh.dependencies) == {'detections_cam0', 'appearance_cam0'}
+    features = 'person_appearance_features/cam0'
+    assert not decision(cfg, tmp_path, store, features).identity['settings']['capture_frame_sha256']
+    assert decision(reuse, tmp_path, store, features).identity['settings']['capture_frame_sha256']
     assert TennisSceneOrchestrator(cfg).publication_identity() != TennisSceneOrchestrator(reuse).publication_identity()
 
 

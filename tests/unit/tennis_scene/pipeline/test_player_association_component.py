@@ -185,7 +185,7 @@ def test_saved_crops_preserve_association_and_rejected_samples(monkeypatch: pyte
     tracks[0].boxes_xyxy[2, 1] = tracks[0].boxes_xyxy[0, 1]  # A duplicated/overlapped observation.
     encoder = PixelEncoder()
     spec = fake_encoder_spec(lambda: encoder)
-    producer = person_features.PersonAppearanceFeaturesModule(spec)
+    producer = person_features.PersonAppearanceFeaturesModule(spec, capture_frame_sha256=True)
     track_boxes = {track.camera_id: track for track in tracks}
     person_channels = {'cam0': [20, 170, 90], 'cam1': [170, 20], 'cam2': [20, 170]}
 

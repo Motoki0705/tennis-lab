@@ -172,7 +172,7 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 | node / schema | version | 数値配列と契約 |
 |---|---|---|
 | `person_pose_features/<camera>` / `person_pose_features` | 2 | `frame_offsets` int64 (T+1)、`source_rows` int64 (N)、`keypoints` float32 (N,17,3)、`model_identity`・`preprocessing_identity`。元画素x/yと加工しないheatmap peak |
-| `person_appearance_features/<camera>` / `person_appearance_features` | 4 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、CLIP encoder名・`encoder_identity`・`preprocessing_identity`。検出のあるframeはデコード済みBGR画像の`frame_sha256` uint8 (T,32)を持つ。無効cropはzero＋false |
+| `person_appearance_features/<camera>` / `person_appearance_features` | 4 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、CLIP encoder名・`encoder_identity`・`preprocessing_identity`。再利用が有効なら検出のあるframeのデコード済みBGR画像のSHA-256を`frame_sha256` uint8 (T,32)に記録する。無効cropはzero＋false |
 | `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v2・外観特徴v4のcamera・全frame offset・元row・期待するモデル/前処理identityを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
 | `player_selection/<camera>` / `selected_player_tracks` | 3 | 保存した追跡特徴の選別とgroup軸への対応付け |
 | `pose_estimation/<camera>` / `person_poses` | 2 | 選別groupの実観測poseを再利用。標準経路で再推論しない |
@@ -248,6 +248,7 @@ poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、ha
 シングルス/ダブルスは`player_association.players_per_side`で明示する。CLIPの重みを資産identityに含める。
 `player_association.reuse_clip_embeddings`は既定の`false`で全sampleを再推論し、`true`で保存特徴の再利用を有効にする。
 `true`では通常のsampling後に元検出row・box・画像・encoder・前処理を照合し、一致した個別embeddingを読む。
+`true`に切り替えた初回は画像SHA-256を含む外観特徴を生成する。
 照合できないsampleはカメラ内で最大64cropずつ同じCLIP runtimeで推論する。方針はcache identityに含まれ、
 `diagnostics.appearance`に再利用数・再推論数とtrackごとのframe・理由が残る。
 比較用の旧尺度・別encoderはtaskの比較APIから使用する。

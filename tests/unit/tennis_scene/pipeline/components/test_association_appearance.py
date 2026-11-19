@@ -44,6 +44,7 @@ class PixelEncoder:
     ('preprocessing', 'feature_identity_mismatch', [0, 1, 3]),
     ('row_from_another_frame', 'detection_row_mismatch', [1]),
     ('invalid_rows', 'appearance_invalid', [0, 3]),
+    ('image_evidence_missing', 'image_evidence_missing', [0, 1, 3]),
     ('missing_detection_evidence', 'missing_detection_evidence', [0, 1, 3]),
 ])
 def test_only_matching_samples_skip_encoding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
@@ -64,7 +65,7 @@ def test_only_matching_samples_skip_encoding(tmp_path: Path, monkeypatch: pytest
     weights.write_bytes(b'CLIP weights A')
     encoder = PixelEncoder()
     spec = replace(fake_encoder_spec(lambda: encoder), weights={'checkpoint': weights})
-    features_module = person_features.PersonAppearanceFeaturesModule(spec)
+    features_module = person_features.PersonAppearanceFeaturesModule(spec, capture_frame_sha256=change != 'image_evidence_missing')
     feature_data = features_module.process(person_features.PersonAppearanceFeaturesInput(video, detections))
     boxes: NDArray[np.float32] = np.zeros((1, 4, 4), np.float32)
     boxes[0, [0, 1, 3]] = detections.boxes_xyxy
@@ -74,7 +75,7 @@ def test_only_matching_samples_skip_encoding(tmp_path: Path, monkeypatch: pytest
     track_embeddings[0, [0, 1, 3], 99] = 1
     evidence = TrackEvidence(np.array([[3, 8, -1, 19]], np.int64), None, track_embeddings, observed, CLIP_ENCODER)
     tracks = PersonTrackingOutput(video.camera_id, np.array([11], np.int64), boxes, observed, ((11,),), (), evidence)
-    preprocessing = features_module.cache_identity()
+    preprocessing = features_module.preprocessing_settings()
 
     if change == 'box':
         boxes[0, 1, 0] += .125  # Different raw box with identical rounded pixels.

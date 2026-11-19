@@ -184,7 +184,7 @@ def run(clips: list[FrozenClip], output: Path, weights: Path, checkpoint_root: P
     spec = appearance_model(CLIP_ENCODER, weights, DEVICE,
                             lambda: MeasuredEncoder(build_encoder(CLIP_ENCODER, checkpoint=weights, device=DEVICE,
                                 checkpoint_root=checkpoint_root, external_root=external_root)))
-    producer = PersonAppearanceFeaturesModule(spec)
+    producer = PersonAppearanceFeaturesModule(spec, capture_frame_sha256=True)
     declarations = {(clip.inputs.source.clip_id, stage): {'encoder': spec} for clip in clips for stage in
         (*[f'features/{c}' for c in clip.inputs.source.camera_ids], *[str(i) for i in range(len(MODES))])}
     measurements: dict[str, Any] = {}

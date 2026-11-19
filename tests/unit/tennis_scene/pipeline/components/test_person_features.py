@@ -72,7 +72,7 @@ def test_pose_and_appearance_keep_rows_empty_frames_and_tail(tmp_path: Path, mon
     assert seen == list(range(5))
     np.testing.assert_array_equal(poses.keypoints[:, 0], np.array([[10, 19, 1.4], [43, 16, 1.4], [15, 25, 1.4], [46, 27, 1.4]], np.float32))
     Encoder.calls = []
-    appearance = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=3))
+    appearance = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=3, capture_frame_sha256=True))
     features = appearance.process(module.PersonAppearanceFeaturesInput(request.video, request.detections))
     assert Encoder.calls == [3, 1]  # crosses frames, including an incomplete final batch
     for artifact in (poses, features):

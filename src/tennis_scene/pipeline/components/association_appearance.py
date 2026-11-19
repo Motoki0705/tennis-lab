@@ -87,20 +87,21 @@ def camera_track_appearances(
     def missing_crops() -> Iterator[tuple[int, int, NDArray[np.float32]]]:
         for packet, track_rows in iter_sampled_frames(video.path, samples):
             frame, image = packet.index, packet.frame
-            image_matches = False
+            reason_for_frame = camera_reason
             if detection_rows is not None:
                 assert saved is not None
-                image_matches = (image.shape == (video.height, video.width, 3) and image.dtype == np.uint8
-                                 and np.array_equal(appearance_image_digest(image), saved.features.frame_sha256[frame]))
+                frame_sha256 = saved.features.frame_sha256[frame]
+                if not frame_sha256.any():
+                    reason_for_frame = 'image_evidence_missing'
+                elif (image.shape != (video.height, video.width, 3) or image.dtype != np.uint8
+                      or not np.array_equal(appearance_image_digest(image), frame_sha256)):
+                    reason_for_frame = 'image_mismatch'
             for track in track_rows:
                 box = tracks.boxes_xyxy[track, frame]
-                value, reason = None, camera_reason
-                if detection_rows is not None:
-                    assert saved is not None and tracks.evidence is not None
-                    if image_matches:
-                        value, reason = _sample_feature(saved, detection_rows, frame, int(tracks.evidence.detection_rows[track, frame]), box)
-                    else:
-                        reason = 'image_mismatch'
+                value, reason = None, reason_for_frame
+                if not reason:
+                    assert detection_rows is not None and saved is not None and tracks.evidence is not None
+                    value, reason = _sample_feature(saved, detection_rows, frame, int(tracks.evidence.detection_rows[track, frame]), box)
                 if value is not None:
                     embeddings[track][frame] = value
                     reused[track].append(frame)

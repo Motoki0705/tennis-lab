@@ -114,7 +114,7 @@ def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
                            preprocessing_identity=document_digest(component.cache_identity()))
         if isinstance(component, PersonAppearanceFeaturesModule):
             return replace(value, encoder_identity=models.identity('encoder'),
-                           preprocessing_identity=document_digest(component.cache_identity()))
+                           preprocessing_identity=document_digest(component.preprocessing_settings()))
         return value
 
     for stage in _CAMERA_STAGES:
