@@ -1,0 +1,58 @@
+{"at_utc": "2026-11-17T16:33:51.563972+00:00", "commit": "18a2fea05291eeaccb6d1dbfc81160e26c4080dd", "elapsed_seconds": 55.83672016399987, "event": "pipeline_start"}
+2026-11-18 01:34:41,317 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"at_utc": "2026-11-17T16:34:41.318493+00:00", "elapsed_seconds": 106.01223268700005, "event": "backend_load_start", "model": "court"}
+2026-11-18 01:34:42,795 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-18 01:34:42,989 dinov3 INFO using base=100 for rope new
+2026-11-18 01:34:42,989 dinov3 INFO using min_period=None for rope new
+2026-11-18 01:34:42,989 dinov3 INFO using max_period=None for rope new
+2026-11-18 01:34:42,989 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-18 01:34:42,989 dinov3 INFO using shift_coords=None for rope new
+2026-11-18 01:34:42,989 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-18 01:34:42,990 dinov3 INFO using jitter_coords=None for rope new
+2026-11-18 01:34:42,990 dinov3 INFO using dtype=fp32 for rope new
+2026-11-18 01:34:42,991 dinov3 INFO using mlp layer as FFN
+{"at_utc": "2026-11-17T16:34:48.569578+00:00", "elapsed_seconds": 113.26331683299986, "event": "backend_load_return", "model": "court", "seconds": 7.251083049000044}
+2026-11-18 01:35:39,397 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"at_utc": "2026-11-17T16:35:39.397399+00:00", "elapsed_seconds": 164.0911380069997, "event": "backend_load_start", "model": "court"}
+2026-11-18 01:35:40,678 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-18 01:35:40,695 dinov3 INFO using base=100 for rope new
+2026-11-18 01:35:40,695 dinov3 INFO using min_period=None for rope new
+2026-11-18 01:35:40,695 dinov3 INFO using max_period=None for rope new
+2026-11-18 01:35:40,695 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-18 01:35:40,695 dinov3 INFO using shift_coords=None for rope new
+2026-11-18 01:35:40,696 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-18 01:35:40,696 dinov3 INFO using jitter_coords=None for rope new
+2026-11-18 01:35:40,696 dinov3 INFO using dtype=fp32 for rope new
+2026-11-18 01:35:40,696 dinov3 INFO using mlp layer as FFN
+{"at_utc": "2026-11-17T16:35:44.220890+00:00", "elapsed_seconds": 168.9146286250002, "event": "backend_load_return", "model": "court", "seconds": 4.823490544000379}
+2026-11-18 01:36:14,419 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"at_utc": "2026-11-17T16:36:14.420089+00:00", "elapsed_seconds": 199.11382826900035, "event": "backend_load_start", "model": "court"}
+2026-11-18 01:36:15,665 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-18 01:36:15,681 dinov3 INFO using base=100 for rope new
+2026-11-18 01:36:15,682 dinov3 INFO using min_period=None for rope new
+2026-11-18 01:36:15,682 dinov3 INFO using max_period=None for rope new
+2026-11-18 01:36:15,682 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-18 01:36:15,682 dinov3 INFO using shift_coords=None for rope new
+2026-11-18 01:36:15,682 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-18 01:36:15,682 dinov3 INFO using jitter_coords=None for rope new
+2026-11-18 01:36:15,682 dinov3 INFO using dtype=fp32 for rope new
+2026-11-18 01:36:15,683 dinov3 INFO using mlp layer as FFN
+{"at_utc": "2026-11-17T16:36:18.666505+00:00", "elapsed_seconds": 203.3602437630002, "event": "backend_load_return", "model": "court", "seconds": 4.246415306000017}
+2026-11-18 01:37:12,012 src.tennis_scene.pipeline.components.ball_detection INFO Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"at_utc": "2026-11-17T16:37:12.013163+00:00", "elapsed_seconds": 256.7069017150002, "event": "backend_load_start", "model": "ball"}
+{"at_utc": "2026-11-17T16:37:13.398063+00:00", "elapsed_seconds": 258.09180256900027, "event": "backend_load_return", "model": "ball", "seconds": 1.3849034900003971}
+2026-11-18 01:38:34,651 src.tennis_scene.pipeline.components.ball_detection INFO Ball trajectory gate rejected 0 frame(s): []
+2026-11-18 01:38:44,439 src.tennis_scene.pipeline.components.ball_detection INFO Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"at_utc": "2026-11-17T16:38:44.440184+00:00", "elapsed_seconds": 349.1339249030002, "event": "backend_load_start", "model": "ball"}
+{"at_utc": "2026-11-17T16:38:44.798610+00:00", "elapsed_seconds": 349.4923506800001, "event": "backend_load_return", "model": "ball", "seconds": 0.35842584800047916}
+2026-11-18 01:38:55,415 src.tennis_scene.pipeline.components.ball_detection INFO Ball trajectory gate rejected 2 frame(s): [126, 127]
+2026-11-18 01:39:12,791 src.tennis_scene.pipeline.components.ball_detection INFO Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"at_utc": "2026-11-17T16:39:12.791749+00:00", "elapsed_seconds": 377.4854891689997, "event": "backend_load_start", "model": "ball"}
+{"at_utc": "2026-11-17T16:39:13.128960+00:00", "elapsed_seconds": 377.8227000080001, "event": "backend_load_return", "model": "ball", "seconds": 0.33721160300046904}
+2026-11-18 01:39:22,091 src.tennis_scene.pipeline.components.ball_detection INFO Ball trajectory gate rejected 5 frame(s): [464, 465, 844, 843, 845]
+{"at_utc": "2026-11-17T16:39:37.114701+00:00", "elapsed_seconds": 401.80844101400044, "event": "backend_load_start", "model": "dino"}
+/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/TensorShape.cpp:4215.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+{"at_utc": "2026-11-17T16:39:40.998595+00:00", "elapsed_seconds": 405.6923347779998, "event": "backend_load_return", "model": "dino", "seconds": 3.8838946890000443}

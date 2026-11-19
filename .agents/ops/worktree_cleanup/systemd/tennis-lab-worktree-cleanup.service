@@ -1,0 +1,16 @@
+[Unit]
+Description=tennis-lab: forcibly expire registered worktrees after 336 hours
+Documentation=file://%h/projects/tennis-lab/.agents/ops/worktree_cleanup/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PYTHONPATH=%h/projects/tennis-lab/.agents/ops
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/checkout_job.py --repo %h/projects/tennis-lab -- %h/projects/tennis-lab/.venv/bin/python -m worktree_cleanup cleanup
+# Stop includes Git/queue/runner helpers. A persisted intent is replayed by the
+# next invocation if OFF or a host shutdown interrupts filesystem deletion.
+KillMode=control-group
+TimeoutStartSec=infinity
+TimeoutStopSec=60
+Nice=10
+IOSchedulingClass=idle

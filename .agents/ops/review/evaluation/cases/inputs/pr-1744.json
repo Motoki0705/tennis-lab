@@ -1,0 +1,263 @@
+{
+  "schema_version": 1,
+  "case_id": "pr-1744",
+  "cutoff": "2026-11-08T14:35:23.204032+00:00",
+  "context": {
+    "parent": {
+      "body": "## 目的・背景\n\n### 目的\n保存済みのテニスシーン3D再構築結果を活用し、試合中にプレイしている各選手の頭部や顔の向きに追従する選手視点動画を生成する。例えば4人の試合であれば各人1本ずつ、計4本の動画を出力し、視聴者が見たい選手の視点を自由に選択できるようにする。\n\n### 背景と受入の進め方\n初期の受入対象は、既存の中間生成物が保存されているシーンの2人それぞれを対象とした視点動画とする。\n段階的な検証として、初めにBlender上で3D再構築の人物・球のみを描画し、その後に既存B00〜B03の3DGS背景へ同一の人物・球を組み込む。\nなお、プレイデータの統計抽出については、本件とは切り離して別の仮置き親issue #1722 で管理する。\n\n## 全体のスコープ\n\n### 対象範囲\n- 保存済みSceneResult v2、または対応する保存済みcomponent storeから、人物のSMPL・球の時系列・FPS・有効性maskを取得する。\n- 選択した人物ごとに、頭部・顔の向きから仮配置したピンホールカメラでプレイを動画化する。\n- 人物を灰色の標準的なSMPL mesh、ボールを3D座標を中心とする緑色の球体として描画する。\n- 第1フェーズ: 3DGSを使わず、既存のBlender書き出しと球体の時系列アニメーションを拡張する。\n- 第2フェーズ: 既存B00〜B03内の選択したコートへ人物・球・カメラを配置し、3DGS背景と合成する。\n- 入力、人物ID、時刻、カメラ・球・材質の仮設定、欠測の扱い、および出力動画を対応付けて保存する。\n\n### 対象外\n- 視聴中の自由な視点・視線操作、リアルタイムレンダリング、VR、眼球視線の推定。\n- 顔のカメラ位置・向きの本格的な調整、最終的なボール外観の作り込み。\n- 人物の写実化・衣服再現・人物3DGS、背景の新規再構築や再学習。\n- 元動画からの再推論・再学習をプロトタイプの必須条件にすること。\n- 統計抽出。公開サイト・共有URL・ホスティングの実装は今回の動画生成の受入範囲に含めず、後続で扱う。\n\n## 全体方針・合意事項\n\n### ユーザー合意内容\n2026-11-07のユーザーとの会話に基づく。\n\n> 「最初の成果物としては、任意の人物のプレイ中の視点の動画を提供できるようにします。」\n> 「動的にその人の視線を動かしたりすることはしません。」\n> 「顔にあるカメラについての調整は今後の課題とし、プロトタイプとして今回は仮置きするような形にしたいと思います。」\n> 「1つのフェーズとしては、3DGSを組み込まない形式で、3D再構成だけで任意のプレイヤーの視点のレンダリングができるようにすることです。」\n> 「その後に3DGSでその実装を導入し、背景の組み立てを行います。」\n\n初期の受入対象に関する確認への回答: **「2人それぞれの視点動画」**。\n\n### 子issue設計の確認（2026-11-07）\n\n[6件の設計案](https://github.com/Motoki0705/tennis-lab/issues/1723#issuecomment-6708422368)について、ユーザーから次の指示を受けた。\n\n> 「C3のフェーズで人間による定性確認を行わせましょう。それ以外は良い設計だと思うので、実際に子issueを作成してください。」\n\nC3の人間確認は、動画を提示するだけで完了としない。視点の向き・追従、身体と球の見え方、時間対応、欠測表示を確認してもらい、対象動画・設定と人間の判断を記録する。指摘があれば修正・再提示し、人間の受入確認をC5開始の条件にする。C3のPR作成やCI成功だけではこの条件を満たさない。\n\n### 基本方針と前提条件\n- **背景アセットの選定**: 固定カメラ3〜5台の試合動画から作り直すのではなく、合成データ生成で利用しているB00〜B03を使う。灰色のSMPL・緑色の球は既に指定済み。\n- **カメラ動作と仮置きパラメータ**: カメラは視聴者が操作せず、時系列の頭部姿勢に従う。眼球視線は再現しない。顔のオフセット・画角等は調整可能な仮設定とし、品質調整を初期完成の前提にしない。\n- **前景の不透明性と遮蔽の扱い**: ユーザーのαを大きくする提案は、SMPLと球を不透明な前景として扱いたい意図として記録する。通常のopacity αは1が完全不透明であり、無限大は設定しない。前景の不透明性と背景による遮蔽は別に検証する。3DGSの密度・opacityパラメータを無条件に変更して解決しない。\n- **親issueの位置づけ**: 親issue作成後、6件の子issue設計を提示した。2026-11-07、ユーザーはC3に人間による定性確認を追加し、それ以外の設計を了承して子issueの実作成を指示した。今回の作業範囲は子issue作成・親子関係・依存と合意の記録まで。実装・worker起動・mergeはこの指示から開始しない。\n\n## 全体の完了条件\n\n### 第1フェーズ（3DGSなし）\n- [ ] 既存の保存済み中間生成物を入力として、2人それぞれの選手視点動画が生成される。\n- [ ] 灰色で不透明なSMPLと緑色で不透明な球を、同一の元時間軸に沿ってBlenderで描画できる。\n- [ ] ピンホールカメラが選択人物の頭部位置・向きに追従し、仮の顔オフセット・画角等が明示されている。視聴者操作は不要。\n- [ ] 視点本人の頭部によって画面全体が塞がらず、自分のmeshの表示・非表示方針が記録されている。\n- [ ] 人物・球・カメラの欠測を、ゼロ座標や無断の補間で正常な観測に見せない。動画の時間対応と欠測の扱いを確認できる。\n- [ ] 2本の動画、再生成手順、入力・人物ID・仮設定の対応を提示し、人間が動画で確認できる。\n- [ ] C3で2人それぞれの動画を人間が定性的に確認し、その確認対象・判断・修正指摘と対応を記録している。人間の受入確認前に第2フェーズの本番統合C5へ進まない。\n\n### 第2フェーズ（3DGS背景あり）\n- [ ] B00〜B03とその保存済みコート配置から背景シーン・コートを明示選択できる。受入描画に使うシーン・コートは記録する。\n- [ ] 第1フェーズの同じプレイ・2人のカメラ時系列を、選択コートの座標とNHTの単位へ正しく変換して描画できる。\n- [ ] 背景と前景でカメラの内部・外部パラメータ、解像度、フレーム時刻が一致し、人物・球の大きさや位置がずれない。\n- [ ] 不透明なSMPL・球が背景に透けず、ネットなどによる前後関係も検証されている。単なる前景の最前面貼り付けを完成としない。\n- [ ] 背景ありの2人それぞれの視点動画と、第1フェーズとの比較・再生成手順を提示する。\n\n### 人数および背景の受入要件\n4人を固定要求にせず、入力中の人物IDを選んで動画を生成できる設計とする。初期の実データ受入は2人。全4背景・全コートの動画を網羅的に作ることは初期受入の必須条件にしない。\n\n## 子タスクのチェックリスト\n\n- [ ] #1725 保存済みシーンから動画生成用の共通bundleを作る\n- [ ] #1726 配置済みSMPLと一致する頭部追従カメラを生成する\n- [ ] #1727 Blenderで2人それぞれの選手視点動画を生成し、人間の定性確認を受ける\n- [ ] #1728 3DGSと不透明前景の奥行き合成方式を小規模に検証する\n- [ ] #1729 選択コートの3DGS背景と人物・球を同一カメラで合成する\n- [ ] #1730 3DGS背景ありの2人の視点動画を生成し比較・再現手順を整える\n\n## 進捗概要\n\n子の起動予約: #1728。上限: 2。\n- #1725: 継続 — 既存PRを照合して継続する: #1744 / 委任予約済み。既存worker・worktreeを照合する。\n- #1726: 継続 — 起動可能（stacked branch: PR #1744）\n- #1727: 継続 — 依存先 #1726: 利用できるPRが一意でない（0件）。\n- #1728: 継続 — 委任予約済み。既存worker・worktreeを照合する。\n- #1729: 停止 — C3の2人分の選手視点動画について、人間による定性受入確認がまだない。（詳細・再開条件: #1729）。 / 依存先 #1726: 利用できるPRが一意でない（0件）。 / 依存先 #1727: 利用できるPRが一意でない（0件）。 / 依存先 #1728: 利用できるPRが一意でない（0件）。\n- #1730: 依存保留 — 停止・取消された依存先: #1729 / 依存先 #1726: 利用できるPRが一意でない（0件）。 / 依存先 #1727: 利用できるPRが一意でない（0件）。 / 依存先 #1728: 利用できるPRが一意でない（0件）。\n\n## 依存関係・進め方\n\n### 実施ステップ\n1. 保存済み入力を固定する。再推論せず取得可能なSMPL・球・時間軸・maskと人物IDを照合する。\n2. 第1フェーズで既存Blender経路を拡張し、頭部カメラの仮配置と人物別動画生成を実装・検証する。\n3. 第1フェーズの成果と検証を揃え、C3の2人分の動画について人間の定性確認を受けてから、第2フェーズの背景合成C5へ進む。C4の資産確認・合成方式の先行調査は独立して進められる。\n4. 既存NHTの公開描画入口を利用し、同じカメラで得るRGB・alpha・depthと前景の合成方式を具体化する。\n5. 背景なし／ありの動画で、人間が位置関係と視点を比較できる形にする。\n\n### 関連タスク\n統計抽出は #1722 と独立。両者が共有する元の座標・時間軸・maskを保ち、表示用の変更を元データへ書き戻さない。具体的な子issueの依存は分割時に設定する。\n\n## 未決事項・人間の判断が必要な点\n\n### 実装担当が具体化するプロトタイプ設定\n- 使用する保存scene/component storeと受入用のフレーム区間、対応する2人のID。\n- 頭部の正面軸、カメラ中心の仮オフセット、画角・解像度・near/far、必要な仮の安定化。顔カメラの本調整は後続課題。\n- 自分の頭部だけを非表示にするか、身体全体を非表示にするか。\n- 球半径・材質・照明の仮設定。ボール外観は未決定であり、既存の演出用半径を合意済み値と扱わない。\n- 頭部・人物・球の欠測時の描画方針、動画FPS・形式。補間する場合は表示上の処理として明記し、元maskを保持する。\n- 第2フェーズの受入用背景シーン・コートと、半透明なネット等を含む奥行き合成方式。\n\n### 今後の人間との確認事項\n- 公開サイトへ提供する段階の範囲・配信方法は後続で具体化する。\n- 実装開始時のmergeの扱い。\n\n上記の数値設定はプロトタイプとして仮置き可能であり、最終的な見え方の決定まで実装を止める条件にしない。\n\n## 既存実装と調査結果\n\n### 既存モジュールと描画技術の調査\n- [SceneResultとmask](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/README.md)、[SMPLのコート配置](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/visualization/rendering/smpl_court.py)、[身体配置](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/motion_alignment/README.md)。頭部カメラにもmeshと同じスケール・配置変換が必要。player_yawを顔の向きとして代用しない。\n- [Blender書き出し](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/visualization/blender/export/README.md)、[球体アニメーション](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/visualization/blender/shots/reveal.py)。既存reveal固有の映像plate等の条件を、選手視点の汎用出力へ不要に持ち込まない。\n- [合成データ生成](https://github.com/Motoki0705/tennis-lab/blob/main/src/synthetic_data_generation/README.md)にMultiCourtLayoutとmetric/NHT座標変換がある。現行の合成データ生成から動的前景経路は削除済み。\n- [NHT描画](https://github.com/Motoki0705/tennis-lab/blob/main/third_party/nht)は学習済みshaderをCUDAで実行する。動画の事前生成ではブラウザへの移植を前提にしない。背景と前景のdepth単位・意味も合わせる。\n- [B00〜B03資産の整備](https://github.com/Motoki0705/tennis-lab/issues/1351)と[採用記録](https://github.com/Motoki0705/tennis-lab/blob/main/knowledge/runs/run-court-assets-colab-l4-20261022/adoption.json)がある。背景再学習は不要だが、選んだ頭部視点での画質は実動画で確認する。\n\n### 受入入力候補の予備調査\n予備調査ではローカルの `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/store` の保存exportを確認。2人・1,010フレームのSMPLと球を含み、人物meshは延べ2,020フレーム中2,000、球は1,010フレーム中856が有効。これは受入入力候補であり、実装開始時に保存版と対応資産を再確認する。GPU描画はまだ実行していない。\n\n## 検証方針\n\n### 幾何およびレンダリング検証\n- 人物IDごとの出力、頭部の既知姿勢に対するカメラ向き、meshとカメラに適用する座標・スケール変換、背景／前景の投影一致を検証する。\n- 欠測を跨ぐ表示や無効座標の原点表示、人物の取り違えを検出する。\n- 前景の不透明性と、背景の手前／奥にある球・人物の遮蔽を分けて確認する。\n\n### 実動画による受入確認\n- 初期の2人について、動画の全フレームをdecodeでき、元FPS・フレーム対応と設定を追跡できることを確認する。\n- 第1フェーズと第2フェーズの実動画を人間へ提示する。テストの具体的な層・既存node・コストは子issue分割時に設計する。",
+      "number": 1723,
+      "title": "[選手視点] 保存済み3D再構築から選手ごとの視点動画を生成し、2段階で3DGS背景を導入する"
+    },
+    "children": [
+      {
+        "body": "親issue: #1723\n\n## このタスクの目的\n\n元動画や再推論に依存せず、人物・球・時刻・maskを両フェーズで共通利用できるようにする。\n\n## 具体的な変更内容・対象範囲\n\nsrc/tennis_scene/visualization配下に選手視点動画の入口と中立なbundleを設ける。SceneResult v2を正本とし、store入力はindexed_scene_pathで採用済みexportを解決する。未完成・古い依存のstoreを探索で補わない。既存Blenderのmesh配置・PC2・コート幾何を再利用し、plate書き出し・元カメラの球再投影ゲートを新経路の必須条件にしない。既存reveal経路の検査は維持する。\n\nmanifestに人物ID↔配列index、元frame番号、半開区間[start,stop)、元FPS、m単位・軸、mesh/ballのmask、必要なSMPL資産、設定・出典を保存する。頭部姿勢に必要なbody_pose・betasと配置情報もC2へ渡す。人物数は固定しない。書き出し前検証、既存出力拒否、部分出力の除去を行う。\n\n## 対象外\n\n頭部カメラの計算、Blender描画、3DGS接続、未完成storeからのscene再構成。\n\n## 依存関係\n\nなし。\n\n## 作業状況・停止事項\n\n未着手。2026-11-07に設計と子issue作成について人間の確認を受けた。今回は起票までであり、worker起動・実装はまだ開始していない。\n\n## Acceptance checklist\n\n- [ ] 保存済みv2入力から人物・球・元frame・ID・maskを保ったbundleを作れる\n  文脈: 表示と後続の背景合成が同じ入力を使うため。\n  下流への影響: C2/C3/C5が人物数や元動画に依存せず接続できる。\n  検証方法・証拠: test_archive.py::test_v2_round_trip_preserves_validity_masks_and_reasons、test_blender_export.py::test_v2_bundle_preserves_timeline_geometry_and_explicit_gapsを参照。新integrationでは人物IDを[7,42]、非0始まりの区間、孤立した欠測にして、ID入替・時刻ずれ・mask消失を検出する。\n\n- [ ] 入力が不正な場合に出力を公開せず、入力を変更しない\n  文脈: 古いexportやゼロ座標を正常データとして扱わないため。\n  下流への影響: 後続の誤描画と既存成果の破壊を防ぐ。\n  検証方法・証拠: 元動画なしの有効入力は成功、未知ID・v1・stale lineageは拒否。既存のarchiveとstoreの検証を再利用し、新規は公開入口の代表成功／失敗をintegrationで検証する。\n\n## テスト設計\n\n既存nodeのパス: tests/unit/tennis_scene/test_archive.py、tests/integration/tennis_scene/test_blender_export.py。PC2はtests/unit/tennis_scene/visualization/blender/export/test_blender_export_data.py::test_pc2_round_trip_preserves_frames_and_headerを再利用。新fixtureは小さな非対称mesh・7frame程度、ニューラルモデルの初期化なし。自動テストはCPUのunit/integrationを優先し、各関数は展開後50件以内、各ケース5秒・setup 1秒以内を目安にする。--collect-onlyと--durations=0で実測し、超過は必要性を説明する。Blender/CUDAの実描画は通常のpytestへ重複追加せず、固定入力の受入として記録する。\n\n## 設計案との対応\n\n設計上のC1。[親の設計記録](https://github.com/Motoki0705/tennis-lab/issues/1723#issuecomment-6708422368)を元に起票。要件の正本は親issueと本issue。\n\n<!-- parent-task:v1 parent=1723 key=player-view-scene-bundle spec=0b954dd55228221b8c4f8949083de5ce6fe15de90090b6accb09f452bad737a2 -->\n\n## 成果物・関連PR\n\n担当: codex\n\nbranch: `codex/player-view-scene-bundle`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1744 (open)\n\n検証結果:\n> - 対象HEADのCI: Python・CPU tests全10分割・Lintが成功。\n> - workerの報告: ローカル検証71件成功、pre-commit成功。\n> - 実データ受入: `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/store` から元動画なしで生成。区間 [0,1010)、59.94006 fps、人物ID [0,1]、mesh有効数 ID0=1007・ID1=993、球有効数856。全mask・理由・パラメータを保持し、入力内容とmtimeは不変。独立した配置計算との最大頂点差は約1.04e-6 m。生成16.18秒、最大RSS約824MiB。\n> - 記録: https://github.com/Motoki0705/tennis-lab/issues/1725#issuecomment-6722417271\n\n",
+        "number": 1725,
+        "title": "[選手視点 #1723] 保存済みシーンから動画生成用の共通bundleを作る"
+      }
+    ],
+    "prs": [
+      {
+        "body": "保存済みSceneResult v2から、元動画・再推論なしで人物・球・元時刻・maskを共用するbundleを生成できるようにします。後続の頭部カメラ（#1726）、Blender描画（#1727）、3DGS合成が同じ入力を使います。\n\nCloses #1725\n親: #1723\n\n## 変更と入口\n\n`src/tennis_scene/visualization/player_view` にCPUの公開APIとCLIを追加しました。store/scene.jsonは `indexed_scene_path` で採用済みexportだけを解決し、未完成・stale lineageは拒否します。既存のmesh配置・PC2・コート幾何を再利用しています。CLIの入力・資産・出力pathは共通の `NonHydraPathBoundary` で検証し、runtime inventoryへ登録しています。既存revealのコードとplate・球再投影検査は変更していません。\n\n```bash\n.venv/bin/python -m src.tennis_scene.visualization.player_view \\\n  --input [local path] \\\n  --output [local path] \\\n  --smpl-faces [local path] \\\n  --smpl-joint-regressor [local path] \\\n  --smplx-model [local path] \\\n  --frames 10 110 --player-ids 7 42\n```\n\n区間・IDの省略時は全入力を使用します。人物数は固定せず、選択順と元indexを保持します。既存出力を拒否し、書き出し前検証、一時directoryでの完成、失敗時の一時出力除去を行います。元の入力へ書き込みません。\n\n## C2/C3へ渡す契約\n\nschemaは `tennis_scene_player_view_bundle_v1`。詳細は[モジュールREADME](https://github.com/Motoki0705/tennis-lab/blob/codex/player-view-scene-bundle/src/tennis_scene/visualization/player_view/README.ja.md)にまとめ、英語・日本語・簡体字中国語版を追加しました。\n\nP=選択人数、F=stop-start、V=mesh頂点数、N=面数です。配列keyとnpy basenameが一致し、manifestの `arrays` に相対path・shape・dtypeを保存します。\n\n| key / ファイル | shape・単位・規約 |\n|---|---|\n| `players` | ID↔bundle index・元source_index、PC2名、有効frame数、人物別scale |\n| `frames`, `fps`, `source_frames`, `source_time_seconds` | 半開区間 `[start,stop)`、元FPS、int64元frame(F)、float64元frame/FPS秒(F) |\n| `player_<index>.pc2` | float32 (F,V,3)、court m、cache sample 0から開始 |\n| `player_observed`, `player_valid`, `player_heading_valid`, `player_smpl_valid` | bool (P,F)、元v2 mask |\n| `player_kp_3d_vis` / 人物reason 2種 | bool (P,F,17) / uint8 (P,F),(P,F,17)、元maskと理由を保持 |\n| `ball_positions`, `ball_3d_valid`, `ball_rejection_code` | float32 (F,3) m / bool (F) / uint8 (F) |\n| `smpl_body_pose`, `smpl_betas`, `smpl_global_orient` | float32 (P,F,63) 親相対axis-angle rad / (P,10) 無次元 / (P,F,3) renderer補償回転rad |\n| `player_position`, `player_yaw`, `smpl_root_local` | (P,F,3) court joint0並進m / (P,F) +Z yaw rad / (P,F,3) 保存local meshの回帰root m |\n| `body_to_court_rotation` | float32 (P,F,3,3)、列vectorで身体→court |\n| `smpl_faces`, `smpl_joint_regressor` | int32 (N,3) / float32 (24,V)、同梱した数値資産 |\n| `smplx_parents`, `smplx_rest_joints`, `smplx_joint_shapedirs` | int32 (22)、float32 (22,3) m、(22,3,10)、neutral SMPL-Xから数値抽出 |\n\nworldは右手系court m、XY地面・+Z上、X幅・Y長さ、原点はネット中央直下です。人物/球の欠測を補間せず、PC2/球の無効値は0としmaskで非表示にします。有効rootが欠測meshを復活させません。\n\nv2の `smpl_global_orient` は生GVHMR incam姿勢ではなく補償回転です。`A=[x,y,z]→[x,-z,y]` として、meshと同じ `R=Rz(yaw) A Rodrigues(encoded).T` を同梱し、`world=R(local-root)+player_position` になります。scaleは保存local meshへ適用済みです。`smpl.parameters.transl` は `player_position` を指し、生incam translは捏造しません。\n\nC2は、同梱の名前付き骨格・body_pose・復号済みRで頭部回転を求め、配置済みmeshへ24関節regressorを適用して頭部位置を求められます。SMPL-X FK関節位置と変換後SMPL mesh位置の同一視を避ける契約です。元モデルファイル・storeを再読込する必要はありません。頭部軸・顔offset・カメラ計算の受入は#1726の範囲です。\n\nmanifestには選択設定、元archive/metadataのdigest、store indexと採用export参照、資産のpath/digestを保存し、配置設定・出典は `source_metadata.json` に保持します。\n\n## 検証\n\n- 新規32件。非対称mesh・7frame・ID `[7,42]`・非0始まり区間、逆順選択と1人選択、meshだけの孤立欠測を使用。既知の頂点で補償回転の逆向き・root中心化・軸変換・yaw・二重scaleを検出します。\n- 公開API/CLIで元動画なしのarchive/store/scene.json成功、未知ID・v1・scale欠落・重複ID・SMPL情報欠落・区間超過・未完成[local path] storeの拒否、既存出力保護、書込み失敗時の非公開・cleanup、入力不変を検証しました。\n- 既存archive、reveal integration、PC2、SMPL配置、component storeのnodeを再利用。対象合計 **69 passed / 11.37秒**（`pytest -n 2 --durations=0 --durations-min=0`）。collect-onlyも69件。関数の最大展開7件、最大case 0.098秒、新規case最大0.089秒、最大setup 0.03秒です。削除したテストはありません。\n- CLI登録の回帰として、既存 `test_repository_source_satisfies_current_audit`・`test_all_inventoried_runtime_boundaries_expose_truthful_authorities` とbundle integration 12件を追加実行し、**14 passed / 125.49秒**。全sourceを列挙する既存監査は27.93秒で5秒を超えますが、新CLIのvalidatorとinventoryをsource全体で照合するために必要です。新規bundle fixtureのsetupは最大0.18秒でした。ローカルで成功した異なるnodeは計71件です。\n- `pre-commit run`: ruff / mypy とも成功。\n\n対象: `tests/integration/tennis_scene/test_{player_view_bundle,blender_export}.py`、`tests/unit/tennis_scene/test_archive.py`、`tests/unit/tennis_scene/visualization/{player_view,rendering/test_smpl_court.py,blender/export/test_blender_export_data.py}`、`tests/unit/tennis_scene/pipeline/test_component_store.py`。\n\n## 指定実データの受入\n\n入力は親指定の `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/store`（メインtree、読み取りのみ）。既存DriveのSMPL-H/SMPL-X archiveから必要資産をworktreeへ取得し、neutral SMPL-Xとregressorの内容が採用body_placementの資産と一致することを照合しました。GPU・Blender・ニューラルモデル初期化は実行していません。\n\n実CLIでworktree内の `outputs/tennis_scene/visualize/player_view/acceptance-final/bundle` に生成しました。\n\n| 項目 | 実測 |\n|---|---|\n| 元区間 / FPS | `[0,1010)` / 59.94006 |\n| 人物ID / mesh有効数 | 0: 1007/1010、1: 993/1010（計2000/2020） |\n| 球有効数 | 856/1010（欠測154） |\n| 各PC2 | (1010,6890,3) |\n| 保存scale | ID0: 0.9645237056962993、ID1: 0.9941888141057585 |\n| 全frame独立配置計算との最大頂点差 | 約1.0431e-6 m |\n| 生成時間 / 最大RSS / bundle容量 | 16.18秒 / 843616 KiB（約824 MiB） / 168679690 bytes |\n\n全mask・理由・SMPLパラメータ・球座標が元sceneと完全一致し、元scene.json・NPZ・metadataの内容[local path]。元動画3本のpathがいずれも存在しない環境で成功しています。詳細は同じworktreeの `outputs/tennis_scene/visualize/player_view/acceptance-final/validation.json` に保存しました。\n\nCI: HEAD `3795afd9f55affcabb1ecb16f5faab86f5e6d2a0` の [run 42488641937](https://github.com/Motoki0705/tennis-lab/actions/runs/42488641937) で **Python成功**（CPU 10分割・Lintもすべて成功）を確認済み。mergeと統合レビューは親担当です。頭部カメラ・Blender実描画・3DGSは本PRの対象外です。\n",
+        "changed_paths": [
+          "src/tennis_scene/README.md",
+          "src/tennis_scene/visualization/player_view/README.ja.md",
+          "src/tennis_scene/visualization/player_view/README.md",
+          "src/tennis_scene/visualization/player_view/README.zh-CN.md",
+          "src/tennis_scene/visualization/player_view/__init__.py",
+          "src/tennis_scene/visualization/player_view/__main__.py",
+          "src/tennis_scene/visualization/player_view/assets.py",
+          "src/tennis_scene/visualization/player_view/bundle.py",
+          "src/utils/configuration/inventory.py",
+          "tests/integration/tennis_scene/test_player_view_bundle.py",
+          "tests/unit/tennis_scene/visualization/player_view/test_assets.py",
+          "tests/unit/tennis_scene/visualization/player_view/test_bundle.py"
+        ],
+        "child_issues": [
+          1725
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1744,
+        "title": "保存済みv2 sceneから選手視点用の共通bundleを生成する"
+      }
+    ],
+    "instruction": "PR #1744（#1725 C1: 保存済みシーンから動画生成用の共通bundle）をレビューしてください。\n\n確認してほしい点:\n1. #1725の受入条件: 保存済みSceneResult v2から、人物ID・元frame・FPS・mask・理由を保ったbundleを作れること。不正入力（未知ID・v1・古いlineage・既存出力）では何も公開せず、入力を変更しないこと。\n2. 後続 #1726（頭部追従カメラ）がbundleだけから、配置済みmeshと一致する頭部の位置と回転を計算できるか。特に `body_to_court_rotation`・`smpl_root_local`・`player_position`・`smpl_body_pose` の意味と、manifestの `mesh_transform` / `joint_rotation` の記述が、既存の `smpl_vertices_to_court` の配置と一致しているか。\n3. 欠測frameの値を0で埋めている箇所（PC2、ball_positions、body_to_court_rotation）が、maskと組で明示されていて、後続が0を正常値と読み違える余地がないか。\n4. 既存のreveal経路・Blender exporterの挙動を変えていないか。`src/utils/configuration/inventory.py` の変更の妥当性。\n5. テストの設計（tests README方針）: 人物IDを非連続にする、非0始まりの区間、孤立した欠測などで、ID入替・時刻ずれ・maskの消失を検出できるか。\n\n環境の制約: このレビュー環境では隔離CPUテストのprobeが通らないことがあり、CIのログ本文も読めない。その場合はPRのchecksの結論（対象HEADのPythonとCPU全10分割が成功）とPR本文の実測を証拠として使い、テストを実行できなかったことだけを理由にincompleteにしないでください。コードと差分から判断できない点だけを具体的に挙げてください。",
+    "parent_comments": []
+  },
+  "github": {
+    "repos/Motoki0705/tennis-lab/issues/1723": {
+      "as_of": "2026-11-08T14:35:23.204032+00:00",
+      "value": {
+        "body": "## 目的・背景\n\n### 目的\n保存済みのテニスシーン3D再構築結果を活用し、試合中にプレイしている各選手の頭部や顔の向きに追従する選手視点動画を生成する。例えば4人の試合であれば各人1本ずつ、計4本の動画を出力し、視聴者が見たい選手の視点を自由に選択できるようにする。\n\n### 背景と受入の進め方\n初期の受入対象は、既存の中間生成物が保存されているシーンの2人それぞれを対象とした視点動画とする。\n段階的な検証として、初めにBlender上で3D再構築の人物・球のみを描画し、その後に既存B00〜B03の3DGS背景へ同一の人物・球を組み込む。\nなお、プレイデータの統計抽出については、本件とは切り離して別の仮置き親issue #1722 で管理する。\n\n## 全体のスコープ\n\n### 対象範囲\n- 保存済みSceneResult v2、または対応する保存済みcomponent storeから、人物のSMPL・球の時系列・FPS・有効性maskを取得する。\n- 選択した人物ごとに、頭部・顔の向きから仮配置したピンホールカメラでプレイを動画化する。\n- 人物を灰色の標準的なSMPL mesh、ボールを3D座標を中心とする緑色の球体として描画する。\n- 第1フェーズ: 3DGSを使わず、既存のBlender書き出しと球体の時系列アニメーションを拡張する。\n- 第2フェーズ: 既存B00〜B03内の選択したコートへ人物・球・カメラを配置し、3DGS背景と合成する。\n- 入力、人物ID、時刻、カメラ・球・材質の仮設定、欠測の扱い、および出力動画を対応付けて保存する。\n\n### 対象外\n- 視聴中の自由な視点・視線操作、リアルタイムレンダリング、VR、眼球視線の推定。\n- 顔のカメラ位置・向きの本格的な調整、最終的なボール外観の作り込み。\n- 人物の写実化・衣服再現・人物3DGS、背景の新規再構築や再学習。\n- 元動画からの再推論・再学習をプロトタイプの必須条件にすること。\n- 統計抽出。公開サイト・共有URL・ホスティングの実装は今回の動画生成の受入範囲に含めず、後続で扱う。\n\n## 全体方針・合意事項\n\n### ユーザー合意内容\n2026-11-07のユーザーとの会話に基づく。\n\n> 「最初の成果物としては、任意の人物のプレイ中の視点の動画を提供できるようにします。」\n> 「動的にその人の視線を動かしたりすることはしません。」\n> 「顔にあるカメラについての調整は今後の課題とし、プロトタイプとして今回は仮置きするような形にしたいと思います。」\n> 「1つのフェーズとしては、3DGSを組み込まない形式で、3D再構成だけで任意のプレイヤーの視点のレンダリングができるようにすることです。」\n> 「その後に3DGSでその実装を導入し、背景の組み立てを行います。」\n\n初期の受入対象に関する確認への回答: **「2人それぞれの視点動画」**。\n\n### 子issue設計の確認（2026-11-07）\n\n[6件の設計案](https://github.com/Motoki0705/tennis-lab/issues/1723#issuecomment-6708422368)について、ユーザーから次の指示を受けた。\n\n> 「C3のフェーズで人間による定性確認を行わせましょう。それ以外は良い設計だと思うので、実際に子issueを作成してください。」\n\nC3の人間確認は、動画を提示するだけで完了としない。視点の向き・追従、身体と球の見え方、時間対応、欠測表示を確認してもらい、対象動画・設定と人間の判断を記録する。指摘があれば修正・再提示し、人間の受入確認をC5開始の条件にする。C3のPR作成やCI成功だけではこの条件を満たさない。\n\n### 基本方針と前提条件\n- **背景アセットの選定**: 固定カメラ3〜5台の試合動画から作り直すのではなく、合成データ生成で利用しているB00〜B03を使う。灰色のSMPL・緑色の球は既に指定済み。\n- **カメラ動作と仮置きパラメータ**: カメラは視聴者が操作せず、時系列の頭部姿勢に従う。眼球視線は再現しない。顔のオフセット・画角等は調整可能な仮設定とし、品質調整を初期完成の前提にしない。\n- **前景の不透明性と遮蔽の扱い**: ユーザーのαを大きくする提案は、SMPLと球を不透明な前景として扱いたい意図として記録する。通常のopacity αは1が完全不透明であり、無限大は設定しない。前景の不透明性と背景による遮蔽は別に検証する。3DGSの密度・opacityパラメータを無条件に変更して解決しない。\n- **親issueの位置づけ**: 親issue作成後、6件の子issue設計を提示した。2026-11-07、ユーザーはC3に人間による定性確認を追加し、それ以外の設計を了承して子issueの実作成を指示した。今回の作業範囲は子issue作成・親子関係・依存と合意の記録まで。実装・worker起動・mergeはこの指示から開始しない。\n\n## 全体の完了条件\n\n### 第1フェーズ（3DGSなし）\n- [ ] 既存の保存済み中間生成物を入力として、2人それぞれの選手視点動画が生成される。\n- [ ] 灰色で不透明なSMPLと緑色で不透明な球を、同一の元時間軸に沿ってBlenderで描画できる。\n- [ ] ピンホールカメラが選択人物の頭部位置・向きに追従し、仮の顔オフセット・画角等が明示されている。視聴者操作は不要。\n- [ ] 視点本人の頭部によって画面全体が塞がらず、自分のmeshの表示・非表示方針が記録されている。\n- [ ] 人物・球・カメラの欠測を、ゼロ座標や無断の補間で正常な観測に見せない。動画の時間対応と欠測の扱いを確認できる。\n- [ ] 2本の動画、再生成手順、入力・人物ID・仮設定の対応を提示し、人間が動画で確認できる。\n- [ ] C3で2人それぞれの動画を人間が定性的に確認し、その確認対象・判断・修正指摘と対応を記録している。人間の受入確認前に第2フェーズの本番統合C5へ進まない。\n\n### 第2フェーズ（3DGS背景あり）\n- [ ] B00〜B03とその保存済みコート配置から背景シーン・コートを明示選択できる。受入描画に使うシーン・コートは記録する。\n- [ ] 第1フェーズの同じプレイ・2人のカメラ時系列を、選択コートの座標とNHTの単位へ正しく変換して描画できる。\n- [ ] 背景と前景でカメラの内部・外部パラメータ、解像度、フレーム時刻が一致し、人物・球の大きさや位置がずれない。\n- [ ] 不透明なSMPL・球が背景に透けず、ネットなどによる前後関係も検証されている。単なる前景の最前面貼り付けを完成としない。\n- [ ] 背景ありの2人それぞれの視点動画と、第1フェーズとの比較・再生成手順を提示する。\n\n### 人数および背景の受入要件\n4人を固定要求にせず、入力中の人物IDを選んで動画を生成できる設計とする。初期の実データ受入は2人。全4背景・全コートの動画を網羅的に作ることは初期受入の必須条件にしない。\n\n## 子タスクのチェックリスト\n\n- [ ] #1725 保存済みシーンから動画生成用の共通bundleを作る\n- [ ] #1726 配置済みSMPLと一致する頭部追従カメラを生成する\n- [ ] #1727 Blenderで2人それぞれの選手視点動画を生成し、人間の定性確認を受ける\n- [ ] #1728 3DGSと不透明前景の奥行き合成方式を小規模に検証する\n- [ ] #1729 選択コートの3DGS背景と人物・球を同一カメラで合成する\n- [ ] #1730 3DGS背景ありの2人の視点動画を生成し比較・再現手順を整える\n\n## 進捗概要\n\n子の起動予約: #1728。上限: 2。\n- #1725: 継続 — 既存PRを照合して継続する: #1744 / 委任予約済み。既存worker・worktreeを照合する。\n- #1726: 継続 — 起動可能（stacked branch: PR #1744）\n- #1727: 継続 — 依存先 #1726: 利用できるPRが一意でない（0件）。\n- #1728: 継続 — 委任予約済み。既存worker・worktreeを照合する。\n- #1729: 停止 — C3の2人分の選手視点動画について、人間による定性受入確認がまだない。（詳細・再開条件: #1729）。 / 依存先 #1726: 利用できるPRが一意でない（0件）。 / 依存先 #1727: 利用できるPRが一意でない（0件）。 / 依存先 #1728: 利用できるPRが一意でない（0件）。\n- #1730: 依存保留 — 停止・取消された依存先: #1729 / 依存先 #1726: 利用できるPRが一意でない（0件）。 / 依存先 #1727: 利用できるPRが一意でない（0件）。 / 依存先 #1728: 利用できるPRが一意でない（0件）。\n\n## 依存関係・進め方\n\n### 実施ステップ\n1. 保存済み入力を固定する。再推論せず取得可能なSMPL・球・時間軸・maskと人物IDを照合する。\n2. 第1フェーズで既存Blender経路を拡張し、頭部カメラの仮配置と人物別動画生成を実装・検証する。\n3. 第1フェーズの成果と検証を揃え、C3の2人分の動画について人間の定性確認を受けてから、第2フェーズの背景合成C5へ進む。C4の資産確認・合成方式の先行調査は独立して進められる。\n4. 既存NHTの公開描画入口を利用し、同じカメラで得るRGB・alpha・depthと前景の合成方式を具体化する。\n5. 背景なし／ありの動画で、人間が位置関係と視点を比較できる形にする。\n\n### 関連タスク\n統計抽出は #1722 と独立。両者が共有する元の座標・時間軸・maskを保ち、表示用の変更を元データへ書き戻さない。具体的な子issueの依存は分割時に設定する。\n\n## 未決事項・人間の判断が必要な点\n\n### 実装担当が具体化するプロトタイプ設定\n- 使用する保存scene/component storeと受入用のフレーム区間、対応する2人のID。\n- 頭部の正面軸、カメラ中心の仮オフセット、画角・解像度・near/far、必要な仮の安定化。顔カメラの本調整は後続課題。\n- 自分の頭部だけを非表示にするか、身体全体を非表示にするか。\n- 球半径・材質・照明の仮設定。ボール外観は未決定であり、既存の演出用半径を合意済み値と扱わない。\n- 頭部・人物・球の欠測時の描画方針、動画FPS・形式。補間する場合は表示上の処理として明記し、元maskを保持する。\n- 第2フェーズの受入用背景シーン・コートと、半透明なネット等を含む奥行き合成方式。\n\n### 今後の人間との確認事項\n- 公開サイトへ提供する段階の範囲・配信方法は後続で具体化する。\n- 実装開始時のmergeの扱い。\n\n上記の数値設定はプロトタイプとして仮置き可能であり、最終的な見え方の決定まで実装を止める条件にしない。\n\n## 既存実装と調査結果\n\n### 既存モジュールと描画技術の調査\n- [SceneResultとmask](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/README.md)、[SMPLのコート配置](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/visualization/rendering/smpl_court.py)、[身体配置](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/motion_alignment/README.md)。頭部カメラにもmeshと同じスケール・配置変換が必要。player_yawを顔の向きとして代用しない。\n- [Blender書き出し](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/visualization/blender/export/README.md)、[球体アニメーション](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/visualization/blender/shots/reveal.py)。既存reveal固有の映像plate等の条件を、選手視点の汎用出力へ不要に持ち込まない。\n- [合成データ生成](https://github.com/Motoki0705/tennis-lab/blob/main/src/synthetic_data_generation/README.md)にMultiCourtLayoutとmetric/NHT座標変換がある。現行の合成データ生成から動的前景経路は削除済み。\n- [NHT描画](https://github.com/Motoki0705/tennis-lab/blob/main/third_party/nht)は学習済みshaderをCUDAで実行する。動画の事前生成ではブラウザへの移植を前提にしない。背景と前景のdepth単位・意味も合わせる。\n- [B00〜B03資産の整備](https://github.com/Motoki0705/tennis-lab/issues/1351)と[採用記録](https://github.com/Motoki0705/tennis-lab/blob/main/knowledge/runs/run-court-assets-colab-l4-20261022/adoption.json)がある。背景再学習は不要だが、選んだ頭部視点での画質は実動画で確認する。\n\n### 受入入力候補の予備調査\n予備調査ではローカルの `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/store` の保存exportを確認。2人・1,010フレームのSMPLと球を含み、人物meshは延べ2,020フレーム中2,000、球は1,010フレーム中856が有効。これは受入入力候補であり、実装開始時に保存版と対応資産を再確認する。GPU描画はまだ実行していない。\n\n## 検証方針\n\n### 幾何およびレンダリング検証\n- 人物IDごとの出力、頭部の既知姿勢に対するカメラ向き、meshとカメラに適用する座標・スケール変換、背景／前景の投影一致を検証する。\n- 欠測を跨ぐ表示や無効座標の原点表示、人物の取り違えを検出する。\n- 前景の不透明性と、背景の手前／奥にある球・人物の遮蔽を分けて確認する。\n\n### 実動画による受入確認\n- 初期の2人について、動画の全フレームをdecodeでき、元FPS・フレーム対応と設定を追跡できることを確認する。\n- 第1フェーズと第2フェーズの実動画を人間へ提示する。テストの具体的な層・既存node・コストは子issue分割時に設計する。",
+        "number": 1723,
+        "title": "[選手視点] 保存済み3D再構築から選手ごとの視点動画を生成し、2段階で3DGS背景を導入する"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/issues/1723/comments": {
+      "as_of": "2026-11-08T14:35:23.204032+00:00",
+      "value": []
+    },
+    "repos/Motoki0705/tennis-lab/issues/1725": {
+      "as_of": "2026-11-08T14:35:23.204032+00:00",
+      "value": {
+        "body": "親issue: #1723\n\n## このタスクの目的\n\n元動画や再推論に依存せず、人物・球・時刻・maskを両フェーズで共通利用できるようにする。\n\n## 具体的な変更内容・対象範囲\n\nsrc/tennis_scene/visualization配下に選手視点動画の入口と中立なbundleを設ける。SceneResult v2を正本とし、store入力はindexed_scene_pathで採用済みexportを解決する。未完成・古い依存のstoreを探索で補わない。既存Blenderのmesh配置・PC2・コート幾何を再利用し、plate書き出し・元カメラの球再投影ゲートを新経路の必須条件にしない。既存reveal経路の検査は維持する。\n\nmanifestに人物ID↔配列index、元frame番号、半開区間[start,stop)、元FPS、m単位・軸、mesh/ballのmask、必要なSMPL資産、設定・出典を保存する。頭部姿勢に必要なbody_pose・betasと配置情報もC2へ渡す。人物数は固定しない。書き出し前検証、既存出力拒否、部分出力の除去を行う。\n\n## 対象外\n\n頭部カメラの計算、Blender描画、3DGS接続、未完成storeからのscene再構成。\n\n## 依存関係\n\nなし。\n\n## 作業状況・停止事項\n\n未着手。2026-11-07に設計と子issue作成について人間の確認を受けた。今回は起票までであり、worker起動・実装はまだ開始していない。\n\n## Acceptance checklist\n\n- [ ] 保存済みv2入力から人物・球・元frame・ID・maskを保ったbundleを作れる\n  文脈: 表示と後続の背景合成が同じ入力を使うため。\n  下流への影響: C2/C3/C5が人物数や元動画に依存せず接続できる。\n  検証方法・証拠: test_archive.py::test_v2_round_trip_preserves_validity_masks_and_reasons、test_blender_export.py::test_v2_bundle_preserves_timeline_geometry_and_explicit_gapsを参照。新integrationでは人物IDを[7,42]、非0始まりの区間、孤立した欠測にして、ID入替・時刻ずれ・mask消失を検出する。\n\n- [ ] 入力が不正な場合に出力を公開せず、入力を変更しない\n  文脈: 古いexportやゼロ座標を正常データとして扱わないため。\n  下流への影響: 後続の誤描画と既存成果の破壊を防ぐ。\n  検証方法・証拠: 元動画なしの有効入力は成功、未知ID・v1・stale lineageは拒否。既存のarchiveとstoreの検証を再利用し、新規は公開入口の代表成功／失敗をintegrationで検証する。\n\n## テスト設計\n\n既存nodeのパス: tests/unit/tennis_scene/test_archive.py、tests/integration/tennis_scene/test_blender_export.py。PC2はtests/unit/tennis_scene/visualization/blender/export/test_blender_export_data.py::test_pc2_round_trip_preserves_frames_and_headerを再利用。新fixtureは小さな非対称mesh・7frame程度、ニューラルモデルの初期化なし。自動テストはCPUのunit/integrationを優先し、各関数は展開後50件以内、各ケース5秒・setup 1秒以内を目安にする。--collect-onlyと--durations=0で実測し、超過は必要性を説明する。Blender/CUDAの実描画は通常のpytestへ重複追加せず、固定入力の受入として記録する。\n\n## 設計案との対応\n\n設計上のC1。[親の設計記録](https://github.com/Motoki0705/tennis-lab/issues/1723#issuecomment-6708422368)を元に起票。要件の正本は親issueと本issue。\n\n<!-- parent-task:v1 parent=1723 key=player-view-scene-bundle spec=0b954dd55228221b8c4f8949083de5ce6fe15de90090b6accb09f452bad737a2 -->\n\n## 成果物・関連PR\n\n担当: codex\n\nbranch: `codex/player-view-scene-bundle`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1744 (open)\n\n検証結果:\n> - 対象HEADのCI: Python・CPU tests全10分割・Lintが成功。\n> - workerの報告: ローカル検証71件成功、pre-commit成功。\n> - 実データ受入: `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/store` から元動画なしで生成。区間 [0,1010)、59.94006 fps、人物ID [0,1]、mesh有効数 ID0=1007・ID1=993、球有効数856。全mask・理由・パラメータを保持し、入力内容とmtimeは不変。独立した配置計算との最大頂点差は約1.04e-6 m。生成16.18秒、最大RSS約824MiB。\n> - 記録: https://github.com/Motoki0705/tennis-lab/issues/1725#issuecomment-6722417271\n\n",
+        "number": 1725,
+        "title": "[選手視点 #1723] 保存済みシーンから動画生成用の共通bundleを作る"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/pulls/1744": {
+      "as_of": "2026-11-08T14:35:23.204032+00:00",
+      "value": {
+        "body": "保存済みSceneResult v2から、元動画・再推論なしで人物・球・元時刻・maskを共用するbundleを生成できるようにします。後続の頭部カメラ（#1726）、Blender描画（#1727）、3DGS合成が同じ入力を使います。\n\nCloses #1725\n親: #1723\n\n## 変更と入口\n\n`src/tennis_scene/visualization/player_view` にCPUの公開APIとCLIを追加しました。store/scene.jsonは `indexed_scene_path` で採用済みexportだけを解決し、未完成・stale lineageは拒否します。既存のmesh配置・PC2・コート幾何を再利用しています。CLIの入力・資産・出力pathは共通の `NonHydraPathBoundary` で検証し、runtime inventoryへ登録しています。既存revealのコードとplate・球再投影検査は変更していません。\n\n```bash\n.venv/bin/python -m src.tennis_scene.visualization.player_view \\\n  --input [local path] \\\n  --output [local path] \\\n  --smpl-faces [local path] \\\n  --smpl-joint-regressor [local path] \\\n  --smplx-model [local path] \\\n  --frames 10 110 --player-ids 7 42\n```\n\n区間・IDの省略時は全入力を使用します。人物数は固定せず、選択順と元indexを保持します。既存出力を拒否し、書き出し前検証、一時directoryでの完成、失敗時の一時出力除去を行います。元の入力へ書き込みません。\n\n## C2/C3へ渡す契約\n\nschemaは `tennis_scene_player_view_bundle_v1`。詳細は[モジュールREADME](https://github.com/Motoki0705/tennis-lab/blob/codex/player-view-scene-bundle/src/tennis_scene/visualization/player_view/README.ja.md)にまとめ、英語・日本語・簡体字中国語版を追加しました。\n\nP=選択人数、F=stop-start、V=mesh頂点数、N=面数です。配列keyとnpy basenameが一致し、manifestの `arrays` に相対path・shape・dtypeを保存します。\n\n| key / ファイル | shape・単位・規約 |\n|---|---|\n| `players` | ID↔bundle index・元source_index、PC2名、有効frame数、人物別scale |\n| `frames`, `fps`, `source_frames`, `source_time_seconds` | 半開区間 `[start,stop)`、元FPS、int64元frame(F)、float64元frame/FPS秒(F) |\n| `player_<index>.pc2` | float32 (F,V,3)、court m、cache sample 0から開始 |\n| `player_observed`, `player_valid`, `player_heading_valid`, `player_smpl_valid` | bool (P,F)、元v2 mask |\n| `player_kp_3d_vis` / 人物reason 2種 | bool (P,F,17) / uint8 (P,F),(P,F,17)、元maskと理由を保持 |\n| `ball_positions`, `ball_3d_valid`, `ball_rejection_code` | float32 (F,3) m / bool (F) / uint8 (F) |\n| `smpl_body_pose`, `smpl_betas`, `smpl_global_orient` | float32 (P,F,63) 親相対axis-angle rad / (P,10) 無次元 / (P,F,3) renderer補償回転rad |\n| `player_position`, `player_yaw`, `smpl_root_local` | (P,F,3) court joint0並進m / (P,F) +Z yaw rad / (P,F,3) 保存local meshの回帰root m |\n| `body_to_court_rotation` | float32 (P,F,3,3)、列vectorで身体→court |\n| `smpl_faces`, `smpl_joint_regressor` | int32 (N,3) / float32 (24,V)、同梱した数値資産 |\n| `smplx_parents`, `smplx_rest_joints`, `smplx_joint_shapedirs` | int32 (22)、float32 (22,3) m、(22,3,10)、neutral SMPL-Xから数値抽出 |\n\nworldは右手系court m、XY地面・+Z上、X幅・Y長さ、原点はネット中央直下です。人物/球の欠測を補間せず、PC2/球の無効値は0としmaskで非表示にします。有効rootが欠測meshを復活させません。\n\nv2の `smpl_global_orient` は生GVHMR incam姿勢ではなく補償回転です。`A=[x,y,z]→[x,-z,y]` として、meshと同じ `R=Rz(yaw) A Rodrigues(encoded).T` を同梱し、`world=R(local-root)+player_position` になります。scaleは保存local meshへ適用済みです。`smpl.parameters.transl` は `player_position` を指し、生incam translは捏造しません。\n\nC2は、同梱の名前付き骨格・body_pose・復号済みRで頭部回転を求め、配置済みmeshへ24関節regressorを適用して頭部位置を求められます。SMPL-X FK関節位置と変換後SMPL mesh位置の同一視を避ける契約です。元モデルファイル・storeを再読込する必要はありません。頭部軸・顔offset・カメラ計算の受入は#1726の範囲です。\n\nmanifestには選択設定、元archive/metadataのdigest、store indexと採用export参照、資産のpath/digestを保存し、配置設定・出典は `source_metadata.json` に保持します。\n\n## 検証\n\n- 新規32件。非対称mesh・7frame・ID `[7,42]`・非0始まり区間、逆順選択と1人選択、meshだけの孤立欠測を使用。既知の頂点で補償回転の逆向き・root中心化・軸変換・yaw・二重scaleを検出します。\n- 公開API/CLIで元動画なしのarchive/store/scene.json成功、未知ID・v1・scale欠落・重複ID・SMPL情報欠落・区間超過・未完成[local path] storeの拒否、既存出力保護、書込み失敗時の非公開・cleanup、入力不変を検証しました。\n- 既存archive、reveal integration、PC2、SMPL配置、component storeのnodeを再利用。対象合計 **69 passed / 11.37秒**（`pytest -n 2 --durations=0 --durations-min=0`）。collect-onlyも69件。関数の最大展開7件、最大case 0.098秒、新規case最大0.089秒、最大setup 0.03秒です。削除したテストはありません。\n- CLI登録の回帰として、既存 `test_repository_source_satisfies_current_audit`・`test_all_inventoried_runtime_boundaries_expose_truthful_authorities` とbundle integration 12件を追加実行し、**14 passed / 125.49秒**。全sourceを列挙する既存監査は27.93秒で5秒を超えますが、新CLIのvalidatorとinventoryをsource全体で照合するために必要です。新規bundle fixtureのsetupは最大0.18秒でした。ローカルで成功した異なるnodeは計71件です。\n- `pre-commit run`: ruff / mypy とも成功。\n\n対象: `tests/integration/tennis_scene/test_{player_view_bundle,blender_export}.py`、`tests/unit/tennis_scene/test_archive.py`、`tests/unit/tennis_scene/visualization/{player_view,rendering/test_smpl_court.py,blender/export/test_blender_export_data.py}`、`tests/unit/tennis_scene/pipeline/test_component_store.py`。\n\n## 指定実データの受入\n\n入力は親指定の `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/store`（メインtree、読み取りのみ）。既存DriveのSMPL-H/SMPL-X archiveから必要資産をworktreeへ取得し、neutral SMPL-Xとregressorの内容が採用body_placementの資産と一致することを照合しました。GPU・Blender・ニューラルモデル初期化は実行していません。\n\n実CLIでworktree内の `outputs/tennis_scene/visualize/player_view/acceptance-final/bundle` に生成しました。\n\n| 項目 | 実測 |\n|---|---|\n| 元区間 / FPS | `[0,1010)` / 59.94006 |\n| 人物ID / mesh有効数 | 0: 1007/1010、1: 993/1010（計2000/2020） |\n| 球有効数 | 856/1010（欠測154） |\n| 各PC2 | (1010,6890,3) |\n| 保存scale | ID0: 0.9645237056962993、ID1: 0.9941888141057585 |\n| 全frame独立配置計算との最大頂点差 | 約1.0431e-6 m |\n| 生成時間 / 最大RSS / bundle容量 | 16.18秒 / 843616 KiB（約824 MiB） / 168679690 bytes |\n\n全mask・理由・SMPLパラメータ・球座標が元sceneと完全一致し、元scene.json・NPZ・metadataの内容[local path]。元動画3本のpathがいずれも存在しない環境で成功しています。詳細は同じworktreeの `outputs/tennis_scene/visualize/player_view/acceptance-final/validation.json` に保存しました。\n\nCI: HEAD `3795afd9f55affcabb1ecb16f5faab86f5e6d2a0` の [run 42488641937](https://github.com/Motoki0705/tennis-lab/actions/runs/42488641937) で **Python成功**（CPU 10分割・Lintもすべて成功）を確認済み。mergeと統合レビューは親担当です。頭部カメラ・Blender実描画・3DGSは本PRの対象外です。\n",
+        "changed_paths": [
+          "src/tennis_scene/README.md",
+          "src/tennis_scene/visualization/player_view/README.ja.md",
+          "src/tennis_scene/visualization/player_view/README.md",
+          "src/tennis_scene/visualization/player_view/README.zh-CN.md",
+          "src/tennis_scene/visualization/player_view/__init__.py",
+          "src/tennis_scene/visualization/player_view/__main__.py",
+          "src/tennis_scene/visualization/player_view/assets.py",
+          "src/tennis_scene/visualization/player_view/bundle.py",
+          "src/utils/configuration/inventory.py",
+          "tests/integration/tennis_scene/test_player_view_bundle.py",
+          "tests/unit/tennis_scene/visualization/player_view/test_assets.py",
+          "tests/unit/tennis_scene/visualization/player_view/test_bundle.py"
+        ],
+        "child_issues": [
+          1725
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1744,
+        "title": "保存済みv2 sceneから選手視点用の共通bundleを生成する"
+      }
+    }
+  },
+  "provenance": {
+    "kind": "projection_of_saved_pre_review_context",
+    "source_context_sha256": "7e1d4d1c9c25689c4c4dfd1b69f84beadc3b2785a135dcbf19af5ee9c8c4c3e0",
+    "excluded_comments": [
+      {
+        "id": 6708352802,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6708422368,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6708481513,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6708508127,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6708594954,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6708596423,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6721969470,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722007655,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722754922,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722773435,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722774315,
+        "reason": "operational_record_excluded"
+      }
+    ],
+    "sanitization_replacements": 7,
+    "unavailable": [
+      "PR and child discussions were not captured; unregistered endpoints are rejected",
+      "CI payload is the captured checks summary, not reconstructed raw logs"
+    ]
+  }
+}

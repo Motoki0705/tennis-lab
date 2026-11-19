@@ -55,6 +55,23 @@ def main() -> None:
             log.write(json.dumps({"type": kind, "payload": payload}) + "\n")
     emit({"type": "thread.started", "thread_id": session})
     emit({"type": "turn.started"})
+    if os.environ.get("FAKE_JUDGEMENT_BLOCK_FIFO"):
+        with Path(os.environ["FAKE_JUDGEMENT_READY_FIFO"]).open("w") as ready:
+            ready.write(
+                json.dumps(
+                    {"pid": os.getpid(), "runtime": os.environ["AGENT_RUNTIME_RUN_DIR"]}
+                )
+                + "\n"
+            )
+        with Path(os.environ["FAKE_JUDGEMENT_BLOCK_FIFO"]).open("r") as block:
+            block.read()
+    if scenario == "reconnect":
+        emit(
+            {
+                "type": "error",
+                "message": "Reconnecting... 2/5 (workspace routing discovery timed out)",
+            }
+        )
     if scenario == "cli_error":
         print("injected CLI failure", file=sys.stderr)
         raise SystemExit(1)

@@ -16,7 +16,6 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     update = commands.add_parser("sync")
     update.add_argument("--parent", type=int)
-    update.add_argument("--topic")
     commands.add_parser("clear")
     setup = commands.add_parser(
         "bind", help="explicitly bind this session after inspecting the target"
@@ -33,7 +32,6 @@ def main() -> int:
             result = sync(
                 env,
                 clear=args.command == "clear",
-                topic=getattr(args, "topic", None),
                 expected_parent=getattr(args, "parent", None),
             )
         print(json.dumps(result, ensure_ascii=False))

@@ -1,0 +1,119 @@
+{
+  "schema": "video_court_policy_reassessment_v1",
+  "policy": "warn",
+  "common_h_bundle": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "common_h_cameras": {
+    "cam0": "c6aa4182f2532846160c983c7dc2312b382607c4a6020389fefb95a2c8f569e1",
+    "cam1": "486ae330629487e7e9e17bf3e7558a33ccb672624787f4a96fe6620ec82cc1a0",
+    "cam2": "42823f7bba7a6408c37bcdc241c47ccba90a0f8b2b982cd9870319379255df5a",
+    "cam3": "c5c343c9d27fb5f3283c7f5fc0950e717f8754a5ff887efe6de573a585c570f4"
+  },
+  "drift_bundle": "7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+  "drift_camera_digests": {
+    "cam0": "9eb00044883746d08cc7123153b4d70b8d641c37c38ab06f76959785d46440e6",
+    "cam1": "e9bbe6965c3f4529ad9a374b53052b9fd2ea25f6d2b2f4cf1ee94c7ab8d59236",
+    "cam2": "d066fd7a0d96ba389f1870724c9e96d726a24f551a8a3e3e71dd32ce92b54c6c",
+    "cam3": "0ad8920ac4386c050dcabc0a1f597b676fb02c8953ad63c66f62f5a03994d193"
+  },
+  "base_artifact_bytes_unchanged": true,
+  "drift_artifact_bytes_unchanged": true,
+  "measurement_values_unchanged": true,
+  "common_h_refit": false,
+  "rgb_decoded": false,
+  "cameras": {
+    "cam0": {
+      "clips": 69,
+      "usable": 69,
+      "ok": 21,
+      "warning": 48,
+      "failed": 0,
+      "frames": {
+        "ok": 217,
+        "warning": 128
+      },
+      "keypoint_bytes_sha256": "bbdb3dfe64eba5ce14ffe481006f67b487f2ebf8a0bcda886cf5d7c6473f6e37"
+    },
+    "cam1": {
+      "clips": 69,
+      "usable": 69,
+      "ok": 57,
+      "warning": 12,
+      "failed": 0,
+      "frames": {
+        "ok": 304,
+        "warning": 41
+      },
+      "keypoint_bytes_sha256": "4aa0f3efbd31e6e7266b49c2e890fa29d8af7e0f1d0a57df60326f84c664120b"
+    },
+    "cam2": {
+      "clips": 69,
+      "usable": 69,
+      "ok": 39,
+      "warning": 30,
+      "failed": 0,
+      "frames": {
+        "ok": 294,
+        "warning": 51
+      },
+      "keypoint_bytes_sha256": "f55d4d4c0af862721b1c62559e3ad26c09590b88890cee39ddcebd667a23ce7e"
+    },
+    "cam3": {
+      "clips": 69,
+      "usable": 69,
+      "ok": 0,
+      "warning": 69,
+      "failed": 0,
+      "frames": {
+        "warning": 247,
+        "ok": 98
+      },
+      "keypoint_bytes_sha256": "b0856264f0eb87c5f184c41ef44f2bb2a0824bc4a341a98a7bd5074f72c188e9"
+    }
+  },
+  "camera_clips": 276,
+  "frames": 1380,
+  "complete_four_camera_clips": 69,
+  "strict_policy_counts": {
+    "failed": 155,
+    "ok": 117,
+    "warning": 4
+  },
+  "component_results": {
+    "shared_output": 276
+  },
+  "runtime_overrides": [
+    "device=cpu",
+    "court_kp.mode=video_shared",
+    "court_kp.video_shared.action=load",
+    "paths.artifact_root=/home/kamimura/projects/tennis-lab/.worktree-outputs/court-video-shared",
+    "court_kp.video_shared.directory=tennis_scene/evaluate/court-video-shared-acceptance-20261117/store",
+    "court_kp.video_shared.dataset_id=meiji_4cam",
+    "court_kp.video_shared.video_id=video_000",
+    "court_kp.video_shared.artifact_digest=4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+    "court_kp.video_shared.drift_directory=tennis_scene/evaluate/court-video-drift-lines-20261117/drift-store",
+    "court_kp.video_shared.drift_digest=7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6"
+  ],
+  "default_policy_from_yaml": true,
+  "human_review": {
+    "date": "2026-11-17",
+    "common_h_reviewed": true,
+    "accepted_for_downstream": true,
+    "source": "Parent instruction to worker #2191, turn c4c7bed22d114a2da39b7a77252fca41",
+    "quote": "緑の線は完全にコートを示している。これを下流で用いていけばよい",
+    "scope": {
+      "clips": 3,
+      "cameras": 4,
+      "native_resolution_crops": true,
+      "clip_ids": "not specified in parent instruction",
+      "all_69_clip_images_reviewed": false
+    },
+    "rationale": [
+      "共通Hが承認済み参照と一致した",
+      "人間が共通Hを目視確認した",
+      "検査不成立の主因は隣接線の誤抽出であり、10px級の整合した動きの証拠はない"
+    ],
+    "limitation": "clipの途中でcameraが動いた場合、自動では検出されないことがある"
+  },
+  "policy_identity": "196df4cf6bee6d0419dc750126c9386b2808e592e73c4a250b7338210734fc3b",
+  "seconds": 4.111369363992708
+}

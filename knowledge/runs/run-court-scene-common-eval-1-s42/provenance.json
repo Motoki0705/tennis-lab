@@ -1,0 +1,39 @@
+{
+  "schema": "court_scene_pair_condition_provenance_v1",
+  "condition": "scene-1",
+  "scientific_ref": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "inputs_identity": "4d7b39d613471fd9f94a64dcb36d8fbba3a939fa0517773125af394cc3c1ca33",
+  "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-1-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+  "checkpoint_sha256": "92e30ba6055af1cb67047867106246e8a14be65f122dbc3dd24cb58d1c094782",
+  "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/scene-1-s42/evaluation.json",
+  "evaluation_sha256": "dd3e9de22d49760e4ea6ec7be55a5b943b15c5f95a20970a81f119c5a372c311",
+  "global_step": 33160,
+  "config_digest": "0f3c1d203eaf32707398d6d277ce8fee89e2193000fc5c315f69c8de86e6fb36",
+  "data_condition_digest": "a0fea90664c15f44727d1dfffed69d8296efd1b913a9b56fb84d5033dd8c42e9",
+  "train_scene_images": {
+    "B00": 5500
+  },
+  "fit_val_scene_images": {
+    "B00": 500
+  },
+  "data_manifest_sha256": {
+    "synthetic_court/dataset_subset": "46f43e4e423185641f25fc8dd2332b3e4164b9eff72da11d02e26f6da0a80e69",
+    "synthetic_court/validation_subset": "061e73f2c6fe465ce43941a7c1dcf968c6853763564ffa375b6f0879870ec2c1",
+    "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+    "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+    "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+  },
+  "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-scene-1.json",
+  "original_marker_sha256": "0d6e9a555af580514e41cd3664a579b827e71082968312a38f53a5fe0aafbd21",
+  "evaluation_artifact_count": 37,
+  "training_source": {
+    "kind": "synthetic_court_dataset_subset",
+    "schema": "v3",
+    "court_scope": "target_court",
+    "manifest": "court_scene_diversity_6000_v1/scene-1.train.subset.json",
+    "validation_manifest": "court_scene_diversity_6000_v1/scene-1.val.subset.json"
+  },
+  "legacy_real_five_metrics_and_ids_exact_equal": true,
+  "legacy_evaluation_sha256": "2ed28c9cf98e95ee82b8344632e4271ace255f509526dd61afc73c6764505a8a",
+  "restarts": []
+}

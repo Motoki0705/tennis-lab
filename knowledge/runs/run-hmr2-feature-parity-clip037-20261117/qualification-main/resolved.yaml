@@ -1,0 +1,258 @@
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+video_paths:
+- tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam0.mp4
+- tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam1.mp4
+- tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam2.mp4
+- tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam3.mp4
+camera_ids:
+- cam0
+- cam1
+- cam2
+- cam3
+clip_id: video_000/clip_037
+direct_annotation:
+  request: null
+  request_sha256: null
+  bundle: null
+  bundle_sha256: null
+  court_detection: stored_artifact
+  publish_dataset: false
+  resume: workflow
+output_directory: hmr2_qualification/clip_037
+output_name: scene
+device: cuda
+execution:
+  court_detection: execute
+  court_calibration: execute
+  person_detection: execute
+  person_tracking: execute
+  player_selection: execute
+  pose_estimation: execute
+  ball_detection: execute
+  ball_points: execute
+  player_association: execute
+  court_side: execute
+  camera_alignment: execute
+  player_triangulation: execute
+  ball_triangulation: execute
+  body_view_selection: execute
+  gvhmr: execute
+  body_placement: execute
+  scene_assembly: execute
+court_kp:
+  mode: clip
+  video_shared:
+    unobservable_policy: warn
+    action: null
+    directory: null
+    dataset_id: null
+    video_id: null
+    request: null
+    request_sha256: null
+    artifact_digest: null
+    drift_directory: null
+    drift_digest: null
+    rebuild: false
+  checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt
+  subpixel_refine: true
+  region_search:
+    enabled: true
+    acceptance_method: legacy
+    min_inliers: 8
+    inlier_distance_ratio: 0.005
+    refinement_method: model
+    paint:
+      version: semantic_consensus_v2
+      radius_px: 48.0
+      fine_radius_px: 6.0
+      sample_spacing_px: 8.0
+      profile_step_px: 0.5
+      profile_sigma_px: 0.6
+      min_gradient: 2.0
+      min_contrast: 6.0
+      min_width_px: 1.0
+      max_width_px: 18.0
+      line_angle_limit_degrees: 8.0
+      line_inlier_distance_px: 1.5
+      ransac_trials: 500
+      min_line_locations: 8
+      min_coverage: 0.35
+      min_court_lines: 5
+      max_line_residual_px: 3.0
+      ambiguity_support_ratio: 0.8
+      ambiguity_separation_px: 3.0
+      max_projection_std_px: 5.0
+      max_leave_line_out_px: 10.0
+      max_normalized_condition: 10000.0
+      max_nfev: 200
+    min_area_ratio: 0.01
+    line_tolerance_ratio: 0.005
+    min_line_support: 0.55
+    min_visible_segment_support: 0.25
+    min_line_coverage: 0.5
+    max_normalized_condition: 10000.0
+    max_projection_std_ratio: 0.005
+    max_leave_line_out_ratio: 0.01
+  postprocess:
+    support_method: legacy
+    max_support_candidates: 8
+    min_score: 0.05
+    threshold_diagonal_ratio: 0.005
+    line_probability_threshold: 0.5
+    max_kp: 8
+    max_candidates: 1001
+    refine_candidates: 6
+    samples_per_line: 40
+    max_line_observations: 768
+    max_selection_rounds: 4
+    max_nfev: 70
+    kp_weight: 0.25
+    min_line_support: 0.55
+    ambiguity_gap: 0.02
+    ambiguity_displacement_ratio: 0.03
+    boundary_margin_cells: 1.0
+    duplicate_distance_cells: 1.0
+people_models:
+  merge_duplicate_person_boxes: false
+  dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
+  dino_repository: DINO
+  vitpose_checkpoint: vitpose/vitpose-h-multi-coco.pth
+  hmr2_checkpoint: hmr2/epoch=10-step=25000.ckpt
+  gvhmr_checkpoint: gvhmr/gvhmr_siga24_release.ckpt
+  body_models_dir: body_models
+  smpl_assets:
+    hmr2_mean_params: body_models/gvhmr/smpl_mean_params.npz
+    smplx_to_smpl: body_models/gvhmr/smplx2smpl_sparse.pt
+    smpl_coco17_regressor: body_models/gvhmr/smpl_coco17_J_regressor.pt
+    smplx_verts437: body_models/gvhmr/smplx_verts437.pt
+    smpl_neutral_joint_regressor: body_models/gvhmr/smpl_neutral_J_regressor.pt
+  runtime:
+    device: cuda
+    tracking:
+      bbox_enlarge: 1.2
+    dino_detector:
+      confidence: 0.3
+      short_side: 800
+      max_long_side: 1333
+    vitpose:
+      flip_test: true
+      batch_size: 16
+      head:
+        in_channels: 1280
+        out_channels: 17
+        num_deconv_layers: 2
+        num_deconv_filters:
+        - 256
+        - 256
+        num_deconv_kernels:
+        - 4
+        - 4
+        final_conv_kernel: 1
+        num_conv_layers: 0
+        num_conv_kernels: []
+    hmr2:
+      batch_size: 16
+    static_cam: true
+person_tracking:
+  method: strongsort_pp_pose
+  encoder: clipreid_vitb16_market1501
+  aflink_checkpoint: person_tracking/AFLink_epoch20.pth
+person_observations:
+  enabled: true
+  visibility_threshold: 0.15
+  sideline_margin_m: 1.0
+  baseline_margin_m: 10.0
+  max_tracks_per_camera: 6
+ball_detection:
+  method: model
+  model_type: conv_next_unet
+  input_channels: 2
+  num_frames: 8
+  precision: fp32
+  compile_mode: 'off'
+  checkpoint: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+  enabled: true
+  batch_size: 4
+  image_size:
+  - 288
+  - 512
+  normalize_imagenet: true
+  score_threshold: 0.5
+  subpixel_refine: true
+  checkpoint_strict: true
+  checkpoint_weights_only: false
+  prefetch_batches: 2
+  window_stride: 4
+  tail_policy: backfill
+  overlap_aggregation: nearest_window_centre_then_earlier_start
+  pin_memory: true
+  candidates:
+    max_candidates: 8
+    nms_kernel: 5
+    patch_size: 5
+  trajectory_gate:
+    enabled: true
+    max_residual_px: 60
+    k_support: 2
+    max_support_gap: 5
+    max_passes: 2
+ball_smoothing:
+  enabled: true
+  consensus_seconds: 0.7
+  trials: 80
+  minimum_residual_diagonal: 0.012
+  residual_mad_multiplier: 4.0
+  max_gap_seconds: 0.2
+  loess_seconds: 0.35
+  seed: 42
+frame_sampling:
+  max_frames: 1024
+camera_geometry:
+  reference_camera: null
+  calibration_error_ratio: 0.005
+  side_min_frames: 8
+  side_max_cost: 0.5
+  side_min_support: 0.5
+court_side:
+  reprojection_px: 20.0
+  min_motion_px: 5.0
+  min_frames: 8
+  max_cost: 0.8
+  min_support: 0.2
+  min_margin: 0.15
+player_association:
+  players_per_side: 2
+player_reconstruction:
+  enabled: true
+  reprojection_px: 40.0
+  joint_confidence: 0.3
+  placement:
+    data_sigma_m: 0.1
+    root_acceleration_sigma: 10.0
+    yaw_acceleration_sigma: 20.0
+    temporal_weight: 0.05
+    min_joints: 5
+    min_scale_pairs: 6
+    min_scale: 0.7
+    max_scale: 1.4
+    max_reprojection_rms_px: 10.0
+    reprojection_weight_sigma_px: 5.0
+    max_nfev: 200
+ball_reconstruction:
+  enabled: true
+  reprojection_px: 20.0
+  min_frames: 5
+gvhmr:
+  enabled: true
+cache:
+  directory: hmr2_qualification/clip_037/store
+  source: execute
+  overwrite: false
+max_frames: null

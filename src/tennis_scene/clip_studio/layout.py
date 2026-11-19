@@ -34,12 +34,12 @@ def discover_clip_studio_layout(
     if not source.is_dir():
         raise FileNotFoundError(f"source directory not found: {source}")
 
-    relative = source.relative_to(resolver.roots.data_root)
+    relative = resolver.relative(PathRole.DATA, source)
     parts = relative.parts
-    if len(parts) != 4 or parts[:2] != ("tennis_multivew", "raw"):
+    if len(parts) != 4 or parts[:2] != ("tennis_multiview", "raw"):
         raise ValueError(
             "source_directory must be "
-            "tennis_multivew/raw/<dataset_id>/<video_id> relative to paths.data_root; "
+            "tennis_multiview/raw/<dataset_id>/<video_id> relative to paths.data_root; "
             f"got {source_directory!r}"
         )
     dataset_id, video_id = parts[2], parts[3]
@@ -79,7 +79,7 @@ def discover_clip_studio_layout(
 
     processed = resolver.resolve(
         PathRole.DATA,
-        "tennis_multivew/processed",
+        "tennis_multiview/processed",
         dataset_id,
     )
     return ClipStudioLayout(

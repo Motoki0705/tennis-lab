@@ -1,0 +1,13 @@
+{
+  "schema": "ball_capacity_state_continuity.v1",
+  "parent_checkpoint": "/content/tennis-lab/outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/checkpoint-update-00005000.pt",
+  "parent_sha256": "ac3ed34cf2fe655c1cc93cdb83920416a6092d1bfed6acd4fa444cce883fb928",
+  "parent_update": 5000,
+  "parent_sample_position": 21000,
+  "parent_cumulative_updates": 21000,
+  "same_model_continuation": true,
+  "resume": true,
+  "rng_policy": "restore_full_checkpoint_before_first_batch",
+  "rng_exact_before_first_batch": true,
+  "first_batch_ready_at": "2026-11-11T07:35:12.213042+00:00"
+}

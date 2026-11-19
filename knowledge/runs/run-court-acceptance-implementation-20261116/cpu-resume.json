@@ -1,0 +1,23 @@
+[
+  {
+    "evaluation": "val_legacy",
+    "root_pid": 3358486,
+    "start_unix": 1794820058.24,
+    "stop_observed_unix": 1794822258.3085084,
+    "note": "already terminated; previous management assertion observed zombie state only; no live duplicate",
+    "reason": "reallocate CPUs after other evaluations completed; retain immutable atomic per-case results",
+    "previous_workers": 4,
+    "resumed_workers": 6,
+    "completed_cases": 1306
+  },
+  {
+    "evaluation": "val_current",
+    "root_pid": 3363951,
+    "start_unix": 1794820508.29,
+    "stop_unix": 1794822258.3359451,
+    "reason": "reallocate CPUs after other evaluations completed; retain immutable atomic per-case results",
+    "previous_workers": 4,
+    "resumed_workers": 6,
+    "completed_cases": 1055
+  }
+]

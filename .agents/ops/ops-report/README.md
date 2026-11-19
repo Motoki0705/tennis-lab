@@ -7,6 +7,9 @@
 
 ## 構成
 
+作業Issueの列挙・triageは [証拠容器の除外契約](../issues/README.md#証拠用issueの除外) に従う。
+organizationの合意/確認中判定は親の共通readerの履歴を使い、証拠用Issue自体を提案の実装先にしない。
+
 | パス | 役割 |
 |---|---|
 | `ops_report.py` | CLI入口（`report` / `triage` / `migrate-checkpoint` / `schedule init` / `schedule status`） |
@@ -387,13 +390,16 @@ page = reobservation_input(
 
 ```bash
 # 元の予定回と未完了レポートissueを明示。最初は書込みなしで照合する。
-.venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
   --slot YYYYMMDD --report-issue NUMBER --dry-run
 # 同じ引数から --dry-run を外すと移行する。
-.venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
   --slot YYYYMMDD --report-issue NUMBER
 # 移行成功後、同じ回の不足分を新しい調査経路で再開する。
-.venv/bin/python .agents/ops/ops-report/ops_report.py report --if-due
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py report --if-due
 ```
 
 - stateの置き場所は下記「予定と状態」と同じ。scheduleのanchor・3日周期・成功/失敗履歴は変更しない。
@@ -449,16 +455,22 @@ page = reobservation_input(
 
 ## 手動実行
 
+[共通launcherの契約](../lib/README.md#既存cliと新規jobの接続)を使う。直接のfile実行は拒否する。
+
 ```bash
 cd ~/projects/tennis-lab
 # 導入後の予定・前回結果を確認
-.venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
 # 本文を標準出力へ（issueは作らない）。agentは実行される。
-.venv/bin/python .agents/ops/ops-report/ops_report.py report --dry-run --output /tmp/report.md
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py report --dry-run --output /tmp/report.md
 # 本番（ops-report ラベルのissueを作成）
-.venv/bin/python .agents/ops/ops-report/ops_report.py report --agent claude
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py report --agent claude
 # 採用提案の引渡し（--dry-run で確認、子issueは作成しない）
-.venv/bin/python .agents/ops/ops-report/ops_report.py triage --dry-run
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py triage --dry-run
 ```
 
 実headlessでの証拠取得と改善ループの通し確認は親の #1461 で行う。
@@ -501,12 +513,17 @@ issueの作成時刻へ境界をずらさず、初回はanchorの3日前とす�
 正式親が変わった後もcontextだけを持つ親・分割子の出典を対象閉包に含め、採用変更を検出する。
 目的・範囲・受入条件・選択肢・元の提案内容とdigestはスクリプトが出典節へ引き継ぐ。
 
-既存のホスト共通triage lockとparent registry lock内で、計画をstate dirの `triage-<repo digest>.json` へ
-0600のatomic replaceで保存してから起票する。これは担当台帳ではなく、Issue反映のjournalである。
+ホスト共通triage lockは処理全体で保持する。parent registry lockは収集・照合・予約のtransactionに限定し、
+GitHub通信・git取得の間は解放する。親ごとのclientとrepo全体の収集範囲を分け、観測ごとにfreshに読む。
+整理runnerは固定入力と `organization-intent.json` を保存した後、registry transactionの外で実行する。
+終了後は新しいtransactionで全入力・担当を再取得し、変更があれば古い計画を公開しない。
+計画はstate dirの `triage-<repo digest>.json` へ0600のatomic replaceで保存してから起票する。
+これは担当台帳ではなく、Issue反映のjournalである。
 各書込前後に採用・選択肢・提案本文・全入力・担当を照合し、自分の正確な書込みだけを差し引く。
 親一覧やレポートの `引渡し` / `→ #N` は自分の表示として区別し、人間の本文・通常コメントを無視しない。
 作成応答を失っても、本文の計画digestとnode識別子から全open/closed issueを探し、不足する正式関係・親一覧・リンクだけを揃える。
-既存issueのstate・担当・親を戻さない。同一ホストの同時実行・手動親CLIとの競合は同じlockで直列化する。
+既存issueのstate・担当・親を戻さない。同一ホストのtriage同士は共通lockで直列化し、
+手動親CLIとの担当・委任の競合はregistryの再照合で拒否する。
 POST試行前もjournalへ記録する。応答が曖昧で全ページにも同じissueが見つからない場合は再POSTせず停止する。
 作成されていないことをGitHub・runログで明示確認できた場合だけ、そのnodeのattempted記録を退避付きで修復する。
 
@@ -538,7 +555,7 @@ journal破損・欠落や出典矛盾は自動初期化しない。run dirとGit
 
 生成した通常の作業issueは、次の08:00・20:00 JSTの予定回にdispatcherが収集する。専用enqueueやreadyラベルは不要。
 triageから割当判定agent・開発親・実装子・レビュー・mergeは起動しない。採用・Issue整理・自律着手根拠は別物で、
-後の委任では [parentの出典検証](../parent/README.md#子の作成委任再開) と有効な実行根拠を照合する。
+後の委任では [parentの出典検証](../../skills/parent-session/references/workers.md) と有効な実行根拠を照合する。
 開発workflowは、単一anchorのないcontext出典も含め `parent.adopted_tasks.check_task_adoptions(gh, body)` を
 親・対象子の両本文へ実行直前とmerge直前に適用する。この返却は出典の現状確認であり、実行許可ではない。
 #1335のworkflowがこの呼出しとdispatcherの外部入力鮮度検査を担う。先行parent/reviewの根拠・gateは書き換えない。
@@ -654,19 +671,24 @@ if [ -f ~/.config/tennis-lab-agents/weekly-report.env ]; then
   sed -i 's/^WEEKLY_REPORT_/OPS_REPORT_/' ~/.config/tennis-lab-agents/ops-report.env
 fi
 cd ~/projects/tennis-lab
-.agents/ops/install_units.sh --dry-run
-.agents/ops/install_units.sh                    # link + daemon-reload
+spin ops install --dry-run
+spin ops install                              # link + daemon-reload
 systemd-analyze --user verify .agents/ops/ops-report/systemd/*.{service,timer}
 # 導入完了後に基準を記録してからtimerを有効化（既存stateがあればinitは繰り返さない）
-.venv/bin/python .agents/ops/ops-report/ops_report.py schedule init
-.venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
-systemctl --user enable --now tennis-lab-ops-report.timer tennis-lab-ops-triage.timer
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py schedule init
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
+spin ops on report
+spin ops on triage
 # unit実効値、日次の次回check、3日周期の次回slotを照合
 systemctl --user cat tennis-lab-ops-report.service tennis-lab-ops-report.timer tennis-lab-ops-triage.service
-systemctl --user show tennis-lab-ops-report.timer -p NextElapseUSecRealtime -p LastTriggerUSec
+spin ops status report
+spin ops status triage
 systemctl --user list-timers --all 'tennis-lab-*'
-.venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
-journalctl --user -u tennis-lab-ops-report.service
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
+spin ops logs report
 ```
 
 旧timer/serviceがinactive・disabledでunitリンクも無いこと、新timerだけがreportを起動することを確認する。
@@ -676,6 +698,8 @@ journalctl --user -u tennis-lab-ops-report.service
 
 unitは `%h/projects/tennis-lab`（メインcheckout）と `.venv/bin/python` を使う。`claude` / `codex` / `gh` は
 `~/.local/bin` か `/usr/bin` にある前提で `PATH` を設定している。
+停止は `spin ops off report` / `spin ops off triage`。timerの無効化と実行中serviceの停止を両方照合する。
+共通の導入・ON/OFF・状態・ログ・user bus/lingerの契約は [ops_control README](../ops_control/README.md) を参照する。
 
 ## 改訂の仕方（固めすぎない）
 

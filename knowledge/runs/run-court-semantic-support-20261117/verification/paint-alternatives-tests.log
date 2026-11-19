@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [8 items]
+
+........                                                                 [100%]
+============================== slowest durations ===============================
+0.92s call     tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_essential_verified_lines_do_not_require_an_unidentifiable_leave_out_fit
+0.80s call     tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_rgb_centres_recover_known_h_with_net_and_occlusion[False-False]
+0.77s call     tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_confirmed_paint_line_loss_rejects_an_otherwise_solvable_fit
+0.74s call     tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_unconfirmed_net_tape_is_diagnostic_not_required_paint
+0.73s call     tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_rgb_centres_recover_known_h_with_net_and_occlusion[True-False]
+0.68s call     tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_rgb_centres_recover_known_h_with_net_and_occlusion[False-True]
+0.66s call     tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_successful_fit_with_uncertain_projection_is_not_accepted
+0.40s call     tests/unit/tasks/court_detection/geometry/test_paint_refinement.py::test_fit_budget_failure_and_absent_paint_do_not_return_initial_h
+
+(16 durations < 0.005s hidden.  Use -vv to show these durations.)
+============================== 8 passed in 10.09s ==============================

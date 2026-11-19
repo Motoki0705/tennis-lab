@@ -73,6 +73,7 @@ def test_only_decided_annotation_sides_are_accepted(unseen: Any) -> None:
         unseen.selected_sides(document)
 
 
+@pytest.mark.system_deps
 def test_video_contains_all_frames_of_three_cameras_and_no_labels(unseen: Any, tmp_path: Path) -> None:
     frames = 4
     videos = []

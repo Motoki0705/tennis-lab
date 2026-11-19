@@ -359,6 +359,8 @@ TENNIS_SCENE_REMOVED_MODULES = (
     "src.tennis_scene.blender_export.gaps",
     "src.tennis_scene.blender_export.pointcache",
     "src.tennis_scene.pipeline.components.blcs",
+    # Model ownership and cleanup now belong to the inference runtime.
+    "src.tennis_scene.pipeline.components.base",
     "src.tennis_scene.pipeline.components.plcs",
     "src.tennis_scene.pipeline.components.player_association",
     "src.tennis_scene.pipeline.dependency_graph",

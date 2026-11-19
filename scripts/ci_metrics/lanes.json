@@ -4,6 +4,7 @@
     {
       "id": "ops-scenarios",
       "files": [
+        "tests/e2e/agents_ops/explain_html/test_authoring.py",
         "tests/e2e/agents_ops/explain_html/test_browser.py",
         "tests/e2e/agents_ops/test_adopted_proposal_issues.py",
         "tests/e2e/agents_ops/test_board.py",

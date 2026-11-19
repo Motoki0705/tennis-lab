@@ -1,0 +1,41 @@
+{
+  "choices": [
+    {
+      "case_id": "pr-1699",
+      "model": "gpt-6-astra",
+      "reason": "workerの指示と最終報告をGitへ公開する変更で、公開範囲に関わる。"
+    },
+    {
+      "case_id": "pr-1766",
+      "model": "gpt-6-astra",
+      "reason": "時間切れ後の自動継続で、取消・継続の並行処理に関わる。"
+    },
+    {
+      "case_id": "pr-1867",
+      "model": "gpt-6-astra",
+      "reason": "正式レビューの復旧と公開再開で、gateと公開記録に関わる。"
+    },
+    {
+      "case_id": "pr-1872",
+      "model": "gpt-6-astra",
+      "reason": "レビューの排他と中断終結で、gateと並行処理に関わる。"
+    },
+    {
+      "case_id": "pr-1888",
+      "model": "gpt-6-astra",
+      "reason": "レビューのモデル選択の証拠検証で、gateに関わる。"
+    },
+    {
+      "case_id": "pr-1686",
+      "model": "gpt-6.1-sol",
+      "reason": "memoryの記録対象の文書規則の変更で、通常変更にあたる。"
+    },
+    {
+      "case_id": "pr-1744",
+      "model": "gpt-6.1-sol",
+      "reason": "保存済みsceneから単一の共通bundleを生成する通常のデータ生成変更で、既存テストと受入条件で追える。"
+    }
+  ],
+  "schema_version": 1,
+  "source": "親 #1797 の担当（Iris）が2026-11-11に、人間の承認済み方針に基づいて固定した。正解表は参照していない。"
+}

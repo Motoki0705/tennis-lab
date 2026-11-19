@@ -1,0 +1,41 @@
+{
+  "schema": "ball_arch_vm_recovery.v1",
+  "session": "01a1c95a-4009-7783-af69-6cdab7f5ba9a",
+  "commit": "fae715ad752b2da41607d139ce6387d8d3f79823",
+  "benchmark_snapshot": {
+    "receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "block0-1794376726419587437",
+      "remote": "mounted_drive:outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks-slice-baseline/block0-1794376726419587437",
+      "manifest_sha256": "5eeb46c4526f1dcd3dc85ccc44f390f9311fb877e41b95770edd3e82b4e3f565",
+      "manifest_md5": "a9a68375971c5e1e6105ff4ba16ee843",
+      "files": 258,
+      "size_bytes": 457273637,
+      "marker_id": null,
+      "seconds": 67.86636114800058,
+      "status": "verified"
+    },
+    "readback": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "block0-1794376726419587437",
+      "status": "verified",
+      "files": 258,
+      "manifest_sha256": "5eeb46c4526f1dcd3dc85ccc44f390f9311fb877e41b95770edd3e82b4e3f565",
+      "seconds": 34.7012224049995
+    },
+    "complete_blocks": 1,
+    "required_blocks": 3,
+    "scientific_main_updates": 0
+  },
+  "all_original_package_versions_match": true,
+  "original_package_count": 742,
+  "scientific_and_benchmark_sources_match": true,
+  "native_numerical_and_gradcheck": true,
+  "cuda_timing_test": true,
+  "cpu_recovery_tests": 14,
+  "measurement_attempt": 3,
+  "scientific_training_started": false,
+  "dependency_reference": "original-vm-pip-freeze.txt",
+  "vm_sessions": 2,
+  "notes": "Block 0 from previous VM; blocks 1 and 2 resumed with matching package versions and recorded CUDA environment"
+}

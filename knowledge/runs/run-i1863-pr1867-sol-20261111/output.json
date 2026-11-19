@@ -1,0 +1,23 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "静的推論（未実行）: 採用元の登録とsnapshotの一致は確認しますが、その後のレビュー結果を照合していません。同一snapshotでR1にapproveの有効finalがあり、後続R2がmajorを報告した後、新規R3でR1をrecoverすると、merge()は最新のR3を選びます。verify_adoption()はR1との整合だけを検証し、公開照合もR3の記録だけを見るため、R2の指摘をresolveせずに、親確認とCI成功が揃えばgateを通過できます。採用時とgateで後続の重複対象runを照合し、未解決指摘や失敗・矛盾を隠す採用を拒否する必要があります。",
+          "id": "pr-1867-1",
+          "line": 292,
+          "path": ".agents/ops/review/merge_gate.py",
+          "rule": "採用元より後のレビュー結果も照合する",
+          "severity": "major"
+        }
+      ],
+      "number": 1867,
+      "summary": "復旧・公開再開・証拠待ちの処理を確認しました。古い結果の採用で後続の未解決指摘を隠せる経路があります。"
+    }
+  ],
+  "summary": "静的レビューで重大な欠陥を1件確認しました。CPU実行による検証は行っていません。",
+  "verdict": "request_changes"
+}

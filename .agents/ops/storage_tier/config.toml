@@ -1,0 +1,25 @@
+mirror_mount = "/mnt/wsl/tennis-data"
+# Direct children of these namespaces are dataset versions, never individual files.
+dataset_containers = [
+  "data/ball_detection", "data/court_detection", "data/player_detection",
+  "data/blcs", "data/plcs", "data/slcs", "data/ball_refiner", "data/ball_refiner_3d",
+]
+# Nonstandard version roots require an explicit boundary; raw/model assets are unclassified.
+dataset_units = ["data/court_scene_diversity_6000_v1"]
+# Permanent D: inputs use mirror/verify/hydrate but are never evicted.
+resident_units = [
+  "data/ACCAD", "data/samples", "data/smplh", "data/smplx",
+  "data/tennis_multiview/raw/meiji_4cam",
+  "data/tennis_multiview/processed/meiji_4cam",
+]
+# Exact absolute E: counterparts only; these references are not managed units.
+unmanaged_data_links = [
+  "data/synthetic_data_generation", "data/tennis_multiview_linux_retained",
+  "data/tennis_multiview/raw/meiji_3cam",
+  "data/tennis_multiview/raw/tennis_clip",
+  "data/tennis_multiview/raw/tennis_clip_source",
+  "data/tennis_multiview/processed/meiji_3cam",
+  "data/tennis_multiview/processed/meiji_3cam.tar",
+  "data/tennis_multiview/processed/tennis_clip",
+  "data/tennis_multiview/processed/tennis_clip_source",
+]

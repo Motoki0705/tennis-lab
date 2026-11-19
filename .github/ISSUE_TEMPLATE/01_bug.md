@@ -2,10 +2,10 @@
 name: バグ報告
 about: 不具合、リグレッション、想定外の挙動を報告する
 title: "[バグ] "
-labels: ["bug"]
+labels: ["bug", "issue:standalone"]
 ---
 
-<!-- 親子として管理する場合は06_parent/07_childを使い、このテンプレートのバグ固有項目を追加する。書式の正本: .agents/ops/issues/README.md -->
+<!-- 単独のバグ用（issue:standaloneを付与）。親子として管理する場合は06_parent/07_childへバグ固有項目を追加する。起票後の親子移行は .agents/ops/issues/README.md に従う。 -->
 
 ## 概要
 

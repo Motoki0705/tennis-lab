@@ -1200,14 +1200,20 @@ def test_concurrent_peer_sync_preserves_unique_names_and_registry(
     assert {parent for _name, parent in rows} == {1, 2, 3}
 
 
-@pytest.mark.parametrize("title", ["人間が作成した単独タスク", "[Bug] 単独タスク"])
+@pytest.mark.parametrize(
+    ("title", "labelled"),
+    [("人間が作成した単独タスク", False), ("[Bug] 単独タスク", True)],
+)
 def test_standalone_parent_has_a_name_and_null_identifier(
-    board: SimpleNamespace, parent_env: ParentEnv, title: str
+    board: SimpleNamespace, parent_env: ParentEnv, title: str, labelled: bool
 ) -> None:
     p = parent_env
     state = p.state()
     state["issues"]["1"].update(
-        title=title, labels=[{"name": "bug"}], body="単独タスクを実装する。"
+        title=title,
+        labels=[{"name": "bug"}]
+        + ([{"name": p.formats.STANDALONE_LABEL}] if labelled else []),
+        body="単独タスクを実装する。",
     )
     p.save(state)
     first = json.loads(p.cli("register").stdout)["board_sync"]
@@ -1227,7 +1233,12 @@ def test_standalone_parent_has_a_name_and_null_identifier(
     # Promotion to a parent and back keeps the assignment, updating only metadata.
     for role_labels, title, identifier in (
         ([{"name": "issue:parent"}], "[開発] 親に移行", "開発"),
-        ([{"name": "bug"}], "単独タスクに戻す", None),
+        (
+            [{"name": "bug"}]
+            + ([{"name": p.formats.STANDALONE_LABEL}] if labelled else []),
+            "単独タスクに戻す",
+            None,
+        ),
     ):
         state = p.state()
         state["issues"]["1"].update(title=title, labels=role_labels)
@@ -1343,7 +1354,8 @@ def test_name_failure_does_not_undo_parent_or_skip_display(
         connection.execute(f"PRAGMA user_version={board.storage.SCHEMA_VERSION}")
     repaired = p.cli("register")
     assert json.loads(repaired.stdout)["board_sync"]["status"] == "assigned"
-    assert len(p.state()["comments"]["1"]) == 1
+    assert len(p.comments()) == 1
+    assert not p.state()["comments"]["1"]
 
 
 @pytest.mark.parametrize(

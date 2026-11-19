@@ -1,0 +1,11 @@
+{
+  "schema": "court_scene_pair_comparison_crosscheck_v1",
+  "verified": true,
+  "raw_report_count": 9,
+  "exact_extracted_cells": 527,
+  "independent_arithmetic_cells": 65,
+  "maximum_absolute_difference": 0.0,
+  "csv_json_cells_exact": 780,
+  "comparison_sha256": "49a09ed0b02a434880e69c30b7d971f36d024b095571ecc3b2bfe913817c2ee5",
+  "method": "Direct raw JSON extraction; Fraction exact binary means independently of compare.py; all output CSV cells checked against JSON."
+}

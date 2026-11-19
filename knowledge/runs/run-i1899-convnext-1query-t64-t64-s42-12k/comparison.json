@@ -1,0 +1,95 @@
+{
+  "complete": true,
+  "query_updates_per_condition": 12000,
+  "seed": 42,
+  "evaluation_T": 64,
+  "support": {
+    "frames": 128668,
+    "masked": 11310,
+    "observed": 85473,
+    "out_of_frame": 2712,
+    "reviewed_empty": 29173,
+    "scored_frames": 117358
+  },
+  "identities": {
+    "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+    "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+    "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec"
+  },
+  "identity_match_all_four": true,
+  "rows": [
+    {
+      "condition": "基準 ConvNeXt＋1query、T32→T64",
+      "node": "run-ball-sequential-length-20261025",
+      "report": "knowledge/runs/run-ball-sequential-length-20261025/terminal-validation.json",
+      "metrics": {
+        "mean_error_px": 28.200801773291,
+        "median_error_px": 7.661407947540283,
+        "p95_error_px": 116.888377380371,
+        "within_distance_rate": 0.7628607864471821
+      },
+      "delta_from_baseline": {
+        "mean_error_px": 0.0,
+        "median_error_px": 0.0,
+        "p95_error_px": 0.0,
+        "within_distance_percentage_points": 0.0
+      }
+    },
+    {
+      "condition": "① ConvNeXt＋4query/mHC、T32→T64",
+      "node": "run-i1899-convnext-4query-mhc-t64-s42-12k",
+      "report": "knowledge/runs/run-i1899-convnext-4query-mhc-t64-s42-12k/stage2-validation-update-00006000.json",
+      "metrics": {
+        "mean_error_px": 36.42065879366264,
+        "median_error_px": 7.5588812828063965,
+        "p95_error_px": 199.28723754882802,
+        "within_distance_rate": 0.7529980227674237
+      },
+      "delta_from_baseline": {
+        "mean_error_px": 8.219857020371638,
+        "median_error_px": -0.10252666473388672,
+        "p95_error_px": 82.39886016845702,
+        "within_distance_percentage_points": -0.9862763679758468
+      }
+    },
+    {
+      "condition": "② X3D/CSN＋1query、T32→T64",
+      "node": "run-i1899-x3d-1query-t64-s42-12k",
+      "report": "knowledge/runs/run-i1899-x3d-1query-t64-s42-12k/stage2-validation-update-00006000.json",
+      "metrics": {
+        "mean_error_px": 33.980226994374796,
+        "median_error_px": 10.723003387451172,
+        "p95_error_px": 145.5920349121093,
+        "within_distance_rate": 0.7242170042001568
+      },
+      "delta_from_baseline": {
+        "mean_error_px": 5.779425221083795,
+        "median_error_px": 3.0615954399108887,
+        "p95_error_px": 28.703657531738315,
+        "within_distance_percentage_points": -3.864378224702536
+      }
+    },
+    {
+      "condition": "③ ConvNeXt＋1query、T64→T64",
+      "node": "run-i1899-convnext-1query-t64-t64-s42-12k",
+      "report": "knowledge/runs/run-i1899-convnext-1query-t64-t64-s42-12k/stage2-validation.json",
+      "metrics": {
+        "mean_error_px": 28.526567810816783,
+        "median_error_px": 7.652594566345215,
+        "p95_error_px": 120.72167205810501,
+        "within_distance_rate": 0.7616908263428217
+      },
+      "delta_from_baseline": {
+        "mean_error_px": 0.32576603752578137,
+        "median_error_px": -0.00881338119506836,
+        "p95_error_px": 3.833294677734017,
+        "within_distance_percentage_points": -0.11699601043604346
+      }
+    }
+  ],
+  "limitations": [
+    "Single seed42 and validation only; no statistical equivalence test.",
+    "Condition3 switched L4 to RTX5060Ti after first5500 query updates; other changes were held fixed.",
+    "Condition1 changes query count and mHC together; condition2 includes CNN pretraining; interactions unmeasured."
+  ]
+}

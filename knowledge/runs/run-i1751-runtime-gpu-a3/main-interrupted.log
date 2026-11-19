@@ -1,0 +1,77 @@
+{"commit": "486aa1ab09be857909d0fcf8c2b616c75a53f5b0", "elapsed_seconds": 0.13532786999712698, "event": "pipeline_start"}
+2026-11-17 22:13:24,119 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"elapsed_seconds": 50.130230982991634, "event": "backend_load_start", "model": "court"}
+2026-11-17 22:13:25,435 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-17 22:13:25,536 dinov3 INFO using base=100 for rope new
+2026-11-17 22:13:25,536 dinov3 INFO using min_period=None for rope new
+2026-11-17 22:13:25,536 dinov3 INFO using max_period=None for rope new
+2026-11-17 22:13:25,536 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-17 22:13:25,536 dinov3 INFO using shift_coords=None for rope new
+2026-11-17 22:13:25,536 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-17 22:13:25,537 dinov3 INFO using jitter_coords=None for rope new
+2026-11-17 22:13:25,537 dinov3 INFO using dtype=fp32 for rope new
+2026-11-17 22:13:25,537 dinov3 INFO using mlp layer as FFN
+{"allocated_bytes": 680072192, "elapsed_seconds": 55.385471885994775, "event": "backend_load_return", "model": "court", "reserved_bytes": 738197504, "seconds": 5.254966676002368}
+2026-11-17 22:13:57,646 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"elapsed_seconds": 83.65724681399297, "event": "backend_load_start", "model": "court"}
+2026-11-17 22:13:59,010 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-17 22:13:59,029 dinov3 INFO using base=100 for rope new
+2026-11-17 22:13:59,029 dinov3 INFO using min_period=None for rope new
+2026-11-17 22:13:59,029 dinov3 INFO using max_period=None for rope new
+2026-11-17 22:13:59,029 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-17 22:13:59,030 dinov3 INFO using shift_coords=None for rope new
+2026-11-17 22:13:59,030 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-17 22:13:59,030 dinov3 INFO using jitter_coords=None for rope new
+2026-11-17 22:13:59,030 dinov3 INFO using dtype=fp32 for rope new
+2026-11-17 22:13:59,031 dinov3 INFO using mlp layer as FFN
+{"allocated_bytes": 713626624, "elapsed_seconds": 88.86616528799641, "event": "backend_load_return", "model": "court", "reserved_bytes": 771751936, "seconds": 5.208468325989088}
+2026-11-17 22:14:32,538 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"elapsed_seconds": 118.54900971299503, "event": "backend_load_start", "model": "court"}
+2026-11-17 22:14:33,883 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-17 22:14:33,898 dinov3 INFO using base=100 for rope new
+2026-11-17 22:14:33,898 dinov3 INFO using min_period=None for rope new
+2026-11-17 22:14:33,898 dinov3 INFO using max_period=None for rope new
+2026-11-17 22:14:33,898 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-17 22:14:33,898 dinov3 INFO using shift_coords=None for rope new
+2026-11-17 22:14:33,898 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-17 22:14:33,899 dinov3 INFO using jitter_coords=None for rope new
+2026-11-17 22:14:33,899 dinov3 INFO using dtype=fp32 for rope new
+2026-11-17 22:14:33,899 dinov3 INFO using mlp layer as FFN
+{"allocated_bytes": 713626624, "elapsed_seconds": 123.67585264699301, "event": "backend_load_return", "model": "court", "reserved_bytes": 771751936, "seconds": 5.126475751021644}
+2026-11-17 22:15:26,920 src.tennis_scene.pipeline.components.ball_detection INFO Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"elapsed_seconds": 172.93076102199848, "event": "backend_load_start", "model": "ball"}
+{"allocated_bytes": 57598464, "elapsed_seconds": 174.01216446899343, "event": "backend_load_return", "model": "ball", "reserved_bytes": 73400320, "seconds": 1.079542935010977}
+2026-11-17 22:16:21,678 src.tennis_scene.pipeline.components.ball_detection INFO Ball trajectory gate rejected 0 frame(s): []
+2026-11-17 22:16:30,244 src.tennis_scene.pipeline.components.ball_detection INFO Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"elapsed_seconds": 236.25516822599457, "event": "backend_load_start", "model": "ball"}
+{"allocated_bytes": 57598464, "elapsed_seconds": 236.56543928798055, "event": "backend_load_return", "model": "ball", "reserved_bytes": 73400320, "seconds": 0.308839926001383}
+2026-11-17 22:16:39,508 src.tennis_scene.pipeline.components.ball_detection INFO Ball trajectory gate rejected 2 frame(s): [126, 127]
+2026-11-17 22:16:54,277 src.tennis_scene.pipeline.components.ball_detection INFO Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"elapsed_seconds": 260.28750100400066, "event": "backend_load_start", "model": "ball"}
+{"allocated_bytes": 57598464, "elapsed_seconds": 260.5848530269868, "event": "backend_load_return", "model": "ball", "reserved_bytes": 73400320, "seconds": 0.2970075900084339}
+2026-11-17 22:17:03,912 src.tennis_scene.pipeline.components.ball_detection INFO Ball trajectory gate rejected 5 frame(s): [464, 465, 844, 843, 845]
+{"elapsed_seconds": 283.9371597999998, "event": "backend_load_start", "model": "dino"}
+/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/TensorShape.cpp:4215.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+{"allocated_bytes": 909091840, "elapsed_seconds": 295.87241229999927, "event": "backend_load_return", "model": "dino", "reserved_bytes": 981467136, "seconds": 11.934944440989057}
+{"elapsed_seconds": 706.4043949049956, "event": "backend_load_start", "model": "appearance"}
+{"allocated_bytes": 378640384, "elapsed_seconds": 755.9360371119983, "event": "backend_load_return", "model": "appearance", "reserved_bytes": 434110464, "seconds": 49.53130242601037}
+person_tracking/cam0: 0/1010 frames
+{"elapsed_seconds": 756.0037389369973, "event": "backend_load_start", "model": "vitpose"}
+{"allocated_bytes": 2996163072, "elapsed_seconds": 770.6146516029839, "event": "backend_load_return", "model": "vitpose", "reserved_bytes": 3082813440, "seconds": 14.61058619999676}
+person_tracking/cam0: 65/1010 frames
+person_tracking/cam0: 200/1010 frames
+person_tracking/cam0: 295/1010 frames
+person_tracking/cam0: 403/1010 frames
+person_tracking/cam0: 512/1010 frames
+person_tracking/cam0: 622/1010 frames
+person_tracking/cam0: 748/1010 frames
+person_tracking/cam0: 865/1010 frames
+person_tracking/cam0: 972/1010 frames
+person_tracking/cam0: 1008/1010 frames
+person_tracking/cam0: 1010/1010 frames
+{"elapsed_seconds": 1067.3072177330032, "event": "backend_load_start", "model": "dino"}
+{"allocated_bytes": 908567552, "elapsed_seconds": 1069.9713254410017, "event": "backend_load_return", "model": "dino", "reserved_bytes": 987758592, "seconds": 2.6638092640205286}
+{"elapsed_seconds": 1476.8990388899983, "event": "backend_load_start", "model": "appearance"}

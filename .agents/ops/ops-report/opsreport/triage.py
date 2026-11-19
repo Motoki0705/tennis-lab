@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from dispatcher.state import RepositoryStore, client_for
 from issues import (
     ProposalSource,
     index_proposals,
@@ -17,7 +18,7 @@ from issues import (
 from parent.github import GitHub
 from parent.proposals import deliver, matching, record
 from parent.session import ParentSession
-from parent.state import Store, state_directory
+from parent.state import RegistryConflict, Store, state_directory
 
 from . import organization_apply, shell
 from .collect import REPORT_LABEL
@@ -177,12 +178,13 @@ def triage(*, repo_root: Path, work_dir: Path, dry_run: bool) -> TriageResult:
     repo = shell.gh_json(["repo", "view", "--json", "nameWithOwner"], cwd=repo_root)[
         "nameWithOwner"
     ]
-    gh = GitHub(repo)
+    store = RepositoryStore(state_directory())
+    gh = GitHub(repo, store=store)
     # Use exactly the parent entry's registry lock, without impersonating an owner.
-    with Store(state_directory()).locked() as store:
+    with store.locked(), gh.fresh_reads():
         sessions = {
             int(key.rsplit("#", 1)[1]): ParentSession(
-                gh, store, int(key.rsplit("#", 1)[1]), None
+                client_for(gh, store), store, int(key.rsplit("#", 1)[1]), None
             )
             for key in store.parents
             if key.rsplit("#", 1)[0] == repo.casefold()
@@ -201,16 +203,16 @@ def triage(*, repo_root: Path, work_dir: Path, dry_run: bool) -> TriageResult:
                 dry_run,
                 automatic,
             )
-        if automatic:
-            organization_apply.run(
-                gh=gh,
-                store=store,
-                root=repo_root,
-                work_dir=work_dir,
-                candidates=automatic,
-                dry_run=dry_run,
-                result=result,
-            )
+    if automatic:
+        organization_apply.run(
+            gh=gh,
+            store=store,
+            root=repo_root,
+            work_dir=work_dir,
+            candidates=automatic,
+            dry_run=dry_run,
+            result=result,
+        )
     return result
 
 
@@ -239,7 +241,9 @@ def _triage_report(
             source = ProposalSource(prop.pid, number, option)
             expected = record(source, prop)
             if parent is not None and parent not in sessions:
-                sessions[parent] = ParentSession(gh, store, parent, None)
+                sessions[parent] = ParentSession(
+                    client_for(gh, store), store, parent, None
+                )
             previous = []
             for session in sessions.values():
                 previous += matching(session.history(), source, expected)
@@ -310,6 +314,8 @@ def _triage_report(
                 else:
                     result.pending.append((prop.pid, parent))
             LOG.info("%s: %s", prop.pid, statuses[prop.pid])
+        except RegistryConflict:
+            raise
         except ValueError as exc:
             result.errors.append(f"#{number} {exc}")
             LOG.error("#%d %s", number, exc)

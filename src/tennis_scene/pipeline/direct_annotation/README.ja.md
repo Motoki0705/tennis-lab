@@ -76,7 +76,8 @@ GPU機能はrepoのtraining queue規則に従う。CPUのball単独実行では
 
 component storeの`run.json`は`annotation`・`scene`・`dataset`・`learning`を分けて報告する。
 scene metadataの`ok`/`partial`は従来の意味を保持する。cameraごとの完成と計測参照はcampaignの
-`scene-workflow/annotations.json`、scene artifactとarchiveは`scene-completion.json`へ保存する。
+`scene-workflow/annotations.json`へ保存する。scene artifact・archive・DINOとViTPoseの設定精度は
+`scene-completion.json`へ保存する。
 任意公開は`scene-workflow/publication-request.json`と`publication.json`へ記録する。
 `dataset=not_requested`は成功、`learning=not_requested`では学習を起動しない。
 
@@ -85,8 +86,10 @@ scene metadataの`ok`/`partial`は従来の意味を保持する。cameraごと�
 統合注釈CLIの`run`・`tick`・`status`・`recover`・`resume-budget`・`report`は保存済み
 `LocalAnnotationRuntime`とdigestを受け付ける。
 
-公開だけが失敗した場合、同じrequest・幾何・storeを指定した元のsceneコマンドへ
-`direct_annotation.resume=publication`を追加する。完成注釈とscene exportを検証してpublisherを再開し、
+公開だけが失敗した場合、同じrequest・幾何・storeとDINO・ViTPoseの設定精度を指定した元のsceneコマンドへ
+`direct_annotation.resume=publication`を追加する。精度欄がない旧receiptは両モデルともFP32として照合する。
+精度が異なる場合は公開前に停止する。身体成果物の現行版と保存HMR2特徴への依存も
+[通常の公開と同じ契約](../README.md#成果物)で検証する。完成注釈とscene exportを検証してpublisherを再開し、
 scene stageの構築・worker受付を行わない。publisher commit後、workflow receipt保存前の中断も
 同じsnapshotへ収束する。新しい公開要求で保存注釈を上書きしない。
 

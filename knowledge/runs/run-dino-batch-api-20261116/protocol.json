@@ -1,0 +1,24 @@
+{
+  "dtype": "float32",
+  "confidence": 0.3,
+  "short_side": 800,
+  "max_long_side": 1333,
+  "batch_sizes": [
+    1,
+    2,
+    4
+  ],
+  "score_atol": 0.0001,
+  "box_atol_original_pixels": 0.1,
+  "rtol": 0,
+  "discrete": "threshold selection, sorted rows, duplicate kept/dropped source rows exact",
+  "warmups_per_batch_size": 1,
+  "timed_repeats": 3,
+  "timed_scope": "predict_batch: CPU preprocessing + H2D + GPU forward + decode + D2H, no video decode/load/warmup/capture/save",
+  "allocated_fraction_cap": 0.72,
+  "resource": "all",
+  "frames": 8,
+  "source": "complete clip_000, 4 cameras, frames 0 and 120",
+  "source_git_base": "e561377ce",
+  "scalar_reference": "unmodified person_detector.py at source_git_base"
+}

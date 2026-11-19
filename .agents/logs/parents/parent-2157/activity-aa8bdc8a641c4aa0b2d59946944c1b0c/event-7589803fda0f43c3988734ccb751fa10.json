@@ -1,0 +1,88 @@
+{
+  "record": {
+    "data": {
+      "action_id": "b6e7c849f1964b25a26266ef79971f99",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=saved parent verification; content_sha256=0fe040d6f0e26ded9b21160b3b444c010471c08be34f535848cd6af69f3d3aff; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=0fe040d6f0e26ded9b21160b3b444c010471c08be34f535848cd6af69f3d3aff; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2177]; PR #2177（HEAD 3eb7522a8）。条件付きGET（ETagをURL・認証digestで分離、保存なし304はエラー）、primary/secondary rate limitの分類と再開時刻、302署名URLのjobログ取得（認証を転送しない、欠落は理由付き）、GET数と200/304のmetricsを追加。既存の get() の契約は維持。worker報告: 回帰233件・API関連83件成功、故障注入2件で該当テストが失敗することを確認、pre-commit成功。CIは実行中。",
+      "verifies": [
+        "2d0658e578e04e8591eb0e1d579c25a0"
+      ]
+    },
+    "id": "7589803fda0f43c3988734ccb751fa10",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "aa8bdc8a641c4aa0b2d59946944c1b0c",
+      "delegation": {
+        "key": "d-2c91957afc514edeaf3117d6b0c4eca1",
+        "turn": 1
+      },
+      "issue": 2174,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-16T00:53:08.722362+00:00"
+      },
+      "recorded_at": "2026-11-16T00:53:08.722375+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

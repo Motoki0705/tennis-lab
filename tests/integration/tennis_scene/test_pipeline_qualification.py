@@ -86,6 +86,7 @@ def test_archive_all_fields_comparison_detects_changed_observations(qualificatio
         qualification.same_scene(expected, restored)
 
 
+@pytest.mark.system_deps
 def test_video_preserves_all_three_camera_timelines(qualification: Any, tmp_path: Path) -> None:
     source = source_videos(tmp_path)
     record = qualification.render(empty_scene(), source, tmp_path / 'full.mp4')
@@ -95,6 +96,7 @@ def test_video_preserves_all_three_camera_timelines(qualification: Any, tmp_path
         qualification.render(empty_scene(), source, tmp_path / 'full.mp4')
 
 
+@pytest.mark.system_deps
 def test_video_stops_on_truncated_camera(qualification: Any, tmp_path: Path) -> None:
     source = source_videos(tmp_path)
     declared = ClipSource(source.clip_id, tuple(replace(v, num_frames=4) for v in source.videos))

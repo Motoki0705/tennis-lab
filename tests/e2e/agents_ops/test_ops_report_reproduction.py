@@ -11,6 +11,7 @@ import io
 import json
 import os
 import re
+import select
 import subprocess
 import sys
 import threading
@@ -22,6 +23,8 @@ from typing import Any
 
 import pytest
 
+from tests.e2e.agents_ops.fake_managed_audit_cli import pidfd_open
+
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = ROOT / ".agents/ops/ops-report"
 sys.path.insert(0, str(PACKAGE))
@@ -29,8 +32,8 @@ repro: Any = importlib.import_module("opsreport.reproduction")
 isolation: Any = importlib.import_module("opsreport.repro_isolation")
 linux: Any = importlib.import_module("opsreport.repro_linux")
 ledger: Any = importlib.import_module("opsreport.ledger")
-server: Any = importlib.import_module("opsreport.reproduction_server")
-transport: Any = importlib.import_module("opsreport.mcp_server")
+server: Any = importlib.import_module("opsreport.reproduction_server_impl")
+transport: Any = importlib.import_module("opsreport.mcp_server_impl")
 SLOT = "20261024"
 AT = "2026-10-24T00:00:00+00:00"
 NODE = "tests/test_cpu.py::test_truth"
@@ -623,11 +626,23 @@ def test_timeout_reaps_group_when_output_is_open_or_closed(
     assert result.reason == "timeout" and result.exit_code != 0
     assert result.cleanup_complete is None  # A process group alone is insufficient.
     pid = int(child.read_text())
+    # Waiting for the leader does not wait for this child's pending SIGKILL.
+    try:
+        descriptor = pidfd_open(pid)
+    except ProcessLookupError:
+        return
+    try:
+        assert select.select([descriptor], [], [], 5)[0], (
+            f"child {pid} survived timeout"
+        )
+    finally:
+        os.close(descriptor)
     # After the kill the child is gone, a zombie (Z), or briefly dead (X) while
-    # init reaps it. Reading once avoids racing a separate exists() check.
+    # init reaps it. procfs can report ESRCH if it is reaped after open(),
+    # before read(), as well as ENOENT if it is already absent at open().
     try:
         status = Path(f"/proc/{pid}/status").read_text()
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
         return
     assert re.search(r"^State:\t[ZX] ", status, re.MULTILINE), status
 

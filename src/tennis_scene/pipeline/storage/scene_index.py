@@ -28,7 +28,7 @@ def read_component_descriptor(root: Path, reference: Mapping[str, Any], *, node:
     return descriptor
 
 
-def assert_current_component_lineage(document: dict[str, Any], root: Path, inputs: dict[str, Any]) -> None:
+def assert_current_component_lineage(document: dict[str, Any], root: Path, inputs: dict[str, Any]) -> set[str]:
     """Reject an old export even if its file checksum still matches."""
     artifacts = document.get("artifacts")
     if not isinstance(artifacts, dict) or not isinstance(inputs, dict) or not inputs:
@@ -61,9 +61,10 @@ def assert_current_component_lineage(document: dict[str, Any], root: Path, input
         if artifacts.get(node) != reference:
             raise ValueError(f"Scene export references a superseded component: {node}")
         visit(node)
+    return checked
 
 
-def indexed_scene_path(index_path: Path) -> Path:
+def indexed_scene_path(index_path: Path, *, required_components: Mapping[str, Any] | None = None) -> Path:
     document = json.loads(index_path.read_text())
     if document.get("schema") != "tennis_scene_index_v1":
         raise ValueError("Unsupported scene index schema")
@@ -74,7 +75,10 @@ def indexed_scene_path(index_path: Path) -> Path:
     inputs = export.get("inputs")
     if not isinstance(inputs, dict):
         raise ValueError("Scene export has no component input lineage")
-    assert_current_component_lineage(document, root, inputs)
+    included = assert_current_component_lineage(document, root, inputs)
+    for name, ref in (required_components or {}).items():
+        if name not in included or document["artifacts"][name] != ref:
+            raise ValueError(f"Scene export does not use the required component: {name}")
     paths: dict[str, Path] = {}
     for role in ("scene", "metadata"):
         record = export["files"][role]
@@ -87,7 +91,7 @@ def indexed_scene_path(index_path: Path) -> Path:
     return paths["scene"]
 
 
-def annotation_scene_path(directory: Path, marker: dict[str, Any]) -> Path:
+def annotation_scene_path(directory: Path, marker: dict[str, Any], *, required_components: Mapping[str, Any] | None = None) -> Path:
     """Resolve the scene a dataset marker publishes through the clip's ``scene.json``.
 
     Only the component-store layout is readable. A marker without
@@ -105,6 +109,6 @@ def annotation_scene_path(directory: Path, marker: dict[str, Any]) -> Path:
     path = (directory / relative).resolve()
     if not path.is_relative_to(directory.resolve()) or path.suffix != ".npz":
         raise ValueError("Annotation scene path escapes its publication or has an invalid suffix")
-    if indexed_scene_path(directory / "scene.json") != path:
+    if indexed_scene_path(directory / "scene.json", required_components=required_components) != path:
         raise ValueError("Annotation marker and scene index disagree")
     return path

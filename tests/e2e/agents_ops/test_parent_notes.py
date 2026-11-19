@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import importlib
 import json
-from typing import cast
 
 import pytest
 
 from tests.e2e.agents_ops.test_execution_basis import (
-    auto_gate,
     autonomous,
     ordinary_comment,
     registry,
 )
-from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, review_setup
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_comments,
+    evidence_number,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -34,15 +35,16 @@ def test_owner_note_is_idempotent_and_preserves_state(
         if phase == "checking":
             p.cli("checking")
     policy = importlib.import_module("parent.policy")
-    before = registry(p).read_bytes(), p.cli("status").stdout
+    before = registry(p).read_bytes(), json.loads(p.cli("status").stdout)
     inputs = p.cli("basis-input").stdout
     text = "## 進捗\n\n検証を完了した。次は依存先の結果を確認する。"
     result = p.cli("note", "--body-file", p.note("\n" + text + "\n"))
     assert json.loads(result.stdout) == {
         "parent": 1,
         "body_sha256": policy.digest(text),
+        "url": f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-{evidence_comments(p.state())[-1]['id']}",
     }
-    comment = p.state()["comments"]["1"][-1]
+    comment = evidence_comments(p.state())[-1]
     event = json.loads(comment["body"].splitlines()[0][len(policy.PREFIX) : -4])
     assert event == {
         "parent": 1,
@@ -56,7 +58,16 @@ def test_owner_note_is_idempotent_and_preserves_state(
     state = p.state()
     assert p.cli("note", "--body-file", p.note(text)).stdout == result.stdout
     assert p.state() == state
-    assert (registry(p).read_bytes(), p.cli("status").stdout) == before
+    after = json.loads(p.cli("status").stdout)
+    # Capturing a note adds unpublished decision observations. Every existing
+    # workflow fact remains unchanged; status itself still writes nothing.
+    inventory = after.pop("remaining_publications")
+    prior_inventory = before[1].pop("remaining_publications")
+    assert inventory and inventory[0]["kind"] == "decision_log"
+    assert inventory[0]["unpublished_count"] > (
+        prior_inventory[0]["unpublished_count"] if prior_inventory else 0
+    )
+    assert (registry(p).read_bytes(), after) == before
     assert p.cli("basis-input").stdout == inputs
 
 
@@ -129,38 +140,8 @@ def test_note_character_limit_accepts_multibyte_text(parent_env: ParentEnv) -> N
     p.cli("register")
     text = "進" * 60_000
     p.cli("note", "--body-file", p.note(text))
-    assert p.state()["comments"]["1"][-1]["body"].endswith("\n\n" + text)
+    assert evidence_comments(p.state())[-1]["body"].endswith("\n\n" + text)
     p.cli("status")
-
-
-def test_note_keeps_frozen_review_requirements_and_request(
-    parent_env: ParentEnv,
-) -> None:
-    p = parent_env
-    selected = review_setup(p)
-    args = ("review-prepare", "--prs", *map(str, selected))
-    prepared = p.cli(*args).stdout
-    p.cli("note", "--body-file", p.note("対象PR群の確認を完了した。"))
-    assert p.cli(*args).stdout == prepared
-    run = json.loads(prepared)["review_run_id"]
-    instructed = p.cli(
-        "review-request",
-        "--run-id",
-        run,
-        "--instruction-file",
-        p.note("対象をレビューする。"),
-    ).stdout
-    p.cli("note", "--body-file", p.note("レビューを指示した。"))
-    assert (
-        p.cli(
-            "review-request",
-            "--run-id",
-            run,
-            "--instruction-file",
-            p.note("対象をレビューする。"),
-        ).stdout
-        == instructed
-    )
 
 
 def test_note_does_not_classify_existing_unclassified_comments(
@@ -177,66 +158,6 @@ def test_note_does_not_classify_existing_unclassified_comments(
     p.child("unclassified", ok=False)
 
 
-@pytest.mark.parametrize("kind", ["human", "autonomous"])
-@pytest.mark.parametrize("comment", ["same-body", "human-instruction"])
-def test_note_preserves_review_and_merge_but_ordinary_comments_block(
-    parent_env: ParentEnv,
-    monkeypatch: pytest.MonkeyPatch,
-    request: pytest.FixtureRequest,
-    kind: str,
-    comment: str,
-) -> None:
-    p = parent_env
-    g = (
-        auto_gate(p, monkeypatch)
-        if kind == "autonomous"
-        else cast(GateEnv, request.getfixturevalue("gate_env"))
-    )
-    inputs = p.cli("basis-input").stdout
-    frozen = registry(p).read_bytes(), (g.review.run_dir / "result.json").read_bytes()
-    text = "## 進捗\n\n親が結果・差分・CI・回帰テストを確認した。"
-    p.cli("note", "--body-file", p.note(text))
-    assert p.cli("basis-input").stdout == inputs
-    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert all(row["decision"] == "merge" for row in rows.values())
-    assert (
-        registry(p).read_bytes(),
-        (g.review.run_dir / "result.json").read_bytes(),
-    ) == frozen
-    child = str(p.state()["next"])
-    p.child("note-preserves-basis")
-    worktree = p.worktree("note-worker")
-    p.cli(
-        "delegate",
-        "--child",
-        child,
-        "--agent",
-        "codex",
-        "--branch",
-        "codex/note-worker",
-        "--worktree",
-        str(worktree),
-    )
-
-    added = ordinary_comment(
-        p,
-        text if comment == "same-body" else "作業を停止して要件を確認してください。",
-        "operator" if comment == "same-body" else "human",
-    )
-    current = json.loads(p.cli("basis-input").stdout)
-    assert current["comments"][-1]["id"] == added["id"]
-    notices = json.loads(p.cli("status").stdout)["input_changes"]["comments"]
-    assert any(c["id"] == added["id"] for c in notices)
-    if comment == "human-instruction":
-        p.cli("basis-revoke", "--reason-file", p.note("親が停止指示を確認した。"))
-        assert g.cli("merge").returncode == 2
-        p.child("unclassified", ok=False)
-    else:
-        rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-        assert all(row["decision"] == "merge" for row in rows.values())
-    assert not g.merge_calls() and len(g.review.calls()) == 1
-
-
 @pytest.mark.parametrize("change", ["body", "digest", "generation", "field"])
 def test_corrupt_note_marker_is_rejected(parent_env: ParentEnv, change: str) -> None:
     p = parent_env
@@ -244,7 +165,7 @@ def test_corrupt_note_marker_is_rejected(parent_env: ParentEnv, change: str) -> 
     p.cli("note", "--body-file", p.note("進捗だけの連絡。"))
     policy = importlib.import_module("parent.policy")
     state = p.state()
-    comment = state["comments"]["1"][-1]
+    comment = evidence_comments(state)[-1]
     event = json.loads(comment["body"].splitlines()[0][len(policy.PREFIX) : -4])
     text = "進捗だけの連絡。"
     if change == "body":

@@ -10,7 +10,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Literal, Protocol
 
-from .format import PARENT_LABEL
+from .format import PARENT_LABEL, PROPOSAL_LABEL
 
 SUPPLEMENT_DONE_LABEL = "supplement:done"
 SUPPLEMENT_FAILED_LABEL = "supplement:failed"
@@ -62,7 +62,7 @@ def read_enabled_since(gh: GitHubReader) -> str | None:
 
 
 def supplement_state(
-    labels: Iterable[str], created_at: str, enabled_since: str | None
+    labels: Iterable[str], created_at: str, enabled_since: str | None, *, body: str = ""
 ) -> SupplementState:
     """Classify current GitHub label names and timestamps, without local state."""
     if isinstance(labels, str):
@@ -79,7 +79,20 @@ def supplement_state(
         if enabled_since is not None
         else None
     )
-    if enabled is None or PARENT_LABEL not in names or created < enabled:
+    # Extracted parents already carry an approved immutable snapshot. Adding
+    # background after extraction would invalidate every imported approval.
+    from .improvement_proposals import parse_extraction
+
+    if parse_extraction(body) is not None or body.startswith(
+        "<!-- parent-improvement-proposal:"
+    ):
+        return "not_target"
+    if (
+        enabled is None
+        or PARENT_LABEL not in names
+        or PROPOSAL_LABEL in names
+        or created < enabled
+    ):
         return "not_target"
     if any(name.startswith("rewrite:") for name in names):
         raise ValueError("legacy rewrite labels must be migrated to supplement labels")

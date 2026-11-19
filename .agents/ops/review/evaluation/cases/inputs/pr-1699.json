@@ -1,0 +1,377 @@
+{
+  "schema_version": 1,
+  "case_id": "pr-1699",
+  "cutoff": "2026-11-07T00:49:44.919121+00:00",
+  "context": {
+    "parent": {
+      "body": "## 目的・背景\n\n本親タスクは、PR #1688で整備された親子workerの報告・継続手順を基盤として、実装着手前の事前調査と判断、指示や報告ログの追跡性、タスク難易度に応じたモデル選択の運用を、単一の親の統括下で整備・改善することを目的とする。\n\nこれら3件の改善事項は、parent CLI、共通ランナー、workerへの標準指示、およびparent-session skillといった共通コンポーネントを共有する。そのため、個別タスク間の一貫した契約管理と全体の統合確認を本親issueで統括し、具体的な開発作業はそれぞれ子タスクへ分割して推進する。\n\n提案の出典:\n\n- [事前調査・意思決定フェーズ](https://github.com/Motoki0705/tennis-lab/pull/1688#issuecomment-6675145382) → #1691\n- [指示・回答・最終報告のGit保存と専用PRの自動マージ](https://github.com/Motoki0705/tennis-lab/pull/1688#issuecomment-6675351311) → #1692\n- [難易度に応じたSol/Astraの選択](https://github.com/Motoki0705/tennis-lab/pull/1688#issuecomment-6677013034) → #1693\n\n### 背景調査で判明した課題\n\n事前の背景調査において、以下の課題が確認されている。コードや関連事例の詳細、各論点のエビデンスは各子issue側で保持する。\n\n- 着手後の手戻り: 事前調査が不十分なまま着手し、指示や既存データの不整合が作業開始後に判明する事例があった。\n- 追跡性の制約: 親の指示や子の報告の履歴がローカルstateに閉じており、後からの参照や検証が困難であった。\n- 運用の不揃い: 自律実行と手動実行の間で、モデル選択の経路や適用ルールに差異が存在していた。\n\n## 全体のスコープ\n\n### 対象\n\n- #1691: 初回ターンでの事前調査の実施、親への判断依頼、親からの回答に基づく実装フェーズへの移行、同一session内での継続および実行状態の管理。\n- #1692: 親による指示・回答および子による最終報告の公開可能な形でのGit保存、通常実装と独立した追記パスの確保、ログ専用PRの自動作成とマージ、ログ変更のみを対象としたCI省略。\n- #1693: 既定のSol/max運用を維持した上での親の判断によるAstra/max選択、手動実行と自律実行の両入口における継続契約および運用規則の整合。\n- 3件で共有する委任・run・フェーズ・モデルの相互対応の整備、関連ドキュメントの更新、異常系発生時の挙動整理、ならびに全体の統合検証。\n\n### 対象外\n\n- 本issueの整理作業自体におけるコード実装、workerの起動、ホスト環境やGitHubリポジトリ設定の変更、実際のPRマージ操作。\n- 通常の実装PRを対象としたレビューやCIの省略、タスク進行に伴うモデルの自動振替、同一session実行途中でのモデル切り替え。\n- 関連する学習ジョブやデータ修復の再実行、rawイベントログや非公開のsession ID、秘密情報・認証情報の外部公開。\n\n## 全体方針・合意事項\n\n### 経緯と体制の確定\n\n2026-11-06、ユーザーからPR #1688の3コメントを背景調査して起票する依頼を受けた。その後の明示指示「親は１つにして子を３つにして」に従い、本issueを唯一の統括親とし、先行して作成されていた既存 #1691・#1692・#1693 をその直属の子タスクとして位置付けを変更した。各既存issueの番号、事前調査内容、受入条件はそのまま引き継ぐ。\n\n### 運用方針と合意事項\n\n- 責務境界: 本親issueが全体方針の策定、進捗管理、および横断的な統合確認を担い、個別の具体的な実装仕様や検証受入条件は各子issueを正本とする。\n- 実行整合性の維持: 手動実行と自律実行の両入口で仕様を揃え、既存の実行根拠、session、委任、worktreeの対応関係と終了時のcleanup照合を厳密に保つ。事前調査ターンの終了を誤って実装完了として扱わない。\n- モデル・計画の判断権限: 親AIが既存の実行根拠の枠内で実行計画やモデル選択を判断する。ただし、人間による明示指示で確定している条件は最優先する。\n- ログ専用PRの例外導入手順: ログ専用PRに対する限定的なマージ例外は、保存機構、公開前検査、workflow変更の妥当性を通常のコードレビューとCIで十分に検証した後に導入する。\n- 合意範囲: 2026-11-06に担当親が登録され、人間との要件合意を記録した（親issueの合意コメントが正本）。各子の未決事項はこの合意で解消し、確定内容は各子issueの「設計上の未決事項」に記載した。合意の要点は、#1691 は「既定必須・理由付きの明示省略」と「planning→implementingの状態管理と承認前の成果受理拒否」、#1692 は「1ターン1PR」「具体指示原文と版の参照」「PR連動workflowすべてをログのみの変更で除外」、#1693 は元提案の範囲どおりとする。\n\n## 全体の完了条件\n\n- [ ] 手動・自律の各workerが実装着手前の事前調査結果を親へ報告し、記録された親の判断内容に従って実装へ移行できることが確認されている。\n- [ ] 親の指示・回答および子の最終報告が機密情報・私的情報を含まない形でGit上に追跡可能となり、通常PRの検証水準を保ちながらログ専用PRの自動マージと限定的なCI省略が成立している。\n- [ ] 既定のSol/max運用と明示的なAstra/max選択が手動・自律の両入口で一貫して機能し、同一sessionの継続ターンにおいてモデルが不意に変更されない。\n- [ ] 事前調査から親の回答を経て実装に至る一連の委任サイクルにおいて、ターン、モデル、公開ログの対応関係が照合され、中断・再開やログ公開失敗が生じてもプロセスの二重起動、誤完了、秘密情報の漏洩が発生しない。\n- [ ] 3件の子タスクの受入条件がすべて検証され、AGENTS、skill、各README、CLI、workflowのドキュメントおよびコード間の矛盾がなく、本親issueにおける未決事項が解消されている。\n\n## 子タスクのチェックリスト\n\n- [x] #1691 実装前に調査結果と未決事項を親へ返し、判断後に着手する\n- [ ] #1692 指示・回答・最終報告をGitへ追記し、ログ専用PRを自動マージする\n- [x] #1693 手動・自律の親が難易度に応じてSol/Astraを選べるようにする\n\n## 進捗概要\n\n子の起動予約: なし。上限: 全子。\n- #1691: 完了 — 完了済み。 / 既存PRを照合して継続する: #1696 / 委任予約済み。既存worker・worktreeを照合する。\n- #1692: 継続 — 既存PRを照合して継続する: #1699 / 委任予約済み。既存worker・worktreeを照合する。\n- #1693: 完了 — 完了済み。 / 既存PRを照合して継続する: #1695 / 委任予約済み。既存worker・worktreeを照合する。\n\n## 依存関係・進め方\n\n### 全体の推進方針\n\n2026-11-06の合意により、#1693 → #1691 → #1692 の逐次で進める。次の子は、前の子のPR作成後にそのbranchへ積むstacked branchで開始する。mergeは依存順に行う。依存は各子issueの「依存関係」節が正本。3件とも既定の `gpt-6.1-sol / max` worker を共通ランナー経由で使う。\n\n### 子タスク間の連携と留意点\n\n- 共通コードの競合防止: #1691 と #1693 は、どちらも `manual_workers.py`・CLIツール群・skillを変更する。そのため #1693 を先に実装し、#1691 はその上へ積む。事前調査フェーズから実装フェーズへ移っても、同一sessionのモデル選択状態を保持する。\n- ログ保存と統合確認: #1692 は #1691 の上へ積み、調査・回答・実装の各ターンと、#1693 で選んだモデルの情報を、公開用ログの来歴へ接続する。最終検証では、これらが公開用ログから漏れなく追跡できることを確認する。\n\n### 既存基盤および関連issueとの連携\n\n- 境界修復の重複回避: worker起動前拒否の処理に関する既存の #1610（open）の修正状況を照合し、実行状態の保存と再開境界の修正が二重にならないようにする。\n- 既存資産の活用と標準手順の遵守: #1688、#1331、#1445 で実装された既存基盤を最大限に再利用する。担当登録・worker委任・コードレビューは既存の標準workflowに従う。\n\n## 未決事項・人間の判断が必要な点\n\nなし。2026-11-06の要件合意で、#1691・#1692・#1693 の設計上の未決事項はすべて解消した。確定内容は各子issueの「設計上の未決事項」と親の合意コメントに記録している。mainのブランチ保護は、2026-11-06のAPIで未設定（rulesetsも空）と確認済みで、GitHub設定の変更は不要。\n",
+      "number": 1694,
+      "title": "[親子委任改善] workerの事前調査・指示ログ保存・モデル選択を整備する"
+    },
+    "children": [
+      {
+        "body": "親issue: #1694\n\n## このタスクの目的\n\n[PR #1688 の追加提案コメント](https://github.com/Motoki0705/tennis-lab/pull/1688#issuecomment-6675351311)に対応する子タスク。親が渡す `task.md / answer.md` と子の `final.md` を、実装PRに混ぜずGitで追跡できるようにする。\n\n背景調査（2026-11-06、PR #1688 merge後）:\n\n- #1688 は親の具体指示を[共通の組立て関数](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.agents/ops/parent/worker_instruction.py)へ接続した。送信されるpromptは標準指示・親子番号・絶対worktreeパス・担当issue本文・親の具体指示を含む。\n- 共通ランナーには既に[ターンごとの `prompt.md / final.md / result.json` の保存](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.agents/ops/lib/README.md#記録と結果jsonschema_version-1)がある。ただし非公開のローカルstateであり、Gitへの公開・永続化経路はない。元のtmpファイルを後から読み直すだけでは、実際に送った版を保証できない。\n- #1445 の[実行状況表示](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.agents/ops/worker_status/README.md#安全契約と失敗)は秘匿検査後の最小限の表示であり、全文ログのGit公開は対象外。既存検査は不適切な自由文を非表示にするもので、任意の秘密情報を完全に分類できる全文マスキング機構ではない。\n- [ops-report専用memory PR](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.agents/ops/ops-report/README.md#専用memoryの保存)には、専用worktree・公開journal・パスとHEAD照合・Codexレビュー省略の先例がある。ただしこの経路は必須CIの成功を要求する。今回の「ログだけはCIも実行しない」は別の限定例外として設計する必要がある。\n- [ci.yml](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.github/workflows/ci.yml#L3)は全PRとmainへのpushで起動する。`knowledge.yml` は既に対象パスを限定し、`pull-request-labeler.yml` は `pull_request_target` で起動するため、CI以外のPR連動処理も確認が必要。\n\n## 具体的な変更内容・対象範囲\n\n- 手動・自律workerの初回／継続ターンについて、親の具体指示、子の最終報告、公開可能な来歴metadataを保存する共通経路。\n- 親・担当issue・委任・ターンごとに独立した追記専用パス。共有indexの更新を必要としない構造。\n- 例: `.agents/logs/parents/parent-<親番号>[local path]<担当issue番号>[local path]<公開用委任キー>[local path]<連番>-<initial|resume>[local path]` に `instruction.md`、`final.md`、`meta.json` を置く。ディレクトリ名は設計案であり確定仕様ではない。\n- 保存前の無害化・公開検査、重複保存の防止、途中失敗からの復旧、公開先PRとmain反映の照合。\n- 専用worktree/branchからログのみのPRをCLIが作成・自動マージする経路、限定例外の規則、関連workflowのパス条件。\n- 保存実装、公開検査、CI条件を変更するコードPRは通常のレビューとCIで検証する。\n\n### 実装方針\n\n全体方針と合意の正本は親issueを参照する。本タスクの具体化は次のとおり。\n\n- 公開する内容は実際の送信・受信時点で固定し、親の具体指示と合成済みpromptを混同しない。標準指示の版や関連issue/PR/commitへ辿れる来歴を持たせる。\n- 私的な委任[local path]。再送でも同じ公開キーへ到達できる対応を保持する。本文だけでなくパス・metadata・リンクも公開検査する。\n- Gitの既存ファイルを変更する共有indexを置かず、確定した記録は上書きしない。新しい親・ターンが別パスへ追加できることと、同じターンの再送で重複しないことを別々に検証する。パスの分離だけでmerge競合・並行更新全般がなくなるとは扱わない。\n- 自動マージの前に、変更種別を含む全差分が許可されたログファイルの追加だけであること、内容schema、同一repo・期待branch/base・固定HEADを機械的に照合する。パス外変更、既存記録の改変・削除・rename、symlink等は限定例外へ入れない。\n- `pull_request` とmainへの `push` の両方でログだけの変更を除外する。ログとコードを含むPRでは通常CIを実行する。`[skip ci]` で代用しない。\n- PR作成成功とmainへの保存完了は区別する。公開失敗や無害化不能、最終報告の欠測を成功へ置換せず、原文は非公開のまま理由と再開手段を残す。\n\n実装前に既存テストの対象node、守る契約、検出したい不具合、追加ケース数・時間の測定方法を決める。テストの詳細設計はtests/README.mdに従う。\n\n## 対象外\n\n- 実装PRへのログ混入、通常のコード・ルール変更のレビュー[local path]。\n- 生のsession/thread ID、認証情報、絶対ローカルパス、rawイベント・stderr・内部思考過程の公開。\n- ローカルregistryや実行証拠を公開ログで置き換えること。過去ログ全件の一括移行・削除、他の自動運用ログ全般への拡張。\n\n## 依存関係\n\n#1691 に依存する（調査・回答・実装の各ターンとフェーズを来歴へ接続するため）。2026-11-07 の人間の判断により、#1691 の merge 後に main から開始する。stacked branch では始めない。\n\n## 作業状況・停止事項\n\n未着手。[親 #1694 の要件合意](https://github.com/Motoki0705/tennis-lab/issues/1694)（2026-11-06）で方式が確定した。#1691 は PR #1696 で merge 済み。新しい CLI で委任し、初回ターンは事前調査とする。停止中の作業なし。mainのブランチ保護は2026-11-06のAPIで「Branch not protected」（404）、rulesetsも空であることを確認した。\n\n## Acceptance checklist\n\n- [ ] 初回・継続の指示と最終報告が、親・担当issue・委任・ターン・関連成果物へ対応付きでGitから追える。親番号と担当issue番号が同じ単独委任も扱える。\n  文脈: 指示原文と報告は現在ローカルstateにしか保存されない。\n  下流への影響: Git上で実際の委任と成果物の来歴を確認できる。\n  検証方法・証拠: 初回・継続・単独委任のfixtureで保存パスとinstruction/final/metaの内容、issue・PR参照を照合する。\n\n- [ ] 複数の親・子・継続ターンが共有ファイルを書き換えず追加でき、同じターンの再送、PR作成直後の中断、merge応答喪失でも既存記録を再利用する。\n  文脈: 公開・PR作成・mergeの途中で応答喪失や並行追加が起き得る。\n  下流への影響: 重複PRや過去記録の上書きを防ぐ。\n  検証方法・証拠: fake GitHubと実gitで2つの親の追加、同一ターン再送、作成・merge直後の障害を注入して再実行結果を比較する。\n\n- [ ] 絶対パス・session等の私的ID・資格情報を混ぜたfixtureが公開Git・PR本文・エラー表示へ漏れず、無害化不能時は公開を止める。通常の指示・報告の意味と出典は保持される。\n  文脈: 合成済みpromptやrunner記録には私的な値が含まれる。\n  下流への影響: 公開ログを残しつつ資格情報やローカル識別子の漏洩を防ぐ。\n  検証方法・証拠: 本文・パス・metadata・リンク・エラーに私的値を混ぜたfixtureを検査し、公開先に残らないことと無害化不能時の停止を確認する。\n\n- [ ] ログ専用PRだけが専用入口でCodexレビューなしに自動マージされ、パス外変更・既存ログ改変・不正ファイル・HEAD差替え・想定外baseを拒否する。\n  文脈: 通常のレビューgateを使わない限定経路を追加する。\n  下流への影響: ログ以外の変更が例外としてマージされることを防ぐ。\n  検証方法・証拠: 全差分・変更種別・ファイル型・base・固定HEADの改変をfake GitHubと実gitで与え、専用mergeの拒否を確認する。\n\n- [ ] ログ専用PRとそのmainへのmergeで対象のPR/push連動CIを起動しない。通常PR・ログとコードの混在PRは従来のCI／レビュー条件を保つ。GitHub側の必須チェックと両立することを実運用で確認する。\n  文脈: パス除外と必須チェックの設定が両立しない場合がある。\n  下流への影響: ログ保存時のCI消費をなくし、通常PRの検証を維持する。\n  検証方法・証拠: workflow条件をログのみ・通常コード・混在で検証し、実PRとmainへのmergeでworkflow未起動とmerge可否を確認する。\n\n- [ ] 公開とmergeの成功・保留・失敗がローカルに記録され、未保存を確認して再開できる。正常終了・失敗・最終報告なしを取り違えない。\n  文脈: PRの作成とmainへの反映は異なる段階である。\n  下流への影響: 未保存を完了と見誤らず、途中から復旧できる。\n  検証方法・証拠: 保存失敗・最終報告欠測・未merge close・応答喪失のfixtureでjournalの状態、再開先、成功判定を照合する。\n\n- [ ] fake GitHub・実gitで公開／並行追加／障害復旧を検証し、既存 `test_ops_report_memory.py` の境界検証を参考に最小限のテストを設計する。保存仕様と限定例外をREADMEへ集約する。\n  文脈: 既存memory保存と新しいログ保存は異なるCI契約を持つ。\n  下流への影響: 既存経路を壊さず専用経路の境界を検証できる。\n  検証方法・証拠: test_ops_report_memory.py等の既存境界を調べて必要なnodeを設計し、fake GitHub・実gitの結果と仕様文書を対応付ける。\n\n## 成果物・関連PR\n\n実装成果物・PRは未作成。提案元はPR #1688。調査の根拠と既存成果への参照は「このタスクの目的」に記載。\n\n担当: codex\n\nbranch: `codex/worker-log-publication`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1699 (open)\n\n検証結果:\n**#1692 の成果と親による検証（PR #1699、head 43e3218c9）**\n\n- 経緯: #1691 の新しい CLI で委任した。\n  - 初回は planning ターンで、6見出しの報告を受けた。\n  - 親が条件A〜Dを付けて decide-worker-plan approve で承認した。条件は、ランダムな公開キー、runner と result.json の不変、追加指示を meta に置くこと、導入前の run は公開しないこと。\n  - そのうえで実装ターンへ進んだ。\n- PR #1699 の状態: base は main、MERGEABLE、`Closes #1692`、29ファイル（+2998/−35）。対象 HEAD の CI は16件すべて成功（Python を含む）。\n- 変更していないもの: `.agents/ops/lib`（共通ランナー）と `.agents/ops/review`（merge gate 本体）。\n- workflow の変更: ci.yml（push main・pull_request）と pull-request-labeler.yml（pull_request_target）に、`.agents/logs/parents/**[local path],final.md,meta.json}` だけの `paths-ignore` を追加した。\n- .gitignore: `.agents/logs/parents/` 配下と meta.json を追跡対象へ戻す。\n- 親が worktree で再実行したテストの対象: unit の agents_ops 全体と、関連する e2e。\n  - e2e は test_worker_log_publication、test_ci_test_lanes、test_manual_worker_runs、test_parent_development、test_ops_report_memory、test_merge_gate、test_agents_docs。\n- 再実行の結果: 1153 passed、1 failed。\n  - 失敗した1件は `test_ops_report_memory.py::test_failed_completion_rejects_forged_publication[body-report]`。\n  - 単独で実行すると、branch と main の両方で成功した。同じファイルを並列で3回実行すると、3回とも 59 passed だった。\n  - 高負荷の並列実行でだけ起きる間欠的な失敗で、本PRは ops-report に触れていない。\n- テストの増分（worker の報告）: 53件（unit 29件、e2e 15件、workflow の展開 +8件、文書リンク 1件）。承認時の上限の目安どおり。\n- 未実施: 実ログPRの作成・merge、main 反映時に workflow が起動しないことの確認、混在 probe PR。承認条件どおり、コードPRの merge 後に親の指示で行う。手順は PR 本文にある。\n- 実行証拠の扱い: レビュー環境では CI ログの取得と隔離テストを実行できない。上記の CI 成功状態と親の再実行結果を、その代わりの実行証拠とする。\n\n## 関連作業・実装の進め方\n\n#1688・#1445 のrun記録／共通指示を再利用し、公開schemaと無害化→追記保存・復旧→専用PRとmerge gate→workflow条件・実運用検証の順で進める。\n\nops-reportのmemory保存は設計・再利用候補であり、既存のCI付き例外をそのまま流用して要件達成とはしない。既存のmemory保存経路の挙動も保つ。\n\n#1691 の事前調査では調査・回答・実装の複数ターンが増えるため、そのphase情報を来歴へ接続できるようにする。モデル選択の #1693 とは選択モデルの来歴を共有する。両案の完成をログ保存の着手条件にはしない。#1610の存在しないrunの扱いとは保存・復旧境界を照合する。\n\n## 設計上の未決事項\n\n未決事項なし。[親 #1694 の要件合意](https://github.com/Motoki0705/tennis-lab/issues/1694)（2026-11-06）で次のとおり確定した。\n\n- 公開の単位: workerの1ターンごとに、ログ専用PRを1件作成し、専用入口で自動mergeする。\n- `instruction.md` の内容: 親が書いた具体指示（`task.md` / `answer.md`）の原文だけを入れる。標準指示は送信時点のcommitを、担当issue本文はURLと送信時点の版を、`meta.json` で参照する。合成済みpromptの全文や、絶対パス・session ID・資格情報は公開しない。\n- 無害化できない場合は公開を止め、原文は非公開のまま理由と再開手段を残す。\n- CI省略の範囲: ログだけの変更では、PRとmainへのpushのどちらでも `ci.yml` と `pull-request-labeler.yml` を起動しない。`knowledge.yml` は既に対象パスを限定しているため変更しない。ログとコードが混在するPRと通常PRは、従来のCI・レビュー条件を保つ。\n- GitHub側の設定: mainにはブランチ保護・rulesetsがないため、パスで除外しても必須チェックがPendingのまま残ってmergeを妨げることはない。GitHub設定の変更は不要。mergeに `Python` の成功を要求しているのはrepo内のmerge gateなので、ログ専用PRは別の専用入口で扱う。\n\n",
+        "number": 1692,
+        "title": "[親子委任改善 #1694] 指示・回答・最終報告をGitへ追記し、ログ専用PRを自動マージする"
+      }
+    ],
+    "prs": [
+      {
+        "body": "Closes #1692\n\n親が送った具体指示とworkerの最終報告がローカルstateにしか残らず、後から送受信版を追えない問題に対応します。手動・自律の初回／継続turnで原文と来歴を固定し、公開検査を通った3ファイルを、実装branchとは別のログ専用PRへ追記・自動mergeします。\n\n## 変更内容\n\n- privateなpreflight lineageへ独立したランダム公開キーを保存。再送・同sessionの自律継続では再利用し、新しい系列では作り直します。\n- 非空検査と原文保持を分離し、task/answerの空白・CRLFを保持。CLIの生成見出しをinstruction.mdへ入れず、追加指示はmeta.jsonで保存します。\n- runnerの正常終了・cleanup・contract・送信promptを親側で照合し、その時点のfinal原文とdigestをprivate journalへ固定。runner本体・result.json schemaは変更しません。\n- 本文・metadata・パス・リンク・PR本文を検査し、無害化不能時は公開を停止。通常出力のerrorは許可した固定コードに限定します。\n- 専用worktree/branch、ターン別journal、固定HEAD・全差分・ファイル型・同repo/mainの照合を持つ専用merge入口を追加。PR作成とmain保存を区別し、中断・応答喪失は既存commit/PR/mergeを照合して再開します。\n- CIのPR/main pushとlabelerのPR targetでデータ3ファイルだけを除外。knowledge.yml、通常merge gate、ops-report memoryのCI必須処理は変更しません。\n- 恒久仕様・限定例外・復旧・実運用検証の手順は `.agents/ops/worker_logs/README.md` に集約しました。\n\n## 受入条件と検証\n\n| 条件 | 証拠 |\n|---|---|\n| 初回・継続・単独委任の来歴 | 両入口の既存 `test_preflight_decision_paths` を拡張。原文、回答、追加指示、phase、Sol/max、判断元turnを照合。単独委任は新しい公開CLIのdry-runと実gitで確認 |\n| 独立した追加と再送・障害復旧 | `test_two_parents_append_and_merge_without_shared_index`、`test_concurrent_retry_reuses_same_pr`、`test_publication_recovers_after_interruption`。fake GitHubと実gitでcommit/push/PR作成[local path]、dirty状態、未merge closeを検証 |\n| 秘密・パス・IDを公開しない | `test_publication_safety_preserves_or_blocks` と単独委任の公開Git/PR/出力検査。URL encoding、metadataキー、オプション直結パス、error原文も対象。資格情報を含む指示は公開を止める |\n| 限定mergeの境界 | `test_merge_policy_rejects_unsafe_diff_or_identity`、`test_publication_gate_rechecks_git_and_remote`。変更種別・mode・rename元・対象外差分・repo/base/HEADを拒否 |\n| ログのみのCI除外、通常・混在の維持 | 既存workflow nodeを3イベント×3変更種別へ拡張。通常gateの `test_python_ci_is_required_for_dependency_ordered_merges` を維持。実PR・main mergeの未起動確認は後述のとおり未実施 |\n| 成功・保留・失敗・欠測の区別 | runner失敗、final欠測、送信版改変、無害化不能、未merge close、応答喪失を検証。根拠なしにjournalをmergedへ変えた場合も拒否 |\n| 既存経路の維持と仕様集約 | 既存memory保存の5境界、unit全体、manual/managed/dispatcher、文書リンクを検証。通常gate・memory保存・共通runnerへの差分なし |\n\n## テスト設計・増分・実測\n\n展開後の増分は **53件**（親の承認した上限目安以内）です。\n\n- 新規unit 29件、新規e2e 15件。異常分類をunitに置き、公開境界は最小のfake GitHub・使い捨て実gitを使用します。\n- 既存workflow nodeは1→9件（+8）、文書リンク+1。両入口の既存4件はassert拡張のみです。\n- schemaの2本文digestは同じequivalence classの1ケースで両方を確認し、その1件を無害化不能時の受信→未公開境界へ割り当てました。新しい重いe2eやモデル・GPU実行は追加していません。\n- 最新HEADの44件JUnit実測: 新規unit 29件の合計0.102秒、新規e2e 15件の合計6.441秒。新規ケースの最大setup+call+teardownは0.855秒で、5秒超なし。\n- 新規function fixtureの実git/stateはケースごとに分離。既存manual fixtureのsetup約3秒とmanagedの複数turn実行は既存コストです。\n- Git modeの拒否を一時的に無効化すると、symlinkケースが `DID NOT RAISE` で失敗。復元後の通常実行は成功しました。\n\n広域回帰: **1009 passed / 299.25秒**（`-n 3`）。その後の公開schema・秘匿検査の境界強化は、最終 **79 passed / 33.55秒（-n 2）** で再検証しました。全て `.venv/bin/python -m pytest` を使用し、共有lockは使っていません。\n\n実repoのoriginが末尾`.git`なしのHTTPS URLであることを確認し、GitHubの同repo URLだけを正規化して照合するよう修正しました。最新HEADで新規unit/e2eの **44 passed / 6.79秒（-n 2）** を再確認しています。別repo・userinfo付きURLは拒否し、追加ケース数は変えていません。\n\n```bash\n.venv/bin/python -m pytest -n 3 -q \\\n  tests/unit/agents_ops \\\n  tests/e2e/agents_ops/test_worker_log_publication.py \\\n  tests/e2e/agents_ops/test_manual_worker_runs.py \\\n  tests/e2e/agents_ops/test_parent_development.py \\\n  tests/e2e/agents_ops/test_dispatcher_supervisor.py \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_memory_required_ci_cannot_be_a_status_context \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_changed_head_between_ci_and_merge_fails_closed \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_pr_creation_journal_gap_reuses_existing_pr \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_path_scope_checks_deleted_and_renamed_sources \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_atomic_journal_replace_failure_keeps_previous_version \\\n  tests/e2e/agents_ops/test_merge_gate.py::test_python_ci_is_required_for_dependency_ordered_merges \\\n  tests/e2e/development/test_ci_test_lanes.py::test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs \\\n  tests/e2e/agents_ops/test_agents_docs.py \\\n  --durations=0 --durations-min=0\n\n.venv/bin/python -m pytest -n 2 -q \\\n  tests/unit/agents_ops/test_worker_logs.py \\\n  tests/e2e/agents_ops/test_worker_log_publication.py \\\n  tests/e2e/agents_ops/test_manual_worker_runs.py::test_preflight_decision_paths \\\n  tests/e2e/agents_ops/test_parent_development.py::test_preflight_decision_paths \\\n  tests/e2e/development/test_ci_test_lanes.py::test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs \\\n  tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve \\\n  --durations=0 --durations-min=0\n```\n\n最終pre-commitのruff/mypyとdiff check成功。通常hook対象外の新規opsモジュールを含む15 sourceの明示mypyも成功しました。CLI単体の明示mypyには既存3件があり、mainの同ファイルをshadow指定した場合と同じ3件、増分0です。\n\n## 承認設計との差・対象外\n\n親の条件A〜Dを反映しました。HMAC/永続鍵は使わずランダム公開キー、runner本体とresult schemaは無変更、追加指示は同じ公開検査を通してmetaへ保存、導入前turnはprivateな未公開理由だけを記録します。\n\n通常mergeのCI/レビュー省略、実装PRへのログ混入、過去ログの一括移行、#1610のworker再開修正は対象外です。GitHub設定は変更していません。\n\n## merge後に親が行う実運用確認（未実施）\n\n親の指示により、この実装ターンではログPRの実作成・merge、混在probe PRの作成を行っていません。受入条件「実PR/mainでworkflow未起動・merge可否」の確認は残っています。\n\n1. コードPRを通常レビュー・対象HEADのPython成功でmergeする。\n2. 公開可能な正規turnを専用CLIで公開・mergeし、journal・3ファイル・PR・mainを照合する（来歴、再送、保存成功）。\n3. CIとlabelerのrun履歴をイベント・PR番号・merge commitで取得し、ログPRとmain mergeで未起動を確認する。PR targetはdefault branch側を使うため、PR headのcheck一覧だけでは判定しない（CI省略）。\n4. 別の通常/混在probe PRで通常起動を確認し、混在probeは確認後に未mergeで閉じる（通常経路の維持）。\n5. 対照CI完了後にも履歴を再取得し、観測時刻・workflow・PR・commitを本PRへ残す。\n\nnative paths-ignoreの差分上限・timeout制約はREADMEへ明記しています。本経路の3ファイルPRと通常規模の混在PRが検証対象です。通常・混在でworkflowが未起動でも通常merge gateは対象HEADのPython成功を必須とし、欠落時にfail-closedで止まります。\n\n## CI\n\n対象HEAD `43e3218c9dee401374f1f925bec1fb6d50eaf0cd` の [Python](https://github.com/Motoki0705/tennis-lab/actions/runs/42316112814/job/128237600853) は **success**。Lint、CPU 10分割、Knowledge 2ジョブ、labelerを含む16チェックすべてsuccessです。\n\n同HEADの初回CIはCPU分割2の `apt-get install` がUbuntuミラーからの取得中に180秒でtimeout（exit 124）し、テスト未実行でした。失敗ジョブの再実行では依存導入・テスト・集約Pythonが成功しました。コード変更で回避していません。\n\n統合レビュー・merge・担当終了は親が行います。実ログPRと混在probe PRは、このターンでは作成していません。\n",
+        "changed_paths": [
+          ".agents/README.md",
+          ".agents/ops/dispatcher/supervisor.py",
+          ".agents/ops/parent/README.md",
+          ".agents/ops/parent/cli.py",
+          ".agents/ops/parent/development.py",
+          ".agents/ops/parent/development_workflow.md",
+          ".agents/ops/parent/manual_workers.py",
+          ".agents/ops/parent/worker_instruction.py",
+          ".agents/ops/parent/worker_preflight.py",
+          ".agents/ops/worker_logs/README.md",
+          ".agents/ops/worker_logs/__init__.py",
+          ".agents/ops/worker_logs/journal.py",
+          ".agents/ops/worker_logs/publication.py",
+          ".agents/ops/worker_logs/safety.py",
+          ".agents/ops/worker_logs/schema.py",
+          ".agents/ops/worker_logs/service.py",
+          ".agents/ops/worker_logs/sources.py",
+          ".agents/skills/parent-session/SKILL.md",
+          ".github/workflows/ci.yml",
+          ".github/workflows/pull-request-labeler.yml",
+          ".gitignore",
+          "tests/e2e/agents_ops/fake_manual_worker_runner.py",
+          "tests/e2e/agents_ops/test_agents_docs.py",
+          "tests/e2e/agents_ops/test_manual_worker_runs.py",
+          "tests/e2e/agents_ops/test_parent_development.py",
+          "tests/e2e/agents_ops/test_worker_log_publication.py",
+          "tests/e2e/development/test_ci_test_lanes.py",
+          "tests/support/agents_ops/worker_logs.py",
+          "tests/unit/agents_ops/test_worker_logs.py"
+        ],
+        "child_issues": [
+          1692
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "knowledge",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "knowledge-webui",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1699,
+        "title": "feat(parent): workerの指示と最終報告を専用ログPRへ保存する"
+      }
+    ],
+    "instruction": "PR #1699（#1692：指示・回答・最終報告を Git に保存し、ログ専用PRを自動 merge する）をレビューしてください。親 #1694 の合意仕様と、#1692 で承認した条件A〜Dとの一致、および正しさの欠陥を重点的に確認してください。\n\n重点確認:\n1. **公開内容の取得**\n   - instruction.md には、親が書いた具体指示（task.md／answer.md）の原文だけが入っていること。合成済みの prompt や、planning 回答の生成見出しが混ざらないこと。\n   - meta.json は、標準指示の送信時点の commit、担当 issue の URL と版、phase・判断元 turn・選択モデルを参照していること。\n2. **公開キー**\n   - ランダムな値を生成し、private registry に保存して再利用していること。私的 ID から導出していないこと。\n   - 再送では同じキーになり、自律継続でも変わらず、新しい委任系列では変わること。\n3. **無害化と公開検査**\n   - 本文・パス・metadata・リンク・PR本文・エラー出力に、絶対パス・session/run ID・資格情報が漏れないこと。\n   - 無害化できない場合は公開を止め、原文を非公開のまま残し、理由と再開手段を記録すること。\n4. **自動 merge の入口**\n   - merge の前に、全差分が「当該ターンの3ファイルの追加（mode 100644）」だけであることを確認していること。\n   - あわせて、schema、同一 repo、branch、base、固定 HEAD、PR marker を機械的に照合していること。\n   - パス外の変更、既存記録の改変・削除・rename、symlink を拒否すること。\n   - 既存の通常 merge gate と ops-report memory の経路が変わっていないこと。\n5. **journal と復旧**\n   - PR 作成直後の中断、merge 応答の喪失、同一ターンの再送で、重複PRや誤った完了扱いが起きないこと。\n   - runner の失敗、final の欠測、未 merge のままの close を、成功と取り違えないこと。\n6. **workflow**\n   - ログ3ファイルだけの変更では、ci.yml と pull-request-labeler が起動しないこと。\n   - ログとコードの混在PR、通常PR、README などのログ以外の変更では、従来どおり起動すること。\n   - `[skip ci]` を使っていないこと。\n   - .gitignore の追跡例外が、意図しないファイルまで追跡対象にしていないこと。\n7. **変えていないことの確認**: 共通ランナーの contract と result.json の schema が変わっていないこと（条件B）。\n8. **文書**: worker_logs/README.md が仕様の正本になっていること。他の文書との二重記述や矛盾がないこと。\n\n実行証拠の扱い:\n- レビュー環境では、CI ログの取得と隔離 CPU テストの実行ができません。親のレビュー証拠（対象 HEAD の CI 16件の成功状態と、親の再実行結果）を実行証拠として採用してください。\n- これらが取得できないことを理由に、coverage を not_reviewed にしないでください。\n- 固定 diff の静的レビューを終えたら coverage を reviewed とし、verdict は findings の有無だけで決めてください。\n\n対象外:\n- 実ログPRでの運用検証（merge 後に行う）\n- #1691 と #1693 の機能（merge 済み）",
+    "parent_comments": []
+  },
+  "github": {
+    "repos/Motoki0705/tennis-lab/issues/1694": {
+      "as_of": "2026-11-07T00:49:44.919121+00:00",
+      "value": {
+        "body": "## 目的・背景\n\n本親タスクは、PR #1688で整備された親子workerの報告・継続手順を基盤として、実装着手前の事前調査と判断、指示や報告ログの追跡性、タスク難易度に応じたモデル選択の運用を、単一の親の統括下で整備・改善することを目的とする。\n\nこれら3件の改善事項は、parent CLI、共通ランナー、workerへの標準指示、およびparent-session skillといった共通コンポーネントを共有する。そのため、個別タスク間の一貫した契約管理と全体の統合確認を本親issueで統括し、具体的な開発作業はそれぞれ子タスクへ分割して推進する。\n\n提案の出典:\n\n- [事前調査・意思決定フェーズ](https://github.com/Motoki0705/tennis-lab/pull/1688#issuecomment-6675145382) → #1691\n- [指示・回答・最終報告のGit保存と専用PRの自動マージ](https://github.com/Motoki0705/tennis-lab/pull/1688#issuecomment-6675351311) → #1692\n- [難易度に応じたSol/Astraの選択](https://github.com/Motoki0705/tennis-lab/pull/1688#issuecomment-6677013034) → #1693\n\n### 背景調査で判明した課題\n\n事前の背景調査において、以下の課題が確認されている。コードや関連事例の詳細、各論点のエビデンスは各子issue側で保持する。\n\n- 着手後の手戻り: 事前調査が不十分なまま着手し、指示や既存データの不整合が作業開始後に判明する事例があった。\n- 追跡性の制約: 親の指示や子の報告の履歴がローカルstateに閉じており、後からの参照や検証が困難であった。\n- 運用の不揃い: 自律実行と手動実行の間で、モデル選択の経路や適用ルールに差異が存在していた。\n\n## 全体のスコープ\n\n### 対象\n\n- #1691: 初回ターンでの事前調査の実施、親への判断依頼、親からの回答に基づく実装フェーズへの移行、同一session内での継続および実行状態の管理。\n- #1692: 親による指示・回答および子による最終報告の公開可能な形でのGit保存、通常実装と独立した追記パスの確保、ログ専用PRの自動作成とマージ、ログ変更のみを対象としたCI省略。\n- #1693: 既定のSol/max運用を維持した上での親の判断によるAstra/max選択、手動実行と自律実行の両入口における継続契約および運用規則の整合。\n- 3件で共有する委任・run・フェーズ・モデルの相互対応の整備、関連ドキュメントの更新、異常系発生時の挙動整理、ならびに全体の統合検証。\n\n### 対象外\n\n- 本issueの整理作業自体におけるコード実装、workerの起動、ホスト環境やGitHubリポジトリ設定の変更、実際のPRマージ操作。\n- 通常の実装PRを対象としたレビューやCIの省略、タスク進行に伴うモデルの自動振替、同一session実行途中でのモデル切り替え。\n- 関連する学習ジョブやデータ修復の再実行、rawイベントログや非公開のsession ID、秘密情報・認証情報の外部公開。\n\n## 全体方針・合意事項\n\n### 経緯と体制の確定\n\n2026-11-06、ユーザーからPR #1688の3コメントを背景調査して起票する依頼を受けた。その後の明示指示「親は１つにして子を３つにして」に従い、本issueを唯一の統括親とし、先行して作成されていた既存 #1691・#1692・#1693 をその直属の子タスクとして位置付けを変更した。各既存issueの番号、事前調査内容、受入条件はそのまま引き継ぐ。\n\n### 運用方針と合意事項\n\n- 責務境界: 本親issueが全体方針の策定、進捗管理、および横断的な統合確認を担い、個別の具体的な実装仕様や検証受入条件は各子issueを正本とする。\n- 実行整合性の維持: 手動実行と自律実行の両入口で仕様を揃え、既存の実行根拠、session、委任、worktreeの対応関係と終了時のcleanup照合を厳密に保つ。事前調査ターンの終了を誤って実装完了として扱わない。\n- モデル・計画の判断権限: 親AIが既存の実行根拠の枠内で実行計画やモデル選択を判断する。ただし、人間による明示指示で確定している条件は最優先する。\n- ログ専用PRの例外導入手順: ログ専用PRに対する限定的なマージ例外は、保存機構、公開前検査、workflow変更の妥当性を通常のコードレビューとCIで十分に検証した後に導入する。\n- 合意範囲: 2026-11-06に担当親が登録され、人間との要件合意を記録した（親issueの合意コメントが正本）。各子の未決事項はこの合意で解消し、確定内容は各子issueの「設計上の未決事項」に記載した。合意の要点は、#1691 は「既定必須・理由付きの明示省略」と「planning→implementingの状態管理と承認前の成果受理拒否」、#1692 は「1ターン1PR」「具体指示原文と版の参照」「PR連動workflowすべてをログのみの変更で除外」、#1693 は元提案の範囲どおりとする。\n\n## 全体の完了条件\n\n- [ ] 手動・自律の各workerが実装着手前の事前調査結果を親へ報告し、記録された親の判断内容に従って実装へ移行できることが確認されている。\n- [ ] 親の指示・回答および子の最終報告が機密情報・私的情報を含まない形でGit上に追跡可能となり、通常PRの検証水準を保ちながらログ専用PRの自動マージと限定的なCI省略が成立している。\n- [ ] 既定のSol/max運用と明示的なAstra/max選択が手動・自律の両入口で一貫して機能し、同一sessionの継続ターンにおいてモデルが不意に変更されない。\n- [ ] 事前調査から親の回答を経て実装に至る一連の委任サイクルにおいて、ターン、モデル、公開ログの対応関係が照合され、中断・再開やログ公開失敗が生じてもプロセスの二重起動、誤完了、秘密情報の漏洩が発生しない。\n- [ ] 3件の子タスクの受入条件がすべて検証され、AGENTS、skill、各README、CLI、workflowのドキュメントおよびコード間の矛盾がなく、本親issueにおける未決事項が解消されている。\n\n## 子タスクのチェックリスト\n\n- [x] #1691 実装前に調査結果と未決事項を親へ返し、判断後に着手する\n- [ ] #1692 指示・回答・最終報告をGitへ追記し、ログ専用PRを自動マージする\n- [x] #1693 手動・自律の親が難易度に応じてSol/Astraを選べるようにする\n\n## 進捗概要\n\n子の起動予約: なし。上限: 全子。\n- #1691: 完了 — 完了済み。 / 既存PRを照合して継続する: #1696 / 委任予約済み。既存worker・worktreeを照合する。\n- #1692: 継続 — 既存PRを照合して継続する: #1699 / 委任予約済み。既存worker・worktreeを照合する。\n- #1693: 完了 — 完了済み。 / 既存PRを照合して継続する: #1695 / 委任予約済み。既存worker・worktreeを照合する。\n\n## 依存関係・進め方\n\n### 全体の推進方針\n\n2026-11-06の合意により、#1693 → #1691 → #1692 の逐次で進める。次の子は、前の子のPR作成後にそのbranchへ積むstacked branchで開始する。mergeは依存順に行う。依存は各子issueの「依存関係」節が正本。3件とも既定の `gpt-6.1-sol / max` worker を共通ランナー経由で使う。\n\n### 子タスク間の連携と留意点\n\n- 共通コードの競合防止: #1691 と #1693 は、どちらも `manual_workers.py`・CLIツール群・skillを変更する。そのため #1693 を先に実装し、#1691 はその上へ積む。事前調査フェーズから実装フェーズへ移っても、同一sessionのモデル選択状態を保持する。\n- ログ保存と統合確認: #1692 は #1691 の上へ積み、調査・回答・実装の各ターンと、#1693 で選んだモデルの情報を、公開用ログの来歴へ接続する。最終検証では、これらが公開用ログから漏れなく追跡できることを確認する。\n\n### 既存基盤および関連issueとの連携\n\n- 境界修復の重複回避: worker起動前拒否の処理に関する既存の #1610（open）の修正状況を照合し、実行状態の保存と再開境界の修正が二重にならないようにする。\n- 既存資産の活用と標準手順の遵守: #1688、#1331、#1445 で実装された既存基盤を最大限に再利用する。担当登録・worker委任・コードレビューは既存の標準workflowに従う。\n\n## 未決事項・人間の判断が必要な点\n\nなし。2026-11-06の要件合意で、#1691・#1692・#1693 の設計上の未決事項はすべて解消した。確定内容は各子issueの「設計上の未決事項」と親の合意コメントに記録している。mainのブランチ保護は、2026-11-06のAPIで未設定（rulesetsも空）と確認済みで、GitHub設定の変更は不要。\n",
+        "number": 1694,
+        "title": "[親子委任改善] workerの事前調査・指示ログ保存・モデル選択を整備する"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/issues/1694/comments": {
+      "as_of": "2026-11-07T00:49:44.919121+00:00",
+      "value": []
+    },
+    "repos/Motoki0705/tennis-lab/issues/1692": {
+      "as_of": "2026-11-07T00:49:44.919121+00:00",
+      "value": {
+        "body": "親issue: #1694\n\n## このタスクの目的\n\n[PR #1688 の追加提案コメント](https://github.com/Motoki0705/tennis-lab/pull/1688#issuecomment-6675351311)に対応する子タスク。親が渡す `task.md / answer.md` と子の `final.md` を、実装PRに混ぜずGitで追跡できるようにする。\n\n背景調査（2026-11-06、PR #1688 merge後）:\n\n- #1688 は親の具体指示を[共通の組立て関数](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.agents/ops/parent/worker_instruction.py)へ接続した。送信されるpromptは標準指示・親子番号・絶対worktreeパス・担当issue本文・親の具体指示を含む。\n- 共通ランナーには既に[ターンごとの `prompt.md / final.md / result.json` の保存](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.agents/ops/lib/README.md#記録と結果jsonschema_version-1)がある。ただし非公開のローカルstateであり、Gitへの公開・永続化経路はない。元のtmpファイルを後から読み直すだけでは、実際に送った版を保証できない。\n- #1445 の[実行状況表示](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.agents/ops/worker_status/README.md#安全契約と失敗)は秘匿検査後の最小限の表示であり、全文ログのGit公開は対象外。既存検査は不適切な自由文を非表示にするもので、任意の秘密情報を完全に分類できる全文マスキング機構ではない。\n- [ops-report専用memory PR](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.agents/ops/ops-report/README.md#専用memoryの保存)には、専用worktree・公開journal・パスとHEAD照合・Codexレビュー省略の先例がある。ただしこの経路は必須CIの成功を要求する。今回の「ログだけはCIも実行しない」は別の限定例外として設計する必要がある。\n- [ci.yml](https://github.com/Motoki0705/tennis-lab/blob/74b653fdfe3edd83dc1a494f6ceb925e17c30a65/.github/workflows/ci.yml#L3)は全PRとmainへのpushで起動する。`knowledge.yml` は既に対象パスを限定し、`pull-request-labeler.yml` は `pull_request_target` で起動するため、CI以外のPR連動処理も確認が必要。\n\n## 具体的な変更内容・対象範囲\n\n- 手動・自律workerの初回／継続ターンについて、親の具体指示、子の最終報告、公開可能な来歴metadataを保存する共通経路。\n- 親・担当issue・委任・ターンごとに独立した追記専用パス。共有indexの更新を必要としない構造。\n- 例: `.agents/logs/parents/parent-<親番号>[local path]<担当issue番号>[local path]<公開用委任キー>[local path]<連番>-<initial|resume>[local path]` に `instruction.md`、`final.md`、`meta.json` を置く。ディレクトリ名は設計案であり確定仕様ではない。\n- 保存前の無害化・公開検査、重複保存の防止、途中失敗からの復旧、公開先PRとmain反映の照合。\n- 専用worktree/branchからログのみのPRをCLIが作成・自動マージする経路、限定例外の規則、関連workflowのパス条件。\n- 保存実装、公開検査、CI条件を変更するコードPRは通常のレビューとCIで検証する。\n\n### 実装方針\n\n全体方針と合意の正本は親issueを参照する。本タスクの具体化は次のとおり。\n\n- 公開する内容は実際の送信・受信時点で固定し、親の具体指示と合成済みpromptを混同しない。標準指示の版や関連issue/PR/commitへ辿れる来歴を持たせる。\n- 私的な委任[local path]。再送でも同じ公開キーへ到達できる対応を保持する。本文だけでなくパス・metadata・リンクも公開検査する。\n- Gitの既存ファイルを変更する共有indexを置かず、確定した記録は上書きしない。新しい親・ターンが別パスへ追加できることと、同じターンの再送で重複しないことを別々に検証する。パスの分離だけでmerge競合・並行更新全般がなくなるとは扱わない。\n- 自動マージの前に、変更種別を含む全差分が許可されたログファイルの追加だけであること、内容schema、同一repo・期待branch/base・固定HEADを機械的に照合する。パス外変更、既存記録の改変・削除・rename、symlink等は限定例外へ入れない。\n- `pull_request` とmainへの `push` の両方でログだけの変更を除外する。ログとコードを含むPRでは通常CIを実行する。`[skip ci]` で代用しない。\n- PR作成成功とmainへの保存完了は区別する。公開失敗や無害化不能、最終報告の欠測を成功へ置換せず、原文は非公開のまま理由と再開手段を残す。\n\n実装前に既存テストの対象node、守る契約、検出したい不具合、追加ケース数・時間の測定方法を決める。テストの詳細設計はtests/README.mdに従う。\n\n## 対象外\n\n- 実装PRへのログ混入、通常のコード・ルール変更のレビュー[local path]。\n- 生のsession/thread ID、認証情報、絶対ローカルパス、rawイベント・stderr・内部思考過程の公開。\n- ローカルregistryや実行証拠を公開ログで置き換えること。過去ログ全件の一括移行・削除、他の自動運用ログ全般への拡張。\n\n## 依存関係\n\n#1691 に依存する（調査・回答・実装の各ターンとフェーズを来歴へ接続するため）。2026-11-07 の人間の判断により、#1691 の merge 後に main から開始する。stacked branch では始めない。\n\n## 作業状況・停止事項\n\n未着手。[親 #1694 の要件合意](https://github.com/Motoki0705/tennis-lab/issues/1694)（2026-11-06）で方式が確定した。#1691 は PR #1696 で merge 済み。新しい CLI で委任し、初回ターンは事前調査とする。停止中の作業なし。mainのブランチ保護は2026-11-06のAPIで「Branch not protected」（404）、rulesetsも空であることを確認した。\n\n## Acceptance checklist\n\n- [ ] 初回・継続の指示と最終報告が、親・担当issue・委任・ターン・関連成果物へ対応付きでGitから追える。親番号と担当issue番号が同じ単独委任も扱える。\n  文脈: 指示原文と報告は現在ローカルstateにしか保存されない。\n  下流への影響: Git上で実際の委任と成果物の来歴を確認できる。\n  検証方法・証拠: 初回・継続・単独委任のfixtureで保存パスとinstruction/final/metaの内容、issue・PR参照を照合する。\n\n- [ ] 複数の親・子・継続ターンが共有ファイルを書き換えず追加でき、同じターンの再送、PR作成直後の中断、merge応答喪失でも既存記録を再利用する。\n  文脈: 公開・PR作成・mergeの途中で応答喪失や並行追加が起き得る。\n  下流への影響: 重複PRや過去記録の上書きを防ぐ。\n  検証方法・証拠: fake GitHubと実gitで2つの親の追加、同一ターン再送、作成・merge直後の障害を注入して再実行結果を比較する。\n\n- [ ] 絶対パス・session等の私的ID・資格情報を混ぜたfixtureが公開Git・PR本文・エラー表示へ漏れず、無害化不能時は公開を止める。通常の指示・報告の意味と出典は保持される。\n  文脈: 合成済みpromptやrunner記録には私的な値が含まれる。\n  下流への影響: 公開ログを残しつつ資格情報やローカル識別子の漏洩を防ぐ。\n  検証方法・証拠: 本文・パス・metadata・リンク・エラーに私的値を混ぜたfixtureを検査し、公開先に残らないことと無害化不能時の停止を確認する。\n\n- [ ] ログ専用PRだけが専用入口でCodexレビューなしに自動マージされ、パス外変更・既存ログ改変・不正ファイル・HEAD差替え・想定外baseを拒否する。\n  文脈: 通常のレビューgateを使わない限定経路を追加する。\n  下流への影響: ログ以外の変更が例外としてマージされることを防ぐ。\n  検証方法・証拠: 全差分・変更種別・ファイル型・base・固定HEADの改変をfake GitHubと実gitで与え、専用mergeの拒否を確認する。\n\n- [ ] ログ専用PRとそのmainへのmergeで対象のPR/push連動CIを起動しない。通常PR・ログとコードの混在PRは従来のCI／レビュー条件を保つ。GitHub側の必須チェックと両立することを実運用で確認する。\n  文脈: パス除外と必須チェックの設定が両立しない場合がある。\n  下流への影響: ログ保存時のCI消費をなくし、通常PRの検証を維持する。\n  検証方法・証拠: workflow条件をログのみ・通常コード・混在で検証し、実PRとmainへのmergeでworkflow未起動とmerge可否を確認する。\n\n- [ ] 公開とmergeの成功・保留・失敗がローカルに記録され、未保存を確認して再開できる。正常終了・失敗・最終報告なしを取り違えない。\n  文脈: PRの作成とmainへの反映は異なる段階である。\n  下流への影響: 未保存を完了と見誤らず、途中から復旧できる。\n  検証方法・証拠: 保存失敗・最終報告欠測・未merge close・応答喪失のfixtureでjournalの状態、再開先、成功判定を照合する。\n\n- [ ] fake GitHub・実gitで公開／並行追加／障害復旧を検証し、既存 `test_ops_report_memory.py` の境界検証を参考に最小限のテストを設計する。保存仕様と限定例外をREADMEへ集約する。\n  文脈: 既存memory保存と新しいログ保存は異なるCI契約を持つ。\n  下流への影響: 既存経路を壊さず専用経路の境界を検証できる。\n  検証方法・証拠: test_ops_report_memory.py等の既存境界を調べて必要なnodeを設計し、fake GitHub・実gitの結果と仕様文書を対応付ける。\n\n## 成果物・関連PR\n\n実装成果物・PRは未作成。提案元はPR #1688。調査の根拠と既存成果への参照は「このタスクの目的」に記載。\n\n担当: codex\n\nbranch: `codex/worker-log-publication`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1699 (open)\n\n検証結果:\n**#1692 の成果と親による検証（PR #1699、head 43e3218c9）**\n\n- 経緯: #1691 の新しい CLI で委任した。\n  - 初回は planning ターンで、6見出しの報告を受けた。\n  - 親が条件A〜Dを付けて decide-worker-plan approve で承認した。条件は、ランダムな公開キー、runner と result.json の不変、追加指示を meta に置くこと、導入前の run は公開しないこと。\n  - そのうえで実装ターンへ進んだ。\n- PR #1699 の状態: base は main、MERGEABLE、`Closes #1692`、29ファイル（+2998/−35）。対象 HEAD の CI は16件すべて成功（Python を含む）。\n- 変更していないもの: `.agents/ops/lib`（共通ランナー）と `.agents/ops/review`（merge gate 本体）。\n- workflow の変更: ci.yml（push main・pull_request）と pull-request-labeler.yml（pull_request_target）に、`.agents/logs/parents/**[local path],final.md,meta.json}` だけの `paths-ignore` を追加した。\n- .gitignore: `.agents/logs/parents/` 配下と meta.json を追跡対象へ戻す。\n- 親が worktree で再実行したテストの対象: unit の agents_ops 全体と、関連する e2e。\n  - e2e は test_worker_log_publication、test_ci_test_lanes、test_manual_worker_runs、test_parent_development、test_ops_report_memory、test_merge_gate、test_agents_docs。\n- 再実行の結果: 1153 passed、1 failed。\n  - 失敗した1件は `test_ops_report_memory.py::test_failed_completion_rejects_forged_publication[body-report]`。\n  - 単独で実行すると、branch と main の両方で成功した。同じファイルを並列で3回実行すると、3回とも 59 passed だった。\n  - 高負荷の並列実行でだけ起きる間欠的な失敗で、本PRは ops-report に触れていない。\n- テストの増分（worker の報告）: 53件（unit 29件、e2e 15件、workflow の展開 +8件、文書リンク 1件）。承認時の上限の目安どおり。\n- 未実施: 実ログPRの作成・merge、main 反映時に workflow が起動しないことの確認、混在 probe PR。承認条件どおり、コードPRの merge 後に親の指示で行う。手順は PR 本文にある。\n- 実行証拠の扱い: レビュー環境では CI ログの取得と隔離テストを実行できない。上記の CI 成功状態と親の再実行結果を、その代わりの実行証拠とする。\n\n## 関連作業・実装の進め方\n\n#1688・#1445 のrun記録／共通指示を再利用し、公開schemaと無害化→追記保存・復旧→専用PRとmerge gate→workflow条件・実運用検証の順で進める。\n\nops-reportのmemory保存は設計・再利用候補であり、既存のCI付き例外をそのまま流用して要件達成とはしない。既存のmemory保存経路の挙動も保つ。\n\n#1691 の事前調査では調査・回答・実装の複数ターンが増えるため、そのphase情報を来歴へ接続できるようにする。モデル選択の #1693 とは選択モデルの来歴を共有する。両案の完成をログ保存の着手条件にはしない。#1610の存在しないrunの扱いとは保存・復旧境界を照合する。\n\n## 設計上の未決事項\n\n未決事項なし。[親 #1694 の要件合意](https://github.com/Motoki0705/tennis-lab/issues/1694)（2026-11-06）で次のとおり確定した。\n\n- 公開の単位: workerの1ターンごとに、ログ専用PRを1件作成し、専用入口で自動mergeする。\n- `instruction.md` の内容: 親が書いた具体指示（`task.md` / `answer.md`）の原文だけを入れる。標準指示は送信時点のcommitを、担当issue本文はURLと送信時点の版を、`meta.json` で参照する。合成済みpromptの全文や、絶対パス・session ID・資格情報は公開しない。\n- 無害化できない場合は公開を止め、原文は非公開のまま理由と再開手段を残す。\n- CI省略の範囲: ログだけの変更では、PRとmainへのpushのどちらでも `ci.yml` と `pull-request-labeler.yml` を起動しない。`knowledge.yml` は既に対象パスを限定しているため変更しない。ログとコードが混在するPRと通常PRは、従来のCI・レビュー条件を保つ。\n- GitHub側の設定: mainにはブランチ保護・rulesetsがないため、パスで除外しても必須チェックがPendingのまま残ってmergeを妨げることはない。GitHub設定の変更は不要。mergeに `Python` の成功を要求しているのはrepo内のmerge gateなので、ログ専用PRは別の専用入口で扱う。\n\n",
+        "number": 1692,
+        "title": "[親子委任改善 #1694] 指示・回答・最終報告をGitへ追記し、ログ専用PRを自動マージする"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/pulls/1699": {
+      "as_of": "2026-11-07T00:49:44.919121+00:00",
+      "value": {
+        "body": "Closes #1692\n\n親が送った具体指示とworkerの最終報告がローカルstateにしか残らず、後から送受信版を追えない問題に対応します。手動・自律の初回／継続turnで原文と来歴を固定し、公開検査を通った3ファイルを、実装branchとは別のログ専用PRへ追記・自動mergeします。\n\n## 変更内容\n\n- privateなpreflight lineageへ独立したランダム公開キーを保存。再送・同sessionの自律継続では再利用し、新しい系列では作り直します。\n- 非空検査と原文保持を分離し、task/answerの空白・CRLFを保持。CLIの生成見出しをinstruction.mdへ入れず、追加指示はmeta.jsonで保存します。\n- runnerの正常終了・cleanup・contract・送信promptを親側で照合し、その時点のfinal原文とdigestをprivate journalへ固定。runner本体・result.json schemaは変更しません。\n- 本文・metadata・パス・リンク・PR本文を検査し、無害化不能時は公開を停止。通常出力のerrorは許可した固定コードに限定します。\n- 専用worktree/branch、ターン別journal、固定HEAD・全差分・ファイル型・同repo/mainの照合を持つ専用merge入口を追加。PR作成とmain保存を区別し、中断・応答喪失は既存commit/PR/mergeを照合して再開します。\n- CIのPR/main pushとlabelerのPR targetでデータ3ファイルだけを除外。knowledge.yml、通常merge gate、ops-report memoryのCI必須処理は変更しません。\n- 恒久仕様・限定例外・復旧・実運用検証の手順は `.agents/ops/worker_logs/README.md` に集約しました。\n\n## 受入条件と検証\n\n| 条件 | 証拠 |\n|---|---|\n| 初回・継続・単独委任の来歴 | 両入口の既存 `test_preflight_decision_paths` を拡張。原文、回答、追加指示、phase、Sol/max、判断元turnを照合。単独委任は新しい公開CLIのdry-runと実gitで確認 |\n| 独立した追加と再送・障害復旧 | `test_two_parents_append_and_merge_without_shared_index`、`test_concurrent_retry_reuses_same_pr`、`test_publication_recovers_after_interruption`。fake GitHubと実gitでcommit/push/PR作成[local path]、dirty状態、未merge closeを検証 |\n| 秘密・パス・IDを公開しない | `test_publication_safety_preserves_or_blocks` と単独委任の公開Git/PR/出力検査。URL encoding、metadataキー、オプション直結パス、error原文も対象。資格情報を含む指示は公開を止める |\n| 限定mergeの境界 | `test_merge_policy_rejects_unsafe_diff_or_identity`、`test_publication_gate_rechecks_git_and_remote`。変更種別・mode・rename元・対象外差分・repo/base/HEADを拒否 |\n| ログのみのCI除外、通常・混在の維持 | 既存workflow nodeを3イベント×3変更種別へ拡張。通常gateの `test_python_ci_is_required_for_dependency_ordered_merges` を維持。実PR・main mergeの未起動確認は後述のとおり未実施 |\n| 成功・保留・失敗・欠測の区別 | runner失敗、final欠測、送信版改変、無害化不能、未merge close、応答喪失を検証。根拠なしにjournalをmergedへ変えた場合も拒否 |\n| 既存経路の維持と仕様集約 | 既存memory保存の5境界、unit全体、manual/managed/dispatcher、文書リンクを検証。通常gate・memory保存・共通runnerへの差分なし |\n\n## テスト設計・増分・実測\n\n展開後の増分は **53件**（親の承認した上限目安以内）です。\n\n- 新規unit 29件、新規e2e 15件。異常分類をunitに置き、公開境界は最小のfake GitHub・使い捨て実gitを使用します。\n- 既存workflow nodeは1→9件（+8）、文書リンク+1。両入口の既存4件はassert拡張のみです。\n- schemaの2本文digestは同じequivalence classの1ケースで両方を確認し、その1件を無害化不能時の受信→未公開境界へ割り当てました。新しい重いe2eやモデル・GPU実行は追加していません。\n- 最新HEADの44件JUnit実測: 新規unit 29件の合計0.102秒、新規e2e 15件の合計6.441秒。新規ケースの最大setup+call+teardownは0.855秒で、5秒超なし。\n- 新規function fixtureの実git/stateはケースごとに分離。既存manual fixtureのsetup約3秒とmanagedの複数turn実行は既存コストです。\n- Git modeの拒否を一時的に無効化すると、symlinkケースが `DID NOT RAISE` で失敗。復元後の通常実行は成功しました。\n\n広域回帰: **1009 passed / 299.25秒**（`-n 3`）。その後の公開schema・秘匿検査の境界強化は、最終 **79 passed / 33.55秒（-n 2）** で再検証しました。全て `.venv/bin/python -m pytest` を使用し、共有lockは使っていません。\n\n実repoのoriginが末尾`.git`なしのHTTPS URLであることを確認し、GitHubの同repo URLだけを正規化して照合するよう修正しました。最新HEADで新規unit/e2eの **44 passed / 6.79秒（-n 2）** を再確認しています。別repo・userinfo付きURLは拒否し、追加ケース数は変えていません。\n\n```bash\n.venv/bin/python -m pytest -n 3 -q \\\n  tests/unit/agents_ops \\\n  tests/e2e/agents_ops/test_worker_log_publication.py \\\n  tests/e2e/agents_ops/test_manual_worker_runs.py \\\n  tests/e2e/agents_ops/test_parent_development.py \\\n  tests/e2e/agents_ops/test_dispatcher_supervisor.py \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_memory_required_ci_cannot_be_a_status_context \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_changed_head_between_ci_and_merge_fails_closed \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_pr_creation_journal_gap_reuses_existing_pr \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_path_scope_checks_deleted_and_renamed_sources \\\n  tests/e2e/agents_ops/test_ops_report_memory.py::test_atomic_journal_replace_failure_keeps_previous_version \\\n  tests/e2e/agents_ops/test_merge_gate.py::test_python_ci_is_required_for_dependency_ordered_merges \\\n  tests/e2e/development/test_ci_test_lanes.py::test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs \\\n  tests/e2e/agents_ops/test_agents_docs.py \\\n  --durations=0 --durations-min=0\n\n.venv/bin/python -m pytest -n 2 -q \\\n  tests/unit/agents_ops/test_worker_logs.py \\\n  tests/e2e/agents_ops/test_worker_log_publication.py \\\n  tests/e2e/agents_ops/test_manual_worker_runs.py::test_preflight_decision_paths \\\n  tests/e2e/agents_ops/test_parent_development.py::test_preflight_decision_paths \\\n  tests/e2e/development/test_ci_test_lanes.py::test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs \\\n  tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve \\\n  --durations=0 --durations-min=0\n```\n\n最終pre-commitのruff/mypyとdiff check成功。通常hook対象外の新規opsモジュールを含む15 sourceの明示mypyも成功しました。CLI単体の明示mypyには既存3件があり、mainの同ファイルをshadow指定した場合と同じ3件、増分0です。\n\n## 承認設計との差・対象外\n\n親の条件A〜Dを反映しました。HMAC/永続鍵は使わずランダム公開キー、runner本体とresult schemaは無変更、追加指示は同じ公開検査を通してmetaへ保存、導入前turnはprivateな未公開理由だけを記録します。\n\n通常mergeのCI/レビュー省略、実装PRへのログ混入、過去ログの一括移行、#1610のworker再開修正は対象外です。GitHub設定は変更していません。\n\n## merge後に親が行う実運用確認（未実施）\n\n親の指示により、この実装ターンではログPRの実作成・merge、混在probe PRの作成を行っていません。受入条件「実PR/mainでworkflow未起動・merge可否」の確認は残っています。\n\n1. コードPRを通常レビュー・対象HEADのPython成功でmergeする。\n2. 公開可能な正規turnを専用CLIで公開・mergeし、journal・3ファイル・PR・mainを照合する（来歴、再送、保存成功）。\n3. CIとlabelerのrun履歴をイベント・PR番号・merge commitで取得し、ログPRとmain mergeで未起動を確認する。PR targetはdefault branch側を使うため、PR headのcheck一覧だけでは判定しない（CI省略）。\n4. 別の通常/混在probe PRで通常起動を確認し、混在probeは確認後に未mergeで閉じる（通常経路の維持）。\n5. 対照CI完了後にも履歴を再取得し、観測時刻・workflow・PR・commitを本PRへ残す。\n\nnative paths-ignoreの差分上限・timeout制約はREADMEへ明記しています。本経路の3ファイルPRと通常規模の混在PRが検証対象です。通常・混在でworkflowが未起動でも通常merge gateは対象HEADのPython成功を必須とし、欠落時にfail-closedで止まります。\n\n## CI\n\n対象HEAD `43e3218c9dee401374f1f925bec1fb6d50eaf0cd` の [Python](https://github.com/Motoki0705/tennis-lab/actions/runs/42316112814/job/128237600853) は **success**。Lint、CPU 10分割、Knowledge 2ジョブ、labelerを含む16チェックすべてsuccessです。\n\n同HEADの初回CIはCPU分割2の `apt-get install` がUbuntuミラーからの取得中に180秒でtimeout（exit 124）し、テスト未実行でした。失敗ジョブの再実行では依存導入・テスト・集約Pythonが成功しました。コード変更で回避していません。\n\n統合レビュー・merge・担当終了は親が行います。実ログPRと混在probe PRは、このターンでは作成していません。\n",
+        "changed_paths": [
+          ".agents/README.md",
+          ".agents/ops/dispatcher/supervisor.py",
+          ".agents/ops/parent/README.md",
+          ".agents/ops/parent/cli.py",
+          ".agents/ops/parent/development.py",
+          ".agents/ops/parent/development_workflow.md",
+          ".agents/ops/parent/manual_workers.py",
+          ".agents/ops/parent/worker_instruction.py",
+          ".agents/ops/parent/worker_preflight.py",
+          ".agents/ops/worker_logs/README.md",
+          ".agents/ops/worker_logs/__init__.py",
+          ".agents/ops/worker_logs/journal.py",
+          ".agents/ops/worker_logs/publication.py",
+          ".agents/ops/worker_logs/safety.py",
+          ".agents/ops/worker_logs/schema.py",
+          ".agents/ops/worker_logs/service.py",
+          ".agents/ops/worker_logs/sources.py",
+          ".agents/skills/parent-session/SKILL.md",
+          ".github/workflows/ci.yml",
+          ".github/workflows/pull-request-labeler.yml",
+          ".gitignore",
+          "tests/e2e/agents_ops/fake_manual_worker_runner.py",
+          "tests/e2e/agents_ops/test_agents_docs.py",
+          "tests/e2e/agents_ops/test_manual_worker_runs.py",
+          "tests/e2e/agents_ops/test_parent_development.py",
+          "tests/e2e/agents_ops/test_worker_log_publication.py",
+          "tests/e2e/development/test_ci_test_lanes.py",
+          "tests/support/agents_ops/worker_logs.py",
+          "tests/unit/agents_ops/test_worker_logs.py"
+        ],
+        "child_issues": [
+          1692
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "knowledge",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "knowledge-webui",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1699,
+        "title": "feat(parent): workerの指示と最終報告を専用ログPRへ保存する"
+      }
+    }
+  },
+  "provenance": {
+    "kind": "projection_of_saved_pre_review_context",
+    "source_context_sha256": "29b176422c404f53458243a164b79afa3c68c3036e740ac8bb9d32f079e0d155",
+    "excluded_comments": [
+      {
+        "id": 6678100155,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6678108995,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6681575345,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6682779200,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6682784183,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6682830848,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6683910002,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6683911229,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6684049600,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6684058804,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6684168492,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6684638831,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6684647772,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6688666412,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6688668339,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6688936937,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6691243005,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6691244650,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6691435816,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6693284282,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6693285888,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6693390718,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6693438865,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6693439995,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6697903227,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6699840054,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6699841033,
+        "reason": "operational_record_excluded"
+      }
+    ],
+    "sanitization_replacements": 8,
+    "unavailable": [
+      "PR and child discussions were not captured; unregistered endpoints are rejected",
+      "CI payload is the captured checks summary, not reconstructed raw logs"
+    ]
+  }
+}

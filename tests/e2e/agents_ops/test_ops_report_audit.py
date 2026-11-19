@@ -411,7 +411,10 @@ def test_publication_before_local_binding_recovers_without_rerunning_agent(
     assert _json(path)["events"][-1]["data"]["report_issue"] == 100
 
 
-def test_managed_audit_uses_claude_parent_and_parallel_sol_scouts(ops_env: Any) -> None:
+@pytest.mark.parametrize("reconnect", [False, True])
+def test_managed_audit_uses_claude_parent_and_parallel_sol_scouts(
+    ops_env: Any, reconnect: bool
+) -> None:
     fixture = Path(__file__).with_name("fake_managed_audit_cli.py").read_text()
     for name in ("claude", "codex"):
         executable = ops_env.tmp / "bin" / name
@@ -423,6 +426,7 @@ def test_managed_audit_uses_claude_parent_and_parallel_sol_scouts(ops_env: Any) 
         "--dry-run",
         OPS_REPORT_AGENT_EXEC=str(runner),
         FAKE_SCOUT_CONTROL=str(ops_env.tmp / "scout-control"),
+        FAKE_SCOUT_RECONNECT="1" if reconnect else "0",
     )
     assert result.returncode == 0, result.stderr
     assert "status=complete" in result.stdout
@@ -440,3 +444,4 @@ def test_managed_audit_uses_claude_parent_and_parallel_sol_scouts(ops_env: Any) 
         assert evidence["contract"]["settings"]["selected"]["model"] == "gpt-6.1-sol"
         assert evidence["contract"]["settings"]["selected"]["effort"] == "max"
         assert evidence["cleanup_complete"] is True
+        assert bool(evidence["runtime"]["runtime_errors"]) is reconnect

@@ -1,0 +1,312 @@
+{
+  "schema": "court_reference_draft_v1",
+  "approved_for_evaluation": false,
+  "cameras": [
+    {
+      "camera": "cam0",
+      "source_clip": "video_000/clip_000",
+      "frame_index": 0,
+      "kind": "manual_visible_line_intersection_draft",
+      "human_reviewed": false,
+      "approved_for_evaluation": false,
+      "anchor_indices": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        8,
+        9,
+        10,
+        11
+      ],
+      "anchor_image_xy": [
+        [
+          993.0,
+          430.0
+        ],
+        [
+          1342.0,
+          437.0
+        ],
+        [
+          174.0,
+          582.0
+        ],
+        [
+          973.0,
+          698.0
+        ],
+        [
+          242.0,
+          592.0
+        ],
+        [
+          892.0,
+          453.0
+        ],
+        [
+          1278.0,
+          457.0
+        ],
+        [
+          591.0,
+          520.0
+        ],
+        [
+          1058.0,
+          555.0
+        ]
+      ],
+      "matrix_court_metres_to_image_pixels": [
+        [
+          23.281115548551018,
+          61.28135404365843,
+          972.0295931334949
+        ],
+        [
+          -10.162687979631057,
+          13.627151350640398,
+          483.6741933904757
+        ],
+        [
+          -0.024425805429988092,
+          0.04081510887368029,
+          1.0
+        ]
+      ],
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "note": "Approximate manual marks, no model prediction fit. No error metrics or tuning before human review."
+    },
+    {
+      "camera": "cam1",
+      "source_clip": "video_000/clip_000",
+      "frame_index": 0,
+      "kind": "manual_visible_line_intersection_draft",
+      "human_reviewed": false,
+      "approved_for_evaluation": false,
+      "anchor_indices": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        10,
+        11,
+        13
+      ],
+      "anchor_image_xy": [
+        [
+          469.0,
+          461.0
+        ],
+        [
+          927.0,
+          463.0
+        ],
+        [
+          626.0,
+          804.0
+        ],
+        [
+          1617.0,
+          658.0
+        ],
+        [
+          820.0,
+          777.0
+        ],
+        [
+          675.0,
+          606.0
+        ],
+        [
+          1201.0,
+          572.0
+        ],
+        [
+          969.0,
+          586.0
+        ]
+      ],
+      "matrix_court_metres_to_image_pixels": [
+        [
+          71.40334306747656,
+          17.73239861247001,
+          839.0326173485929
+        ],
+        [
+          10.19374147855351,
+          13.55807038260589,
+          521.6729759488034
+        ],
+        [
+          0.02319626209443381,
+          0.041446832970708156,
+          1.0
+        ]
+      ],
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "note": "Approximate manual marks, no model prediction fit. No error metrics or tuning before human review."
+    },
+    {
+      "camera": "cam2",
+      "source_clip": "video_000/clip_000",
+      "frame_index": 0,
+      "kind": "manual_visible_line_intersection_draft",
+      "human_reviewed": false,
+      "approved_for_evaluation": false,
+      "anchor_indices": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        7,
+        10,
+        11,
+        13
+      ],
+      "anchor_image_xy": [
+        [
+          1033.0,
+          449.0
+        ],
+        [
+          1417.0,
+          450.0
+        ],
+        [
+          274.0,
+          605.0
+        ],
+        [
+          1071.0,
+          709.0
+        ],
+        [
+          335.0,
+          613.0
+        ],
+        [
+          920.0,
+          688.0
+        ],
+        [
+          553.0,
+          546.0
+        ],
+        [
+          1143.0,
+          569.0
+        ],
+        [
+          868.0,
+          555.0
+        ]
+      ],
+      "matrix_court_metres_to_image_pixels": [
+        [
+          28.998415295601134,
+          57.31374426719057,
+          1021.2023344840741
+        ],
+        [
+          -8.856114625111582,
+          10.728055406567034,
+          503.48792726264986
+        ],
+        [
+          -0.02155778883838304,
+          0.03501963824717121,
+          1.0
+        ]
+      ],
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "note": "Approximate manual marks, no model prediction fit. No error metrics or tuning before human review."
+    },
+    {
+      "camera": "cam3",
+      "source_clip": "video_000/clip_000",
+      "frame_index": 0,
+      "kind": "manual_visible_line_intersection_draft",
+      "human_reviewed": false,
+      "approved_for_evaluation": false,
+      "anchor_indices": [
+        2,
+        5,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "anchor_image_xy": [
+        [
+          1075.0,
+          543.0
+        ],
+        [
+          1221.0,
+          517.0
+        ],
+        [
+          749.0,
+          338.0
+        ],
+        [
+          1073.0,
+          308.0
+        ],
+        [
+          965.0,
+          416.0
+        ],
+        [
+          1457.0,
+          349.0
+        ],
+        [
+          932.0,
+          322.0
+        ],
+        [
+          1230.0,
+          380.0
+        ]
+      ],
+      "matrix_court_metres_to_image_pixels": [
+        [
+          67.29483388635286,
+          20.588241610526097,
+          1038.5881210524287
+        ],
+        [
+          1.511731403005328,
+          10.021359126527951,
+          342.9638335191775
+        ],
+        [
+          0.019677549299536336,
+          0.04172107575503608,
+          1.0
+        ]
+      ],
+      "source_size_hw": [
+        1080,
+        1920
+      ],
+      "note": "Approximate manual marks, no model prediction fit. No error metrics or tuning before human review."
+    }
+  ]
+}

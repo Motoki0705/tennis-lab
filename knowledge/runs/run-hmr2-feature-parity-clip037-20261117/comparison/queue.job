@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# name: hmr2-body-parity-037-reboot
+# added: 2026-11-18T01:25:51+09:00
+# provider: codex
+# session: 01a1e957-e495-7ef2-81cd-bf26c4ae465a
+# issue: 1754
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+# idempotency_key_sha256: 68dbb006467c108426effe72b651ba42f4cf8de90bb753c3f89a20e78791a1fc
+# request_sha256: 7e7c7368172b747afe77874fa58adf7c3700a0cd061a5fd8aa2cb2a6729f6acd
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts
+export TENNIS_RUN_ID=0-8205067248774581612_2026-11-17T16-25-51-225418387Z_133804_hmr2-body-parity-037-reboot
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205067248774581612_2026-11-17T16-25-51-225418387Z_133804_hmr2-body-parity-037-reboot
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205067248774581612_2026-11-17T16-25-51-225418387Z_133804_hmr2-body-parity-037-reboot --name hmr2-body-parity-037-reboot --provider codex --session 01a1e957-e495-7ef2-81cd-bf26c4ae465a --issue 1754 --cmd PYTHONDONTWRITEBYTECODE=1\ PYTHONPATH=.\ OMP_NUM_THREADS=4\ OPENBLAS_NUM_THREADS=1\ MKL_NUM_THREADS=4\ .venv/bin/python\ -B\ knowledge/runs/run-hmr2-feature-parity-clip037-20261117/compare.py\ --main-store\ /home/kamimura/projects/tennis-lab/.worktree-outputs/hmr2-parity-main-20261117/hmr2_qualification/clip_037/store/bfa625f39ba2d39336cc\ --main-config\ outputs/hmr2_feature_acceptance_20261117/qualification-037.yaml\ --output\ outputs/hmr2_feature_acceptance_20261117/comparison/clip_037
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 .venv/bin/python -B knowledge/runs/run-hmr2-feature-parity-clip037-20261117/compare.py --main-store /home/kamimura/projects/tennis-lab/.worktree-outputs/hmr2-parity-main-20261117/hmr2_qualification/clip_037/store/bfa625f39ba2d39336cc --main-config outputs/hmr2_feature_acceptance_20261117/qualification-037.yaml --output outputs/hmr2_feature_acceptance_20261117/comparison/clip_037

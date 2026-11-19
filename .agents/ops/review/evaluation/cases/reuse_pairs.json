@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "audit_url": "https://github.com/Motoki0705/tennis-lab/issues/1790",
+  "pairs": [
+    {
+      "pr": 1615,
+      "source_run": "parent-1595-c37c7bc3ab714cd6beb3780027777a18",
+      "repeat_run": "parent-1595-2b3123470da8420b824efd5dfa0dc543",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1595#issuecomment-6541817931",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1595#issuecomment-6541963192"
+    },
+    {
+      "pr": 1625,
+      "source_run": "parent-1620-5fc25514ecb04490b91138f2f5f3af61",
+      "repeat_run": "parent-1620-17fafad8df574481a74e2e2640ff9d69",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1620#issuecomment-6549276471",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1620#issuecomment-6549386969"
+    },
+    {
+      "pr": 1625,
+      "source_run": "parent-1620-17fafad8df574481a74e2e2640ff9d69",
+      "repeat_run": "parent-1620-fc60366f27d54e56b192c87a34e44863",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1620#issuecomment-6549386969",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1620#issuecomment-6549469173"
+    },
+    {
+      "pr": 1636,
+      "source_run": "parent-1581-f9e2548862ee4c85a0733ee88e778e8f",
+      "repeat_run": "parent-1581-eb951b95eb9d4b27a738f7d8e4c48e66",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1581#issuecomment-6567342835",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1581#issuecomment-6567630988"
+    },
+    {
+      "pr": 1668,
+      "source_run": "parent-1554-eeceb7f70b7447c59549b162dc3aca02",
+      "repeat_run": "parent-1554-60b72d6cb0f2453f984e1d2e8eb77fdb",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1554#issuecomment-6596307507",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1554#issuecomment-6596441074"
+    }
+  ]
+}

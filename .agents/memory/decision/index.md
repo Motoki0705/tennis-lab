@@ -9,3 +9,4 @@
 - [テスト用の値を本番planに使わない](keep-test-values-out-of-production-plans.md)
 - [公開向け文書は英語版を既定にして日本語・簡体字中国語版を別ファイルに分け、ハッシュ値は書かない](public-docs-english-default.md)
 - [CI短縮を受けてPRごとに検証し、成功をmergeの必須条件にする](pr-ci-required.md)
+- [正式レビューは1回だけ行い、major指摘を解消したら再レビューせずにmergeする](no-rereview-after-major-fix.md)

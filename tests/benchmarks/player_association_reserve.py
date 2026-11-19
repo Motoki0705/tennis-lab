@@ -39,7 +39,7 @@ def select_clips(manifests: list[dict[str, Any]], excluded: set[str]) -> tuple[l
 
 
 def reserve(repo: Path, report: Path) -> None:
-    dataset = repo / 'data/tennis_multivew/processed/meiji_3cam/dataset'
+    dataset = repo / 'data/tennis_multiview/processed/meiji_3cam/dataset'
     protocol_path = dataset / 'annotations/player_association/unseen_protocol.json'
     previous = json.loads(protocol_path.read_text())
     if previous['evaluation_attempts'] != 0 or previous['tuning_complete'] or previous['status'] != 'reserved_not_labelled':

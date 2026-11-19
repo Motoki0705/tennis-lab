@@ -1,0 +1,30 @@
+[
+  {
+    "key": "meiji_4cam/video_000/clip_004/cam1",
+    "native_crop": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/review/measurements/cam1_clip_004_far_baseline.png",
+    "crop_xyxy": [
+      463,
+      420,
+      901,
+      513
+    ],
+    "quality_replay_matches": true,
+    "mean_error_px": 16.060290856658675,
+    "max_error_px": 28.910413588081962,
+    "worst_reference_line": "far_baseline"
+  },
+  {
+    "key": "meiji_4cam/video_000/clip_023/cam0",
+    "native_crop": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/review/measurements/cam0_clip_023_far_baseline.png",
+    "crop_xyxy": [
+      179,
+      543,
+      969,
+      741
+    ],
+    "quality_replay_matches": true,
+    "mean_error_px": 398.77138633373306,
+    "max_error_px": 831.2817754488515,
+    "worst_reference_line": "far_baseline"
+  }
+]

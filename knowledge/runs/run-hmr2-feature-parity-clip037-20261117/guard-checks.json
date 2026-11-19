@@ -1,0 +1,6 @@
+{
+  "cpu_mock_only": true,
+  "timeout_diagnostic_with_UTC_and_operation_saved": true,
+  "all_thread_stack_saved": true,
+  "exit_code": 86
+}

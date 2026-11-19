@@ -1,0 +1,43 @@
+{
+  "schema": "court_scene_pair_condition_provenance_v1",
+  "condition": "scene-3",
+  "scientific_ref": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "inputs_identity": "4d7b39d613471fd9f94a64dcb36d8fbba3a939fa0517773125af394cc3c1ca33",
+  "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-3-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+  "checkpoint_sha256": "246e0f4ab4ac45e21d64b559db436bcf8ba73f8242d1e662a5c7d19f971410fe",
+  "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/scene-3-s42/evaluation.json",
+  "evaluation_sha256": "3b2c0a3a5f4592c3ec5b1855bf1716c48f9d70eea4cba0ea3965e2a6c20ccc57",
+  "global_step": 33160,
+  "config_digest": "df016ec9b879ef403c8fc13a1dda9a213a11b8312915ef97f4dc77e971ca32ed",
+  "data_condition_digest": "b253d04436a9a3c2ae30ceaa3a7f6be1752348cc65490f00f72dc0295038a07f",
+  "train_scene_images": {
+    "B00": 1833,
+    "B01": 1833,
+    "B02": 1834
+  },
+  "fit_val_scene_images": {
+    "B00": 167,
+    "B01": 167,
+    "B02": 166
+  },
+  "data_manifest_sha256": {
+    "synthetic_court/dataset_subset": "a6fe696de60fb3f2be704b408fa832e8f60f33d9446e65ecb0f4908edd7125ee",
+    "synthetic_court/validation_subset": "4346ba94fcb5f03f8edf56a202607343940314f6b54b7f5a94bb943cf13acc63",
+    "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+    "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+    "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+  },
+  "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-scene-3.json",
+  "original_marker_sha256": "a1da450734de1baf8a3ced7095426fd6b55c136c1cfa6526e62fea4d84b1ba9c",
+  "evaluation_artifact_count": 37,
+  "training_source": {
+    "kind": "synthetic_court_dataset_subset",
+    "schema": "v3",
+    "court_scope": "target_court",
+    "manifest": "court_scene_diversity_6000_v1/scene-3.train.subset.json",
+    "validation_manifest": "court_scene_diversity_6000_v1/scene-3.val.subset.json"
+  },
+  "legacy_real_five_metrics_and_ids_exact_equal": true,
+  "legacy_evaluation_sha256": "c5a309528213634c81493d14f3df5f669648ae219f7adb896a6f308cde9f805c",
+  "restarts": []
+}

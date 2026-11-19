@@ -1,0 +1,10 @@
+{
+  "turn": "b624101111934c159841ad7f49162898",
+  "previous_turn": "c101f6257cd34cbaa260dc537a3e2438",
+  "parent_note": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6918621524",
+  "GPU_used": false,
+  "training_queue_jobs_added": 0,
+  "new_neural_raw_acquisition": false,
+  "scope_after_resume": "read completed CPU artifacts, aggregate numerical results, write approval/analysis/plan; no new fitting or model inference",
+  "CPU_CI_only": "regular CI asserts torch.version.cuda is None; GPU workflows require workflow_dispatch and were not dispatched"
+}

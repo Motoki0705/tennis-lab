@@ -1,0 +1,32 @@
+{
+  "accepted": false,
+  "stopped_node": "player_association",
+  "reason": "player_association_ambiguous_players",
+  "message": "Identity 3 (2106 frames) is too close to player identity 0 (2106 frames)",
+  "attempt_1": "Driver TypeError before model startup; required enabled argument omitted and subsequently fixed.",
+  "attempt_2_queue_job": "0-8205082698807717050_2026-11-17T12-08-21-192282949Z_970881_hmr2-feature-parity",
+  "attempt_2_commit": "a9c684ed67adaf24088d1289e64206bb34e11e29",
+  "actual_stop_reason": "Identity 3 (2106 frames) is too close to player identity 0 (2106 frames)",
+  "HMR2_GVHMR_body_placement_reached": false,
+  "model_counts": [
+    {
+      "model": "appearance",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0
+    }
+  ],
+  "phase_wall_seconds": 23.872405783,
+  "resources": {
+    "ram_rss_sampled_peak_bytes": 2166087680,
+    "temporary_disk_peak_bytes": 0,
+    "ram_process_lifetime_peak_bytes": 2166087680,
+    "cuda": {
+      "cuda": {
+        "allocated_peak_bytes": 860329984,
+        "reserved_peak_bytes": 1082130432
+      }
+    }
+  },
+  "limits": "No body outputs or performance comparison obtained; one frozen C1 clip only; no thresholds/identity rules/cameras changed."
+}

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -161,6 +162,33 @@ class LoadedCourtModel:
     identity: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class CourtCheckpointMetadata:
+    spec: CourtInferenceSpec
+    epoch: Any
+    global_step: Any
+
+    def identity(self, path: Path, checkpoint_sha256: str, backbone_sha256: str | None) -> dict[str, Any]:
+        spec = self.spec
+        return {"schema": "court_inference_checkpoint_v1", "checkpoint_path": str(path),
+            "checkpoint_sha256": checkpoint_sha256, "backbone_sha256": backbone_sha256,
+            "backbone_asset_migration": deepcopy(spec.backbone_asset_migration), "architecture": deepcopy(spec.architecture),
+            "target_bundle": serialize_target_bundle(spec.target_bundle), "short_side": spec.short_side,
+            "pose_long_side": spec.pose_long_side, "patch_size": spec.patch_size,
+            "epoch": self.epoch, "global_step": self.global_step}
+
+
+def read_court_checkpoint_metadata(path: Path, *, resolver: PathResolver) -> CourtCheckpointMetadata:
+    """Read inference metadata without building a model; tensors stay CPU mapped.
+
+    The planning caller owns digest and before/after file-stability checks.
+    """
+    checkpoint = _mapping(torch.load(path, map_location="cpu", weights_only=False, mmap=True), "body")
+    hyper = _mapping(checkpoint.get("hyper_parameters"), "hyper_parameters")
+    spec = CourtInferenceSpec.from_checkpoint_config(hyper.get("config"), hyper.get("target_bundle_state"), resolver=resolver)
+    return CourtCheckpointMetadata(spec, checkpoint.get("epoch"), checkpoint.get("global_step"))
+
+
 def load_court_checkpoint(
     path: Path,
     *,
@@ -213,20 +241,8 @@ def load_court_checkpoint(
     if file_sha256(path) != digest:
         raise CourtModelIOError("Checkpoint changed while being loaded")
     backbone = spec.model.encoder.checkpoint_path
-    identity = {
-        "schema": "court_inference_checkpoint_v1",
-        "checkpoint_path": str(path),
-        "checkpoint_sha256": digest,
-        "backbone_sha256": file_sha256(backbone) if backbone is not None else None,
-        "backbone_asset_migration": spec.backbone_asset_migration,
-        "architecture": spec.architecture,
-        "target_bundle": serialize_target_bundle(spec.target_bundle),
-        "short_side": spec.short_side,
-        "pose_long_side": spec.pose_long_side,
-        "patch_size": spec.patch_size,
-        "epoch": checkpoint.get("epoch"),
-        "global_step": checkpoint.get("global_step"),
-    }
+    identity = CourtCheckpointMetadata(spec, checkpoint.get("epoch"), checkpoint.get("global_step")).identity(
+        path, digest, file_sha256(backbone) if backbone is not None else None)
     return LoadedCourtModel(pair, spec, identity)
 
 

@@ -31,7 +31,7 @@ def test_reservation_chooses_longest_unused_per_video_and_records_exclusions() -
 
 
 def test_evaluated_reservation_cannot_be_changed(tmp_path: Path) -> None:
-    path = tmp_path / 'data/tennis_multivew/processed/meiji_3cam/dataset/annotations/player_association/unseen_protocol.json'
+    path = tmp_path / 'data/tennis_multiview/processed/meiji_3cam/dataset/annotations/player_association/unseen_protocol.json'
     path.parent.mkdir(parents=True)
     content = json.dumps({'evaluation_attempts': 1, 'tuning_complete': False, 'status': 'reserved_not_labelled'})
     path.write_text(content)

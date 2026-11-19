@@ -183,6 +183,7 @@ def item(kind: str, **fields: Any) -> dict[str, Any]:
         ("running", "running"),
         ("completed", "turn_completed"),
         ("failed", "failed"),
+        ("cli_signal", "failed"),
         ("stopped", "stopped"),
         ("dependency", "dependency_wait"),
         ("reserved", "not_started"),
@@ -194,16 +195,20 @@ def test_states_have_sources_and_never_imply_task_acceptance(
     fixture: Any, setup: str, expected: str
 ) -> None:
     f = fixture
-    if setup in {"running", "completed", "failed", "lost"}:
+    if setup in {"running", "completed", "failed", "cli_signal", "lost"}:
         identity = importlib.import_module("lib.opsproc").process_identity(os.getpid())
         f.record(
-            "running" if setup in {"running", "lost"} else setup,
-            runner=identity if setup == "running" else None,
-            turn_end_reason="usage_limit"
-            if setup == "failed"
+            "running"
+            if setup in {"running", "lost"}
             else "completed"
             if setup == "completed"
-            else None,
+            else "failed",
+            runner=identity if setup == "running" else None,
+            turn_end_reason={
+                "completed": "completed",
+                "failed": "usage_limit",
+                "cli_signal": "cli_signal",
+            }.get(setup),
         )
     elif setup == "stopped":
         f.task.update(
@@ -227,6 +232,8 @@ def test_states_have_sources_and_never_imply_task_acceptance(
     assert child["github"]["status"] == "not_requested"
     if setup == "failed":
         assert child["run"]["turn_end_reason"] == "usage_limit"
+    if setup == "cli_signal":
+        assert child["run"]["turn_end_reason"] == "cli_signal"
 
 
 @pytest.mark.parametrize(

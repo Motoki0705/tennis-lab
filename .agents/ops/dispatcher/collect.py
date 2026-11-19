@@ -10,13 +10,17 @@ from pathlib import Path
 from typing import Any
 
 from issues import parse_proposal_source, parse_sections, parse_task_metadata
+from issues.evidence import is_evidence_issue, is_proposal_issue, require_work_issue
+from issues.improvement import parse_source as improvement_source
 from issues.supplement_state import read_enabled_since, supplement_state
 from parent.execution import comment_snapshot, requirement_body
 from parent.github import GitHub
-from parent.policy import closing_issues, digest, events, nonempty, number, object_value
+from parent.history import History, from_projection, instruction_comments
+from parent.improvement_receipts import bound_extraction
+from parent.policy import closing_issues, digest, nonempty, number, object_value
 from parent.state import Store
 
-from .records import owned_comment
+from .state import client_for, repository_scope
 
 
 class InputsChanged(ValueError):
@@ -58,9 +62,14 @@ def unique_numbers(rows: Iterable[Mapping[str, Any]], label: str) -> list[int]:
 
 
 def is_container(raw: Mapping[str, Any]) -> bool:
-    return "ops-report" in {x["name"] for x in raw["labels"]} or (
-        raw["body"].splitlines()[0] if raw["body"] else ""
-    ).startswith("<!-- ops-report:v")
+    return (
+        is_evidence_issue(raw)
+        or is_proposal_issue(raw)
+        or "ops-report" in {x["name"] for x in raw["labels"]}
+        or (raw["body"].splitlines()[0] if raw["body"] else "").startswith(
+            "<!-- ops-report:v"
+        )
+    )
 
 
 def body_dependencies(body: str, repo: str) -> list[int]:
@@ -85,8 +94,17 @@ def body_dependencies(body: str, repo: str) -> list[int]:
 def collect(
     gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
 ) -> dict[str, Any]:
+    gh = client_for(gh, store)
+    with repository_scope(store), gh.fresh_reads(), gh.history_read_scope():
+        return _collect(gh, store, root, seeds)
+
+
+def _collect(
+    gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
+) -> dict[str, Any]:
     """Caller holds Store.locked(). Every page/failure is significant."""
-    login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
+    login = gh.authenticated_login()
+    extractions = gh.improvement_extractions(store)
     with gh.fresh_reads():
         enabled_since = read_enabled_since(gh)
     if seeds is None:
@@ -96,6 +114,8 @@ def collect(
                 f"repos/{gh.repo}/issues?state=open&sort=created&direction=asc"
             )
             if "pull_request" not in r
+            and not is_evidence_issue(r)
+            and not is_proposal_issue(r)
         ]
         subjects = sorted(unique_numbers(listed, "open issues"))
         for raw in listed:
@@ -104,30 +124,11 @@ def collect(
                 raise ValueError("open issue listing returned a non-open issue")
     else:
         subjects = sorted(set(number(n) for n in seeds))
-    pulls = gh.pulls()
-    unique_numbers(pulls, "PRs")
-    prs = []
-    for p in pulls:
-        if p.get("state") not in {"open", "closed"} or "merged_at" not in p:
-            raise ValueError("PR state/merged_at missing or invalid")
-        if p.get("body") is not None and not isinstance(p["body"], str):
-            raise ValueError("PR body must be text")
-        if p["merged_at"] is not None and not isinstance(p["merged_at"], str):
-            raise ValueError("PR merged_at must be a timestamp or null")
-        head = object_value(p.get("head"))
-        prs.append(
-            {
-                "number": number(p["number"]),
-                "body": p.get("body") or "",
-                "state": p["state"],
-                "merged_at": p["merged_at"],
-                "head": {
-                    "ref": nonempty(head.get("ref"), "PR branch"),
-                    "sha": nonempty(head.get("sha"), "PR head SHA"),
-                },
-                "issues": sorted(closing_issues(p.get("body") or "", gh.repo)),
-            }
-        )
+    # Normal dispatcher discovery collects all PRs in the repository; a
+    # progression collects only its explicit family and numbered PR relations.
+    if gh.targeted_history and seeds is None:
+        raise ValueError("targeted collection requires explicit issue seeds")
+    pulls = None if gh.targeted_history else gh.rows(f"repos/{gh.repo}/pulls?state=all")
     issues: dict[str, Any] = {}
     pending = list(subjects)
     while pending:
@@ -153,6 +154,8 @@ def collect(
         if not isinstance(labels, list) or not isinstance(assignees, list):
             raise ValueError("issue labels/assignees missing")
         parent_raw = gh.get(base + "/parent", missing_parent=True)
+        if parent_raw is not None:
+            require_work_issue(object_value(parent_raw))
         parent = gh.identity(parent_raw) if parent_raw is not None else None
         children_raw = gh.rows(base + "/sub_issues")
         children = sorted(unique_numbers(children_raw, "children"))
@@ -162,8 +165,17 @@ def collect(
             | set(body_dependencies(raw.get("body") or "", gh.repo))
         )
         for row in [*children_raw, *formal_deps]:
+            require_work_issue(row)
             gh.identity(row)
-        comments = gh.comments(n)
+        comments = (
+            gh.record_history(
+                n,
+                login,
+                unregistered_subject=f"{gh.repo.casefold()}#{n}" not in store.parents,
+            ).comments
+            if gh.targeted_history
+            else gh.parent_comments(n, login)
+        )
         ids = [comment_snapshot(c)["id"] for c in comments]
         if len(set(ids)) != len(ids):
             raise ValueError("duplicate comments within/across pages")
@@ -179,9 +191,20 @@ def collect(
                     "id": item["id"],
                     "user": {"login": item["login"]},
                     "body": item["body"],
+                    **(
+                        {
+                            "_parent_record_issue": c["_parent_record_issue"],
+                            "_parent_record_source": "evidence_issue",
+                        }
+                        if c.get("_parent_record_source") == "evidence_issue"
+                        else {}
+                    ),
                 }
             )
         source_reports: set[int] = set()
+        extraction = bound_extraction(raw.get("body") or "", n, extractions)
+        improvement = extraction or improvement_source(raw.get("body") or "")
+        improvement_sources = [improvement.parent] if improvement is not None else []
         if not is_container({"labels": labels, "body": raw.get("body") or ""}):
             source = parse_proposal_source(raw.get("body") or "")
             if source is not None:
@@ -215,15 +238,27 @@ def collect(
             "children": children,
             "dependencies": deps,
             "source_reports": sorted(source_reports),
+            **(
+                {"improvement_sources": improvement_sources}
+                if improvement_sources
+                else {}
+            ),
             "comments": sorted(normalized_comments, key=lambda x: x["id"]),
         }
         supplement_state(
             [label["name"] for label in issues[str(n)]["labels"]],
             issues[str(n)]["created_at"],
             enabled_since,
+            body=raw.get("body") or "",
         )
         pending.extend(
-            [*children, *deps, *source_reports, *([parent] if parent else [])]
+            [
+                *children,
+                *deps,
+                *source_reports,
+                *improvement_sources,
+                *([parent] if parent else []),
+            ]
         )
     if seeds is None and any(issues[str(n)]["state"] != "open" for n in subjects):
         raise ValueError("issue listing changed during collection")
@@ -237,12 +272,37 @@ def collect(
             if issues[str(child)]["parent"] != int(issue_key):
                 raise ValueError("formal child/parent endpoints disagree")
         route(issues, int(issue_key))  # Detect cycles before the agent runs.
+    if pulls is None:
+        pulls = gh.pulls({int(n) for n in issues})
+    unique_numbers(pulls, "PRs")
+    prs = []
+    for p in pulls:
+        if p.get("state") not in {"open", "closed"} or "merged_at" not in p:
+            raise ValueError("PR state/merged_at missing or invalid")
+        if p.get("body") is not None and not isinstance(p["body"], str):
+            raise ValueError("PR body must be text")
+        if p["merged_at"] is not None and not isinstance(p["merged_at"], str):
+            raise ValueError("PR merged_at must be a timestamp or null")
+        head = object_value(p.get("head"))
+        prs.append(
+            {
+                "number": number(p["number"]),
+                "body": p.get("body") or "",
+                "state": p["state"],
+                "merged_at": p["merged_at"],
+                "head": {
+                    "ref": nonempty(head.get("ref"), "PR branch"),
+                    "sha": nonempty(head.get("sha"), "PR head SHA"),
+                },
+                "issues": sorted(closing_issues(p.get("body") or "", gh.repo)),
+            }
+        )
     owners = {}
     for key, row in store.parents.items():
-        repo, _, n = key.rpartition("#")
+        repo, _, owner_number = key.rpartition("#")
         if repo == gh.repo.casefold():
-            number(int(n))
-            owners[n] = {
+            number(int(owner_number))
+            owners[owner_number] = {
                 "status": row["status"],
                 "generation": row["generation"],
                 "record_sha256": digest(row),
@@ -256,12 +316,18 @@ def collect(
         "repo": gh.repo.casefold(),
         "publisher": login,
         "supplement_enabled_since": enabled_since,
-        "code": code_snapshot(root),
+        "code": unlocked_code_snapshot(gh, root),
         "subjects": subjects,
         "issues": issues,
         "pulls": sorted(prs, key=lambda x: x["number"]),
         "owners": owners,
+        "improvement_extractions": extractions,
     }
+
+
+def unlocked_code_snapshot(gh: GitHub, root: Path) -> dict[str, Any]:
+    with gh.io_scope():
+        return code_snapshot(root)
 
 
 def route(issues: Mapping[str, Any], n: int) -> int:
@@ -289,6 +355,7 @@ def related(snapshot: Mapping[str, Any], issue: int) -> set[int]:
                 *raw["children"],
                 *raw["dependencies"],
                 *raw["source_reports"],
+                *raw.get("improvement_sources", []),
                 *([raw["parent"]] if raw["parent"] else []),
             ]
         )
@@ -340,6 +407,29 @@ def require_current_snapshot(snapshot: Mapping[str, Any]) -> None:
             "unsupported dispatcher activation key; recollect the judgement input "
             "with supplement_enabled_since before resuming"
         )
+    if not isinstance(snapshot.get("improvement_extractions"), dict):
+        raise ValueError(
+            "dispatcher extraction index is missing; recollect the judgement input"
+        )
+
+
+def history_owner(snapshot: Mapping[str, Any], issue: int) -> int:
+    if str(issue) in snapshot["issues"]:
+        return issue
+    owners = {
+        int(n)
+        for n, raw in snapshot["issues"].items()
+        if any(
+            c.get("_parent_record_source") == "evidence_issue"
+            and c.get("_parent_record_issue") == issue
+            for c in raw["comments"]
+        )
+    }
+    if len(owners) != 1:
+        raise ValueError(
+            f"evidence source issue #{issue} has no unique collected parent"
+        )
+    return owners.pop()
 
 
 def material(
@@ -351,6 +441,7 @@ def material(
     cited_issues, cited_pulls, cited_comments = source_references(
         snapshot["repo"], sources
     )
+    cited_issues = {history_owner(snapshot, n) for n in cited_issues}
     if issue is None:
         selected = {int(n) for n in snapshot["issues"]}
     else:
@@ -360,16 +451,12 @@ def material(
     issues = {}
     for n in sorted(selected):
         raw = snapshot["issues"][str(n)]
-        prose = []
-        for c in raw["comments"]:
-            if owned_comment(c, snapshot["publisher"], snapshot["repo"], n):
-                continue
-            if c["user"]["login"] == snapshot["publisher"] and c["body"].startswith(
-                ("<!-- parent-session:v1 ", "<!-- parent-review:v1 ")
-            ):
-                continue
-            prose.append(comment_snapshot(c))
-        history = events(raw["comments"], snapshot["publisher"], n)
+        prose = instruction_comments(
+            snapshot["repo"], n, snapshot["publisher"], raw["comments"]
+        )
+        history = from_projection(
+            snapshot["repo"], n, snapshot["publisher"], raw["comments"]
+        ).session_events()
         controls = [
             {k: v for k, v in e.items() if k != "body"}
             for e in history
@@ -399,15 +486,21 @@ def material(
             for n, r in snapshot["owners"].items()
             if int(n) in selected or set(r["tasks"]) & {str(s) for s in selected}
         },
+        "improvement_extractions": {
+            n: r
+            for n, r in snapshot["improvement_extractions"].items()
+            if int(n) in selected
+        },
     }
     if cited_comments:
         # Explicit citations remain evidence even when the usual projection
         # omits their system progress markers. Missing comments change this map.
         result["source_comments"] = {
             f"{n}:{c['id']}": comment_snapshot(c)
-            for n in sorted({n for n, _ in cited_comments})
+            for n in sorted({history_owner(snapshot, n) for n, _ in cited_comments})
             for c in snapshot["issues"][str(n)]["comments"]
-            if (n, c["id"]) in cited_comments
+            if (c.get("_parent_record_issue", n), c["id"]) in cited_comments
+            or (n, c["id"]) in cited_comments
         }
     return result
 
@@ -419,12 +512,20 @@ class SnapshotGitHub(GitHub):
         self.snapshot = snapshot
         self.repo = snapshot["repo"]
 
+    def authenticated_login(self) -> str:
+        # Identity belongs to the frozen observation too. This adapter has no
+        # transport/authentication context and must never resolve ambient auth.
+        return nonempty(self.snapshot.get("publisher"), "gh login")
+
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         if endpoint == "user":
             return {"login": self.snapshot["publisher"]}
         raise ValueError(f"unexpected snapshot request: {endpoint}")
 
-    def issue(self, number: int) -> dict[str, Any]:
+    def improvement_extractions(self, store: Store) -> dict[str, Any]:
+        return deepcopy(object_value(self.snapshot["improvement_extractions"]))
+
+    def issue(self, number: int, *, allow_proposal: bool = False) -> dict[str, Any]:
         return deepcopy(object_value(self.snapshot["issues"][str(number)]))
 
     def comments(self, parent: int) -> list[dict[str, Any]]:
@@ -432,6 +533,16 @@ class SnapshotGitHub(GitHub):
             self.snapshot["issues"][str(parent)]["comments"]
         )
         return result
+
+    def record_history(
+        self, parent: int, login: str | None = None, **kwargs: Any
+    ) -> History:
+        return from_projection(
+            self.repo,
+            parent,
+            login or self.snapshot["publisher"],
+            self.comments(parent),
+        )
 
 
 def assert_material_fresh(
@@ -456,6 +567,8 @@ def assert_fresh(
 ) -> dict[str, Any]:
     """Caller holds the registry lock; no agent is launched on a mismatch."""
     cited_issues, _, _ = source_references(snapshot["repo"], sources)
-    current = collect(gh, store, root, [issue, *cited_issues])
+    current = collect(
+        gh, store, root, [issue, *(history_owner(snapshot, n) for n in cited_issues)]
+    )
     assert_material_fresh(snapshot, current, issue, sources)
     return current

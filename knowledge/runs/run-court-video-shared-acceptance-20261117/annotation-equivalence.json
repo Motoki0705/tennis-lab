@@ -1,0 +1,8 @@
+{
+  "source": "src/tennis_scene/pipeline/video_court/estimator.py",
+  "before_sha256": "9ffb9ddb0249932019675ba2e6f6ee5e0e5802b15e2ee237e5811551112c8976",
+  "after_sha256": "a8036115e39a94b96df21844aa534d9408478f6089fa4a2813bdad9dcd0898a3",
+  "module_and_nested_function_bytecode_constants_names_arguments_identical": true,
+  "change": "Local report variable type annotation only; fixes full-set mypy inference without runtime change",
+  "trigger": "Full changed-file mypy: estimator.py:181 assignment dict[str, Any] to inferred str | None"
+}

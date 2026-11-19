@@ -26,7 +26,7 @@ LOCALIZED_PATHS = {
 SECTION_IDS = {"overview", "model-downloads", "run-locally", "license", "citation"}
 INSTALLATION_ANCHORS = {
     "requirements", "clone-and-sync", "dino-cuda-extension", "required-assets",
-    "preflight", "run-the-sample", "visualize", "rehearse-clean-install",
+    "drive-quota", "verify-gvhmr-weights", "preflight", "run-the-sample", "visualize", "rehearse-clean-install",
 }
 LICENSE_ANCHORS = {
     "code-license-scope", "third-party-code", "third-party-weights",
@@ -63,6 +63,7 @@ def test_readme_has_public_navigation_assets_sections_and_cli_names(
         f"LICENSES{suffix}#sample-dataset-terms",
         f"docs/installation/README{suffix}",
         f"docs/installation/README{suffix}#required-assets",
+        f"docs/installation/README{suffix}#drive-quota",
         f"docs/installation/README{suffix}#preflight",
         "src/tennis_scene/README.md",
         "assets/branding/tennis-lab-header.png",

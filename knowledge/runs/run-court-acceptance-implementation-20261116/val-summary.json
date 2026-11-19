@@ -1,0 +1,149 @@
+{
+  "protocol": {
+    "schema": "court_acceptance_evaluation_v1",
+    "reference_sha256": "2604bf0b70b1bc755f51a3f1b08c48cd6b98a4a7d6b0939037eb4eb85e77c6f4",
+    "reference_original_size_hw": [
+      1080,
+      1920
+    ],
+    "correct_mean_error_px": 10.0,
+    "correct_max_error_px": 25.0,
+    "correctness_mask": "reference projections inside original image, same IDs for every condition",
+    "targets": {
+      "false_accepts": 0,
+      "correct_acceptance_rate_min": 0.9,
+      "regression": "no worsening"
+    },
+    "conditions": [
+      "legacy",
+      "acceptance_only",
+      "postprocess_and_acceptance"
+    ],
+    "approval": {
+      "date": "2026-11-16",
+      "source_kind": "parent_implementation_instruction",
+      "decision_id": "034d02f3ff9549ccb586f02dc859db6b",
+      "turn_id": "e44ec0d835d84da4a40866b173f394f1",
+      "human_decision_reported_by_parent": "4camera\u3068\u3082\u300c\u305d\u306e\u307e\u307e\u4f7f\u3046\u300d",
+      "coordinates_changed": false
+    },
+    "baseline_commit": "b46b97869"
+  },
+  "partial": false,
+  "summary": {
+    "tennis_court_detector_val": {
+      "all": {
+        "legacy": {
+          "cases": 2211,
+          "labelled": 2211,
+          "accepted": 2153,
+          "geometry_valid": 2211,
+          "TP": 2135,
+          "FN": 57,
+          "FP": 18,
+          "TN": 1,
+          "correct_acceptance_rate": 0.9739963503649635,
+          "wrong_rejection_rate": 0.05263157894736842,
+          "correct_candidate_available_cases": 2192,
+          "correct_accepted_over_available": 0.9739963503649635,
+          "frame_mean_error_median_px": 1.7854446203802667,
+          "point_error_p95_px": 4.141678300042254,
+          "clip_dispersion_median_px": null,
+          "clip_dispersion_p95_px": null
+        },
+        "acceptance_only": {
+          "cases": 2211,
+          "labelled": 2211,
+          "accepted": 2200,
+          "geometry_valid": 2211,
+          "TP": 2181,
+          "FN": 11,
+          "FP": 19,
+          "TN": 0,
+          "correct_acceptance_rate": 0.9949817518248175,
+          "wrong_rejection_rate": 0.0,
+          "correct_candidate_available_cases": 2192,
+          "correct_accepted_over_available": 0.9949817518248175,
+          "frame_mean_error_median_px": 1.7854446203802667,
+          "point_error_p95_px": 4.141678300042254,
+          "clip_dispersion_median_px": null,
+          "clip_dispersion_p95_px": null
+        },
+        "postprocess_and_acceptance": {
+          "cases": 2211,
+          "labelled": 2211,
+          "accepted": 2086,
+          "geometry_valid": 2097,
+          "TP": 2068,
+          "FN": 11,
+          "FP": 18,
+          "TN": 114,
+          "correct_acceptance_rate": 0.9947089947089947,
+          "wrong_rejection_rate": 0.8636363636363636,
+          "correct_candidate_available_cases": 2079,
+          "correct_accepted_over_available": 0.9947089947089947,
+          "frame_mean_error_median_px": 1.7293400187326622,
+          "point_error_p95_px": 4.117800503106362,
+          "clip_dispersion_median_px": null,
+          "clip_dispersion_p95_px": null
+        }
+      },
+      "image": {
+        "legacy": {
+          "cases": 2211,
+          "labelled": 2211,
+          "accepted": 2153,
+          "geometry_valid": 2211,
+          "TP": 2135,
+          "FN": 57,
+          "FP": 18,
+          "TN": 1,
+          "correct_acceptance_rate": 0.9739963503649635,
+          "wrong_rejection_rate": 0.05263157894736842,
+          "correct_candidate_available_cases": 2192,
+          "correct_accepted_over_available": 0.9739963503649635,
+          "frame_mean_error_median_px": 1.7854446203802667,
+          "point_error_p95_px": 4.141678300042254,
+          "clip_dispersion_median_px": null,
+          "clip_dispersion_p95_px": null
+        },
+        "acceptance_only": {
+          "cases": 2211,
+          "labelled": 2211,
+          "accepted": 2200,
+          "geometry_valid": 2211,
+          "TP": 2181,
+          "FN": 11,
+          "FP": 19,
+          "TN": 0,
+          "correct_acceptance_rate": 0.9949817518248175,
+          "wrong_rejection_rate": 0.0,
+          "correct_candidate_available_cases": 2192,
+          "correct_accepted_over_available": 0.9949817518248175,
+          "frame_mean_error_median_px": 1.7854446203802667,
+          "point_error_p95_px": 4.141678300042254,
+          "clip_dispersion_median_px": null,
+          "clip_dispersion_p95_px": null
+        },
+        "postprocess_and_acceptance": {
+          "cases": 2211,
+          "labelled": 2211,
+          "accepted": 2086,
+          "geometry_valid": 2097,
+          "TP": 2068,
+          "FN": 11,
+          "FP": 18,
+          "TN": 114,
+          "correct_acceptance_rate": 0.9947089947089947,
+          "wrong_rejection_rate": 0.8636363636363636,
+          "correct_candidate_available_cases": 2079,
+          "correct_accepted_over_available": 0.9947089947089947,
+          "frame_mean_error_median_px": 1.7293400187326622,
+          "point_error_p95_px": 4.117800503106362,
+          "clip_dispersion_median_px": null,
+          "clip_dispersion_p95_px": null
+        }
+      }
+    }
+  }
+}

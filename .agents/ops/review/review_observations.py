@@ -15,7 +15,9 @@ def discussion(
     session: ParentSession, kind: str, raw: Mapping[str, Any]
 ) -> dict[str, Any]:
     n = number(raw["number"])
-    groups = {"discussion": session.gh.comments(n)}
+    groups = {
+        "discussion": session.gh.review_comments(n, session.parent, session.login)
+    }
     if kind == "pr":
         for name, endpoint in (("inline", "comments"), ("review", "reviews")):
             groups[name] = session.gh.rows(
