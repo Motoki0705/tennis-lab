@@ -266,7 +266,7 @@ _COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", semantic
 })
 _PLAYER_ASSOCIATION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_association", fields={
     "players_per_side": ConfigField.of(int),
-    "reuse_clip_embeddings": ConfigField.of(bool, required=False),
+    "reuse_clip_embeddings": ConfigField.of(bool),
 })
 _PLACEMENT_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction.placement", fields={
     name: ConfigField.of(int) if name in {"min_joints", "min_scale_pairs", "max_nfev"} else ConfigField.of(float, int)
@@ -510,7 +510,7 @@ class PipelineRuntimeConfig:
             max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
             min_margin=float(cast(float, side["min_margin"])))
         association_section = _mapping(value["player_association"], name="player_association")
-        reuse_clip_embeddings = cast(bool, association_section.get("reuse_clip_embeddings", False))
+        reuse_clip_embeddings = cast(bool, association_section["reuse_clip_embeddings"])
         association = load_association_config(resolver.resolve(PathRole.PROJECT, DEFAULT_ASSOCIATION_CONFIG.relative_to(PROJECT_ROOT)),
                                               players_per_side=cast(int, association_section["players_per_side"]))
         association_weights = None if association.appearance is None else encoder_weights(
@@ -546,7 +546,6 @@ class PipelineRuntimeConfig:
             if cache_source == "load" and direct_config is not None and direct_config.resume != "publication":
                 raise SemanticConfigurationError("Use direct_annotation.resume=publication for publication-only recovery")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
-        settings["player_association"] = {**association_section, "reuse_clip_embeddings": reuse_clip_embeddings}
         settings["court_side"] = {k: v for k, v in side.items() if k not in {"mode", "video_shared"}}
         if video_court_side is not None:
             settings["court_side"] = {**cast(dict[str, Any], settings["court_side"]), "mode": "video_shared", "unobservable_policy": side_policy}
