@@ -238,7 +238,7 @@ class Continuation:
         for row in value.get("logs", []):
             self.recovery_visits(row)
 
-    def sweep(self) -> None:
+    def sweep(self, *, allow_batch: bool = True) -> None:
         if self.done or read_only(self.args):
             return
         self.done = True
@@ -292,19 +292,19 @@ class Continuation:
                         )
                     ):
                         exclude.add((s["issue"], "d-" + s["public_key"], s["sequence"]))
+            milestone = allow_batch and command in {
+                "review-request",
+                "release",
+                "handoff",
+                "workflow-report",
+                "publish-worker-log",
+            }
             values = continue_workers(
                 self.repo,
                 self.parent,
                 state_dir=self.store.directory,
                 exclude=exclude,
-                milestone=command
-                in {
-                    "review-request",
-                    "release",
-                    "handoff",
-                    "workflow-report",
-                    "publish-worker-log",
-                },
+                milestone=milestone,
                 owner_check=publication_owner(
                     self.store, self.repo, self.parent, self.identity, self.generation
                 ),
@@ -352,7 +352,8 @@ class Continuation:
     def failed(self) -> Any:
         """A durable assignment change still needs reconciliation on API failure."""
         if self.args.command not in {"release", "handoff"}:
-            self.sweep()
+            # A rejected review request does not reach a batch publication milestone.
+            self.sweep(allow_batch=self.args.command != "review-request")
             return None
         observed = None
         try:
