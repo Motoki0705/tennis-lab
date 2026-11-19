@@ -65,7 +65,7 @@ ball_reconstruction.enabled=false
 各点対のcostは `min((距離 / match_distance_m)^2, 1)`。camera対内、frame内のcamera対、全frameの順に平均する。
 supportは、同一frameの全camera対で全対応点が `match_distance_m` 以内のframeの割合。
 全仮説のcost・support・frame数を出し、上記の判定規則と同じ理由で `CourtSideUndecided` を返す。
-閾値は `court_side.player` に置く。既定の距離3.0 mは、meiji_4camの保存済み3clipで観測した足元のずれと別仮説のsupportを比較して選んだ。
+閾値は `court_side.player` に置く。既定の距離3.0 mは、meiji_4camの保存済み3clipで観測した足元のずれと別仮説のsupportを比較して選んだ。[実測と選定根拠](../../../knowledge/nodes/court_side/000008-run-i2269-player-court-side-20261119.md)
 中心対称の許容距離0.5 mと移動量0.15 mで情報の少ない観測を除き、8 frame・support 0.2・cost 0.7・margin 0.05の各閾値で判定する。
 
 ## 合成ベンチマークと閾値の選定（`benchmark.py`）
