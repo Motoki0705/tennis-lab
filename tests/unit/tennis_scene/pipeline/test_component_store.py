@@ -142,6 +142,8 @@ def test_byte_cache_is_shared_and_load_preflights_mapped_arrays(tmp_path: Path) 
     refs = [store.publish("first", Values(np.full(512, i, np.float32), ("cam0",)), codec,
             schema="values", version=1, identity={}, dependencies={}, provenance={"origin": "test"})
             for i, store in enumerate(stores)]
+    for i, (store, reference) in enumerate(zip(stores, refs, strict=True)):
+        np.testing.assert_array_equal(store.load(reference, codec).numbers, np.full(512, i))
     for store, reference in zip(stores[:-1], refs[:-1], strict=True):
         assert cache.get((store.root, reference.artifact_id)) is None
     assert 2048 <= cache.peak_bytes <= 3200

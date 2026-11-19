@@ -64,9 +64,10 @@ class VideoBatchProgress:
                  *, overwrite: bool, continue_on_error: bool, recording_devices: Sequence[str],
                  batching: BatchConfig) -> None:
         self.path = directory / uuid4().hex / "progress.json"
+        cross_source = batching.enabled and any(batching.sizes.for_model(name) > 1 for name in batching.sizes.__slots__)
         self.recorder = InferenceRecorder(self.path.with_name("recording.json"), devices=recording_devices,
             metadata={"dataset_id": dataset_id, "video_id": video_id, "batching": json_value(batching),
-                      "condition": "model_reuse_and_batching" if batching.enabled else "model_reuse_only"})
+                      "condition": "model_reuse_and_batching" if cross_source else "model_reuse_only"})
         self.plan: ExecutionPlan | None = None
         self.outcomes: dict[str, VideoClipOutcome] = {}
         self.cursor = 0

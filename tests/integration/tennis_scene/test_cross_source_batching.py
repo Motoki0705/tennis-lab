@@ -62,7 +62,7 @@ from src.tennis_scene.pipeline.input_assembly.preprocessing import (
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.utils.inference_recording import InferenceRecorder
-from src.utils.video import FramePacket
+from src.utils.video import FramePacket, VideoReadError
 from tests.unit.tennis_scene.pipeline.components.test_ball_detection import _prediction
 from tests.unit.tennis_scene.pipeline.components.test_hmr2_features import (
     asymmetric_selection,
@@ -133,29 +133,32 @@ def test_dino_batches_only_compatible_sources_and_preserves_every_frame(
     component = Component(make_people_config(tmp_path))
     settings = {"models": model_identities(component.model_specs(), lambda path: {})}
 
-    def run(batch_size: int, *, max_bytes: int = 1024**3) -> dict:
+    errors: list[tuple[str, Exception]] = []
+
+    def run(batch_size: int, *, max_bytes: int = 1024**3, isolate: bool = False) -> dict:
         executions = []
         for clip_id, cameras in videos.items():
             source = ClipSource(clip_id, cameras)
             assembler = PersonDetectionInputAssembler()
             nodes = tuple(ComponentNode(f"person_detection/{video.camera_id}", component, component.io,
                        assembler, {}, AssemblyContext(source, video.camera_id), settings, "test") for video in cameras)
-            executions.append(ClipExecution(clip_id, nodes, ClipStore(tmp_path / f"{batch_size}-{max_bytes}" / clip_id, json_value(source))))
+            executions.append(ClipExecution(clip_id, nodes,
+                ClipStore(tmp_path / f"{batch_size}-{max_bytes}" / clip_id, json_value(source)), overwrite=True))
         config = BatchConfig(enabled=True, sizes=replace(BatchSizes(), dino=batch_size),
                              max_sources=6, max_working_bytes=max_bytes)
         executor = PlanExecutor(ExecutionPlan(executions), batching=config)
         try:
             recording = tmp_path / f"batch-{batch_size}-{max_bytes}.json"
             with InferenceRecorder(recording):
-                executor.run()
-            if batch_size == 3:
+                executor.run(continue_on_error=isolate, on_clip_error=lambda clip, error: errors.append((clip, error)))
+            if batch_size == 3 and not isolate:
                 import json
                 dispatch = json.loads(recording.read_text())["batch_dispatches"]["dino"]
                 assert dispatch["batches"] == 5 and dispatch["items"] == 12
                 assert dispatch["cross_clip_batches"] > 0
                 assert dispatch["fill_fraction"] == 12 / 15
                 assert dispatch["peak_active_sources"] == 6 and dispatch["peak_queued_items"] == 5
-            return {key: json_value(executor.output(key)) for key in executor.plan.required}
+            return {key: json_value(executor.output(key)) for key in executor.plan.references}
         finally:
             assert executor.working_memory.used == 0
             assert executor.working_memory.peak <= max_bytes
@@ -173,6 +176,28 @@ def test_dino_batches_only_compatible_sources_and_preserves_every_frame(
     assert reference[("b", "person_detection/cam0")]["boxes_xyxy"] == [[31., 32., 33., 34.]]
     with pytest.raises(BatchMemoryLimit, match="max_working_bytes"):
         run(3, max_bytes=32)
+    assert [(clip, type(error)) for clip, error in errors] == [("a", BatchMemoryLimit)]
+    errors.clear()
+
+    def broken_reader(path: Path, **_: Any) -> Iterator[SimpleNamespace]:
+        if path.stem == "b-0":
+            yield packets[path][0]
+            raise VideoReadError("missing next frame")
+        yield from packets[path]
+
+    monkeypatch.setattr(person_detection, "OpenCVVideoFrameReader", broken_reader)
+    assert run(3, isolate=True) == {key: value for key, value in reference.items() if key[0] != "b"}
+    assert [(clip, type(error)) for clip, error in errors] == [("b", VideoReadError)]
+
+    def oom(*_: Any, **__: Any) -> Any:
+        batches.append([])
+        raise torch.OutOfMemoryError("fake CUDA OOM")
+
+    monkeypatch.setattr(Detector, "predict_batch", oom)
+    batches.clear()
+    with pytest.raises(torch.OutOfMemoryError, match="fake CUDA OOM"):
+        run(3, isolate=True)
+    assert batches == [[]]
 
 
 def test_court_reads_frame_zero_and_writes_source_camera_geometry(
