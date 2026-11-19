@@ -287,11 +287,13 @@
   "local_evidence_root": "/home/kamimura/projects/tennis-lab/.worktree-outputs/ball-arch-desktop/ball-arch-stack-integration-20261119",
   "pre_commit": {
     "status": "passed",
-    "checked_python_files": 77,
+    "input_python_files": 78,
     "hooks": [
       "ruff",
       "mypy"
-    ]
+    ],
+    "scope": "Repository pre-commit file filters; knowledge scripts are excluded by those hooks. integration_cpu.py also passed an explicit ruff check with E402 ignored for its selected-source import.",
+    "log": "pre-commit-latest.log under local_evidence_root"
   },
   "frozen_runtime_and_E_attempts_modified": false,
   "git_operations": "merge commits only for integration; no rebase or force push; PR bases unchanged",
