@@ -1,5 +1,6 @@
 """Source-row alignment and bounded, separate model passes on CPU fakes."""
 from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -71,7 +72,7 @@ def test_pose_and_appearance_keep_rows_empty_frames_and_tail(tmp_path: Path, mon
     assert seen == list(range(5))
     np.testing.assert_array_equal(poses.keypoints[:, 0], np.array([[10, 19, 1.4], [43, 16, 1.4], [15, 25, 1.4], [46, 27, 1.4]], np.float32))
     Encoder.calls = []
-    appearance = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=3))
+    appearance = materialize_model_weights(module.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), batch_size=3, capture_frame_sha256=True))
     features = appearance.process(module.PersonAppearanceFeaturesInput(request.video, request.detections))
     assert Encoder.calls == [3, 1]  # crosses frames, including an incomplete final batch
     for artifact in (poses, features):
@@ -81,6 +82,9 @@ def test_pose_and_appearance_keep_rows_empty_frames_and_tail(tmp_path: Path, mon
     expected /= np.linalg.norm(expected, axis=1, keepdims=True)
     np.testing.assert_allclose(features.embeddings[:, :2], expected, atol=1e-7)
     assert features.appearance_valid.all()
+    images = list(reader())
+    assert [digest.tobytes() for digest in features.frame_sha256] == [
+        sha256(images[frame].frame.tobytes()).digest() if frame in (0, 2, 3) else bytes(32) for frame in range(5)]
 
 
 @pytest.mark.parametrize('stage', ['pose', 'appearance'])

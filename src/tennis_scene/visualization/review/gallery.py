@@ -421,7 +421,7 @@ class Review(StoreReader):
                                  tuple(np.rint(points[index, b, :2]).astype(int)), COLORS_BGR[index % len(COLORS_BGR)], 3)
         return [self.sheet(node, camera, draw)], [("source detection rows", str(len(rows))), ("pose contract", "COCO17 / raw confidence")]
 
-    @renders("person_appearance_features", "person_appearance_features", (1, 2, 3))
+    @renders("person_appearance_features", "person_appearance_features", (1, 2, 3, 4))
     def render_person_appearance_features(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         return [], [("source detection rows", str(len(_array(value["source_rows"])))),
                     ("valid appearances", str(_count(value["appearance_valid"]))), ("encoder", value["encoder"])]

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
+from src.tennis_scene.pipeline.components.association_appearance import (
+    SavedAssociationAppearance,
+)
 from src.tennis_scene.pipeline.components.ball_reconstruction import (
     single_ball_observations,
 )
@@ -26,6 +29,7 @@ from src.tennis_scene.pipeline.input_assembly.observations import (
     gather_people,
     identified_people,
 )
+from src.utils.video.reader import OpenCVDecodeIdentity
 
 
 @dataclass(frozen=True)
@@ -55,11 +59,15 @@ class PlayerCourtSideInputAssembler:
 
 @dataclass(frozen=True)
 class PlayerAssociationInputAssembler:
-    version: int = 2
+    reuse_clip_embeddings: bool = False
+    version: int = 3
+    expected_decoders: Mapping[str, OpenCVDecodeIdentity] = field(default_factory=dict)
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PlayerAssociationInput:
         tracks = tuple(artifacts[f"tracks_{camera}"].tracks for camera in context.source.camera_ids)
-        return PlayerAssociationInput(context.source, artifacts["calibration"], artifacts["side"], tracks)
+        saved = {camera: SavedAssociationAppearance(artifacts[f"detections_{camera}"], artifacts[f"appearance_{camera}"])
+                 for camera in context.source.camera_ids} if self.reuse_clip_embeddings else {}
+        return PlayerAssociationInput(context.source, artifacts["calibration"], artifacts["side"], tracks, saved, self.expected_decoders)
 
 
 @dataclass(frozen=True)
