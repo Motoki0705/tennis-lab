@@ -6,10 +6,10 @@ from math import fsum
 
 import numpy as np
 
-from .hypothesis import BallSideEvidence, HypothesisScore
+from .hypothesis import HypothesisScore, SideEvidence
 
 
-def pool_side_evidence(clips: Mapping[str, BallSideEvidence]) -> BallSideEvidence:
+def pool_side_evidence(clips: Mapping[str, SideEvidence]) -> SideEvidence:
     """Sum pair counts and weight each assignment by its distinct multi-view frames.
 
     Motion filtering and view matching have already happened within each clip.
@@ -31,6 +31,6 @@ def pool_side_evidence(clips: Mapping[str, BallSideEvidence]) -> BallSideEvidenc
                         fsum(s.support * s.frames for s in rows) / frames, frames)
         for turns, rows in scores.items()
     ]
-    return BallSideEvidence(first.camera_ids, first.reference_camera, frames,
+    return SideEvidence(first.camera_ids, first.reference_camera, frames,
                             np.sum([c.pair_frames for c in ordered], axis=0),
                             tuple(sorted(pooled, key=lambda h: (h.cost, h.view_half_turns))))

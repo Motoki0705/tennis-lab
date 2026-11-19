@@ -9,6 +9,7 @@ from hydra import compose, initialize_config_dir
 from hydra.errors import ConfigCompositionException
 from omegaconf import OmegaConf
 
+from src.tasks.court_side.hypothesis import CourtSideConfig
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.frame_sampling import sampled_frame_indices
@@ -30,12 +31,14 @@ def test_defaults_associate_players_and_decide_sides() -> None:
     assert runtime.camera_geometry.reference_camera is None
     assert runtime.component_sources["player_association"] == "execute"
     assert runtime.component_sources["court_side"] == "execute"
+    assert runtime.court_side_evidence == "ball"
     # The method's file supplies the parameters, the pipeline the game format and the weight location.
     association = runtime.player_association
     assert association.players_per_side == 1 and association.appearance is not None
     assert runtime.association_encoder_weights == runtime.roots.checkpoint_root / "player_association/person_vit_clip_reid.pth"
     doubles = _runtime(["player_association.players_per_side=2"]).player_association
     assert doubles.players_per_side == 2 and doubles.geometry == association.geometry
+    assert isinstance(runtime.court_side, CourtSideConfig)
     assert runtime.court_side.reprojection_px > 0 and runtime.court_side.min_margin > 0
     assert "blcs_association" not in runtime.enabled
     assert len(runtime.camera_ids) == 3
@@ -79,7 +82,7 @@ def test_saved_six_threshold_court_side_config_restores_clip_mode(tmp_path: Path
     saved = tmp_path / "composed.yaml"
     OmegaConf.save(cfg, saved, resolve=True)
     restored = PipelineRuntimeConfig.from_config(OmegaConf.load(saved))
-    assert restored.video_court_side is None
+    assert restored.video_court_side is None and restored.court_side_evidence == "ball"
     assert restored.court_side == current.court_side and restored.court_side.min_margin == 0.31
     assert restored.processing_settings["court_side"] == current.processing_settings["court_side"] == thresholds
 
@@ -92,6 +95,36 @@ def test_saved_six_threshold_court_side_config_restores_clip_mode(tmp_path: Path
 def test_partial_court_side_formats_are_rejected(overrides: list[str], missing: str) -> None:
     with pytest.raises(ValueError, match=rf"court_side\.{missing}\b"):
         _runtime(overrides)
+
+
+@pytest.mark.parametrize(("overrides", "error"), [
+    (["court_side.evidence=automatic"], "court_side.evidence"),
+    (["court_side.evidence=player", "~court_side.player"], "court_side.player"),
+    (["court_side.evidence=player", "court_side.player.min_margin=0"], "margin"),
+])
+def test_invalid_player_court_side_config_is_rejected(overrides: list[str], error: str) -> None:
+    with pytest.raises(ValueError, match=error):
+        _runtime(overrides)
+
+
+@pytest.mark.parametrize("stage", ["ball_detection", "ball_points", "ball_triangulation"])
+def test_omitted_ball_stage_rejects_individual_load(stage: str) -> None:
+    with pytest.raises(ConfigurationError, match=rf"execution\.{stage}=load"):
+        _runtime(["court_side.evidence=player", "ball_detection.enabled=false",
+                  "ball_reconstruction.enabled=false", f"execution.{stage}=load"])
+
+
+def test_player_only_configuration_allows_global_cache_load() -> None:
+    runtime = _runtime(["court_side.evidence=player", "ball_detection.enabled=false",
+                        "ball_reconstruction.enabled=false", "cache.source=load"])
+    assert runtime.omit_ball_components and runtime.cache_source == "load"
+
+
+def test_ball_evidence_retains_the_loaded_detector_and_points_chain() -> None:
+    runtime = _runtime(["ball_detection.enabled=false", "ball_reconstruction.enabled=false", "execution.court_side=load",
+                        "execution.ball_detection=load", "execution.ball_points=load"])
+    assert not runtime.omit_ball_components
+    assert all(runtime.component_sources[stage] == "load" for stage in ("court_side", "ball_detection", "ball_points"))
 
 
 def test_default_sampling_covers_long_meiji_clip_and_still_refuses_truncation() -> None:

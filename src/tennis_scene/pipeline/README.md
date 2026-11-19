@@ -149,7 +149,7 @@ C1のrecorder統合時はその`model_event`を渡し、管理下のモデルで
 検出＋保存pose・appearance → person_tracking
 track＋court → player_selection → pose_estimation
 動画 → ball_detection → ball_points
-ball_points＋court → court_side（ballだけのhalf-turn仮説検定）
+ball_points＋court または player_selection＋court → court_side
 選別group＋court＋side（＋動画のcrop） → player_association
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
@@ -250,12 +250,12 @@ poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、ha
 player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switchの前後で別の人物を持てる。
 決まらないclipは`ReconstructionUnavailable`（reason `player_association_<停止理由>`、全scoreと途中の決定）で停止する。
 
-`court_side`は[src/tasks/court_side](../../tasks/court_side/README.md)の仮説検定を、校正済みcameraと単一ball観測の
+`court_side`は[src/tasks/court_side](../../tasks/court_side/README.md)の仮説検定を、校正済みcameraと選択した証拠の
 ~30fps格子に適用する（schema version 3）。成果物は採用したhalf-turn、全仮説のcost/support/使用frame数、marginを持つ。
 既定のclipモードで決まらない場合は`ReconstructionUnavailable`（reason `court_side_<停止理由>`、仮説ごとの証跡）で停止する。
 固定カメラでは[動画共有のcourt side](video_court_side/README.ja.md)を選べる。全clipの有効frameで一度判定し、単独判定が矛盾するclipを失敗、単独未決を既定でwarningにする。
-ball検出を無効にした構成では実行できず、definition構築時に停止する（`load`は可）。
-`camera_alignment`は決まったsideを1仮説として、人物とballの観測で絶対的な整合性だけを再検証する。
+選手だけの再構成は `court_side.evidence=player` と [ボール関連段の無効化](../../tasks/court_side/README.md#プレーヤーから判定する) を指定する。
+`camera_alignment` は決まったsideを1仮説として、計画内の人物・ball観測で絶対的な整合性を再検証する。
 
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
 `hmr2_features`は選択済みの人物cropからHMR2画像特徴を生成する（`hmr2_features` schema v1）。
@@ -355,7 +355,7 @@ maskedは除外し、位置誤差条件は含めない。同じvalidationで較�
 
 ## ボール点と欠損
 
-`ball_detection → ball_points → court_side / camera_alignment / ball_triangulation` を使う。
+`ball_detection → ball_points → camera_alignment / ball_triangulation` を使う。既定の `court_side.evidence=ball` でも `ball_points` を使う。
 `ball_points` schema v4は、`ball_smoothing`設定で局所的な2次運動consensusによる外れ値除去と、
 confidence重み付きの頑健な2次LOESSをCPUで実行する。時間窓は元動画のFPS、
 距離閾値は画像の対角長に合わせる。短い急な方向転換は近傍の実測移動量で再検査する。
