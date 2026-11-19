@@ -12,7 +12,7 @@ AFLinkは論文再実装と公開重みを当面使うが、**重みの独立し
 | モジュール | 責務 |
 |---|---|
 | `contracts.py` | 1 frameの検出row、source画素box、score、COCO17 pose、外観と明示mask、追跡の実観測→検出row対応 |
-| `features.py` | 通常profileは検出へViTPoseを適用してpose promptと外観を抽出する。生成専用profileは外観だけを抽出する。crop幾何は後段pose推論と共有 |
+| `features.py` | 通常profileは検出へViTPoseを適用してpose promptと外観を抽出する。生成専用profileは外観だけを抽出する。crop幾何は後段pose推論と共有。crop準備・batch推論・元rowへのscatterを分離し、sceneの別passでも同じ処理を使う |
 | `archive.py` | 連続frame・一意rowを検証してv3特徴NPZを保存/読込。元検出artifact・重みhashなどの出自は呼び出し側が渡す |
 | `migration.py` / `scripts.migrate_features` | v2特徴NPZを明示的に検証し、全観測のscore由来を`LEGACY`と記録した別のv3へ移行する |
 | `deep_ocsort_pose.py` | 公式Deep OC-SORTのobservation-centric Kalman再更新・方向速度・adaptive appearanceに共通poseコストを加えたadapter。出自・差分は`deep_ocsort_vendor/NOTICE.md` |

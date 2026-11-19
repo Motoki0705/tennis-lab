@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 from time import monotonic
@@ -13,27 +13,25 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from src.submodules.models import ViTPosePose2D
 from src.tasks.person_tracking.contracts import DetectionFeatures
-from src.tasks.person_tracking.features import FeatureExtractor, UnpromptedEncoder
 from src.tasks.person_tracking.sequence import (
     TrackEvidence,
     TrackingConfig,
     track_sequence,
 )
 from src.tasks.person_tracking.strongsort_offline import AFLink, ReconstructedTracks
-from src.tasks.player_association.appearance.encoders import AppearanceEncoder
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
+from src.tennis_scene.pipeline.components.person_features import (
+    PersonAppearanceFeaturesOutput,
+    PersonPoseFeaturesOutput,
+    appearance_feature_settings,
+    pose_feature_settings,
+    require_alignment,
+    require_feature_identity,
+)
 from src.tennis_scene.pipeline.components.tracking_identity import TrackletLink
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
-from src.tennis_scene.pipeline.inference_runtime import (
-    InferenceComponent,
-    ModelBorrower,
-    ModelSpec,
-)
-from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
-from src.tennis_scene.pipeline.model_resources import vitpose_model
-from src.utils.video import OpenCVVideoFrameReader
+from src.tennis_scene.pipeline.inference_runtime import ModelSpec
 
 
 class _FrameProgress:
@@ -79,6 +77,8 @@ class _FrameProgress:
 class PersonTrackingInput:
     video: SourceVideo
     detections: PersonDetectionOutput
+    poses: PersonPoseFeaturesOutput
+    appearance: PersonAppearanceFeaturesOutput
 
 
 @dataclass(frozen=True)
@@ -116,72 +116,58 @@ class PersonTrackingOutput:
                 raise ValueError('GSI synthetic boxes must be separate from real observations')
 
 
-class PersonTrackingModule(InferenceComponent[PersonTrackingInput, PersonTrackingOutput]):
-    """Shared feature tracking; court selection alone owns the candidate cap."""
+class PersonTrackingModule:
+    """CPU tracking on stored features; no media decoding or inference models."""
 
     io = ComponentIO("person_tracking", PersonTrackingInput, PersonTrackingOutput,
-        {"detections": InputPort("person_detections", 2)}, "person_tracks", version=6)
+        {"detections": InputPort("person_detections", 2), "poses": InputPort("person_pose_features", 2),
+         "appearance": InputPort("person_appearance_features", 3)}, "person_tracks", version=7)
 
-    def __init__(self, config: TrackingConfig, *, people: PeopleModelConfig | None = None,
-                 encoder: ModelSpec[AppearanceEncoder] | None = None,
-                 aflink_checkpoint: Path | None = None, enabled: bool = True,
-                 show_progress: bool = True) -> None:
-        self.config, self.people, self.encoder = config, people, encoder
+    def __init__(self, config: TrackingConfig, *, aflink_checkpoint: Path | None = None,
+                 expected_pose: ModelSpec[Any] | None = None, expected_encoder: ModelSpec[Any] | None = None,
+                 pose_preprocessing: Mapping[str, Any] | None = None, appearance_preprocessing: Mapping[str, Any] | None = None,
+                 enabled: bool = True, show_progress: bool = True) -> None:
+        self.config = config
+        self.expected_pose, self.expected_encoder = expected_pose, expected_encoder
+        self.pose_preprocessing = dict(pose_feature_settings(config.features) if pose_preprocessing is None else pose_preprocessing)
+        self.appearance_preprocessing = dict(appearance_feature_settings(config.features) if appearance_preprocessing is None else appearance_preprocessing)
         self.aflink_checkpoint, self.enabled = aflink_checkpoint, enabled
         if type(show_progress) is not bool:
             raise TypeError('show_progress must be a bool')
         self.show_progress = show_progress
-        if enabled and (people is None or encoder is None):
-            raise ValueError('Feature tracking requires explicit pose assets and CLIP encoder')
         if enabled and aflink_checkpoint is None:
             raise ValueError('AFLink/GSI tracking requires an explicit checkpoint')
+        if enabled and (expected_pose is None or expected_encoder is None):
+            raise ValueError('CPU tracking requires explicit expected pose and appearance declarations')
 
-    def model_specs(self) -> dict[str, ModelSpec[Any]]:
-        if not self.enabled:
-            return {}
-        assert self.people is not None and self.encoder is not None
-        return {"pose": vitpose_model(self.people, factory=ViTPosePose2D), "encoder": self.encoder}
-
-    def process_with_models(self, inputs: PersonTrackingInput, models: ModelBorrower) -> PersonTrackingOutput:
+    def process(self, inputs: PersonTrackingInput) -> PersonTrackingOutput:
         video, detections = inputs.video, inputs.detections
-        if detections.camera_id != video.camera_id or len(detections.frame_offsets) != video.num_frames + 1:
-            raise ValueError("Tracking input camera/timeline mismatch")
+        rows = require_alignment(video, detections, inputs.poses, inputs.appearance)
+        if inputs.appearance.encoder != self.config.encoder:
+            raise ValueError('Tracking encoder differs from the configured CLIP profile')
         if not self.enabled:
             return PersonTrackingOutput(video.camera_id, np.empty(0, np.int64),
                 np.zeros((0, video.num_frames, 4), np.float32), np.zeros((0, video.num_frames), bool), (), ())
-        return self._features(inputs, models)
-
-    def _features(self, inputs: PersonTrackingInput, models: ModelBorrower) -> PersonTrackingOutput:
-        video, detections = inputs.video, inputs.detections
-        if detections.source_rows is None:
-            raise ValueError('Feature tracking requires person_detections v2 source rows; regenerate the artifact')
-        assert self.people is not None and self.encoder is not None and self.aflink_checkpoint is not None
+        require_feature_identity(inputs.poses.model_identity, inputs.poses.preprocessing_identity,
+                                 self.expected_pose, self.pose_preprocessing)
+        require_feature_identity(inputs.appearance.encoder_identity, inputs.appearance.preprocessing_identity,
+                                 self.expected_encoder, self.appearance_preprocessing)
+        assert self.aflink_checkpoint is not None
         af = AFLink(self.aflink_checkpoint)
-        pose: ViTPosePose2D = models.borrow("pose")
-        encoder: AppearanceEncoder = models.borrow("encoder")
-        if encoder.name != self.config.encoder:
-            raise ValueError('Tracking encoder differs from the configured CLIP profile')
-        extractor = FeatureExtractor(pose, UnpromptedEncoder(encoder, dimension=1280), self.config.features)
         progress = _FrameProgress(video.camera_id, video.num_frames, enabled=self.show_progress)
 
         def frames() -> Iterator[DetectionFeatures]:
-            assert detections.source_rows is not None
-            count = 0
-            for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames):
-                if packet.index != count:
-                    raise ValueError('Tracking video frame order changed')
-                start, end = detections.frame_offsets[packet.index:packet.index + 2]
-                yield extractor.extract(packet.index, packet.frame, detections.source_rows[start:end],
-                                        detections.boxes_xyxy[start:end], detections.confidence[start:end])
-                count += 1
+            for frame in range(video.num_frames):
+                start, end = detections.frame_offsets[frame:frame + 2]
+                yield DetectionFeatures(frame, rows[start:end], detections.boxes_xyxy[start:end],
+                    detections.confidence[start:end], inputs.poses.keypoints[start:end],
+                    inputs.appearance.embeddings[start:end], inputs.appearance.appearance_valid[start:end])
                 progress.advance()
-            if count != video.num_frames:
-                raise ValueError('Tracking did not decode the complete source timeline')
 
         try:
             result = track_sequence(frames(), fps=video.fps, config=self.config, aflink=af)
         finally:
             progress.close()
         return PersonTrackingOutput(video.camera_id, result.track_ids, result.boxes, result.observed,
-            result.source_track_ids, (), replace(result.evidence, encoder_identity=models.identity('encoder')),
+            result.source_track_ids, (), replace(result.evidence, encoder_identity=inputs.appearance.encoder_identity),
             result.reconstruction, result.link_candidates)

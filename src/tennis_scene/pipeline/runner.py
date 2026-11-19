@@ -98,8 +98,10 @@ class PlanExecutor:
 
     def execute(self, key: NodeKey) -> ArtifactRef:
         """Run or load one ready node; completed nodes are never reconsidered."""
+        if key not in self.plan.required:
+            raise ValueError("Targets are outside the execution plan")
         with self._runtime(frozenset({key})) as runtime:
-            return self._execute(key, runtime)
+            return self._execute(key, runtime, required=frozenset({key}))
 
     def _execute(self, key: NodeKey, runtime: InferenceRuntime, *, required: frozenset[NodeKey] | None = None) -> ArtifactRef:
         plan = self.plan
@@ -143,7 +145,8 @@ class PlanExecutor:
         if decision.action in ("load", "cached"):
             if reference is None:
                 raise RuntimeError("Reused component has no artifact reference")
-            store.load(reference, ArtifactCodec(node.io.output_type))
+            value = store.load(reference, ArtifactCodec(node.io.output_type))
+            node.validate_output(value)
             output = None
         else:
             artifacts = {port: store.load(ref, ArtifactCodec(plan.nodes[plan.dependencies[key][port]].io.output_type))
@@ -153,6 +156,7 @@ class PlanExecutor:
                 raise TypeError(f"Assembler returned wrong input type for {key[1]}")
             output = (node.component.process_with_models(inputs, models)
                       if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
+            node.validate_output(output)
         return output, decision
 
     def output(self, key: NodeKey) -> Any:

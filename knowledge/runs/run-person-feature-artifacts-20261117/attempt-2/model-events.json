@@ -1,0 +1,94 @@
+[
+  {
+    "id": 2,
+    "parent_id": null,
+    "depth": 0,
+    "thread_id": 139607336228672,
+    "stage": "model_load",
+    "start_ns": 56017762550,
+    "attributes": {
+      "variant": "split",
+      "model": "vitpose",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "139603186258256:1"
+    },
+    "status": "ok",
+    "end_ns": 78021486121
+  },
+  {
+    "id": 4,
+    "parent_id": null,
+    "depth": 0,
+    "thread_id": 139607336228672,
+    "stage": "model_unload",
+    "start_ns": 255291104172,
+    "attributes": {
+      "variant": "split",
+      "model": "vitpose",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "139603186258256:1"
+    },
+    "status": "ok",
+    "end_ns": 255843538738
+  },
+  {
+    "id": 6,
+    "parent_id": null,
+    "depth": 0,
+    "thread_id": 139607336228672,
+    "stage": "model_load",
+    "start_ns": 260841684445,
+    "attributes": {
+      "variant": "split",
+      "model": "appearance",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "139603186258256:2"
+    },
+    "status": "ok",
+    "end_ns": 267542594368
+  },
+  {
+    "id": 8,
+    "parent_id": null,
+    "depth": 0,
+    "thread_id": 139607336228672,
+    "stage": "model_unload",
+    "start_ns": 277986484123,
+    "attributes": {
+      "variant": "split",
+      "model": "appearance",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "139603186258256:2"
+    },
+    "status": "ok",
+    "end_ns": 278243634470
+  }
+]
