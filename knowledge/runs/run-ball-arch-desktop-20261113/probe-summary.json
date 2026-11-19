@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "probe_source_commit": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+  "selected_scope": "encoder_msda",
+  "selected_reason": "Only encoder_msda passed T1 and unfrozen T2; C1 retains checkpointing=false.",
+  "allocator_fraction": 0.8,
+  "allocator_limit_bytes": 13682291507,
+  "host_available_lower_bound_bytes": 4294967296,
+  "precision": "bf16 + explicit official FP32 MSDA",
+  "compile_mode": "default",
+  "scientific_updates_consumed": 0,
+  "scientific_shapes_recipe_unchanged": true,
+  "results": [
+    {
+      "case": "T1",
+      "scope": "msda",
+      "status": "oom",
+      "checkpointing": true,
+      "diagnostic_updates": 0,
+      "peak_allocated_bytes": 13534328832,
+      "peak_reserved_bytes": 13652459520,
+      "warm_median_update_seconds": null,
+      "error": "CUDA out of memory. Tried to allocate 58.00 MiB. GPU 0 has a total capacity of 15.93 GiB of which 1.81 GiB is free. 12.74 GiB allowed; Of the allocated memory 12.60 GiB is allocated by PyTorch, and 112.66 MiB is reserved by PyTorch but unallocated.",
+      "persistence_receipt": "probe-receipts/T1-msda.json",
+      "host_guard": {
+        "schema_version": 1,
+        "minimum_available_bytes": 16496029696,
+        "threshold_bytes": 4294967296,
+        "triggered": false,
+        "maximum_filesystem_growth_bytes": 17314557952,
+        "storage_stop_threshold_bytes": 19000000000,
+        "updated_at": 1794539779.4712846,
+        "finished_at": 1794539780.3004515
+      }
+    },
+    {
+      "case": "T2",
+      "scope": "msda",
+      "status": "oom",
+      "checkpointing": true,
+      "diagnostic_updates": 0,
+      "peak_allocated_bytes": 13508881408,
+      "peak_reserved_bytes": 13589544960,
+      "warm_median_update_seconds": null,
+      "error": "CUDA out of memory. Tried to allocate 114.00 MiB. GPU 0 has a total capacity of 15.93 GiB of which 1.89 GiB is free. 12.74 GiB allowed; Of the allocated memory 12.58 GiB is allocated by PyTorch, and 76.93 MiB is reserved by PyTorch but unallocated.",
+      "persistence_receipt": "probe-receipts/T2-msda.json",
+      "host_guard": {
+        "schema_version": 1,
+        "minimum_available_bytes": 17057972224,
+        "threshold_bytes": 4294967296,
+        "triggered": false,
+        "maximum_filesystem_growth_bytes": 16909201408,
+        "storage_stop_threshold_bytes": 19000000000,
+        "updated_at": 1794540216.1086183,
+        "finished_at": 1794540216.7546406
+      }
+    },
+    {
+      "case": "T1",
+      "scope": "encoder_msda",
+      "status": "passed",
+      "checkpointing": true,
+      "diagnostic_updates": 3,
+      "peak_allocated_bytes": 10803609600,
+      "peak_reserved_bytes": 12595494912,
+      "warm_median_update_seconds": 3.7699728485004016,
+      "cold_update_seconds": 234.38555228399855,
+      "samples": [
+        {
+          "update": 5501,
+          "sample_position": 21501,
+          "loss": 0.0011677408502215431,
+          "gradient_norm": 0.3428763747215271,
+          "learning_rate": 1.3093779070056234e-06,
+          "encoder_learning_rate": 1.3093779070056235e-07,
+          "encoder_frozen": false,
+          "seconds": 234.38555228399855,
+          "peak_vram_bytes": 10803609088,
+          "peak_reserved_vram_bytes": 12595494912
+        },
+        {
+          "update": 5502,
+          "sample_position": 21502,
+          "loss": 0.005576407304033637,
+          "gradient_norm": 1.3990262746810913,
+          "learning_rate": 1.3081409133474223e-06,
+          "encoder_learning_rate": 1.3081409133474224e-07,
+          "encoder_frozen": false,
+          "seconds": 4.40428478800095,
+          "peak_vram_bytes": 10803609600,
+          "peak_reserved_vram_bytes": 12595494912
+        },
+        {
+          "update": 5503,
+          "sample_position": 21503,
+          "loss": 0.0011655711714411154,
+          "gradient_norm": 0.23498542606830597,
+          "learning_rate": 1.306906387056853e-06,
+          "encoder_learning_rate": 1.306906387056853e-07,
+          "encoder_frozen": false,
+          "seconds": 3.135660908999853,
+          "peak_vram_bytes": 10449714688,
+          "peak_reserved_vram_bytes": 12595494912
+        }
+      ],
+      "persistence_receipt": "probe-receipts/T1-encoder_msda.json",
+      "host_guard": {
+        "schema_version": 1,
+        "minimum_available_bytes": 15862374400,
+        "threshold_bytes": 4294967296,
+        "triggered": false,
+        "maximum_filesystem_growth_bytes": 17830846464,
+        "storage_stop_threshold_bytes": 19000000000,
+        "updated_at": 1794540769.6123226,
+        "finished_at": 1794540770.3044777
+      }
+    },
+    {
+      "case": "T2",
+      "scope": "encoder_msda",
+      "status": "passed",
+      "checkpointing": true,
+      "diagnostic_updates": 3,
+      "peak_allocated_bytes": 10803609600,
+      "peak_reserved_bytes": 12532580352,
+      "warm_median_update_seconds": 3.1616407760002403,
+      "cold_update_seconds": 93.60519705300067,
+      "samples": [
+        {
+          "update": 1,
+          "sample_position": 10001,
+          "loss": 0.08379255077703213,
+          "gradient_norm": 3.390261173248291,
+          "learning_rate": 7.360330616529733e-05,
+          "encoder_learning_rate": 7.360330616529733e-06,
+          "encoder_frozen": false,
+          "seconds": 93.60519705300067,
+          "peak_vram_bytes": 10601214464,
+          "peak_reserved_vram_bytes": 12083789824
+        },
+        {
+          "update": 2,
+          "sample_position": 10002,
+          "loss": 0.21354423925794405,
+          "gradient_norm": 5.481776714324951,
+          "learning_rate": 7.360330492105194e-05,
+          "encoder_learning_rate": 7.3603304921051944e-06,
+          "encoder_frozen": false,
+          "seconds": 3.1292607720006345,
+          "peak_vram_bytes": 10803609600,
+          "peak_reserved_vram_bytes": 12236881920
+        },
+        {
+          "update": 3,
+          "sample_position": 10003,
+          "loss": 0.1647555641506029,
+          "gradient_norm": 3.5421254634857178,
+          "learning_rate": 7.360330118831583e-05,
+          "encoder_learning_rate": 7.360330118831584e-06,
+          "encoder_frozen": false,
+          "seconds": 3.194020779999846,
+          "peak_vram_bytes": 10449714688,
+          "peak_reserved_vram_bytes": 12532580352
+        }
+      ],
+      "persistence_receipt": "probe-receipts/T2-encoder_msda.json",
+      "host_guard": {
+        "schema_version": 1,
+        "minimum_available_bytes": 17678323712,
+        "threshold_bytes": 4294967296,
+        "triggered": false,
+        "maximum_filesystem_growth_bytes": 17475358720,
+        "storage_stop_threshold_bytes": 19000000000,
+        "updated_at": 1794541352.843004,
+        "finished_at": 1794541352.9177692
+      }
+    },
+    {
+      "case": "C1",
+      "scope": "encoder_msda",
+      "status": "passed",
+      "checkpointing": false,
+      "diagnostic_updates": 3,
+      "peak_allocated_bytes": 9396956160,
+      "peak_reserved_bytes": 10475274240,
+      "warm_median_update_seconds": 1.8058008799998788,
+      "cold_update_seconds": 130.11229516099957,
+      "samples": [
+        {
+          "update": 1,
+          "sample_position": 1,
+          "loss": 0.32023570848547894,
+          "gradient_norm": 11.891804695129395,
+          "learning_rate": 1e-06,
+          "encoder_learning_rate": 1e-06,
+          "encoder_frozen": false,
+          "seconds": 130.11229516099957,
+          "peak_vram_bytes": 9396956160,
+          "peak_reserved_vram_bytes": 10427039744
+        },
+        {
+          "update": 2,
+          "sample_position": 2,
+          "loss": 0.291379734752624,
+          "gradient_norm": 12.933052062988281,
+          "learning_rate": 1.1983967935871744e-06,
+          "encoder_learning_rate": 1.1983967935871744e-06,
+          "encoder_frozen": false,
+          "seconds": 1.7826491910000186,
+          "peak_vram_bytes": 9078799872,
+          "peak_reserved_vram_bytes": 10433331200
+        },
+        {
+          "update": 3,
+          "sample_position": 3,
+          "loss": 0.306485578417778,
+          "gradient_norm": 13.176920890808105,
+          "learning_rate": 1.3967935871743486e-06,
+          "encoder_learning_rate": 1.3967935871743486e-06,
+          "encoder_frozen": false,
+          "seconds": 1.828952568999739,
+          "peak_vram_bytes": 9078799872,
+          "peak_reserved_vram_bytes": 10475274240
+        }
+      ],
+      "persistence_receipt": "probe-receipts/C1-encoder_msda.json",
+      "host_guard": {
+        "schema_version": 1,
+        "minimum_available_bytes": 17714913280,
+        "threshold_bytes": 4294967296,
+        "triggered": false,
+        "maximum_filesystem_growth_bytes": 17274347520,
+        "storage_stop_threshold_bytes": 19000000000,
+        "updated_at": 1794541881.954967,
+        "finished_at": 1794541882.227386
+      }
+    }
+  ],
+  "limitations": [
+    "Three updates per passing trial, with the first including compilation. Warm median uses two updates and is only qualification evidence.",
+    "T2 is unfrozen from diagnostic update 1; production still freezes the first 600 updates in each stage.",
+    "C2 and C3 are not measured here. No local timing/VRAM comparison to the historical untrained L4 benchmark."
+  ]
+}

@@ -1,0 +1,391 @@
+{
+  "schema_version": 1,
+  "issue": 1859,
+  "complete": true,
+  "files": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/production/T1-q06000-q12000/checkpoint-update-00005500.pt",
+      "sha256": "7a670fca4b3e07947788493c42a8a8aae875a550cab1cffad1d20c3d1c6c44f7",
+      "size_bytes": 346647057,
+      "allocated_bytes": 346652672,
+      "links": 1,
+      "pre_deletion_head": "6ddf48cfa4024bf58f97c40c33eb9bf2b0fb4406",
+      "reason": "obsolete 5500 tensors after fully verified 6000; exact verified immutable Drive generation retained"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/production/T1-q06000-q12000/weights-update-00005500.pt",
+      "sha256": "9f42e9e98d38220b3d3b718949e92983909bef6085e9c2fe4e0bf28e948fdcd9",
+      "size_bytes": 116301749,
+      "allocated_bytes": 116305920,
+      "links": 1,
+      "pre_deletion_head": "6ddf48cfa4024bf58f97c40c33eb9bf2b0fb4406",
+      "reason": "obsolete 5500 tensors after fully verified 6000; exact verified immutable Drive generation retained"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/weights-update-00006000.pt",
+      "size_bytes": 115977797,
+      "sha256": "7f0da566dfcfa8faa38418ed0036d10b8dff2684f86bee6867299c0d5cf3c091",
+      "allocated_bytes": 115978240,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/validation-update-00006000.json",
+      "size_bytes": 19375,
+      "sha256": "ca11529489b41f073936b20c446dd66f77dc21f83a14a1c5deba756513fcd3a3",
+      "allocated_bytes": 20480,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/actual-resume.json",
+      "size_bytes": 231,
+      "sha256": "98b9110b58c6d4cd8aa259e777647aae935c45c472603b7bf1ebd0f9c77e00db",
+      "allocated_bytes": 4096,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/train_manifest.json",
+      "size_bytes": 6990211,
+      "sha256": "c770b1e61024f8fefc2e35119533d734f5f77225e8fedf78e22d5146ef3971c3",
+      "allocated_bytes": 6991872,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/run.json",
+      "size_bytes": 1197673,
+      "sha256": "fcebf07eeea6100f930c6757308b3fc9ee3150cb7d40656f7a30f23fd8775989",
+      "allocated_bytes": 1200128,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/validation-update-00006000.frames.jsonl",
+      "size_bytes": 66180501,
+      "sha256": "28639291d980fa5a275c6b5c33586696e4e23d85ecba2041190e3b6aa876515b",
+      "allocated_bytes": 66183168,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/evaluation_manifest.json",
+      "size_bytes": 7802371,
+      "sha256": "e35beb82d3ac8543d3c0b657aa2f56c2f7f9259bee740f8762053f671f25aae2",
+      "allocated_bytes": 7802880,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/checkpoint-update-00006000.pt",
+      "size_bytes": 346294451,
+      "sha256": "cb074c178bb076ecf2b4e9adb971b3ef261e4ec05c65129b369990d1644dee1d",
+      "allocated_bytes": 346300416,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/migration.json",
+      "size_bytes": 1052,
+      "sha256": "aa901dd6685d36160a9c914097b9a287ec951df81bebb92629385a9f231286dc",
+      "allocated_bytes": 4096,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/latest.json",
+      "size_bytes": 137,
+      "sha256": "bf79ca99c2959920464deba052bc94e49104fb285e20f02163cec86323d6dc24",
+      "allocated_bytes": 4096,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-independent-6000/train.jsonl",
+      "size_bytes": 6442845,
+      "sha256": "1e5fea6d88c336c180f5208e81e8f801d2d397fc9ec78e1a9a01acc2a87967cc",
+      "allocated_bytes": 6443008,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/production/T1-q06000-q12000/checkpoint-update-00006000.pt",
+      "size_bytes": 346294451,
+      "sha256": "cb074c178bb076ecf2b4e9adb971b3ef261e4ec05c65129b369990d1644dee1d",
+      "allocated_bytes": 346300416,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/production/T1-q06000-q12000/weights-update-00006000.pt",
+      "size_bytes": 115977797,
+      "sha256": "7f0da566dfcfa8faa38418ed0036d10b8dff2684f86bee6867299c0d5cf3c091",
+      "allocated_bytes": 115982336,
+      "removed_from_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+      "protected_generation": "checkpoint-00006000-8586c177",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+      "manifest_sha256": "2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0",
+      "reason": "verified redundant stopped-attempt tensor/readback cache; complete migrated full state exists in fresh attempt"
+    }
+  ],
+  "logical_bytes_removed": 1476127698,
+  "allocated_bytes_released": 1476173824,
+  "old_5500_retirement_ledger": {
+    "schema_version": 1,
+    "files": [
+      {
+        "path": "production/T1-q06000-q12000/checkpoint-update-00005500.pt",
+        "sha256": "7a670fca4b3e07947788493c42a8a8aae875a550cab1cffad1d20c3d1c6c44f7",
+        "size_bytes": 346647057,
+        "protected_generation": "initialized-00005500-8a9378f4",
+        "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/initialized-00005500-8a9378f4",
+        "execution_commit": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+        "reason": "verified redundant local cache; Drive generation retained"
+      },
+      {
+        "path": "production/T1-q06000-q12000/weights-update-00005500.pt",
+        "sha256": "9f42e9e98d38220b3d3b718949e92983909bef6085e9c2fe4e0bf28e948fdcd9",
+        "size_bytes": 116301749,
+        "protected_generation": "initialized-00005500-8a9378f4",
+        "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/initialized-00005500-8a9378f4",
+        "execution_commit": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+        "reason": "verified redundant local cache; Drive generation retained"
+      },
+      {
+        "path": "production/T1-q06000-q12000/checkpoint-update-00006000.pt",
+        "sha256": "cb074c178bb076ecf2b4e9adb971b3ef261e4ec05c65129b369990d1644dee1d",
+        "size_bytes": 346294451,
+        "protected_generation": "checkpoint-00006000-8586c177",
+        "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+        "execution_commit": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+        "reason": "verified redundant local cache; Drive generation retained"
+      },
+      {
+        "path": "production/T1-q06000-q12000/weights-update-00006000.pt",
+        "sha256": "7f0da566dfcfa8faa38418ed0036d10b8dff2684f86bee6867299c0d5cf3c091",
+        "size_bytes": 115977797,
+        "protected_generation": "checkpoint-00006000-8586c177",
+        "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/checkpoint-00006000-8586c177",
+        "execution_commit": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+        "reason": "verified redundant local cache; Drive generation retained"
+      }
+    ]
+  },
+  "initial_root_inventory": {
+    "root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113",
+    "excluded": "dataset hardlinks",
+    "rows": [
+      {
+        "directory": "archive-metadata",
+        "inodes": 6,
+        "logical_bytes": 1794968,
+        "allocated_bytes": 1810432,
+        "single_link_allocated_bytes": 1810432
+      },
+      {
+        "directory": "cache",
+        "inodes": 32368,
+        "logical_bytes": 1248974463,
+        "allocated_bytes": 1316605952,
+        "single_link_allocated_bytes": 1316605952
+      },
+      {
+        "directory": "diagnostics-source",
+        "inodes": 2,
+        "logical_bytes": 17996,
+        "allocated_bytes": 20480,
+        "single_link_allocated_bytes": 20480
+      },
+      {
+        "directory": "documentation",
+        "inodes": 45,
+        "logical_bytes": 252300,
+        "allocated_bytes": 356352,
+        "single_link_allocated_bytes": 356352
+      },
+      {
+        "directory": "env",
+        "inodes": 39681,
+        "logical_bytes": 6678596272,
+        "allocated_bytes": 6771470336,
+        "single_link_allocated_bytes": 0
+      },
+      {
+        "directory": "env-original",
+        "inodes": 36775,
+        "logical_bytes": 7077451967,
+        "allocated_bytes": 7163990016,
+        "single_link_allocated_bytes": 24829952
+      },
+      {
+        "directory": "input-receipts",
+        "inodes": 5,
+        "logical_bytes": 4521,
+        "allocated_bytes": 20480,
+        "single_link_allocated_bytes": 20480
+      },
+      {
+        "directory": "inputs",
+        "inodes": 27,
+        "logical_bytes": 190565215,
+        "allocated_bytes": 190636032,
+        "single_link_allocated_bytes": 0
+      },
+      {
+        "directory": "logs",
+        "inodes": 1,
+        "logical_bytes": 4099,
+        "allocated_bytes": 8192,
+        "single_link_allocated_bytes": 8192
+      },
+      {
+        "directory": "msda-build",
+        "inodes": 18,
+        "logical_bytes": 25988125,
+        "allocated_bytes": 26034176,
+        "single_link_allocated_bytes": 26034176
+      },
+      {
+        "directory": "msda-build-sm120-unbounded",
+        "inodes": 16,
+        "logical_bytes": 199574,
+        "allocated_bytes": 241664,
+        "single_link_allocated_bytes": 241664
+      },
+      {
+        "directory": "notifications",
+        "inodes": 4,
+        "logical_bytes": 1394,
+        "allocated_bytes": 16384,
+        "single_link_allocated_bytes": 16384
+      },
+      {
+        "directory": "original",
+        "inodes": 11,
+        "logical_bytes": 476371213,
+        "allocated_bytes": 476401664,
+        "single_link_allocated_bytes": 0
+      },
+      {
+        "directory": "original-preparation",
+        "inodes": 15,
+        "logical_bytes": 22516,
+        "allocated_bytes": 61440,
+        "single_link_allocated_bytes": 0
+      },
+      {
+        "directory": "persistence",
+        "inodes": 1,
+        "logical_bytes": 1461,
+        "allocated_bytes": 4096,
+        "single_link_allocated_bytes": 4096
+      },
+      {
+        "directory": "prepared",
+        "inodes": 5,
+        "logical_bytes": 103824883,
+        "allocated_bytes": 103837696,
+        "single_link_allocated_bytes": 70631424
+      },
+      {
+        "directory": "prepared-failed-alias-20261113",
+        "inodes": 4,
+        "logical_bytes": 33200360,
+        "allocated_bytes": 33206272,
+        "single_link_allocated_bytes": 0
+      },
+      {
+        "directory": "probe-logs",
+        "inodes": 5,
+        "logical_bytes": 37920,
+        "allocated_bytes": 49152,
+        "single_link_allocated_bytes": 49152
+      },
+      {
+        "directory": "probe-receipts",
+        "inodes": 5,
+        "logical_bytes": 7062,
+        "allocated_bytes": 20480,
+        "single_link_allocated_bytes": 20480
+      },
+      {
+        "directory": "probes",
+        "inodes": 25,
+        "logical_bytes": 49153210,
+        "allocated_bytes": 49213440,
+        "single_link_allocated_bytes": 16007168
+      },
+      {
+        "directory": "production",
+        "inodes": 8,
+        "logical_bytes": 21897959,
+        "allocated_bytes": 21917696,
+        "single_link_allocated_bytes": 7122944
+      },
+      {
+        "directory": "stage-status",
+        "inodes": 1,
+        "logical_bytes": 1461,
+        "allocated_bytes": 4096,
+        "single_link_allocated_bytes": 4096
+      }
+    ],
+    "timestamp": 1794548810.5995982,
+    "protected": [
+      "env-original",
+      "msda-build",
+      "cache"
+    ],
+    "note": "Directory totals count hardlinked blocks once per category; shared cloned env blocks are not newly allocated by this task."
+  },
+  "protected": [
+    "env-original",
+    "msda-build",
+    "cache",
+    "original immutable checkpoints",
+    "dataset hardlinks",
+    "logs and validation predictions"
+  ],
+  "other_issue_outputs_touched": false,
+  "d_available_bytes_at_cleanup": 35001950208,
+  "d_available_threshold_bytes": 10737418240,
+  "note": "Released WSL allocated blocks; this does not claim VHDX shrink or matching Windows free-space gain.",
+  "finished_at": 1794549153.2400389
+}

@@ -11,15 +11,24 @@ sys.path.insert(0, str(Path(__file__).parent))
 import protocol
 from protocol import model_config, recipe
 
-from src.tasks.ball_detection.models.mdd.config import MDDHeatmapConfig, MDDMHCQueryConfig
+from src.tasks.ball_detection.models.mdd.config import (
+    MDDHeatmapConfig,
+    MDDMHCQueryConfig,
+)
 
 
 def test_ca_speed_baseline_uses_the_saved_query_recipe(tmp_path, monkeypatch):
     # Two explicit saved recipes detect CA being routed through the CNN prefix.
     # Keep the regression runnable without the original Colab filesystem.
     configs = Path("src/tasks/ball_detection/configs/model")
-    query = replace(MDDMHCQueryConfig.load(configs / "mdd_mhc_query.yaml"),
-                    dim=512, heads=8, layers=6, ffn_dim=1408, dropout=.07)
+    query = replace(
+        MDDMHCQueryConfig.load(configs / "mdd_mhc_query.yaml"),
+        dim=512,
+        heads=8,
+        layers=6,
+        ffn_dim=1408,
+        dropout=0.07,
+    )
     dpt = MDDHeatmapConfig.load(configs / "mdd_dpt_heatmap.yaml")
     for name, model in (("common-dpt-T32", dpt), ("query-d512-l6-T64", query)):
         path = tmp_path / name / "run.json"
@@ -35,7 +44,7 @@ def test_ca_speed_baseline_uses_the_saved_query_recipe(tmp_path, monkeypatch):
         4,
     )
     assert asdict(config) == asdict(query)
-    assert recipe("CA")["model"]["dropout"] == .07
+    assert recipe("CA")["model"]["dropout"] == 0.07
 
 
 def test_unknown_architecture_condition_is_not_reinterpreted_as_t2():

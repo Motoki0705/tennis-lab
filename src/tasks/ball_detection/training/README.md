@@ -379,3 +379,9 @@ DPT/事後学習は`--preview-clips`で各epochのGIFを保存する。描画実
 直接座標の可変T評価も`--mode temporal`を使う。保存されたモデル種別で評価objectiveを選び、
 heatmapと同じowner・observed集合・source pixel位置指標を記録する。直接座標は存在判定を持たず、
 不在frameのcoverageを保持するがFPR/FNRや較正閾値を作らない。
+
+Python APIの`train_temporal_model(..., update_observer=...)`は、数値計算の外で
+`before_update(update)`と`metrics()`を呼べる任意の資源監視hookを持つ。既定はNoneで、
+学習recipeやCLIの挙動を変更しない。admissionはCUDA同期・計測開始・sampler消費より前、
+metricsは更新時間の計測後に呼び、返り値を各train.jsonl行の`resources`へ保存する。
+hookの例外は伝播し、次の更新や完了markerへ進まない。
