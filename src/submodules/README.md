@@ -73,6 +73,7 @@ finally:
 元画像サイズが異なっていても前処理後の形状が同じなら同じbatchに入り、boxは各画像の元の
 ピクセル座標へ戻ります。confidenceの `>=` 判定とscore降順のrowは単一画像と同じです。
 `merge_duplicate_person_boxes` は引き続きpipeline側で画像ごとに適用します。
+`dino_batch_item_requirements`は、画像サイズとresize設定から互換shapeと明示的な入出力配列の見積りを返します。
 
 ```python
 requests = [PersonDetectionRequest(frame) for frame in frames_bgr]
