@@ -11,8 +11,11 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.submodules.models import Hmr2FeatureExtractor, ImageFeatureRequest
-from src.submodules.models._base.crops import iter_frame_person_crops
+from src.submodules.models import (
+    Hmr2FeatureExtractor,
+    ImageFeatureRequest,
+    iter_frame_person_crops,
+)
 from src.tennis_scene.pipeline.batching import (
     BatchAdapter,
     BatchAddress,

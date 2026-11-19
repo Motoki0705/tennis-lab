@@ -11,8 +11,11 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.submodules.models import Pose2DFrameSequenceRequest, ViTPosePose2D
-from src.submodules.models._base.crops import iter_frame_person_crops
+from src.submodules.models import (
+    Pose2DFrameSequenceRequest,
+    ViTPosePose2D,
+    iter_frame_person_crops,
+)
 from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.tasks.person_tracking.features import (
     DEFAULT_CONFIG,

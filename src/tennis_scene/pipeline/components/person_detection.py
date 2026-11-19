@@ -15,9 +15,9 @@ from src.submodules.models import (
     DinoPersonDetector,
     PersonDetectionRequest,
     PersonDetectionResult,
+    dino_batch_item_requirements,
     dino_source_assets,
 )
-from src.submodules.models.dino.architecture import DINO_NUM_CLASSES, dino_resized_shape
 from src.tasks.person_tracking.duplicate_boxes import DuplicateMerge, merge_person_boxes
 from src.tennis_scene.pipeline.batching import (
     BatchAdapter,
@@ -120,11 +120,10 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
                    memory: SourceMemory) -> BatchSource:
         video = inputs.video
         config = self.config.runtime.dino_detector
-        shape = dino_resized_shape(video.height, video.width, short_side=config.short_side, max_long_side=config.max_long_side)
+        shape, item_bytes = dino_batch_item_requirements(
+            video.height, video.width, short_side=config.short_side, max_long_side=config.max_long_side)
         original_pixels = video.height * video.width
-        # A reader can retain one decoded frame and a replacement. The packet
-        # estimate also covers the RGB/float resize, stack and decoded DINO heads.
-        item_bytes = original_pixels * 18 + shape[0] * shape[1] * 3 * 4 * 3 + 900 * (DINO_NUM_CLASSES + 4) * 8
+        # A reader can retain one decoded frame and a replacement.
         memory.reserve(original_pixels * 6 + (video.num_frames + 1) * 416)
         output = _DetectionRows(video, self.merge_duplicates)
 

@@ -27,6 +27,7 @@ from src.submodules.models.dino.extension import load_dino_extension
 # player checkpoints keep the 91-way head and reuse this id for "player".
 COCO_PERSON_CLASS_ID = 1
 DINO_NUM_CLASSES = 91
+DINO_NUM_QUERIES = 900
 DINO_SWIN_BACKBONE = "swin_L_384_22k"
 DINO_IMAGE_MEAN = (0.485, 0.456, 0.406)
 DINO_IMAGE_STD = (0.229, 0.224, 0.225)
@@ -68,7 +69,7 @@ def dino_4scale_swin_args(
         hidden_dim=256,
         dropout=0.0,
         nheads=8,
-        num_queries=900,
+        num_queries=DINO_NUM_QUERIES,
         query_dim=4,
         num_patterns=0,
         num_feature_levels=4,
@@ -330,6 +331,17 @@ def dino_resized_shape(
     if max(height, width) * scale > max_long_side:
         scale = max_long_side / max(height, width)
     return int(round(height * scale)), int(round(width * scale))
+
+
+def dino_batch_item_requirements(
+    height: int, width: int, *, short_side: int, max_long_side: int
+) -> tuple[tuple[int, int], int]:
+    """Return the compatibility shape and estimated explicit arrays per image."""
+    resized = dino_resized_shape(height, width, short_side=short_side, max_long_side=max_long_side)
+    # Decoded BGR/RGB and full-resolution normalization, resized float32
+    # copies including the batch stack, and the detection heads for one image.
+    head_bytes = DINO_NUM_QUERIES * (DINO_NUM_CLASSES + 4) * 8
+    return resized, height * width * 18 + resized[0] * resized[1] * 3 * 4 * 3 + head_bytes
 
 
 def preprocess_frame(
