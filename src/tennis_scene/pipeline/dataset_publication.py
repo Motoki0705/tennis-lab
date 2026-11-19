@@ -129,7 +129,8 @@ def _required_body_components(inputs: DatasetClipInputs, identity: Mapping[str, 
     root = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
     document = json.loads((root / 'scene.json').read_text())
     reference = document['exports']['scene']['inputs']['scene_assembly']
-    return require_current_body_artifacts(root, reference)
+    required: dict[str, Any] = require_current_body_artifacts(root, reference)
+    return required
 
 
 def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
@@ -163,7 +164,10 @@ def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str,
             or component.get("component_class") != f"{SharedCourtSideModule.__module__}.{SharedCourtSideModule.__qualname__}"
             or ref["execution_key"] != document_digest(component)):
         raise ValueError(f"Published court side disagrees with the shared decision or policy: {clip}")
-    PinnedSideInputs.from_store(root).verify_arrays()
+    evidence = expected.get("evidence", "ball")
+    if evidence not in ("ball", "player"):
+        raise ValueError(f"Invalid shared court side evidence for publication ({clip})")
+    PinnedSideInputs.from_store(root, evidence=evidence).verify_arrays()
     return {**_required_body_components(inputs, identity), "court_side": ref}
 
 

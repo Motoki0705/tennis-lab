@@ -414,6 +414,13 @@ class PipelineRuntimeConfig:
     video_court_side: VideoArtifactConfig | None
     court_side_unobservable_policy: str
 
+    def __post_init__(self) -> None:
+        if self.omit_ball_components:
+            requested = [f"execution.{stage}=load" for stage in ("ball_detection", "ball_points", "ball_triangulation")
+                         if self.component_sources.get(stage) == "load"]
+            if requested:
+                raise SemanticConfigurationError(f"Player-only reconstruction omits the requested ball stages ({', '.join(requested)})")
+
     @property
     def court_side_evidence(self) -> EvidenceKind:
         return evidence_kind(self.court_side)

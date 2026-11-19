@@ -19,7 +19,7 @@
     },
     "tennis_scene/configuration.py": {
       "before": "0e6d18ebaa94a5f2847993a5161545e3d31fc7c028104d89435d1302d2270b34",
-      "after": "8223c2accff21cd760357060555f06e6c2f633a550c6c30f0fdf2f5ce88fb67a"
+      "after": "b009c185cb87307219bc261d5e265e7dd1d31352a39a70c74319c676c3e7d060"
     },
     "tennis_scene/pipeline/components/camera_alignment.py": {
       "before": "63e2aee8612bd517088af350ee4fb53d2f11f9fc65444ab591c4d4d450d6ce9b",
@@ -32,6 +32,10 @@
     "tennis_scene/pipeline/components/scene_assembly.py": {
       "before": "4fa818d2ae21dbab1270f1741d3a9e626bfd6b0973042eff8b8590734eeaf2ee",
       "after": "43bd25c85fd0e44898a31459f95d2809d25e0c175647e16ab7e11322614def99"
+    },
+    "tennis_scene/pipeline/dataset_publication.py": {
+      "before": "0a8644d6b86ded0051f9ac1ff286ca75732667f79235f2e6d16f459ac596465e",
+      "after": "de371cade52cea931cbf090023aa44df874feae30c57ae3f763aea9f4912c9b1"
     },
     "tennis_scene/pipeline/definition.py": {
       "before": "b52fe660c227de30e43cfc6d49d8e7f7d035441708431db3146e31c4752b24bf",
@@ -59,7 +63,7 @@
     },
     "tennis_scene/pipeline/video_court_side/artifact.py": {
       "before": "1b9f0820f862fbb354f4dd33aad151361a581430fbbc3b8ea2040faba1381c08",
-      "after": "b167a82b30a9da9d4928b697e7661b15cd8e1bf4f875fd10b5882254c54c5ccd"
+      "after": "33ae1d847bca38273c77709fa6d57b21634a833e4dfe52b2d655232796274404"
     },
     "tennis_scene/pipeline/video_court_side/component.py": {
       "before": "ad717ff85c976e20fdeadba7b1d10a620913ed119865e11d6a490982cb51001f",

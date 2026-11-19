@@ -47,17 +47,19 @@ DLTは外れviewを除外しない。誤った姿勢のcameraを多数決で無�
 
 ## プレーヤーから判定する
 
-`court_side.evidence=player` を指定すると、校正と `player_selection/<camera>` の観測から判定する。
-選手だけの3D再構成を実行するときは、次のoverrideでボール関連の3段を計画から外せる。
+`court_side.evidence=player` を指定すると、camera-local校正と `player_selection/<camera>` の観測だけから判定する。
+`player_association` はこの判定を受け取る後段。ボールの処理範囲は次の設定で選ぶ。
 
-```bash
-court_side.evidence=player \
-ball_detection.enabled=false \
-ball_reconstruction.enabled=false
-```
+| 構成 | `ball_detection.enabled` | `ball_reconstruction.enabled` |
+|---|---|---|
+| 選手の証拠でsideを決め、ボールも推論・再構成する | `true` | `true` |
+| 選手だけを再構成し、ボール関連の3段を省く | `false` | `false` |
 
-各cameraの観測bboxの下端中央を、camera-local校正で地面の `z=0` へ投影する。判定に渡すのは同時刻の点の集合で、
-人物IDや外観特徴に関係なく、各仮説で各camera対の点集合を最小合計距離で一対一に比較する。
+ボールの3段を省く構成では、`execution.ball_detection=load`、`execution.ball_points=load`、`execution.ball_triangulation=load` は設定エラーになる。
+`cache.source=load` は計画内の段を読み出す。
+
+各cameraの観測bboxの下端中央を、camera-local校正で地面の `z=0` へ投影する。
+各仮説で、同一フレームのcamera対ごとに、足元の幾何距離だけを使うHungarian法で点を一対一に対応させる。
 人数が違うcamera対では、観測が少ない方の点数に合わせる。
 中心反転した自分自身との全点対が `symmetry_distance_m` 以内なら、そのcameraの観測は判定から除く。
 複数cameraで点集合の変化が `min_motion_m` 未満の繰り返しも除く。

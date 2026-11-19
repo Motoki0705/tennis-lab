@@ -126,7 +126,20 @@ def republish_second_ball_stream(pipeline, court, store, source):
         pipeline.components[name].result = output
 
 
-def test_shared_player_build_and_load_rejects_a_ball_decision(tmp_path, monkeypatch):
+def test_shared_player_build_load_and_publish_without_ball(tmp_path, monkeypatch):
+    import shutil
+
+    from src.tennis_scene.pipeline.clip_inputs import (
+        resolve_dataset_clip,
+        select_dataset_clips,
+    )
+    from src.tennis_scene.pipeline.dataset_publication import (
+        ANNOTATION_RELATIVE_DIR,
+        completed_annotation,
+        publish_annotation,
+    )
+    from tests.integration.tennis_scene.test_video_court import make_build_request
+
     pipeline, paths, sources, court, ball_pins = prefix_stores(tmp_path, monkeypatch, "agreement")
     ball = build(pipeline, court, ball_pins, tmp_path)
     assert ball.decision.evidence == "ball" and "evidence" not in ball.decision.document()
@@ -176,6 +189,28 @@ def test_shared_player_build_and_load_rejects_a_ball_decision(tmp_path, monkeypa
                          clip_id=CLIPS[0])
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
     assert pipeline.last_receipt["video_court_side"]["evidence"] == "player"
+
+    make_build_request(tmp_path, paths)
+    dataset = tmp_path / "dataset"
+    inputs = resolve_dataset_clip(dataset, select_dataset_clips(dataset, CLIPS[:1])[0])
+    directory = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
+    shutil.copytree(pins[CLIPS[0]].directory, directory)
+    assert not any(path.name.startswith("ball_") for path in (directory / "components").iterdir())
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
+    identity = pipeline.publication_identity()
+    marker = publish_annotation(inputs, scene, pipeline_config_yaml="fixture: true\n", publication_identity=identity)
+    assert completed_annotation(inputs, identity) == marker
+
+    verdicts = identity["video_court_side_clips"]
+    mismatch = {**identity, "video_court_side_clips": {**verdicts, CLIPS[0]: {**verdicts[CLIPS[0]], "evidence": "ball"}}}
+    with pytest.raises(ValueError, match="shared decision or policy"):
+        publish_annotation(inputs, scene, pipeline_config_yaml="", publication_identity=mismatch)
+    selection = directory / pins[CLIPS[0]].references["player_selection/cam0"]["path"]
+    name = next(iter(json.loads(selection.read_text())["arrays"]))
+    with (selection.parent / name).open("ab") as array:
+        array.write(b"corruption")
+    with pytest.raises(ValueError, match="array checksum mismatch"):
+        completed_annotation(inputs, identity)
 
 
 @pytest.mark.parametrize(("kind", "status", "reason"), [
