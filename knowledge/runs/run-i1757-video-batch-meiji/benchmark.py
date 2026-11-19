@@ -12,7 +12,7 @@ import signal
 import subprocess
 import sys
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,13 +21,8 @@ REPO = RUN.parents[2]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(RUN.parent / "run-i1751-runtime-gpu-a5"))
 
-from health_guard import (  # noqa: E402
-    HealthError,
-    query_health,
-    run_variant,
-    utc,
-    write,
-)
+from benchmark_watchdog import supervise_worker  # noqa: E402
+from health_guard import utc, write  # noqa: E402
 
 SPEC = json.loads((RUN / "conditions.json").read_text())
 CLIPS = tuple(SPEC["clips"])
@@ -147,12 +142,23 @@ def compose_config(directory):
 
 
 def host_resources(root):
+    """Take one host snapshot before starting the probe worker."""
     import psutil
 
-    values = subprocess.check_output([
+    command = [
         "nvidia-smi", "--id=0", "--query-gpu=name,memory.total,memory.used,memory.free,driver_version",
         "--format=csv,noheader,nounits",
-    ], text=True, timeout=10)
+    ]
+    query = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        values, error = query.communicate(timeout=10)
+    except subprocess.TimeoutExpired:
+        query.kill()
+        with suppress(subprocess.TimeoutExpired):
+            query.wait(timeout=1)
+        raise
+    if query.returncode != 0:
+        raise RuntimeError(f"Pre-probe host snapshot failed ({query.returncode}): {error.strip()}")
     name, total, used, free, driver = next(csv.reader([values.strip()], skipinitialspace=True))
     memory = psutil.virtual_memory()
     disk = shutil.disk_usage(root)
@@ -207,7 +213,7 @@ def preflight(root, expected_head):
         "commit": expected_head, "conditions_sha256": sha(RUN / "conditions.json"),
         "tolerances_sha256": sha(RUN / "tolerances.json"),
         "input_sha256": sha(root / "input.json"), "publication_identity": identity, "plans": plans,
-        "native_dino": {"path": str(native_dino), "sha256": sha(native_dino)}, "resources": host_resources(root),
+        "native_dino": {"path": str(native_dino), "sha256": sha(native_dino)},
     })
 
 
@@ -414,7 +420,7 @@ def worker(root, phase, condition, identity):
             print(f"Running {condition_name} {regime} in {directory}", flush=True)
             recording = directory / "recording.json"
             with compose_config(directory) as (batch_cfg, pipeline_cfg, runtime):
-                if not probe and condition == "reuse":
+                if not probe and SPEC["conditions"][condition]["entry"] == "run_video_batch":
                     outcomes, recording = batch_run(directory, batch_cfg, identity)
                 else:
                     with InferenceRecorder(recording, devices=(device,), metadata={
@@ -446,22 +452,18 @@ def run(root, condition, action, expected_head):
     directories = [root / "probe"] if action == "probe" else attempts(root)
     for directory in directories:
         require_empty_store(directory / "dataset")
-    if action == "measurement":
-        terminal = read(root / "probe" / "terminal.json")
-        if terminal["commit"] != expected_head or terminal["status"] != "complete":
-            raise RuntimeError("This checkout's resource probe must complete before the benchmark")
     if (phase / "started.json").exists():
         raise FileExistsError(f"A measurement was already started: {phase}")
     phase.mkdir(exist_ok=True)
-    deadline = time.monotonic() + RESOURCES["probe_limit_seconds" if action == "probe" else "condition_limit_seconds"]
-
-    def query():
-        if time.monotonic() > deadline:
-            raise HealthError("time_limit", f"Benchmark time limit elapsed: {action} {condition}")
-        return query_health()
-
-    job = {"commit": expected_head, "job_id": os.environ["TENNIS_RUN_ID"],
-           "condition": condition, "phase": action, "host": host_resources(root)}
+    identity = {"commit": expected_head, "job_id": os.environ["TENNIS_RUN_ID"], "condition": condition}
+    if action == "probe":
+        host = host_resources(root)
+    else:
+        terminal = read(root / "probe" / "terminal.json")
+        if terminal["status"] != "complete" or any(terminal[key] != value for key, value in identity.items()):
+            raise RuntimeError("This condition's resource probe must complete in the same queue job before measurement")
+        host = terminal["host"]
+    job = {**identity, "phase": action, "host": host}
     write(phase / "started.json", job)
     env = {"PYTHONHASHSEED": str(SPEC["seed"]), "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
            "OPENBLAS_NUM_THREADS": "1", "TORCHINDUCTOR_CACHE_DIR": str(phase / "inductor"),
@@ -470,7 +472,9 @@ def run(root, condition, action, expected_head):
                sys.executable, "-B", "-u", str(Path(__file__).resolve()), "worker",
                "--root", str(root), "--condition", condition, "--phase", action, "--expect-commit", expected_head]
     print(f"GPU {action} {condition}: {phase / 'worker.log'}", flush=True)
-    result = run_variant(phase, "worker", command, REPO, query=query)
+    limit_key = "probe_limit_seconds" if action == "probe" else "condition_limit_seconds"
+    result = supervise_worker(phase, command, REPO, heartbeat_timeout=RESOURCES["heartbeat_timeout_seconds"],
+                              time_limit=RESOURCES[limit_key])
     status = result["status"]
     if status == "complete" and action == "measurement" and any(
         outcome["status"] != "generated" for directory in directories

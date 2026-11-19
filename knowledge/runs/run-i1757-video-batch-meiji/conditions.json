@@ -51,6 +51,7 @@
     "min_free_vram_mib": 12288,
     "min_available_ram_gib": 12,
     "min_free_disk_gib": 12,
+    "heartbeat_timeout_seconds": 180,
     "probe_limit_seconds": 480,
     "condition_limit_seconds": 10800
   }

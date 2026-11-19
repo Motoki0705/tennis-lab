@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import math
 import statistics
 from collections import Counter, defaultdict
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -56,14 +54,6 @@ def batch_metrics(events):
     return rows
 
 
-def sample_vram(path, measurement):
-    start = datetime.fromisoformat(measurement["started_at"])
-    end = datetime.fromisoformat(measurement["finished_at"])
-    with path.open() as handle:
-        samples = [int(mib) for stamp, mib in csv.reader(handle) if start <= datetime.fromisoformat(stamp) <= end]
-    return {"samples": len(samples), "device_peak_mib": max(samples, default=None)}
-
-
 def clip_evidence(dataset, record):
     store = (dataset / record.path / ANNOTATION_RELATIVE_DIR).resolve()
     index = read(store / "scene.json") if (store / "scene.json").is_file() else None
@@ -105,7 +95,6 @@ def clip_evidence(dataset, record):
 def summarize(root, destination):
     terminal_path = root / "measurement" / "terminal.json"
     terminal = read(terminal_path) if terminal_path.is_file() else {}
-    vram_path = root / "measurement" / "health" / "worker-memory.csv"
     measurements = []
     for directory in attempts(root):
         path = directory / "measurement.json"
@@ -114,6 +103,9 @@ def summarize(root, destination):
         measurement = read(path)
         recording_path = directory / measurement["recording"]
         trace = read(recording_path)
+        resources = trace["resources"]
+        if trace["status"] == "complete" and not resources.get("cuda"):
+            raise ValueError(f"Completed recorder has no CUDA allocator peaks: {recording_path}")
         events = trace["events"]
         dataset = directory / "dataset"
         records = load_dataset_manifest(dataset).clips
@@ -128,7 +120,7 @@ def summarize(root, destination):
                 len(finished) == len(CLIPS) and all(o["status"] == "generated" for o in measurement["outcomes"].values())
             ),
             "stage_wall_seconds": trace["stage_wall_seconds"], "models": trace["models"], "batches": batch_metrics(events),
-            "resources": {**trace["resources"], **sample_vram(vram_path, measurement)},
+            "resources": resources,
             "intermediate_array_save_seconds": sum(as_seconds(e) for e in events
                                                    if e["attributes"].get("operation") == "artifact_codec"),
             "scene_export_seconds": sum(as_seconds(e) for e in events
