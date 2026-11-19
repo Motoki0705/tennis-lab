@@ -17,7 +17,8 @@ from src.tennis_scene.pipeline.definition import (
 )
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.runner import ComponentRunner
-from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
+from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, unpack_value
 from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
 from src.tennis_scene.pipeline.video_court_side import (
     PinnedSideInputs,
@@ -141,6 +142,19 @@ def test_shared_player_build_and_load_rejects_a_ball_decision(tmp_path, monkeypa
                                     video_court=court, overrides=pipeline.components)
         runner = ComponentRunner(nodes, store)
         runner.run(targets=["court_calibration", *(f"player_selection/{c}" for c in CAMERAS)])
+        if i == 1:
+            # Keep the observed boxes and mask in the old selection layout.
+            # Its unrelated tracking features cannot be decoded as current TrackEvidence.
+            for camera in CAMERAS:
+                node = f"player_selection/{camera}"
+                ref = runner.references[node]
+                saved = store.descriptor(ref)
+                payload = unpack_value(saved["payload"], (store.root / ref.path).parent, saved["arrays"])
+                payload["tracks"]["evidence"] = {"legacy_feature_format": True}
+                store.publish(node, payload, ArtifactCodec(dict), schema=ref.schema, version=2,
+                              identity={"fixture": "legacy_player_selection"},
+                              dependencies={key: ArtifactRef(**value) for key, value in saved["dependencies"].items()},
+                              provenance={"origin": "fixture"})
         pins[source.clip_id] = PinnedSideInputs.from_store(store.root, evidence="player")
         assert not any(node.startswith("ball_") for node in runner.nodes)
     request = build_request(tmp_path, pins)

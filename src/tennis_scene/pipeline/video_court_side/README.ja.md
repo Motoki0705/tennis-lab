@@ -27,7 +27,7 @@ court_side.video_shared.artifact_digest="$SIDE_DIGEST"
 | `ball` | `ball_points/<camera>` | `PinnedSideInputs.from_store(directory).digest` |
 | `player` | `player_selection/<camera>` | `PinnedSideInputs.from_store(directory, evidence="player").digest` |
 
-sourceと入力の版を固定するため、後続sceneを同じstoreに公開してもpinは有効です。1 clipの動画の例です。
+sourceと入力の版を固定するため、後続sceneを同じstoreに公開してもpinは有効です。playerのpinでは、保存済みの選別v2とv3から観測bboxとmaskを読みます。1 clipの動画の例です。
 
 ```json
 {

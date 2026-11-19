@@ -27,7 +27,7 @@ court_side.video_shared.artifact_digest="$SIDE_DIGEST"
 | `ball` | `ball_points/<camera>` | `PinnedSideInputs.from_store(directory).digest` |
 | `player` | `player_selection/<camera>` | `PinnedSideInputs.from_store(directory, evidence="player").digest` |
 
-该摘要包含视频来源和输入组件的版本，同一目录后续发布的场景可以沿用它。下面是只有一个片段的视频示例。
+该摘要包含视频来源和输入组件的版本，同一目录后续发布的场景可以沿用它。球员证据可从已保存的筛选产物 v2 和 v3 读取观测框及掩码。下面是只有一个片段的视频示例。
 
 ```json
 {

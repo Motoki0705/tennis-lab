@@ -36,6 +36,7 @@ The request lists the stores for **every clip** in the shared court. Every store
 | `player` | `player_selection/<camera>` | `PinnedSideInputs.from_store(directory, evidence="player").digest` |
 
 The revision pin covers the source and active input references. Publishing a downstream scene in the same store leaves the pin valid.
+Player pins can read the observed boxes and masks from saved selection versions 2 and 3.
 A one-clip-video request has this shape.
 
 ```json

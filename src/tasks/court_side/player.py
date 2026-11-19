@@ -45,6 +45,8 @@ def _informative_frames(
         point_sets = {}
         for index, view in enumerate(views):
             points = view.xy_m[frame, view.observed[frame]]
+            # A distance tie may admit different matches. Use a geometric order for ties.
+            points = points[np.lexsort((points[:, 1], points[:, 0]))]
             if len(points) and (_matched_distances(points, -points) > config.symmetry_distance_m).any():
                 point_sets[index] = points
         if len(point_sets) < 2:

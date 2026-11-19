@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Collection, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -19,13 +19,13 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 )
 from src.tennis_scene.pipeline.components.court_side import (
     CourtSideInput,
+    PlayerBoxObservations,
     PlayerCourtSideInput,
 )
 from src.tennis_scene.pipeline.components.player_selection import PlayerSelectionModule
 from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource
 from src.tennis_scene.pipeline.input_assembly.reconstruction import (
     CourtSideInputAssembler,
-    PlayerCourtSideInputAssembler,
 )
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef
 from src.tennis_scene.pipeline.storage.codec import (
@@ -101,27 +101,31 @@ class PinnedSideInputs:
 
     def assemble(self) -> CourtSideInput | PlayerCourtSideInput:
         artifacts = {}
-        selection = PlayerSelectionModule.io
-        if self.evidence == "player":
-            observation_schema = (selection.output_schema, selection.version)
-            observation_type, prefix = selection.output_type, "tracks"
-        else:
-            observation_schema = (BALL_POINTS_PORT.schema, BALL_POINTS_PORT.version)
-            observation_type, prefix = BallPointsOutput, "ball"
+        player_boxes = {}
         for node, record in self.references.items():
             ref = ArtifactRef(**record)
             descriptor = read_component_descriptor(self.directory, record, node=node, source_sha256=self.source_digest)
+            directory = (self.directory / ref.path).parent
+            payload, arrays = descriptor["payload"], descriptor["arrays"]
             is_calibration = node == "court_calibration"
-            port = ("local_court_calibration", 1) if is_calibration else observation_schema
+            if not is_calibration and self.evidence == "player":
+                selection = PlayerSelectionModule.io
+                # Both selection versions preserve the same observed box fields.
+                # Their tracking feature contracts are independent of this geometry.
+                if ref.schema != selection.output_schema or ref.version not in {2, 3}:
+                    raise ValueError(f"Invalid court side input schema: {node}")
+                tracks = {field.name: payload["tracks"][field.name] for field in fields(PlayerBoxObservations)}
+                player_boxes[node.split("/")[1]] = ArtifactCodec(PlayerBoxObservations).load(tracks, directory, arrays)
+                continue
+            port = ("local_court_calibration", 1) if is_calibration else (BALL_POINTS_PORT.schema, BALL_POINTS_PORT.version)
             if (ref.schema, ref.version) != port:
                 raise ValueError(f"Invalid court side input schema: {node}")
-            codec: ArtifactCodec[Any] = ArtifactCodec(CourtCalibrationOutput if is_calibration else observation_type)
-            key = "calibration" if is_calibration else f"{prefix}_{node.split('/')[1]}"
-            artifacts[key] = codec.load(descriptor["payload"], (self.directory / ref.path).parent, descriptor["arrays"])
-        context = AssemblyContext(self.source)
+            codec: ArtifactCodec[Any] = ArtifactCodec(CourtCalibrationOutput if is_calibration else BallPointsOutput)
+            key = "calibration" if is_calibration else f"ball_{node.split('/')[1]}"
+            artifacts[key] = codec.load(payload, directory, arrays)
         if self.evidence == "player":
-            return PlayerCourtSideInputAssembler().assemble(context, artifacts)
-        return CourtSideInputAssembler(0.0).assemble(context, artifacts)
+            return PlayerCourtSideInput(self.source, artifacts["calibration"], player_boxes)
+        return CourtSideInputAssembler(0.0).assemble(AssemblyContext(self.source), artifacts)
 
 
 def selected_evidence_clips(members: Collection[str], requested: Sequence[str] | None) -> tuple[str, ...]:
