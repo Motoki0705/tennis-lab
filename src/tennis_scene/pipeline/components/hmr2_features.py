@@ -2,23 +2,43 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator, Sequence
+from contextlib import closing
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.submodules.models import Hmr2FeatureExtractor, ImageFeatureRequest
+from src.submodules.models import (
+    Hmr2FeatureExtractor,
+    ImageFeatureRequest,
+    iter_frame_person_crops,
+)
+from src.tennis_scene.pipeline.batching import (
+    BatchAdapter,
+    BatchAddress,
+    BatchSource,
+    BatchUnit,
+    SourceMemory,
+)
 from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionOutput,
 )
-from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
+from src.tennis_scene.pipeline.contracts import (
+    ClipSource,
+    ComponentIO,
+    InputPort,
+    SourceVideo,
+)
 from src.tennis_scene.pipeline.inference_runtime import (
     InferenceComponent,
     ModelBorrower,
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.utils.video import OpenCVVideoFrameReader
 
 
 @dataclass(frozen=True)
@@ -91,6 +111,8 @@ def validate_body_selection(source: ClipSource, selection: BodyViewSelectionOutp
 
 
 class HMR2FeaturesModule(InferenceComponent[HMR2FeaturesInput, HMR2FeaturesOutput]):
+    batch_model = "hmr2"
+    batch_alias = "features"
     io = ComponentIO("hmr2_features", HMR2FeaturesInput, HMR2FeaturesOutput,
         {"selection": InputPort("body_view_selection")}, "hmr2_features")
 
@@ -124,3 +146,83 @@ class HMR2FeaturesModule(InferenceComponent[HMR2FeaturesInput, HMR2FeaturesOutpu
             bodies.append(HMR2BodyFeatures(selected.person_id, selected.camera_id,
                 inputs.source.video(selected.camera_id).sha256, tuple(segments)))
         return HMR2FeaturesOutput(inputs.source.clip_id, tuple(bodies))
+
+    def batch_adapter(self) -> BatchAdapter | None:
+        return self if self.enabled else None
+
+    def open_batch(self, clip_id: str, inputs: HMR2FeaturesInput, models: ModelBorrower,
+                   memory: SourceMemory) -> BatchSource:
+        source, selection = inputs.source, inputs.selection
+        if clip_id != source.clip_id:
+            raise ValueError("HMR2 batch clip does not match the body selection")
+        validate_body_selection(source, selection)
+        request_rows = sum(len(request.source_frames) for body in selection.selections for request in body.requests)
+        memory.reserve(request_rows * (1024 * 5 + 544))
+        if request_rows:
+            memory.reserve(source.size[0] * source.size[1] * 10 + 3 * 256 * 256 * 8)
+        routes: dict[str, list[tuple[int, int, int, NDArray[np.float32]]]] = {}
+        features: dict[tuple[int, int], NDArray[np.float32]] = {}
+        written: dict[tuple[int, int], NDArray[np.bool_]] = {}
+        requests = {}
+        cameras = {}
+        for body in selection.selections:
+            cameras[body.person_id] = body.camera_id
+            for segment, request in enumerate(body.requests):
+                key = (body.person_id, segment)
+                requests[key] = request
+                features[key] = np.empty((len(request.source_frames), 1024), np.float32)
+                written[key] = np.zeros(len(request.source_frames), bool)
+                routes.setdefault(body.camera_id, []).extend(
+                    (int(frame), body.person_id, segment, box)
+                    for frame, box in zip(request.source_frames, request.boxes_xys, strict=True))
+
+        def frames(video: SourceVideo) -> Generator[tuple[int, NDArray[np.uint8]], None, None]:
+            for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames):
+                if packet.frame.shape != (video.height, video.width, 3) or packet.frame.dtype != np.uint8:
+                    raise ValueError("HMR2 video frame size or dtype changed")
+                yield packet.index, packet.frame
+
+        def units() -> Generator[BatchUnit, None, None]:
+            for camera, rows in routes.items():
+                video = source.video(camera)
+                rows.sort(key=lambda row: row[:3])
+                frame_indices = torch.tensor([row[0] for row in rows], dtype=torch.int64)
+                boxes = torch.from_numpy(np.stack([row[3] for row in rows]))
+
+                with closing(frames(video)) as decoded, closing(
+                    iter_frame_person_crops(decoded, boxes, frame_indices, batch_size=1)
+                ) as crops:
+                    for (frame, person, segment, _), (pixels, _) in zip(rows, crops, strict=True):
+                        yield BatchUnit(BatchAddress(clip_id, camera, frame, person_id=person, segment=segment),
+                                        "imagenet256", pixels, 3 * 256 * 256 * 4 * 3 + 1024 * 8)
+
+        def write(unit: BatchUnit, value: NDArray[np.float32]) -> None:
+            address = unit.address
+            if address.person_id is None or address.segment is None:
+                raise RuntimeError("HMR2 requires person and segment identities")
+            key = address.person_id, address.segment
+            frames = requests[key].source_frames
+            index = int(np.searchsorted(frames, address.source_frame))
+            if (cameras[address.person_id] != address.camera_id or index == len(frames)
+                    or frames[index] != address.source_frame or written[key][index]):
+                raise ValueError(f"HMR2 batch returned an unknown or duplicate body frame: {address}")
+            features[key][index] = value
+            written[key][index] = True
+
+        def finish() -> HMR2FeaturesOutput:
+            if not all(mask.all() for mask in written.values()):
+                raise ValueError("HMR2 batch did not write every selected body frame")
+            return HMR2FeaturesOutput(clip_id, tuple(
+                HMR2BodyFeatures(body.person_id, body.camera_id, source.video(body.camera_id).sha256, tuple(
+                    HMR2FeatureSegment(segment, request.source_frames, features[body.person_id, segment])
+                    for segment, request in enumerate(body.requests)))
+                for body in selection.selections))
+
+        return BatchSource(units(), write, finish)
+
+    def infer_batch(self, units: Sequence[BatchUnit], models: ModelBorrower) -> Sequence[Any]:
+        model: Hmr2FeatureExtractor = models.borrow(self.batch_alias)
+        result = model.predict_crops(torch.cat([unit.payload for unit in units])).features.detach().cpu().numpy()
+        if result.shape != (len(units), 1024) or result.dtype != np.float32:
+            raise ValueError("HMR2 model changed the feature row contract")
+        return list(result)

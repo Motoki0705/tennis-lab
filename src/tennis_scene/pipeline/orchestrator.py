@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from src.tasks.annotation.local_controller import LocalAnnotationController
     from src.tasks.base.annotation.paths import AnnotationLayout
     from src.tennis_scene.configuration import PipelineRuntimeConfig
+    from src.tennis_scene.pipeline.batching import SourceMemory
     from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
     from src.tennis_scene.pipeline.video_court_side import VideoCourtSideArtifact
 
@@ -134,7 +135,8 @@ class TennisSceneOrchestrator:
             self._publication_assets.assert_unchanged()
 
     def finalize_clip(self, executor: PlanExecutor, clip_id: str, snapshot: InputSnapshot, *,
-                      video_court: VideoCourtArtifact | None, video_court_side: VideoCourtSideArtifact | None) -> tuple[SceneResult, Path]:
+                      video_court: VideoCourtArtifact | None, video_court_side: VideoCourtSideArtifact | None,
+                      memory: SourceMemory | None = None) -> tuple[SceneResult, Path]:
         """Verify the exact inputs/shared products of this plan immediately before export."""
         snapshot.assert_unchanged()
         if video_court is not None:
@@ -143,8 +145,7 @@ class TennisSceneOrchestrator:
             video_court_side.verify()
         if self._publication_assets is not None:
             self._publication_assets.assert_unchanged()
-        scene, archive = executor.finalize_clip(clip_id)
-        return scene, archive
+        return executor.finalize_clip(clip_id, memory=memory)
 
     def prepare_video_court(self) -> VideoCourtArtifact | None:
         from src.tennis_scene.pipeline.video_court import prepare_video_court

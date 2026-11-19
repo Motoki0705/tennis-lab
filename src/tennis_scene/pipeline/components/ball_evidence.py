@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
@@ -13,6 +14,10 @@ from src.tasks.ball_detection.model_io.contracts import (
     BallPrediction,
 )
 from src.utils.geometry.keypoints import denormalize_grid_keypoints
+
+if TYPE_CHECKING:
+    from src.tennis_scene.pipeline.batching import SourceMemory
+    from src.tennis_scene.pipeline.contracts import SourceVideo
 
 
 @dataclass(frozen=True)
@@ -92,39 +97,70 @@ class BallHeatmapEvidence:
             raise ValueError("Invalid ball evidence window provenance")
 
 
-@dataclass(frozen=True)
-class SelectedBallFrame:
-    """An atomic selection: point, map and candidates always use one window."""
+class BallWindowEvidence:
+    """Copy each selected frame atomically. No reference to a batch is retained."""
 
-    prediction: BallPrediction
-    batch_index: int
-    time_index: int
-    window_start: int
+    def __init__(self, video: SourceVideo, *, aggregation: str, tail_policy: str,
+                 memory: SourceMemory | None = None) -> None:
+        self.video, self.aggregation, self.tail_policy, self.memory = video, aggregation, tail_policy, memory
+        if memory is not None:
+            memory.reserve(video.num_frames * 32)
+        self.starts: NDArray[np.int64] = np.full(video.num_frames, -1, dtype=np.int64)
+        self.times: NDArray[np.int64] = np.empty(video.num_frames, dtype=np.int64)
+        self.config: BallCandidateConfig | None = None
+        self.arrays: dict[str, NDArray] = {}
 
-    @property
-    def score(self) -> float:
-        return float(self.prediction.confidence[self.batch_index, self.time_index])
+    def add(self, frames: Sequence[int], start: int, prediction: BallPrediction, batch_row: int) -> None:
+        candidates = prediction.candidates
+        values = {name: tensor[batch_row].numpy() for name, tensor in {
+            "uv": prediction.coords, "score": prediction.confidence, "heatmaps": prediction.heatmaps,
+            "candidate_uv": candidates.coords, "candidate_scores": candidates.scores,
+            "candidate_valid": candidates.valid, "candidate_cells": candidates.cells,
+            "patches": candidates.patches, "patch_valid": candidates.patch_valid,
+        }.items()}
+        if any(len(array) != len(frames) for array in values.values()):
+            raise ValueError("Ball prediction does not preserve the window's time axis")
+        if self.config is None:
+            self.config = candidates.config
+            if self.memory is not None:
+                # Selected arrays, plus the largest grid/candidate validation
+                # arrays and restored pixel coordinates at publication.
+                size = sum(value[0].nbytes for value in values.values())
+                validation = values["heatmaps"][0].size + values["patches"][0].size * 16
+                self.memory.reserve(self.video.num_frames * (int(size + validation) + 128))
+            self.arrays = {name: np.empty((self.video.num_frames, *value.shape[1:]), dtype=value.dtype)
+                           for name, value in values.items()}
+        elif self.config != candidates.config or any(
+            (value.shape[1:], value.dtype) != (self.arrays[name].shape[1:], self.arrays[name].dtype)
+            for name, value in values.items()
+        ):
+            raise ValueError("Ball candidate config or grid changed within a source video")
 
+        for time, frame in enumerate(frames):
+            old_start = self.starts[frame]
+            if old_start >= 0:
+                if self.aggregation == "nearest_window_centre_then_earlier_start":
+                    mid = len(frames) - 1
+                    if (abs(2 * time - mid), start) >= (abs(2 * self.times[frame] - mid), old_start):
+                        continue
+                elif self.aggregation == "max_score" and not values["score"][time] >= self.arrays["score"][frame]:
+                    continue
+            self.starts[frame], self.times[frame] = start, time
+            for name, value in values.items():
+                self.arrays[name][frame] = value[time]
 
-def assemble_ball_evidence(
-    frames: Sequence[SelectedBallFrame], *, source_size_wh: tuple[int, int],
-) -> BallHeatmapEvidence:
-    """Stack selected task outputs without thresholding, averaging or re-decoding."""
-    if not frames:
-        raise ValueError("Ball evidence requires at least one predicted frame")
-    config = frames[0].prediction.candidates.config
-    if any(frame.prediction.candidates.config != config for frame in frames):
-        raise ValueError("Ball candidate config changed within a source video")
-    coords = np.stack([f.prediction.candidates.coords[f.batch_index, f.time_index].numpy() for f in frames])
-    return BallHeatmapEvidence(
-        source_size_wh=source_size_wh, config=config,
-        heatmaps=np.stack([f.prediction.heatmaps[f.batch_index, f.time_index].numpy() for f in frames]),
-        candidate_uv_px=denormalize_grid_keypoints(coords, *source_size_wh),
-        candidate_scores=np.stack([f.prediction.candidates.scores[f.batch_index, f.time_index].numpy() for f in frames]),
-        candidate_valid=np.stack([f.prediction.candidates.valid[f.batch_index, f.time_index].numpy() for f in frames]),
-        candidate_cells=np.stack([f.prediction.candidates.cells[f.batch_index, f.time_index].numpy() for f in frames]),
-        patches=np.stack([f.prediction.candidates.patches[f.batch_index, f.time_index].numpy() for f in frames]),
-        patch_valid=np.stack([f.prediction.candidates.patch_valid[f.batch_index, f.time_index].numpy() for f in frames]),
-        selected_window_start=np.asarray([f.window_start for f in frames], dtype=np.int64),
-        selected_time_index=np.asarray([f.time_index for f in frames], dtype=np.int64),
-    )
+    def finish(self) -> tuple[NDArray[np.float32], NDArray[np.float32], BallHeatmapEvidence]:
+        covered = int(np.count_nonzero(self.starts >= 0))
+        if covered != self.video.num_frames or self.config is None:
+            raise ValueError(f"Ball detector covered {covered} of {self.video.num_frames} frames of {self.video.camera_id}; "
+                             f"tail_policy={self.tail_policy!r} cannot produce the complete source timeline")
+        arrays = self.arrays
+        size = self.video.width, self.video.height
+        evidence = BallHeatmapEvidence(
+            source_size_wh=size, config=self.config, heatmaps=arrays["heatmaps"],
+            candidate_uv_px=denormalize_grid_keypoints(arrays["candidate_uv"], *size),
+            candidate_scores=arrays["candidate_scores"], candidate_valid=arrays["candidate_valid"],
+            candidate_cells=arrays["candidate_cells"], patches=arrays["patches"], patch_valid=arrays["patch_valid"],
+            selected_window_start=self.starts, selected_time_index=self.times,
+        )
+        return arrays["uv"], arrays["score"], evidence

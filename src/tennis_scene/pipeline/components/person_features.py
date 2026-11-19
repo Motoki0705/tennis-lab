@@ -1,15 +1,21 @@
 """Camera-local, row-addressed inference artifacts, separate from CPU tracking."""
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Generator, Mapping, Sequence
+from contextlib import closing
 from dataclasses import dataclass
 from hashlib import sha256
 from typing import Any
 
 import numpy as np
+import torch
 from numpy.typing import NDArray
 
-from src.submodules.models import Pose2DFrameSequenceRequest, ViTPosePose2D
+from src.submodules.models import (
+    Pose2DFrameSequenceRequest,
+    ViTPosePose2D,
+    iter_frame_person_crops,
+)
 from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.tasks.person_tracking.features import (
     DEFAULT_CONFIG,
@@ -31,6 +37,13 @@ from src.tennis_scene.pipeline.appearance_media import (
     require_current_appearance_crop,
 )
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
+from src.tennis_scene.pipeline.batching import (
+    BatchAdapter,
+    BatchAddress,
+    BatchSource,
+    BatchUnit,
+    SourceMemory,
+)
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
 from src.tennis_scene.pipeline.inference_runtime import (
@@ -176,7 +189,8 @@ class PersonAppearanceFeaturesInput:
     expected_decoder: OpenCVDecodeIdentity | None = None
 
 
-def _frames(video: SourceVideo, expected_decoder: OpenCVDecodeIdentity | None = None) -> Iterator[tuple[int, NDArray[np.uint8]]]:
+def _frames(video: SourceVideo, expected_decoder: OpenCVDecodeIdentity | None = None
+            ) -> Generator[tuple[int, NDArray[np.uint8]], None, None]:
     count = 0
     for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames, expected_decoder=expected_decoder):
         if packet.index != count:
@@ -190,6 +204,8 @@ def _frames(video: SourceVideo, expected_decoder: OpenCVDecodeIdentity | None = 
 
 
 class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPoseFeaturesOutput]):
+    batch_model = 'vitpose'
+    batch_alias = 'pose'
     io = ComponentIO('person_pose_features', PersonFeaturesInput, PersonPoseFeaturesOutput,
                      {'detections': InputPort('person_detections', 2)}, 'person_pose_features', version=2)
 
@@ -222,7 +238,6 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
                 raise ValueError('Feature boxes must have positive area')
             # Only boxes/indices and numeric outputs span the camera. The model's
             # shared crop iterator retains one decoded image and one crop batch.
-            import torch
             indices: NDArray[np.int64] = np.repeat(np.arange(video.num_frames, dtype=np.int64), np.diff(detections.frame_offsets))
             frames = _frames(video)
             model: ViTPosePose2D = models.borrow('pose')
@@ -242,8 +257,70 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
         return PersonPoseFeaturesOutput(video.camera_id, detections.frame_offsets, rows, poses,
                                         identity, document_digest(self.cache_identity()))
 
+    def batch_adapter(self) -> BatchAdapter | None:
+        return self if self.enabled else None
+
+    def open_batch(self, clip_id: str, inputs: PersonFeaturesInput, models: ModelBorrower,
+                   memory: SourceMemory) -> BatchSource:
+        video, detections = inputs.video, inputs.detections
+        rows = require_alignment(video, detections)
+        identity = models.identity(self.batch_alias)
+        # The crop iterator holds a decoded frame, RGB/half-resolution images
+        # and one normalized crop while suspended. Track result rows as well.
+        if len(rows):
+            memory.reserve(video.height * video.width * 10 + 3 * 256 * 256 * 8)
+        memory.reserve(len(rows) * (17 * 3 * 5 + 72))
+        poses: NDArray[np.float32] = np.empty((len(rows), 17, 3), np.float32)
+        written: NDArray[np.bool_] = np.zeros(len(rows), bool)
+        flip = self.people.runtime.vitpose.flip_test
+        crop_bytes = 3 * 256 * 256 * 4
+        heatmap_bytes = 17 * 64 * 48 * 4
+        item_bytes = crop_bytes * (7 if flip else 4) + heatmap_bytes * (5 if flip else 2)
+
+        def units() -> Generator[BatchUnit, None, None]:
+            if not len(rows):
+                return
+            if (detections.boxes_xyxy[:, 2:] <= detections.boxes_xyxy[:, :2]).any():
+                raise ValueError('Feature boxes must have positive area')
+            indices: NDArray[np.int64] = np.repeat(np.arange(video.num_frames, dtype=np.int64), np.diff(detections.frame_offsets))
+            frames = _frames(video)
+            crops = iter_frame_person_crops(frames, pose_boxes(detections.boxes_xyxy, self.config),
+                                            torch.from_numpy(indices), batch_size=1)
+            with closing(frames), closing(crops):
+                for frame, row, crop in zip(indices, rows, crops, strict=True):
+                    yield BatchUnit(BatchAddress(clip_id, video.camera_id, int(frame), int(row)),
+                                    'imagenet256', crop, item_bytes)
+                # Preserve validation of empty trailing frames.
+                for _ in frames:
+                    pass
+
+        def write(unit: BatchUnit, result: NDArray[np.float32]) -> None:
+            index = _detection_index(rows, detections.frame_offsets, unit.address)
+            if written[index] or not np.isfinite(result).all():
+                raise ValueError(f'Duplicate or nonfinite pose for {unit.address}')
+            poses[index] = result
+            written[index] = True
+
+        def finish() -> PersonPoseFeaturesOutput:
+            if not written.all():
+                raise ValueError('Pose batch did not write every detection row')
+            return PersonPoseFeaturesOutput(video.camera_id, detections.frame_offsets, rows, poses, identity,
+                                            document_digest(self.cache_identity()))
+
+        return BatchSource(units(), write, finish)
+
+    def infer_batch(self, units: Sequence[BatchUnit], models: ModelBorrower) -> Sequence[Any]:
+        pose: ViTPosePose2D = models.borrow(self.batch_alias)
+        images, boxes = zip(*(unit.payload for unit in units), strict=True)
+        result = pose.predict_crops(torch.cat(images), torch.cat(boxes)).keypoints.detach().cpu().numpy()
+        if result.shape != (len(units), 17, 3) or result.dtype != np.float32:
+            raise ValueError('Pose model changed the detection row contract')
+        return list(result)
+
 
 class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeaturesInput, PersonAppearanceFeaturesOutput]):
+    batch_model = 'clip'
+    batch_alias = 'encoder'
     io = ComponentIO('person_appearance_features', PersonAppearanceFeaturesInput, PersonAppearanceFeaturesOutput,
                      {'detections': InputPort('person_detections', 2)}, APPEARANCE_FEATURES_PORT.schema, APPEARANCE_FEATURES_PORT.version)
 
@@ -287,21 +364,84 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
             raise ValueError('Disabled appearance features require empty detections')
         if len(rows):
             model: AppearanceEncoder = models.borrow('encoder')
-            if model.name != CLIP_ENCODER:
-                raise ValueError('Appearance encoder differs from the configured CLIP profile')
-            encoder = UnpromptedEncoder(model, CLIP_DIMENSION)
+            encoder = _appearance_encoder(model)
             row_indices = {int(row): i for i, row in enumerate(rows)}
-            def crops() -> Iterator[AppearanceCrop]:
-                for frame, image in _frames(video, inputs.expected_decoder):
-                    start, end = detections.frame_offsets[frame:frame + 2]
-                    # Same input validation as FeatureExtractor, before cropping.
-                    DetectionFeatures(frame, rows[start:end], detections.boxes_xyxy[start:end], detections.confidence[start:end],
-                        None, embeddings[start:end], valid[start:end])
-                    if self.capture_frame_sha256 and start != end:
-                        frame_sha256[frame] = appearance_image_digest(image)
-                    yield from iter_appearance_crops(frame, image, rows[start:end], detections.boxes_xyxy[start:end],
-                                                     None, encoder, self.config)
-            for batch in appearance_batches(crops(), self.config.appearance_batch_size):
-                scatter_appearance(batch, infer_appearance(batch, encoder), row_indices, embeddings, valid)
+            with closing(self._crops(inputs, rows, embeddings, valid, frame_sha256, encoder)) as crops:
+                for batch in appearance_batches(crops, self.config.appearance_batch_size):
+                    scatter_appearance(batch, infer_appearance(batch, encoder), row_indices, embeddings, valid)
         return PersonAppearanceFeaturesOutput(video.camera_id, detections.frame_offsets, rows, embeddings, valid, CLIP_ENCODER, identity,
                                                document_digest(self.preprocessing_settings()), frame_sha256)
+
+    def batch_adapter(self) -> BatchAdapter | None:
+        return self if self.enabled else None
+
+    def open_batch(self, clip_id: str, inputs: PersonAppearanceFeaturesInput, models: ModelBorrower,
+                   memory: SourceMemory) -> BatchSource:
+        video, detections = inputs.video, inputs.detections
+        rows = require_alignment(video, detections)
+        identity = models.identity(self.batch_alias)
+        memory.reserve(len(rows) * (CLIP_DIMENSION * 12 + 128)
+                       + video.num_frames * _IMAGE_DIGEST_SIZE)
+        if len(rows):
+            memory.reserve(video.height * video.width * 9)
+        embeddings: NDArray[np.float32] = np.zeros((len(rows), CLIP_DIMENSION), np.float32)
+        valid: NDArray[np.bool_] = np.zeros(len(rows), bool)
+        frame_sha256 = np.zeros((video.num_frames, _IMAGE_DIGEST_SIZE), np.uint8)
+
+        def units() -> Generator[BatchUnit, None, None]:
+            if not len(rows):
+                return
+            encoder = _appearance_encoder(models.borrow(self.batch_alias))
+            with closing(self._crops(inputs, rows, embeddings, valid, frame_sha256, encoder)) as crops:
+                for crop in crops:
+                    item_bytes = crop.pixels.numel() * crop.pixels.element_size() * 5 + CLIP_DIMENSION * 12
+                    yield BatchUnit(BatchAddress(clip_id, video.camera_id, crop.frame, crop.row),
+                                    tuple(crop.pixels.shape), crop, item_bytes)
+
+        def write(unit: BatchUnit, result: NDArray[np.float32]) -> None:
+            index = _detection_index(rows, detections.frame_offsets, unit.address)
+            if valid[index]:
+                raise ValueError(f'Appearance source row was inferred more than once: {unit.address}')
+            embeddings[index] = result
+            valid[index] = True
+
+        def finish() -> PersonAppearanceFeaturesOutput:
+            return PersonAppearanceFeaturesOutput(video.camera_id, detections.frame_offsets, rows, embeddings, valid,
+                                                   CLIP_ENCODER, identity, document_digest(self.preprocessing_settings()),
+                                                   frame_sha256)
+
+        return BatchSource(units(), write, finish)
+
+    def infer_batch(self, units: Sequence[BatchUnit], models: ModelBorrower) -> Sequence[Any]:
+        encoder = _appearance_encoder(models.borrow(self.batch_alias))
+        return list(infer_appearance([unit.payload for unit in units], encoder))
+
+    def _crops(self, inputs: PersonAppearanceFeaturesInput, rows: NDArray[np.int64],
+               embeddings: NDArray[np.float32], valid: NDArray[np.bool_], frame_sha256: NDArray[np.uint8],
+               encoder: UnpromptedEncoder) -> Generator[AppearanceCrop, None, None]:
+        detections = inputs.detections
+        with closing(_frames(inputs.video, inputs.expected_decoder)) as frames:
+            for frame, image in frames:
+                start, end = detections.frame_offsets[frame:frame + 2]
+                DetectionFeatures(frame, rows[start:end], detections.boxes_xyxy[start:end], detections.confidence[start:end],
+                    None, embeddings[start:end], valid[start:end])
+                if self.capture_frame_sha256 and start != end:
+                    frame_sha256[frame] = appearance_image_digest(image)
+                yield from iter_appearance_crops(frame, image, rows[start:end], detections.boxes_xyxy[start:end],
+                                                 None, encoder, self.config)
+
+
+def _detection_index(rows: NDArray[np.int64], offsets: NDArray[np.int64], address: BatchAddress) -> int:
+    if address.detection_row is None:
+        raise RuntimeError('A person feature requires a source detection row')
+    index = int(np.searchsorted(rows, address.detection_row))
+    start, end = offsets[address.source_frame:address.source_frame + 2]
+    if not start <= index < end or rows[index] != address.detection_row:
+        raise ValueError(f'Feature batch returned an unknown source detection: {address}')
+    return index
+
+
+def _appearance_encoder(model: AppearanceEncoder) -> UnpromptedEncoder:
+    if model.name != CLIP_ENCODER:
+        raise ValueError('Appearance encoder differs from the configured CLIP profile')
+    return UnpromptedEncoder(model, CLIP_DIMENSION)

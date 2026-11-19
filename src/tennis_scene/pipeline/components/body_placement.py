@@ -98,6 +98,19 @@ class BodyPlacementModule(InferenceComponent[BodyPlacementInput, BodyPlacementOu
             self.models.runtime.device, "float32", {}, lambda: SmplGeometry(self.models),
             initialize=lambda body: body.load(), release=lambda body: body.unload())}
 
+    def estimate_working_bytes(self, inputs: BodyPlacementInput) -> int:
+        if (not self.enabled or not inputs.recovered.bodies
+                or inputs.alignment.geometry is None or inputs.skeleton.skeleton is None):
+            return 0
+        players, views, frames = inputs.grouped.raw_indices.shape
+        # The clip's stored SMPL vertices, current/previous player vertices
+        # and float64 canonical/placement temporaries. SMPL-X conversion itself
+        # is performed in blocks of at most 32 frames.
+        smpl = (players + 8) * frames * 6890 * 3 * 4
+        smplx = min(frames, 32) * 10475 * 3 * 8 * 4
+        observations = players * views * frames * 17 * 64
+        return int(smpl + smplx + observations)
+
     def process_with_models(self, inputs: BodyPlacementInput, models: ModelBorrower) -> BodyPlacementOutput:
         geometry, skeleton = inputs.alignment.geometry, inputs.skeleton.skeleton
         if geometry is None or skeleton is None:

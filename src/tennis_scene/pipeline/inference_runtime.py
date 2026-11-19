@@ -6,16 +6,19 @@ import gc
 import json
 import traceback
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Generic, Literal, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Literal, Protocol, TypeVar
 
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.errors import is_clip_failure
 from src.utils.checksum import dual_sha256
 from src.utils.inference_recording import model_event
+
+if TYPE_CHECKING:
+    from src.tennis_scene.pipeline.batching import BatchAdapter
 
 ModelT = TypeVar("ModelT")
 InputT = TypeVar("InputT")
@@ -162,7 +165,7 @@ class InferenceRuntime:
         self._keys: dict[NodeKey, dict[str, ModelKey]] = {}
         self._assets: dict[Path, tuple[tuple[int, ...], str]] = {}
         self._expected_assets = {node: dict(assets) for node, assets in (expected_assets or {}).items()}
-        self._active: NodeKey | None = None
+        self._active: frozenset[NodeKey] = frozenset()
         self._closed = False
         self._load_failed = False
         self._serial = 0
@@ -230,7 +233,22 @@ class InferenceRuntime:
                          if self._declares_key(node, alias, spec, key)} for node in ready}
         return min(ready, key=lambda node: (
             0 if shared[node] else 1 if not resources[node] else 2,
-            len(resources[node]) - len(shared[node]), ready.index(node)))
+            len(resources[node]) - len(shared[node])))
+
+    def batch_affinity(self, node: NodeKey, alias: str) -> tuple[Any, ...]:
+        """Shortlist peers before deciding their cache status or opening sources."""
+        return self._remaining[node][alias].scheduling_key
+
+    @contextmanager
+    def batch(self, nodes: Sequence[NodeKey]) -> Iterator[dict[NodeKey, ModelBorrower]]:
+        """Borrow for several ready nodes; the executor retires each independently."""
+        if self._closed or self._active or any(node not in self._remaining for node in nodes):
+            raise RuntimeError("Cannot enter inference batch")
+        self._active = frozenset(nodes)
+        try:
+            yield {node: ModelBorrower(self, node) for node in nodes}
+        finally:
+            self._active = frozenset()
 
     def __enter__(self) -> InferenceRuntime:
         if self._closed:
@@ -244,9 +262,9 @@ class InferenceRuntime:
 
     @contextmanager
     def node(self, node: NodeKey, *, continue_on_error: bool = False) -> Iterator[ModelBorrower]:
-        if self._closed or self._active is not None or node not in self._remaining:
+        if self._closed or self._active or node not in self._remaining:
             raise RuntimeError(f"Cannot enter inference node: {node}")
-        self._active = node
+        self._active = frozenset({node})
         try:
             yield ModelBorrower(self, node)
         except BaseException as error:
@@ -259,7 +277,7 @@ class InferenceRuntime:
         else:
             self.discard((node,))
         finally:
-            self._active = None
+            self._active = frozenset()
 
     def discard(self, nodes: Iterator[NodeKey] | tuple[NodeKey, ...]) -> None:
         """Withdraw finished or blocked demand without disturbing other clips."""
@@ -298,7 +316,7 @@ class InferenceRuntime:
             raise failure
 
     def _require_alias(self, node: NodeKey, alias: str) -> None:
-        if self._closed or self._active != node:
+        if self._closed or node not in self._active or node not in self._remaining:
             raise RuntimeError("Models may be borrowed only during their node")
         if alias not in self._remaining[node]:
             raise ValueError(f"Undeclared inference model: {node}.{alias}")
@@ -394,6 +412,9 @@ class InferenceComponent(ABC, Generic[InputT, OutputT]):
 
     @abstractmethod
     def process_with_models(self, inputs: InputT, models: ModelBorrower) -> OutputT: ...
+
+    def batch_adapter(self) -> BatchAdapter | None:
+        return None
 
     def process(self, inputs: InputT) -> OutputT:
         node = ("standalone", type(self).__name__)

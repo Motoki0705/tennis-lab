@@ -25,7 +25,7 @@ from typing import Any, ParamSpec, TypeVar
 STAGES = (
     "node", "clip", "decode", "preprocess", "transfer", "inference",
     "postprocess", "save", "publication", "artifact_load", "model_load",
-    "model_unload", "measurement",
+    "model_unload", "measurement", "video_pass", "video_read", "batch_dispatch",
 )
 _GPU_STAGES = {"transfer", "inference", "model_load", "model_unload"}
 _ACTIVE: ContextVar[InferenceRecorder | None] = ContextVar("inference_recorder", default=None)
@@ -44,7 +44,7 @@ def wall_breakdown(events: Sequence[Mapping[str, Any]], total_ns: int) -> dict[s
     """
     edges: list[tuple[int, bool, int]] = []
     for index, event in enumerate(events):
-        if event["stage"] not in {"node", "clip"} and int(event["end_ns"]) > int(event["start_ns"]):
+        if event["stage"] not in {"node", "clip", "video_pass"} and int(event["end_ns"]) > int(event["start_ns"]):
             edges.extend(((int(event["start_ns"]), True, index), (int(event["end_ns"]), False, index)))
     active: set[int] = set()
     heap: list[tuple[int, int, int, int, str]] = []
@@ -143,6 +143,9 @@ class InferenceRecorder:
         inclusive: dict[str, float] = defaultdict(float)
         models: dict[str, dict[str, Any]] = {}
         batches: dict[str, Counter[str]] = defaultdict(Counter)
+        dispatches: dict[str, dict[str, Any]] = {}
+        video_reads: dict[str, Counter[str]] = defaultdict(Counter)
+        pass_loads: dict[str, Counter[str]] = defaultdict(Counter)
         for event in events:
             seconds = (event["end_ns"] - event["start_ns"]) / 1e9
             inclusive[event["stage"]] += seconds
@@ -156,8 +159,28 @@ class InferenceRecorder:
                 model[f"{action}_count"] += 1
                 model[f"{action}_seconds"] += seconds
                 model["failed_count"] += event["status"] != "ok"
+                if action == "load" and "video_pass" in attrs:
+                    pass_loads[str(attrs["video_pass"])][attrs["model"]] += 1
             if "batch_shape" in attrs:
                 batches[str(attrs.get("model", attrs.get("node", "unknown")))][json.dumps(attrs["batch_shape"])] += 1
+            if event["stage"] == "batch_dispatch":
+                stats = dispatches.setdefault(attrs["model"], {"batches": 0, "failed": 0, "items": 0,
+                                             "total_capacity": 0, "sizes": Counter(), "cross_source_batches": 0,
+                                             "cross_clip_batches": 0, "fill_fraction": 0.0,
+                                             "peak_queued_items": 0, "peak_active_sources": 0})
+                stats["batches"] += 1
+                stats["failed"] += event["status"] != "ok"
+                stats["items"] += attrs["batch_items"]
+                stats["total_capacity"] += attrs["batch_capacity"]
+                stats["sizes"][str(attrs["batch_items"])] += 1
+                stats["cross_source_batches"] += attrs["source_count"] > 1
+                stats["cross_clip_batches"] += attrs["clip_count"] > 1
+                stats["fill_fraction"] = stats["items"] / stats["total_capacity"]
+                stats["peak_queued_items"] = max(stats["peak_queued_items"], attrs["queued_items"])
+                stats["peak_active_sources"] = max(stats["peak_active_sources"], attrs["active_sources"])
+            if event["stage"] == "video_read":
+                component = str(attrs.get("node", "unknown")).split("/")[0]
+                video_reads[str(attrs.get("video_pass", "outside_plan"))][component] += 1
         document = {
             "schema": "inference_recording_v1", "started_at": self._started_at,
             "status": "failed" if error is not None or self._sample_errors else "complete",
@@ -167,7 +190,8 @@ class InferenceRecorder:
             "total_wall_seconds": total_ns / 1e9,
             "stage_wall_seconds": wall_breakdown(events, total_ns),
             "stage_inclusive_seconds": dict(inclusive), "models": list(models.values()),
-            "batch_shapes": dict(batches), "resources": self.resources,
+            "batch_shapes": dict(batches), "batch_dispatches": dispatches, "resources": self.resources,
+            "video_reads_by_pass": video_reads, "model_loads_by_pass": pass_loads,
             "measurement_errors": self._sample_errors, "events": events,
         }
         self.destination.parent.mkdir(parents=True, exist_ok=True)
