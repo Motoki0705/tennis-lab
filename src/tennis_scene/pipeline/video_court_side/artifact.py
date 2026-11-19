@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import Any
 
 from src.tasks.court_side.hypothesis import (
-    BallSideEvidence,
-    CourtSideConfig,
     CourtSideUndecided,
+    EvidenceKind,
     HypothesisScore,
+    SideConfig,
+    SideEvidence,
+    evidence_kind,
     judge_side_evidence,
 )
 from src.tennis_scene.pipeline.artifacts import json_value
@@ -49,15 +51,14 @@ class SideAssessment:
     margin: float | None
 
     @classmethod
-    def judge(cls, evidence: BallSideEvidence, config: CourtSideConfig) -> SideAssessment:
+    def judge(cls, evidence: SideEvidence, config: SideConfig) -> SideAssessment:
         reason = None
         try:
             judgement = judge_side_evidence(evidence, config)
             margin: float | None = judgement.margin
         except CourtSideUndecided as undecided:
             reason = undecided.reason
-            scores = evidence.hypotheses
-            margin = scores[1].cost - scores[0].cost if scores else None
+            margin = undecided.margin
         return cls(reason, evidence.hypotheses, evidence.frames, evidence.pair_record(), margin)
 
 
@@ -86,6 +87,14 @@ class VideoSideDecision:
     reference_camera: str
     shared: SideAssessment
     diagnostics_digest: str
+    evidence: EvidenceKind = "ball"
+
+    def document(self) -> dict[str, Any]:
+        value: dict[str, Any] = json_value(self)
+        # Legacy v1 documents imply ball evidence and keep their original digest.
+        if self.evidence == "ball":
+            del value["evidence"]
+        return value
 
 
 @dataclass(frozen=True)
@@ -98,8 +107,9 @@ class VideoCourtSideArtifact:
     @classmethod
     def load(cls, directory: Path, digest: str) -> VideoCourtSideArtifact:
         directory = directory.resolve()
-        decision: VideoSideDecision = restore_type(load_document(directory, digest), VideoSideDecision)
-        if decision.schema != SCHEMA:
+        raw = load_document(directory, digest)
+        decision: VideoSideDecision = restore_type({"evidence": "ball", **raw}, VideoSideDecision)
+        if decision.schema != SCHEMA or raw != decision.document():
             raise ValueError("Unknown shared court side artifact schema")
         diagnostics = load_document(directory, decision.diagnostics_digest)
         if set(diagnostics) != {"schema", "clips"} or diagnostics["schema"] != DIAGNOSTICS_SCHEMA:
@@ -115,7 +125,7 @@ class VideoCourtSideArtifact:
         return cls(directory, digest, decision, clips)
 
     def verify(self) -> None:
-        if load_document(self.directory, self.digest) != json_value(self.decision):
+        if load_document(self.directory, self.digest) != self.decision.document():
             raise ValueError("Shared court side decision changed")
         diagnostics = load_document(self.directory, self.decision.diagnostics_digest)
         if diagnostics != {"schema": DIAGNOSTICS_SCHEMA, "clips": json_value(self.clips)}:
@@ -130,8 +140,10 @@ class VideoCourtSideArtifact:
             raise ValueError("Shared court side was measured with different court drift evidence")
         require_accepted_courts(court, d.evidence_clip_ids, court_policy)
 
-    def check_settings(self, court: VideoCourtArtifact, thresholds: CourtSideConfig, max_frames: int, *, court_policy: str = "warn") -> None:
+    def check_settings(self, court: VideoCourtArtifact, thresholds: SideConfig, max_frames: int, *, court_policy: str = "warn") -> None:
         self.check_court(court, court_policy)
+        if self.decision.evidence != evidence_kind(thresholds):
+            raise ValueError("Shared court side evidence disagrees with execution")
         if self.decision.thresholds != json_value(thresholds) or self.decision.max_frames != max_frames:
             raise ValueError("Shared court side thresholds or sampling disagree with execution")
 
@@ -155,7 +167,8 @@ class VideoCourtSideArtifact:
         return {"directory": str(self.directory), "artifact_digest": self.digest, "diagnostics_digest": d.diagnostics_digest,
                 "camera_ids": list(d.camera_ids), "reference_camera": d.reference_camera, "clip_id": clip_id,
                 "sampled_frames": measurement.sampled_frames, **self.clip_verdict(clip_id, policy), "unobservable_policy": policy,
-                "standalone": json_value(measurement.standalone), "shared": json_value(d.shared)}
+                "standalone": json_value(measurement.standalone), "shared": json_value(d.shared),
+                **({"evidence": d.evidence} if d.evidence == "player" else {})}
 
     def require_clip(self, clip_id: str, policy: str) -> None:
         if self.clip_verdict(clip_id, policy)["status"] == "failed":

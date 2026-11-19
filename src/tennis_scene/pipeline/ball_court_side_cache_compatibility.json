@@ -1,0 +1,77 @@
+{
+  "baseline_commit": "f627e01ac0a3cf6c5cd561a882ca9fc5d4cba0d0",
+  "files": {
+    "tasks/court_side/benchmark.py": {
+      "before": "2a5a67c17a91c7526992d76c9ca46df418f29df360dbbe399d2a15e66c55a1ac",
+      "after": "5b3a7ed751a32a4cef3486b0be242381659ee7e1e97361f50e43817688726052"
+    },
+    "tasks/court_side/hypothesis.py": {
+      "before": "cfe11f33de8b1db0d8709e484867ce6a7e36cbfb002381cdd069d4a7655e4271",
+      "after": "5b206bf32cd55a2454c795e045d152d68b67cb06c8fe8ca0194b316995a69dd9"
+    },
+    "tasks/court_side/player.py": {
+      "before": null,
+      "after": "fb96ea872494b93b4cdf0ff3abff5ab432990012ac619d0680fb83a034ab34fd"
+    },
+    "tasks/court_side/video.py": {
+      "before": "0d06bb30e6768eac9671d97b52eb97ad608136b37622ef246484b5abe7a564d5",
+      "after": "3cdf22b5e8c9f73dd04a817c2a1e2c616d6c1455f0d9a0cc5055a5ee0b1634c7"
+    },
+    "tennis_scene/configuration.py": {
+      "before": "0e6d18ebaa94a5f2847993a5161545e3d31fc7c028104d89435d1302d2270b34",
+      "after": "8223c2accff21cd760357060555f06e6c2f633a550c6c30f0fdf2f5ce88fb67a"
+    },
+    "tennis_scene/pipeline/components/camera_alignment.py": {
+      "before": "63e2aee8612bd517088af350ee4fb53d2f11f9fc65444ab591c4d4d450d6ce9b",
+      "after": "9e3ebe9261c520653b3799a0a2d4e88b7bb712a323c3047687756ad516fc744a"
+    },
+    "tennis_scene/pipeline/components/court_side.py": {
+      "before": "35c615d715626c504800ae120654ec8c5d8ad8bae1070dff1cf22527e61bc98f",
+      "after": "95f32ed2e02d3f8a8d3e7fd26d11010bb545c53e7f967ba2dfc3a71211bf1811"
+    },
+    "tennis_scene/pipeline/components/scene_assembly.py": {
+      "before": "4fa818d2ae21dbab1270f1741d3a9e626bfd6b0973042eff8b8590734eeaf2ee",
+      "after": "43bd25c85fd0e44898a31459f95d2809d25e0c175647e16ab7e11322614def99"
+    },
+    "tennis_scene/pipeline/definition.py": {
+      "before": "b52fe660c227de30e43cfc6d49d8e7f7d035441708431db3146e31c4752b24bf",
+      "after": "16999c4f1bb9cd9b95804c33741ebbb99b1d86dab101e91334439f0ce8691923"
+    },
+    "tennis_scene/pipeline/input_assembly/reconstruction.py": {
+      "before": "1ee2bb7ddbfee393f6d91c84123f12b1621424fa9d3360791478cf28e450779a",
+      "after": "f43bc5035d2281b10e25a696424409c14ab802abed002c1bb76af5e93188e365"
+    },
+    "tennis_scene/pipeline/input_assembly/scene.py": {
+      "before": "0f98a0ad96df599b6bbd0ba3c236e26c973978d07aae4f71edb087f50231c805",
+      "after": "d20c957b0f6931e6224b019297e0d3d58edffeca7937f9e96d0e627874051ca5"
+    },
+    "tennis_scene/pipeline/orchestrator.py": {
+      "before": "386f8f545f75c3bdbee0d805ea1082143098cf77888ba21417c3fbf51992b7b1",
+      "after": "3c6bb05e9f82a4e1772c8c953747107716a8bdff79a86701d2e572cc762bd08e"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "96a9eae0927e2826050c038a8e615e8819e55f2c72cd4f629256e1c64769c3fb",
+      "after": "c0e3d93cef2bcda3a430c3f743fd7bb62c50d385ad450c5014ba1d6b1f4257b0"
+    },
+    "tennis_scene/pipeline/video_court_side/__init__.py": {
+      "before": "4567af0b1cc3b803fc3e4ed593c2f259315f6864da887e665da1b354c9fb72b3",
+      "after": "d0b6e7af2d18a1942b860be32484f7b9af106f2270312ace0da2c3d504729488"
+    },
+    "tennis_scene/pipeline/video_court_side/artifact.py": {
+      "before": "1b9f0820f862fbb354f4dd33aad151361a581430fbbc3b8ea2040faba1381c08",
+      "after": "b167a82b30a9da9d4928b697e7661b15cd8e1bf4f875fd10b5882254c54c5ccd"
+    },
+    "tennis_scene/pipeline/video_court_side/component.py": {
+      "before": "ad717ff85c976e20fdeadba7b1d10a620913ed119865e11d6a490982cb51001f",
+      "after": "340bd64f59594eb0b180c604ae1686a7465725c035f59b9e527fe5760ec33ac5"
+    },
+    "tennis_scene/pipeline/video_court_side/inputs.py": {
+      "before": "f5a0d83db09c7bf5907a7d09cbcfe556b973df2e3b40a7e3e04d8666925d609e",
+      "after": "4de2545a808fe5112c59726f7ad0a94e0716962490e981accb8a263d60446eb4"
+    },
+    "tennis_scene/pipeline/video_court_side/prepare.py": {
+      "before": "554b58753be30f77c1ed3e9a832d238a9692ff211f122945b5d8b5745f0c350f",
+      "after": "3864447fd3e1f67b70b77afceac258ade1c16fe498bbfdc06a320e18624e3e45"
+    }
+  }
+}

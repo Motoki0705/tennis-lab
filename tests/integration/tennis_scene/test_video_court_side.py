@@ -34,6 +34,7 @@ from tests.integration.tennis_scene.test_video_court import (
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     _camera,
     materialize_assets,
+    project_fixture_player_boxes,
     runtime,
 )
 
@@ -122,6 +123,45 @@ def republish_second_ball_stream(pipeline, court, store, source):
     ComponentRunner(nodes, ClipStore(store, json_value(source)), overwrite=True).run([f"ball_points/{c}" for c in CAMERAS])
     for name, output in previous.items():
         pipeline.components[name].result = output
+
+
+def test_shared_player_build_and_load_rejects_a_ball_decision(tmp_path, monkeypatch):
+    pipeline, paths, sources, court, ball_pins = prefix_stores(tmp_path, monkeypatch, "agreement")
+    ball = build(pipeline, court, ball_pins, tmp_path)
+    assert ball.decision.evidence == "ball" and "evidence" not in ball.decision.document()
+    cfg = runtime(tmp_path, overrides=("court_side.evidence=player", "ball_detection.enabled=false",
+                                      "ball_reconstruction.enabled=false"))
+    pipeline.config = replace(cfg, video_court=pipeline.config.video_court)
+    pipeline.components = {name: stage for name, stage in pipeline.components.items() if not name.startswith("ball_detection/")}
+    project_fixture_player_boxes(pipeline.components)
+    pins = {}
+    for i, source in enumerate(sources):
+        store = ClipStore(tmp_path / f"player-{i}", json_value(source))
+        nodes = standard_definition(pipeline.config, source, code_identity=pipeline.code_identity,
+                                    video_court=court, overrides=pipeline.components)
+        runner = ComponentRunner(nodes, store)
+        runner.run(targets=["court_calibration", *(f"player_selection/{c}" for c in CAMERAS)])
+        pins[source.clip_id] = PinnedSideInputs.from_store(store.root, evidence="player")
+        assert not any(node.startswith("ball_") for node in runner.nodes)
+    request = build_request(tmp_path, pins)
+    player = prepare_video_court_side(request, cfg.resolver, court=court, thresholds=cfg.court_side,
+                                      max_frames=cfg.sampling_max_frames, code_identity=pipeline.code_identity)
+    reused = build(pipeline, court, pins, tmp_path)
+    assert player.digest == reused.digest and player.digest != ball.digest
+    assert player.decision.document()["evidence"] == "player"
+    assert player.output().view_half_turns == (False, False, True)
+    assert player.decision.shared.frames == sum(item.standalone.frames for item in player.clips.values())
+    assert all(item.standalone.reason is None for item in player.clips.values())
+    bad_load = acquisition(tmp_path, action="load", artifact_digest=ball.digest, request=None, request_sha256=None)
+    with pytest.raises(ValueError, match="evidence disagrees"):
+        prepare_video_court_side(bad_load, cfg.resolver, court=court, thresholds=cfg.court_side,
+                                 max_frames=cfg.sampling_max_frames, code_identity=pipeline.code_identity)
+    load = replace(bad_load, artifact_digest=player.digest)
+    pipeline.config = replace(pipeline.config, video_court_side=load)
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS, store_root=pins[CLIPS[0]].directory,
+                         clip_id=CLIPS[0])
+    assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
+    assert pipeline.last_receipt["video_court_side"]["evidence"] == "player"
 
 
 @pytest.mark.parametrize(("kind", "status", "reason"), [

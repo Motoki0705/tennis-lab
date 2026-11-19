@@ -17,6 +17,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from itertools import combinations, product
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -71,12 +72,43 @@ class CourtSideConfig:
 
 
 @dataclass(frozen=True)
+class PlayerCourtSideConfig:
+    """Ground-plane thresholds in metres and a box border threshold at 1080p."""
+
+    match_distance_m: float
+    symmetry_distance_m: float
+    min_motion_m: float
+    bottom_border_px: float
+    min_frames: int
+    max_cost: float
+    min_support: float
+    min_margin: float
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.match_distance_m) or self.match_distance_m <= 0 or self.min_frames < 1:
+            raise ValueError("Player court side needs a positive match distance and frame count")
+        for value in (self.symmetry_distance_m, self.min_motion_m, self.bottom_border_px):
+            if not math.isfinite(value) or value < 0:
+                raise ValueError("Player court side symmetry, motion and border thresholds must be finite and nonnegative")
+        if not 0 <= self.max_cost <= 1 or not 0 <= self.min_support <= 1 or not 0 < self.min_margin <= 1:
+            raise ValueError("Player court side cost/support must be in [0,1] and margin in (0,1]")
+
+
+SideConfig = CourtSideConfig | PlayerCourtSideConfig
+EvidenceKind = Literal["ball", "player"]
+
+
+def evidence_kind(config: SideConfig) -> EvidenceKind:
+    return "player" if isinstance(config, PlayerCourtSideConfig) else "ball"
+
+
+@dataclass(frozen=True)
 class HypothesisScore:
     """One half-turn assignment scored on ``frames`` multi-view frames.
 
-    ``cost`` is the mean per-frame normalized reprojection cost in ``[0,1]``;
-    ``support`` the fraction of frames that are plausible with every view
-    within the reprojection threshold.
+    ``cost`` is the mean per-frame normalized geometric cost in ``[0,1]``;
+    ``support`` is the fraction of frames that meet the evidence's distance
+    threshold across the observing views.
     """
 
     view_half_turns: tuple[bool, ...]
@@ -98,7 +130,7 @@ class CourtSideDecision:
 
 
 class CourtSideUndecided(RuntimeError):
-    """The ball evidence does not determine the sides; ``reason`` is one of the stop reasons."""
+    """The evidence does not determine the sides; ``reason`` is one of the stop reasons."""
 
     def __init__(self, reason: str, message: str, *, hypotheses: tuple[HypothesisScore, ...] = (),
                  frames: int = 0, pair_frames: dict[str, int] | None = None) -> None:
@@ -108,6 +140,10 @@ class CourtSideUndecided(RuntimeError):
         self.pair_frames = {} if pair_frames is None else pair_frames
         summary = "; ".join(f"{list(h.view_half_turns)} cost={h.cost:.3f} support={h.support:.3f}" for h in hypotheses)
         super().__init__(f"{reason}: {message}" + (f" [{summary}]" if summary else ""))
+
+    @property
+    def margin(self) -> float | None:
+        return self.hypotheses[1].cost - self.hypotheses[0].cost if self.hypotheses else None
 
 
 def half_turn_hypotheses(views: int, reference: int) -> tuple[tuple[bool, ...], ...]:
@@ -158,7 +194,7 @@ def score_hypothesis(cameras: tuple[PinholeCamera, ...], view_half_turns: tuple[
 
 
 @dataclass(frozen=True)
-class BallSideEvidence:
+class SideEvidence:
     """Everything the judgement needs, independent of the decision thresholds.
 
     ``pair_frames`` ``(V,V)`` counts frames both views observe; ``hypotheses``
@@ -177,7 +213,7 @@ class BallSideEvidence:
 
 
 def collect_side_evidence(cameras: tuple[PinholeCamera, ...], reference_camera: str, uv_px: NDArray[np.floating],
-                          visible: NDArray[np.bool_], config: CourtSideConfig) -> BallSideEvidence:
+                          visible: NDArray[np.bool_], config: CourtSideConfig) -> SideEvidence:
     """Score every hypothesis on the ball stream (``(V,T,2)`` pixels, ``(V,T)`` visibility).
 
     Repeated static observations are counted once (:func:`distinct_observation_frames`).
@@ -191,7 +227,7 @@ def collect_side_evidence(cameras: tuple[PinholeCamera, ...], reference_camera: 
 def collect_side_evidence_with_frames(
     cameras: tuple[PinholeCamera, ...], reference_camera: str, uv_px: NDArray[np.floating],
     visible: NDArray[np.bool_], config: CourtSideConfig,
-) -> tuple[BallSideEvidence, NDArray[np.int64]]:
+) -> tuple[SideEvidence, NDArray[np.int64]]:
     """Also return the indices actually scored, on the supplied observation grid."""
     ids = tuple(camera.camera_id for camera in cameras)
     if len(set(ids)) != len(ids) or reference_camera not in ids:
@@ -207,15 +243,15 @@ def collect_side_evidence_with_frames(
         hypotheses = tuple(sorted((score_hypothesis(cameras, turns, uv_px, visible, config)
                                    for turns in half_turn_hypotheses(len(ids), ids.index(reference_camera))),
                                   key=lambda h: (h.cost, h.view_half_turns)))
-    return BallSideEvidence(ids, reference_camera, frames, pair_frame_counts(visible), hypotheses), scored
+    return SideEvidence(ids, reference_camera, frames, pair_frame_counts(visible), hypotheses), scored
 
 
-def judge_side_evidence(evidence: BallSideEvidence, config: CourtSideConfig) -> CourtSideDecision:
+def judge_side_evidence(evidence: SideEvidence, config: SideConfig) -> CourtSideDecision:
     """Apply the decision thresholds, or raise :class:`CourtSideUndecided`."""
     ids, frames, hypotheses = evidence.camera_ids, evidence.frames, evidence.hypotheses
     pairs = evidence.pair_record()
     if frames < config.min_frames:
-        raise CourtSideUndecided(INSUFFICIENT_FRAMES, f"{frames} multi-view ball frames; {config.min_frames} required",
+        raise CourtSideUndecided(INSUFFICIENT_FRAMES, f"{frames} multi-view {evidence_kind(config)} frames; {config.min_frames} required",
                                  hypotheses=hypotheses, frames=frames, pair_frames=pairs)
     connected = {ids.index(evidence.reference_camera)}
     graph = evidence.pair_frames >= config.min_frames
@@ -226,7 +262,7 @@ def judge_side_evidence(evidence: BallSideEvidence, config: CourtSideConfig) -> 
         connected = expanded
     if len(connected) != len(ids):
         missing = [ids[view] for view in range(len(ids)) if view not in connected]
-        raise CourtSideUndecided(DISCONNECTED_VIEWS, f"Cameras {missing} share too few ball frames with the reference's component",
+        raise CourtSideUndecided(DISCONNECTED_VIEWS, f"Cameras {missing} share too few {evidence_kind(config)} frames with the reference's component",
                                  hypotheses=hypotheses, frames=frames, pair_frames=pairs)
     best = hypotheses[0]
     margin = hypotheses[1].cost - best.cost

@@ -7,7 +7,7 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 
 1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正を作る。
 2. 全画面の人物検出にpose・外観特徴を付けて追跡し、コート座標で選手を選別する。各camera/frameの検出点と観測maskを保存する。
-3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
+3. court side（`court_side`）を多視点の幾何で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。証拠はballが既定で、`court_side.evidence=player` で選手の足元観測を使える。
 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
 5. ボールの動きの外れ値を除去し、頑健な2次LOESSで平滑化。人物の同一ID観測と、各カメラの採用した実ボール観測を三角測量。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
