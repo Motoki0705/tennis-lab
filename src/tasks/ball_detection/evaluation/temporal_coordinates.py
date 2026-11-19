@@ -17,10 +17,13 @@ from src.tasks.ball_detection.evaluation.temporal_metrics import (
     location_metrics,
     prediction_identities,
 )
-from src.tasks.ball_detection.model_io.mdd_temporal import temporal_forward
+from src.tasks.ball_detection.model_io.mdd_temporal import (
+    QUERY_CONFIG_TYPES,
+    temporal_forward,
+)
 from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
-    MDDTemporalQueryConfig,
+    MDDMHCQueryConfig,
 )
 from src.tasks.ball_detection.training.runtime.compilation import (
     coordinate_compile_scope,
@@ -48,7 +51,7 @@ def evaluate_temporal_coordinates(
     calibration_report: dict[str, Any] | None = None,
     output: Path | None = None,
 ) -> dict[str, Any]:
-    if type(model.config) is not MDDTemporalQueryConfig or split not in {"val", "test"}:
+    if type(model.config) not in QUERY_CONFIG_TYPES or split not in {"val", "test"}:
         raise ValueError(
             "Explicit temporal query config and validation/test split required"
         )
@@ -173,7 +176,7 @@ def evaluate_temporal_coordinates(
         manifest_sha256=dual_sha256(manifest),
         snapshot=dataset.manifest["ball_store"],
         model_config=asdict(model.config),
-        model_kind="mdd_temporal_query",
+        model_kind="mdd_mhc_query" if type(model.config) is MDDMHCQueryConfig else "mdd_temporal_query",
         runtime=asdict(runtime),
         image_decode=jpeg_decoder_contract(runtime.jpeg_decoder),
         identities=identities,

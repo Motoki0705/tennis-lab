@@ -1,0 +1,23 @@
+name: mdd_mhc_query
+input_channels: 5
+stem_channels: [16, 32, 64, 128]
+mixed_channels: [256, 512]
+residual_blocks: [0, 1, 2, 3, 3, 2]
+decoder_channels: 128
+dim: 256
+heads: 4
+layers: 4
+ffn_dim: 704
+dropout: 0.1
+rope_base: 10000.0
+activation_checkpointing: false
+encoder_variant: x3d_csn
+temporal_mixing: depthwise3d
+frames: 64
+frame_chunk_size: null
+num_streams: 4
+mhc_coefficient_dim: 64
+mhc_sinkhorn_iters: 20
+mhc_eps: 1.0e-6
+mhc_residual_identity_bias: 4.0
+mhc_update_scale_init: 0.0
