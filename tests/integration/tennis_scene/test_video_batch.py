@@ -37,6 +37,8 @@ from tests.integration.tennis_scene.test_video_court import shared_fixture
 from tests.support.tennis_scene.video_dataset import add_clip
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     FixedStage,
+    project_fixture_player_boxes,
+    runtime,
     setup_pipeline,
 )
 
@@ -91,6 +93,28 @@ def execute(pipeline, dataset: Path, **options):
 def scene(clip: Path) -> SceneResult:
     directory = clip / "annotations/tennis_scene"
     return load_scene_result(annotation_scene_path(directory, json.loads((directory / "annotation.json").read_text())))
+
+
+def test_player_only_batch_publishes_and_reuses_both_clips(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pipeline, dataset, clips, stages, events = harness(tmp_path, monkeypatch)
+    for camera in range(3):
+        del stages[f"ball_detection/cam{camera}"]
+    project_fixture_player_boxes(stages)
+    pipeline.config = runtime(tmp_path, overrides=("court_side.evidence=player", "ball_detection.enabled=false",
+                                                  "ball_reconstruction.enabled=false", "ball_detection.checkpoint=null"))
+    batching = BatchConfig(enabled=True)
+
+    result = execute(pipeline, dataset, batching=batching)
+    assert [outcome.status for outcome in result.outcomes] == ["generated", "generated"]
+    assert not any(node.startswith("ball_") for _, node in result.plan.nodes)
+    assert events == [("load", "fake_pose"), ("unload", "fake_pose")]
+    for clip in clips:
+        reconstructed = scene(clip)
+        assert reconstructed.metadata["court_reference"]["view_half_turns"] == [False, False, True]
+        assert reconstructed.player_kp_3d_vis.all() and not reconstructed.ball_3d_valid.any()
+
+    reused = execute(pipeline, dataset, batching=batching)
+    assert [outcome.status for outcome in reused.outcomes] == ["skipped", "skipped"]
 
 
 def shared_batch_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -437,11 +461,6 @@ def shared_side_batch_fixture(tmp_path, monkeypatch, action="load", evidence="pl
     from src.tennis_scene.pipeline.storage.clip_store import ClipStore
     from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
     from src.utils.checksum import dual_sha256
-    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
-        project_fixture_player_boxes,
-        runtime,
-    )
-
     pipeline, dataset, clips, court = shared_batch_fixture(tmp_path, monkeypatch)
     if evidence == "player":
         cfg = runtime(tmp_path, overrides=("court_side.evidence=player", "ball_detection.enabled=false", "ball_reconstruction.enabled=false"))
@@ -601,16 +620,17 @@ def test_same_generation_single_and_batch_exports_serialize_and_continue(tmp_pat
     monkeypatch.setattr(ClipStore, "record_export", request_export)
     monkeypatch.setattr(scene_export, "save_scene_result", second_save)
     finalize = PlanExecutor.finalize_clip
-    def begin_export(executor, clip_id):
+    def begin_export(executor, clip_id, *, memory):
+        assert memory is not None
         if clip_id == "video_000/clip_000":
             # Both plans/stores already exist. Synchronize their export phase,
             # without holding up a writer at store creation or cache lookup.
             start.set()
             assert first_saved.wait(10)
-        return finalize(executor, clip_id)
+        return finalize(executor, clip_id, memory=memory)
     monkeypatch.setattr(PlanExecutor, "finalize_clip", begin_export)
     try:
-        result = execute(pipeline, dataset)
+        result = execute(pipeline, dataset, batching=BatchConfig(enabled=True))
         assert result.exit_code == 0
         assert [outcome.status for outcome in result.outcomes] == ["generated", "generated"]
         assert all(scene(clip).schema_version == 2 for clip in clips)
@@ -645,7 +665,7 @@ def test_shared_products_changed_after_last_node_cannot_be_exported(tmp_path, mo
         return result
     monkeypatch.setattr(PlanExecutor, "_execute", after_last_node)
     if entry == "batch":
-        result = execute(pipeline, dataset)
+        result = execute(pipeline, dataset, batching=BatchConfig(enabled=True))
         assert result.exit_code == 1 and result.outcomes[0].status == "failed"
         directory = clips[0] / "annotations/tennis_scene"
         assert not list(dataset.rglob("annotation.json"))
@@ -689,14 +709,15 @@ def test_publication_and_plan_cannot_adopt_different_weight_snapshots(tmp_path, 
     monkeypatch.setattr(pipeline, "publication_identity", identify)
     monkeypatch.setattr(batch, "standard_definition", define)
     monkeypatch.setattr(orchestration, "standard_definition", define)
+    batching = BatchConfig(enabled=True)
     with pytest.raises(RuntimeError, match="publication asset"):
-        execute(pipeline, dataset)
+        execute(pipeline, dataset, batching=batching)
     assert not events and not list(dataset.rglob("annotation.json"))
     weight.write_bytes(b"weights A")
     monkeypatch.setattr(pipeline, "publication_identity", publication)
     monkeypatch.setattr(batch, "standard_definition", definition)
     monkeypatch.setattr(orchestration, "standard_definition", definition)
-    resumed = execute(pipeline, dataset)
+    resumed = execute(pipeline, dataset, batching=batching)
     assert resumed.exit_code == 0 and all(outcome.status == "generated" for outcome in resumed.outcomes)
     for outcome in resumed.outcomes:
         marker = json.loads(outcome.annotation_path.read_text())

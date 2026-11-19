@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -14,10 +15,12 @@ import pytest
 import torch
 
 from src.submodules.models import PersonDetectionRequest, PersonDetectionResult
+from src.tasks.ball_detection.inference.x3d_dpt import X3DDPTPredictor
 from src.tasks.ball_detection.model_io.contracts import (
     BallCandidateConfig,
     BallPrediction,
 )
+from src.tasks.ball_detection.models.mdd import MDDDPTDetector
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.batching import (
     BatchAdapter,
@@ -63,6 +66,9 @@ from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.utils.inference_recording import InferenceRecorder
 from src.utils.video import FramePacket, VideoReadError
+from src.utils.video.reader import OpenCVDecodeIdentity
+from src.utils.video.transforms import BgrToRgbUint8Transform
+from tests.support.tasks.ball_detection.temporal import small_model
 from tests.unit.tennis_scene.pipeline.components.test_ball_detection import _prediction
 from tests.unit.tennis_scene.pipeline.components.test_hmr2_features import (
     asymmetric_selection,
@@ -74,6 +80,7 @@ from tests.unit.tennis_scene.pipeline.config_factories import (
     fake_encoder_spec,
     make_ball_config,
     make_people_config,
+    make_x3d_ball_config,
 )
 
 
@@ -263,17 +270,21 @@ def test_pose_and_clip_keep_sparse_rows_and_invalid_crop_masks(
     a = feature_inputs(tmp_path)
     boxes = a.detections.boxes_xyxy + np.array([12, 0, 12, 0], np.float32)
     # A positive-area box outside the image remains a pose row and has no CLIP embedding.
-    boxes[1] = [66, 4, 78, 34]
+    boxes[2] = [66, 4, 78, 34]
     b = replace(a, video=replace(a.video, path=tmp_path / "b.mp4"),
                 detections=replace(a.detections, boxes_xyxy=boxes))
     empty = replace(a, detections=PersonDetectionOutput(
         a.video.camera_id, np.zeros(6, np.int64), np.empty((0, 4), np.float32),
         np.empty(0, np.float32), np.empty(0, np.int64)))
     sources = {("a", "cam"): a, ("b", "cam"): b, ("empty", "cam"): empty}
-    reads: Counter[Path] = Counter()
+    decoders = {a.video.path: OpenCVDecodeIdentity("FFMPEG", {"threads": 1.}, {}),
+                b.video.path: OpenCVDecodeIdentity("FFMPEG", {"threads": 2.}, {})}
+    reads: Counter[tuple[Path, bool]] = Counter()
 
-    def reader(path: Path, *, max_frames: int) -> Iterator[SimpleNamespace]:
-        reads[path] += 1
+    def reader(path: Path, *, max_frames: int, expected_decoder: OpenCVDecodeIdentity | None) -> Iterator[SimpleNamespace]:
+        if expected_decoder is not None:
+            assert expected_decoder == decoders[path]
+        reads[path, expected_decoder is not None] += 1
         for frame in range(max_frames):
             image: np.ndarray = np.full((48, 64, 3), 30 + frame + 60 * (path == b.video.path), np.uint8)
             yield SimpleNamespace(index=frame, frame=image)
@@ -299,8 +310,9 @@ def test_pose_and_clip_keep_sparse_rows_and_invalid_crop_masks(
             return torch.nn.functional.normalize(embeddings, dim=1)
 
     pose_module = person_features.PersonPoseFeaturesModule(make_people_config(tmp_path))
-    appearance = person_features.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder))
-    apps = {key: person_features.PersonAppearanceFeaturesInput(value.video, value.detections) for key, value in sources.items()}
+    appearance = person_features.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder), capture_frame_sha256=True)
+    apps = {key: person_features.PersonAppearanceFeaturesInput(value.video, value.detections, decoders[value.video.path])
+            for key, value in sources.items()}
     poses = _drain(pose_module, Pose(), sources, 1)
     embeddings = _drain(appearance, Encoder(), apps, 1)
     pose_batches.clear()
@@ -311,12 +323,17 @@ def test_pose_and_clip_keep_sparse_rows_and_invalid_crop_masks(
         assert json_value(more_poses[key]) == json_value(poses[key])
         assert json_value(more_embeddings[key]) == json_value(embeddings[key])
     assert pose_batches == [4, 4] and clip_batches == [4, 3]
-    assert reads == {a.video.path: 4, b.video.path: 4}
+    assert reads == {(source.video.path, bound): 2 for source in (a, b) for bound in (False, True)}
     assert poses[("a", "cam")].source_rows.tolist() == [3, 8, 11, 19]
     assert poses[("a", "cam")].keypoints[0, 0, 0] == 10
     assert poses[("b", "cam")].keypoints[0, 0, 0] == 22
-    assert embeddings[("b", "cam")].appearance_valid.tolist() == [True, False, True, True]
-    assert not embeddings[("b", "cam")].embeddings[1].any()
+    assert embeddings[("b", "cam")].appearance_valid.tolist() == [True, True, False, True]
+    assert not embeddings[("b", "cam")].embeddings[2].any()
+    for clip_id, first_pixel in (("a", 30), ("b", 90)):
+        expected = [sha256(bytes([first_pixel + frame]) * (48 * 64 * 3)).digest() if frame in (0, 2, 3)
+                    else bytes(32) for frame in range(5)]
+        assert [row.tobytes() for row in more_embeddings[(clip_id, "cam")].frame_sha256] == expected
+    assert not more_embeddings[("empty", "cam")].frame_sha256.any()
 
 
 def test_hmr2_does_one_read_per_camera_and_scatters_segments_per_clip(
@@ -400,3 +417,50 @@ def test_ball_batches_only_the_window_axis_and_keeps_selected_evidence(
     }[aggregation]
     assert outputs[("a", "cam0")].evidence.selected_window_start.tolist() == expected
     assert outputs[("b", "cam0")].evidence.selected_time_index.tolist() == [0, 1, 2]
+
+
+def test_real_x3d_batch_and_tail_each_report_one_forward(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tennis_scene.pipeline.video_batch import VideoBatchProgress
+
+    def reader(path: Path, *, max_frames: int) -> Iterator[FramePacket]:
+        start = 30 if path.stem == "a" else 150
+        for index in range(max_frames):
+            yield FramePacket(index, np.full((24, 40, 3), start + index, np.uint8), (40, 24))
+
+    monkeypatch.setattr(ball_detection, "OpenCVVideoFrameReader", reader)
+    image_size = (24, 40)
+    # Keep the production T32 window and aggregation. Run the real CPU model
+    # on a small spatial grid by substituting the size at the resize boundary.
+    monkeypatch.setattr(ball_detection, "BgrToRgbUint8Transform",
+                        lambda **_: BgrToRgbUint8Transform(image_size=image_size))
+    config = make_x3d_ball_config(tmp_path)
+    sources = {(clip, "cam0"): BallDetectionInput(
+        SourceVideo("cam0", tmp_path / f"{clip}.mp4", clip, frames, 30., 40, 24))
+        for clip, frames in (("a", 48), ("b", 32))}
+    progress = VideoBatchProgress(tmp_path / "progress", "fixture", "video_000", (), "fixture: x3d\n", {},
+                                  overwrite=False, continue_on_error=True, recording_devices=(),
+                                  batching=BatchConfig(enabled=True, sizes=BatchSizes(ball=2)))
+    model_config = replace(small_model("dpt", frames=config.num_frames),
+                           encoder_variant="x3d_csn", temporal_mixing="depthwise3d")
+    predictor = X3DDPTPredictor(MDDDPTDetector(model_config), device=torch.device("cpu"), image_size=image_size,
+                                precision=config.precision, subpixel_refine=config.subpixel_refine,
+                                compile_mode=config.compile_mode)
+    with progress.recorder:
+        outputs = _drain(BallDetectionModule(config), predictor, sources, 2)
+    progress.flush()
+
+    events = progress.recorder.events
+    dispatches = [event["attributes"] for event in events if event["stage"] == "batch_dispatch"]
+    assert [(attrs["batch_items"], attrs["clip_count"]) for attrs in dispatches] == [(2, 2), (1, 1)]
+    forward = [event for event in events if event["stage"] == "inference"]
+    assert [event["attributes"]["batch_shape"] for event in forward] == [[2, 32, 3, 24, 40], [1, 32, 3, 24, 40]]
+    assert all(event["status"] == "ok" and event["attributes"]["device"] == "cpu" for event in forward)
+    assert sum(event["stage"] == "transfer" and event["attributes"].get("model") == "Ball" for event in events) == 2
+    assert progress.document["batch_shapes"] == {"Ball": {
+        "[2, 32, 3, 24, 40]": {"succeeded": 1, "failed": 0, "items": 2},
+        "[1, 32, 3, 24, 40]": {"succeeded": 1, "failed": 0, "items": 1},
+    }}
+    assert outputs[("a", "cam0")].evidence.selected_window_start.tolist() == [0] * 24 + [16] * 24
+    assert outputs[("b", "cam0")].evidence.selected_window_start.tolist() == [0] * 32

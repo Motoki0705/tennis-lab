@@ -62,7 +62,8 @@ class VideoBatchProgress:
     def __init__(self, directory: Path, dataset_id: str, video_id: str,
                  prepared: Sequence[PreparedDatasetClip], pipeline_yaml: str, identity: Mapping[str, Any],
                  *, overwrite: bool, continue_on_error: bool, recording_devices: Sequence[str],
-                 batching: BatchConfig) -> None:
+                 batching: BatchConfig | None = None) -> None:
+        batching = BatchConfig() if batching is None else batching
         self.path = directory / uuid4().hex / "progress.json"
         cross_source = batching.enabled and any(batching.sizes.for_model(name) > 1 for name in batching.sizes.__slots__)
         self.recorder = InferenceRecorder(self.path.with_name("recording.json"), devices=recording_devices,
