@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205033148662266457_2026-11-18T01-54-11-337733542Z_2126156_i1752-doubles-reference-20261118-a1",
+  "name": "i1752-doubles-reference-20261118-a1",
+  "command": "env PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=42 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib/MultiScaleDeformableAttention.so PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib .venv/bin/python -B -u knowledge/runs/run-video-batch-runtime-20261117/doubles_reference.py run --batch-root /home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-doubles-20261118 --expect-commit 2cf59a608132c2bf097976491b7b5806dfe26941",
+  "provider": "codex",
+  "session": "01a1e957-c745-72f3-b662-6dcb032b4374",
+  "issue": "1752",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "2cf59a608132c2bf097976491b7b5806dfe26941",
+  "branch": "codex/video-batch-cli",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli",
+  "captured_at": "2026-11-18T10:54:20+09:00"
+}

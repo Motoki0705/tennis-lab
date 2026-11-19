@@ -1091,7 +1091,10 @@ class GenerateDatasetRuntimeConfig:
 
 def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConfig:
     """Validate dataset generation before reading manifests or composing stages."""
-    value = _GENERATE_SCHEMA.validate(_plain(cfg))
+    return _generate_dataset_runtime(_GENERATE_SCHEMA.validate(_plain(cfg)))
+
+
+def _generate_dataset_runtime(value: Mapping[str, object]) -> GenerateDatasetRuntimeConfig:
     roots, resolver = _roots(value["paths"])
     ids = _nullable_string_sequence(value["clip_ids"], name="clip_ids")
     parsed_ids = None
@@ -1128,6 +1131,38 @@ def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConf
         continue_on_error=cast(bool, value["continue_on_error"]),
         pipeline_overrides=overrides,
     )
+
+
+_VIDEO_BATCH_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.run_video_batch",
+    fields={**_GENERATE_SCHEMA.fields, "video_id": ConfigField.of(str),
+            "pipeline_config": ConfigField.of(str), "progress_directory": ConfigField.of(str)},
+)
+
+
+@dataclass(frozen=True, slots=True)
+class VideoBatchRuntimeConfig:
+    generation: GenerateDatasetRuntimeConfig
+    video_id: str
+    pipeline_config: str
+    progress_directory: Path
+
+
+def parse_video_batch_config(cfg: DictConfig) -> VideoBatchRuntimeConfig:
+    from src.tennis_scene.generate_dataset.manifest import validate_id_component
+
+    value = _VIDEO_BATCH_SCHEMA.validate(_plain(cfg))
+    generation = _generate_dataset_runtime(value)
+    video_id = validate_id_component(cast(str, value["video_id"]), field_name="video_id")
+    pipeline_config = cast(str, value["pipeline_config"])
+    if pipeline_config not in {"pipeline", "pipeline_x3d_dpt"}:
+        raise SemanticConfigurationError("pipeline_config must select pipeline or pipeline_x3d_dpt")
+    return VideoBatchRuntimeConfig(generation, video_id, pipeline_config,
+        PathResolver(generation.roots).resolve(PathRole.OUTPUT, cast(str, value["progress_directory"])))
+
+
+def validate_video_batch_boundary(cfg: DictConfig) -> None:
+    parse_video_batch_config(cfg)
 
 
 def build_ball_detection_config(

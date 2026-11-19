@@ -174,6 +174,7 @@ def test_marker_points_at_the_export_and_is_reused_for_the_same_identity(
 def test_config_is_content_addressed_and_the_export_stays_immutable(
     structured_dataset: Path, valid_scene_result: SceneResult
 ) -> None:
+    valid_scene_result.metadata["fixture_samples"] = (1, 2)
     outcome = generate_pseudo_annotations(structured_dataset, _publishing_runner(valid_scene_result),
         pipeline_config_yaml="device: cpu\n", publication_identity=IDENTITY)[0]
     assert outcome.annotation_path is not None

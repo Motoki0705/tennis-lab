@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "dataset_id": "meiji_4cam",
+  "created_at": "2026-11-15T13:57:34.247947+00:00",
+  "updated_at": "2026-11-15T15:17:14.470033+00:00",
+  "clips": [
+    {
+      "clip_id": "video_000/clip_000",
+      "video_id": "video_000",
+      "clip_name": "clip_000",
+      "path": "videos/video_000/clips/clip_000",
+      "num_cameras": 4,
+      "num_frames": 356,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "clip_id": "video_000/clip_001",
+      "video_id": "video_000",
+      "clip_name": "clip_001",
+      "path": "videos/video_000/clips/clip_001",
+      "num_cameras": 4,
+      "num_frames": 561,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "clip_id": "video_000/clip_002",
+      "video_id": "video_000",
+      "clip_name": "clip_002",
+      "path": "videos/video_000/clips/clip_002",
+      "num_cameras": 4,
+      "num_frames": 1516,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    }
+  ]
+}

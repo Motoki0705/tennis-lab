@@ -20,11 +20,13 @@ from __future__ import annotations
 
 import gc
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Generic, TypeVar
 
 import torch
 
 from src.utils.device import resolve_device
+from src.utils.inference_recording import model_event
 
 RequestT = TypeVar("RequestT")
 ResultT = TypeVar("ResultT")
@@ -53,22 +55,30 @@ class BaseInferenceModel(ABC, Generic[RequestT, ResultT]):
         """Load model weights (idempotent)."""
         if self._loaded:
             return
-        try:
-            self._load_impl()
-        except BaseException:
-            self._unload_impl()
-            raise
-        self._loaded = True
+        with model_event("load", type(self).__name__, weights=self.recording_assets(),
+                         device=str(self.device), dtype="float32", instance=str(id(self))):
+            try:
+                self._load_impl()
+            except BaseException:
+                self._unload_impl()
+                raise
+            self._loaded = True
 
     def unload(self) -> None:
         """Release model weights (idempotent)."""
         if not self._loaded:
             return
-        self._unload_impl()
-        self._loaded = False
-        gc.collect()
-        if self._device.type == "cuda":
-            torch.cuda.empty_cache()
+        with model_event("unload", type(self).__name__, weights=self.recording_assets(),
+                         device=str(self.device), dtype="float32", instance=str(id(self))):
+            self._unload_impl()
+            self._loaded = False
+            gc.collect()
+            if self._device.type == "cuda":
+                torch.cuda.empty_cache()
+
+    def recording_assets(self) -> dict[str, Path]:
+        """Files actually read by this model; metadata only, never a cache key."""
+        return {}
 
     def predict(self, request: RequestT) -> ResultT:
         """Run inference on one request, loading weights on first use."""

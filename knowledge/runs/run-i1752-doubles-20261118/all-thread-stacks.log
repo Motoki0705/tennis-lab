@@ -1,0 +1,77 @@
+Thread 0x0000727abdefb6c0 (most recent call first):
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 331 in wait
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 629 in wait
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/inference_recording.py", line 181 in _sample_loop
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 982 in run
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Current thread 0x0000727bae7d7740 (most recent call first):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 1446 in _fn
+  File "<frozen abc>", line 117 in __instancecheck__
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 161 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 164 in <listcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 164 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in <dictcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in <dictcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in <dictcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 164 in <listcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 164 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in <dictcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in <dictcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 164 in <listcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 164 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in <dictcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in <dictcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in <dictcomp>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/io.py", line 162 in json_value
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/artifacts.py", line 21 in document_digest
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/video_court/store.py", line 37 in _load
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/video_court/store.py", line 105 in verify
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/video_court/diagnostics.py", line 65 in verify
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/video_court/store.py", line 124 in camera_digest
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/definition.py", line 140 in shared_settings
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/definition.py", line 112 in add
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/definition.py", line 149 in standard_definition
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/pipeline/video_batch.py", line 179 in run_video_batch
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/knowledge/runs/run-video-batch-runtime-20261117/doubles_acceptance.py", line 163 in measured_batch
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1189 in _execute_mock_call
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128 in _mock_call
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124 in __call__
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/scripts/run_video_batch.py", line 27 in main
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/hydra.py", line 128 in validated
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/core/utils.py", line 189 in run_job
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/hydra.py", line 119 in run
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/utils.py", line 458 in <lambda>
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/utils.py", line 220 in run_and_report
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/utils.py", line 457 in _run_app
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/utils.py", line 394 in _run_hydra
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/main.py", line 94 in decorated_main
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/knowledge/runs/run-video-batch-runtime-20261117/doubles_acceptance.py", line 187 in worker
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/knowledge/runs/run-video-batch-runtime-20261117/doubles_acceptance.py", line 305 in main
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/knowledge/runs/run-video-batch-runtime-20261117/doubles_acceptance.py", line 314 in <module>
+Thread 0x0000727840ffe6c0 (most recent call first):
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 331 in wait
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 629 in wait
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/tqdm/_monitor.py", line 60 in run
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Thread 0x00007278a1dff6c0 (most recent call first):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/torch/_inductor/compile_worker/subproc_pool.py", line 76 in _recv_msg
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/torch/_inductor/compile_worker/subproc_pool.py", line 271 in _read_thread
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 982 in run
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 1045 in _bootstrap_inner
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 1002 in _bootstrap
+
+Current thread 0x0000727bae7d7740 (most recent call first):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/knowledge/runs/run-video-batch-runtime-20261117/doubles_acceptance.py", line 206 in worker
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/knowledge/runs/run-video-batch-runtime-20261117/doubles_acceptance.py", line 305 in main
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/knowledge/runs/run-video-batch-runtime-20261117/doubles_acceptance.py", line 314 in <module>

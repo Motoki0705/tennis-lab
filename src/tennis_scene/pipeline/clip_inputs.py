@@ -52,6 +52,53 @@ class DatasetClipInputs:
         return self.manifest_path.parent
 
 
+@dataclass(frozen=True)
+class PreparedDatasetClip:
+    inputs: DatasetClipInputs
+    media: SourceInputs
+
+
+def prepare_video_inputs(dataset_dir: Path, video_id: str,
+                         clip_ids: Sequence[str] | None = None) -> tuple[str, tuple[PreparedDatasetClip, ...]]:
+    """Freeze and validate the whole video selection before creating outputs."""
+    from src.tennis_scene.generate_dataset.manifest import (
+        ClipManifest,
+        load_dataset_manifest,
+        validate_id_component,
+    )
+
+    if not dataset_dir.is_absolute() or dataset_dir.resolve(strict=False) != dataset_dir:
+        raise ValueError("dataset_dir must be an absolute normalized Path from PathResolver.")
+    validate_id_component(video_id, field_name="video_id")
+    dataset = load_dataset_manifest(dataset_dir)
+    selected = (tuple(key for key in sorted(dataset.clips) if dataset.clips[key].video_id == video_id)
+                if clip_ids is None else tuple(clip_ids))
+    if not selected or len(set(selected)) != len(selected):
+        raise ValueError("Video selection must contain nonempty, unique clip IDs")
+    unknown = set(selected) - dataset.clips.keys()
+    if unknown:
+        raise ValueError(f"Unknown clip IDs: {sorted(unknown)}")
+    if any(dataset.clips[key].video_id != video_id for key in selected):
+        raise ValueError("Video selection contains clips from another video")
+    prepared = []
+    for key in selected:
+        record = dataset.clips[key]
+        bound = resolve_dataset_clip(dataset_dir, record)
+        manifest = ClipManifest.load(bound.clip_dir)
+        if manifest.dataset_id != dataset.dataset_id:
+            raise ValueError(f"Clip belongs to another dataset: {key}")
+        if len(set(path.resolve() for path in bound.video_paths)) != len(bound.camera_ids):
+            raise ValueError(f"Camera media must be one-to-one: {key}")
+        media = prepare_clip_source(bound.video_paths, bound.camera_ids, clip_id=key)
+        source = media.source
+        if ((source.num_frames, *source.size) != (record.num_frames, record.width, record.height)
+                or abs(source.fps - record.fps) > 1e-6):
+            raise ValueError(f"Actual media timeline disagrees with dataset record: {key}")
+        bound.snapshot.assert_unchanged()
+        prepared.append(PreparedDatasetClip(bound, media))
+    return dataset.dataset_id, tuple(prepared)
+
+
 def select_dataset_clips(dataset_dir: Path, clip_ids: Sequence[str] | None = None) -> tuple[DatasetClipRecord, ...]:
     """Resolve an explicit dataset selection without constructing any models."""
     from src.tennis_scene.generate_dataset.manifest import load_dataset_manifest

@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205002942712217463_2026-11-18T10-17-37-287782536Z_3032097_i1752-shared-fp16-three-20261118-a1",
+  "name": "i1752-shared-fp16-three-20261118-a1",
+  "command": "env PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=42 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib/MultiScaleDeformableAttention.so PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib .venv/bin/python -B -u knowledge/runs/run-i1752-shared-fp16-20261118/acceptance.py run --root /home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-shared-fp16-20261118 --expect-commit ba0fbdf1c16bd56d0852328db7e9f462f21b5ec3",
+  "provider": "codex",
+  "session": "01a1e957-c745-72f3-b662-6dcb032b4374",
+  "issue": "1752",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ba0fbdf1c16bd56d0852328db7e9f462f21b5ec3",
+  "branch": "codex/video-batch-cli",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli",
+  "captured_at": "2026-11-18T19:17:37+09:00"
+}

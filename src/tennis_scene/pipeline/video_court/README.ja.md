@@ -31,7 +31,7 @@ clip_id=video_000/clip_000
 
 requestのJSONと候補のfield一覧は[英語版の入力契約](README.md)を正本とする。camera全件の候補manifest `{path, sha256}` を指定する。clip選択がnullなら同じvideoの全clip、空・重複・別video・不明IDはエラー。frameは `floor(numerator*(N-1)/denominator)` で選び、重複を拒否する。bootstrapがnullならfit対象の先頭・中央・末尾clipを使う。候補のRGB hashと動画hashを実入力に照合し、有限な不採用モデルHも初期値には使える。
 
-共通APIは `prepare_video_court(config, resolver, code_identity=...)`。返された成果物を各 `ClipExecution` の `standard_definition(..., video_court=artifact)` に渡せる。orchestratorは単一clipと既存dataset入口で準備・束縛する。将来の一括CLIとの接続は別タスクで、このmoduleはCLI全体・モデル寿命を実装しない。
+共通APIは `prepare_video_court(config, resolver, code_identity=...)`。返された成果物を各 `ClipExecution` の `standard_definition(..., video_court=artifact)` に渡せる。orchestratorは単一clipと既存dataset入口で準備・束縛する。`run_video_batch` は複数clipの計画を組む前に取得し、対象の全clipへ束縛する。設定方法は[一括CLIの案内](../../README.md#登録済みvideoの一括再構成)を参照する。
 
 `run.json` はbundleとcameraのdigestを記録する。loadではCourt checkpoint、検出、build、暗黙修復は不要。camera内容hashがclipのcourt node identityへ入り、bundleのcamera参照がdataset marker identityへ入る。1cameraの変更はそのcourtと依存nodeを無効化し、同じ実装の人物・ボールrootは再利用できる。既存のPython全体fingerprintによる実装変更時の全cache無効化は維持する。
 

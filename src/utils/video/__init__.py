@@ -7,6 +7,7 @@ from src.utils.video.prefetch import PrefetchIterator
 from src.utils.video.reader import (
     OpenCVVideoFrameReader,
     RandomAccessVideoReader,
+    VideoReadError,
     probe_video_info,
     read_video_frame,
     read_video_rgb,
@@ -46,6 +47,7 @@ __all__ = [
     "TemporalBatch",
     "TemporalWindow",
     "VideoInfo",
+    "VideoReadError",
     "VideoWriter",
     "iter_temporal_batches",
     "iter_temporal_windows",

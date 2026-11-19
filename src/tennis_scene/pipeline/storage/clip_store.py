@@ -8,7 +8,7 @@ import os
 import shutil
 import tempfile
 from collections import OrderedDict
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,6 +25,7 @@ from src.tennis_scene.pipeline.storage.scene_index import (
     read_component_descriptor,
 )
 from src.utils.checksum import dual_sha256
+from src.utils.inference_recording import measured, span, temporary_directory
 
 OutputT = TypeVar("OutputT")
 OutputCo = TypeVar("OutputCo", covariant=True)
@@ -53,6 +54,18 @@ def _component_name(node: str) -> str:
     return parts[0]
 
 
+@contextmanager
+def clip_store_lock(root: Path) -> Iterator[None]:
+    """Use the same publication lock for components, exports and dataset markers."""
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / ".scene.lock").open("a") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
 class ClipStore:
     """Disk is authoritative; bounded in-memory entries never change semantics."""
 
@@ -75,12 +88,8 @@ class ClipStore:
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
-        with (self.root / ".scene.lock").open("a") as handle:
-            fcntl.flock(handle, fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(handle, fcntl.LOCK_UN)
+        with clip_store_lock(self.root):
+            yield
 
     def _index(self) -> dict[str, Any]:
         value = json.loads(self.index_path.read_text())
@@ -102,8 +111,9 @@ class ClipStore:
         return result
 
     def descriptor(self, reference: ArtifactRef) -> dict[str, Any]:
-        return read_component_descriptor(self.root, json_value(reference), node=None, source_sha256=self.source_key)
+        return cast(dict[str, Any], read_component_descriptor(self.root, json_value(reference), node=None, source_sha256=self.source_key))
 
+    @measured("artifact_load")
     def load(self, reference: ArtifactRef, codec: ArtifactReader[OutputT]) -> OutputT:
         descriptor = self.descriptor(reference)
         # Validate bytes on every disk read; a memory hit refers to the same immutable ID.
@@ -122,6 +132,7 @@ class ClipStore:
         while len(self._memory) > max(0, self.memory_entries):
             self._memory.popitem(last=False)
 
+    @measured("publication")
     def publish(self, node: str, value: OutputT, codec: ArtifactCodec[OutputT], *, schema: str,
                 version: int, identity: Mapping[str, Any], dependencies: Mapping[str, ArtifactRef],
                 provenance: Mapping[str, Any]) -> ArtifactRef:
@@ -131,15 +142,17 @@ class ClipStore:
         parent.mkdir(parents=True, exist_ok=True)
         temporary = Path(tempfile.mkdtemp(prefix=".writing-", dir=parent))
         try:
-            payload, arrays = codec.dump(value, temporary)
-            document = {"schema": "component_artifact_v1", "node": node, "output_schema": schema,
-                "output_version": version, "source_sha256": self.source_key, "execution_key": execution_key,
-                "identity": json_value(identity), "dependencies": json_value(dependencies),
-                "provenance": json_value(provenance), "payload": payload, "arrays": arrays, "status": "complete"}
-            artifact_id = document_digest(document)
-            document["artifact_id"] = artifact_id
-            filename = f"{component}.json"
-            write_json_atomic(temporary / filename, document)
+            with temporary_directory(temporary):
+                with span("save", operation="artifact_codec"):
+                    payload, arrays = codec.dump(value, temporary)
+                document = {"schema": "component_artifact_v1", "node": node, "output_schema": schema,
+                    "output_version": version, "source_sha256": self.source_key, "execution_key": execution_key,
+                    "identity": json_value(identity), "dependencies": json_value(dependencies),
+                    "provenance": json_value(provenance), "payload": payload, "arrays": arrays, "status": "complete"}
+                artifact_id = document_digest(document)
+                document["artifact_id"] = artifact_id
+                filename = f"{component}.json"
+                write_json_atomic(temporary / filename, document)
             destination = parent / artifact_id
             with self._lock():
                 if destination.exists():
@@ -168,13 +181,18 @@ class ClipStore:
             if temporary.exists():
                 shutil.rmtree(temporary)
 
-    def record_export(self, name: str, files: Mapping[str, Path], inputs: Mapping[str, ArtifactRef]) -> None:
+    @measured("publication")
+    def record_export(self, name: str, files: Mapping[str, Path], inputs: Mapping[str, ArtifactRef], *,
+                      prepare: Callable[[], None] | None = None) -> None:
+        """Prepare/validate files and adopt their checksums under one clip lock."""
         with self._lock():
             index = self._index()
             for node, reference in inputs.items():
                 if index["artifacts"].get(node) != json_value(reference):
                     raise ValueError(f"Cannot export a superseded component artifact: {node}")
             assert_current_component_lineage(index, self.root, json_value(inputs))
+            if prepare is not None:
+                prepare()
             index["exports"][name] = {"files": {key: {"path": str(path.resolve().relative_to(self.root)), "sha256": dual_sha256(path)} for key, path in files.items()},
                 "inputs": json_value(inputs)}
             index["revision"] += 1

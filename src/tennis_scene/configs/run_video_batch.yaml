@@ -1,0 +1,17 @@
+defaults:
+- paths: default
+- _self_
+dataset_directory: ???
+video_id: ???
+clip_ids: null
+overwrite: false
+continue_on_error: true
+pipeline_config: pipeline
+pipeline_overrides: []
+progress_directory: ${tennis_output:tennis_scene,generate,video_batch,${tennis_run_id:}}
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${progress_directory}/hydra}
+  output_subdir: null
+  job:
+    chdir: false

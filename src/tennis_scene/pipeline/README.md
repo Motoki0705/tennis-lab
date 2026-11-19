@@ -18,6 +18,7 @@
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
 | `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
 | `orchestrator.py` | 共通入力部品への動画束縛、標準recipeから1clipの計画を作成・実行・最終化、実行receipt |
+| `video_batch.py` | 同じvideoの固定clip群を1計画へ束縛し、失敗を分離してclip完成直後に公開する入口 |
 | `direct_annotation/` | 白紙注釈request・固定幾何参照と、scene完了・公開だけの再開 |
 | `feature_flags.py` | 無効化できる出力機能（`OPTIONAL_FEATURES`）とその依存関係 |
 
@@ -100,8 +101,12 @@ hubからimportした`dinov3.*`の`__file__`も宣言inventoryと照合する。
 新しいprocessが必要となる。同内容のモデルをruntime内で共有する内容キーの契約は変わらない。
 人物検出DINOも、models/utilのimportとbuild後に同じ出自検査を行う。
 repository配下のsymlink（ディレクトリ・循環・切れたリンクを含む）は、Python import対象の全列挙を保証できないため生成前に拒否する。
-既知の制限: 実行中にPython sourceを追加・書換する運用と、dataset入口の完成marker identity取得後に
-checkpointを置き換える運用は対象外（親 #1734 の判断）。実行中の資産は固定する。
+dataset入口は完成marker identityの資産スナップショットを保持し、計画の各nodeが同じ内容を
+束縛していることを実行前に照合する。identity取得から計画作成までのcheckpoint置換も停止する。
+単一入口と一括入口は共通の最終化で、入力・共有court（driftを含む）・共有court_side・資産を
+export直前に再検証する。既存exportは記録済みchecksumと再構成結果を照合してから採用し、
+同じ世代の作成・検証・index更新をclip lockで直列化する。
+既知の制限: 実行中にPython sourceを追加・書換する運用は対象外。実行中の資産は固定する。
 順序選択の未常駐モデルの宣言は、種類・設定・資産pathだけで必要数を見積もり、資産を要求しない。
 初回借用と、常駐モデルに対する同条件の残り需要を調べる段階で内容キーを解決する。
 分岐により借用されない任意モデルの資産が無くても、cache/loadや他モデルの処理を妨げない。

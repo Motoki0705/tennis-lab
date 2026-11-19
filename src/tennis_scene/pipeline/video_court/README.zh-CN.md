@@ -19,7 +19,7 @@ build当前使用固定hash的**冻结模型候选**，不运行新的神经网�
 
 命令、request JSON和候选字段的唯一完整规格见[英文输入契约](README.md)。必须指定每个camera的候选manifest `{path, sha256}`。clip选择为null表示同一video的全部clip；空、重复、外部或未知ID会失败。采样使用 `floor(numerator*(N-1)/denominator)`，拒绝重复帧。bootstrap为null时使用fit clip中的首、中、末clip。准备过程核对源视频和RGB hash。有限但未通过模型接纳条件的H可以作为初值。
 
-共用API为 `prepare_video_court(config, resolver, code_identity=...)`。可将产物传给每个 `ClipExecution` 的 `standard_definition(..., video_court=artifact)`。orchestrator在单clip及现有dataset入口准备并绑定它。未来批处理CLI的连接属于另一任务；这里不实现CLI整体或模型生命周期。
+共用API为 `prepare_video_court(config, resolver, code_identity=...)`。可将产物传给每个 `ClipExecution` 的 `standard_definition(..., video_court=artifact)`。orchestrator在单clip及现有dataset入口准备并绑定它。`run_video_batch` 在建立多片段计划前获取产物，并绑定全部选定clip。配置方法见[批处理CLI指南](../../README.md#登録済みvideoの一括再構成)。
 
 `run.json`记录bundle及camera digest。load不需要Court checkpoint，不检测、不build、不自动修复。camera内容hash进入clip court node identity，bundle camera引用进入dataset marker identity。改变一个camera会失效其court和下游node，同一实现下独立的人物和球root可复用。既有全局Python fingerprint在代码改变时仍使所有组件cache失效。
 

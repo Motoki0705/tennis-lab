@@ -1,0 +1,38 @@
+{
+  "batch_commit": "ba0fbdf1c16bd56d0852328db7e9f462f21b5ec3",
+  "reference_commit": "6bf5b7e132ddfe10a8914c7e75719da6f044f9da",
+  "source_git_trees": {
+    "batch": "9468f5a8056f2398785003c4160ecd3286801117",
+    "single": "9468f5a8056f2398785003c4160ecd3286801117"
+  },
+  "source_git_tree_equal": true,
+  "clip_source_equal": true,
+  "descriptor_checks": {
+    "identity": false,
+    "source_sha256": true,
+    "dependencies": false
+  },
+  "note": "Input source and Ball computation identities agree. Downstream dependency identities can differ because saved Ball evidence content differs. Cause of sparse BF16 evidence variability is not isolated; no acceptance tolerance was changed.",
+  "ball_descriptor_checks": {
+    "ball_detection/cam0": {
+      "identity": true,
+      "dependencies": true,
+      "execution_key": true
+    },
+    "ball_detection/cam1": {
+      "identity": true,
+      "dependencies": true,
+      "execution_key": true
+    },
+    "ball_detection/cam2": {
+      "identity": true,
+      "dependencies": true,
+      "execution_key": true
+    },
+    "ball_detection/cam3": {
+      "identity": true,
+      "dependencies": true,
+      "execution_key": true
+    }
+  }
+}

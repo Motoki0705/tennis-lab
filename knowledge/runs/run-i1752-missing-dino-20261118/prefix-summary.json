@@ -1,0 +1,86 @@
+{
+  "schema": "inference_recording_v1",
+  "started_at": "2026-11-17T16:24:49.054196+00:00",
+  "status": "failed",
+  "error_type": "FileNotFoundError",
+  "metadata": {
+    "entry": "generate_dataset",
+    "cache": "cold",
+    "commit": "004bca23b86f421dc8c77affdf30b0303087bf25",
+    "clip_order": [
+      "video_000/clip_000",
+      "video_000/clip_001"
+    ]
+  },
+  "timing": {
+    "clock": "perf_counter_ns",
+    "gpu": "synchronized_wall",
+    "wall_attribution": "deepest_span_then_gpu_then_latest",
+    "sample_interval_seconds": 0.1
+  },
+  "total_wall_seconds": 170.712680339,
+  "stage_wall_seconds": {
+    "artifact_load": 1.708880536,
+    "decode": 2.965842076,
+    "measurement": 12.896526832,
+    "model_load": 15.963184964,
+    "model_unload": 1.090551428,
+    "postprocess": 63.83317575,
+    "preprocess": 19.067007971,
+    "publication": 0.187800087,
+    "save": 1.749775387,
+    "unattributed": 51.249935308
+  },
+  "models": [
+    {
+      "model": "ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt",
+          "sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242"
+        }
+      },
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 0.741497598,
+      "unload_seconds": 0.593983883
+    },
+    {
+      "model": "dino",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 1,
+      "load_seconds": 15.221687366,
+      "unload_seconds": 0.496567545
+    }
+  ],
+  "batch_shapes": {},
+  "resources": {
+    "ram_rss_sampled_peak_bytes": 5792071680,
+    "temporary_disk_peak_bytes": 82481092,
+    "ram_process_lifetime_peak_bytes": 5812105216,
+    "cuda": {
+      "cuda:0": {
+        "allocated_peak_bytes": 1354033152,
+        "reserved_peak_bytes": 1992294400
+      }
+    }
+  },
+  "measurement_errors": [],
+  "raw_recording": {
+    "path": ".worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-runtime-20261117/recordings/single-cold.json",
+    "bytes": 413772,
+    "sha256": "baf68b6836768dea1a53e9dfcd2d16e8f37e7828581e3d60d3472f050a674351"
+  }
+}

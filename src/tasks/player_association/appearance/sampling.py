@@ -21,6 +21,7 @@ from numpy.typing import NDArray
 from src.tasks.player_association.appearance.encoders import AppearanceEncoder
 from src.tasks.player_association.appearance.parts import NativeParts
 from src.utils.geometry.bbox import pairwise_iou
+from src.utils.inference_recording import measured
 from src.utils.video import FramePacket, OpenCVVideoFrameReader
 from src.utils.video.reader import OpenCVDecodeIdentity
 
@@ -99,6 +100,7 @@ def sample_tracks(boxes: NDArray[np.floating], observed: NDArray[np.bool_], imag
     return samples
 
 
+@measured("preprocess")
 def crop(frame_bgr: NDArray[np.uint8], box: NDArray[np.floating], size: tuple[int, int]) -> NDArray[np.float32]:
     """RGB ``(3, H, W)`` in ``[0, 1]`` of ``box`` resized (not letterboxed) to ``size = (H, W)``, as Re-ID models are trained."""
     height, width = frame_bgr.shape[:2]

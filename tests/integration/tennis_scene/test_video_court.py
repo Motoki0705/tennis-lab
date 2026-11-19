@@ -21,7 +21,10 @@ from src.tennis_scene.pipeline.clip_inputs import (
     resolve_dataset_clip,
     select_dataset_clips,
 )
-from src.tennis_scene.pipeline.dataset_publication import completed_annotation
+from src.tennis_scene.pipeline.dataset_publication import (
+    completed_annotation,
+    publish_annotation,
+)
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     standard_definition,
@@ -55,6 +58,7 @@ def report(frames=24, *, failed=False):
 
 def matrices():
     court, _, _ = inputs()
+    assert court.diagnostics is not None
     return [np.asarray(camera['frames'][0]['homography_court_metres_to_image_pixels']) for camera in court.diagnostics['cameras']]
 
 
@@ -379,7 +383,6 @@ def test_invalid_build_subset_stops_before_estimation(tmp_path, monkeypatch, sel
 
 
 def test_shared_artifact_change_is_part_of_dataset_marker_identity(tmp_path, monkeypatch):
-    from src.tennis_scene.pipeline.dataset_publication import publish_annotation
 
     pipeline, paths, _, docs, store, artifact = shared_fixture(tmp_path, monkeypatch)
     materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
@@ -387,9 +390,10 @@ def test_shared_artifact_change_is_part_of_dataset_marker_identity(tmp_path, mon
     record = select_dataset_clips((tmp_path / 'dataset').resolve())[0]
     bound = resolve_dataset_clip((tmp_path / 'dataset').resolve(), record)
     identity = pipeline.publication_identity()
-    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=CAMERAS,
-        store_root=bound.clip_dir / 'annotations/tennis_scene', clip_id=record.clip_id)
-    destination = publish_annotation(bound, scene, pipeline_config_yaml='fixture: true', publication_identity=identity)
+    result = pipeline.run(bound.video_paths, video_role=PathRole.DATA, camera_ids=CAMERAS,
+                          store_root=bound.clip_dir / 'annotations/tennis_scene', clip_id=record.clip_id)
+    destination = publish_annotation(bound, result, pipeline_config_yaml='fixture: video_court\n',
+                                     publication_identity=identity)
     assert completed_annotation(bound, identity) == destination
     docs['cam0']['matrix'][0][2] += 1
     with store.lock():
@@ -585,6 +589,7 @@ def test_runtime_configuration_loads_both_pinned_court_and_drift_references(tmp_
         'court_kp.video_shared.directory=shared', 'court_kp.video_shared.dataset_id=fixture',
         'court_kp.video_shared.video_id=video_000', 'court_kp.video_shared.artifact_digest=' + 'a' * 64,
         'court_kp.video_shared.drift_directory=drift', 'court_kp.video_shared.drift_digest=' + 'b' * 64))
+    assert cfg.video_court is not None and cfg.video_court_drift is not None
     assert cfg.video_court.artifact_digest == 'a' * 64
     assert cfg.video_court_drift.digest == 'b' * 64
     assert cfg.video_court_drift.directory.name == 'drift'

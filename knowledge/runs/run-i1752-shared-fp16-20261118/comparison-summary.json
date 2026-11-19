@@ -1,0 +1,44 @@
+{
+  "numerical_acceptance": false,
+  "all_arrays_exact": false,
+  "all_payloads_exact": true,
+  "all_payloads_close": true,
+  "scene_metadata": {
+    "exact": true,
+    "close": true,
+    "differences": {}
+  },
+  "same_nodes": true,
+  "tolerance": {
+    "float_atol": 1e-06,
+    "float_rtol": 1e-05,
+    "discrete": "exact"
+  },
+  "reference_clip": "video_000/clip_027",
+  "components": 38,
+  "arrays": 378,
+  "runtime_lifetimes": {
+    "loads": {
+      "ball": 1,
+      "dino": 1,
+      "vitpose": 1,
+      "appearance": 1,
+      "hmr2": 1,
+      "gvhmr": 1,
+      "body_geometry": 1
+    },
+    "unloads": {
+      "ball": 1,
+      "dino": 1,
+      "vitpose": 1,
+      "appearance": 1,
+      "hmr2": 1,
+      "gvhmr": 1,
+      "body_geometry": 1
+    },
+    "unclosed": [],
+    "maximum_owned": 2,
+    "failed_events": [],
+    "each_target_loaded_once": true
+  }
+}

@@ -82,7 +82,9 @@ def test_tracking_features_require_the_same_model_identity(tmp_path: Path, monke
     from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
     codec = ArtifactCodec(type(result))
     payload, arrays = codec.dump(result, tmp_path)
-    assert codec.load(payload, tmp_path, arrays).tracks.evidence.encoder_identity == evidence.encoder_identity
+    restored = codec.load(payload, tmp_path, arrays)
+    assert restored.tracks.evidence is not None
+    assert restored.tracks.evidence.encoder_identity == evidence.encoder_identity
 
 
 def test_fragments_link_before_dwell_and_cap_and_keep_duplicate_observations(tmp_path: Path) -> None:

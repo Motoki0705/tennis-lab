@@ -85,6 +85,11 @@ class RecordingStore(ClipStore):
         return super().load(reference, codec)
 
 
+def recording_store(spec: ClipExecution) -> RecordingStore:
+    assert isinstance(spec.store, RecordingStore)
+    return spec.store
+
+
 def model(node: ComponentNode) -> Model:
     assert isinstance(node.component, Model)
     return node.component
@@ -171,8 +176,8 @@ def test_each_node_is_decided_and_processed_once(tmp_path: Path, case: str, expe
     if case in ("load", "overwrite_load"):
         spec = replace(spec, nodes=tuple(replace(node, source="load") for node in spec.nodes))
     spec = replace(spec, overwrite=case in ("overwrite", "overwrite_load"))
-    spec.store.lookups.clear()
-    spec.store.loads.clear()
+    recording_store(spec).lookups.clear()
+    recording_store(spec).loads.clear()
     plan = ExecutionPlan([spec])
     executor = PlanExecutor(plan)
     completed: list[str] = []
@@ -180,13 +185,13 @@ def test_each_node_is_decided_and_processed_once(tmp_path: Path, case: str, expe
     executor.run(on_clip_complete=completed.append)  # Draining again must not inspect completed nodes.
     executor.execute(("a", "first"))
     assert [plan.statuses[("a", name)] for name in ("first", "second", "separate")] == list(expected)
-    assert spec.store.lookups == {"first": 1, "second": 1, "separate": 1}
+    assert recording_store(spec).lookups == {"first": 1, "second": 1, "separate": 1}
     assert [model(node).calls - count for node, count in zip(spec.nodes, before, strict=True)] == [int(s == "executed") for s in expected]
     assert len(plan.decisions) == 3
     assert completed == ["a"]
     expected_loads = [int(expected[0] != "executed") + int(expected[1] == "executed"),
                       int(expected[1] != "executed"), int(expected[2] != "executed")]
-    assert spec.store.loads == {plan.references[("a", name)].artifact_id: count
+    assert recording_store(spec).loads == {plan.references[("a", name)].artifact_id: count
                                 for name, count in zip(("first", "second", "separate"), expected_loads, strict=True) if count}
     np.testing.assert_array_equal(executor.output(("a", "second")).values, [4, 10])
 
@@ -200,7 +205,7 @@ def test_missing_load_artifact_is_required_and_decided_once(tmp_path: Path) -> N
         executor.run()
     with pytest.raises(FileNotFoundError, match="artifact missing"):
         plan.decide(("a", "first"))
-    assert spec.store.lookups == {"first": 1} and not spec.store.loads
+    assert recording_store(spec).lookups == {"first": 1} and not recording_store(spec).loads
     assert all(model(node).calls == 0 for node in spec.nodes)
 
 
@@ -213,7 +218,7 @@ def test_single_clip_api_keeps_references_and_never_reexecutes_completed_targets
     assert references is runner.references
     assert references["first"] == first and set(references) == {"first", "second"}
     assert [model(node).calls for node in spec.nodes] == [1, 1, 0]
-    assert spec.store.lookups == {"first": 1, "second": 1}
+    assert recording_store(spec).lookups == {"first": 1, "second": 1}
 
 
 @pytest.mark.parametrize("initial_targets", [None, [("a", "second"), ("a", "separate")]])
@@ -258,14 +263,14 @@ def test_corrupt_cached_or_loaded_artifact_fails_without_recalculation(tmp_path:
     first = seed.references[("a", "first")]
     (spec.store.root / first.path).parent.joinpath("array_0000.npy").write_bytes(b"corrupt")
     spec = replace(spec, nodes=tuple(replace(node, source=source) for node in spec.nodes))
-    spec.store.lookups.clear()
+    recording_store(spec).lookups.clear()
     plan = ExecutionPlan([spec])
     executor = PlanExecutor(plan)
     with pytest.raises(ValueError, match="checksum"):
         executor.run()
     with pytest.raises(ValueError, match="not ready"):
         executor.execute(("a", "first"))
-    assert spec.store.lookups == {"first": 1}
+    assert recording_store(spec).lookups == {"first": 1}
     assert [model(node).calls for node in spec.nodes] == [1, 1, 1]
     assert plan.statuses == {("a", "first"): "failed"} and not plan.references
 
@@ -293,10 +298,10 @@ def test_two_clips_keep_stores_and_dependencies_separate_under_ready_policy(tmp_
         np.testing.assert_array_equal(output.values, values)
         reference = plan.references[(spec.clip_id, "second")]
         assert spec.store.descriptor(reference)["dependencies"] == {"previous": json_value(plan.references[(spec.clip_id, "first")])}
-        assert spec.store.lookups == {"first": 1, "second": 1, "separate": 1}
+        assert recording_store(spec).lookups == {"first": 1, "second": 1, "separate": 1}
     assert plan.references[("a", "first")] != plan.references[("b", "first")]
     for spec in clips:
-        spec.store.lookups.clear()
+        recording_store(spec).lookups.clear()
     reordered = ExecutionPlan(list(reversed(clips)))
     PlanExecutor(reordered).run()
     assert reordered.references == plan.references
@@ -304,12 +309,22 @@ def test_two_clips_keep_stores_and_dependencies_separate_under_ready_policy(tmp_
     assert all(model(node).calls == 1 for spec in clips for node in spec.nodes)
 
 
+@pytest.mark.parametrize("key", [("missing", "first"), ("a", "missing")])
+def test_unknown_execute_key_keeps_the_explicit_readiness_error(tmp_path: Path, key: NodeKey) -> None:
+    spec = clip(tmp_path)
+    executor = PlanExecutor(ExecutionPlan([spec]))
+    with pytest.raises(ValueError, match="outside the execution plan"):
+        executor.execute(key)
+    assert not executor.plan.references
+    assert all(model(node).calls == 0 for node in spec.nodes)
+
+
 def test_policy_cannot_select_unready_node(tmp_path: Path) -> None:
     spec = clip(tmp_path)
     executor = PlanExecutor(ExecutionPlan([spec]), select_ready=lambda _: ("a", "second"))
     with pytest.raises(ValueError, match="not ready"):
         executor.run()
-    assert not spec.store.lookups and all(model(node).calls == 0 for node in spec.nodes)
+    assert not recording_store(spec).lookups and all(model(node).calls == 0 for node in spec.nodes)
 
 
 @pytest.mark.parametrize("invalid,match", [
@@ -336,4 +351,4 @@ def test_invalid_plan_is_rejected_before_execution(tmp_path: Path, invalid: str,
         b = replace(b, targets=("missing",))
     with pytest.raises(ValueError, match=match):
         ExecutionPlan([a, b])
-    assert not a.store.lookups and all(model(node).calls == 0 for node in a.nodes)
+    assert not recording_store(a).lookups and all(model(node).calls == 0 for node in a.nodes)

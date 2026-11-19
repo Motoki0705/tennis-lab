@@ -18,6 +18,8 @@ from src.tennis_scene.pipeline.appearance_media import (
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.tennis_scene.pipeline.storage.clip_store import clip_store_lock
+from src.tennis_scene.pipeline.storage.scene_export import validate_scene_export
 from src.tennis_scene.pipeline.storage.scene_index import (
     annotation_scene_path,
     indexed_scene_path,
@@ -29,6 +31,7 @@ from src.tennis_scene.schema import (
     SceneResult,
     validate_scene_result_arrays,
 )
+from src.utils.inference_recording import span
 from src.utils.io import save_json_atomic, utc_now_iso
 
 if TYPE_CHECKING:
@@ -193,52 +196,63 @@ def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mappin
     destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR / "annotation.json"
     if not destination.exists() or overwrite:
         return None
-    publication_identity = _clip_publication_identity(inputs, publication_identity)
-    marker = json.loads(destination.read_text())
-    if (marker.get("publication_identity_sha256") != document_digest(publication_identity)
-            or marker.get("clip_manifest_sha256") != inputs.manifest_sha256
-            or marker.get("media_sha256") != inputs.media_sha256):
-        raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
-    required = _required_scene_components(inputs, publication_identity)
-    if required:
-        annotation_scene_path(destination.parent, marker, required_components=required)
-    inputs.snapshot.assert_unchanged()
+    from src.tennis_scene.archive import load_scene_result
+
+    with clip_store_lock(destination.parent):
+        if not destination.exists():
+            return None
+        publication_identity = _clip_publication_identity(inputs, publication_identity)
+        marker = json.loads(destination.read_text())
+        if (marker.get("publication_identity_sha256") != document_digest(publication_identity)
+                or marker.get("clip_manifest_sha256") != inputs.manifest_sha256
+                or marker.get("media_sha256") != inputs.media_sha256):
+            raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
+        required = _required_scene_components(inputs, publication_identity)
+        scene = load_scene_result(annotation_scene_path(destination.parent, marker, required_components=required))
+        validate_dataset_result(scene, inputs.record)
+        if marker.get("arrays") != scene_array_manifest(scene):
+            raise ValueError("Annotation arrays disagree with the published scene")
+        inputs.snapshot.assert_unchanged()
     return destination
 
 
 def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeline_config_yaml: str,
-                       publication_identity: Mapping[str, object]) -> Path:
+                       publication_identity: Mapping[str, object], expected_scene: Path | None = None) -> Path:
     """Validate a complete clip and atomically publish its dataset marker."""
-    publication_identity = _clip_publication_identity(inputs, publication_identity)
-    required = _required_scene_components(inputs, publication_identity)
-    validate_dataset_result(result, inputs.record)
-    inputs.snapshot.assert_unchanged()
-    destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
-    scene_path = indexed_scene_path(destination / "scene.json", required_components=required)
-    config_bytes = pipeline_config_yaml.encode("utf-8")
-    config_path = destination / "configs" / f"{hashlib.sha256(config_bytes).hexdigest()}.yaml"
-    if not config_path.exists():
-        config_path.parent.mkdir(exist_ok=True)
-        temporary = config_path.with_suffix(".yaml.tmp")
-        temporary.write_bytes(config_bytes)
-        temporary.replace(config_path)
-    elif config_path.read_bytes() != config_bytes:
-        raise ValueError(f"Content-addressed pipeline config was modified: {config_path}")
-    annotation = {
-        "version": ANNOTATION_SCHEMA_VERSION, "clip_id": inputs.record.clip_id, "generator": "src.tennis_scene",
-        "generated_at": utc_now_iso(), "scene_result": str(scene_path.relative_to(destination)),
-        "scene_index": "scene.json", "pipeline_config": str(config_path.relative_to(destination)),
-        "clip_manifest_sha256": inputs.manifest_sha256, "arrays": scene_array_manifest(result),
-        "scene_schema_version": result.schema_version, "result_status": result.metadata["status"],
-        "validity_statistics": result.metadata["validity_statistics"],
-        "publication_identity_sha256": document_digest(publication_identity),
-        "media_sha256": dict(inputs.media_sha256),
-    }
-    inputs.snapshot.assert_unchanged()
-    marker = destination / "annotation.json"
-    save_json_atomic(annotation, marker)
-    (destination.parent / "tennis_scene.failure.json").unlink(missing_ok=True)
-    return marker
+    with span("publication"), clip_store_lock(inputs.clip_dir / ANNOTATION_RELATIVE_DIR):
+        publication_identity = _clip_publication_identity(inputs, publication_identity)
+        validate_dataset_result(result, inputs.record)
+        inputs.snapshot.assert_unchanged()
+        destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
+        required = _required_scene_components(inputs, publication_identity)
+        scene_path = indexed_scene_path(destination / "scene.json", required_components=required)
+        if expected_scene is not None and scene_path != expected_scene.resolve():
+            raise ValueError("Cannot publish a superseded scene export")
+        validate_scene_export(result, scene_path)
+        config_bytes = pipeline_config_yaml.encode("utf-8")
+        config_path = destination / "configs" / f"{hashlib.sha256(config_bytes).hexdigest()}.yaml"
+        if not config_path.exists():
+            config_path.parent.mkdir(exist_ok=True)
+            temporary = config_path.with_suffix(".yaml.tmp")
+            temporary.write_bytes(config_bytes)
+            temporary.replace(config_path)
+        elif config_path.read_bytes() != config_bytes:
+            raise ValueError(f"Content-addressed pipeline config was modified: {config_path}")
+        annotation = {
+            "version": ANNOTATION_SCHEMA_VERSION, "clip_id": inputs.record.clip_id, "generator": "src.tennis_scene",
+            "generated_at": utc_now_iso(), "scene_result": str(scene_path.relative_to(destination)),
+            "scene_index": "scene.json", "pipeline_config": str(config_path.relative_to(destination)),
+            "clip_manifest_sha256": inputs.manifest_sha256, "arrays": scene_array_manifest(result),
+            "scene_schema_version": result.schema_version, "result_status": result.metadata["status"],
+            "validity_statistics": result.metadata["validity_statistics"],
+            "publication_identity_sha256": document_digest(publication_identity),
+            "media_sha256": dict(inputs.media_sha256),
+        }
+        inputs.snapshot.assert_unchanged()
+        marker = destination / "annotation.json"
+        save_json_atomic(annotation, marker)
+        (destination.parent / "tennis_scene.failure.json").unlink(missing_ok=True)
+        return marker
 
 
 def record_annotation_failure(clip_dir: Path, clip_id: str, error: Exception) -> str:

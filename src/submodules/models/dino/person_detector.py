@@ -21,6 +21,7 @@ from src.submodules.models.dino.architecture import (
     preprocess_frame,
     use_fp32_deformable_attention,
 )
+from src.utils.inference_recording import span
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,9 @@ class DinoPersonDetector(
         self._autocast_dtype = autocast_dtype(precision, self.device)
         self._model: torch.nn.Module | None = None
 
+    def recording_assets(self) -> dict[str, Path]:
+        return {"checkpoint": self.checkpoint}
+
     def _load_impl(self) -> None:
         if self.device.type != "cuda":
             raise RuntimeError(
@@ -138,9 +142,10 @@ class DinoPersonDetector(
                 )
             if frame.dtype != np.uint8:
                 raise TypeError(f"frame_bgr must have dtype uint8, got {frame.dtype}")
-            image = preprocess_frame(
-                frame, short_side=self.short_side, max_long_side=self.max_long_side
-            )
+            with span("preprocess", model="DINO"):
+                image = preprocess_frame(
+                    frame, short_side=self.short_side, max_long_side=self.max_long_side
+                )
             if images and image.shape != images[0].shape:
                 results.extend(self._predict_compatible_batch(images, image_sizes))
                 images.clear()
@@ -160,14 +165,22 @@ class DinoPersonDetector(
     ) -> list[PersonDetectionResult]:
         if self._model is None:
             raise RuntimeError("DINO model did not load before prediction.")
-        batch = torch.stack(list(images)).to(self.device)
-        with torch.autocast(self.device.type, dtype=self._autocast_dtype, enabled=self._autocast_dtype is not None):
+        with span("preprocess", model="DINO"):
+            batch = torch.stack(list(images))
+        with span("transfer", model="DINO"):
+            batch = batch.to(self.device)
+        with (
+            span("inference", model="DINO", batch_shape=list(batch.shape)),
+            torch.autocast(self.device.type, dtype=self._autocast_dtype, enabled=self._autocast_dtype is not None),
+        ):
             output = self._model(batch)
-        if self._autocast_dtype is not None:
-            output = {key: output[key].float() for key in ("pred_logits", "pred_boxes")}
-        return decode_person_detections(
-            output, image_sizes=image_sizes, confidence=self.confidence
-        )
+        del batch
+        with span("postprocess", model="DINO"):
+            if self._autocast_dtype is not None:
+                output = {key: output[key].float() for key in ("pred_logits", "pred_boxes")}
+            return decode_person_detections(
+                output, image_sizes=image_sizes, confidence=self.confidence
+            )
 
 
 def decode_person_detections(

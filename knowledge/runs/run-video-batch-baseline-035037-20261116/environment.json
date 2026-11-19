@@ -1,0 +1,16 @@
+{
+  "python": "3.11.15",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "torch": "2.13.0+cu130",
+  "torch_cuda": "13.0",
+  "opencv": "5.0.0",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti, 610.88, 16311 MiB",
+  "submodules": [
+    " d84a491d41898b3befd8294d1cf2614661fc0953 third_party/DINO (heads/main)",
+    "-8a956ca7f4d7071d56f8cc0a987270f302015990 third_party/GVHMR",
+    " 4add255125e6cbf446c6a43c5f3028aa41b63648 third_party/dinov3 (heads/main)",
+    "-bf05cd79b54475752fee8d8ebd19d743c5fa542f third_party/nht"
+  ],
+  "cuda_allocator_limit_gib": 10,
+  "model_dtype": "float32 (current defaults)"
+}

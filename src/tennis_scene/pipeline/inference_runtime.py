@@ -7,13 +7,15 @@ import json
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator, Mapping
-from contextlib import AbstractContextManager, contextmanager, nullcontext
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Generic, Literal, Protocol, TypeVar
 
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
+from src.tennis_scene.pipeline.errors import is_clip_failure
 from src.utils.checksum import dual_sha256
+from src.utils.inference_recording import model_event
 
 ModelT = TypeVar("ModelT")
 InputT = TypeVar("InputT")
@@ -162,12 +164,17 @@ class InferenceRuntime:
         self._expected_assets = {node: dict(assets) for node, assets in (expected_assets or {}).items()}
         self._active: NodeKey | None = None
         self._closed = False
+        self._load_failed = False
         self._serial = 0
         self._model_event, self._cleanup = model_event, cleanup
 
     @property
     def loaded_keys(self) -> frozenset[ModelKey]:
         return frozenset(self._owned)
+
+    @property
+    def healthy(self) -> bool:
+        return not self._closed and not self._load_failed
 
     def keys_for(self, node: NodeKey) -> frozenset[ModelKey]:
         return frozenset(self._key_for(node, alias) for alias in self._remaining.get(node, {}))
@@ -236,7 +243,7 @@ class InferenceRuntime:
         self.close()
 
     @contextmanager
-    def node(self, node: NodeKey) -> Iterator[ModelBorrower]:
+    def node(self, node: NodeKey, *, continue_on_error: bool = False) -> Iterator[ModelBorrower]:
         if self._closed or self._active is not None or node not in self._remaining:
             raise RuntimeError(f"Cannot enter inference node: {node}")
         self._active = node
@@ -244,21 +251,34 @@ class InferenceRuntime:
             yield ModelBorrower(self, node)
         except BaseException as error:
             _clear_exception_frames(error)
-            self.close()
+            if continue_on_error and self.healthy and is_clip_failure(error):
+                self.discard((node,))
+            else:
+                self.close()
             raise
         else:
-            self._remaining.pop(node)
-            self._keys.pop(node, None)
-            for key in tuple(self._owned):
-                if not self._has_demand(key):
-                    self._release(key)
+            self.discard((node,))
         finally:
             self._active = None
+
+    def discard(self, nodes: Iterator[NodeKey] | tuple[NodeKey, ...]) -> None:
+        """Withdraw finished or blocked demand without disturbing other clips."""
+        for node in nodes:
+            self._remaining.pop(node, None)
+            self._keys.pop(node, None)
+        for key in tuple(self._owned):
+            if not self._has_demand(key):
+                try:
+                    self._release(key)
+                except BaseException:
+                    self._load_failed = True
+                    raise
 
     @contextmanager
     def _event(self, action: Literal["load", "unload"], owned: _OwnedModel) -> Iterator[None]:
         spec = owned.spec
-        event = nullcontext() if self._model_event is None else self._model_event(
+        event_hook = model_event if self._model_event is None else self._model_event
+        event = event_hook(
             action, spec.kind, weights=spec.weights, device=spec.device, dtype=spec.dtype, instance=owned.instance)
         failure: BaseException | None = None
         try:
@@ -288,6 +308,13 @@ class InferenceRuntime:
         return str(document_digest(self._key_for(node, alias)))
 
     def borrow(self, node: NodeKey, alias: str) -> Any:
+        try:
+            return self._borrow(node, alias)
+        except BaseException:
+            self._load_failed = True
+            raise
+
+    def _borrow(self, node: NodeKey, alias: str) -> Any:
         self._require_alias(node, alias)
         spec = self._remaining[node][alias]
         # Validate the complete bound inventory, including sources removed

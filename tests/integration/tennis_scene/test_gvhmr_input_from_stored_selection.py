@@ -243,7 +243,7 @@ def test_separated_features_preserve_body_parameters_placement_and_asset_loads(t
     image = materialize_model_weights(HMR2FeaturesModule(cfg))
     mesh = materialize_model_weights(GVHMRModule(cfg))
     placement = materialize_model_weights(BodyPlacementModule(('cam0', 'cam1'), cfg, case.config, reprojection_px=20))
-    modules = {'hmr2_features': image, 'gvhmr': mesh, 'body_placement': placement}
+    modules: dict[str, InferenceComponent[Any, Any]] = {'hmr2_features': image, 'gvhmr': mesh, 'body_placement': placement}
     declarations = {(str(i), name): module.model_specs() for i in range(clips) for name, module in modules.items()}
     @contextmanager
     def recorder(action: Any, model: str, **attributes: Any) -> Iterator[None]:

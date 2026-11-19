@@ -1,0 +1,10 @@
+{
+  "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/reference/single/recording.json": {
+    "bytes": 13329699,
+    "sha256": "d422bf66a80ca389fbfe075a239cd43e87ffbb90fca344e02e98dd4abd8ef253"
+  },
+  "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/reference/single.log": {
+    "bytes": 15402,
+    "sha256": "525b7c837af6cc54b83a479b0132f52b256cd5b6aec21d1f06353f3c9eb5874e"
+  }
+}

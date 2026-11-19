@@ -1,5 +1,6 @@
 """Unit tests for DINO person-only decoding and checkpoint validation."""
 
+import json
 import sys
 from argparse import Namespace
 from pathlib import Path
@@ -19,6 +20,7 @@ from src.submodules.models.dino.architecture import (
 )
 from src.submodules.models.dino.person_detector import decode_person_detections
 from src.tasks.person_tracking.duplicate_boxes import merge_person_boxes
+from src.utils.inference_recording import InferenceRecorder
 
 
 def test_mixed_dino_wraps_only_deformable_attention_in_fp32(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -181,6 +183,27 @@ def tiny_detector(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Dino
 
     monkeypatch.setattr(detector, "_load_impl", load)
     return detector, model, loads
+
+
+def test_recording_reports_actual_compatible_and_partial_batches(
+    tiny_detector: tuple[DinoPersonDetector, _TinyDino, list[bool]], tmp_path: Path,
+) -> None:
+    detector, model, loads = tiny_detector
+    detector.checkpoint.write_bytes(b"fake CPU weights")
+    requests = [PersonDetectionRequest(np.full((6, 12, 3), i * 40, dtype=np.uint8)) for i in range(3)]
+    expected = detector.predict_batch(requests, batch_size=2)
+    detector.unload()
+    model.inputs.clear()
+    with InferenceRecorder(tmp_path / "dino.json"):
+        actual = detector.predict_batch(requests, batch_size=2)
+        detector.unload()
+    record = json.loads((tmp_path / "dino.json").read_text())
+    batches = [e["attributes"]["batch_shape"] for e in record["events"] if e["stage"] == "inference"]
+    assert batches == [[2, 3, 8, 16], [1, 3, 8, 16]]
+    assert loads == [True, True]
+    for plain, recorded in zip(expected, actual, strict=True):
+        np.testing.assert_array_equal(recorded.boxes_xyxy, plain.boxes_xyxy)
+        np.testing.assert_array_equal(recorded.scores, plain.scores)
 
 
 @pytest.mark.parametrize("batch_size", [1, 2, 4])

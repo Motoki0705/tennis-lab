@@ -290,6 +290,7 @@ def test_build_once_load_and_invalidate_only_side_consumers(tmp_path, monkeypatc
         "court_side.video_shared.action=build", "court_side.video_shared.directory=side",
         "court_side.video_shared.request=inputs.json", f"court_side.video_shared.request_sha256={dual_sha256(request)}",
     ))
+    assert cfg.video_court_side is not None
     pipeline.config = cfg
     materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
     root = pins[CLIPS[0]].directory

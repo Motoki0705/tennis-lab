@@ -326,6 +326,13 @@ run bundleの`repro.sh`は、checkoutするcommitで追跡されたファイル�
 検査器が認識する外部CLI moduleは、そのcheckout commitの`uv.lock`に固定されている場合に限り利用できる。
 CLIへ渡すtest等のscript参照は、引き続き上記の保存先で検証する。
 `/tmp`や`outputs/`のscript、repo外でbuildした拡張は、bundleへ保存するかrepro.sh内でbuildする。
+native拡張だけの外部`PYTHONPATH`は、`native-imports.json`のversion 1で、
+`imports: [{directory: 絶対path, rebuild: bundle内のshell script名, files: {名前.so: {sha256: 内容hash, bytes: byte数}}}]`
+を記録できる。`repro.sh`はoriginal training commandより前に`bash "$SCRIPT_DIR/<rebuild>"`を呼び、
+そのscriptのbuild元は測定commit・保存patch・bundleのいずれかから再現できなければならない。
+Pythonソース、未呼出しのrecipe、別の外部`PYTHONPATH`を必要とするrecipeは拒否する。
+CIはinventoryとbuild元を検査し、GPU binaryの再buildや内容一致は実行環境で確認する。
+元の測定コマンド・run.json・patchは変更せず、準備段の追加と観測したbinaryの記録を区別する。
 
 ```bash
 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py

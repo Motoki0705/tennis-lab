@@ -1,5 +1,7 @@
 """Validated model assets and their content identities (never loaded models)."""
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from functools import lru_cache
@@ -45,6 +47,32 @@ def asset_hashes(settings: Mapping[str, Any]) -> dict[Path, str]:
                 collect(child)
     collect(settings)
     return hashes
+
+
+@dataclass(frozen=True)
+class ModelAssetSnapshot:
+    """Content versions shared by a publication identity and its execution plan."""
+
+    files: tuple[tuple[Path, str], ...]
+
+    @classmethod
+    def capture(cls, identity: Mapping[str, Any]) -> ModelAssetSnapshot:
+        return cls(tuple(asset_hashes(identity).items()))
+
+    def require_settings(self, settings: Mapping[str, Any]) -> None:
+        expected = dict(self.files)
+        for path, digest in asset_hashes(settings).items():
+            if expected.get(path) != digest:
+                raise RuntimeError(f"Plan disagrees with publication asset snapshot: {path}")
+
+    def assert_unchanged(self) -> None:
+        for path, digest in self.files:
+            try:
+                current = file_identity(path)["sha256"]
+            except (OSError, ValueError) as error:
+                raise RuntimeError(f"Cannot verify publication asset snapshot: {path}") from error
+            if current != digest:
+                raise RuntimeError(f"Changed publication asset snapshot: {path}")
 
 
 @dataclass(frozen=True)

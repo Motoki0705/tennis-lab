@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from src.tennis_scene.pipeline.errors import is_clip_failure
 from src.tennis_scene.pipeline.execution_plan import (
     ClipExecution,
     ExecutionPlan,
@@ -26,6 +28,7 @@ from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SceneResult
+from src.utils.inference_recording import recording_context, span
 
 ReadySelector = Callable[[tuple[NodeKey, ...]], NodeKey]
 
@@ -41,10 +44,13 @@ class ClipCompletionResult:
 
 class PlanExecutor:
     def __init__(self, plan: ExecutionPlan, *, select_ready: ReadySelector | None = None,
-                 model_event: ModelEventHook | None = None) -> None:
+                 model_event: ModelEventHook | None = None,
+                 node_event: Callable[[NodeKey], AbstractContextManager[Any]] | None = None) -> None:
         self.plan = plan
         self.select_ready = select_ready
         self.model_event = model_event
+        self.node_event = node_event
+        self.clip_errors: dict[str, ClipCompletionResult] = {}
         self._completion_attempts: set[str] = set()
         self.completion_results: dict[str, ClipCompletionResult] = {}
 
@@ -53,7 +59,9 @@ class PlanExecutor:
         return frozenset(self._completion_attempts)
 
     def run(self, *, targets: Sequence[NodeKey] | None = None,
-            on_clip_complete: Callable[[str], None] | None = None) -> dict[NodeKey, ArtifactRef]:
+            on_clip_complete: Callable[[str], None] | None = None,
+            continue_on_error: bool = False,
+            on_clip_error: Callable[[str, Exception], None] | None = None) -> dict[NodeKey, ArtifactRef]:
         references: dict[NodeKey, ArtifactRef] = self.plan.references
         required = self.plan.required if targets is None else self.plan.target_nodes(targets)
         if not required <= self.plan.required:
@@ -70,18 +78,34 @@ class PlanExecutor:
                     raise
                 else:
                     self.completion_results[clip_id] = ClipCompletionResult("succeeded")
+        def failed(clip_id: str, error: Exception) -> None:
+            self.clip_errors[clip_id] = ClipCompletionResult("failed", str(error), type(error).__name__)
+            if continue_on_error:
+                runtime.discard(self.plan.block_clip(clip_id))
+            if on_clip_error is not None:
+                on_clip_error(clip_id, error)
+
         with self._runtime(required) as runtime:
             for clip_id in self.plan.clips:
                 notify(clip_id)
-            while required - references.keys():
+            while required - self.plan.statuses.keys():
                 ready = self.plan.ready(required)
                 if not ready:
                     raise ValueError("Execution plan is blocked by a failed component")
                 key = runtime.select_ready(ready) if self.select_ready is None else self.select_ready(ready)
                 if key not in ready:
                     raise ValueError(f"Selected component is not ready: {key}")
-                self._execute(key, runtime, required=required)
-                notify(key[0])
+                event = nullcontext() if self.node_event is None else self.node_event(key)
+                try:
+                    with event:
+                        self._execute(key, runtime, required=required, continue_on_error=continue_on_error)
+                    notify(key[0])
+                except Exception as error:
+                    failed(key[0], error)
+                    if not continue_on_error or not runtime.healthy or not is_clip_failure(error):
+                        raise
+        if not continue_on_error and required - references.keys():
+            raise ValueError("Execution plan is blocked by a failed component")
         return references
 
     def _runtime(self, required: frozenset[NodeKey]) -> InferenceRuntime:
@@ -103,7 +127,19 @@ class PlanExecutor:
         with self._runtime(frozenset({key})) as runtime:
             return self._execute(key, runtime, required=frozenset({key}))
 
-    def _execute(self, key: NodeKey, runtime: InferenceRuntime, *, required: frozenset[NodeKey] | None = None) -> ArtifactRef:
+    def _execute(self, key: NodeKey, runtime: InferenceRuntime, *, required: frozenset[NodeKey] | None = None,
+                 continue_on_error: bool = False) -> ArtifactRef:
+        if key in self.plan.references or key not in self.plan.nodes:
+            return self._execute_recorded(key, runtime, required=required, continue_on_error=continue_on_error)
+        node = self.plan.nodes[key]
+        with recording_context(clip_id=key[0], camera_id=node.context.camera_id, node=key[1]), span("node", source=node.source) as event:
+            try:
+                return self._execute_recorded(key, runtime, required=required, continue_on_error=continue_on_error)
+            finally:
+                event["outcome"] = self.plan.statuses.get(key, "failed")
+
+    def _execute_recorded(self, key: NodeKey, runtime: InferenceRuntime, *, required: frozenset[NodeKey] | None,
+                          continue_on_error: bool) -> ArtifactRef:
         plan = self.plan
         if key in plan.references:
             return plan.references[key]
@@ -112,7 +148,7 @@ class PlanExecutor:
         plan.active_node = key
         started = time.monotonic()
         try:
-            with runtime.node(key) as models:
+            with runtime.node(key, continue_on_error=continue_on_error) as models:
                 output, decision = self._execute_node(key, models)
             node, store = plan.nodes[key], plan.clips[key[0]].store
             reference = decision.reference
@@ -151,11 +187,13 @@ class PlanExecutor:
         else:
             artifacts = {port: store.load(ref, ArtifactCodec(plan.nodes[plan.dependencies[key][port]].io.output_type))
                          for port, ref in decision.dependencies.items()}
-            inputs = node.assembler.assemble(node.context, artifacts)
+            with span("preprocess", operation="input_assembly"):
+                inputs = node.assembler.assemble(node.context, artifacts)
             if not isinstance(inputs, node.io.input_type):
                 raise TypeError(f"Assembler returned wrong input type for {key[1]}")
-            output = (node.component.process_with_models(inputs, models)
-                      if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
+            with span("postprocess", operation="component"):
+                output = (node.component.process_with_models(inputs, models)
+                          if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
             node.validate_output(output)
         return output, decision
 

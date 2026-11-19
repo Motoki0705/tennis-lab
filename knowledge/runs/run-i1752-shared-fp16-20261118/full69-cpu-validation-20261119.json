@@ -1,0 +1,56 @@
+{
+  "command_sha256": "133025a178ecdbd535485d0cbecee9e7f212172bf928df4209a3b49bbb0c15c5",
+  "head": "58b52a519f79d903a3dd5952e9048d1532dd1ebe",
+  "origin_main": "326088547dd2b08788002c151c607f84f2451f93",
+  "code_identity": "085d88dd588dd2763f198f71cb860b88ad92c7152c65c17d00aa12b036d95b7e",
+  "dataset_id": "meiji_4cam",
+  "clips": 69,
+  "frames_per_camera": 46228,
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2",
+    "cam3"
+  ],
+  "plan_count": 1,
+  "nodes": 2622,
+  "stages": {
+    "court_detection": 276,
+    "ball_detection": 276,
+    "ball_points": 276,
+    "court_calibration": 69,
+    "person_detection": 276,
+    "person_tracking": 276,
+    "player_selection": 276,
+    "pose_estimation": 276,
+    "court_side": 69,
+    "player_association": 69,
+    "camera_alignment": 69,
+    "player_triangulation": 69,
+    "ball_triangulation": 69,
+    "body_view_selection": 69,
+    "gvhmr": 69,
+    "body_placement": 69,
+    "scene_assembly": 69
+  },
+  "dtypes": {
+    "dino.float16": 276,
+    "vitpose.float16": 276,
+    "pose.evidence_reuse": 276
+  },
+  "shared_side_verdicts": {
+    "ok": 51,
+    "warning": 18
+  },
+  "court_digest": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "side_digest": "a5f987bd59d40a2f20d19d7802a4435748f9e23fb61cddc0bc3a7b704d4cd668",
+  "dino_extension": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib/MultiScaleDeformableAttention.so",
+  "dino_extension_sha256": "68580f2e5b0454dba630ba3d37e55e383d5babd86b15cda92d4e7c104f5797b7",
+  "completed_markers_unchanged": 0,
+  "model_factories_called": 0,
+  "native_binaries_loaded": 0,
+  "plan_executed": false,
+  "cuda_initialized": false,
+  "elapsed_seconds": 620.9570347639965,
+  "limits": "Parsing, all input/court/side admission and plan construction only; current Ball observations, actual inference, export and GPU numerical equivalence were not executed."
+}
