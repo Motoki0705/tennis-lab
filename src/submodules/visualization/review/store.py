@@ -30,7 +30,7 @@ SCHEMAS = {
     "gvhmr": ("body_parameters", (1, 2)),
     "body_view_selection": ("body_view_selection", (1,)),
     "body_placement": ("placed_bodies", (1,)),
-    "pose_estimation": ("person_poses", (1,)),
+    "pose_estimation": ("person_poses", (1, 2)),
     "player_association": ("person_identities", (2, 3)),
     "player_triangulation": ("player_skeletons", (1,)),
 }

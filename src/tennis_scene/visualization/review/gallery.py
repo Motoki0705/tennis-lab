@@ -408,7 +408,25 @@ class Review(StoreReader):
         timeline = _save_plot(self.output / "images" / f"{camera}_detections_timeline.png", plot)
         return [image, timeline], [("detections", str(len(scores))), ("max in one frame", str(int(counts.max())))]
 
-    @renders("person_tracking", "person_tracks", (5, 6))
+    @renders("person_pose_features", "person_pose_features", (1, 2))
+    def render_person_pose_features(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        offsets, points = _array(value["frame_offsets"]), _array(value["keypoints"])
+        rows = _array(value["source_rows"])
+        def draw(image: np.ndarray, frame: int) -> None:
+            for index in range(int(offsets[frame]), int(offsets[frame + 1])):
+                valid = points[index, :, 2] >= .15
+                for a, b in BODY_SKELETON:
+                    if valid[a] and valid[b]:
+                        cv2.line(image, tuple(np.rint(points[index, a, :2]).astype(int)),
+                                 tuple(np.rint(points[index, b, :2]).astype(int)), COLORS_BGR[index % len(COLORS_BGR)], 3)
+        return [self.sheet(node, camera, draw)], [("source detection rows", str(len(rows))), ("pose contract", "COCO17 / raw confidence")]
+
+    @renders("person_appearance_features", "person_appearance_features", (1, 2, 3))
+    def render_person_appearance_features(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        return [], [("source detection rows", str(len(_array(value["source_rows"])))),
+                    ("valid appearances", str(_count(value["appearance_valid"]))), ("encoder", value["encoder"])]
+
+    @renders("person_tracking", "person_tracks", (5, 6, 7))
     def render_person_tracking(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         boxes, observed, ids = (_array(value[key]) for key in ("boxes_xyxy", "observed", "track_ids"))
         confirmed = self.player_labels(camera, ids) if node.startswith("player_selection/") else None
@@ -452,7 +470,7 @@ class Review(StoreReader):
         details.append(("selection evidence", str(value["diagnostics"])))
         return images, details
 
-    @renders("pose_estimation", "person_poses", 1)
+    @renders("pose_estimation", "person_poses", (1, 2))
     def render_pose_estimation(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         points = _array(value["uv_px"])[0]
         confidence = _array(value["confidence"])[0]

@@ -1,0 +1,107 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205082628769244597_2026-11-17T12-09-31-230755402Z_973866_person-feature-artifacts-clip037 (commit=0ba3c0e45cd2 provider=codex session=01a1e957-d212-7232-b1b4-27bcf33ef597)
+/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/.venv/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/.venv/lib/python3.11/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/TensorShape.cpp:4215.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 200, in node
+    yield ModelBorrower(self, node)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/runner.py", line 110, in _execute
+    reference = self._execute_node(key, models)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/runner.py", line 135, in _execute_node
+    output = (node.component.process_with_models(inputs, models)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/components/person_features.py", line 145, in process_with_models
+    result = model.predict(Pose2DFrameSequenceRequest(frames, pose_boxes(detections.boxes_xyxy, self.config),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/submodules/models/_base/inference_model.py", line 77, in predict
+    return self._predict_impl(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/submodules/models/vitpose/pose2d.py", line 154, in _predict_impl
+    heatmap_np = heatmap.float().cpu().numpy()
+                 ^^^^^^^^^^^^^^^^^^^^^
+torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+
+During handling of the above exception, another exception occurred:
+
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/knowledge/runs/run-person-feature-artifacts-20261117/compare.py", line 192, in <module>
+  |     main()
+  |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/knowledge/runs/run-person-feature-artifacts-20261117/compare.py", line 156, in main
+  |     executor.run()
+  |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/runner.py", line 81, in run
+  |     self._execute(key, runtime)
+  |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/runner.py", line 109, in _execute
+  |     with runtime.node(key) as models:
+  |   File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/contextlib.py", line 158, in __exit__
+  |     self.gen.throw(typ, value, traceback)
+  |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 203, in node
+  |     self.close()
+  |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 286, in close
+  |     raise BaseExceptionGroup("Inference model cleanup failed", errors)
+  | ExceptionGroup: Inference model cleanup failed (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 267, in _release
+    |     with self._event("unload", owned):
+    |   File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/contextlib.py", line 137, in __enter__
+    |     return next(self.gen)
+    |            ^^^^^^^^^^^^^^
+    |   File "/home/kamimura/projects/tennis-lab/.worktree-outputs/person-feature-artifacts/person_feature_acceptance/gpu/c1_recorder.py", line 304, in model_event
+    |     with span(f"model_{action}", **attributes):
+    |   File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/contextlib.py", line 137, in __enter__
+    |     return next(self.gen)
+    |            ^^^^^^^^^^^^^^
+    |   File "/home/kamimura/projects/tennis-lab/.worktree-outputs/person-feature-artifacts/person_feature_acceptance/gpu/c1_recorder.py", line 257, in span
+    |     recorder._synchronize(stage, str(attributes.get("device", "")))
+    |   File "/home/kamimura/projects/tennis-lab/.worktree-outputs/person-feature-artifacts/person_feature_acceptance/gpu/c1_recorder.py", line 206, in _synchronize
+    |     torch.cuda.synchronize(device)
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/.venv/lib/python3.11/site-packages/torch/cuda/__init__.py", line 1219, in synchronize
+    |     return torch._C._cuda_synchronize()
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+    | 
+    | During handling of the above exception, another exception occurred:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 261, in release
+    |     owned.spec.release(owned.value)
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/model_resources.py", line 22, in <lambda>
+    |     initialize=lambda model: model.load(), release=lambda model: model.unload())
+    |                                                                  ^^^^^^^^^^^^^^
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/submodules/models/_base/inference_model.py", line 71, in unload
+    |     torch.cuda.empty_cache()
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/.venv/lib/python3.11/site-packages/torch/cuda/memory.py", line 228, in empty_cache
+    |     torch._C._cuda_emptyCache()
+    | torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+    | 
+    | During handling of the above exception, another exception occurred:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 278, in close
+    |     self._release(key)
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 271, in _release
+    |     release()  # Recorder failures must not prevent model cleanup.
+    |     ^^^^^^^^^
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 264, in release
+    |     self._cleanup(owned.spec.device)
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/src/tennis_scene/pipeline/inference_runtime.py", line 94, in release_inference_memory
+    |     torch.cuda.empty_cache()
+    |   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/.venv/lib/python3.11/site-packages/torch/cuda/memory.py", line 228, in empty_cache
+    |     torch._C._cuda_emptyCache()
+    | torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+    +------------------------------------
+exit_code=1
