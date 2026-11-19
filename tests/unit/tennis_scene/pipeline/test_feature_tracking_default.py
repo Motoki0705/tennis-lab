@@ -9,8 +9,8 @@ import torch
 
 from src.tasks.person_tracking.sequence import TrackingConfig
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
+from src.tennis_scene.pipeline.components import person_features, pose_estimation
 from src.tennis_scene.pipeline.components import person_tracking as module
-from src.tennis_scene.pipeline.components import pose_estimation
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
 from src.tennis_scene.pipeline.definition import (
@@ -23,6 +23,7 @@ from tests.unit.tennis_scene.pipeline.config_factories import (
     fake_encoder_spec,
     make_people_config,
     materialize_model_weights,
+    model_component,
 )
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     materialize_assets,
@@ -48,22 +49,23 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
     source = ClipSource('test', tuple(SourceVideo(f'cam{i}', tmp_path / f'{i}.mp4', 'hash', 5, 30., 1920, 1080) for i in range(3)))
     nodes = {n.name: n for n in standard_definition(cfg, source, code_identity='test')}
     node = nodes['person_tracking/cam0']
+    assert isinstance(node.component, module.PersonTrackingModule)
     assert node.component.config == cfg.tracking
-    assert node.io.version == 6 and node.io.inputs['detections'].version == 2
-    assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 6
+    assert node.io.version == 7 and node.io.inputs['detections'].version == 2
+    assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 7
     # The standard recipe declares the same runtime model across cameras and
     # across CLIP consumers; assembling it must not instantiate any model.
     for stage, alias in [('court_detection', 'court'), ('ball_detection', 'ball'),
-                         ('person_detection', 'detector'), ('person_tracking', 'pose')]:
-        assert len({nodes[f'{stage}/cam{i}'].component.model_specs()[alias].key for i in range(3)}) == 1
-    encoder_keys = {nodes[f'{stage}/cam{i}'].component.model_specs()['encoder'].key
-                    for stage in ('person_tracking', 'player_selection') for i in range(3)}
-    encoder_keys.add(nodes['player_association'].component.model_specs()['encoder'].key)
+                         ('person_detection', 'detector'), ('person_pose_features', 'pose')]:
+        assert len({model_component(nodes[f'{stage}/cam{i}']).model_specs()[alias].key for i in range(3)}) == 1
+    encoder_keys = {model_component(nodes[f'{stage}/cam{i}']).model_specs()['encoder'].key
+                    for stage in ('person_appearance_features', 'player_selection') for i in range(3)}
+    encoder_keys.add(model_component(nodes['player_association']).model_specs()['encoder'].key)
     assert len(encoder_keys) == 1
-    assert nodes['pose_estimation/cam0'].component.model_specs() == {}
-    assert set(nodes['hmr2_features'].component.model_specs()) == ({'features'} if body_enabled else set())
-    assert set(nodes['gvhmr'].component.model_specs()) == ({'mesh'} if body_enabled else set())
-    assert set(nodes['body_placement'].component.model_specs()) == ({'body'} if body_enabled else set())
+    assert model_component(nodes['pose_estimation/cam0']).model_specs() == {}
+    assert set(model_component(nodes['hmr2_features']).model_specs()) == ({'features'} if body_enabled else set())
+    assert set(model_component(nodes['gvhmr']).model_specs()) == ({'mesh'} if body_enabled else set())
+    assert set(model_component(nodes['body_placement']).model_specs()) == ({'body'} if body_enabled else set())
     cfg.aflink_checkpoint.unlink()
     with pytest.raises(FileNotFoundError, match='AFLink'):
         standard_definition(cfg, source, code_identity='test')
@@ -79,8 +81,8 @@ def test_standard_pipeline_rejects_comparison_methods(method: str) -> None:
 @pytest.mark.parametrize(
     ("setting", "changed_nodes"),
     [("dino_detector.precision=bf16", {"person_detection"}),
-     ("vitpose.precision=fp16", {"person_tracking", "pose_estimation"}),
-     ("vitpose.flip_test=false", {"person_tracking", "pose_estimation"})],
+     ("vitpose.precision=fp16", {"person_pose_features", "person_tracking"}),
+     ("vitpose.flip_test=false", {"person_pose_features", "person_tracking"})],
 )
 def test_person_settings_change_only_their_stage_cache_identities(
     tmp_path: Path, setting: str, changed_nodes: set[str],
@@ -111,7 +113,8 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
             assert kwargs['precision'] == precision
         def predict(self, request: Any) -> Any:
             calls.append(1)
-            values = torch.zeros((1, 17, 3))
+            list(request.frames_bgr)
+            values = torch.zeros((len(request.bbx_xys), 17, 3))
             values[..., 0], values[..., 1], values[..., 2] = 30., 60., 1.4
             return SimpleNamespace(keypoints=values)
         def load(self) -> None:
@@ -130,9 +133,9 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
             pass
         def links(self, boxes: np.ndarray, observed: np.ndarray) -> tuple[dict[int, int], list[Any]]:
             return {i: i for i in range(len(boxes))}, []
-    monkeypatch.setattr(module, 'ViTPosePose2D', Pose)
+    monkeypatch.setattr(person_features, 'ViTPosePose2D', Pose)
     monkeypatch.setattr(module, 'AFLink', Link)
-    monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k:
+    monkeypatch.setattr(person_features, 'OpenCVVideoFrameReader', lambda *a, **k:
         [SimpleNamespace(index=i, frame=np.zeros((180, 180, 3), np.uint8)) for i in range(5)])
     video = SourceVideo('cam0', tmp_path / 'unused.mp4', 'hash', 5, 30., 180, 180)
     detections = PersonDetectionOutput('cam0', np.arange(6, dtype=np.int64),
@@ -141,12 +144,16 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
     people = make_people_config(tmp_path)
     people = replace(people, runtime=replace(people.runtime, device='cuda' if precision == 'fp16' else 'cpu',
         vitpose=replace(people.runtime.vitpose, precision=precision)))
-    tracker = module.PersonTrackingModule(TrackingConfig(), people=people, encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'af.pth')
-    assert tracker.model_specs()['pose'].dtype == {'fp32': 'float32', 'bf16': 'bfloat16', 'fp16': 'float16'}[precision]
-    result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detections))
-    assert len(calls) == 5 and result.evidence is not None
-    from src.tennis_scene.pipeline.artifacts import document_digest
-    assert result.evidence.encoder_identity == document_digest(tracker.model_specs()['encoder'].key)
+    feature_node = person_features.PersonPoseFeaturesModule(people)
+    assert feature_node.model_specs()['pose'].dtype == {'fp32': 'float32', 'bf16': 'bfloat16', 'fp16': 'float16'}[precision]
+    poses = materialize_model_weights(person_features.PersonPoseFeaturesModule(people)).process(person_features.PersonFeaturesInput(video, detections))
+    appearance = materialize_model_weights(person_features.PersonAppearanceFeaturesModule(fake_encoder_spec(Encoder))).process(
+        person_features.PersonAppearanceFeaturesInput(video, detections))
+    tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'af.pth',
+        expected_pose=feature_node.model_specs()['pose'], expected_encoder=fake_encoder_spec(Encoder))
+    result = tracker.process(module.PersonTrackingInput(video, detections, poses, appearance))
+    assert len(calls) == 1 and result.evidence is not None
+    assert result.evidence.encoder_identity == document_digest(fake_encoder_spec(Encoder).key)
     assert result.evidence.detection_rows.tolist() == [[-1, -1, 4, 6, 8]]
     def forbidden(*a: Any, **k: Any) -> Any:
         raise AssertionError('Pose must not be recomputed')
@@ -156,3 +163,17 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
     assert observed.confidence[0, 2, 0, 0] == np.float32(1.4)
     with pytest.raises(ValueError, match='lost per-detection'):
         pose.process(pose_estimation.PoseEstimationInput(video, replace(result, evidence=None)))
+
+
+@pytest.mark.parametrize('name,version', [('person_tracking/cam0', 5), ('person_tracking/cam0', 6), ('person_appearance_features/cam0', 1), ('person_appearance_features/cam0', 2), ('person_pose_features/cam0', 1), ('player_selection/cam0', 2), ('pose_estimation/cam0', 1)])
+def test_pre_split_schema_cannot_bind_to_new_pipeline(tmp_path: Path, name: str, version: int) -> None:
+    from src.tennis_scene.pipeline.contracts import ClipSource
+    from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
+    from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+    cfg = runtime(tmp_path, overrides=('gvhmr.enabled=false',))
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path, court=cfg.court_kp)
+    source = ClipSource('test', tuple(SourceVideo(f'cam{i}', tmp_path / f'{i}.mp4', 'hash', 5, 30., 1920, 1080) for i in range(3)))
+    nodes = standard_definition(cfg, source, code_identity='test')
+    incompatible = tuple(replace(node, io=replace(node.io, version=version)) if node.name == name else node for node in nodes)
+    with pytest.raises(ValueError, match='Incompatible artifact binding'):
+        ExecutionPlan([ClipExecution(source.clip_id, incompatible, ClipStore(tmp_path / 'store', {}))])

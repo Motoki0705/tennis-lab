@@ -35,6 +35,9 @@ nodeを`(clip_id, node名)`で識別する。bindingsは同じclip内のproducer
 `PlanExecutor.run()`は依存が揃ったnodeを順次処理する。
 `select_ready(ready_keys) -> key`で、その時点で実行可能なnodeの選択方針を差し替えられる。
 既定はruntimeが常駐中のモデルを使うready nodeを優先し、次にモデル不要のnode、最後に宣言順を使う。
+`ComponentNode.after_components`はnode名の`/`より前で指定した、選択されたcomponent群の間に実行順の制約を置く。
+全clip/cameraの対象群が完了するまで後段をreadyにせず、部分cache/loadでもモデルのpassを揃える。
+この制約はartifactの入力依存・cache identityへ加えず、target閉包にも含めない。
 同順位では追加で必要なモデルが少ないnodeを先に選ぶ。依存の揃わないnodeは選ばない。
 cache/load判定は依存artifactが確定してから1回だけ行い、完了したnodeはoverwriteでも再実行しない。
 外側から`run(targets=...)`を繰り返してschedulerを作る必要はない。
@@ -117,8 +120,8 @@ nodeの解放・hook完了後に行う。解放失敗では旧active参照を保
 
 共有対象はCourt、DINO、Ball、ViTPose、CLIP（追跡・選別の画像推論経路・人物対応）、HMR2、GVHMR、
 身体配置のSMPL-X/変換行列/関節・root regressor。tracker・AFLink・時系列入力は共有モデルへ混ぜない。
-追跡はViTPoseとCLIPを同時に必要とする。HMR2画像特徴とGVHMRは別nodeで処理し、
-HMR2の最終需要の後に解放してからGVHMRの時系列推論へ進める。
+人物特徴はViTPoseとCLIPの別nodeで推論し、追跡と標準選別・pose出力は保存特徴だけをCPUで読む。
+HMR2画像特徴とGVHMRも別nodeで処理し、HMR2の最終需要の後に解放してからGVHMRの時系列推論へ進める。
 依存に従ってモデルの段階をまとめ、全モデルを常時GPUへ載せない。
 途中targetsで`run()`を分けるとcontextごとに解放し、次の実行で必要なモデルは新しいpassとして読み込む。
 単独の`execute(key)`も1nodeで寿命を閉じる。処理済みartifactは再計算しない。
@@ -133,7 +136,7 @@ C1のrecorder統合時はその`model_event`を渡し、管理下のモデルで
 
 ## 処理単位
 
-`court_detection`・`person_detection`・`person_tracking`・`player_selection`・`pose_estimation`・`ball_detection`はcameraごとに独立する。
+`court_detection`・`person_detection`・`person_pose_features`・`person_appearance_features`・`person_tracking`・`player_selection`・`pose_estimation`・`ball_detection`はcameraごとに独立する。
 既定の `court_kp.mode=clip` では、`court_detection`は各cameraのframe 0だけをKP＋LINE共同推定し、`court_observations` schema v2で保存する。
 明示的な `video_shared` は[動画共有コート成果物](video_court/README.ja.md)をbuild/loadし、同じvideo・cameraの共通Hとdrift診断をschema v3で入力する。
 `court_calibration`はこの1frameから初期校正・ROIを作り、固定cameraのコート座標を全frameへ明示的にbroadcastする。
@@ -142,7 +145,8 @@ C1のrecorder統合時はその`model_event`を渡し、管理下のモデルで
 
 ```text
 動画 → court_detection → court_calibration
-動画 → person_detection → person_tracking
+動画 → person_detection → person_pose_features → person_appearance_features
+検出＋保存pose・appearance → person_tracking
 track＋court → player_selection → pose_estimation
 動画 → ball_detection → ball_points
 ball_points＋court → court_side（ballだけのhalf-turn仮説検定）
@@ -161,6 +165,36 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 `person_detections` v2のcheckpoint hash・全画面scopeがartifact identityと下流の依存参照を変える。
 旧ROI検出・pose・文脈を新しい経路の成果物として再利用できない。
 
+### 人物特徴の保存とCPU追跡
+
+単一clip入口と一括入口は同じ`standard_definition`から、cameraごとに次のnodeを作る。
+
+| node / schema | version | 数値配列と契約 |
+|---|---|---|
+| `person_pose_features/<camera>` / `person_pose_features` | 2 | `frame_offsets` int64 (T+1)、`source_rows` int64 (N)、`keypoints` float32 (N,17,3)、`model_identity`・`preprocessing_identity`。元画素x/yと加工しないheatmap peak |
+| `person_appearance_features/<camera>` / `person_appearance_features` | 3 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、明示したCLIP encoder名・`encoder_identity`・`preprocessing_identity`。無効cropはzero＋false |
+| `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v2・外観特徴v3のcamera・全frame offset・元row・期待するモデル/前処理identityを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
+| `player_selection/<camera>` / `selected_player_tracks` | 3 | 保存した追跡特徴の選別とgroup軸への対応付け |
+| `pose_estimation/<camera>` / `person_poses` | 2 | 選別groupの実観測poseを再利用。標準経路で再推論しない |
+
+appearanceの入力は検出だけで、標準CLIPへpose promptは渡さない。外観だけのtargetはViTPoseを要求しない。
+`after_components`で、選択された全camera/clipの人物検出→pose→CLIPを順に処理する。
+ViTPoseとCLIPはruntimeの別passで借り、それぞれ最終需要後に解放する。部分cacheからの再開でも順序を保つ。
+両特徴の`cache_identity()`は各moduleが使う前処理だけを含み、override時と完成markerにも反映する。
+load/importの採用時は、宣言したModelSpec（重みの内容・精度・設定）と前処理を保存metadataへ照合する。
+CPU追跡も同じ照合をAFLink/StrongSORTの開始前に行い、不一致や不明な入力は拒否する。
+`execution.person_pose_features`・`execution.person_appearance_features`は他nodeと同じexecute/load契約。
+追跡・選別・poseの旧schemaは新しいidentityとして読み替えず、executeで再生成し、loadは不一致で停止する。
+特徴のsource・重み・前処理・batch上限・dtype・実装identityと上流artifact参照は既存storeに保持する。
+
+ViTPoseは従来のsquare box/enlarge、半解像度のcrop、設定済みflip_testを保持し、設定されたforward精度を共通ModelSpecから受け取る。保存するkeypointとconfidenceは常にfloat32。
+複数frameのcropを`people_models.runtime.vitpose.batch_size`まで集約する。
+appearanceは従来のrounded/clipped box、RGB crop、画像対角に応じた最低高さを保持し、
+`FeatureConfig.appearance_batch_size`（既定64）まで複数frameを集約する。
+`features.py`のcrop準備・batch推論・元rowへのscatterは共通で、既存の1frame `FeatureExtractor`も使う。
+動画は各passで順次decodeし、RGB/crop全体を保持しない。空frame・端数batch・空の末尾も保ち、
+各cameraの数値特徴をnode完了時に直ちに原子的に保存する。clip/cameraをまたぐcrop batchは扱わない。
+
 `people_models.runtime.dino_detector.precision` と `people_models.runtime.vitpose.precision` に
 `fp32`（既定）、`bf16`、`fp16` を個別に指定できる。半精度はモデルforwardのautocastで選び、
 ViTPoseのheatmap復号とDINOのscore・box復号はFP32で行う。DINOの変形可能アテンションは
@@ -174,14 +208,14 @@ BF16・FP16と `people_models.runtime.vitpose.flip_test` は各段のartifact id
 
 標準追跡は`person_tracking.method=strongsort_pp_pose`だけを受け付ける。StrongSORT++＋pose/CLIPのrun 10固定profileを
 productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。
-`person_tracks` v6は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+`person_tracks` v7は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
 CLIP evidenceには`ModelBorrower.identity()`で得た内容SHA・設定を含むencoder identityも保存し、regroupで保持する。
 GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
 選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式はtaskの比較benchmarkで使用する。
 重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
 追跡の進捗は`person_tracking/<camera ID>`ごとに、空検出を含む処理済みframe数と総数を表示する。
 端末では1本のbar、リダイレクト時は開始・最大30秒に1回の途中経過・最後の実数を出す。
-この数はframe単位の処理を表し、その後のAFLink/GSI処理の完了を意味しない。
+この数は保存特徴のframe単位のCPU処理を表し、その後のAFLink/GSI処理の完了を意味しない。
 Pythonからの呼び出しでは`PersonTrackingModule(..., show_progress=False)`で表示を抑制できる。
 
 `person_tracking.aflink_checkpoint`はcheckpoint root相対の`person_tracking/AFLink_epoch20.pth`。
@@ -202,7 +236,7 @@ CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だ�
 `selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
 追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
 設定した選別encoderで明示的に再計算し、appearance診断へsourceと理由を記録する。
-旧person_tracks v5/selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
+旧person_tracks v5/v6・pose特徴v1・外観特徴v1/v2・selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。

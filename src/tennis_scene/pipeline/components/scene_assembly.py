@@ -40,7 +40,7 @@ class SceneAssemblyModule:
             {"calibration": InputPort("local_court_calibration"), "alignment": InputPort("aligned_cameras"),
              "identities": IDENTITIES_PORT, "skeleton": InputPort("player_skeletons"),
              "ball": InputPort("ball_trajectory"), "placement": InputPort("placed_bodies"),
-             **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "scene_result", 2)
+             **{f"pose_{c}": InputPort("person_poses", 2) for c in camera_ids}}, "scene_result", 2)
 
     def process(self, inputs: SceneAssemblyInput) -> SceneResult:
         source = inputs.source
