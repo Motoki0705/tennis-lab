@@ -13,6 +13,7 @@ from src.tasks.ball_detection.data.windows.all_frames import AllFrameWindowConfi
 from src.tasks.ball_detection.models.mdd import (
     MDDHeatmapConfig,
     MDDHeatmapHybridConfig,
+    MDDMHCQueryConfig,
     MDDTemporalQueryConfig,
 )
 from src.tasks.ball_detection.training.temporal.configuration import (
@@ -108,6 +109,27 @@ def update_budget(**overrides: Any) -> UpdateBudget:
     )
     values.update(overrides)
     return UpdateBudget(**values)
+
+
+def small_mhc_model(*, frames: int = 64, **overrides: Any) -> MDDMHCQueryConfig:
+    """Small spatial widths; real four-stream, head-width-64 mHC computation."""
+    values = dict(
+        asdict(small_model("query", frames=frames)),
+        dim=64,
+        heads=1,
+        ffn_dim=192,
+        encoder_variant="x3d_csn",
+        temporal_mixing="depthwise3d",
+        residual_blocks=(0, 1, 1, 1, 1, 1),
+        num_streams=4,
+        mhc_coefficient_dim=64,
+        mhc_sinkhorn_iters=20,
+        mhc_eps=1e-6,
+        mhc_residual_identity_bias=4.0,
+        mhc_update_scale_init=0.0,
+    )
+    values.update(overrides)
+    return MDDMHCQueryConfig(**values)
 
 
 def model_yaml(architecture: str, frames: int = 32) -> dict[str, Any]:

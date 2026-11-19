@@ -82,6 +82,8 @@ papers: []
 tags: []
 ---
 
+**C3未完了・途中結果（2026-11-19）**。このノードの `done` は未学習L4ベンチマークの完了を表す。本学習を含む統合結果はC3完了後に確定する。C3の再開sourceは固定tag `ball-arch-c3-exec-7d7a2e4fa` を使う。
+
 ## 比較の範囲
 
 #1859の確定条件だけを同仕様のL4環境で比較する未学習ベンチマーク。CNNは全段IB/e=2のC0、全段IB/e=1.5のC1、高解像度ConvNeXt型＋低解像度FFN/e=2のC2、高解像度ConvNeXt型＋低解像度IB/e=2のC3。DPTはT32、queryはT64・dim512・6層・8 heads・mHC 4 streams。CAは全層/64 cross-attention、T1はMMMCCC、T2はCCCMMM。

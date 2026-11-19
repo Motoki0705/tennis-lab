@@ -197,6 +197,20 @@ def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_pat
     assert source_identity.compatible_source_digests(current) == current
 
 
+def test_ball_side_preserves_the_exact_pre_player_source_identity() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("ball_court_side_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    unrelated = {"tennis_scene/schema.py": "a" * 64}
+    baseline = {**unrelated, **{path: record["before"] for path, record in files.items() if record["before"] is not None}}
+    patch = {**unrelated, **{path: record["after"] for path, record in files.items()}}
+    assert document_digest(source_identity.compatible_source_digests(patch, ball_court_side=True)) == document_digest(baseline)
+    assert source_identity.compatible_source_digests(patch) == patch  # Player uses its actual implementation.
+    changed = {**patch, "tasks/court_side/hypothesis.py": "b" * 64}
+    assert source_identity.compatible_source_digests(changed, ball_court_side=True) == changed
+
+
 @pytest.mark.parametrize("name,old_version,new_version", [
     ("person_tracking/cam0", 5, 7), ("player_selection/cam0", 2, 3),
 ])

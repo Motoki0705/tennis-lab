@@ -1,0 +1,50 @@
+name: mdd_multiscale_query
+input_channels: 5
+stem_channels:
+- 16
+- 32
+- 64
+- 128
+mixed_channels:
+- 256
+- 512
+residual_blocks:
+- 0
+- 1
+- 2
+- 3
+- 3
+- 2
+decoder_channels: 128
+dim: 512
+heads: 8
+layers: 6
+ffn_dim: 1408
+dropout: 0.1
+rope_base: 10000.0
+activation_checkpointing: false
+encoder_variant: x3d_csn
+temporal_mixing: depthwise3d
+frames: 64
+frame_chunk_size: null
+num_streams: 4
+mhc_coefficient_dim: 64
+mhc_sinkhorn_iters: 20
+mhc_eps: 1.0e-06
+mhc_residual_identity_bias: 4.0
+mhc_update_scale_init: 0.0
+spatial_layers:
+- M
+- M
+- M
+- C
+- C
+- C
+msda_levels:
+- 8
+- 16
+- 32
+- 64
+msda_points: 4
+msda_chunk_size: 4
+msda_im2col_step: 64

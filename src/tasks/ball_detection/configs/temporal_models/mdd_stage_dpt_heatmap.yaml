@@ -1,0 +1,41 @@
+name: mdd_stage_dpt_heatmap
+stem_channels:
+- 16
+- 32
+- 64
+- 128
+mixed_channels:
+- 256
+- 512
+residual_blocks:
+- 0
+- 1
+- 2
+- 3
+- 3
+- 2
+decoder_channels: 128
+dim: 256
+heads: 4
+layers: 4
+ffn_dim: 704
+dropout: 0.1
+rope_base: 10000.0
+activation_checkpointing: false
+encoder_variant: x3d_csn
+temporal_mixing: depthwise3d
+input_channels: 5
+frames: 32
+frame_chunk_size: null
+stage_blocks:
+- ib
+- ib
+- ib
+- ib
+- ib
+expansion_ratios:
+- 2.0
+- 2.0
+- 2.0
+- 2.0
+- 2.0
