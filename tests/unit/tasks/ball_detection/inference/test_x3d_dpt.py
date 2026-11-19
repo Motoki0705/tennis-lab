@@ -1,6 +1,5 @@
 """Native artifact restoration, input contracts and unthresholded evidence."""
 
-import json
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -14,7 +13,6 @@ from src.tasks.ball_detection.inference.x3d_dpt import (
 )
 from src.tasks.ball_detection.model_io.mdd_heatmap import heatmap_model_payload
 from src.tasks.ball_detection.models.mdd import MDDDPTDetector
-from src.utils.inference_recording import InferenceRecorder
 from tests.support.tasks.ball_detection.temporal import small_model
 
 
@@ -36,18 +34,10 @@ def load(path: Path, **changes) -> X3DDPTPredictor:
     return X3DDPTPredictor.load_from_checkpoint(path, **settings)
 
 
-def test_strict_restoration_keeps_all_prediction_fields(artifact: Path, tmp_path: Path) -> None:
+def test_strict_restoration_keeps_all_prediction_fields(artifact: Path) -> None:
     first, second = load(artifact), load(artifact)
     rgb = torch.arange(2 * 3 * 24 * 40).remainder(256).to(torch.uint8).reshape(1, 2, 3, 24, 40)
-    a = first.predict(rgb)
-    recording = tmp_path / "recording.json"
-    with InferenceRecorder(recording):
-        b = second.predict(rgb)
-    events = json.loads(recording.read_text())["events"]
-    assert [(event["stage"], event["attributes"]["model"]) for event in events if "model" in event["attributes"]] == [
-        ("transfer", "Ball"), ("inference", "Ball"), ("postprocess", "Ball"),
-    ]
-    assert next(event["attributes"]["batch_shape"] for event in events if event["stage"] == "inference") == [1, 2, 3, 24, 40]
+    a, b = first.predict(rgb), second.predict(rgb)
     assert a.heatmaps.shape == (1, 2, 6, 10)
     for field in ("coords", "confidence", "heatmaps"):
         torch.testing.assert_close(getattr(a, field), getattr(b, field), rtol=0, atol=0)

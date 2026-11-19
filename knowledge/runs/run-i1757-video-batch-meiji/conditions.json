@@ -30,10 +30,10 @@
     "ball_reconstruction.enabled=true"
   ],
   "conditions": {
-    "serial": {"entry": "TennisSceneOrchestrator.run per clip", "cross_scope_batch_limit": 1},
-    "reuse": {"entry": "run_video_batch", "cross_scope_batch_limit": 1},
-    "batched": {"entry": "run_video_batch", "cross_scope_batch_limit": "adopted per model in #1755", "wait_for": 1755},
-    "embedding_reuse": {"entry": "run_video_batch", "cross_scope_batch_limit": 1, "wait_for": 1756}
+    "serial": {"entry": "TennisSceneOrchestrator.run per clip", "cross_scope_batch_limit": 1, "reuse_clip_embeddings": false},
+    "reuse": {"entry": "run_video_batch", "cross_scope_batch_limit": 1, "reuse_clip_embeddings": false},
+    "batched": {"entry": "run_video_batch", "cross_scope_batch_limit": "adopted per model in #1755", "reuse_clip_embeddings": false, "wait_for": 1755},
+    "embedding_reuse": {"entry": "run_video_batch", "cross_scope_batch_limit": 1, "reuse_clip_embeddings": true}
   },
   "native_batch_caps": {
     "DINO": 1,

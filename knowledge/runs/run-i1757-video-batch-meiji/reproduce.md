@@ -5,17 +5,17 @@
 | 条件 | 実行方法 |
 | --- | --- |
 | `serial` | 固定した実行commitの `TennisSceneOrchestrator.run` をクリップ順に呼びます。各クリップは独立したモデルruntimeを持ち、共通のdataset publisherから公開します。 |
-| `reuse` | 同じ実行commitの `run_video_batch` CLIで3クリップを1計画に入れます。クリップ・カメラ横断のbatch上限は1です。 |
+| `reuse` | `run_video_batch` CLIで3クリップを1計画に入れます。クリップ・カメラ横断のbatch上限は1、人物対応用CLIP embeddingの再利用は無効です。 |
 | `batched` | #1755取り込み後、採用したadapter・モデル別上限を定義して同CLIで計測します。 |
-| `embedding_reuse` | #1756取り込み後、人物対応用CLIP embedding再利用の条件を追加します。 |
+| `embedding_reuse` | `reuse` の設定で `player_association.reuse_clip_embeddings=true` を指定します。人物対応へ外観特徴と元検出の4カメラ分を接続します。 |
 
 `serial` と `reuse` はどちらも各モデルの既存のclip内設定を使います。DINOの画像とBallの窓はB=1、ViTPoseとHMR2のcrop上限は16、CLIP-ReIDは64です。ViTPoseの充填率はflip前のcrop数で計算します。GVHMRは1人物segmentずつ実行します。#1748のrecorderと逐次の計測手順を使い、両入口でplayer経路と入力・重み・精度・保存条件をそろえます。
 
 ## 投入前の確認
 
-過去の同じ3クリップの一括runは約32分、device VRAM peakは6,198 MiB、RSS peakは約8.5 GiB、保存先は約1.9 GiBでした。これらを時間・容量の見積りに使います。逐次の追加ロードと新しい中間保存に余裕を取り、条件ごとに最長180分、GPU all枠、PyTorch allocator 10 GiBで実行します。queueがall枠を確保した後、probe開始直前の `nvidia-smi` 1回でGPU名・driver・空きVRAMを記録し、空きVRAM 12 GiB相当、利用可能RAM 12 GiB、空きdisk 12 GiBを確認します。probeは同じ入力・設定のclip_027/cam0でDINO・ViTPose・CLIP-ReID・Ballの段を8分以内に実行します。身体段の資源見積りには過去の全段runも使います。 [先行run](../../nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)
+過去の同じ3クリップの一括runは約32分、device VRAM peakは6,198 MiB、RSS peakは約8.5 GiB、保存先は約1.9 GiBでした。これらを時間・容量の見積りに使います。逐次の追加ロードと新しい中間保存に余裕を取り、条件ごとに最長180分、GPU all枠、PyTorch allocator 10 GiBで実行します。probe workerのモデル読込前に `torch.cuda.mem_get_info` で空きVRAMを1回取得し、12 GiB以上であることを確認します。GPU名・CUDA runtime・利用可能RAM・空きdiskも `probe/host.json` に記録し、RAMとdiskはそれぞれ12 GiB以上を確認します。probeは同じ入力・設定のclip_027/cam0でDINO・ViTPose・CLIP-ReID・Ballの段を8分以内に実行します。身体段の資源見積りには過去の全段runも使います。 [先行run](../../nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)
 
-CPU事前確認とqueue内の初期照会を経て、全条件を共通のheartbeat監視で実行します。最後の更新から180秒、または外部から計ったprobe 480秒・本計測10,800秒のうち先に来た制限で停止します。ログと最後のheartbeatを保存し、取得できた場合はスレッドスタックも残します。probeと本計測は同じqueue jobで続けて実行します。 [照会の切り分け結果](../../nodes/tennis_scene/000076-run-i1757-dino-gpu-health.md)
+全条件を共通のheartbeat監視で実行します。最後の更新から180秒、または外部から計ったprobe 480秒・本計測10,800秒のうち先に来た制限で停止します。ログと最後のheartbeatを保存し、取得できた場合はスレッドスタックも残します。probeと本計測は同じqueue jobで続けて実行します。 [GPU照会の切り分け結果](../../nodes/tennis_scene/000076-run-i1757-dino-gpu-health.md)
 
 各条件で初回1回、warm 2回を予約します。warmの2回で範囲・標本標準偏差を出せる最小回数です。毎回空のcomponent storeから再計算し、初回は新規workerと空のInductor/Triton cache、warmは同じworkerのimport・CUDA/compile状態を使います。モデルは各入口の通常の寿命でロード・解放します。OS page cacheは通常運用の状態を保ちます。
 
@@ -25,13 +25,14 @@ worktreeの `.venv`、共有data/ckpt、gitlinkのDINO source、[共有court/ド
 
 ```bash
 driver=knowledge/runs/run-i1757-video-batch-meiji/benchmark.py
-condition=serial
+condition=reuse
 run_name="$condition-heartbeat-1"
 run_dir="outputs/tennis_scene/evaluate/video-batch-benchmark-20261119/$run_name"
 commit=$(git rev-parse HEAD)
 common_git_dir=$(git rev-parse --path-format=absolute --git-common-dir)
 export TRAINING_QUEUE_DIR="${common_git_dir%/.git}/.training_queue"
 queue=.agents/skills/training-queue/scripts/training_queue.sh
+bash "$queue" status
 
 # TENNIS_LAB_DINO_EXTENSION は使用するバイナリの絶対パス
 : "${TENNIS_LAB_DINO_EXTENSION:?Set the absolute path to the DINO extension}"
@@ -49,7 +50,7 @@ bash "$queue" add "$probe && $measure" --resource all --provider codex \
   --idempotency-key "i1757/$run_name/$commit"
 ```
 
-queueが停止中なら `bash "$queue" start` で起動します。job名は `bash "$queue" list` で照合でき、stdout/stderrは `.training_queue/logs/<job-id>.log` にあります。probeは `probe/terminal.json` と `probe/recording.json`、本計測は `measurement/worker.log`、各repeatの `measurement.json` とC1 recorder JSONを保存します。各repeatの `first-inference.json` は、実モデルの初回forwardが完了した証拠です。正規終了では `measurement/terminal.json` の成否をqueueのterminalと突き合わせます。CUDAエラー・ハング・時間上限では診断を保存して停止します。
+`status` で共有queue workerが `RUNNING` であることを確認してから `add` を実行します。job名は `bash "$queue" list` で照合でき、stdout/stderrは `.training_queue/logs/<job-id>.log` にあります。probeは `probe/terminal.json` と `probe/recording.json`、本計測は `measurement/worker.log`、各repeatの `measurement.json` とC1 recorder JSONを保存します。各repeatの `first-inference.json` は、実モデルの初回forwardが完了した証拠です。正規終了では `measurement/terminal.json` の成否をqueueのterminalと突き合わせます。CUDAエラー・ハング・時間上限では診断を保存して停止します。
 
 中断・cache混在の検証は冷えた保存先での速度計測と別のqueue jobで行います。既存の `run_video_batch` の設定を変えず、使い捨てのdataset copyでstage保存後にqueueから中断し、同じcopyで再開します。進捗の `cached`・`executed`・`skipped`、モデルイベントと最終markerを照合し、再開したsceneを冷えた保存先からのsceneと比較します。CUDAエラー・ハング時はそこで停止します。
 

@@ -126,10 +126,14 @@ def test_probe_and_measurement_share_one_host_snapshot_and_watchdog(
     monkeypatch.setenv("TENNIS_REPRO_DIR", str(tmp_path))
     monkeypatch.setattr(benchmark, "verify_pins", Mock())
     monkeypatch.setattr(benchmark, "require_empty_store", Mock())
-    host_query = Mock(returncode=0)
-    host_query.communicate.return_value = ("Test GPU, 16311, 1000, 15311, 621.24\n", "")
-    query_launch = Mock(return_value=host_query)
-    monkeypatch.setattr(subprocess, "Popen", query_launch)
+    monkeypatch.setattr(
+        subprocess,
+        "Popen",
+        Mock(side_effect=AssertionError("Unexpected external process")),
+    )
+    gpu_memory = Mock(return_value=(14 * 1024**3, 16 * 1024**3))
+    monkeypatch.setattr("torch.cuda.mem_get_info", gpu_memory)
+    monkeypatch.setattr("torch.cuda.get_device_name", Mock(return_value="Test GPU"))
     monkeypatch.setattr(
         "psutil.virtual_memory",
         lambda: SimpleNamespace(total=32 * 1024**3, available=24 * 1024**3),
@@ -137,7 +141,16 @@ def test_probe_and_measurement_share_one_host_snapshot_and_watchdog(
     monkeypatch.setattr(
         benchmark.shutil, "disk_usage", lambda _: SimpleNamespace(free=20 * 1024**3)
     )
-    monitor = Mock(return_value={"status": "complete", "monitor": "heartbeat"})
+
+    def simulated_worker(phase: Path, *_: Any, **__: Any) -> dict[str, str]:
+        if phase.name == "probe":
+            assert gpu_memory.call_count == 0
+            benchmark.write(
+                phase / "host.json", benchmark.host_resources(tmp_path, "cuda:0")
+            )
+        return {"status": "complete", "monitor": "heartbeat"}
+
+    monitor = Mock(side_effect=simulated_worker)
     monkeypatch.setattr(benchmark, "supervise_worker", monitor)
     for attempt in benchmark.attempts(tmp_path):
         benchmark.write(
@@ -148,9 +161,7 @@ def test_probe_and_measurement_share_one_host_snapshot_and_watchdog(
     assert benchmark.run(tmp_path, condition, "probe", "test-head") == 0
     assert benchmark.run(tmp_path, condition, "measurement", "test-head") == 0
 
-    assert query_launch.call_count == 1
-    assert query_launch.call_args.args[0][0] == "nvidia-smi"
-    host_query.communicate.assert_called_once_with(timeout=10)
+    gpu_memory.assert_called_once_with("cuda:0")
     probe, measurement = monitor.call_args_list
     assert [probe.args[0], measurement.args[0]] == [
         tmp_path / "probe",
@@ -159,7 +170,7 @@ def test_probe_and_measurement_share_one_host_snapshot_and_watchdog(
     assert probe.kwargs == {"heartbeat_timeout": 180, "time_limit": 480}
     assert measurement.kwargs == {"heartbeat_timeout": 180, "time_limit": 10800}
     host = benchmark.read(tmp_path / "probe/terminal.json")["host"]
-    assert host["device_free_mib"] == 15311
+    assert host["device_free_bytes"] == 14 * 1024**3
     assert benchmark.read(tmp_path / "measurement/terminal.json")["host"] == host
 
 

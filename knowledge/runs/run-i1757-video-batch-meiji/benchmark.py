@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
 import json
 import os
@@ -12,7 +11,7 @@ import signal
 import subprocess
 import sys
 import time
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -115,19 +114,21 @@ def freeze(root):
 
 
 @contextmanager
-def compose_config(directory):
+def compose_config(directory, condition="serial"):
     from hydra import compose, initialize_config_dir
 
     from src.tennis_scene.configuration import parse_video_batch_config
     from src.tennis_scene.scripts.generate_dataset import _compose_pipeline_config
 
+    reuse_embeddings = SPEC["conditions"][condition]["reuse_clip_embeddings"]
+    overrides = [*SPEC["pipeline_overrides"], f"player_association.reuse_clip_embeddings={json.dumps(reuse_embeddings)}"]
     with initialize_config_dir(config_dir=str(REPO / "src/tennis_scene/configs"), version_base="1.3"):
         batch_cfg = compose(config_name="run_video_batch", overrides=[
             f"paths.data_root={directory}", f"paths.output_root={directory}",
             f"paths.artifact_root={common_root() / '.worktree-outputs'}",
             "dataset_directory=dataset", f"video_id={SPEC['video_id']}", "progress_directory=progress",
             f"pipeline_config={SPEC['pipeline_config']}", "overwrite=false", "continue_on_error=true",
-            f"clip_ids={json.dumps(CLIPS)}", f"pipeline_overrides={json.dumps(SPEC['pipeline_overrides'])}",
+            f"clip_ids={json.dumps(CLIPS)}", f"pipeline_overrides={json.dumps(overrides)}",
         ])
         parsed = parse_video_batch_config(batch_cfg)
         pipeline_cfg, runtime = _compose_pipeline_config(parsed.generation, config_name=parsed.pipeline_config)
@@ -136,44 +137,32 @@ def compose_config(directory):
                 or not runtime.enabled["ball_reconstruction"]
                 or runtime.people.runtime.dino_detector.precision != "fp16"
                 or runtime.people.runtime.vitpose.precision != "fp16"
-                or runtime.player_association.players_per_side != 2):
+                or runtime.player_association.players_per_side != 2
+                or runtime.reuse_clip_embeddings is not reuse_embeddings):
             raise ValueError("Composed settings differ from the pinned experiment")
         yield batch_cfg, pipeline_cfg, runtime
 
 
-def host_resources(root):
-    """Take one host snapshot before starting the probe worker."""
+def host_resources(root, device):
+    """Check resources inside the probe worker before it loads any model."""
     import psutil
+    import torch
 
-    command = [
-        "nvidia-smi", "--id=0", "--query-gpu=name,memory.total,memory.used,memory.free,driver_version",
-        "--format=csv,noheader,nounits",
-    ]
-    query = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    try:
-        values, error = query.communicate(timeout=10)
-    except subprocess.TimeoutExpired:
-        query.kill()
-        with suppress(subprocess.TimeoutExpired):
-            query.wait(timeout=1)
-        raise
-    if query.returncode != 0:
-        raise RuntimeError(f"Pre-probe host snapshot failed ({query.returncode}): {error.strip()}")
-    name, total, used, free, driver = next(csv.reader([values.strip()], skipinitialspace=True))
+    free, total = torch.cuda.mem_get_info(device)
     memory = psutil.virtual_memory()
     disk = shutil.disk_usage(root)
-    result = {"gpu": name, "device_total_mib": int(total), "device_used_mib": int(used),
-              "device_free_mib": int(free), "driver": driver,
+    result = {"gpu": torch.cuda.get_device_name(device), "device_total_bytes": total,
+              "device_free_bytes": free, "cuda_runtime": torch.version.cuda,
               "ram_total_bytes": memory.total, "ram_available_bytes": memory.available,
               "disk_free_bytes": disk.free}
-    if (int(free) < RESOURCES["min_free_vram_mib"]
+    if (free < RESOURCES["min_free_vram_mib"] * 1024**2
             or memory.available < RESOURCES["min_available_ram_gib"] * GIB
             or disk.free < RESOURCES["min_free_disk_gib"] * GIB):
         raise RuntimeError(f"Insufficient resources for the pinned benchmark: {result}")
     return result
 
 
-def preflight(root, expected_head):
+def preflight(root, expected_head, condition):
     from omegaconf import OmegaConf
 
     from src.submodules.models.dino.extension import validate_dino_extension
@@ -186,7 +175,7 @@ def preflight(root, expected_head):
     verify_dataset(dataset)
     native_dino = validate_dino_extension()
     plans = {}
-    with compose_config(directory) as (_, pipeline_cfg, runtime):
+    with compose_config(directory, condition) as (_, pipeline_cfg, runtime):
         orchestrator = TennisSceneOrchestrator.from_runtime_config(runtime)
         shared_court = orchestrator.prepare_video_court()
         identity = orchestrator.publication_identity()
@@ -206,11 +195,17 @@ def preflight(root, expected_head):
                           for camera in SPEC["camera_ids"]] + ["ball_triangulation"]
             if any(by_name[name].source != "execute" for name in ball_nodes):
                 raise ValueError("Benchmark requires all ball nodes to execute")
+            association_inputs = sorted(by_name["player_association"].bindings.values())
+            appearance_inputs = {name for name in association_inputs if name.startswith("person_appearance_features/")}
+            expected_appearances = {f"person_appearance_features/{camera}" for camera in source.camera_ids} if runtime.reuse_clip_embeddings else set()
+            if appearance_inputs != expected_appearances:
+                raise ValueError(f"Unexpected CLIP reuse inputs for {condition}: {association_inputs}")
             plans[source.clip_id] = {"frames": source.num_frames, "camera_ids": source.camera_ids,
-                                     "court_side_inputs": side_inputs, "nodes": list(by_name)}
+                                     "court_side_inputs": side_inputs, "association_inputs": association_inputs,
+                                     "nodes": list(by_name)}
         (root / "pipeline.yaml").write_text(OmegaConf.to_yaml(pipeline_cfg, resolve=True))
     write(root / "preflight.json", {
-        "commit": expected_head, "conditions_sha256": sha(RUN / "conditions.json"),
+        "commit": expected_head, "condition": condition, "conditions_sha256": sha(RUN / "conditions.json"),
         "tolerances_sha256": sha(RUN / "tolerances.json"),
         "input_sha256": sha(root / "input.json"), "publication_identity": identity, "plans": plans,
         "native_dino": {"path": str(native_dino), "sha256": sha(native_dino)},
@@ -224,12 +219,12 @@ def verify_head(expected_head):
         raise RuntimeError("Commit the complete source and benchmark before execution")
 
 
-def verify_pins(root, expected_head):
+def verify_pins(root, expected_head, condition):
     verify_head(expected_head)
     preflight = read(root / "preflight.json")
-    if (preflight["commit"], preflight["conditions_sha256"], preflight["tolerances_sha256"],
+    if (preflight["commit"], preflight["condition"], preflight["conditions_sha256"], preflight["tolerances_sha256"],
             preflight["input_sha256"]) != (
-            expected_head, sha(RUN / "conditions.json"), sha(RUN / "tolerances.json"), sha(root / "input.json")):
+            expected_head, condition, sha(RUN / "conditions.json"), sha(RUN / "tolerances.json"), sha(root / "input.json")):
         raise ValueError("Run does not match the preflight commit and pins")
     extension = Path(os.environ["TENNIS_LAB_DINO_EXTENSION"]).resolve(strict=True)
     if preflight["native_dino"] != {"path": str(extension), "sha256": sha(extension)}:
@@ -401,6 +396,9 @@ def worker(root, phase, condition, identity):
         from src.utils.inference_recording import InferenceRecorder, span
 
         device = "cuda:0"
+        if probe:
+            with span("measurement", operation="gpu_resource_snapshot"):
+                write(phase / "host.json", host_resources(root, device))
         process = psutil.Process()
         cv2.setNumThreads(1)
         startup_seconds = time.perf_counter() - worker_started
@@ -419,7 +417,7 @@ def worker(root, phase, condition, identity):
                 torch.cuda.set_per_process_memory_fraction(RESOURCES["allocator_limit_gib"] * GIB / capacity, device)
             print(f"Running {condition_name} {regime} in {directory}", flush=True)
             recording = directory / "recording.json"
-            with compose_config(directory) as (batch_cfg, pipeline_cfg, runtime):
+            with compose_config(directory, condition) as (batch_cfg, pipeline_cfg, runtime):
                 if not probe and SPEC["conditions"][condition]["entry"] == "run_video_batch":
                     outcomes, recording = batch_run(directory, batch_cfg, identity)
                 else:
@@ -447,7 +445,7 @@ def worker(root, phase, condition, identity):
 def run(root, condition, action, expected_head):
     if not os.environ.get("TENNIS_RUN_ID") or not os.environ.get("TENNIS_REPRO_DIR"):
         raise RuntimeError("Enqueue real GPU measurements in the shared training queue")
-    verify_pins(root, expected_head)
+    verify_pins(root, expected_head, condition)
     phase = root / action
     directories = [root / "probe"] if action == "probe" else attempts(root)
     for directory in directories:
@@ -456,14 +454,12 @@ def run(root, condition, action, expected_head):
         raise FileExistsError(f"A measurement was already started: {phase}")
     phase.mkdir(exist_ok=True)
     identity = {"commit": expected_head, "job_id": os.environ["TENNIS_RUN_ID"], "condition": condition}
-    if action == "probe":
-        host = host_resources(root)
-    else:
+    job = {**identity, "phase": action}
+    if action == "measurement":
         terminal = read(root / "probe" / "terminal.json")
         if terminal["status"] != "complete" or any(terminal[key] != value for key, value in identity.items()):
             raise RuntimeError("This condition's resource probe must complete in the same queue job before measurement")
-        host = terminal["host"]
-    job = {**identity, "phase": action, "host": host}
+        job["host"] = terminal["host"]
     write(phase / "started.json", job)
     env = {"PYTHONHASHSEED": str(SPEC["seed"]), "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
            "OPENBLAS_NUM_THREADS": "1", "TORCHINDUCTOR_CACHE_DIR": str(phase / "inductor"),
@@ -476,6 +472,12 @@ def run(root, condition, action, expected_head):
     result = supervise_worker(phase, command, REPO, heartbeat_timeout=RESOURCES["heartbeat_timeout_seconds"],
                               time_limit=RESOURCES[limit_key])
     status = result["status"]
+    if action == "probe":
+        host_path = phase / "host.json"
+        if host_path.is_file():
+            job["host"] = read(host_path)
+        elif status == "complete":
+            status = "host_resources_unavailable"
     if status == "complete" and action == "measurement" and any(
         outcome["status"] != "generated" for directory in directories
         for outcome in read(directory / "measurement.json")["outcomes"].values()
@@ -506,12 +508,12 @@ def main():
         parser.error(f"{args.condition} requires #{dependency} and its explicit adapter configuration")
     verify_head(args.expect_commit)
     if args.action == "preflight":
-        preflight(root, args.expect_commit)
+        preflight(root, args.expect_commit, args.condition)
         return 0
     if args.action == "worker":
         if not args.phase or not os.environ.get("TENNIS_STACK_FILE") or not os.environ.get("TENNIS_RUN_ID"):
             parser.error("worker is invoked by the queue supervisor")
-        worker(root, root / args.phase, args.condition, verify_pins(root, args.expect_commit))
+        worker(root, root / args.phase, args.condition, verify_pins(root, args.expect_commit, args.condition))
         return 0
     return run(root, args.condition, "measurement" if args.action == "run" else "probe", args.expect_commit)
 
