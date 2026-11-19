@@ -149,7 +149,10 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         heads: Iterable[CourtTargetKind] | None = None,
     ) -> CourtPrediction:
         requested = self._requested_heads(heads, postprocess)
-        return self._predict_prepared((self._prepare_image(image),), requested, postprocess)[0]
+        prediction = self._predict_prepared((self._prepare_image(image),), requested, postprocess)[0]
+        if isinstance(prediction, ValueError):
+            raise prediction
+        return prediction
 
     def batch_image_size(self, height: int, width: int) -> tuple[int, int]:
         """Padded model input size for the checkpoint's validation geometry."""
@@ -170,8 +173,8 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         self, prepared: Sequence[PreparedCourtImage], *,
         postprocess: Literal["hybrid", "none"] = "hybrid",
         heads: Iterable[CourtTargetKind] | None = None,
-    ) -> list[CourtPrediction]:
-        """Predict a compatible batch and decode every row in its own geometry."""
+    ) -> list[CourtPrediction | ValueError]:
+        """Return a prediction or row-local output error for each prepared image."""
         return self._predict_prepared(prepared, self._requested_heads(heads, postprocess), postprocess)
 
     def _requested_heads(self, heads: Iterable[CourtTargetKind] | None,
@@ -205,7 +208,7 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
     def _predict_prepared(
         self, prepared: Sequence[PreparedCourtImage], requested: tuple[CourtTargetKind, ...],
         postprocess: Literal["hybrid", "none"],
-    ) -> list[CourtPrediction]:
+    ) -> list[CourtPrediction | ValueError]:
         if not prepared:
             return []
         tensors = [item.images for item in prepared]
@@ -222,10 +225,18 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
             with span("inference", model="Court", batch_shape=list(images.shape)):
                 output = cast(CourtLogits | CourtModelOutput, self.model(*call.model_args))
             with span("postprocess", model="Court"):
-                self.adapter.validate_logits(output, call)
+                errors = self.adapter.prediction_row_errors(output, call)
                 logits = output.dense_logits if isinstance(output, CourtModelOutput) else output
-                return [self._decode_prediction(logits, index, item, requested, postprocess)
-                        for index, item in enumerate(prepared)]
+                predictions: list[CourtPrediction | ValueError] = []
+                for index, item in enumerate(prepared):
+                    if index in errors:
+                        predictions.append(errors[index])
+                        continue
+                    try:
+                        predictions.append(self._decode_prediction(logits, index, item, requested, postprocess))
+                    except ValueError as error:
+                        predictions.append(error)
+                return predictions
 
     def _decode_prediction(
         self, logits: CourtLogits, index: int, prepared: PreparedCourtImage,

@@ -235,6 +235,9 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
         decoded = predictor.predict_prepared([item.prepared for item in items], postprocess="hybrid", heads=("kp", "line"))
         results: list[CourtImagePrediction | ValueError] = []
         for item, prediction in zip(items, decoded, strict=True):
+            if isinstance(prediction, ValueError):
+                results.append(prediction)
+                continue
             try:
                 assessed = assess_region_prediction(prediction, item.rgb, item.region, self.config.region_search)
                 points, valid, diagnostic = self._geometry(assessed)

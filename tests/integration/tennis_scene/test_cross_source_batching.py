@@ -60,6 +60,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     model_identities,
 )
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
+    CourtDetectionInputAssembler,
     PersonDetectionInputAssembler,
 )
 from src.tennis_scene.pipeline.runner import PlanExecutor
@@ -68,6 +69,7 @@ from src.utils.inference_recording import InferenceRecorder
 from src.utils.video import FramePacket, VideoReadError
 from src.utils.video.reader import OpenCVDecodeIdentity
 from src.utils.video.transforms import BgrToRgbUint8Transform
+from src.utils.video.types import TemporalWindow
 from tests.support.tasks.ball_detection.temporal import small_model
 from tests.unit.tennis_scene.pipeline.components.test_ball_detection import _prediction
 from tests.unit.tennis_scene.pipeline.components.test_hmr2_features import (
@@ -84,8 +86,11 @@ from tests.unit.tennis_scene.pipeline.config_factories import (
 )
 
 
-def _drain(adapter: BatchAdapter, model: Any, inputs: dict[NodeKey, Any], size: int) -> dict[NodeKey, Any]:
+def _drain(adapter: BatchAdapter, model: Any, inputs: dict[NodeKey, Any], size: int, *,
+           max_bytes: int | None = None) -> dict[NodeKey, Any]:
     config = BatchConfig(enabled=True, sizes=replace(BatchSizes(), **{adapter.batch_model: size}))
+    if max_bytes is not None:
+        config = replace(config, max_working_bytes=max_bytes)
     budget = WorkingMemory(config.max_working_bytes)
     spec = ModelSpec(adapter.batch_model, {}, "fake", "cpu", "float32", {}, lambda: model)
     outputs: dict[NodeKey, Any] = {}
@@ -264,6 +269,101 @@ def test_court_reads_frame_zero_and_writes_source_camera_geometry(
         np.testing.assert_array_equal(item.visibility[0, 0], [False] + [True] * 13)
 
 
+@pytest.mark.parametrize("batching", [False, True], ids=["sequential", "cross-source"])
+@pytest.mark.parametrize("fault", ["line", "pose"])
+def test_court_publishes_valid_row_when_another_clip_has_nonfinite_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, batching: bool, fault: str,
+) -> None:
+    from src.tasks.base.model_io import bind_model_io
+    from src.tasks.court_detection.data.contracts import (
+        CourtTargetBundleSpec,
+        CourtTargetSpec,
+    )
+    from src.tasks.court_detection.geometry.quality import CourtQuality
+    from src.tasks.court_detection.inference import predictor as court_predictor
+    from src.tasks.court_detection.inference import regions
+    from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
+    from src.tasks.court_detection.model_io.contracts import (
+        CourtModelOutput,
+        CourtModelSpec,
+        CourtRawPoseOutput,
+    )
+    from src.tennis_scene.pipeline.components import court_kp
+    from src.tennis_scene.pipeline.model_assets import file_identity
+    from src.utils.schema.court import GROUND_COURT_KP_NAMES
+    from tests.unit.tasks.court_detection.inference.test_pose_output_predictors import (
+        _bundle,
+        _loss_config,
+        _StaticPoseModel,
+    )
+    from tests.unit.tasks.court_detection.inference.test_unified_predictor import (
+        geometry_prediction,
+    )
+    from tests.unit.tennis_scene.pipeline.config_factories import (
+        make_court_kp_config,
+        materialize_model_weights,
+    )
+
+    geometry = geometry_prediction()
+    assert geometry.keypoint_schema is not None
+    targets = dict(_bundle().targets)
+    targets["kp"] = CourtTargetSpec("kp", geometry.keypoint_schema, 14, GROUND_COURT_KP_NAMES, torch.float32, False)
+    bundle = CourtTargetBundleSpec(targets)
+    forwards: list[int] = []
+
+    class Court(_StaticPoseModel):
+        def forward(self, images: torch.Tensor, *args: Any, **kwargs: Any) -> CourtModelOutput:
+            forwards.append(len(images))
+            output = super().forward(images, *args, **kwargs)
+            logits = dict(output.dense_logits)
+            logits["kp"] = images.new_zeros((len(images), 14, *images.shape[-2:]))
+            bad = images[:, 0, 0, 0] < 0
+            assert output.pose is not None
+            pose = output.pose.values
+            if fault == "line":
+                logits["line"][bad, 0, 1, 1] = float("nan")
+            else:
+                pose[bad, 0] = float("nan")
+            return CourtModelOutput(logits, CourtRawPoseOutput(pose))
+
+    def read(path: Path, frame: int) -> FramePacket:
+        return FramePacket(frame, np.full((20, 30, 3), 20 if path.stem == "bad" else 220, np.uint8), (30, 20))
+
+    monkeypatch.setattr(court_kp, "read_video_frame", read)
+    monkeypatch.setattr(court_predictor, "estimate_hybrid_homography", lambda *a, **kw: geometry.homography)
+    monkeypatch.setattr(regions, "assess_prediction_quality", lambda *a: CourtQuality(True, .25, (), {}))
+    adapter = CourtModelIOAdapter(CourtModelSpec(bundle, 3, 32), loss_config=_loss_config())
+    predictor = court_predictor.CourtPredictor(bind_model_io(Court(bundle), adapter), torch.device("cpu"))
+    config = make_court_kp_config(tmp_path)
+    module = materialize_model_weights(court_kp.CourtKPModule(replace(
+        config, region_search=replace(config.region_search, enabled=False))))
+    monkeypatch.setattr(module, "_load_predictor", lambda: predictor)
+    settings = {"models": model_identities(module.model_specs(), file_identity)}
+    name = "court_detection/cam0"
+    executions = []
+    for clip in ("bad", "good"):
+        video = SourceVideo("cam0", tmp_path / f"{clip}.mp4", clip, 1, 30., 30, 20)
+        source = ClipSource(clip, (video,))
+        context = AssemblyContext(source, "cam0")
+        node = ComponentNode(name, module, module.io, CourtDetectionInputAssembler(), {}, context, settings, "test")
+        executions.append(ClipExecution(clip, (node,), ClipStore(tmp_path / clip, json_value(source))))
+    plan = ExecutionPlan(executions)
+    errors: list[tuple[str, Exception]] = []
+    executor = PlanExecutor(plan, batching=BatchConfig(enabled=batching))
+    executor.run(continue_on_error=True, on_clip_error=lambda clip, error: errors.append((clip, error)))
+
+    assert forwards == ([2] if batching else [1, 1])
+    assert len(errors) == 1 and errors[0][0] == "bad"
+    message = "line logits" if fault == "line" else "Raw Court pose"
+    assert isinstance(errors[0][1], ValueError) and message in str(errors[0][1])
+    assert plan.statuses == {("bad", name): "failed", ("good", name): "executed"}
+    assert plan.clips["bad"].store.active(name) is None
+    assert plan.clips["good"].store.active(name) == plan.references[("good", name)]
+    good = executor.output(("good", name))
+    assert good.frame_indices.tolist() == [0]
+    np.testing.assert_allclose(good.keypoints[0, 0, 1], [15 / 29, 3 / 19], rtol=1e-6)
+
+
 def test_pose_and_clip_keep_sparse_rows_and_invalid_crop_masks(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -334,6 +434,53 @@ def test_pose_and_clip_keep_sparse_rows_and_invalid_crop_masks(
                     else bytes(32) for frame in range(5)]
         assert [row.tobytes() for row in more_embeddings[(clip_id, "cam")].frame_sha256] == expected
     assert not more_embeddings[("empty", "cam")].frame_sha256.any()
+
+
+def test_real_udp_decoder_preserves_each_clip_with_missing_joints(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = feature_inputs(tmp_path)
+    assert request.detections.source_rows is not None
+    one_detection = replace(request.detections, frame_offsets=np.array([0, 1], np.int64),
+                            boxes_xyxy=request.detections.boxes_xyxy[:1], confidence=request.detections.confidence[:1],
+                            source_rows=request.detections.source_rows[:1])
+    dark = replace(request, video=replace(request.video, num_frames=1), detections=one_detection)
+    light = replace(dark, video=replace(dark.video, path=tmp_path / "light.mp4"),
+                    detections=replace(one_detection,
+                                       boxes_xyxy=one_detection.boxes_xyxy + np.array([10, 0, 10, 0], np.float32)))
+    sources = {("dark", "cam"): dark, ("light", "cam"): light}
+    forwards: list[int] = []
+
+    class Heatmaps(torch.nn.Module):
+        def forward(self, images: torch.Tensor) -> torch.Tensor:
+            forwards.append(len(images))
+            maps = images.new_zeros((len(images), 17, 64, 48))
+            # The first joint stays absent. The next clip changes the last
+            # plane that an invalid first-joint index used to wrap into.
+            maps[:, 5, 31, 23] = .8
+            maps[images[:, 0, 128, 96] > 0, 16] = .9
+            return maps
+
+    def reader(path: Path, **_: Any) -> Iterator[FramePacket]:
+        frame: np.ndarray = np.full((48, 64, 3), 235 if path == light.video.path else 10, np.uint8)
+        yield FramePacket(0, frame, (64, 48))
+
+    monkeypatch.setattr(person_features, "OpenCVVideoFrameReader", reader)
+    people = make_people_config(tmp_path)
+    pose = person_features.ViTPosePose2D(people.vitpose_checkpoint, device="cpu", flip_test=False,
+                                         batch_size=2, head_config=people.runtime.vitpose.head)
+    pose._pose, pose._loaded = Heatmaps(), True
+    component = person_features.PersonPoseFeaturesModule(people)
+    separate = _drain(component, pose, sources, 1)
+    mixed = _drain(component, pose, sources, 2)
+
+    assert forwards == [1, 1, 2]
+    assert mixed[("dark", "cam")].keypoints[0, 16, 2] == 0
+    assert mixed[("light", "cam")].keypoints[0, 16, 2] == np.float32(.9)
+    for key in sources:
+        np.testing.assert_array_equal(mixed[key].keypoints, separate[key].keypoints)
+        assert mixed[key].keypoints[0, 0, 2] == 0
+        assert mixed[key].keypoints[0, 5, 2] == np.float32(.8)
 
 
 def test_hmr2_does_one_read_per_camera_and_scatters_segments_per_clip(
@@ -464,3 +611,28 @@ def test_real_x3d_batch_and_tail_each_report_one_forward(
     }}
     assert outputs[("a", "cam0")].evidence.selected_window_start.tolist() == [0] * 24 + [16] * 24
     assert outputs[("b", "cam0")].evidence.selected_window_start.tolist() == [0] * 32
+
+
+@pytest.mark.parametrize("limit_mib", [500, 1500])
+def test_x3d_rejects_budget_before_production_size_forward(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, limit_mib: int,
+) -> None:
+    config = replace(make_x3d_ball_config(tmp_path), pin_memory=True)
+    module = BallDetectionModule(config)
+    frame = torch.zeros(3, 1, 1, dtype=torch.uint8).expand(3, 720, 1280)
+    video = SourceVideo("cam0", tmp_path / "video.mp4", "media", 32, 30., 1920, 1080)
+
+    def windows(source: SourceVideo, length: int) -> Iterator[TemporalWindow[torch.Tensor]]:
+        assert (source, length) == (video, 32)
+        yield TemporalWindow(0, tuple(range(length)), (frame,) * length)
+
+    class UncalledPredictor:
+        @property
+        def configured_frames(self) -> int:
+            raise AssertionError("The X3D predictor was reached before checking the working memory limit")
+
+    monkeypatch.setattr(module, "_windows", windows)
+    limit = limit_mib * 1024**2
+    with pytest.raises(BatchMemoryLimit, match=f"max_working_bytes={limit:,}"):
+        _drain(module, UncalledPredictor(), {("a", "cam0"): BallDetectionInput(video)}, 1,
+               max_bytes=limit)

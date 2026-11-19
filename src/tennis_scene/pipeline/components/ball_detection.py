@@ -22,6 +22,7 @@ from src.tasks.ball_detection.model_io.contracts import (
     BallCandidateConfig,
     BallPrediction,
 )
+from src.tasks.ball_detection.preprocessing.rgb_mdd import rgb_mdd_working_bytes
 from src.tennis_scene.pipeline.batching import (
     BatchAdapter,
     BatchAddress,
@@ -245,6 +246,8 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
         candidates = config.candidates
         item_bytes = length * (sample_bytes * (3 + int(config.pin_memory)) + grid_pixels * 4 * 3
                                + candidates.max_candidates * (32 + candidates.patch_size**2 * 5))
+        if is_dpt:
+            item_bytes += rgb_mdd_working_bytes(length, height, width)
         output = BallWindowEvidence(video, aggregation=config.overlap_aggregation, tail_policy=config.tail_policy, memory=memory)
 
         def units() -> Generator[BatchUnit, None, None]:
@@ -313,7 +316,8 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
             prediction = predictor.predict(batch.tensor, candidate_config=self.config.candidates)
             for index, window in enumerate(batch.windows):
                 output.add(window.frame_indices, window.start_index, prediction, index)
-        return output.finish()
+        uv, confidence, evidence = output.finish()
+        return uv, confidence, evidence
 
     def _windows(self, video: SourceVideo, sequence_length: int) -> Iterator[TemporalWindow[Tensor]]:
         stride = (

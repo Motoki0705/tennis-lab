@@ -41,7 +41,7 @@ class BatchConfig:
     sizes: BatchSizes = field(default_factory=BatchSizes)
     max_sources: int = 4
     max_pending_items: int = 32
-    max_working_bytes: int = 2 * 1024**3
+    max_working_bytes: int = 3 * 1024**3
     store_cache_bytes: int = 0
     clips_per_pass: int | None = None
 

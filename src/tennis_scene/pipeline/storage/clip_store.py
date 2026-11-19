@@ -24,12 +24,12 @@ from src.tennis_scene.pipeline.artifacts import (
     json_value,
     write_json_atomic,
 )
-from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, verified_array_path
 from src.tennis_scene.pipeline.storage.scene_index import (
     assert_current_component_lineage,
     read_component_descriptor,
 )
-from src.utils.checksum import dual_sha256
+from src.utils.checksum import FileIntegrityError, dual_sha256
 from src.utils.inference_recording import measured, span, temporary_directory
 
 OutputT = TypeVar("OutputT")
@@ -95,9 +95,7 @@ class ClipStoreCache:
     def remember(self, key: tuple[Path, str], value: Any) -> None:
         if not self.max_bytes:
             return
-        previous = self._values.pop(key, None)
-        if previous is not None:
-            self.bytes -= previous[1]
+        self.discard(key)
         size = artifact_memory_bytes(value) + sys.getsizeof(key) + sys.getsizeof(key[1])
         if size > self.max_bytes:
             return
@@ -106,6 +104,11 @@ class ClipStoreCache:
         self._values[key] = value, size
         self.bytes += size
         self.peak_bytes = max(self.peak_bytes, self.bytes)
+
+    def discard(self, key: tuple[Path, str]) -> None:
+        previous = self._values.pop(key, None)
+        if previous is not None:
+            self.bytes -= previous[1]
 
 
 def _component_name(node: str) -> str:
@@ -180,27 +183,40 @@ class ClipStore:
     def load(self, reference: ArtifactRef, codec: ArtifactReader[OutputT], *,
              reserve: Callable[[int], None] | None = None) -> OutputT:
         descriptor = self.descriptor(reference)
+        arrays = descriptor["arrays"]
+        directory = self._path(reference.path).parent
         if reserve is not None:
             # Charge the mappings, restored metadata and temporary buffers
             # before the codec maps/copies arrays and validates their values.
             array_bytes = sum(math.prod(item["shape"]) * np.dtype(item["dtype"]).itemsize
-                              for item in descriptor["arrays"].values())
+                              for item in arrays.values())
             reserve(2 * (array_bytes + artifact_memory_bytes(descriptor["payload"])))
-        # Validate bytes on every disk read; a memory hit refers to the same immutable ID.
+        artifact_id = reference.artifact_id
+        shared_key = (self.root, artifact_id)
         if self.shared_cache is not None:
-            value = self.shared_cache.get((self.root, reference.artifact_id))
-            if value is not None:
-                if not isinstance(value, codec.output_type):
-                    raise TypeError("Cached artifact output contract mismatch")
-                return value
-        elif reference.artifact_id in self._memory:
-            value = self._memory.pop(reference.artifact_id)
-            self._memory[reference.artifact_id] = value
+            value = self.shared_cache.get(shared_key)
+            cached = value is not None
+        else:
+            cached = artifact_id in self._memory
+            value = self._memory.get(artifact_id)
+            if cached:
+                self._memory.move_to_end(artifact_id)
+        if cached:
             if not isinstance(value, codec.output_type):
                 raise TypeError("Cached artifact output contract mismatch")
+            # An existing mmap can reflect writes to its backing files.
+            try:
+                for name in arrays:
+                    verified_array_path(directory, name, arrays)
+            except (FileIntegrityError, ValueError, OSError):
+                if self.shared_cache is not None:
+                    self.shared_cache.discard(shared_key)
+                else:
+                    del self._memory[artifact_id]
+                raise
             return value
-        value = codec.load(descriptor["payload"], self._path(reference.path).parent, descriptor["arrays"])
-        self._remember(reference.artifact_id, value)
+        value = codec.load(descriptor["payload"], directory, arrays)
+        self._remember(artifact_id, value)
         return value
 
     def _remember(self, key: str, value: Any) -> None:

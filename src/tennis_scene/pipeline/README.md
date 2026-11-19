@@ -79,16 +79,20 @@ adapterはモデルalias、推論単位の列挙、互換キー、forward、書�
 | `batching.sizes.ball` | 1 | 固定長窓のB軸。T軸は元の1clip・1camera内で、backfill、overlap所有窓、gateと平滑化を維持 |
 | `batching.max_sources` | 4 | 同時に開く推論source数。通常はcameraごと、HMR2はclipごとに数える |
 | `batching.max_pending_items` | 32 | 互換キー全体でqueueに保持する推論単位数。全モデルのbatch上限以上 |
-| `batching.max_working_bytes` | 2 GiB | decode作業領域、queue内の入力、前後処理、保持中のfeature/evidence、読み出すartifactとSMPL頂点を含む明示的な作業量 |
+| `batching.max_working_bytes` | 3 GiB | decode作業領域、queue内の入力、前後処理、保持中のfeature/evidence、読み出すartifactとSMPL頂点を含む明示的な作業量 |
 | `batching.store_cache_bytes` | 0 | 全clipのClipStoreが共有するLRUのバイト上限。0でディスクから読む |
 | `batching.clips_per_pass` | null | 既定では選択した全clipを1回のruntimeで実行。整数で1passあたりのclip数を指定 |
 
 作業量の上限を超える場合は、その時点の要求量を示して停止する。ViTPoseはflipで増えるcropとheatmap、
 Ballは固定長のrolling window、stack、heatmap、候補patch、camera単位の蓄積配列を見積もる。
+X3DではFP32のRGB・MDDと結合後の5チャネル入力の同時保持分を、forward前に窓ごとに予約する。
+720×1280・T32でこの前処理は1窓あたり1,125 MiB。固定3clipの最長356 frameを4 sourceで
+同時に処理すると、B=1の予約は約2.24 GiBに収まる。B=2では約3.69 GiBとなり、上限の明示指定が必要。
 Body placementはclip全体のSMPL頂点と人物ごとの一時配列を考慮する。
 作業量は配列の予約ベースで、モデルの重み・内部activation、OpenCV内部のbuffer、OSのfile cacheを含む
 process全体のRSS/VRAMはrecorderの実測値で確認する。CUDAエラー・OOMは呼出し元へ伝播する。
 batch上限・精度・対象を変更する再実行は設定で指定する。
+ClipStoreはcache hitでも配列のchecksumを検証し、破損したentryを破棄してエラーを返す。
 
 同じadapterのB=1条件は、`batching.enabled=true`に加えて
 `'batching.sizes={court:1,dino:1,vitpose:1,clip:1,hmr2:1,ball:1}'`を指定する。

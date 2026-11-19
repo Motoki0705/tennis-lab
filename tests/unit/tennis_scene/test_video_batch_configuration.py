@@ -8,6 +8,7 @@ import pytest
 from hydra import compose, initialize_config_dir
 
 from src.tennis_scene.configuration import parse_video_batch_config
+from src.tennis_scene.pipeline.batching import BatchConfig
 from src.tennis_scene.scripts.generate_dataset import _compose_pipeline_config
 from src.utils.paths import PROJECT_ROOT
 
@@ -24,6 +25,7 @@ def test_explicit_pipeline_preset_and_subset(tmp_path: Path, name: str, expected
     assert parsed.video_id == "video_000" and parsed.generation.clip_ids == ("video_000/clip_037",)
     assert parsed.generation.dataset_directory == tmp_path / "dataset"
     assert parsed.batching.enabled and parsed.batching.sizes.dino == 1
+    assert parsed.batching.max_working_bytes == BatchConfig().max_working_bytes
     assert parsed.batching.clips_per_pass == 3 and parsed.record_cuda
     assert pipeline.ball_detection is not None and pipeline.ball_detection.model_type == expected
 

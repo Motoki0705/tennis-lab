@@ -152,6 +152,26 @@ def test_byte_cache_is_shared_and_load_preflights_mapped_arrays(tmp_path: Path) 
     np.testing.assert_array_equal(stores[0].load(refs[0], codec).numbers, np.zeros(512))
     assert cache.get((stores[-1].root, refs[-1].artifact_id)) is None
 
+    store, ref = stores[0], refs[0]
+    cached = cache.get((store.root, ref.artifact_id))
+    assert cached is not None and store.load(ref, codec) is cached
+    array = (store.root / ref.path).parent / "array_0000.npy"
+    original = array.read_bytes()
+    corrupt_value = np.float32(89).tobytes()
+    with array.open("r+b") as stream:
+        stream.seek(-len(corrupt_value), 2)
+        stream.write(corrupt_value)
+    assert array.stat().st_size == len(original)
+    with pytest.raises(ValueError, match="array checksum mismatch"):
+        store.load(ref, codec)
+
+    repaired = array.with_suffix(".repaired.npy")
+    repaired.write_bytes(original)
+    repaired.replace(array)
+    actual = store.load(ref, codec)
+    assert actual is not cached
+    np.testing.assert_array_equal(actual.numbers, np.zeros(512))
+
 
 def test_replacing_implementation_uses_same_io_and_invalidates_its_outputs(tmp_path: Path) -> None:
     class ChangedModel(Model):

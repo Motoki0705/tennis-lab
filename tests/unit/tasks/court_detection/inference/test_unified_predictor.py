@@ -145,7 +145,7 @@ def test_prepared_batch_keeps_per_image_pixel_geometry() -> None:
     image_b: np.ndarray = np.full((40, 60, 3), 17, np.uint8)
 
     def forward(images: torch.Tensor) -> CourtModelOutput:
-        output = _StaticPoseModel(predictor.adapter.spec.target_bundle)(images)
+        output: CourtModelOutput = _StaticPoseModel(predictor.adapter.spec.target_bundle)(images)
         logits = output.dense_logits["kp"]
         logits.fill_(-12)
         for row in range(len(images)):
@@ -159,6 +159,7 @@ def test_prepared_batch_keeps_per_image_pixel_geometry() -> None:
     predictions = predictor.predict_prepared(prepared, postprocess="none", heads=("kp",))
     assert called.call_count == 1 and len(called.call_args.args[0]) == 2
     for prediction, image, model_x in zip(predictions, (image_a, image_b), (5, 9), strict=True):
+        assert isinstance(prediction, CourtPrediction)
         raw = prediction.raw_heads["kp"]
         assert isinstance(raw, CourtKeypointPrediction)
         height, width = prediction.native_size_hw
