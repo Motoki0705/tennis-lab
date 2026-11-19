@@ -327,9 +327,13 @@ def test_standard_body_declarations_with_person_precision_cache_and_publication(
     marker = TennisSceneOrchestrator(cfg).publication_identity()
     for name in ('hmr2_features', 'gvhmr', 'body_placement'):
         assert marker['models'][name] == nodes[name].settings['models']
-        assert {spec.dtype for spec in nodes[name].component.model_specs().values()} == {'float32'}
+        component = nodes[name].component
+        assert isinstance(component, InferenceComponent)
+        assert {spec.dtype for spec in component.model_specs().values()} == {'float32'}
     assert marker['models']['person_detection']['detector']['dtype'] == dtype
-    assert marker['models']['person_tracking']['pose']['dtype'] == dtype
+    assert marker['models']['person_pose_features']['pose']['dtype'] == dtype
+    assert marker['models']['person_tracking'] == {}
+    assert nodes['person_tracking/cam0'].settings['expected_features']['models']['pose']['dtype'] == dtype
     assert not factories  # Planning and publication identities cannot load a model.
     selected = StoredSelection(value.selection)
     selection = ComponentNode('body_view_selection', selected, selected.io, NoInput(), {},

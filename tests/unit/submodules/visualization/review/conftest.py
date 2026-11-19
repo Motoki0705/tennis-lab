@@ -10,12 +10,13 @@ from typing import Any
 import numpy as np
 import pytest
 
+from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
 from src.tennis_scene.pipeline.storage.codec import encode_value
 from src.utils.checksum import dual_sha256
 
 
 @pytest.fixture
-def snapshot(tmp_path: Path) -> Path:
+def snapshot(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     references: dict[str, Any] = {}
 
     def publish(node: str, schema: str, version: int, value: Any, dependencies: dict[str, Any]) -> None:
@@ -33,7 +34,7 @@ def snapshot(tmp_path: Path) -> Path:
     confidence: np.ndarray = np.full((1, 5, 1, 17), .8, np.float32)
     confidence[0, 0, 0, 10] = .1
     boxes: np.ndarray = np.full((1, 5, 1, 3), 20, np.float32)
-    publish("pose_estimation/cam0", "person_poses", 1, {"camera_ids": ["cam0"], "local_track_ids": np.array([[42]], np.int64), "observed": observed, "uv_px": np.full((1, 5, 1, 17, 2), 30, np.float32), "confidence": confidence, "boxes_xys": boxes, "size": [100, 80], "fps": 30.0}, {})
+    publish("pose_estimation/cam0", "person_poses", getattr(request, 'param', PoseEstimationModule.io.version), {"camera_ids": ["cam0"], "local_track_ids": np.array([[42]], np.int64), "observed": observed, "uv_px": np.full((1, 5, 1, 17, 2), 30, np.float32), "confidence": confidence, "boxes_xys": boxes, "size": [100, 80], "fps": 30.0}, {})
     frames = np.array([0, 2, 4], np.int64)
     request = {"source_frames": frames, "keypoints": np.full((3, 17, 3), .8, np.float32), "boxes_xys": np.full((3, 3), 20, np.float32), "video_path": str(tmp_path / "missing.mp4"), "size": [100, 80], "intrinsic": np.eye(3)}
     publish("body_view_selection", "body_view_selection", 1, {"selections": [{"person_id": 7, "camera_id": "cam0", "requests": [request], "observed_samples": [3]}]}, {"pose": references["pose_estimation/cam0"]})

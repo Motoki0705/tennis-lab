@@ -1,0 +1,11 @@
+{
+  "ram_rss_sampled_peak_bytes": 6204747776,
+  "temporary_disk_peak_bytes": 0,
+  "ram_process_lifetime_peak_bytes": 6204747776,
+  "cuda": {
+    "cuda:0": {
+      "allocated_peak_bytes": 3027778048,
+      "reserved_peak_bytes": 3575644160
+    }
+  }
+}
