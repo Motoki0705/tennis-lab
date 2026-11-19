@@ -41,7 +41,7 @@ class PlayerTriangulationModule:
         self.reprojection_px, self.joint_confidence, self.enabled = reprojection_px, joint_confidence, enabled
         self.io = ComponentIO("player_triangulation", TriangulationInput, PlayerTriangulationOutput,
             {"alignment": InputPort("aligned_cameras"), "calibration": InputPort("local_court_calibration"),
-             "identities": IDENTITIES_PORT, **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "player_skeletons")
+             "identities": IDENTITIES_PORT, **{f"pose_{c}": InputPort("person_poses", 2) for c in camera_ids}}, "player_skeletons")
 
     def process(self, inputs: TriangulationInput) -> PlayerTriangulationOutput:
         geometry = inputs.alignment.geometry

@@ -1,63 +1,50 @@
 """Raw person tracking has no player cap and preserves source boxes."""
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
 import pytest
-import torch
 
-from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.tasks.person_tracking.sequence import TrackingConfig
+from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.components import person_tracking as module
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import SourceVideo
 from tests.unit.tennis_scene.pipeline.config_factories import (
     fake_encoder_spec,
-    make_people_config,
-    materialize_model_weights,
+    fake_pose_spec,
 )
 
 
 def test_more_than_six_people_keep_their_raw_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    class Pose:
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            pass
-        def load(self) -> None:
-            pass
-        def unload(self) -> None:
-            pass
-    class Encoder:
-        name = 'clipreid_vitb16_market1501'
-        input_size = (256, 128)
-        def embed(self, crops: torch.Tensor) -> torch.Tensor:
-            raise AssertionError('Features are supplied by the fixture')
-    class Features:
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            pass
-        def extract(self, frame: int, image: np.ndarray, rows: np.ndarray,
-                    boxes: np.ndarray, scores: np.ndarray) -> DetectionFeatures:
-            poses: np.ndarray = np.zeros((8, 17, 3), np.float32)
-            poses[..., :2] = boxes[:, None, :2] + 10
-            poses[..., 2] = 1
-            return DetectionFeatures(frame, rows, boxes, scores, poses, np.eye(8, dtype=np.float32), np.ones(8, bool))
     class Link:
         def __init__(self, path: Path) -> None:
             pass
         def links(self, boxes: np.ndarray, observed: np.ndarray) -> tuple[dict[int, int], list[Any]]:
             return {i: i for i in range(len(boxes))}, []
-    monkeypatch.setattr(module, 'ViTPosePose2D', Pose)
-    monkeypatch.setattr(module, 'FeatureExtractor', Features)
     monkeypatch.setattr(module, 'AFLink', Link)
-    monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k:
-        [SimpleNamespace(index=i, frame=np.zeros((200, 800, 3), np.uint8)) for i in range(4)])
     boxes = np.array([[100 * i + 10, 20, 100 * i + 50, 120] for i in range(8)], np.float32)
     detection = PersonDetectionOutput('cam0', np.arange(0, 33, 8, dtype=np.int64), np.tile(boxes, (4, 1)),
         np.full(32, .9, np.float32), np.arange(32, dtype=np.int64))
     video = SourceVideo('cam0', tmp_path / 'x.mp4', 'hash', 4, 30., 800, 200)
-    tracker = module.PersonTrackingModule(TrackingConfig(), people=make_people_config(tmp_path),
-        encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'aflink.pth')
-    result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detection))
+    from src.tennis_scene.pipeline.components.person_features import (
+        PersonAppearanceFeaturesOutput,
+        PersonPoseFeaturesOutput,
+        appearance_feature_settings,
+        pose_feature_settings,
+    )
+    poses: np.ndarray = np.zeros((32, 17, 3), np.float32)
+    poses[..., :2] = detection.boxes_xyxy[:, None, :2] + 10
+    poses[..., 2] = 1
+    embeddings: np.ndarray = np.zeros((32, 1280), np.float32)
+    embeddings[:, :8] = np.tile(np.eye(8, dtype=np.float32), (4, 1))
+    pose_features = PersonPoseFeaturesOutput('cam0', detection.frame_offsets, detection.source_rows, poses,
+        document_digest(fake_pose_spec().key), document_digest(pose_feature_settings(TrackingConfig().features)))
+    appearance = PersonAppearanceFeaturesOutput('cam0', detection.frame_offsets, detection.source_rows, embeddings, np.ones(32, bool), TrackingConfig().encoder,
+        document_digest(fake_encoder_spec(object).key), document_digest(appearance_feature_settings(TrackingConfig().features)))
+    tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'aflink.pth',
+        expected_pose=fake_pose_spec(), expected_encoder=fake_encoder_spec(object))
+    result = tracker.process(module.PersonTrackingInput(video, detection, pose_features, appearance))
     assert result.track_ids.tolist() == list(range(1, 9))
     assert result.observed[:, 2:].all() and not result.tracklet_links
     assert result.evidence is not None

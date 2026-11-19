@@ -406,7 +406,7 @@ def _read_placement_inputs(
             reader,
             node,
             schema="person_poses",
-            version=1,
+            version=(1, 2),
             output_type=ObjectObservations,
         )
         poses[camera_id] = cast(ObjectObservations, pose)

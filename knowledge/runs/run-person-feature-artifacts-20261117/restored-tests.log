@@ -1,0 +1,81 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 22 items
+
+tests/unit/tennis_scene/pipeline/components/test_person_features.py .... [ 18%]
+....                                                                     [ 36%]
+tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py ...... [ 63%]
+....                                                                     [ 81%]
+tests/integration/tennis_scene/test_person_feature_artifacts.py ....     [100%]
+
+============================== slowest durations ===============================
+0.57s call     tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_separate_passes_publish_reload_and_cache_without_model_overlap
+0.52s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pipeline_consumes_detection_features_once_and_reuses_pose
+0.49s call     tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_pose_and_appearance_keep_rows_empty_frames_and_tail
+0.24s call     tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[short]
+0.24s call     tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[size]
+0.24s call     tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_appearance_invalid_crops_stay_masked_and_unprompted
+0.24s call     tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[reordered]
+0.11s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit[False]
+0.11s call     tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_exactly_match_pre_split_tracking_selection_and_gsi
+0.10s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[player_selection/cam0-2]
+0.10s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[pose_estimation/cam0-1]
+0.09s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[person_tracking/cam0-5]
+0.09s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit[True]
+0.08s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[deep_ocsort_pose_aflink_gsi]
+0.08s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[invalid]
+0.08s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[deep_ocsort_pose]
+0.08s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[strongsort_pp]
+0.02s call     tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[camera]
+0.02s call     tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[rows]
+0.02s call     tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[offsets]
+0.00s call     tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_no_detections_preserves_timeline_without_loading_models[pose]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_pose_and_appearance_keep_rows_empty_frames_and_tail
+0.00s call     tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_no_detections_preserves_timeline_without_loading_models[appearance]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[pose_estimation/cam0-1]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[person_tracking/cam0-5]
+0.00s setup    tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_exactly_match_pre_split_tracking_selection_and_gsi
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[reordered]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[player_selection/cam0-2]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit[False]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_no_detections_preserves_timeline_without_loading_models[pose]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_separate_passes_publish_reload_and_cache_without_model_overlap
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[size]
+0.00s setup    tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[camera]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_no_detections_preserves_timeline_without_loading_models[appearance]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pipeline_consumes_detection_features_once_and_reuses_pose
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_appearance_invalid_crops_stay_masked_and_unprompted
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit[True]
+0.00s setup    tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[offsets]
+0.00s setup    tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[rows]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[short]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[deep_ocsort_pose]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[strongsort_pp]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[invalid]
+0.00s setup    tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[deep_ocsort_pose_aflink_gsi]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_pose_and_appearance_keep_rows_empty_frames_and_tail
+0.00s teardown tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_exactly_match_pre_split_tracking_selection_and_gsi
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[strongsort_pp]
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[deep_ocsort_pose]
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[deep_ocsort_pose_aflink_gsi]
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit[True]
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[pose_estimation/cam0-1]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[reordered]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[short]
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[player_selection/cam0-2]
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pre_split_schema_cannot_bind_to_new_pipeline[person_tracking/cam0-5]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_feature_pass_rejects_decode_mismatch[size]
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[invalid]
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pipeline_consumes_detection_features_once_and_reuses_pose
+0.00s teardown tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit[False]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_separate_passes_publish_reload_and_cache_without_model_overlap
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_appearance_invalid_crops_stay_masked_and_unprompted
+0.00s teardown tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[offsets]
+0.00s teardown tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[camera]
+0.00s teardown tests/integration/tennis_scene/test_person_feature_artifacts.py::test_saved_features_reject_wrong_source_before_cpu_tracking[rows]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_no_detections_preserves_timeline_without_loading_models[pose]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_person_features.py::test_no_detections_preserves_timeline_without_loading_models[appearance]
+============================== 22 passed in 7.92s ==============================
