@@ -1,0 +1,26 @@
+# PR #2182 正式レビューのmajor指摘への対応（親 #1734 から #1751 へ）
+
+正式レビュー（gpt-6.2-astra / xhigh）で、次の4件のmajor指摘が出た。4件とも妥当と判断する。すべて直してください。各指摘について、指摘の失敗条件を再現するテストを先に書き、直した後に通ることを確かめてください。
+
+## 1. 計画作成後にcheckpointが変わると、新しい重みの出力が古いSHAで公開される
+
+CPU実行検証。standard_definitionはnode作成時にfile_identityで重みAのSHAを記録しますが、inference_runtime.pyのborrowは初回借用時のファイルから独立にキーを作ります。実PlanExecutorとメモリ上のcheckpointで、計画作成後・初回借用前に内容をAからBへ替えると、Bによる出力がAのSHAでstore.publishに渡りました。後でAに戻すと誤った成果物がcache hitし得ます。成果物のidentityに固定したSHAを初回借用時にも照合し、不一致なら公開前に停止する必要があります。既存テストは初回借用後の変更だけを検出します。
+
+## 2. モデル解放に失敗したclipが、executorの再開時に完了通知される
+
+CPU実行検証。runner.pyの_execute_nodeはruntime.nodeの終了前にplan.referencesへ成果物を登録します。最後のnodeのunload hookで例外を発生させると、statusはfailedになりましたが、参照が残り、clip_completeはTrueを返しました。同じexecutorでrunを再開すると正常に戻り、そのclipのon_clip_completeも呼ばれました。後続の一括CLIはこの通知を公開に使います。解放まで成功してからnodeの完了を確定し、失敗したnodeの参照で依存先や完了通知が進まないことを再開テストで守る必要があります。
+
+## 3. Courtの共有キーが外部DINOv3資産を識別せず、別設定の検証を素通りする
+
+静的推論。court_kp.pyのmodel_specsが重みとして宣言するのはCourt checkpointだけです。一方、実ローダーはresolverで外部DINOv3のrepositoryとbackbone checkpointを解決し、checkpoint.pyでbackbone_sha256も記録します。同じCourt checkpointを使う2つのclipで外部資産の参照先が異なると、後続clipは先にロードしたpredictorを借りるため、自分のbackboneが欠落していても処理が進みます。診断にも最初のpredictorのcheckpoint_identityが入ります。共有判定に実際の外部資産と実装のidentityを含め、異なる資産と欠落資産の双方を検査する必要があります。
+
+## 4. 連鎖した推論例外のtracebackにモデルが残る
+
+CPU実行検証。inference_runtime.pyは伝播した例外のtracebackだけをclear_framesします。モデルを受け取ったbackendが例外を起こし、上位でraise ... fromによって包むと、runtime終了後にloaded_keysが空でも、元例外のframeがモデルを保持しました。例外を保持したままGCしてもweakrefは生きており、例外を手放すと消失しました。参照を落として解放するCourt・Ballなどでは、失敗を記録する呼出し側がGPUメモリを次の実行まで保持し得ます。原因例外・暗黙の例外連鎖・例外グループ内の完了済みframeも後始末し、例外を保持した状態で参照消失を検証する必要があります。
+
+## 共通の条件
+- 静かなフォールバックを作らない。不一致・欠落は、公開前に明示的に停止する。
+- 4の修正で、モデル参照が残らないことは、例外を保持したまま確かめる（指摘のとおり）。
+- GPUの再受入は不要。ただし、出力やidentityの計算を変えた場合は、変わる範囲（cache identityを含む）をPRに明記する。
+- CPUの関連テスト、pre-commit、CIを通す。PR本文に、各指摘への対応を1行ずつ追記する。merge・closeは親が行う。
+

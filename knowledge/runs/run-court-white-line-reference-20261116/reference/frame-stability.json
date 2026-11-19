@@ -1,0 +1,442 @@
+[
+  {
+    "camera": "cam0",
+    "frames": [
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.4652773629579399,
+        "max_query_displacement_px": 2.985583755401843
+      },
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 178,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.5724862136160878,
+        "max_query_displacement_px": 3.110577759044301
+      },
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 355,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.5413925003273825,
+        "max_query_displacement_px": 3.382070449510529
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5285340444540084,
+        "max_query_displacement_px": 1.0379215383233393
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 182,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5940337000888221,
+        "max_query_displacement_px": 1.0481119981745544
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 363,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.5145458764256943,
+        "max_query_displacement_px": 2.5329198790328817
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.065621309124267,
+        "max_query_displacement_px": 3.26809553597646
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 562,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.293008530892738,
+        "max_query_displacement_px": 1.9976448999065883
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 1123,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.8968231303340406,
+        "max_query_displacement_px": 3.3999129067858
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.8539710490630072,
+        "max_query_displacement_px": 1.5360327646327807
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 150,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.0046701563705047,
+        "max_query_displacement_px": 1.7542470479007004
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 299,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.7897895169412947,
+        "max_query_displacement_px": 1.5435303133815654
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5072019151266705,
+        "max_query_displacement_px": 1.060262470089162
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 231,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.017796097150391,
+        "max_query_displacement_px": 1.6981359628293804
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 461,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.780735779182776,
+        "max_query_displacement_px": 1.1881958285629814
+      }
+    ]
+  },
+  {
+    "camera": "cam1",
+    "frames": [
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.402402254623676,
+        "max_query_displacement_px": 3.7717812069206795
+      },
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 178,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.308573807854967,
+        "max_query_displacement_px": 3.8477807369644723
+      },
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 355,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.3814955839769754,
+        "max_query_displacement_px": 3.9765044660447133
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.296660201693849,
+        "max_query_displacement_px": 2.6614743807248207
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 182,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.182316203951633,
+        "max_query_displacement_px": 2.4331942388309478
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 363,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.1905231285209483,
+        "max_query_displacement_px": 2.4231229996030397
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.45178470474715426,
+        "max_query_displacement_px": 0.557598649049528
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 562,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5277122474717324,
+        "max_query_displacement_px": 0.7486747180617278
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 1123,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.8450800264016127,
+        "max_query_displacement_px": 1.4768968002442469
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.5464378019998886,
+        "max_query_displacement_px": 2.1982422268307964
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 150,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.4166982414600222,
+        "max_query_displacement_px": 1.7570588713021775
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 299,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.5388418813901155,
+        "max_query_displacement_px": 2.3536756949884645
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.963363757200199,
+        "max_query_displacement_px": 3.4434623733200653
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 231,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.8322960074394836,
+        "max_query_displacement_px": 3.3287899993825762
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 461,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.8353971231947885,
+        "max_query_displacement_px": 3.27479954925752
+      }
+    ]
+  },
+  {
+    "camera": "cam2",
+    "frames": [
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.1869880762056273,
+        "max_query_displacement_px": 1.8644532424224047
+      },
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 178,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.2815158629887917,
+        "max_query_displacement_px": 1.5523903767408862
+      },
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 355,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.3109801779523242,
+        "max_query_displacement_px": 2.5743684888142253
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5391522622800539,
+        "max_query_displacement_px": 0.8301962270898073
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 182,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5972451172439166,
+        "max_query_displacement_px": 1.312569919404977
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 363,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5366445005704464,
+        "max_query_displacement_px": 1.0306916132003876
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5729088446935166,
+        "max_query_displacement_px": 0.8150886890167607
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 562,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5814728044525944,
+        "max_query_displacement_px": 0.9117025190371167
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 1123,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.547749310800495,
+        "max_query_displacement_px": 0.8416815083390765
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.4146138609705604,
+        "max_query_displacement_px": 0.7066216548940495
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 150,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.8072105978247748,
+        "max_query_displacement_px": 1.6109885693651573
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 299,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 1.080611255410745,
+        "max_query_displacement_px": 1.6063231542681973
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.5976318429281161,
+        "max_query_displacement_px": 0.8451275048687208
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 231,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.3316259723494114,
+        "max_query_displacement_px": 0.620464449679602
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 461,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 0.45394221431529147,
+        "max_query_displacement_px": 0.9818922026122126
+      }
+    ]
+  },
+  {
+    "camera": "cam3",
+    "frames": [
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.635348590897067,
+        "max_query_displacement_px": 4.834935699764308
+      },
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 178,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.1149056865755407,
+        "max_query_displacement_px": 4.586346966217009
+      },
+      {
+        "clip_id": "video_000/clip_000",
+        "frame_index": 355,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.012317586531085,
+        "max_query_displacement_px": 4.8050481285628655
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.7984227550058027,
+        "max_query_displacement_px": 3.955694829156997
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 182,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.9967177308203903,
+        "max_query_displacement_px": 4.055962827377627
+      },
+      {
+        "clip_id": "video_000/clip_017",
+        "frame_index": 363,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.0463650639445987,
+        "max_query_displacement_px": 4.1868182495700434
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.810063845813703,
+        "max_query_displacement_px": 4.022773465698945
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 562,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.943805596193081,
+        "max_query_displacement_px": 4.304473500738541
+      },
+      {
+        "clip_id": "video_000/clip_034",
+        "frame_index": 1123,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.044462250877179,
+        "max_query_displacement_px": 5.046697699431078
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 0,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.912620509373007,
+        "max_query_displacement_px": 6.08960105436735
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 150,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.3562653918259238,
+        "max_query_displacement_px": 3.715438744707793
+      },
+      {
+        "clip_id": "video_000/clip_051",
+        "frame_index": 299,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.966540085984599,
+        "max_query_displacement_px": 5.861152635380111
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 0,
+        "status": "insufficient_consistent_court_lines",
+        "mean_query_displacement_px": null,
+        "max_query_displacement_px": null
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 231,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 3.0375494657260074,
+        "max_query_displacement_px": 4.103012093927387
+      },
+      {
+        "clip_id": "video_000/clip_068",
+        "frame_index": 461,
+        "status": "partial_line_evidence",
+        "mean_query_displacement_px": 2.2119596694264563,
+        "max_query_displacement_px": 2.595876249912033
+      }
+    ]
+  }
+]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast, get_args
 
 from src.submodules.smpl_assets import SMPL_ASSET_SOURCES, require_smpl_asset
 from src.utils.configuration import (
@@ -22,12 +22,15 @@ __all__ = [
     "SmplAssetPaths",
     "DinoDetectorRuntimeConfig",
     "Hmr2RuntimeConfig",
+    "InferencePrecision",
     "SubmoduleRuntimeConfig",
     "TrackingRuntimeConfig",
     "ViTPoseRuntimeConfig",
     "ViTPoseHeadConfig",
     "require_absolute_path",
 ]
+
+InferencePrecision = Literal["fp32", "bf16", "fp16"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +111,15 @@ def _validate_tracking_runtime(value: Mapping[str, object]) -> None:
         )
 
 
+def _validate_precision(value: Mapping[str, object], *, model: str) -> None:
+    if value["precision"] not in get_args(InferencePrecision):
+        raise SemanticConfigurationError(
+            f"submodules.runtime.{model}.precision must be fp32, bf16, or fp16."
+        )
+
+
 def _validate_dino_runtime(value: Mapping[str, object]) -> None:
+    _validate_precision(value, model="dino_detector")
     confidence = cast(float, value["confidence"])
     short_side = cast(int, value["short_side"])
     max_long_side = cast(int, value["max_long_side"])
@@ -123,6 +134,7 @@ def _validate_dino_runtime(value: Mapping[str, object]) -> None:
 
 
 def _validate_vitpose_runtime(value: Mapping[str, object]) -> None:
+    _validate_precision(value, model="vitpose")
     if cast(int, value["batch_size"]) <= 0:
         raise SemanticConfigurationError(
             "submodules.runtime.vitpose.batch_size must be positive."
@@ -162,6 +174,7 @@ _DINO_RUNTIME_SCHEMA = StrictConfigSchema(
         "confidence": ConfigField.of(float),
         "short_side": ConfigField.of(int),
         "max_long_side": ConfigField.of(int),
+        "precision": ConfigField.of(str),
     },
     semantic_checks=(_validate_dino_runtime,),
 )
@@ -185,6 +198,7 @@ _VITPOSE_RUNTIME_SCHEMA = StrictConfigSchema(
         "flip_test": ConfigField.of(bool),
         "batch_size": ConfigField.of(int),
         "head": ConfigField.mapping(_VITPOSE_HEAD_SCHEMA),
+        "precision": ConfigField.of(str),
     },
     semantic_checks=(_validate_vitpose_runtime,),
 )
@@ -221,11 +235,12 @@ class TrackingRuntimeConfig:
 
 @dataclass(frozen=True, slots=True)
 class DinoDetectorRuntimeConfig:
-    """Validated DINO detector threshold and resize settings."""
+    """Validated DINO detector threshold, resize, and precision settings."""
 
     confidence: float
     short_side: int
     max_long_side: int
+    precision: InferencePrecision
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,6 +250,7 @@ class ViTPoseRuntimeConfig:
     flip_test: bool
     batch_size: int
     head: ViTPoseHeadConfig
+    precision: InferencePrecision
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,11 +289,16 @@ class SubmoduleRuntimeConfig:
             import torch
 
             try:
-                torch.device(device)
+                device_type = torch.device(device).type
             except (RuntimeError, ValueError) as error:
                 raise SemanticConfigurationError(
                     f"submodules.runtime.device is invalid: {device!r}."
                 ) from error
+            if device_type != "cuda":
+                if dino["precision"] != "fp32":
+                    raise SemanticConfigurationError("Mixed precision DINO requires a CUDA device.")
+                if vitpose["precision"] != "fp32" and (device_type, vitpose["precision"]) != ("cpu", "bf16"):
+                    raise SemanticConfigurationError("Mixed precision ViTPose requires CUDA or bf16 on CPU.")
         return cls(
             device=device,
             tracking=TrackingRuntimeConfig(
@@ -287,10 +308,12 @@ class SubmoduleRuntimeConfig:
                 confidence=cast(float, dino["confidence"]),
                 short_side=cast(int, dino["short_side"]),
                 max_long_side=cast(int, dino["max_long_side"]),
+                precision=cast(InferencePrecision, dino["precision"]),
             ),
             vitpose=ViTPoseRuntimeConfig(
                 flip_test=cast(bool, vitpose["flip_test"]),
                 batch_size=cast(int, vitpose["batch_size"]),
+                precision=cast(InferencePrecision, vitpose["precision"]),
                 head=ViTPoseHeadConfig(
                     in_channels=cast(int, vitpose_head["in_channels"]),
                     out_channels=cast(int, vitpose_head["out_channels"]),

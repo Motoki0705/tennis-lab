@@ -1,0 +1,113 @@
+{"commit": "486aa1ab09be857909d0fcf8c2b616c75a53f5b0", "elapsed_seconds": 0.4026507389789913, "event": "pipeline_start"}
+2026-11-17 21:55:44,988 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"elapsed_seconds": 50.91363360598916, "event": "backend_load_start", "model": "court"}
+2026-11-17 21:55:46,197 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-17 21:55:46,331 dinov3 INFO using base=100 for rope new
+2026-11-17 21:55:46,331 dinov3 INFO using min_period=None for rope new
+2026-11-17 21:55:46,331 dinov3 INFO using max_period=None for rope new
+2026-11-17 21:55:46,331 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-17 21:55:46,331 dinov3 INFO using shift_coords=None for rope new
+2026-11-17 21:55:46,331 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-17 21:55:46,331 dinov3 INFO using jitter_coords=None for rope new
+2026-11-17 21:55:46,331 dinov3 INFO using dtype=fp32 for rope new
+2026-11-17 21:55:46,332 dinov3 INFO using mlp layer as FFN
+{"allocated_bytes": 680072192, "elapsed_seconds": 55.52819899999304, "event": "backend_load_return", "model": "court", "reserved_bytes": 738197504, "seconds": 4.614313036989188}
+2026-11-17 21:56:10,735 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"elapsed_seconds": 76.66080541998963, "event": "backend_load_start", "model": "court"}
+2026-11-17 21:56:11,918 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-17 21:56:11,925 dinov3 INFO using base=100 for rope new
+2026-11-17 21:56:11,925 dinov3 INFO using min_period=None for rope new
+2026-11-17 21:56:11,925 dinov3 INFO using max_period=None for rope new
+2026-11-17 21:56:11,925 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-17 21:56:11,925 dinov3 INFO using shift_coords=None for rope new
+2026-11-17 21:56:11,926 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-17 21:56:11,926 dinov3 INFO using jitter_coords=None for rope new
+2026-11-17 21:56:11,926 dinov3 INFO using dtype=fp32 for rope new
+2026-11-17 21:56:11,926 dinov3 INFO using mlp layer as FFN
+{"allocated_bytes": 713626624, "elapsed_seconds": 80.80505174997961, "event": "backend_load_return", "model": "court", "reserved_bytes": 771751936, "seconds": 4.143955930980155}
+2026-11-17 21:56:35,369 src.tennis_scene.pipeline.components.court_kp INFO Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+{"elapsed_seconds": 101.29461637997883, "event": "backend_load_start", "model": "court"}
+2026-11-17 21:56:36,556 src.tasks.court_detection.inference.checkpoint WARNING Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+2026-11-17 21:56:36,564 dinov3 INFO using base=100 for rope new
+2026-11-17 21:56:36,564 dinov3 INFO using min_period=None for rope new
+2026-11-17 21:56:36,564 dinov3 INFO using max_period=None for rope new
+2026-11-17 21:56:36,564 dinov3 INFO using normalize_coords=separate for rope new
+2026-11-17 21:56:36,564 dinov3 INFO using shift_coords=None for rope new
+2026-11-17 21:56:36,564 dinov3 INFO using rescale_coords=2 for rope new
+2026-11-17 21:56:36,565 dinov3 INFO using jitter_coords=None for rope new
+2026-11-17 21:56:36,565 dinov3 INFO using dtype=fp32 for rope new
+2026-11-17 21:56:36,565 dinov3 INFO using mlp layer as FFN
+{"allocated_bytes": 713626624, "elapsed_seconds": 105.2352179979789, "event": "backend_load_return", "model": "court", "reserved_bytes": 771751936, "seconds": 3.9402989959926344}
+2026-11-17 21:57:19,677 src.tennis_scene.pipeline.components.ball_detection INFO Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"elapsed_seconds": 145.60283161897678, "event": "backend_load_start", "model": "ball"}
+{"allocated_bytes": 57598464, "elapsed_seconds": 146.44605801798753, "event": "backend_load_return", "model": "ball", "reserved_bytes": 73400320, "seconds": 0.8414446910028346}
+2026-11-17 21:57:51,541 src.tennis_scene.pipeline.components.ball_detection INFO Ball trajectory gate rejected 0 frame(s): []
+2026-11-17 21:57:57,045 src.tennis_scene.pipeline.components.ball_detection INFO Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"elapsed_seconds": 182.97089018300176, "event": "backend_load_start", "model": "ball"}
+{"allocated_bytes": 57598464, "elapsed_seconds": 183.11648606599192, "event": "backend_load_return", "model": "ball", "reserved_bytes": 73400320, "seconds": 0.14413098600925878}
+W1117 21:57:58.095000 1312077 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] torch._dynamo hit config.recompile_limit (8)
+W1117 21:57:58.095000 1312077 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    function: 'profile' (/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261117/benchmark.py:127)
+W1117 21:57:58.095000 1312077 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    last reason: 0/3: ___check_obj_id(arg, 126756429341984), type=<class 'builtin_function_or_method'>  # elif event == 'return':  # .worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261117/benchmark.py:133 in profile
+W1117 21:57:58.095000 1312077 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] User stack trace:
+W1117 21:57:58.095000 1312077 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]   File "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261117/benchmark.py", line 133, in profile
+W1117 21:57:58.095000 1312077 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]     elif event == 'return':
+W1117 21:57:58.095000 1312077 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W1117 21:57:58.095000 1312077 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html
+{"elapsed_seconds": 185.1171753029921, "event": "pipeline_terminal", "status": "failed"}
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 2024, in _compile
+    raise_unimplemented_cache_limit_exceeded()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 2008, in raise_unimplemented_cache_limit_exceeded
+    unimplemented(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/_dynamo/exc.py", line 727, in unimplemented
+    raise Unsupported(msg, gb_type, skip_frame)
+torch._dynamo.exc.Unsupported: Dynamo recompile limit exceeded
+  Explanation: Dynamo attempted to recompile the code object too many times, exceeding the recompile_limit cache size limit (currently set to 8). Excessive recompilations can degrade performance due to the compilation overhead of each recompilation.
+  Hint: To monitor recompilations, enable TORCH_LOGS=recompiles. If recompilations are expected, consider increasing torch._dynamo.config.recompile_limit to an appropriate value.
+  Hint: See https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html for tips on dealing with recompilations.
+
+  Developer debug context: Limit type: recompile_limit
+
+ For more details about this graph break, please visit: https://meta-pytorch.github.io/compile-graph-break-site/gb/gb0039.html
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261117/benchmark.py", line 260, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261117/benchmark.py", line 224, in main
+    result = orchestrator.run(runtime.video_paths, video_role=PathRole.DATA,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/src/tennis_scene/pipeline/orchestrator.py", line 136, in run
+    runner.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/src/tennis_scene/pipeline/runner.py", line 174, in run
+    self.executor.run(targets=None if targets is None else [(self.clip_id, name) for name in targets])
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/src/tennis_scene/pipeline/runner.py", line 72, in run
+    self.execute(key)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/src/tennis_scene/pipeline/runner.py", line 100, in execute
+    output = node.component.process(inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/src/tennis_scene/pipeline/components/ball_detection.py", line 214, in process
+    ball_uv, score, evidence = self._predict_video(video)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/src/tennis_scene/pipeline/components/ball_detection.py", line 294, in _predict_video
+    prediction = self._pipeline.predict(batch.tensor, candidate_config=self.config.candidates)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/src/tasks/ball_detection/inference/x3d_dpt.py", line 96, in predict
+    logits = self.model(rgb)
+             ^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 1166, in compile_wrapper
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 2628, in __call__
+    result = self._torchdynamo_orig_backend(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 777, in __call__
+    result = _compile(
+             ^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 2031, in _compile
+    raise FailOnRecompileLimitHit(
+torch._dynamo.exc.FailOnRecompileLimitHit: Hard failure due to fullgraph=True

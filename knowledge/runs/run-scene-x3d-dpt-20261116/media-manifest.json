@@ -1,0 +1,126 @@
+{
+  "schema": "scene_dpt_media.v1",
+  "videos": [
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_000-cam0-i935-vs-x3d-2d.mp4",
+      "size_bytes": 11775272,
+      "sha256": "13c86f0e85c65de5bc01f5af116712afa8a72e2a9dace7391159c19fafebaa2f",
+      "codec_name": "h264",
+      "width": 3840,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "356",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_000-cam1-i935-vs-x3d-2d.mp4",
+      "size_bytes": 10824437,
+      "sha256": "475253b2a98b83e015d183c2b7b1358afff09d0786c3ed1a5ad772c475b4e1e1",
+      "codec_name": "h264",
+      "width": 3840,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "356",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_000-cam2-i935-vs-x3d-2d.mp4",
+      "size_bytes": 6169450,
+      "sha256": "3ff78816fe5f40fdbcec6959f2bb02c821a3a1e5ae33ac47a054f16f21e0dd32",
+      "codec_name": "h264",
+      "width": 3840,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "356",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_000-cam3-i935-vs-x3d-2d.mp4",
+      "size_bytes": 9959726,
+      "sha256": "1b7f2a11f8945002240f5eeff759fc639183f53ed4e077a0acb9a83a2ccbe225",
+      "codec_name": "h264",
+      "width": 3840,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "356",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_000-i935-vs-x3d.mp4",
+      "size_bytes": 1811814,
+      "sha256": "20b2ba285043b77c7861655c53b8f53d97bf43b5db7c66b273a19e233598feb0",
+      "codec_name": "h264",
+      "width": 1560,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "356",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_018-cam0-i935-vs-x3d-2d.mp4",
+      "size_bytes": 12740873,
+      "sha256": "cacd3157e82efecf65c0735ee8dc674ac01f080d68d64ec15b8d793673c2a0ee",
+      "codec_name": "h264",
+      "width": 3840,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "386",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_018-cam1-i935-vs-x3d-2d.mp4",
+      "size_bytes": 10915810,
+      "sha256": "374c10d1d07bd0f3fcd9e8aeb116b924f102a786c409ac94838aef9bcf7112bc",
+      "codec_name": "h264",
+      "width": 3840,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "386",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_018-cam2-i935-vs-x3d-2d.mp4",
+      "size_bytes": 5940867,
+      "sha256": "9add38001e3ec92db062bf5e3726df7c2641b24debef0cf2b2804919d4321e97",
+      "codec_name": "h264",
+      "width": 3840,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "386",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_018-cam3-i935-vs-x3d-2d.mp4",
+      "size_bytes": 10627013,
+      "sha256": "14e236009fd6ca15aa6cbc70ec39494890855e8dee4a59ee35aaf3e71abdc7c7",
+      "codec_name": "h264",
+      "width": 3840,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "386",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/clip_018-i935-vs-x3d.mp4",
+      "size_bytes": 1909160,
+      "sha256": "833b4b0e560c6a4f6b872b18260b45b480e8da729d3056f0676f7aab793dcf79",
+      "codec_name": "h264",
+      "width": 1560,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "386",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    },
+    {
+      "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-fixed-geometry/clip_000-i935-vs-x3d.mp4",
+      "size_bytes": 1519141,
+      "sha256": "94347dda6f40e3e15afcd01c5f4b736dcbc39da084e8e13fe4bc632327fe5719",
+      "codec_name": "h264",
+      "width": 1560,
+      "height": 1080,
+      "avg_frame_rate": "60000/1001",
+      "nb_read_frames": "356",
+      "full_stream_decode": "ffprobe -count_frames, exit 0, no decoder errors"
+    }
+  ]
+}

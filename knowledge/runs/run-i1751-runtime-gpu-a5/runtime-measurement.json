@@ -1,0 +1,746 @@
+{
+  "commit": "1bef628a9c2c5761d241ddc5c1b98c0f89625b35",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime",
+  "queue_job": "0-8205064145120710330_2026-11-17T17-17-34-879289669Z_313929_i1751-runtime-main-pair-20261118-a5",
+  "python": "3.11.15",
+  "torch": "2.13.0+cu130",
+  "cuda": "13.0",
+  "started_at_utc": "2026-11-17T17:54:53.508758+00:00",
+  "script_sha256": "0450a01edb8c61c41ddb601d0cce52f1715e7366abd5e9abfcd18d3881c9afb3",
+  "threads": 4,
+  "python_hash_seed": "42",
+  "status": "complete",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "gpu_total_bytes": 17074749440,
+  "runtime_hook": true,
+  "frames": 1010,
+  "scene_status": "ok",
+  "wall_seconds": 2263.276122110001,
+  "finished_at_utc": "2026-11-17T18:32:36.785208+00:00",
+  "backend_load_counts": {
+    "court": 1,
+    "ball": 1,
+    "dino": 1,
+    "vitpose": 1,
+    "appearance": 1,
+    "hmr2": 1,
+    "gvhmr": 1,
+    "body_vertices": 1,
+    "body_coco17": 1,
+    "body_root_regressor": 1
+  },
+  "backend_loads": [
+    {
+      "event": "backend_load_return",
+      "model": "court",
+      "seconds": 5.239368210999601,
+      "elapsed_seconds": 119.67464632200063,
+      "at_utc": "2026-11-17T17:56:53.179361+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "ball",
+      "seconds": 2.1479496600004495,
+      "elapsed_seconds": 234.85277091700118,
+      "at_utc": "2026-11-17T17:58:48.357485+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "dino",
+      "seconds": 4.014671552000436,
+      "elapsed_seconds": 401.4905320529997,
+      "at_utc": "2026-11-17T18:01:34.995246+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "vitpose",
+      "seconds": 9.677601739000238,
+      "elapsed_seconds": 1330.11699108,
+      "at_utc": "2026-11-17T18:17:03.621705+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "appearance",
+      "seconds": 0.7234735509991879,
+      "elapsed_seconds": 1335.784872708,
+      "at_utc": "2026-11-17T18:17:09.289587+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "hmr2",
+      "seconds": 8.686241461999089,
+      "elapsed_seconds": 2187.811888667,
+      "at_utc": "2026-11-17T18:31:21.316602+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "gvhmr",
+      "seconds": 1.1077919140006998,
+      "elapsed_seconds": 2191.6248576100006,
+      "at_utc": "2026-11-17T18:31:25.129571+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_vertices",
+      "seconds": 0.6777313180009514,
+      "elapsed_seconds": 2229.1088557700004,
+      "at_utc": "2026-11-17T18:32:02.613570+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_coco17",
+      "seconds": 0.6962296149995382,
+      "elapsed_seconds": 2229.8052820230005,
+      "at_utc": "2026-11-17T18:32:03.309996+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_root_regressor",
+      "seconds": 0.0019143059998896206,
+      "elapsed_seconds": 2229.8074277060005,
+      "at_utc": "2026-11-17T18:32:03.312140+00:00"
+    }
+  ],
+  "runtime_events": [
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "court",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:1",
+      "status": "complete",
+      "seconds": 11.601528795001286,
+      "elapsed_seconds": 119.67498673400041,
+      "at_utc": "2026-11-17T17:56:53.179699+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "court",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:1",
+      "status": "complete",
+      "seconds": 0.27789868699983344,
+      "elapsed_seconds": 232.2565339290013,
+      "at_utc": "2026-11-17T17:58:45.761249+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "ball",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt"
+      },
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "instance": "138559094580624:2",
+      "status": "complete",
+      "seconds": 2.2640782379985467,
+      "elapsed_seconds": 234.85353921000024,
+      "at_utc": "2026-11-17T17:58:48.358252+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "ball",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt"
+      },
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "instance": "138559094580624:2",
+      "status": "complete",
+      "seconds": 0.38101234900022973,
+      "elapsed_seconds": 335.9508999410009,
+      "at_utc": "2026-11-17T18:00:29.455615+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "dino",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:3",
+      "status": "complete",
+      "seconds": 16.510294439000063,
+      "elapsed_seconds": 401.51020400299967,
+      "at_utc": "2026-11-17T18:01:35.014919+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "dino",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:3",
+      "status": "complete",
+      "seconds": 0.7059189119991061,
+      "elapsed_seconds": 1295.8588832860005,
+      "at_utc": "2026-11-17T18:16:29.363597+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "vitpose",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:4",
+      "status": "complete",
+      "seconds": 21.794087284999478,
+      "elapsed_seconds": 1330.1173071890007,
+      "at_utc": "2026-11-17T18:17:03.622020+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "appearance",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:5",
+      "status": "complete",
+      "seconds": 3.1942730360005953,
+      "elapsed_seconds": 1335.785432091001,
+      "at_utc": "2026-11-17T18:17:09.290146+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "vitpose",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:4",
+      "status": "complete",
+      "seconds": 0.7198220979989856,
+      "elapsed_seconds": 1926.7486949800004,
+      "at_utc": "2026-11-17T18:27:00.253408+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "appearance",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:5",
+      "status": "complete",
+      "seconds": 0.35787522200007515,
+      "elapsed_seconds": 1935.389496265001,
+      "at_utc": "2026-11-17T18:27:08.894213+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "hmr2",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt",
+        "mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:6",
+      "status": "complete",
+      "seconds": 21.85251328800041,
+      "elapsed_seconds": 2187.8123017360012,
+      "at_utc": "2026-11-17T18:31:21.317015+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "gvhmr",
+      "weights": {
+        "gvhmr": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+        "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+        "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+        "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+        "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:7",
+      "status": "complete",
+      "seconds": 2.4508685450000485,
+      "elapsed_seconds": 2191.6253912949996,
+      "at_utc": "2026-11-17T18:31:25.130104+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "hmr2",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt",
+        "mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:6",
+      "status": "complete",
+      "seconds": 0.7514270979991124,
+      "elapsed_seconds": 2227.1689904190007,
+      "at_utc": "2026-11-17T18:32:00.673705+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "gvhmr",
+      "weights": {
+        "gvhmr": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+        "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+        "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+        "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+        "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:7",
+      "status": "complete",
+      "seconds": 0.68451858699882,
+      "elapsed_seconds": 2227.8542340990007,
+      "at_utc": "2026-11-17T18:32:01.358949+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "body_geometry",
+      "weights": {
+        "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+        "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+        "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+        "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:8",
+      "status": "complete",
+      "seconds": 1.9094168990013713,
+      "elapsed_seconds": 2229.807818864001,
+      "at_utc": "2026-11-17T18:32:03.312532+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "body_geometry",
+      "weights": {
+        "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+        "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+        "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+        "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "138559094580624:8",
+      "status": "complete",
+      "seconds": 0.3382113859988749,
+      "elapsed_seconds": 2245.0826393019997,
+      "at_utc": "2026-11-17T18:32:18.587354+00:00"
+    }
+  ],
+  "receipt": {
+    "schema": "tennis_scene_run_v3",
+    "status": "ok",
+    "clip_id": "video_000/clip_000",
+    "source": {
+      "clip_id": "video_000/clip_000",
+      "videos": [
+        {
+          "camera_id": "cam0",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+          "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+          "num_frames": 1010,
+          "fps": 59.94006,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam1",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+          "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+          "num_frames": 1010,
+          "fps": 59.94006,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam2",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+          "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+          "num_frames": 1010,
+          "fps": 59.94006,
+          "width": 1920,
+          "height": 1080
+        }
+      ]
+    },
+    "scene_index": "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a5/runtime/store/scene.json",
+    "validity": {
+      "ball_3d_frames": 772,
+      "player_joint_frames": [
+        1008,
+        993
+      ],
+      "player_root_frames": [
+        1000,
+        993
+      ],
+      "player_smpl_frames": [
+        1000,
+        993
+      ]
+    },
+    "active_stage": null,
+    "stage_status": {
+      "court_detection/cam0": "executed",
+      "court_detection/cam1": "executed",
+      "court_detection/cam2": "executed",
+      "court_calibration": "executed",
+      "ball_detection/cam0": "executed",
+      "ball_detection/cam1": "executed",
+      "ball_detection/cam2": "executed",
+      "ball_points/cam0": "executed",
+      "ball_points/cam1": "executed",
+      "ball_points/cam2": "executed",
+      "court_side": "executed",
+      "person_detection/cam0": "executed",
+      "person_detection/cam1": "executed",
+      "person_detection/cam2": "executed",
+      "person_tracking/cam0": "executed",
+      "player_selection/cam0": "executed",
+      "person_tracking/cam1": "executed",
+      "player_selection/cam1": "executed",
+      "person_tracking/cam2": "executed",
+      "player_selection/cam2": "executed",
+      "player_association": "executed",
+      "pose_estimation/cam0": "executed",
+      "pose_estimation/cam1": "executed",
+      "pose_estimation/cam2": "executed",
+      "camera_alignment": "executed",
+      "player_triangulation": "executed",
+      "ball_triangulation": "executed",
+      "body_view_selection": "executed",
+      "gvhmr": "executed",
+      "body_placement": "executed",
+      "scene_assembly": "executed"
+    },
+    "stage_seconds": {
+      "court_detection/cam0": 49.21263465000084,
+      "court_detection/cam1": 29.40037188899987,
+      "court_detection/cam2": 51.815833604001455,
+      "court_calibration": 0.2154346550014452,
+      "ball_detection/cam0": 83.22204885300016,
+      "ball_detection/cam1": 10.121956323999257,
+      "ball_detection/cam2": 10.13225159600006,
+      "ball_points/cam0": 8.203606660001242,
+      "ball_points/cam1": 15.381728270000167,
+      "ball_points/cam2": 12.657068025999251,
+      "court_side": 0.1872651039993798,
+      "person_detection/cam0": 327.06675768700006,
+      "person_detection/cam1": 297.98048141300023,
+      "person_detection/cam2": 298.4274680760009,
+      "person_tracking/cam0": 294.26185624999925,
+      "player_selection/cam0": 1.4979349630011711,
+      "person_tracking/cam1": 131.53610006999952,
+      "player_selection/cam1": 0.9383822569998301,
+      "person_tracking/cam2": 202.65315827999984,
+      "player_selection/cam2": 1.2658871559997351,
+      "player_association": 7.374072644999615,
+      "pose_estimation/cam0": 0.048810807998961536,
+      "pose_estimation/cam1": 0.04291791700052272,
+      "pose_estimation/cam2": 0.04416731499986781,
+      "camera_alignment": 0.24230616000022565,
+      "player_triangulation": 212.51402443900042,
+      "ball_triangulation": 4.426691030999791,
+      "body_view_selection": 0.1362357489997521,
+      "gvhmr": 75.00750397399861,
+      "body_placement": 17.22810181600107,
+      "scene_assembly": 2.152842038000017
+    },
+    "artifacts": {
+      "court_detection/cam0": {
+        "artifact_id": "701d399a5f9b1f812d755329a69c97a543e8d1c7b10a77cca41f08aa33b9f6ff",
+        "path": "components/court_detection/701d399a5f9b1f812d755329a69c97a543e8d1c7b10a77cca41f08aa33b9f6ff/court_detection.json",
+        "sha256": "ef0df4085db7feb47a9ca0e5b65608529c871de70f3e5f25c09f14fc5e3a2195",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "8f93fc8680379ef4a2512d9a6468ed5ab7e78be493a36b9925a84af428d3f197"
+      },
+      "court_detection/cam1": {
+        "artifact_id": "1e6cb72cbec4adeca7a6225ac051446bb3a91f16c1c62e4434d816579efe26af",
+        "path": "components/court_detection/1e6cb72cbec4adeca7a6225ac051446bb3a91f16c1c62e4434d816579efe26af/court_detection.json",
+        "sha256": "80fef68a2ee981851ed17942ba7d5b9c22e1a35a02241adf7645681f98deb91f",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "2eb564d879c06407572aff09991b41ab7e351531bbafe45cd29a3338b30daac6"
+      },
+      "court_detection/cam2": {
+        "artifact_id": "32bb2d17ee1cc609707f4901ee617428f14bac25fbb322fcd844e9e081a72ddc",
+        "path": "components/court_detection/32bb2d17ee1cc609707f4901ee617428f14bac25fbb322fcd844e9e081a72ddc/court_detection.json",
+        "sha256": "8bede11691d310426a8accdce00f6371fcabf3911583a14fda21f4ddeccef41c",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "5a6620398a6cc2547009970b241f38c35d9cc43c07ce3f61ae0e746b366ae0aa"
+      },
+      "court_calibration": {
+        "artifact_id": "89c0616b9ee6e57bac85b02e68994245db8b480bf74d4ca8f8070922b9bdefb6",
+        "path": "components/court_calibration/89c0616b9ee6e57bac85b02e68994245db8b480bf74d4ca8f8070922b9bdefb6/court_calibration.json",
+        "sha256": "a580bc25db8777538835487eb24293254b7257f115e9249e94e6816e65d4658b",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "5df87808ff857377ddbbebeaeaf98cb823873f9d6a3ea5c70698c603cf16719c"
+      },
+      "ball_detection/cam0": {
+        "artifact_id": "c27af964e7ad4bc415837e3b2d10e4fffda098d1689a096052c60e3daabb3ad9",
+        "path": "components/ball_detection/c27af964e7ad4bc415837e3b2d10e4fffda098d1689a096052c60e3daabb3ad9/ball_detection.json",
+        "sha256": "5b2e4903b44c1cb2e5137a5169d4ad5e599eac9522b53a8c5bf1c2659f323082",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "f9b81ed5d723fe0a1ed8205028eaa7bbdb54b86833e818c8d642fa71f287d4f2"
+      },
+      "ball_detection/cam1": {
+        "artifact_id": "bf04e5cb796b71b4602c4e29a8d5279011330889c5356e27ada1f9e9d7db797e",
+        "path": "components/ball_detection/bf04e5cb796b71b4602c4e29a8d5279011330889c5356e27ada1f9e9d7db797e/ball_detection.json",
+        "sha256": "be09b3b509d0a51b8bb015a1eaa83946fe06e191dbfa2a69fa33010326548ab2",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "ff988a7ca99af63b7f2428d529d1046f997bf79f975d44ac75da2b3ef10243ca"
+      },
+      "ball_detection/cam2": {
+        "artifact_id": "a180ee3d88a39fbcd38ec85b5e3f8e395450c78a2d8c53297278aacb82954fb5",
+        "path": "components/ball_detection/a180ee3d88a39fbcd38ec85b5e3f8e395450c78a2d8c53297278aacb82954fb5/ball_detection.json",
+        "sha256": "cbf00e99ae9b9faa16d76bed57f3823a1cf31b23f7e6aa5f6ff4c35306974204",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "3c0280d6a6012cd704064595e9c25665c8b41e4a105473fc921c5419f64fa456"
+      },
+      "ball_points/cam0": {
+        "artifact_id": "8f646f810d167f6af45139d5c442f721aa830b2500881123eb2fa3dbb99c110d",
+        "path": "components/ball_points/8f646f810d167f6af45139d5c442f721aa830b2500881123eb2fa3dbb99c110d/ball_points.json",
+        "sha256": "029d994aecc7ba42bafa92cc524076e6f611a97c810904e4ee748d70bea0f670",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "f9e3b9e7b476b58f8e78ed2040e836a20dda5762e82e5e8c43dd222a2de5d39a"
+      },
+      "ball_points/cam1": {
+        "artifact_id": "8997e164c335216bd913a0f3923643c1cfcd58cb986f2bb8f9e531488b7061b7",
+        "path": "components/ball_points/8997e164c335216bd913a0f3923643c1cfcd58cb986f2bb8f9e531488b7061b7/ball_points.json",
+        "sha256": "f94ba9d6ae7c43b208e6ea8d8b2faa5c61308765969e170e76f9ed4978fab1f9",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "188afc153b2b43182c62807ba72f395e432af16890f0b91a8c387e5968c84dd2"
+      },
+      "ball_points/cam2": {
+        "artifact_id": "13bb6f56bb6683f064b79a1b80e19777d814e5f3dec7fe393baca8cf91b9e289",
+        "path": "components/ball_points/13bb6f56bb6683f064b79a1b80e19777d814e5f3dec7fe393baca8cf91b9e289/ball_points.json",
+        "sha256": "0d462725147f3a5d8b58ab613634dd56ce9f4f6f9b4505454632d8d48db0d13e",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "c3145c27edc313779f0a582b30d446ebfaa7d23daaff76a4c87b5e3ae7420e84"
+      },
+      "court_side": {
+        "artifact_id": "13c5c57b61d074a21751eaaf0529cd4b5aede96c16eebe1c8b771df6e5ae6b6b",
+        "path": "components/court_side/13c5c57b61d074a21751eaaf0529cd4b5aede96c16eebe1c8b771df6e5ae6b6b/court_side.json",
+        "sha256": "5382c67e8c254754cb67544611978fd3cf75aff2e563f821e51216271234ef42",
+        "schema": "court_side",
+        "version": 3,
+        "execution_key": "537b3f93d9e618d0ded6c52dcc2fca7b57795890c683a23de238a98e13818f75"
+      },
+      "person_detection/cam0": {
+        "artifact_id": "b9639b2ac516316f14a155a70b8e0ae86de04855a3d125ae389400f3ed0d0385",
+        "path": "components/person_detection/b9639b2ac516316f14a155a70b8e0ae86de04855a3d125ae389400f3ed0d0385/person_detection.json",
+        "sha256": "0837f65f0bfbcbbbc7b73125335355fa443351836d481637cdc8dbe1e349b0dd",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "df28dc443861a541d5daaba738cf31517ba67862e445694bb8c8d86194c2c8e3"
+      },
+      "person_detection/cam1": {
+        "artifact_id": "3eca433c749f1baef3add7fa8b4af3996d28c9815a18fdfc15446d2702f8a76e",
+        "path": "components/person_detection/3eca433c749f1baef3add7fa8b4af3996d28c9815a18fdfc15446d2702f8a76e/person_detection.json",
+        "sha256": "7ce2584519acf6b521687b32e9488b7f9febc5b0e0e1d5511aa60168724dac3b",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "4eb017d354d7abe90f4d8ac9655bf1f8377278516bd8dbd1da34f48b476062ac"
+      },
+      "person_detection/cam2": {
+        "artifact_id": "b216a0d69ddcdf5fce462b9003d20c921539faa9d820a111f0d16ac56d55b803",
+        "path": "components/person_detection/b216a0d69ddcdf5fce462b9003d20c921539faa9d820a111f0d16ac56d55b803/person_detection.json",
+        "sha256": "81787c6f3a923527036f1cc689ba5bb1d92b9448bbf3309285124b84c0ab5e92",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "5d2ac0db6a677cafeb06afdee3c9ebe81a7d9f6df677b2e24e65efda2edcf290"
+      },
+      "person_tracking/cam0": {
+        "artifact_id": "42b2fd5af1221501d228658288de04e9605e0f319ee0a2c644f9b4b09d33c3ad",
+        "path": "components/person_tracking/42b2fd5af1221501d228658288de04e9605e0f319ee0a2c644f9b4b09d33c3ad/person_tracking.json",
+        "sha256": "4ea163af4e2fd0717417e3ebf0794c9faefda283895c33cc0cda624fe3d2a049",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "83d03a3e6830dc142f5653f7f47843842a22784dbef04f60d1dd9025bc538855"
+      },
+      "player_selection/cam0": {
+        "artifact_id": "8b1b8dc66a87100cdedc9635df14944a46d481876d810fdc60b4bb4b1c85c5e8",
+        "path": "components/player_selection/8b1b8dc66a87100cdedc9635df14944a46d481876d810fdc60b4bb4b1c85c5e8/player_selection.json",
+        "sha256": "81e3b10e7a08fbca940d9aff166864b6fdb822007f701086136a07caa278d5ba",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "a0c3d04f934a729312c81b4adb3ba165646675dbff17b126c4af81587c925653"
+      },
+      "person_tracking/cam1": {
+        "artifact_id": "d6bf49f8221a063b0a69f0243b81d1ab8c2817a798d011fd0b3bb3c527b3d7ab",
+        "path": "components/person_tracking/d6bf49f8221a063b0a69f0243b81d1ab8c2817a798d011fd0b3bb3c527b3d7ab/person_tracking.json",
+        "sha256": "228697d46b57e6de6bc56e570425296a9bd290a83fcd67e77e45e3b30db26548",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "c9719a1879b4d164428d0a80cb42ec9d7f28f22df58e2012c15981c016396773"
+      },
+      "player_selection/cam1": {
+        "artifact_id": "348e25c605b6eee5d44642d2d2b6719ef30a30b2d0317416adf9311c8ebd3e78",
+        "path": "components/player_selection/348e25c605b6eee5d44642d2d2b6719ef30a30b2d0317416adf9311c8ebd3e78/player_selection.json",
+        "sha256": "635a4b1a114aa426c1fc23020b16a6d78827ec39c953d4bb8dc8f139a25f653f",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "3013ee1ef6421afead32a782c88216d50fd3e311950c52aeca53f2116cfb8890"
+      },
+      "person_tracking/cam2": {
+        "artifact_id": "81f06841eb0c66d79dfab4a783db898319220001d07d2f338ce1eb9be641849f",
+        "path": "components/person_tracking/81f06841eb0c66d79dfab4a783db898319220001d07d2f338ce1eb9be641849f/person_tracking.json",
+        "sha256": "3f45c5829c6eeaa913a54aa64b106420dd7bffa63586f793819454201b50f7a3",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "582671db89de4aa1bbea3c3cfb4d837ed7859eb07acb78a60cc5faf991d1b42f"
+      },
+      "player_selection/cam2": {
+        "artifact_id": "708e0d70120f6245e8a2273038c3e864e3ef7153df033d3c05d5c76a7ecde7b8",
+        "path": "components/player_selection/708e0d70120f6245e8a2273038c3e864e3ef7153df033d3c05d5c76a7ecde7b8/player_selection.json",
+        "sha256": "4f26192ae8f384000cd1689435adf9f020ad4debc5037dd686721fd7d077703e",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "a3b4fdd6a55d483203f67b4decb203561c8c8bb8977239d1bcd93cb25da699a0"
+      },
+      "player_association": {
+        "artifact_id": "e32f2d0c120f9533c7c2bb780e0c5c744653e60a9246883ce8fe167f7cfec7d2",
+        "path": "components/player_association/e32f2d0c120f9533c7c2bb780e0c5c744653e60a9246883ce8fe167f7cfec7d2/player_association.json",
+        "sha256": "0282342408e7853704407d1f6100c2398700c703e79f57d9b92a77bb8fe8a754",
+        "schema": "person_identities",
+        "version": 3,
+        "execution_key": "d7b5092538ccd115b48b1cc26b812ef0307d8dcbfeeb96af83386eefce159d97"
+      },
+      "pose_estimation/cam0": {
+        "artifact_id": "b445750f419f4ea15e92b67b17170208dcc897e538d496ca189440d705cda4c1",
+        "path": "components/pose_estimation/b445750f419f4ea15e92b67b17170208dcc897e538d496ca189440d705cda4c1/pose_estimation.json",
+        "sha256": "591e3f16094322ce9782781c8acac724a73430d284785ec425f7f400917af49a",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "40ac4923815d94d507ed6e35b202d220a69f72129bfe3610278432e3de127a73"
+      },
+      "pose_estimation/cam1": {
+        "artifact_id": "2a75534e1cd5d5e9b275b02e6ce01fb617a11a7708394216fe6254cb75898b4e",
+        "path": "components/pose_estimation/2a75534e1cd5d5e9b275b02e6ce01fb617a11a7708394216fe6254cb75898b4e/pose_estimation.json",
+        "sha256": "352da0d507e21c89d5461a5112f89364da406ffdd26526eed60259bd5ae044d9",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "42251d6095090e29d2f0758405a9cac67d770c7f358ae5a46fc6798bbe3b5d9d"
+      },
+      "pose_estimation/cam2": {
+        "artifact_id": "c6019412f6aa5dc9de7735a88133c6312a97346a903f3809204a53652c888a9f",
+        "path": "components/pose_estimation/c6019412f6aa5dc9de7735a88133c6312a97346a903f3809204a53652c888a9f/pose_estimation.json",
+        "sha256": "3f7341e8816a90c2ce08183a5f91fc1bdb3a757e0f141f2f9a907eb0f0ac300f",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "935455e02cf69f3567491d49f17f39adb7fd30e77f9f279f5c69c07e5a21ac5e"
+      },
+      "camera_alignment": {
+        "artifact_id": "0280a1941d4c239ba14a9347a95b06d038c4ec88ef011fc9c01509cc7dd01c39",
+        "path": "components/camera_alignment/0280a1941d4c239ba14a9347a95b06d038c4ec88ef011fc9c01509cc7dd01c39/camera_alignment.json",
+        "sha256": "a893e49ef0db208526d2f86e0ceb8a75a5951f42ea06018f796386527f5f94ad",
+        "schema": "aligned_cameras",
+        "version": 1,
+        "execution_key": "20be718c61c761e33c57bf233808f60bdd90b5449c08d0a019599218e6934ea8"
+      },
+      "player_triangulation": {
+        "artifact_id": "fbaa4c1a1c6b4dd49a8e68eab7f9b23100c83b0569d3f5cedaa445010355ae83",
+        "path": "components/player_triangulation/fbaa4c1a1c6b4dd49a8e68eab7f9b23100c83b0569d3f5cedaa445010355ae83/player_triangulation.json",
+        "sha256": "ef8c79f40c9003dec22fe0c0dfaedd3a57fe51c064bc3e5456ebe719d7e6700c",
+        "schema": "player_skeletons",
+        "version": 1,
+        "execution_key": "e5ab2332df01b74a7d87acb36828d9a35cf2a147c18748ad5d2b1d41ed18fe7a"
+      },
+      "ball_triangulation": {
+        "artifact_id": "161729f08e75c68a02748cd73e81b09c055d241345678dcfc75d392f9eb0edea",
+        "path": "components/ball_triangulation/161729f08e75c68a02748cd73e81b09c055d241345678dcfc75d392f9eb0edea/ball_triangulation.json",
+        "sha256": "20f26b914f0cace42a0ceac5a14466e1e6d4ff36a7f682647baacb9e2b251be8",
+        "schema": "ball_trajectory",
+        "version": 1,
+        "execution_key": "d09e18cbe90de7c73aad0bcd6324a563ca4a8cf64702fcdcb1eb5d2e8777dd02"
+      },
+      "body_view_selection": {
+        "artifact_id": "2f589c3475bcb1ce66386f5b25f7e10caf12892a1e3f3dfeae90f2aa08359d85",
+        "path": "components/body_view_selection/2f589c3475bcb1ce66386f5b25f7e10caf12892a1e3f3dfeae90f2aa08359d85/body_view_selection.json",
+        "sha256": "ea6a2c5b94c6a2e8e1b39b6094c1e98fc0456eb80fed8e671a0cc6a8b9a22191",
+        "schema": "body_view_selection",
+        "version": 1,
+        "execution_key": "f2776e1a7ac38d9c20ae4d65b2fbdf87f7b849e2dbb61609f6dcc7581413388a"
+      },
+      "gvhmr": {
+        "artifact_id": "72833bf94809e1c4c37e24cfd88de03d8c61c49bb817aeab174b6d91f88bceea",
+        "path": "components/gvhmr/72833bf94809e1c4c37e24cfd88de03d8c61c49bb817aeab174b6d91f88bceea/gvhmr.json",
+        "sha256": "8fde9e8215c2d8ee2959450083fa8802445e0b65dd7a9d4b484828f49f463961",
+        "schema": "body_parameters",
+        "version": 1,
+        "execution_key": "6d1bfad7c40b26c817ef058fa6a414005e22fc8d71222bcd8942a4b6f89df579"
+      },
+      "body_placement": {
+        "artifact_id": "901123a092bafef5e9b8d914ca23aa2eeb7095729b676143d3be4d60c1a193f5",
+        "path": "components/body_placement/901123a092bafef5e9b8d914ca23aa2eeb7095729b676143d3be4d60c1a193f5/body_placement.json",
+        "sha256": "95d4478cbbbf9fe8dc42a956a718283ac43ea3bcfcec6468de75e77ccadba80d",
+        "schema": "placed_bodies",
+        "version": 1,
+        "execution_key": "26d985220402c47aed7489688f83d7869609db38d53aaa31a932a35d0990225a"
+      },
+      "scene_assembly": {
+        "artifact_id": "e559fb60e8856475f9b596be6735d582bd88699f15a188bc7f58f4d53f27887d",
+        "path": "components/scene_assembly/e559fb60e8856475f9b596be6735d582bd88699f15a188bc7f58f4d53f27887d/scene_assembly.json",
+        "sha256": "34d7ec909eef60c67ccb9ae7a4425b5ab98b243754222df2c33a5dc30b7d1da4",
+        "schema": "scene_result",
+        "version": 2,
+        "execution_key": "f34610a9770cf7a91eca299bea6f84fc16e02ebd16c1430881264ccb5b7ceeb1"
+      }
+    }
+  },
+  "peak_allocated_bytes": 3159313920,
+  "peak_reserved_bytes": 3802136576,
+  "allocated_end_bytes": 33554432,
+  "reserved_end_bytes": 33554432,
+  "allocated_after_gc_bytes": 33554432,
+  "reserved_after_gc_bytes": 33554432
+}

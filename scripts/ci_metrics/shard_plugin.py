@@ -30,13 +30,21 @@ def pytest_collection_modifyitems(
     index = config.getoption("--ci-shard-index")
     count = config.getoption("--ci-shard-count")
     try:
-        if type(index) is not int or type(count) is not int or not 0 <= index < count:
+        if type(index) is not int or type(count) is not int or not 0 <= index <= count:
             raise ValueError("both a valid shard index and count are required")
         lane_plan = read_plan(config.getoption("--ci-lane-plan"), root=Path.cwd())
         record_cpu_universe(items)
         universe = [item.nodeid for item in items]
-        nodeids, deferred = partition_nodeids(universe, lane_plan)
-        requested_items = [item for item in items if item.nodeid not in deferred]
+        system_deps = [
+            item.nodeid for item in items if item.get_closest_marker("system_deps")
+        ]
+        system_set = set(system_deps)
+        nodeids, deferred = partition_nodeids(
+            universe, lane_plan, system_deps=system_deps
+        )
+        regular = [node for node in nodeids if node not in system_set]
+        regular_set = set(regular)
+        requested_items = [item for item in items if item.nodeid in regular_set]
         profile, profile_digest = read_timing_profile(
             config.getoption("--ci-shard-weights")
         )
@@ -58,7 +66,7 @@ def pytest_collection_modifyitems(
                     f"cannot split {item.nodeid}: shared fixtures {sorted(shared)}"
                 )
         plan = assign_groups(
-            nodeids,
+            regular,
             count,
             profile["file_seconds"],
             split_files=split_files,
@@ -80,7 +88,10 @@ def pytest_collection_modifyitems(
     selected: list[pytest.Item] = []
     excluded: list[pytest.Item] = []
     for item in items:
-        if item.nodeid in deferred:
+        if item.nodeid in system_set:
+            (selected if index == count else excluded).append(item)
+            continue
+        if item.nodeid in deferred or index == count:
             excluded.append(item)
             continue
         target = plan["assignments"][group_key(item.nodeid, plan["split_files"])]
@@ -90,7 +101,7 @@ def pytest_collection_modifyitems(
     with (destination / f"shard-{role}.json").open("x") as stream:
         json.dump(
             {
-                "schema_version": 2,
+                "schema_version": 3,
                 "index": index,
                 "count": count,
                 "profile_sha256": profile_digest,
@@ -98,6 +109,7 @@ def pytest_collection_modifyitems(
                 "policy_sha256": lane_plan["policy_sha256"],
                 "scope": lane_plan["scope"],
                 "universe_nodeids": universe,
+                "system_deps_nodeids": system_deps,
                 "requested_nodeids": nodeids,
                 "deferred": deferred,
                 "selected_nodeids": [item.nodeid for item in selected],

@@ -1,0 +1,9 @@
+{
+  "confidence_homography.py": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+  "homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+  "observations.py": "96bcbcf8c8c8103804e95afa91b67d6ace9d676f5ced4f4ff3d8d4b38a08d3cb",
+  "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "line_evidence.py": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+  "quality.py": "3b17c32128ad654cb615f93ee397026c6f558d09f2a9390f55118fbacb419ba2",
+  "hybrid_homography.py": "eb7045dbfc1b7424520060c4a39fc7c3c836436d5bee440ee7b5ec771f09c0f4"
+}

@@ -306,25 +306,22 @@ def test_colab_attach_adds_the_bundle_without_touching_findings(tmp_path: Path) 
     assert "already records different commit" in result.stderr
 
 
-def test_metadata_only_papers_redistribute_nothing(tmp_path: Path) -> None:
+def test_document_only_papers_reject_old_storage_and_require_metadata(tmp_path: Path) -> None:
     seed_registry(tmp_path, active("topic"))
-    common = ("--title", "Paper", "--authors", "Author", "--tasks", "topic", "--source", "https://arxiv.org/abs/2401.00001v1")
+    common = ("--title", "Paper", "--authors", "Author", "--summary", "Contribution", "--reason", "Research question", "--tasks", "topic", "--source", "https://arxiv.org/abs/2401.00001v1")
     run(tmp_path, "kg_papers.py", "--id", "paper-2024-meta", *common)
     note = tmp_path / "Papers/paper-2024-meta/paper.md"
     assert sorted(p.name for p in note.parent.iterdir()) == ["paper.md"]
     assert {"pdf", "sha256", "license"}.isdisjoint(yaml.safe_load(note.read_text().split("---", 2)[1]))
-    note.write_text(note.read_text() + "\n手法の背景としてだけ参照する。再現は主張しない。\n")
     node(tmp_path, "run-cite", "topic", "--papers", "paper-2024-meta")
     run(tmp_path, "kg_validate.py")
-    (note.parent / "paper.pdf").write_bytes(b"%PDF-1.4\n")
-    assert "paper.pdf exists but the note does not record" in run(tmp_path, "kg_validate.py", check=False).stdout
+    (note.parent / "paper.pdf").write_bytes(b"forbidden attachment")
+    assert "only regular paper.md" in run(tmp_path, "kg_validate.py", check=False).stdout
     (note.parent / "paper.pdf").unlink()
-    update(note, sha256="0" * 64)
-    assert "sha256 describes a stored PDF" in run(tmp_path, "kg_validate.py", check=False).stdout
-    pdf = tmp_path / "input.pdf"
-    pdf.write_bytes(b"%PDF-1.4\nfixture\n%%EOF")
-    without_license = run(tmp_path, "kg_papers.py", "--id", "paper-2024-pdf", *common, "--pdf", str(pdf), check=False)
-    assert without_license.returncode == 2 and "--pdf requires --license" in without_license.stderr
+    update(note, sha256="obsolete")
+    assert "sha256 is not allowed" in run(tmp_path, "kg_validate.py", check=False).stdout
+    result = run(tmp_path, "kg_papers.py", "--id", "paper-2024-other", *common, "--pdf", "input.pdf", check=False)
+    assert result.returncode == 2 and "unrecognized arguments" in result.stderr
     unknown = run(tmp_path, "kg_papers.py", "--id", "paper-2024-other", *common[:-4], "--tasks", "nowhere", "--source", common[-1], check=False)
     assert unknown.returncode == 2 and "not registered" in unknown.stderr
 

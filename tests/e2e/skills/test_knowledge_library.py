@@ -74,19 +74,18 @@ def test_concurrent_registration_allocates_unique_numbers(tmp_path: Path) -> Non
     assert sorted(numbers) == list(range(1, 9))
 
 
-def test_paper_references_and_checksum(tmp_path: Path) -> None:
+def test_document_only_paper_registration_and_experiment_references(tmp_path: Path) -> None:
     seed_registry(tmp_path, "new_topic")
-    pdf = tmp_path / "input.pdf"
-    pdf.write_bytes(b"%PDF-1.4\nfixture\n%%EOF")
-    command(tmp_path, "kg_papers.py", "--id", "paper-2024-fixture", "--title", "Paper", "--authors", "Author", "--tasks", "new_topic", "--source", "https://example.org/paper/v1", "--license", "https://creativecommons.org/licenses/by/4.0/", "--pdf", str(pdf))
+    command(tmp_path, "kg_papers.py", "--id", "paper-2024-fixture", "--title", "Paper", "--authors", "Author", "--tasks", "new_topic", "--source", "https://example.org/paper/v1", "--summary", "Research contribution", "--reason", "Does this method address our research question?", "--external-id", "doi=10.5555/FIXTURE")
     note = tmp_path / "Papers/paper-2024-fixture/paper.md"
-    note.write_text(note.read_text() + "\n検証用のPDF fixture。実在研究の主張は含まない。\n")
+    data = meta(note)
+    assert data["source"] == "https://example.org/paper/v1"
+    assert data["summary"] == "Research contribution"
+    assert data["reason"] == "Does this method address our research question?"
+    assert data["external_ids"] == {"doi": "10.5555/fixture"}
+    assert {p.name for p in note.parent.iterdir()} == {"paper.md"}
     create(tmp_path, "run-one", "new_topic", "--papers", "paper-2024-fixture")
     command(tmp_path, "kg_validate.py")
-    paper = tmp_path / "Papers/paper-2024-fixture/paper.pdf"
-    paper.write_bytes(b"%PDF-modified")
-    result = command(tmp_path, "kg_validate.py", check=False)
-    assert result.returncode == 1 and "sha256 mismatch" in result.stdout
     node = next((tmp_path / "nodes").rglob("*.md"))
     node.write_text(node.read_text().replace("paper-2024-fixture", "paper-2024-missing"))
     assert "unknown paper" in command(tmp_path, "kg_validate.py", check=False).stdout
@@ -276,6 +275,7 @@ def test_missing_library_or_orphan_papers_are_not_silently_ignored(tmp_path: Pat
     orphan.mkdir(parents=True)
     (orphan / 'paper.pdf').write_bytes(b'%PDF-fixture')
     assert 'missing paper.md' in command(tmp_path, 'kg_validate.py', check=False).stdout
+    (orphan / 'paper.pdf').unlink()
     (orphan / 'paper.md').write_text('---\nid: [bad\n---\nNote\n')
     result = command(tmp_path, 'kg_validate.py', check=False)
     assert result.returncode == 1 and 'invalid YAML' in result.stdout

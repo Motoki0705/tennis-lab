@@ -1,0 +1,10 @@
+# a5 診断の検証設計
+
+親の指示に基づきGPU再投入は1回のみ。main18a2fea05/runtime1bef628a9、Meiji clip_000全3camera・1010frameを固定する。
+既存pinのframe_sampling.max_frames=1024を両版へ明示し、上流mainの上限変更以外の条件差を作らない。
+
+守る契約: heartbeat停止後、全threadのPython stackと指定nvidia-smi診断の保存をSIGTERMより先に行う。失敗したmainの後にruntimeを起動せず、再試行しない。
+検出する不具合: stack要求直後のTERM、stackのmain threadのみ取得、GPU診断のstderr/timeout欠落、診断中の対象processの早期終了。
+層: GPUを隠したCPU script smoke。既存guard_smoke.pyの9ケースを再利用し、実faulthandler複数thread・fake NVMLの終了順序と全文・期限を追加確認する。
+追加ケースは5件（診断ツール自体の例外時にも終了させる境界を含む）、各処理の診断期限を小さくして実測する。推論・Torch compileの設定は変更しない。
+既存C3のunit/integrationはsource変更が無いため再実行しない。GPU診断scriptはoutputsで固定し、結果と共にknowledgeへ保存する。

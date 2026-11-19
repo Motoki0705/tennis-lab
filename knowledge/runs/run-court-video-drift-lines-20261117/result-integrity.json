@@ -1,0 +1,35 @@
+{
+  "base_bundle_digest": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "drift_bundle_digest": "7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+  "base_objects_bytes_unchanged": true,
+  "reader_correction_compared_frames": 1380,
+  "numeric_and_verdict_mismatches": 0,
+  "corrected_rgb_hashes": 1380,
+  "old_bgr_artifact_superseded": "5dc70d970653a4dcdfe662caaa7003c8705ab3b3522bb869bad8d245249619f2",
+  "common_h_refit": false,
+  "threshold_changes_after_freeze": false,
+  "same_heldout_4_over_5_statuses": {
+    "cam0": {
+      "ok": 45,
+      "failed": 24
+    },
+    "cam1": {
+      "ok": 61,
+      "failed": 2,
+      "warning": 6
+    },
+    "cam2": {
+      "ok": 59,
+      "failed": 10
+    },
+    "cam3": {
+      "failed": 49,
+      "ok": 20
+    }
+  },
+  "component_results": {
+    "explicit_failure": 155,
+    "same_shared_keypoints": 121
+  },
+  "component_seconds": 96.37165687698871
+}

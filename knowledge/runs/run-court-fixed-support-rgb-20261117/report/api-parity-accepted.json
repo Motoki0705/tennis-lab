@@ -1,0 +1,30 @@
+{
+  "cases": [
+    {
+      "key": "meiji_4cam/video_000/clip_068/cam0",
+      "condition": "fixed_support",
+      "status": "accepted",
+      "region": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "matches_offline": true
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_068/cam0",
+      "condition": "fixed_support_rgb",
+      "status": "accepted",
+      "region": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "matches_offline": true
+    }
+  ],
+  "seconds": 30.89485774000059,
+  "model_forward": "frozen decoded heads, no CUDA"
+}

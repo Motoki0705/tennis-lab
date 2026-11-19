@@ -18,6 +18,8 @@ from urllib.parse import parse_qs
 
 import pytest
 
+from tests.support.agents_ops.model_pins import WORKER_DEFAULT_MODEL
+
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
 sys.path.insert(0, str(OPS))
@@ -50,18 +52,35 @@ def raw_issue(n: int, **changes: Any) -> dict[str, Any]:
 
 class FakeGitHub:
     repo = "o/r"
+    targeted_history = False
+
+    def authenticated_login(self) -> str:
+        return str(self.get("user")["login"])
+
     rows = github.GitHub.rows
     issue_rows = github.GitHub.issue_rows
     issue = github.GitHub.issue
     comments = github.GitHub.comments
+    evidence_issues = github.GitHub.evidence_issues
+    history_read_scope = github.GitHub.history_read_scope
+    evidence_rows = github.GitHub.evidence_rows
+    record_history = github.GitHub.record_history
+    parent_comments = github.GitHub.parent_comments
     pulls = github.GitHub.pulls
     identity = github.GitHub.identity
     family = github.GitHub.family
     fresh_reads = github.GitHub.fresh_reads
+    _require_scope = github.GitHub._require_scope
+    io_scope = github.GitHub.io_scope
+    detached = github.GitHub.detached
+    improvement_extractions = github.GitHub.improvement_extractions
 
     def __init__(self) -> None:
         self.parent: int | None = None
         self._fresh = False
+        self._store = None
+        self._outside_store = None
+        self._cache: dict[Any, Any] = {}
         self.issues: dict[int, dict[str, Any]] = {}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -132,6 +151,8 @@ class FakeGitHub:
             raise ValueError("injected GET failure")
         if endpoint == "user":
             return {"login": "operator"}
+        if endpoint == "repos/o/r/labels/parent-evidence":
+            return {"name": "parent-evidence"}
         if endpoint == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
             raise importlib.import_module("issues.cli").GitHubHTTPError(
                 endpoint, 404, "Not Found"
@@ -207,6 +228,7 @@ class FakeGitHub:
 
     def write(self, method: str, endpoint: str, payload: dict[str, Any]) -> Any:
         self.writes.append((method, endpoint, copy.deepcopy(payload)))
+        self._history_rows = None
         if method == "PATCH" and "/issues/comments/" in endpoint:
             cid = int(endpoint.split("/")[-1])
             result = next(
@@ -223,8 +245,13 @@ class FakeGitHub:
             self.comment_rows.setdefault(n, []).append(comment)
             result = comment
         elif method == "POST" and endpoint == "repos/o/r/issues":
-            n = max(self.issues, default=0) + 1
-            row = raw_issue(n, **payload)
+            evidence = "parent-evidence" in payload["labels"]
+            n = (
+                max([9000, *self.issues]) + 1
+                if evidence
+                else max((n for n in self.issues if n < 9000), default=0) + 1
+            )
+            row = raw_issue(n, **payload, user={"login": "operator"})
             row["labels"] = [{"name": name} for name in payload["labels"]]
             self.issues[n] = row
             result = row
@@ -408,7 +435,9 @@ class Harness:
         monkeypatch.setenv("FAKE_JUDGEMENT_RESPONSE", str(tmp / "judgement.json"))
         monkeypatch.setenv("FAKE_JUDGEMENT_CALLS", str(tmp / "judgement-calls.jsonl"))
         monkeypatch.delenv("OPS_REPORT_ORGANIZER_EXEC", raising=False)
+        self.store = state.Store(self.tmp / "state/parent")
         self.gh = FakeGitHub()
+        self.gh._store = self.store
         self.run_number = 0
         self.response(plan())
         self.report()
@@ -475,17 +504,16 @@ class Harness:
         work_dir = self.tmp / f"run-{self.run_number}"
         work_dir.mkdir()
         result = triage.TriageResult()
-        with state.Store(self.tmp / "state/parent").locked() as store:
-            apply.run(
-                gh=self.gh,
-                store=store,
-                root=self.root,
-                work_dir=work_dir,
-                candidates=self.candidates(),
-                dry_run=dry_run,
-                result=result,
-                journal_path=self.tmp / "triage.json",
-            )
+        apply.run(
+            gh=self.gh,
+            store=self.store,
+            root=self.root,
+            work_dir=work_dir,
+            candidates=self.candidates(),
+            dry_run=dry_run,
+            result=result,
+            journal_path=self.tmp / "triage.json",
+        )
         return result
 
     def calls(self) -> list[Any]:
@@ -512,7 +540,7 @@ class Harness:
             patch.setenv("PATH", str(self.judgement_bin) + ":" + os.environ["PATH"])
             result: dict[str, Any] = judgement.run(
                 self.gh,
-                state.Store(self.tmp / "state/parent"),
+                self.store,
                 self.root,
                 self.tmp / name,
                 apply=True,
@@ -529,7 +557,16 @@ def test_parentless_adoption_creates_normal_standalone_once(harness: Harness) ->
     h = harness
     assert not h.run().errors
     task = h.gh.issues[101]
-    assert {label["name"] for label in task["labels"]} == {"ai-proposed"}
+    assert {label["name"] for label in task["labels"]} == {
+        "ai-proposed",
+        fmt.STANDALONE_LABEL,
+    }
+    assert h.gh.issues[100]["labels"] == [{"name": "ops-report"}]
+    assert next(
+        set(payload["labels"])
+        for method, endpoint, payload in h.gh.writes
+        if method == "POST" and endpoint == "repos/o/r/issues"
+    ) == {"ai-proposed", fmt.STANDALONE_LABEL}
     assert h.gh.parents == {}
     source = fmt.parse_proposal_source(task["body"])
     assert source == fmt.ProposalSource("R-20261019-01", 100)
@@ -544,7 +581,7 @@ def test_parentless_adoption_creates_normal_standalone_once(harness: Harness) ->
     assert not h.run().errors
     assert len(h.calls()) == 1 and len(h.gh.writes) == count
     args = h.calls()[0]["args"]
-    assert "gpt-6.1-sol" in args and 'model_reasoning_effort="max"' in args
+    assert WORKER_DEFAULT_MODEL in args and 'model_reasoning_effort="max"' in args
     assert "read-only" in args and "--profile" not in args
     runtime = json.loads(
         h.tmp.joinpath("run-1/organization-runtime/result.json").read_text()
@@ -553,6 +590,20 @@ def test_parentless_adoption_creates_normal_standalone_once(harness: Harness) ->
         runtime["task_success"] is None
         and runtime["runtime"]["effective"]["model"]["status"] == "observed"
     )
+
+
+def test_organizer_accepts_completed_run_with_verified_reconnect_notice(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_ORGANIZATION_SCENARIO", "reconnect")
+    h = harness
+    assert not h.run().errors
+    record = json.loads(
+        h.tmp.joinpath("run-1/organization-runtime/result.json").read_text()
+    )
+    assert record["runtime"]["runtime_errors"] and record["result"] == "completed"
+    assert len(h.calls()) == 1
 
 
 def test_multiple_proposals_share_parent_and_keep_distinct_index_anchors(
@@ -573,6 +624,16 @@ def test_multiple_proposals_share_parent_and_keep_distinct_index_anchors(
     result = h.run()
     assert not result.errors
     assert h.gh.parents == {102: 101, 103: 101}
+    assert {label["name"] for label in h.gh.issues[101]["labels"]} == {
+        "ai-proposed",
+        fmt.PARENT_LABEL,
+    }
+    for n in (102, 103):
+        assert {label["name"] for label in h.gh.issues[n]["labels"]} == {
+            "ai-proposed",
+            fmt.CHILD_LABEL,
+        }
+    assert h.gh.issues[100]["labels"] == [{"name": "ops-report"}]
     assert not fmt.check_consistency(h.gh.family(101))
     assert fmt.index_proposals((n, r["body"]) for n, r in h.gh.issues.items()) == {
         (100, "R-20261019-01"): 102,
@@ -695,19 +756,30 @@ def test_dry_run_validates_plan_without_writing_issues_or_journal(
     )
 
 
+@pytest.mark.parametrize("standalone", [False, True])
 def test_adds_child_to_unowned_existing_parent_and_preserves_old_requirements(
     harness: Harness,
+    standalone: bool,
 ) -> None:
     h = harness
     parent = parent_node()
     body = fmt.render_parent_body(parent["sections"])
     h.gh.issues[1] = raw_issue(
-        1, title="[保守性改善] 既存の親", body=body, labels=[{"name": "issue:parent"}]
+        1,
+        title="[保守性改善] 既存の親",
+        body=body,
+        labels=[{"name": "issue:parent"}]
+        + ([{"name": fmt.STANDALONE_LABEL}] if standalone else []),
     )
     h.gh.issues[100]["body"] = h.gh.issues[100]["body"].replace(
         "関連親issue: 未指定", "関連親issue: #1"
     )
     h.response(plan([task_node(role="child", parent=1)]))
+    if standalone:
+        with pytest.raises(ValueError, match="label.standalone"):
+            h.run()
+        assert not h.gh.writes
+        return
     assert not h.run().errors
     assert h.gh.parents == {101: 1}
     assert not fmt.check_consistency(h.gh.family(1))
@@ -901,6 +973,7 @@ def test_reuses_existing_work_without_reopening_renaming_or_reparenting(
         state="closed" if closed else "open",
         state_reason="completed" if closed else None,
         assignees=[{"login": "historical-owner"}] if closed else [],
+        labels=[{"name": fmt.STANDALONE_LABEL}, {"name": "research"}] if closed else [],
     )
     node = task_node(role="reuse")
     node.update(issue=20, summary="", sections={})
@@ -909,7 +982,9 @@ def test_reuses_existing_work_without_reopening_renaming_or_reparenting(
     assert len(h.gh.issues) == 2
     assert h.gh.issues[20]["title"] == "既存の具体的な作業"
     assert h.gh.issues[20]["state"] == ("closed" if closed else "open")
-    assert h.gh.issues[20]["labels"] == []
+    assert h.gh.issues[20]["labels"] == (
+        [{"name": fmt.STANDALONE_LABEL}, {"name": "research"}] if closed else []
+    )
     assert h.gh.issues[20]["assignees"] == (
         [{"login": "historical-owner"}] if closed else []
     )
@@ -947,6 +1022,52 @@ def test_completed_reuse_still_preserves_active_pr_and_explicit_hold_boundaries(
     with pytest.raises(ValueError, match="conflict"):
         h.run()
     assert not h.gh.writes
+
+
+@pytest.mark.parametrize("stage", ["saved", "created", "unknown"])
+def test_legacy_standalone_draft_is_preserved_across_resume(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, stage: str
+) -> None:
+    h = harness
+    render = org.render_node
+
+    def legacy_render(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        draft: dict[str, Any] = render(*args, **kwargs)
+        draft["labels"] = ["ai-proposed"]
+        return draft
+
+    def interrupt_before_post(
+        gh: Any, *, draft: Any, receipt: Any, save: Any, **kwargs: Any
+    ) -> None:
+        receipt["draft"] = copy.deepcopy(draft)
+        save()
+        raise ValueError("injected interruption before POST")
+
+    with monkeypatch.context() as old_runtime:
+        old_runtime.setattr(org, "render_node", legacy_render)
+        if stage == "saved":
+            old_runtime.setattr(apply, "create_issue_once", interrupt_before_post)
+        else:
+            h.gh.fail_after = "repos/o/r/issues"
+        assert h.run().errors
+
+    saved = json.loads(h.tmp.joinpath("triage.json").read_text())
+    draft = saved["transactions"][0]["drafts"]["split-module"]
+    assert draft["labels"] == ["ai-proposed"]
+    if stage == "unknown":
+        created = h.gh.issues.pop(101)
+        assert any("outcome is unknown" in error for error in h.run().errors)
+        h.gh.issues[101] = created
+    assert not h.run().errors
+    assert h.gh.issues[101]["labels"] == [{"name": "ai-proposed"}]
+    assert [
+        payload
+        for method, endpoint, payload in h.gh.writes
+        if method == "POST" and endpoint == "repos/o/r/issues"
+    ] == [draft]
+    assert len(h.calls()) == 1
+    before = len(h.gh.writes)
+    assert not h.run().errors and len(h.gh.writes) == before
 
 
 def test_created_issue_renamed_and_completed_after_lost_response_is_recovered(
@@ -1062,7 +1183,7 @@ def test_existing_owner_conflict_requires_reasoned_hold(
             }
         ]
     else:
-        with state.Store(h.tmp / "state/parent").locked() as store:
+        with h.store.locked() as store:
             store.parents["o/r#1"] = {
                 "status": "active",
                 "session": "claude:existing",
@@ -1092,7 +1213,10 @@ def test_all_pages_and_api_failures_are_not_replaced_by_empty_inputs(
     h.run()
     fixed = json.loads(h.tmp.joinpath("run-1/organization-input.json").read_text())
     assert len(fixed["snapshot"]["issues"]) == 204
-    assert h.gh.issues[205]["labels"] == [{"name": "ai-proposed"}]
+    assert {label["name"] for label in h.gh.issues[205]["labels"]} == {
+        "ai-proposed",
+        fmt.STANDALONE_LABEL,
+    }
     writes = len(h.gh.writes)
     h.gh.fail = "/dependencies/blocked_by"
     assert any("GET failure" in error for error in h.run().errors)
@@ -1245,7 +1369,7 @@ def test_cross_report_group_is_visible_through_unchanged_dispatcher_collection(
     )
     h.run()
     collector: Any = importlib.import_module("dispatcher.collect")
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         snapshot = collector.collect(h.gh, store, h.root)
     assert snapshot["issues"]["102"]["source_reports"] == [90]
     assert snapshot["issues"]["103"]["source_reports"] == [100]
@@ -1293,7 +1417,7 @@ def test_context_sources_remain_in_split_inputs_after_index_anchors_move(
     assert not fmt.check_consistency(h.gh.family(1))
     collector: Any = importlib.import_module("dispatcher.collect")
     agent_input: Any = importlib.import_module("dispatcher.agent_input")
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         fixed = collector.collect(h.gh, store, h.root, [101])
         fixed["input_sha256"] = policy.digest(collector.material(fixed))
         assert collector.related(fixed, 101) == {90, 100, 101}
@@ -1345,7 +1469,10 @@ def test_source_change_defers_only_its_subject_closure_in_v2(
     elif stage == "publication":
 
         def on_write() -> None:
-            if h.gh.writes[-1][1] == "repos/o/r/issues/101/comments":
+            if (
+                h.gh.writes[-1][1].endswith("/comments")
+                and '"issue": 101' in h.gh.writes[-1][2]["body"].splitlines()[0]
+            ):
                 h.gh.on_write = None
                 revoke()
 
@@ -1377,7 +1504,7 @@ def test_source_change_defers_only_its_subject_closure_in_v2(
     assert [c["parent"] for c in result["candidates"]] == [1]
     assert len(h.tmp.joinpath("judgement-calls.jsonl").read_text().splitlines()) == 1
     fixed = json.loads(h.tmp.joinpath("changed-source/input.json").read_text())
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         judgement.assert_candidate_fresh(
             h.gh, store, h.root, fixed, result["candidates"][0]
         )
@@ -1427,13 +1554,13 @@ def test_autonomous_parent_notes_preserve_adopted_task_delegation(
         capture_output=True,
     )
     monkeypatch.chdir(h.root)
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         session = sessions.ParentSession(h.gh, store, 101, "claude:fixture")
         judgement.assert_candidate_fresh(h.gh, store, h.root, fixed, candidate)
         auth = execution.validate_candidate(
             session, candidate["basis_sha256"], candidate["generation"]
         )
-        session.register()
+        session.register("採用提案の担当表示")
         session.note("採用出典と実行根拠を照合し、既存の子へ委任する。")
         assert execution.authorization(session) == auth
         for n in (101, 102):
@@ -1470,7 +1597,7 @@ def test_autonomous_parent_notes_preserve_adopted_task_delegation(
         session.revoke_basis("親が追加要件を確認し、再合意まで停止する。")
         with pytest.raises(ValueError, match="有効な実行根拠"):
             session.agreed()
-    history = policy.events(h.gh.comment_rows[101], "operator", 101)
+    history = policy.events(h.gh.detached().parent_comments(101), "operator", 101)
     assert any(e["event"] == "note" for e in history)
     assert not any(
         e["event"] in {"agreed", "proposal_received", "proposal_agreed"}
@@ -1498,7 +1625,7 @@ def test_task_provenance_requires_separate_autonomous_basis_and_current_adoption
     sessions: Any = importlib.import_module("parent.session")
     execution: Any = importlib.import_module("parent.execution")
     proposals_module: Any = importlib.import_module("parent.proposals")
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         store.parents["o/r#101"] = {
             "status": "active",
             "session": "claude:fixture",
@@ -1773,7 +1900,7 @@ def test_triage_publishes_only_until_the_scheduled_judgement_entry_runs(
         for c in calls
     )
     assert len(h.calls()) == 1  # Only the proposal organizer used a runtime here.
-    comments = h.gh.comment_rows[101]
+    comments = h.gh.detached().parent_comments(101)
     basis = next(
         e["basis"]
         for e in reversed(policy.events(comments, "operator", 101))
@@ -1787,9 +1914,42 @@ def test_triage_publishes_only_until_the_scheduled_judgement_entry_runs(
     h.gh.issues[100]["body"] = h.gh.issues[100]["body"].replace("- [x] **", "- [ ] **")
     snapshot = json.loads(h.tmp.joinpath("scheduled-20/input.json").read_text())
     with (
-        state.Store(h.tmp / "state/parent").locked() as store,
+        h.store.locked() as store,
         pytest.raises(ValueError, match="changed"),
     ):
         judgement.assert_candidate_fresh(
             h.gh, store, h.root, snapshot, results[-1]["candidates"][0]
         )
+
+
+def test_organization_keeps_concurrent_delegation_and_rejects_old_plan(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.support.agents_ops.registry_io import probe
+
+    h = harness
+    execute = org.execute
+
+    def concurrent_delegation(root: Path, work_dir: Path) -> Any:
+        plan = execute(root, work_dir)
+        probe(h.store.directory / "registry.lock")
+        with state.Store(h.store.directory).locked() as peer:
+            peer.parents["o/r#1"] = {
+                "session": "claude:concurrent-owner",
+                "status": "active",
+                "generation": 1,
+                "tasks": {"2": {"delegated": True, "delegation_id": "new-delegation"}},
+                "reviews": [],
+            }
+            peer.save()
+        return plan
+
+    monkeypatch.setattr(org, "execute", concurrent_delegation)
+    with pytest.raises(ValueError, match="inputs changed before publication"):
+        h.run()
+    assert h.gh.writes == []
+    with h.store.locked():
+        assert (
+            h.store.parents["o/r#1"]["tasks"]["2"]["delegation_id"] == "new-delegation"
+        )
+    assert h.tmp.joinpath("run-1/organization-intent.json").is_file()

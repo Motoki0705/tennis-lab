@@ -1,7 +1,7 @@
 """Browse an EXISTING Clip Studio project without edits, sync jobs or exports.
 
 python -m src.tennis_scene.clip_studio --data-root /path/to/data \
-    --source-directory tennis_multivew/raw/meiji_3cam/video_000 --port 8904
+    --source-directory tennis_multiview/raw/meiji_3cam/video_000 --port 8904
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> None:
         "--data-root",
         type=Path,
         required=True,
-        help="既存data root（tennis_multivewを含む）",
+        help="既存data root（tennis_multiviewを含む）",
     )
     parser.add_argument(
         "--source-directory", required=True, help="DATA相対のraw/<dataset>/<video>経路"
@@ -86,9 +86,9 @@ def main(argv: list[str] | None = None) -> None:
     del cfg["defaults"]
     del cfg["hydra"]
     cfg.paths = {key: str(value) for key, value in roots.as_mapping().items()}
-    cfg.source_directory = (
-        paths.declared("source_directory").path.relative_to(data_root).as_posix()
-    )
+    cfg.source_directory = resolver.relative(
+        PathRole.DATA, paths.declared("source_directory").path
+    ).as_posix()
     cfg.gui.port = args.port
     runtime = parse_clip_studio_config(cfg)
     project = load_review_project(runtime)

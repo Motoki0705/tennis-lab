@@ -6,6 +6,7 @@ from collections import deque
 from typing import Any
 
 from issues import PARENT_LABEL, TASKS_HEADING, parse_child_tasks, parse_sections
+from issues.evidence import require_work_issue
 from parent.github import GitHub
 from parent.policy import closing_issues, nonempty, number, object_value
 
@@ -36,6 +37,7 @@ def read_tree(api: Projects, repo: str, root: int) -> dict[int, dict[str, Any]]:
     while pending:
         current = pending.popleft()
         raw = api.issue(repo, current)
+        require_work_issue(raw)
         valid = (
             raw["state"] == "OPEN" and raw["stateReason"] in {None, "REOPENED"}
         ) or (

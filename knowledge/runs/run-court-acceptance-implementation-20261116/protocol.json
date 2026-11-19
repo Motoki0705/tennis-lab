@@ -1,0 +1,30 @@
+{
+  "schema": "court_acceptance_evaluation_v1",
+  "reference_sha256": "2604bf0b70b1bc755f51a3f1b08c48cd6b98a4a7d6b0939037eb4eb85e77c6f4",
+  "reference_original_size_hw": [
+    1080,
+    1920
+  ],
+  "correct_mean_error_px": 10.0,
+  "correct_max_error_px": 25.0,
+  "correctness_mask": "reference projections inside original image, same IDs for every condition",
+  "targets": {
+    "false_accepts": 0,
+    "correct_acceptance_rate_min": 0.9,
+    "regression": "no worsening"
+  },
+  "conditions": [
+    "legacy",
+    "acceptance_only",
+    "postprocess_and_acceptance"
+  ],
+  "approval": {
+    "date": "2026-11-16",
+    "source_kind": "parent_implementation_instruction",
+    "decision_id": "034d02f3ff9549ccb586f02dc859db6b",
+    "turn_id": "e44ec0d835d84da4a40866b173f394f1",
+    "human_decision_reported_by_parent": "4cameraとも「そのまま使う」",
+    "coordinates_changed": false
+  },
+  "baseline_commit": "b46b97869"
+}

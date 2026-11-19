@@ -16,7 +16,7 @@ from src.tasks.ball_detection.models.mdd.x3d_csn import X3DCSNEncoder
 
 
 def build_mdd_encoder(config: MDDPretrainConfig) -> DeepMDDEncoder | X3DCSNEncoder:
-    """Select the explicit topology without renaming legacy checkpoint state."""
+    """Select the explicit topology without renaming checkpoint state."""
     if config.encoder_variant == "x3d_csn":
         return X3DCSNEncoder(config)
     return DeepMDDEncoder(config)

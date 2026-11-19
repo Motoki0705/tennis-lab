@@ -1,0 +1,2538 @@
+{
+  "sample_clips": [
+    0,
+    17,
+    34,
+    51,
+    68
+  ],
+  "method": "agent inspection of original RGB, no confidence/heatmap labels",
+  "points": [
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp07.png",
+      "visibility_label": "uncertain_near_occluder"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 0,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_000_frame_000000.png",
+      "crop": "cam0-clip000-kp13.png",
+      "visibility_label": "opaque_person"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 17,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_017_frame_000000.png",
+      "crop": "cam0-clip017-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 34,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_034_frame_000000.png",
+      "crop": "cam0-clip034-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 51,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_051_frame_000000.png",
+      "crop": "cam0-clip051-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp04.png",
+      "visibility_label": "uncertain_near_occluder"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam0",
+      "clip": 68,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam0/clip_068_frame_000000.png",
+      "crop": "cam0-clip068-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 0,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_000_frame_000000.png",
+      "crop": "cam1-clip000-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp06.png",
+      "visibility_label": "opaque_person"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp07.png",
+      "visibility_label": "opaque_person"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 17,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_017_frame_000000.png",
+      "crop": "cam1-clip017-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 34,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_034_frame_000000.png",
+      "crop": "cam1-clip034-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 51,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_051_frame_000000.png",
+      "crop": "cam1-clip051-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam1",
+      "clip": 68,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam1/clip_068_frame_000000.png",
+      "crop": "cam1-clip068-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 0,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_000_frame_000000.png",
+      "crop": "cam2-clip000-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 17,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_017_frame_000000.png",
+      "crop": "cam2-clip017-kp13.png",
+      "visibility_label": "opaque_person"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp05.png",
+      "visibility_label": "uncertain_near_occluder"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp10.png",
+      "visibility_label": "opaque_person"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 34,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_034_frame_000000.png",
+      "crop": "cam2-clip034-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp05.png",
+      "visibility_label": "uncertain_near_occluder"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 51,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_051_frame_000000.png",
+      "crop": "cam2-clip051-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 3,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp03.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp05.png",
+      "visibility_label": "uncertain_near_occluder"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp08.png",
+      "visibility_label": "opaque_person"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam2",
+      "clip": 68,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam2/clip_068_frame_000000.png",
+      "crop": "cam2-clip068-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 3,
+      "reference_visible": false,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": null,
+      "visibility_label": "offscreen"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 0,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_000_frame_000000.png",
+      "crop": "cam3-clip000-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 3,
+      "reference_visible": false,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": null,
+      "visibility_label": "offscreen"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp07.png",
+      "visibility_label": "opaque_person"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 17,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_017_frame_000000.png",
+      "crop": "cam3-clip017-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 3,
+      "reference_visible": false,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": null,
+      "visibility_label": "offscreen"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp05.png",
+      "visibility_label": "uncertain_near_occluder"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 34,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_034_frame_000000.png",
+      "crop": "cam3-clip034-kp13.png",
+      "visibility_label": "opaque_person"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 3,
+      "reference_visible": false,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": null,
+      "visibility_label": "offscreen"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp06.png",
+      "visibility_label": "uncertain_near_occluder"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 51,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_051_frame_000000.png",
+      "crop": "cam3-clip051-kp13.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 0,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp00.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 1,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp01.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 2,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp02.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 3,
+      "reference_visible": false,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": null,
+      "visibility_label": "offscreen"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 4,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp04.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 5,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp05.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 6,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp06.png",
+      "visibility_label": "unresolved_far_baseline"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 7,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp07.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 8,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp08.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 9,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp09.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 10,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp10.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 11,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp11.png",
+      "visibility_label": "visible_paint"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 12,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp12.png",
+      "visibility_label": "far_service_net_region_uncertain"
+    },
+    {
+      "camera": "cam3",
+      "clip": 68,
+      "kp": 13,
+      "reference_visible": true,
+      "source": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-acceptance-postprocess/tennis_scene/evaluate/court-reference-white-lines-20261116/frames/cam3/clip_068_frame_000000.png",
+      "crop": "cam3-clip068-kp13.png",
+      "visibility_label": "visible_paint"
+    }
+  ],
+  "annotation": {
+    "annotator": "Codex agent; not a new human reference approval",
+    "evidence": "original RGB contact sheets and enlarged suspects.png; model predictions hidden",
+    "scope": "20 images / 280 semantic points; 5 offscreen; no extrapolation of sample visibility labels to remaining clips",
+    "rule": "opaque_person only if body covers query; near feet/edges and unresolved far paint kept uncertain; shadow alone is not occlusion"
+  }
+}

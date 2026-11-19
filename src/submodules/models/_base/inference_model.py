@@ -53,7 +53,11 @@ class BaseInferenceModel(ABC, Generic[RequestT, ResultT]):
         """Load model weights (idempotent)."""
         if self._loaded:
             return
-        self._load_impl()
+        try:
+            self._load_impl()
+        except BaseException:
+            self._unload_impl()
+            raise
         self._loaded = True
 
     def unload(self) -> None:

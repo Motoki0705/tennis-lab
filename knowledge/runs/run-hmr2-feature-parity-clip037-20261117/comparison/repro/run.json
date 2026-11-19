@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205067248774581612_2026-11-17T16-25-51-225418387Z_133804_hmr2-body-parity-037-reboot",
+  "name": "hmr2-body-parity-037-reboot",
+  "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 .venv/bin/python -B knowledge/runs/run-hmr2-feature-parity-clip037-20261117/compare.py --main-store /home/kamimura/projects/tennis-lab/.worktree-outputs/hmr2-parity-main-20261117/hmr2_qualification/clip_037/store/bfa625f39ba2d39336cc --main-config outputs/hmr2_feature_acceptance_20261117/qualification-037.yaml --output outputs/hmr2_feature_acceptance_20261117/comparison/clip_037",
+  "provider": "codex",
+  "session": "01a1e957-e495-7ef2-81cd-bf26c4ae465a",
+  "issue": "1754",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "5a0f48053e6a479ff345cc858002752cd4f1794f",
+  "branch": "codex/hmr2-feature-artifacts",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts",
+  "captured_at": "2026-11-18T01:27:43+09:00"
+}

@@ -1,0 +1,3666 @@
+{
+  "cases": 30,
+  "only_inadmissible_competitors": 0,
+  "old_correct_and_only_inadmissible": 0,
+  "note": "Post-freeze diagnosis, no implementation or acceptance change. Valid alternate courts still require disambiguation.",
+  "records": [
+    {
+      "key": "synthetic_court_test/B00_court-sample-001296",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 9,
+          "score": 0.3750919037246409,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.946875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.925,
+              0.0,
+              0.925,
+              1.0,
+              1.0,
+              1.0,
+              0.75,
+              0.975,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.796549704642948,
+            "reverse_rms_px": 1.4267964015604262,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.6455453008123383,
+              0.02994686866817138,
+              0.6541444476086612,
+              0.32123675486280145,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001313",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 3,
+          "score": 0.27902298282255833,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.9812500000000001,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.95,
+              0.0,
+              0.975,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              0.95
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.4384689569854907,
+            "reverse_rms_px": 1.0980896767914006,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.9095791121463881,
+              0.06941752835861056,
+              0.8972611510621529,
+              0.57686380055598,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001360",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 4,
+          "score": 3.9101219590834484,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.803125,
+            "reverse_support": 0.8121421075083246,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.625,
+              0.675,
+              1.0,
+              0.125,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 28.924969976293095,
+            "reverse_rms_px": 17.784298717895325,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.2970658480778051,
+              0.30938538016670164,
+              0.3386002169581111,
+              0.49251284539807366,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001374",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 0,
+          "score": 3.0436371015024006,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.8343750000000001,
+            "reverse_support": 0.9245790050060291,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              0.95,
+              0.8,
+              0.05,
+              0.925,
+              0.95,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 14.779481492339126,
+            "reverse_rms_px": 30.83607887838761,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.544091714385841,
+              0.0,
+              1.0,
+              0.08866611830900965,
+              0.952871940433027,
+              0.30665026637726106,
+              1.0,
+              0.49883242986876375,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001489",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 2,
+          "score": 4.053006303514973,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.78125,
+            "reverse_support": 0.8138113203243581,
+            "segment_support": [
+              0.75,
+              0.0,
+              0.575,
+              0.9,
+              0.1,
+              0.975,
+              0.975,
+              0.975,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 27.813973794406643,
+            "reverse_rms_px": 31.04843382701424,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.2038757383879254,
+              0.5689695192617344,
+              0.3948986095459711,
+              0.5637647244719033,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001492",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 11,
+          "score": 0.48608044089813013,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.95,
+            "reverse_support": 0.9917839269993,
+            "segment_support": [
+              0.95,
+              0.0,
+              1.0,
+              0.95,
+              0.975,
+              0.95,
+              0.95,
+              0.85,
+              0.975
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.6846809203038275,
+            "reverse_rms_px": 13.52416707562149,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.07089090636872396,
+              0.5474161367292646,
+              0.3647701355103511,
+              0.5525469373880345,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001573",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 2,
+      "admissible_alternatives": 2,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 3,
+          "score": 0.36395183878423676,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.959375,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.925,
+              1.0,
+              1.0,
+              1.0,
+              0.75,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.6872416288376693,
+            "reverse_rms_px": 1.5278827416571976,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.7363439299552977,
+              0.17076151424997776,
+              0.7429518830925422,
+              0.5285195081142503,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 1,
+          "score": 0.3639660141698543,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.959375,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.925,
+              1.0,
+              1.0,
+              1.0,
+              0.75,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.6874749504841837,
+            "reverse_rms_px": 1.5305197742125427,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.7362127506709245,
+              0.17214593437885908,
+              0.7428847794753998,
+              0.5297165488047489,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001577",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 5,
+          "score": 4.6733162289180115,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.7472222222222222,
+            "reverse_support": 0.8358035334346704,
+            "segment_support": [
+              0.95,
+              0.1,
+              0.875,
+              0.975,
+              0.975,
+              1.0,
+              0.675,
+              0.175,
+              1.0
+            ],
+            "visible_segments": 9.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 23.48054144197883,
+            "reverse_rms_px": 15.6234713020479,
+            "visible_segment_mask": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.5372285875748313,
+              0.47554036248575854,
+              1.0,
+              0.5291532377204462,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002019",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 3,
+      "admissible_alternatives": 3,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 3,
+          "score": 0.14503857556830327,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.99375,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              0.975,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.4997349423830546,
+            "reverse_rms_px": 0.9480606138597871,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.06509968185513455,
+              0.17490561630979273,
+              0.11766406374128802,
+              0.2343309746917815,
+              1.0,
+              0.9905477429193222,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 12,
+          "score": 0.14503862171793963,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.99375,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              0.975,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.4997894412209392,
+            "reverse_rms_px": 0.9481554895741526,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.06510943709312052,
+              0.1749111738850335,
+              0.1176789564996868,
+              0.23434013923547956,
+              1.0,
+              0.9905528374494706,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 0,
+          "score": 0.14562821941838358,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.99375,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              0.975,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.509530464930458,
+            "reverse_rms_px": 0.9457195776042845,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.06656114582106859,
+              0.17476664177285994,
+              0.11964039130403503,
+              0.23458040161675106,
+              1.0,
+              0.9912631363988894,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002032",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 3,
+      "admissible_alternatives": 3,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 3,
+          "score": 1.2040174579299532,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.89375,
+            "reverse_support": 0.9927125682882009,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.925,
+              0.3,
+              0.975,
+              0.95,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 7.311041666620147,
+            "reverse_rms_px": 1.881678968999939,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.09955245423264122,
+              0.0,
+              0.7847972776451647,
+              0.013302574219276947,
+              0.7548647302339659,
+              0.2333276962687345,
+              0.4920791150270782,
+              0.3265287690896623,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 1,
+          "score": 1.216920637818355,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.890625,
+            "reverse_support": 0.9938071517833473,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.925,
+              0.3,
+              0.975,
+              0.925,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 7.315650210042644,
+            "reverse_rms_px": 1.8794724138080734,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.10043071928473016,
+              0.0,
+              0.7887194504985572,
+              0.013784319126091913,
+              0.7586815123384052,
+              0.2381320957691928,
+              0.5002315407568255,
+              0.3260999854734449,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 2,
+          "score": 1.2170204563413194,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.890625,
+            "reverse_support": 0.9938071517833473,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.925,
+              0.3,
+              0.975,
+              0.925,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 7.315637436554534,
+            "reverse_rms_px": 1.8803909810016441,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.10048557564948188,
+              0.0,
+              0.7887495524281499,
+              0.01375215980285858,
+              0.7586622273528938,
+              0.23775456752298854,
+              0.5003121119769025,
+              0.3257455079901012,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002046",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 1,
+          "score": 0.2981038562633933,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.975,
+            "reverse_support": 0.9986109993453572,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              0.975,
+              1.0,
+              0.975,
+              0.875,
+              1.0,
+              0.975
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.49159857343367,
+            "reverse_rms_px": 1.5306547204772365,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.9973285871245754,
+              0.0,
+              0.45428154594005876,
+              0.6391874593860847,
+              0.5471901242313612,
+              0.6358632314095849,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002050",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 2,
+      "admissible_alternatives": 2,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 8,
+          "score": 0.31846402446245814,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.9718749999999999,
+            "reverse_support": 0.9973161520548673,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.975,
+              0.95,
+              0.975,
+              0.975,
+              0.9,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.311648788315483,
+            "reverse_rms_px": 1.4670331298258674,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.2329973853876127,
+              0.4305779565710733,
+              0.3573568530395861,
+              0.44362560191118494,
+              1.0,
+              0.9717516512759444,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 3,
+          "score": 0.3184648995990046,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.9718749999999999,
+            "reverse_support": 0.9973161520548673,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.975,
+              0.95,
+              0.975,
+              0.975,
+              0.9,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.3113324515982496,
+            "reverse_rms_px": 1.4668432443439492,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.23285119108533728,
+              0.4306059030606743,
+              0.35724074236109843,
+              0.4436431895524633,
+              1.0,
+              0.9718189234913381,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-000992",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 4,
+      "admissible_alternatives": 4,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 16,
+          "score": 0.09398474341348304,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.2287777044155126,
+            "reverse_rms_px": 0.7402988303000356,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.1419493216857179,
+              0.1519641101103556,
+              0.21054617646915394,
+              0.22110886299284807,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 11,
+          "score": 0.09398474383382556,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.228760401896387,
+            "reverse_rms_px": 0.7402879389287231,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.14195081607134863,
+              0.15196477249296128,
+              0.21054819020327603,
+              0.22111010217100205,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 6,
+          "score": 0.09398475935975353,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.2288516719972122,
+            "reverse_rms_px": 0.7402960660310819,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.14194189992101916,
+              0.15195198209701008,
+              0.21053394650704693,
+              0.221091804731068,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 14,
+          "score": 0.09929354118258185,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.2357715012336226,
+            "reverse_rms_px": 0.7433748031385123,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.14182524377872652,
+              0.14857823218705898,
+              0.20937485207667494,
+              0.21702660822781852,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-000994",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 14,
+          "score": 0.10889123798247648,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.2773770498741073,
+            "reverse_rms_px": 0.8703834185051539,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.23120016145913416,
+              0.12379291411708335,
+              0.27965131954622174,
+              0.20509150242124913,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001027",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 3,
+      "admissible_alternatives": 3,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 6,
+          "score": 0.1154967465300894,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3553524290105041,
+            "reverse_rms_px": 0.9253006242694489,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.17779453387546415,
+              0.32323258819426615,
+              0.32222321523068415,
+              0.41508815045071085,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 11,
+          "score": 0.11549674653863524,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.355352420434443,
+            "reverse_rms_px": 0.925300630237815,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.17779453656635802,
+              0.32323259037860524,
+              0.3222232196090927,
+              0.41508815365440804,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 8,
+          "score": 0.11549674672723571,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3553521881732318,
+            "reverse_rms_px": 0.9253007417863132,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.1777945835279896,
+              0.3232326373882146,
+              0.3222232985585174,
+              0.41508821998098316,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001029",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 3,
+      "admissible_alternatives": 3,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 1,
+          "score": 0.12517856535398778,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3628136022383637,
+            "reverse_rms_px": 0.8958757532720936,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.2608777744678163,
+              0.25762319772827397,
+              0.3497400211944511,
+              0.39911285291656057,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 15,
+          "score": 0.12517882574476427,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3603409371180588,
+            "reverse_rms_px": 0.895097347595727,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.2602433988763457,
+              0.25719930589058876,
+              0.34888123753368094,
+              0.3984649317418983,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 19,
+          "score": 0.12518729984005142,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3619203793932773,
+            "reverse_rms_px": 0.894117737931373,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.2606655846437208,
+              0.2572954139509708,
+              0.3494455834523256,
+              0.3986921344437807,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001034",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 7,
+      "admissible_alternatives": 7,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 7,
+          "score": 0.10681476983837951,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3800560133043924,
+            "reverse_rms_px": 0.8437275750544052,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.32978567907327905,
+              0.06548982772702629,
+              0.35329312384157335,
+              0.1528355357633708,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 3,
+          "score": 0.10682451971529336,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3826779573228243,
+            "reverse_rms_px": 0.8477613701137915,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.329348810619161,
+              0.06471749367432482,
+              0.35277108386924205,
+              0.15202287324922142,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 6,
+          "score": 0.10683514681082525,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.381782878699349,
+            "reverse_rms_px": 0.8458191667299504,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.32939387944199194,
+              0.06549924497561557,
+              0.3528888160034842,
+              0.15271796464035556,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 19,
+          "score": 0.10692339841386324,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3831411035498233,
+            "reverse_rms_px": 0.8472611590381323,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.32904130439990664,
+              0.06525235121372128,
+              0.35250142369571186,
+              0.1523747130671622,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 16,
+          "score": 0.10727371245675221,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3786696741884645,
+            "reverse_rms_px": 0.8458688463829824,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.33066647864606546,
+              0.06585516226882364,
+              0.35424711035344597,
+              0.15345550971589886,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 0,
+          "score": 0.11585791460335895,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3982567044439982,
+            "reverse_rms_px": 0.8719238850684545,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.3286134734176874,
+              0.06351509214119544,
+              0.35193661476115223,
+              0.15067409532405934,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 8,
+          "score": 0.11588365808624973,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.996875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3964045519116055,
+            "reverse_rms_px": 0.8690035221509718,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.3288520939228742,
+              0.0646428603337774,
+              0.3522837272448553,
+              0.15173103309561745,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001060",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 9,
+      "admissible_alternatives": 9,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 19,
+          "score": 0.1158043775681744,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.99375,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.975,
+              0.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.442737030367248,
+            "reverse_rms_px": 0.939060019767813,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.12102532737891572,
+              0.35699749972033373,
+              0.2036036404501215,
+              0.3906197122923969,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 10,
+          "score": 0.11961152001094136,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3413509869127516,
+            "reverse_rms_px": 0.8728972921939999,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.1365154330881653,
+              0.36692281443220814,
+              0.2203987146108267,
+              0.40260517007266144,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 18,
+          "score": 0.11961152001912133,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.341351003879471,
+            "reverse_rms_px": 0.8728972448229808,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.13651542519080276,
+              0.3669228089820902,
+              0.2203987058669711,
+              0.40260516366441945,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 14,
+          "score": 0.11961152002150308,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3413510225610985,
+            "reverse_rms_px": 0.8728972441168289,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.13651541957669402,
+              0.366922805669474,
+              0.22039869992280386,
+              0.4026051596683328,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 22,
+          "score": 0.11961163489729705,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3412805452480432,
+            "reverse_rms_px": 0.8728568960633227,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.136522494491854,
+              0.3669396714691733,
+              0.22040979865910842,
+              0.40262329132726177,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 26,
+          "score": 0.11961163825739751,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3412874300274804,
+            "reverse_rms_px": 0.872860102403721,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.13652250028935434,
+              0.3669364286726809,
+              0.2204089253104598,
+              0.4026199974532525,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 4,
+          "score": 0.11961184138794119,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.341390782843291,
+            "reverse_rms_px": 0.8729296354192324,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.13652393726379683,
+              0.36689529347553956,
+              0.2203976201027995,
+              0.402577767429534,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 5,
+          "score": 0.1219686636529716,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.99375,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.975,
+              0.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.3741701178540355,
+            "reverse_rms_px": 0.8853075308766489,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.1342008559601092,
+              0.3630045273016711,
+              0.21692614558017623,
+              0.398273523273745,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 21,
+          "score": 0.1237171628946403,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.99375,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.975,
+              0.0,
+              1.0,
+              0.975,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.4341689407926106,
+            "reverse_rms_px": 0.9396278164981926,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.1157646232626631,
+              0.3575404365165473,
+              0.19934763574226824,
+              0.3906542855970709,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001063",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 9,
+      "admissible_alternatives": 9,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 3,
+          "score": 0.08766440135326548,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.1830404727962636,
+            "reverse_rms_px": 0.6717360496948068,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.10001726543908386,
+              0.19734634412263166,
+              0.18389860922107618,
+              0.25087383792908363,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 8,
+          "score": 0.08766440135405801,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.1830404732694302,
+            "reverse_rms_px": 0.6717360468236455,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.10001726550011623,
+              0.19734634443950058,
+              0.18389860940880434,
+              0.2508738383251723,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 20,
+          "score": 0.08766440135423426,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.1830404736815434,
+            "reverse_rms_px": 0.6717360434559775,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.1000172655701976,
+              0.19734634485529481,
+              0.18389860963719157,
+              0.25087383883961384,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 12,
+          "score": 0.08766440135557285,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.1830404740169504,
+            "reverse_rms_px": 0.6717360428286163,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.10001726561198378,
+              0.1973463448579386,
+              0.18389860970333302,
+              0.2508738388554121,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 0,
+          "score": 0.09429163038424845,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.1993892391607182,
+            "reverse_rms_px": 0.6886048068207571,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.0995918144666173,
+              0.1971239809011578,
+              0.18324913334358114,
+              0.25040367184685797,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 1,
+          "score": 0.09643818463966097,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.1999258210658286,
+            "reverse_rms_px": 0.6862456125874746,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.09745370429623097,
+              0.19487011374611193,
+              0.1800764655873278,
+              0.24749012434865972,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 6,
+          "score": 0.09643818463998165,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.1999258228523255,
+            "reverse_rms_px": 0.6862456150176164,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.09745370407705327,
+              0.19487011348110586,
+              0.18007646521243512,
+              0.24749012398618045,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 10,
+          "score": 0.09643818464001225,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.1999258231611936,
+            "reverse_rms_px": 0.686245615285556,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.09745370396566885,
+              0.19487011342074864,
+              0.18007646504732835,
+              0.24749012389253303,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 18,
+          "score": 0.09643818464002869,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 1.0,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 1.199925823249771,
+            "reverse_rms_px": 0.6862456153332448,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.09745370381701009,
+              0.19487011339133145,
+              0.18007646484172918,
+              0.24749012382960933,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001155",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 2,
+      "admissible_alternatives": 2,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 9,
+          "score": 0.3403732473599809,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.921875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.85,
+              0.0,
+              0.875,
+              1.0,
+              1.0,
+              0.975,
+              0.725,
+              0.95,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.7605860149864827,
+            "reverse_rms_px": 1.3383085994946138,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.8901415712749188,
+              0.10304176925808863,
+              0.8752071023759083,
+              0.425118478814543,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 4,
+          "score": 0.3403732546896375,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.921875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.85,
+              0.0,
+              0.875,
+              1.0,
+              1.0,
+              0.975,
+              0.725,
+              0.95,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.7605874446494694,
+            "reverse_rms_px": 1.3383096496149176,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.8901426450866681,
+              0.10304316073381627,
+              0.8752082022514868,
+              0.42512012474561967,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001173",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 8,
+          "score": 2.597225942010424,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.7972222222222222,
+            "reverse_support": 0.9134711391384625,
+            "segment_support": [
+              0.875,
+              0.15,
+              0.925,
+              1.0,
+              1.0,
+              0.95,
+              1.0,
+              0.325,
+              0.95
+            ],
+            "visible_segments": 9.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 10.739857585093569,
+            "reverse_rms_px": 6.183577769181526,
+            "visible_segment_mask": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.24992970145475848,
+              0.7280820267018684,
+              0.9773396835575432,
+              1.0,
+              0.9790986066392785,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001200",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 3,
+          "score": 0.35834498947430227,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.934375,
+            "reverse_support": 0.9992784644386403,
+            "segment_support": [
+              0.925,
+              0.0,
+              1.0,
+              1.0,
+              0.925,
+              0.975,
+              0.675,
+              0.975,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.874444360714527,
+            "reverse_rms_px": 1.4256985466698415,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.9865058905508314,
+              0.10605226733172109,
+              0.9665778585384626,
+              0.4605470458261248,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001211",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 3,
+      "admissible_alternatives": 3,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 0,
+          "score": 0.3755461504059499,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.9611111111111111,
+            "reverse_support": 0.9772790802817557,
+            "segment_support": [
+              1.0,
+              1.0,
+              0.95,
+              0.95,
+              0.975,
+              1.0,
+              0.875,
+              0.9,
+              1.0
+            ],
+            "visible_segments": 9.0,
+            "supported_segments": 9.0,
+            "forward_rms_px": 2.3898831632375246,
+            "reverse_rms_px": 2.3948970022774656,
+            "visible_segment_mask": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.2564024145312815,
+              0.01671770554992553,
+              0.0869750598109511,
+              1.0,
+              0.3419267064000668,
+              1.0,
+              0.919379106270791,
+              0.42485558033332355,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 3,
+          "score": 0.3779541774469932,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.9611111111111111,
+            "reverse_support": 0.9778678714680313,
+            "segment_support": [
+              1.0,
+              1.0,
+              0.95,
+              0.95,
+              0.95,
+              1.0,
+              0.9,
+              0.9,
+              1.0
+            ],
+            "visible_segments": 9.0,
+            "supported_segments": 9.0,
+            "forward_rms_px": 2.40108742932267,
+            "reverse_rms_px": 2.403411881401746,
+            "visible_segment_mask": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.2560343611294179,
+              0.016904314223547025,
+              0.08770486531765603,
+              1.0,
+              0.3435652436946696,
+              1.0,
+              0.9060639718481204,
+              0.4360175329973001,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 1,
+          "score": 0.3779813831197219,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.9611111111111111,
+            "reverse_support": 0.9767978593938504,
+            "segment_support": [
+              1.0,
+              1.0,
+              0.95,
+              0.95,
+              0.95,
+              1.0,
+              0.9,
+              0.9,
+              1.0
+            ],
+            "visible_segments": 9.0,
+            "supported_segments": 9.0,
+            "forward_rms_px": 2.3989780363448228,
+            "reverse_rms_px": 2.4092471173860406,
+            "visible_segment_mask": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.2563569298332876,
+              0.016784812400845093,
+              0.0871586432311134,
+              1.0,
+              0.34311137265902536,
+              1.0,
+              0.906905097833791,
+              0.4353285161599987,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001212",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 2,
+      "admissible_alternatives": 2,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 2,
+          "score": 3.912504971618606,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.828125,
+            "reverse_support": 0.8651183626848241,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.075,
+              0.825,
+              0.9,
+              0.825,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 11.733041439199967,
+            "reverse_rms_px": 30.36105031366865,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.7241416455165249,
+              0.0,
+              0.1528054678926204,
+              0.9252781019211291,
+              0.34753283780520855,
+              0.8674968134309192,
+              1.0,
+              0.5453261517035853,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 3,
+          "score": 3.9136638589452866,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.834375,
+            "reverse_support": 0.8651183626848241,
+            "segment_support": [
+              1.0,
+              0.0,
+              1.0,
+              1.0,
+              0.1,
+              0.85,
+              0.9,
+              0.825,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 11.769798868886465,
+            "reverse_rms_px": 30.455916552245395,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              0.7344866395076155,
+              0.0,
+              0.1277752227755449,
+              0.9198160183568822,
+              0.33014761541757476,
+              0.8615914354834289,
+              1.0,
+              0.5416910205174414,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001219",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 0,
+          "score": 3.432125109408377,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.809375,
+            "reverse_support": 0.8107452276562774,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.65,
+              1.0,
+              0.225,
+              1.0,
+              0.8,
+              0.95,
+              0.85
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 7.0,
+            "forward_rms_px": 9.414884513075533,
+            "reverse_rms_px": 21.145520803008587,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.19421399436009074,
+              0.6401918516094907,
+              0.33751322506953263,
+              0.6224217708757337,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001221",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 4,
+      "admissible_alternatives": 4,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 9,
+          "score": 0.674765789783082,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.903125,
+            "reverse_support": 0.962265981060912,
+            "segment_support": [
+              0.9,
+              0.0,
+              0.975,
+              0.975,
+              0.85,
+              0.975,
+              0.975,
+              0.975,
+              0.6
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 3.395933239516268,
+            "reverse_rms_px": 2.6897184370660745,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.11236355953038722,
+              0.8070214706020195,
+              0.4510503966380454,
+              0.7921640920770309,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 1,
+          "score": 0.6747657900386506,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.903125,
+            "reverse_support": 0.962265981060912,
+            "segment_support": [
+              0.9,
+              0.0,
+              0.975,
+              0.975,
+              0.85,
+              0.975,
+              0.975,
+              0.975,
+              0.6
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 3.3959334070716407,
+            "reverse_rms_px": 2.689718494280543,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.11236355841425524,
+              0.8070214669433576,
+              0.45105038787742235,
+              0.792164087872446,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 8,
+          "score": 0.6747657900989097,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.903125,
+            "reverse_support": 0.962265981060912,
+            "segment_support": [
+              0.9,
+              0.0,
+              0.975,
+              0.975,
+              0.85,
+              0.975,
+              0.975,
+              0.975,
+              0.6
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 3.395933441219149,
+            "reverse_rms_px": 2.6897185045439396,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.11236355902889772,
+              0.8070214647716167,
+              0.4510503859656808,
+              0.7921640856773006,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 0,
+          "score": 0.6787316889944643,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.903125,
+            "reverse_support": 0.9609203870078907,
+            "segment_support": [
+              0.9,
+              0.0,
+              0.975,
+              0.975,
+              0.85,
+              0.975,
+              0.975,
+              0.975,
+              0.6
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 3.4126967048497874,
+            "reverse_rms_px": 2.6985013375745037,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.13772152585480715,
+              0.8146188576212842,
+              0.4708186427960581,
+              0.8002552370564825,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001806",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 0,
+          "score": 0.3473380209768804,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.978125,
+            "reverse_support": 1.0,
+            "segment_support": [
+              1.0,
+              0.0,
+              0.9,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              0.975,
+              0.95
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.6386311528844786,
+            "reverse_rms_px": 1.5044313443275834,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.6812129541287716,
+              0.11048136668216813,
+              0.6954130938617176,
+              0.44827906703210274,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001809",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 0,
+          "score": 4.574454224860266,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.715625,
+            "reverse_support": 0.7737970794560642,
+            "segment_support": [
+              0.825,
+              0.0,
+              0.975,
+              0.425,
+              0.775,
+              0.1,
+              0.675,
+              0.95,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 6.0,
+            "forward_rms_px": 23.350652437500074,
+            "reverse_rms_px": 32.63922493547319,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.6705880811624731,
+              0.12182064042992342,
+              0.6534573530746676,
+              0.3379226151824519,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001842",
+      "legacy_correct": true,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 2,
+      "admissible_alternatives": 2,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 6,
+          "score": 0.34024597456396,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.9656250000000001,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.925,
+              0.0,
+              0.85,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              0.95,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.670514430138815,
+            "reverse_rms_px": 1.4656630878364107,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.6710651342085843,
+              0.1299045300973412,
+              0.6845105627452476,
+              0.4493296725341033,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "candidate_id": 8,
+          "score": 0.3489932907111986,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.971875,
+            "reverse_support": 1.0,
+            "segment_support": [
+              0.95,
+              0.0,
+              0.875,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              0.95,
+              1.0
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 8.0,
+            "forward_rms_px": 2.6732104086950836,
+            "reverse_rms_px": 1.4651890977150397,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.6756866180485245,
+              0.18280260257935171,
+              0.6915255146423698,
+              0.5003057051402309,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001890",
+      "legacy_correct": false,
+      "best_passes_line_gate": true,
+      "competitive_alternatives": 1,
+      "admissible_alternatives": 1,
+      "all_competitors_fail_line_gate": false,
+      "alternatives": [
+        {
+          "candidate_id": 4,
+          "score": 7.679428104663993,
+          "passes_line_gate": true,
+          "line": {
+            "forward_support": 0.640625,
+            "reverse_support": 0.7563902027982332,
+            "segment_support": [
+              0.975,
+              0.0,
+              0.175,
+              0.975,
+              0.075,
+              1.0,
+              0.975,
+              0.025,
+              0.925
+            ],
+            "visible_segments": 8.0,
+            "supported_segments": 5.0,
+            "forward_rms_px": 50.1858849524142,
+            "reverse_rms_px": 47.290737132843795,
+            "visible_segment_mask": [
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "visible_segment_fraction": [
+              1.0,
+              0.0,
+              0.3081256033252202,
+              0.10564920567889778,
+              0.3148018382077386,
+              0.1301973613339056,
+              1.0,
+              0.7409359580441492,
+              1.0
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

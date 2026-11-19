@@ -5,6 +5,8 @@ description: Use this skill to enqueue training or experiment commands in a file
 
 # Training Queue
 
+Local D:/E: placement, hydration and retention follow [storage-tier](../../ops/storage_tier/README.md).
+
 ## When to use
 
 Use this when training runs (or other long GPU commands) must share one GPU.

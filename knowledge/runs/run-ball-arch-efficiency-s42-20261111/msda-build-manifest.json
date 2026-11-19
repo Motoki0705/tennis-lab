@@ -1,0 +1,68 @@
+{
+  "schema": "official_msda_build.v1",
+  "official": {
+    "repository": "https://github.com/fundamentalvision/Deformable-DETR",
+    "commit": "11169a60c33333af00a4849f1808023eba96a931",
+    "license": "Apache-2.0"
+  },
+  "dino": {
+    "commit": "d84a491d41898b3befd8294d1cf2614661fc0953",
+    "cuda_cpp_all_identical": true,
+    "function_identical": true,
+    "module_difference": "DINO adds FP16 branch; adapter vendors official module without it"
+  },
+  "source_sha256": {
+    "ms_deform_attn.h": "2fdc244f99e3e3b9af8dae02e09139de3f546eef83748495c3f175f48278cf41",
+    "vision.cpp": "8dec032236873cee3ae86921dabbbb02c62ffd95ddbb83aef0b1b856771e8a61",
+    "cuda/ms_deform_attn_cuda.h": "c9cd9345e0881dfeebbfa5e98b6e6990a3d415a430bcbaaba3706ce5a2379401",
+    "cuda/ms_deform_attn_cuda.cu": "65cf318c67d99d6b163027e7190bc8776ff16a7197b332ad537f70cf6cc12be0",
+    "cuda/ms_deform_im2col_cuda.cuh": "136729520587cbf0593209d692af61a1e8af5909bcf34b8bacb8844878496bad",
+    "cpu/ms_deform_attn_cpu.cpp": "d7f7c3d2df2484f3905005e13c8dc12dd943fd4451a59a059bda367eefa4dccd",
+    "cpu/ms_deform_attn_cpu.h": "b9114ab52ea7610184b3eb9672731c3d1a7ce92e69bfdec6cf661ae988416aef"
+  },
+  "compatibility_patch": "msda-compatibility.patch",
+  "build": {
+    "config": {
+      "compressed_time_local_bindings": "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
+      "compressed_time_local_kernels": "src/utils/models/components/ops/compressed_time_local/kernels.cu",
+      "destination": "dino_ops_sources",
+      "destination_role": "cache",
+      "paths": {
+        "artifact_root": "/content/tennis-lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/msda-build",
+        "cache_root": "/content/tennis-lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/msda-build/cache",
+        "checkpoint_root": "/content/tennis-lab/.claude/worktrees/ball-arch-efficiency/ckpt",
+        "data_root": "/content/tennis-lab/.claude/worktrees/ball-arch-efficiency/data",
+        "external_asset_root": "/content/tennis-lab/.claude/worktrees/ball-arch-efficiency/third_party",
+        "output_root": "/content/tennis-lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/msda-build",
+        "project_root": "/content/tennis-lab/.claude/worktrees/ball-arch-efficiency"
+      },
+      "source": "DINO/models/dino/ops/src",
+      "source_role": "external_asset"
+    },
+    "environment": {
+      "CUDA_HOME": "/usr/local/cuda",
+      "MAX_JOBS": "2",
+      "TORCH_CUDA_ARCH_LIST": "8.9"
+    },
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Aug_20_01:58:59_PM_PDT_2025\nCuda compilation tools, release 13.0, V13.0.88\nBuild cuda_13.0.r13.0/compiler.36424714_0\n",
+    "torch": "2.14.1+cu130",
+    "torch_cuda": "13.0"
+  },
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "python": "3.13.16",
+  "device": "NVIDIA L4",
+  "compute_capability": [
+    8,
+    9
+  ],
+  "driver": "580.82.07",
+  "command": "CUDA_HOME=/usr/local/cuda TORCH_CUDA_ARCH_LIST=8.9 MAX_JOBS=2 bash scripts/build_dino_extension.sh <worktree> <run>/msda-build",
+  "numerical_check": {
+    "result": "msda-numerical-check.json",
+    "gradcheck_fast_mode": true,
+    "nondet_tol": 1e-10,
+    "first_attempt": "msda-check.log",
+    "reason": "upstream CUDA atomic accumulation is not bitwise reentrant at large channel widths; no algorithm changes"
+  },
+  "binary_sha256": "c56739efd1d2b9d13134901733ac9da3e661968d2eb2144782412cb27d652549"
+}

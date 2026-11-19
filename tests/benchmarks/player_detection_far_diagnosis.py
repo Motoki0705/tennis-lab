@@ -46,7 +46,7 @@ def preflight(repo: Path, comparison_path: Path, report: Path) -> dict[str, Any]
     comparison = json.loads(comparison_path.read_text())
     if comparison['status'] != 'ok' or set(comparison['variants']['player_ft']['clips']) != set(DEV_CLIPS):
         raise ValueError('Require the completed four-dev-clip detector comparison')
-    dataset = repo / 'data/tennis_multivew/processed/meiji_3cam/dataset'
+    dataset = repo / 'data/tennis_multiview/processed/meiji_3cam/dataset'
     reservation = dataset / 'annotations/player_association/unseen_protocol.json'
     unseen = json.loads(reservation.read_text())
     if set(unseen['clips']).intersection(DEV_CLIPS):

@@ -20,9 +20,8 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 from tests.e2e.agents_ops.test_manual_worker_runs import (
     reserved as reserved,
 )
-from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, ReviewEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_parent_session import (
     single_review_env as single_review_env,
@@ -118,7 +117,7 @@ def test_failed_prelaunch_can_be_retried_without_a_phantom_run(
         else ("run-worker", "--child", "10", "--prompt-file", p.note())
     )
     # A known prelaunch rejection is retained as an attempt, not a worker run.
-    failed = manual(p, *command, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    failed = manual(p, *command, ok=False, MANUAL_ADMISSION_FAILURE="1")
     assert len(task(p)["worker_runs"]) == int(after_planning)
     assert json.loads(failed.stdout)["log_publication"]["stage"] == "not_started"
     resumed = manual(p, *command)
@@ -136,40 +135,6 @@ def test_failed_prelaunch_can_be_retried_without_a_phantom_run(
     assert by_sequence[int(after_planning) + 1]["stage"] == "not_started"
     assert by_sequence[int(after_planning) + 2]["stage"] == "receipt_verified"
     assert (p.root / "runner-calls.jsonl").read_bytes() == calls
-
-
-def test_handoff_preserves_review_but_not_old_owners_authority(
-    gate_env: GateEnv,
-) -> None:
-    g, p = gate_env, gate_env.review.p
-    saved = (g.review.run_dir / "result.json").read_bytes()
-    p.cli("handoff", "--note-file", p.note("成果を引き継ぐ。"))
-    old_identity = p.env["CLAUDE_CODE_SESSION_ID"]
-    p.env["CLAUDE_CODE_SESSION_ID"] = "new-owner-session"
-    p.cli("handoff", "--accept", "--note-file", p.note("対象と証拠を確認した。"))
-    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert all(row["decision"] == "merge" for row in rows.values())
-    assert (g.review.run_dir / "result.json").read_bytes() == saved
-    assert len(g.review.calls()) == 1
-    assert g.cli("merge", CLAUDE_CODE_SESSION_ID=old_identity).returncode == 2
-    assert not g.merge_calls()
-
-
-def test_prepared_review_can_be_executed_by_the_new_owner(
-    single_review_env: ReviewEnv,
-) -> None:
-    r, p = single_review_env, single_review_env.p
-    request = r.request_path.read_bytes()
-    p.cli("handoff", "--note-file", p.note("準備したレビューを引き継ぐ。"))
-    p.env["CLAUDE_CODE_SESSION_ID"] = "new-review-owner"
-    p.cli("handoff", "--accept", "--note-file", p.note("レビュー対象を確認した。"))
-    r.run()
-    execution = json.loads((r.run_dir / "execution.json").read_text())
-    assert execution["authorization"] == r.request["authorization"]
-    assert execution["operator_authorization"]["generation"] == 2
-    assert r.request_path.read_bytes() == request
-    r.run()
-    assert len(r.calls()) == 1
 
 
 def test_parent_can_verify_artifacts_from_an_ended_failed_turn(

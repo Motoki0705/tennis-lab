@@ -8,11 +8,16 @@
 | `components/` | 検出、追跡、pose、人物対応、幾何、身体復元・配置。各IO契約の所有者 |
 | `input_assembly/` | 宣言済み成果物のcamera/frame/track照合とInput構築。store全体へ自由に問い合わせない |
 | `definition.py` | 実装の選択、入力portとproducerの明示的な接続、モデル資産・設定の束縛 |
-| `runner.py` | 宣言の互換性・循環検査、依存順実行、execute/load、公開の共通手順 |
+| `execution_plan.py` | 複数clipの依存計画、宣言の互換性・循環検査、nodeごとのcache/load判定 |
+| `runner.py` | 依存が揃ったnodeの実行・公開、clipの最終化。`ComponentRunner`は単一clipの互換入口 |
+| `inference_runtime.py` | 内容ベースの共有キー、モデルの遅延読込・借用・最終需要後の解放、計測hook |
+| `model_resources.py` | 複数componentが使うViTPose・外観encoderの共通モデル宣言 |
+| `clip_inputs.py` | datasetのclip選択・manifest/media解決、sourceの同期・frame数検証、実行前後の入力照合 |
+| `dataset_publication.py` | dataset完成markerの再利用判定、scene契約検証、`annotation.json`の原子的公開と失敗marker |
 | `storage/codec.py` | componentが宣言したOutput型をJSONと数値配列へ保存・復元。pickleや動的class importは使わない |
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
 | `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
-| `orchestrator.py` | source動画の束縛、標準recipeのcomposition、scene export、実行receipt |
+| `orchestrator.py` | 共通入力部品への動画束縛、標準recipeから1clipの計画を作成・実行・最終化、実行receipt |
 | `direct_annotation/` | 白紙注釈request・固定幾何参照と、scene完了・公開だけの再開 |
 | `feature_flags.py` | 無効化できる出力機能（`OPTIONAL_FEATURES`）とその依存関係 |
 
@@ -20,10 +25,117 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 `ball_detection.method=model`が既定。`gpt_annotation`の設定・分離したreceipt・復旧・後続受入は
 [一連実行のREADME](direct_annotation/README.ja.md)を正本とする。
 
+## 実行計画と入口
+
+`ExecutionPlan`は`ClipExecution(clip_id, nodes, store, overwrite, targets)`の列を受け取り、
+nodeを`(clip_id, node名)`で識別する。bindingsは同じclip内のproducerだけを参照し、
+異なるclipに同じnode名があってもstoreと依存参照は混ざらない。clip IDとstoreの重複は拒否する。
+`targets`を指定すると、その依存閉包だけを実行する。
+
+`PlanExecutor.run()`は依存が揃ったnodeを順次処理する。
+`select_ready(ready_keys) -> key`で、その時点で実行可能なnodeの選択方針を差し替えられる。
+既定はruntimeが常駐中のモデルを使うready nodeを優先し、次にモデル不要のnode、最後に宣言順を使う。
+同順位では追加で必要なモデルが少ないnodeを先に選ぶ。依存の揃わないnodeは選ばない。
+cache/load判定は依存artifactが確定してから1回だけ行い、完了したnodeはoverwriteでも再実行しない。
+外側から`run(targets=...)`を繰り返してschedulerを作る必要はない。
+計画中のclip一覧・実行順・選択方針はidentityに加えず、componentの設定全体
+（モデル種別・前処理を含む）・資産・実装・source・上流参照の既存identityを保持する。
+
+`finalize_clip(clip_id)`は、そのclipの必要nodeが完了した時点でsceneをexportする。
+`run(on_clip_complete=callback)`はclipが完成した直後に1回通知するため、
+callbackから最終化とdataset公開を呼び、後続clipの処理を待たずに公開できる。
+通知はcallbackを呼ぶ前に`completion_attempts`へ記録し、成功・失敗とエラー情報を
+`completion_results[clip_id]`（`ClipCompletionResult`）へ保存する。
+callbackの例外はそのまま呼出し側へ伝わる。同じexecutorを再開しても、失敗したcallbackは再通知しない。
+呼出し側はnode完了と公開成否を分けて読み、失敗clipの処理と独立した他clipの再開を判断する。
+他clipの完了を待たず、失敗・未処理のclipは最終化しない。モデルの共有・寿命管理やbatch化は実行計画の責務に含めない。
+既存の`ComponentRunner(nodes, store)`・`run(targets=...)`・`output(name)`は1clipの同じ計画へ委譲する。
+
+単一動画入口は`prepare_clip_source`で実mediaの時間軸を検証し、入力hashを実行後・export前に照合する。
+dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manifestとrecordの時間軸・mediaを検証し、
+同じ単一clip入口を呼ぶ。完成markerの呼出し順序と失敗継続は
+[generate_dataset](../generate_dataset/README.md)を参照する。共通関数は複数clip入口からも個別に呼び出せる。
+
+## モデルの所有と寿命
+
+推論を持つcomponentは`InferenceComponent`を実装し、`model_specs()`でaliasと`ModelSpec`を宣言する。
+`process_with_models(inputs, models)`は`models.borrow(alias)`で借りる。宣言やcache判定ではモデルを起動しない。
+通常の`process(inputs)`も、同じruntimeを1nodeの寿命で使う。componentには重みを保持しない。
+
+`ModelSpec`はモデル種別・architecture/encoder・device・dtype・前処理/推論設定と、名前付き資産path、
+生成・初期化・解放のcallbackを持つ。`key`は資産のSHA-256と設定のcanonical JSONを含み、
+clip/camera IDと資産pathを含めない。同じ内容の別pathは共有でき、異なる重み・設定は共有しない。
+checkpoint内のarchitectureは重み全体の内容identityにも含まれる。
+手動の`ComponentNode`も、`settings.models`へ`model_identities(component.model_specs(), catalog.file_identity)`で
+モデル宣言を束縛する。execute/cache判定前に実際の宣言と照合し、未束縛・差し替えを拒否する。
+この照合は束縛済みdigestを使い、checkpointを読み直さない。明示loadは保存済みの契約・identityを照合する。
+`standard_definition(overrides=...)`とorchestratorの`components`は、選択したcomponentの実ModelSpecを
+nodeと完成markerの`component_overrides`へ含める。モデル宣言がない差し替えは、処理設定を返す
+`cache_identity() -> Mapping`が必要となる。モデル以外の追加設定もこのmethodで宣言する。
+クラス名だけの差し替え・未知のnode名は拒否し、標準componentへ置き換えない。
+runtimeはnodeの成果物settingsに`file_identity`で束縛したSHAを`expected_assets`として受け取り、
+初回借用時もそのSHAと照合する。宣言済み資産の置換・欠落は公開前に停止する。
+開始した計画内でキーを固定し、借用時・初期化直後の資産変更も停止する。
+Courtはcheckpoint metadataをCPUで読み、同じresolverで解決した外部DINOv3 backboneとrepository内の
+全Python source（相対名と内容SHA）を共有キーと成果物settingsの`external_assets`に含める。
+通常clipの完成markerを照合するpublication identityにも同じCourt資産を含め、外部資産の変更を再利用で見逃さない。
+cache/loadでも資産の宣言・metadata検証は行うが、推論モデルは構築しない。
+同じ`CourtKPConfig`で構築するnode/clipは`asset_catalog`でmetadataと内容digestを共有する。
+checkpointのCPU metadata読込と全量hashは同じ資産につき各1回。statの変更でcacheを無効にし、
+metadata読込中の変更も拒否する。新しいconfig（`dataclasses.replace`を含む）は新しいcatalogを作る。
+全推論nodeの成果物settingsと完成markerは、標準のcomponent構築と同じ`ModelSpec`から有効な
+device・dtype・architecture・推論設定・資産を列挙する。標準poseはtrackingのevidenceとその依存identityを使う。
+Court成果物の来歴は各nodeの束縛から記録する。
+人物検出は外部DINOのPython sourceと、指定されている場合はDINO native extensionの内容も含める。
+未指定のextensionは実ローダーが明示的に停止し、宣言後のextension選択変更も初期化前に拒否する。
+外観encoderのfactoryには宣言・SHA照合に使ったcheckpoint pathをそのまま渡す。
+外観DINOv3も外部Python実装の内容をキーに含める。実hub loaderはimport済み`dinov3` namespaceの
+実装identityをprocess内で固定し、安全に切り替えられない別実装や未管理の事前importは明示拒否する。
+実装を切り替えるときは新しいprocessを使う。同内容の別pathは共有できる。
+hubからimportした`dinov3.*`の`__file__`も宣言inventoryと照合する。外部package・外部子module・出自不明を拒否し、
+失敗したimportを同じprocessで再試行しない。既存namespaceを別repositoryから再loadする場合も、読込元が異なれば
+新しいprocessが必要となる。同内容のモデルをruntime内で共有する内容キーの契約は変わらない。
+人物検出DINOも、models/utilのimportとbuild後に同じ出自検査を行う。
+repository配下のsymlink（ディレクトリ・循環・切れたリンクを含む）は、Python import対象の全列挙を保証できないため生成前に拒否する。
+既知の制限: 実行中にPython sourceを追加・書換する運用と、dataset入口の完成marker identity取得後に
+checkpointを置き換える運用は対象外（親 #1734 の判断）。実行中の資産は固定する。
+順序選択の未常駐モデルの宣言は、種類・設定・資産pathだけで必要数を見積もり、資産を要求しない。
+初回借用と、常駐モデルに対する同条件の残り需要を調べる段階で内容キーを解決する。
+分岐により借用されない任意モデルの資産が無くても、cache/loadや他モデルの処理を妨げない。
+実際に借用する場合の資産欠落は停止し、別モデルへ置き換えない。
+
+`PlanExecutor.run()`は今回のtargetsの未完了nodeにruntimeを1つ作る。
+最初の借用で初期化し、そのキーを宣言する最後のnodeが完了した直後に解放する。
+cache hitのnodeも需要を消費するが借用しない。明示的な`load` nodeには最初からモデル需要がない。
+全cache hit・全loadならモデルの生成・初期化・解放イベントは0となる。
+例外・KeyboardInterrupt・公開失敗でもcontext終了時に残るモデルを解放する。
+原因例外・抑制されたcontext・例外groupを含む失敗tracebackの完了済みframeからlocal参照を除去する。
+計測hookの`__exit__`が例外を抑制しても、factory・initialize・release・cleanupの失敗は外側へ伝播する。
+モデル操作とhookの双方が失敗した場合は例外groupへ保持する。
+例外の構造とstack位置は診断用に保持する。成果物の`store.publish`・active参照更新・成功statusは
+nodeの解放・hook完了後に行う。解放失敗では旧active参照を保持し、新しいexecutorでも失敗出力をcache hitしない。
+
+共有対象はCourt、DINO、Ball、ViTPose、CLIP（追跡・選別の画像推論経路・人物対応）、HMR2、GVHMR、
+身体配置のSMPL-X/変換行列/関節・root regressor。tracker・AFLink・時系列入力は共有モデルへ混ぜない。
+追跡はViTPoseとCLIPを同時に必要とする。HMR2画像特徴とGVHMRは別nodeで処理し、
+HMR2の最終需要の後に解放してからGVHMRの時系列推論へ進める。
+依存に従ってモデルの段階をまとめ、全モデルを常時GPUへ載せない。
+途中targetsで`run()`を分けるとcontextごとに解放し、次の実行で必要なモデルは新しいpassとして読み込む。
+単独の`execute(key)`も1nodeで寿命を閉じる。処理済みartifactは再計算しない。
+
+計測は任意の`model_event(action, model, *, weights, device, dtype, instance)` context-manager hookへ渡す。
+`PlanExecutor`・`ComponentRunner`・`TennisSceneOrchestrator`（`from_config` / `from_runtime_config`を含む）の
+`model_event=`から指定でき、実際の生成/初期化と解放だけを囲む。借用回数をload回数として数えない。
+hook失敗時も後始末を実行し、エラーは呼出し側へ返す。
+C1のrecorder統合時はその`model_event`を渡し、管理下のモデルで下位の`model_action`/`model_release`と
+二重計数しないよう、runtime境界を記録の所有者にする。
+
+
 ## 処理単位
 
 `court_detection`・`person_detection`・`person_tracking`・`player_selection`・`pose_estimation`・`ball_detection`はcameraごとに独立する。
-`court_detection`は各cameraのframe 0だけをKP＋LINE共同推定し、`court_observations` schema v2で保存する。
+既定の `court_kp.mode=clip` では、`court_detection`は各cameraのframe 0だけをKP＋LINE共同推定し、`court_observations` schema v2で保存する。
+明示的な `video_shared` は[動画共有コート成果物](video_court/README.ja.md)をbuild/loadし、同じvideo・cameraの共通Hとdrift診断をschema v3で入力する。
 `court_calibration`はこの1frameから初期校正・ROIを作り、固定cameraのコート座標を全frameへ明示的にbroadcastする。
 `observed_frame_indices=[0]`と`temporal_policy`を保存し、他frameでモデルを実行したとは扱わない。
 人物検出は校正成否に依存せず全画面で実行する。未校正cameraの選手選別は理由付きの空結果を保存する。
@@ -38,7 +150,7 @@ ball_points＋court → court_side（ballだけのhalf-turn仮説検定）
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
 ball_points＋camera → ball_triangulation
-人物対応＋2D観測＋camera → body_view_selection → gvhmr
+人物対応＋2D観測＋camera → body_view_selection → hmr2_features → gvhmr
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
 
@@ -49,9 +161,21 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 `person_detections` v2のcheckpoint hash・全画面scopeがartifact identityと下流の依存参照を変える。
 旧ROI検出・pose・文脈を新しい経路の成果物として再利用できない。
 
+`people_models.runtime.dino_detector.precision` と `people_models.runtime.vitpose.precision` に
+`fp32`（既定）、`bf16`、`fp16` を個別に指定できる。半精度はモデルforwardのautocastで選び、
+ViTPoseのheatmap復号とDINOのscore・box復号はFP32で行う。DINOの変形可能アテンションは
+CUDA拡張の入力dtypeに合わせて、混合精度条件でもブロック全体をFP32で実行する。
+CUDAのBF16にはネイティブ対応GPUが必要で、ViTPoseのBF16はCPUでも利用できる。
+BF16・FP16と `people_models.runtime.vitpose.flip_test` は各段のartifact identityに反映される。
+既定と明示のFP32は同じ設定identityを使う。
+`fp32_cache_compatibility.json` に記録したソース差分の全ファイルが一致する場合は、その差分を
+旧版のハッシュで表す。C3のモデルruntimeと追跡schemaの変更を含む現行構成では、この精度変更だけの
+互換条件は成立しない。旧schemaの成果物は再生成する。ほかのソース、入力、重み、設定、上流参照の変更もidentityに反映される。
+
 標準追跡は`person_tracking.method=strongsort_pp_pose`だけを受け付ける。StrongSORT++＋pose/CLIPのrun 10固定profileを
 productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。
-`person_tracks` v5は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+`person_tracks` v6は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+CLIP evidenceには`ModelBorrower.identity()`で得た内容SHA・設定を含むencoder identityも保存し、regroupで保持する。
 GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
 選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式はtaskの比較benchmarkで使用する。
 重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
@@ -75,7 +199,10 @@ v2の`source_rows`は間引き前のclip/camera通番、`duplicate_merges`はfra
 [`court_linking.py`](../../tasks/person_tracking/court_linking.py)のdocstringと`LinkingConfig`。
 連結後のdistinct core滞在で選別し、`person_observations.max_tracks_per_camera`は最後のgroup上限だけに使う。
 CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だけの成功に変えない。
-`selected_player_tracks` v2の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
+`selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
+追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
+設定した選別encoderで明示的に再計算し、appearance診断へsourceと理由を記録する。
+旧person_tracks v5/selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。
@@ -91,12 +218,32 @@ player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switc
 
 `court_side`は[src/tasks/court_side](../../tasks/court_side/README.md)の仮説検定を、校正済みcameraと単一ball観測の
 ~30fps格子に適用する（schema version 3）。成果物は採用したhalf-turn、全仮説のcost/support/使用frame数、marginを持つ。
-決まらないclipは`ReconstructionUnavailable`（reason `court_side_<停止理由>`、仮説ごとの証跡）で停止する。
+既定のclipモードで決まらない場合は`ReconstructionUnavailable`（reason `court_side_<停止理由>`、仮説ごとの証跡）で停止する。
+固定カメラでは[動画共有のcourt side](video_court_side/README.ja.md)を選べる。全clipの有効frameで一度判定し、単独判定が矛盾するclipを失敗、単独未決を既定でwarningにする。
 ball検出を無効にした構成では実行できず、definition構築時に停止する（`load`は可）。
 `camera_alignment`は決まったsideを1仮説として、人物とballの観測で絶対的な整合性だけを再検証する。
 
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
-`gvhmr`はHMR画像特徴とGVHMRだけを実行する。SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。
+`hmr2_features`は選択済みの人物cropからHMR2画像特徴を生成する（`hmr2_features` schema v1）。
+成果物はclip ID、人物ID、camera ID、source動画のSHA-256、選択順のsegment番号、
+segment内のsource frame番号とfloat32 `(L,1024)`特徴を保持する。sourceの動画path・サイズ・frame範囲と
+選択結果を推論前に照合し、人物やsegmentをまたいで時系列を連結しない。
+crop前処理・batch上限・重みは従来と同じHMR2 wrapperを使い、clipをまたぐbatch化は行わない。
+
+`gvhmr`は`body_view_selection`と保存済み`hmr2_features`を受け取り、clip・人物・camera・source動画・
+segment・frameの対応をモデル起動前に検証する。特徴の欠損・不一致を画像からの再推論で補わない。
+既存のsegment単位で時系列推論し、`body_parameters` schema v2を保存する。
+`body_placement`もv2を要求する。旧v1はexecuteで再生成し、loadではschema不一致として停止する。
+SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。
+`execution.hmr2_features=execute|load`は他nodeと同じcache・依存照合に従い、
+単一clipと複数clip計画は共通の`standard_definition`・assembler・runtimeを使う。
+HMR2・GVHMR・body geometry資産は各段階の最終需要まで共有し、人物ごとには読み直さない。
+`gvhmr`の段階barrierは、要求対象の全clipの`hmr2_features`完了後に時系列推論を開始する。
+保存特徴のあるclipと未計算のclipが混在する再開でも、HMR2の解放をGVHMRの読込より先に行う。
+この順序制約はclipをまたぐartifact依存には含めず、部分targetでは選択していないclipを実行しない。
+両推論nodeのModelSpecは共通のcomponent生成表から成果物settingsと完成markerへ束縛する。
+DINO・ViTPoseの精度設定とは独立して、HMR2特徴・GVHMR・身体配置はFP32を使う。
+上流の精度変更は依存artifactのidentityを通じて身体段のcacheへ反映する。
 
 ## ball検出証拠
 
@@ -125,6 +272,52 @@ native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `sourc
 保存v3注釈と固定幾何を使う別経路は[保存済み入力](imports/README.ja.md)を参照する。
 taskの位置利用可・直接観測を分離した専用schemaを使用し、通常モデル経路の観測限定契約を維持する。
 v1 artifactの自動補完は行わず、executeで再生成、loadはschema不一致で停止する。
+
+## X3D/CSN＋DPT T32の明示選択
+
+`ball_detection.model_type` は必須で、既定は `conv_next_unet`。
+`pipeline_x3d_dpt.yaml` は共通事前学習10kのX3D/CSN＋DPTを選ぶoverride。
+`pipeline.yaml` の既定checkpointは変わらない。
+学習時validationとの履歴一致は、人間が現状の証拠で受入れ（2026-11-16）。
+固定した104frame中BF16の5frameが事前許容差を超えた数値は維持している。
+判断の出典・実動画比較・残件は[受入記録](../../../knowledge/nodes/tennis_scene/000043-run-scene-x3d-dpt-20261116.md)を参照。
+
+元のweights-only artifactはRGB/MDD契約とTを持つが解像度を保存していない。
+scene用artifactは、固定validation manifestの全clipが720×1280であることを確認して
+`scene_input_contract` を付加したものを使う。モデルstateは元checkpointと厳密一致する。
+取得・SHA照合・metadata追加・validation閾値再計算の再現手順:
+
+```bash
+# Driveから取得した完了snapshotをoutputs/の同じ相対pathへ置いてから実行する。
+PYTHONPATH=. .venv/bin/python knowledge/runs/run-scene-x3d-dpt-20261116/prepare.py \
+  --snapshot outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf \
+  --checkpoint ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt \
+  --report outputs/tennis_scene/evaluate/x3d-dpt/export-calibration.json
+
+# GPU実行は共有training queueへ登録する。動画はDATA root相対。
+.venv/bin/python -m src.tennis_scene.scripts.run_pipeline --config-name pipeline_x3d_dpt \
+  'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
+  'camera_ids=[cam0,cam1,cam2]'
+```
+
+uint8 RGBをOpenCVのlinear補間で720×1280へresizeし、各T32窓のmodel I/O境界で
+RGB＋MDDの5chをFP32で作る。ImageNet正規化は加えず、各窓先頭のMDDだけを0にする。
+stride16・実frameの末尾backfill・中心距離最小（同点は早い窓）を固定し、短いclipの反復padは拒否する。
+窓batchの形は既存と同じ `(B,T,C,H,W)`、dtypeはuint8。
+precisionは明示のbf16、batch_sizeは1、`compile_mode=default`で学習時のvalidationに合わせる。
+初回はcompileの準備時間を含む。fp32・`compile_mode=off`は明示overrideで選べるが、
+学習時BF16＋compile(default)とは別の数値実行条件になる。
+メモリ不足でprecision・batch・解像度を自動変更しない。
+native /4 heatmap（180×320）と候補は既存のevidence/gate/保存へ渡し、
+格子正規化座標に元動画の `(W−1,H−1)` を掛けてpixelへ戻す。
+
+存在閾値はvalidationでbalanced `(FPR+FNR)/2` を最小化した **0.5380124449729919**。
+同点は低FPR、次に高閾値を選び、同じscoreのframe群は分割しない。
+observed 85,473、確認済み不在31,885に対してFPR 16.735%、FNR 17.099%。
+maskedは除外し、位置誤差条件は含めない。同じvalidationで較正・測定した値で、独立testではない。
+実行時の再較正は行わない。model_type・channels・T・解像度・正規化・窓policyの不一致、
+空間metadataのない元artifact、strict復元エラーは停止する。
+設定と重みの内容はcomponent cache identityに含まれる。
 
 ## ボール点と欠損
 
@@ -176,7 +369,11 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 `scene.json`から統合sceneを読む際にも上流artifactの依存鎖が現採用版と一致するか検証する。
 `scene.npz`は派生した統合結果で、component間の受け渡しには使わない。
 `load_scene_result(scene.json)`またはstore directoryを指定すると、checksum検証後にその統合結果を読める。
-datasetの完成marker（`annotation.json`）は[generate_dataset](../generate_dataset/README.md)が所有する。
+datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公開し、
+[generate_dataset](../generate_dataset/README.md)がclipごとの呼出しと結果を管理する。
+標準pipelineのmarker発行・再利用では、公開するsceneの依存を`body_placement`から
+`body_parameters` v2、`hmr2_features` v1、共通の`body_view_selection`までたどり、
+採用参照・checksumとclip/人物/segment/frameの対応を検証する。旧身体成果物は明示的に拒否する。
 
 モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。現行のコードfingerprintは`src`全体を保守的に含むため、
 コード変更は全componentを無効化する。設定・checkpointだけの変更は、そのcomponentと依存先だけを無効化する。

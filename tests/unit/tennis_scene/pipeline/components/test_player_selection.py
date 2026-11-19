@@ -2,14 +2,19 @@
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pytest
 
 from src.tasks.person_tracking.court_linking import LinkingConfig, exclusive_region
-from src.tasks.player_association.appearance.sampling import CropSamplingConfig
+from src.tasks.person_tracking.sequence import TrackEvidence
+from src.tasks.player_association.appearance.sampling import (
+    CropSamplingConfig,
+    TrackAppearance,
+)
 from src.tasks.player_association.geometry.footpoints import FootpointConfig
+from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
@@ -19,6 +24,7 @@ from src.tennis_scene.pipeline.components.player_selection import (
     PlayerSelectionModule,
 )
 from src.tennis_scene.pipeline.contracts import SourceVideo
+from src.tennis_scene.pipeline.inference_runtime import ModelSpec
 from tests.unit.tasks.person_tracking.test_court_candidates import camera_tracks
 
 
@@ -33,6 +39,50 @@ def _input(positions: list[tuple[float, float]], seen: np.ndarray) -> PlayerSele
 def _module() -> PlayerSelectionModule:
     return PlayerSelectionModule(LinkingConfig(), footpoints=FootpointConfig(), sampling=CropSamplingConfig(),
                                  encoder=None, encoder_name=None, device='cpu', enabled=True)
+
+
+@pytest.mark.parametrize('difference', ['same_content', 'weights', 'dtype', 'unknown'])
+def test_tracking_features_require_the_same_model_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, difference: str) -> None:
+    import src.tennis_scene.pipeline.components.player_selection as selection
+    inputs = _input([(0., 5.)], np.ones((1, 80), bool))
+    first, second = tmp_path / 'tracking.pth', tmp_path / 'selection.pth'
+    first.write_bytes(b'weights A')
+    second.write_bytes(b'weights B' if difference == 'weights' else b'weights A')
+    created: list[bool] = []
+    profile = 'clipreid_vitb16_market1501'
+    def create() -> SimpleNamespace:
+        created.append(True)
+        return SimpleNamespace(name=profile)
+    tracked: ModelSpec[Any] = ModelSpec('appearance', {'checkpoint': first}, profile, 'cpu', 'float32', {}, object)
+    requested = replace(tracked, weights={'checkpoint': second}, dtype='bfloat16' if difference == 'dtype' else 'float32',
+        factory=create)
+    evidence = TrackEvidence(np.arange(80, dtype=np.int64)[None], np.zeros((1, 80, 17, 3), np.float32),
+        np.tile(np.array([1., 0.], np.float32), (1, 80, 1)), np.ones((1, 80), bool), profile)
+    # Bind provenance without relying on the field being implemented yet: this
+    # reproducer can execute against the old name-only reuse path.
+    object.__setattr__(evidence, 'encoder_identity', None if difference == 'unknown' else document_digest(json_value(tracked.key)))
+    inputs = replace(inputs, tracks=replace(inputs.tracks, evidence=evidence))
+    recomputed = (TrackAppearance(np.array([0], np.int64), np.array([[0., 1.]], np.float32)),)
+    monkeypatch.setattr(selection, 'embed_tracks', lambda *args: (recomputed, []))
+    inspected = []
+    original = selection.select_linked_candidates
+    def inspect(tracks: Any, *args: Any) -> Any:
+        inspected.append(tracks.appearance)
+        return original(tracks, *args)
+    monkeypatch.setattr(selection, 'select_linked_candidates', inspect)
+    module = PlayerSelectionModule(LinkingConfig(), footpoints=FootpointConfig(), sampling=CropSamplingConfig(),
+        encoder=requested, encoder_name=profile, device='cpu', enabled=True)
+    result = module.process(inputs)
+    reuse = difference == 'same_content'
+    assert len(created) == (0 if reuse else 1)
+    assert (result.diagnostics['appearance'].get('source') == 'tracked_detection_features') == reuse
+    np.testing.assert_array_equal(inspected[0][0].embeddings[0], [1., 0.] if reuse else [0., 1.])
+    assert result.tracks.evidence is not None
+    assert result.tracks.evidence.encoder_identity == evidence.encoder_identity
+    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+    codec = ArtifactCodec(type(result))
+    payload, arrays = codec.dump(result, tmp_path)
+    assert codec.load(payload, tmp_path, arrays).tracks.evidence.encoder_identity == evidence.encoder_identity
 
 
 def test_fragments_link_before_dwell_and_cap_and_keep_duplicate_observations(tmp_path: Path) -> None:

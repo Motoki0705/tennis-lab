@@ -1,4 +1,4 @@
-"""The version 1 contract. All object keys are required; missing is explicit."""
+"""Immutable v1 records and v2 result observations with strict object keys."""
 
 from __future__ import annotations
 
@@ -399,7 +399,7 @@ def validate_record(value: Any) -> dict[str, Any]:
         value = decode(value)
     fields(value, COMMON)
     require(
-        type(value["schema_version"]) is int and value["schema_version"] == VERSION,
+        type(value["schema_version"]) is int and value["schema_version"] in {1, 2},
         "record_version",
     )
     public_id(value["id"])
@@ -409,13 +409,24 @@ def validate_record(value: Any) -> dict[str, Any]:
     for key in ("occurred_at", "received_at"):
         available(value["time"][key], timestamp)
     timestamp(value["time"]["recorded_at"])
-    fields(value["data"], DATA_FIELDS[value["kind"]])
+    extended = value["schema_version"] == 2
+    require(not extended or value["kind"] == "result", "record_version")
+    fields(
+        value["data"],
+        DATA_FIELDS[value["kind"]] | ({"observation"} if extended else set()),
+    )
     {
         "result": result,
         "decision": decision,
         "action": action,
         "correction": correction,
     }[value["kind"]](value["data"])
+    if extended:
+        from .trace_schema import validate
+
+        validate(
+            value["data"]["observation"], value["scope"], value["data"]["final_report"]
+        )
     return copy.deepcopy(value)
 
 

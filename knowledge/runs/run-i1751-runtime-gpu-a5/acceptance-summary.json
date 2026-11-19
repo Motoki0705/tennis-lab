@@ -1,0 +1,547 @@
+{
+  "tolerance": {
+    "float_atol": 1e-06,
+    "float_rtol": 1e-05,
+    "discrete": "exact"
+  },
+  "same_nodes": true,
+  "both_scenes_exist": true,
+  "all_arrays_exact": false,
+  "all_arrays_close": false,
+  "numerical_acceptance": false,
+  "node_count": 31,
+  "variants": {
+    "main": {
+      "commit": "18a2fea05291eeaccb6d1dbfc81160e26c4080dd",
+      "status": "complete",
+      "frames": 1010,
+      "scene_status": "ok",
+      "torch": "2.13.0+cu130",
+      "cuda": "13.0",
+      "python": "3.11.15",
+      "gpu": "NVIDIA GeForce RTX 5060 Ti",
+      "gpu_total_bytes": 17074749440,
+      "wall_seconds": 2222.512450213,
+      "backend_load_counts": {
+        "court": 3,
+        "ball": 3,
+        "dino": 3,
+        "appearance": 4,
+        "vitpose": 3,
+        "hmr2": 1,
+        "gvhmr": 1,
+        "body_vertices": 1,
+        "body_coco17": 1,
+        "body_root_regressor": 1
+      },
+      "peak_allocated_bytes": 3159937536,
+      "peak_reserved_bytes": 3776970752,
+      "device_memory_peak_mib": 4533,
+      "device_memory_min_mib": 757,
+      "device_memory_sampling_ms": 1000,
+      "device_memory_samples": 2124,
+      "allocated_end_bytes": 33554432,
+      "allocated_after_gc_bytes": 33554432,
+      "reserved_after_gc_bytes": 33554432,
+      "script_sha256": "0450a01edb8c61c41ddb601d0cce52f1715e7366abd5e9abfcd18d3881c9afb3",
+      "archive_contract_validated": true,
+      "validity": {
+        "ball_3d_frames": 772,
+        "player_joint_frames": [
+          1008,
+          993
+        ],
+        "player_root_frames": [
+          1000,
+          993
+        ],
+        "player_smpl_frames": [
+          1000,
+          993
+        ]
+      }
+    },
+    "runtime": {
+      "commit": "1bef628a9c2c5761d241ddc5c1b98c0f89625b35",
+      "status": "complete",
+      "frames": 1010,
+      "scene_status": "ok",
+      "torch": "2.13.0+cu130",
+      "cuda": "13.0",
+      "python": "3.11.15",
+      "gpu": "NVIDIA GeForce RTX 5060 Ti",
+      "gpu_total_bytes": 17074749440,
+      "wall_seconds": 2263.276122110001,
+      "backend_load_counts": {
+        "court": 1,
+        "ball": 1,
+        "dino": 1,
+        "vitpose": 1,
+        "appearance": 1,
+        "hmr2": 1,
+        "gvhmr": 1,
+        "body_vertices": 1,
+        "body_coco17": 1,
+        "body_root_regressor": 1
+      },
+      "peak_allocated_bytes": 3159313920,
+      "peak_reserved_bytes": 3802136576,
+      "device_memory_peak_mib": 4568,
+      "device_memory_min_mib": 771,
+      "device_memory_sampling_ms": 1000,
+      "device_memory_samples": 2163,
+      "allocated_end_bytes": 33554432,
+      "allocated_after_gc_bytes": 33554432,
+      "reserved_after_gc_bytes": 33554432,
+      "script_sha256": "0450a01edb8c61c41ddb601d0cce52f1715e7366abd5e9abfcd18d3881c9afb3",
+      "archive_contract_validated": true,
+      "validity": {
+        "ball_3d_frames": 772,
+        "player_joint_frames": [
+          1008,
+          993
+        ],
+        "player_root_frames": [
+          1000,
+          993
+        ],
+        "player_smpl_frames": [
+          1000,
+          993
+        ]
+      }
+    }
+  },
+  "scene_fields": 29,
+  "differing_arrays": {
+    "ball_detection/cam0/array_0001.npy": {
+      "shape_main": [
+        1010,
+        2
+      ],
+      "shape_runtime": [
+        1010,
+        2
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.1287841796875,
+      "different_elements": 2,
+      "elements": 2020
+    },
+    "ball_detection/cam0/array_0002.npy": {
+      "shape_main": [
+        1010
+      ],
+      "shape_runtime": [
+        1010
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0008233785629272461,
+      "different_elements": 1,
+      "elements": 1010
+    },
+    "ball_detection/cam0/array_0005.npy": {
+      "shape_main": [
+        1010,
+        180,
+        320
+      ],
+      "shape_runtime": [
+        1010,
+        180,
+        320
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0015354156494140625,
+      "different_elements": 1092,
+      "elements": 58176000
+    },
+    "ball_detection/cam0/array_0006.npy": {
+      "shape_main": [
+        1010,
+        8,
+        2
+      ],
+      "shape_runtime": [
+        1010,
+        8,
+        2
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.1287841796875,
+      "different_elements": 2,
+      "elements": 16160
+    },
+    "ball_detection/cam0/array_0007.npy": {
+      "shape_main": [
+        1010,
+        8
+      ],
+      "shape_runtime": [
+        1010,
+        8
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0008233785629272461,
+      "different_elements": 1,
+      "elements": 8080
+    },
+    "ball_detection/cam0/array_0010.npy": {
+      "shape_main": [
+        1010,
+        8,
+        5,
+        5
+      ],
+      "shape_runtime": [
+        1010,
+        8,
+        5,
+        5
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.000919342041015625,
+      "different_elements": 8,
+      "elements": 202000
+    },
+    "ball_detection/cam1/array_0005.npy": {
+      "shape_main": [
+        1010,
+        180,
+        320
+      ],
+      "shape_runtime": [
+        1010,
+        180,
+        320
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.001592189073562622,
+      "different_elements": 1896,
+      "elements": 58176000
+    },
+    "ball_detection/cam1/array_0010.npy": {
+      "shape_main": [
+        1010,
+        8,
+        5,
+        5
+      ],
+      "shape_runtime": [
+        1010,
+        8,
+        5,
+        5
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0009643509984016418,
+      "different_elements": 3,
+      "elements": 202000
+    },
+    "ball_detection/cam2/array_0005.npy": {
+      "shape_main": [
+        1010,
+        180,
+        320
+      ],
+      "shape_runtime": [
+        1010,
+        180,
+        320
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0016307830810546875,
+      "different_elements": 1011,
+      "elements": 58176000
+    },
+    "ball_detection/cam2/array_0010.npy": {
+      "shape_main": [
+        1010,
+        8,
+        5,
+        5
+      ],
+      "shape_runtime": [
+        1010,
+        8,
+        5,
+        5
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0011335015296936035,
+      "different_elements": 6,
+      "elements": 202000
+    },
+    "ball_points/cam0/array_0001.npy": {
+      "shape_main": [
+        1010,
+        2
+      ],
+      "shape_runtime": [
+        1010,
+        2
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.02276611328125,
+      "different_elements": 38,
+      "elements": 2020
+    },
+    "ball_points/cam0/array_0002.npy": {
+      "shape_main": [
+        1010
+      ],
+      "shape_runtime": [
+        1010
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0008233785629272461,
+      "different_elements": 1,
+      "elements": 1010
+    },
+    "ball_points/cam0/array_0004.npy": {
+      "shape_main": [
+        1010,
+        2
+      ],
+      "shape_runtime": [
+        1010,
+        2
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.02276611328125,
+      "different_elements": 38,
+      "elements": 2020
+    },
+    "ball_triangulation/array_0000.npy": {
+      "shape_main": [
+        3,
+        1010,
+        2
+      ],
+      "shape_runtime": [
+        3,
+        1010,
+        2
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.02276611328125,
+      "different_elements": 38,
+      "elements": 6060
+    },
+    "ball_triangulation/array_0002.npy": {
+      "shape_main": [
+        1010,
+        3
+      ],
+      "shape_runtime": [
+        1010,
+        3
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0002738386392593384,
+      "different_elements": 42,
+      "elements": 3030
+    },
+    "ball_triangulation/array_0006.npy": {
+      "shape_main": [
+        3,
+        1010
+      ],
+      "shape_runtime": [
+        3,
+        1010
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.02257537841796875,
+      "different_elements": 43,
+      "elements": 3030
+    },
+    "scene_assembly/array_0008.npy": {
+      "shape_main": [
+        3,
+        1010,
+        2
+      ],
+      "shape_runtime": [
+        3,
+        1010,
+        2
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 1.1861324310302734e-05,
+      "different_elements": 38,
+      "elements": 6060
+    },
+    "scene_assembly/array_0010.npy": {
+      "shape_main": [
+        1010,
+        3
+      ],
+      "shape_runtime": [
+        1010,
+        3
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0002738386392593384,
+      "different_elements": 42,
+      "elements": 3030
+    }
+  },
+  "differing_payload_nodes": [
+    "camera_alignment",
+    "court_side",
+    "scene_assembly"
+  ],
+  "same_component_array_sha256": false,
+  "component_arrays": 266,
+  "runtime_loads": {
+    "court": 1,
+    "ball": 1,
+    "dino": 1,
+    "vitpose": 1,
+    "appearance": 1,
+    "hmr2": 1,
+    "gvhmr": 1,
+    "body_geometry": 1
+  },
+  "runtime_unloads": {
+    "court": 1,
+    "ball": 1,
+    "dino": 1,
+    "vitpose": 1,
+    "appearance": 1,
+    "hmr2": 1,
+    "gvhmr": 1,
+    "body_geometry": 1
+  },
+  "runtime_max_owned_models": 2,
+  "runtime_unclosed_instances": [],
+  "runtime_failed_events": [],
+  "same_environment": true,
+  "all_payloads_exact": false,
+  "all_payloads_close": true,
+  "scene_metadata": {
+    "exact": false,
+    "close": true,
+    "differences": {
+      "/court_reference/side_validation/cost": {
+        "main": 0.14752227235095117,
+        "runtime": 0.14752155869174413,
+        "close": true
+      }
+    }
+  },
+  "ball_3d_max_abs_m": 0.0002738386392593384,
+  "ball_3d_max_l2_m": 0.00036189522009106684,
+  "ball_3d_changed_frames": [
+    415,
+    418,
+    419,
+    420,
+    424,
+    425,
+    426,
+    427,
+    428,
+    429,
+    430,
+    431,
+    432,
+    433
+  ],
+  "ball_uv_max_abs": 1.1861324310302734e-05,
+  "scene_discrete_exact": true,
+  "component_discrete_exact": true,
+  "unaffected_model_outputs_exact": true,
+  "ball_detection_differences": [
+    {
+      "camera": "cam0",
+      "changed_frames": [
+        424
+      ],
+      "max_axis_px": 0.1287841796875,
+      "max_l2_px": 0.13514859957900016,
+      "confidence_max_abs": 0.0008233785629272461,
+      "heatmap_max_abs": 0.0015354156494140625
+    },
+    {
+      "camera": "cam1",
+      "changed_frames": [],
+      "max_axis_px": 0.0,
+      "max_l2_px": 0.0,
+      "confidence_max_abs": 0.0,
+      "heatmap_max_abs": 0.001592189073562622
+    },
+    {
+      "camera": "cam2",
+      "changed_frames": [],
+      "max_axis_px": 0.0,
+      "max_l2_px": 0.0,
+      "confidence_max_abs": 0.0,
+      "heatmap_max_abs": 0.0016307830810546875
+    }
+  ],
+  "comparison_returncode": 1,
+  "queue_status": "failed",
+  "gpu_anomaly": false,
+  "gpu_attempts": 1,
+  "gpu_retries": 0,
+  "ball_implementation_changed_files": [],
+  "seven_frozen_files_unchanged": true,
+  "cause": "Not isolated: same-main control repeat is unavailable. BF16/compiled backend numerical variation is a hypothesis, not a demonstrated cause. Do not relax tolerances automatically.",
+  "strict_acceptance": "failed; parent judgement required; PR remains Draft"
+}

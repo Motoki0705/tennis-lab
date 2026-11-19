@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "year", "authors", "summary", "references"],
+  "properties": {
+    "title": {"type": "string", "minLength": 1},
+    "year": {"type": ["integer", "null"], "minimum": 1000, "maximum": 9999},
+    "authors": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "summary": {"type": "string", "minLength": 1},
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref_id", "citation", "title", "year", "authors", "links", "roles", "decision_status", "reason", "evidence"],
+        "properties": {
+          "ref_id": {"type": "string", "pattern": "^ref-[0-9]+$"},
+          "citation": {"type": "string", "minLength": 1},
+          "title": {"type": "string"},
+          "year": {"type": ["integer", "null"], "minimum": 1000, "maximum": 9999},
+          "authors": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "links": {"type": "array", "items": {"type": "string", "pattern": "^https?://"}, "uniqueItems": true},
+          "roles": {"type": "array", "uniqueItems": true, "items": {"enum": ["foundation", "component", "comparison", "related", "benchmark"]}},
+          "decision_status": {"enum": ["classified", "unclassifiable"]},
+          "reason": {"type": "string", "minLength": 1},
+          "evidence": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        },
+        "allOf": [
+          {"if": {"properties": {"decision_status": {"const": "classified"}}}, "then": {"properties": {"roles": {"minItems": 1}, "evidence": {"minItems": 1}}}},
+          {"if": {"properties": {"decision_status": {"const": "unclassifiable"}}}, "then": {"properties": {"roles": {"maxItems": 0}}}}
+        ]
+      }
+    }
+  }
+}

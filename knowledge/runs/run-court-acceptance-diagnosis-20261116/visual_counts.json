@@ -1,0 +1,40 @@
+{
+  "provisional": true,
+  "human_reference_approved": false,
+  "counts": {
+    "cam0": {
+      "True": {
+        "visually_plausible": 29
+      },
+      "False": {
+        "visually_plausible": 38,
+        "clear_misalignment": 2
+      }
+    },
+    "cam1": {
+      "True": {
+        "visually_plausible": 63
+      },
+      "False": {
+        "visually_plausible": 6
+      }
+    },
+    "cam2": {
+      "True": {
+        "visually_plausible": 52
+      },
+      "False": {
+        "visually_plausible": 17
+      }
+    },
+    "cam3": {
+      "True": {
+        "needs_reference": 8
+      },
+      "False": {
+        "clear_misalignment": 11,
+        "needs_reference": 50
+      }
+    }
+  }
+}

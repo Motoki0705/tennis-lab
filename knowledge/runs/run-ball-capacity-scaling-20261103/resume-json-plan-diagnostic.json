@@ -1,0 +1,167 @@
+{
+  "schema": "ball_capacity_json_resume_normalization_diagnostic.v1",
+  "raw_equal": false,
+  "adapter_equal": true,
+  "json_normalized_equal": true,
+  "source_hashes_equal": true,
+  "differences": [
+    {
+      "path": "$.stages[0].model.mixed_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[0].model.residual_blocks",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[0].model.stem_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[1].model.mixed_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[1].model.residual_blocks",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[1].model.stem_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[2].model.mixed_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[2].model.residual_blocks",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[2].model.stem_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[3].model.mixed_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[3].model.residual_blocks",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[3].model.stem_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[4].model.mixed_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[4].model.residual_blocks",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[4].model.stem_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[5].model.mixed_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[5].model.residual_blocks",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[5].model.stem_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[6].model.mixed_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[6].model.residual_blocks",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[6].model.stem_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[7].model.mixed_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[7].model.residual_blocks",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    },
+    {
+      "path": "$.stages[7].model.stem_channels",
+      "saved_type": "list",
+      "rebuilt_type": "tuple",
+      "same_json_values": true
+    }
+  ],
+  "provenance": {
+    "schema": "ball_capacity_json_representation_adapter.v1",
+    "adapter": "knowledge/runs/run-ball-capacity-scaling-20261103/resume_json_plan.py",
+    "adapter_sha256": "afcad68c7bae670351b84d0e7ac4d531717a893137a4fb8d3823a82b66841155",
+    "original_controller": "knowledge/runs/run-ball-capacity-scaling-20261103/run.py",
+    "original_controller_sha256": "d4795e660fd079922b067e9c6f9867de054ef66434ba095490ddd408b69f0d5a",
+    "plan_sha256": "922d582258c528fe468df385f4600b43a3729db90e93681aa832e820817f5524",
+    "benchmark_sha256": "1437f1c0ac3cd5ac734491332891aa332ce8c60a6d734319aaf9a8c12be5c480",
+    "effect": "Only the imported controller.asdict binding uses dataclasses.asdict followed by a JSON roundtrip with allow_nan=False. Model objects, the training module, stdlib bindings, true hashes and all original guards remain in effect.",
+    "action": "train",
+    "resume": true,
+    "run_id": "s42-20261103-main"
+  },
+  "method": "Evaluate the actual frozen controller plan assignment AST before and after the module-local adapter; unchanged true hashes and restored benchmark/download receipts."
+}

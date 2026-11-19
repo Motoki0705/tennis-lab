@@ -1,0 +1,22 @@
+{
+  "head": "2ea001b594e96752ed226591e16add2e479ce7be",
+  "workflow_run": 43999787452,
+  "failed_job": 133760872891,
+  "failure_url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43999787452/job/133760872891",
+  "failed_tests": [
+    "tests/unit/tennis_scene/test_configuration.py::test_removed_court_acceptance_keys_fail_explicitly[min_inliers]",
+    "tests/unit/tennis_scene/test_configuration.py::test_removed_court_acceptance_keys_fail_explicitly[inlier_distance_ratio]"
+  ],
+  "cause": "Restored legacy keys were still tested as removed keys; Hydra rejected +key syntax before the expected UnknownConfigurationKeyError.",
+  "local_before": {
+    "failed": 2,
+    "seconds": 4.82
+  },
+  "local_after": {
+    "passed": 64,
+    "seconds": 12.13
+  },
+  "replacement": "tests/unit/tennis_scene/test_configuration.py::test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges",
+  "replacement_contract": "Legacy key overrides are accepted, enter cache identity, and reject invalid numeric ranges.",
+  "numeric_source_changed": false
+}

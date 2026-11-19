@@ -273,13 +273,18 @@ def read_plan(path: Path, *, root: Path | None = None) -> dict[str, Any]:
 
 
 def partition_nodeids(
-    nodeids: list[str], plan: dict[str, Any]
+    nodeids: list[str], plan: dict[str, Any], *, system_deps: list[str] | None = None
 ) -> tuple[list[str], dict[str, str]]:
     if not nodeids or len(nodeids) != len(set(nodeids)):
         raise ValueError("CPU universe must be nonempty and unique")
     source_files = set(plan["source_files"])
     if any(node.split("::", 1)[0] not in source_files for node in nodeids):
         raise ValueError("CPU universe has files outside the source inventory")
+    system = set(system_deps or [])
+    if not system <= set(nodeids) or len(system) != len(system_deps or []):
+        raise ValueError(
+            "system dependency inventory must be unique within CPU universe"
+        )
     deferred_files = {
         filename: suite["id"]
         for suite in plan["registry"]["suites"]
@@ -289,17 +294,28 @@ def partition_nodeids(
     deferred = {
         node: deferred_files[node.split("::", 1)[0]]
         for node in nodeids
-        if node.split("::", 1)[0] in deferred_files
+        if node.split("::", 1)[0] in deferred_files and node not in system
     }
     return [node for node in nodeids if node not in deferred], deferred
 
 
 def audit_partition(
-    manifest: dict[str, Any], universe: list[str], plan: dict[str, Any]
+    manifest: dict[str, Any],
+    universe: list[str],
+    plan: dict[str, Any],
+    *,
+    system_deps: list[str] | None = None,
 ) -> None:
-    requested, deferred = partition_nodeids(universe, plan)
+    modern = manifest.get("schema_version") == 3
+    if modern and (
+        system_deps is None or manifest.get("system_deps_nodeids") != system_deps
+    ):
+        raise ValueError("system dependency markers differ from pre-selection events")
+    requested, deferred = partition_nodeids(
+        universe, plan, system_deps=system_deps if modern else None
+    )
     if (
-        manifest.get("schema_version") != 2
+        manifest.get("schema_version") not in {2, 3}
         or manifest.get("plan_id") != plan["plan_id"]
         or manifest.get("policy_sha256") != plan["policy_sha256"]
         or manifest.get("scope") != plan["scope"]
@@ -311,9 +327,11 @@ def audit_partition(
             "lane partition differs from pre-selection CPU universe/plan (U = R disjoint-union D)"
         )
     splits = manifest["split_files"]
+    system = set(system_deps or []) if modern else set()
     groups = {
         node if node.split("::", 1)[0] in splits else node.split("::", 1)[0]
         for node in requested
+        if node not in system
     }
     assignments = manifest["assignments"]
     if (
@@ -325,14 +343,22 @@ def audit_partition(
         or set(assignments.values()) != set(range(manifest["count"]))
     ):
         raise ValueError("requested CPU groups must cover every shard exactly once")
-    selected = [
-        node
-        for node in requested
-        if assignments[
-            node if node.split("::", 1)[0] in splits else node.split("::", 1)[0]
+    index = manifest["index"]
+    if type(index) is not int or not 0 <= index < manifest["count"] + int(modern):
+        raise ValueError("unexpected runtime shard index")
+    selected = (
+        system_deps
+        if modern and index == manifest["count"]
+        else [
+            node
+            for node in requested
+            if node not in system
+            and assignments[
+                node if node.split("::", 1)[0] in splits else node.split("::", 1)[0]
+            ]
+            == index
         ]
-        == manifest["index"]
-    ]
+    )
     if selected != manifest["selected_nodeids"]:
         raise ValueError(
             "selected inventory does not match the requested CPU assignment"

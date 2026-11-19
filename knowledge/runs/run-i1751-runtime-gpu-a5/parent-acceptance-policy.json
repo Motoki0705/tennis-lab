@@ -1,0 +1,12 @@
+{
+  "schema": "c3_parent_acceptance_policy.v1",
+  "authority": "親 #1734 の継続指示、2026-11-18、turn f6e27954492945258ae4abc0a89dbea6",
+  "scope": "a5 の C3 受入。親の明示的な条件改訂であり、元の比較結果は変更しない。",
+  "ball_precision": "bf16",
+  "ball_detection_uv_l2_limit_px": 0.5,
+  "ball_final_position_l2_limit_m": 0.001,
+  "observed_and_masks": "exact",
+  "other_outputs": {"float_atol": 0.000001, "float_rtol": 0.00001, "discrete": "exact"},
+  "ball_float_diagnostics": "BF16 Ballのheatmap・score・派生floatは元レポートに保持する。改訂後のBall判定は検出uv、最終3D位置、observed/maskで行う。",
+  "reason": "全mask・ID・人物系出力が完全一致し、差はBF16 Ballのみ。検出最大0.129px、3D L2最大0.362mmは検出誤差の数pxより2桁小さく下流判断を変えない、と親が判断した。FP32の決定的経路を前提にした元条件はBF16に厳しすぎた。"
+}

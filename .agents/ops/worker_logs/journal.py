@@ -51,6 +51,7 @@ PUBLIC_ERRORS = frozenset(
         "log_owner_unavailable",
         "main_content_changed",
         "merge_conflict",
+        "merge_rejected",
         "merge_response_uncertain",
         "merge_unconfirmed",
         "missing_final",
@@ -267,6 +268,7 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
             "pr_open",
             "mergeability_pending",
             "merge_attempted",
+            "merge_rejected",
             "merged",
         },
         "journal_stage",
@@ -280,6 +282,13 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
         "pr": number,
         "saved_to_main": row["state"] == "merged",
     }
+    if "merge_http_status" in row:
+        require(
+            type(row["merge_http_status"]) is int
+            and 100 <= row["merge_http_status"] <= 599,
+            "journal_invalid",
+        )
+        result["merge_http_status"] = row["merge_http_status"]
     if "files" in row:
         from .schema import sanitization
 

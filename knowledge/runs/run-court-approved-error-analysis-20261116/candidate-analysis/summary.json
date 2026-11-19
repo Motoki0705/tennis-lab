@@ -1,0 +1,535 @@
+{
+  "source_sha256": "b5bc8300fffe24b20dda8e1ee903f24907f648200a218aa9c736c8c708dec5e2",
+  "reference_approved": true,
+  "definitions": {
+    "priority": [
+      "different_region_or_orientation",
+      "coherent_offset",
+      "localized_extrapolation",
+      "localized_supported_deformation",
+      "distributed_deformation"
+    ],
+    "different_region_or_orientation": "polygon IoU < 0.5 or opposite corner orientation; investigate semantic mismatch visually",
+    "coherent_offset": "subtracting the median 2D error vector makes mean<=10 and max<=25 (GT-only diagnostic)",
+    "localized_extrapolation": "removing at most 3 highest-error points restores agreed tolerance; all removed points outside selected support hull in court coordinates",
+    "localized_supported_deformation": "same sparse-error condition, but not confined to extrapolated support",
+    "distributed_deformation": "remaining nonuniform errors; cause not inferred from residual shape",
+    "not_an_acceptance_rule": true,
+    "unsupported_causal_claims": "neither a translated H nor low LINE residual proves correct semantic correspondence"
+  },
+  "by_camera": {
+    "cam0": {
+      "legacy": {
+        "confusion": {
+          "FN": 6,
+          "FP": 20,
+          "TP": 9,
+          "TN": 34
+        },
+        "false_accept_patterns": {
+          "distributed_deformation": 9,
+          "localized_supported_deformation": 3,
+          "localized_extrapolation": 6,
+          "coherent_offset": 2
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 34,
+          "recovered": 9,
+          "ranking_loss": 1
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "inliers_below8": 34
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "inliers_below8": 52
+        }
+      },
+      "acceptance_only": {
+        "confusion": {
+          "FP": 33,
+          "TN": 25,
+          "TP": 9,
+          "FN": 2
+        },
+        "false_accept_patterns": {
+          "coherent_offset": 10,
+          "distributed_deformation": 17,
+          "localized_extrapolation": 1,
+          "localized_supported_deformation": 5
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 32,
+          "ranking_loss": 3,
+          "recovered": 9
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "unstable_projection": 32,
+          "unstable_line_influence": 13
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "unstable_projection": 50,
+          "unstable_line_influence": 13
+        }
+      },
+      "postprocess_and_acceptance": {
+        "confusion": {
+          "FP": 32,
+          "TN": 26,
+          "TP": 8,
+          "FN": 3
+        },
+        "false_accept_patterns": {
+          "coherent_offset": 11,
+          "distributed_deformation": 17,
+          "localized_extrapolation": 1,
+          "localized_supported_deformation": 3
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 32,
+          "ranking_loss": 4,
+          "recovered": 8
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "unstable_projection": 32,
+          "unstable_line_influence": 13
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "unstable_projection": 50,
+          "unstable_line_influence": 13
+        }
+      }
+    },
+    "cam1": {
+      "legacy": {
+        "confusion": {
+          "FP": 59,
+          "TN": 6,
+          "TP": 4
+        },
+        "false_accept_patterns": {
+          "coherent_offset": 49,
+          "distributed_deformation": 10
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 8,
+          "ranking_loss": 25,
+          "recovered": 4
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "inliers_below8": 8
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "inliers_below8": 18
+        }
+      },
+      "acceptance_only": {
+        "confusion": {
+          "FP": 38,
+          "TN": 15,
+          "FN": 3,
+          "TP": 13
+        },
+        "false_accept_patterns": {
+          "coherent_offset": 33,
+          "distributed_deformation": 5
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 21,
+          "recovered": 13,
+          "ranking_loss": 3
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "unstable_projection": 16,
+          "visible_line_mismatch": 9,
+          "unstable_line_influence": 2
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "visible_line_mismatch": 14,
+          "unstable_projection": 30,
+          "unstable_line_influence": 4
+        }
+      },
+      "postprocess_and_acceptance": {
+        "confusion": {
+          "FP": 38,
+          "TN": 15,
+          "FN": 3,
+          "TP": 13
+        },
+        "false_accept_patterns": {
+          "coherent_offset": 34,
+          "distributed_deformation": 4
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 19,
+          "recovered": 13,
+          "ranking_loss": 3
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "unstable_projection": 15,
+          "visible_line_mismatch": 8,
+          "unstable_line_influence": 2
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "visible_line_mismatch": 13,
+          "unstable_projection": 27,
+          "unstable_line_influence": 5
+        }
+      }
+    },
+    "cam2": {
+      "legacy": {
+        "confusion": {
+          "TP": 33,
+          "FP": 19,
+          "FN": 2,
+          "TN": 15
+        },
+        "false_accept_patterns": {
+          "coherent_offset": 6,
+          "distributed_deformation": 11,
+          "localized_extrapolation": 2
+        },
+        "recovery": {
+          "recovered": 33,
+          "all_correct_candidates_gate_rejected": 22,
+          "ranking_loss": 5
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "inliers_below8": 22
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "inliers_below8": 57
+        }
+      },
+      "acceptance_only": {
+        "confusion": {
+          "TP": 39,
+          "TN": 4,
+          "FP": 26
+        },
+        "false_accept_patterns": {
+          "distributed_deformation": 21,
+          "localized_supported_deformation": 2,
+          "coherent_offset": 3
+        },
+        "recovery": {
+          "recovered": 39,
+          "all_correct_candidates_gate_rejected": 17,
+          "ranking_loss": 4
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "unstable_projection": 16,
+          "unstable_line_influence": 2,
+          "visible_line_mismatch": 4
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "unstable_projection": 47,
+          "unstable_line_influence": 7,
+          "visible_line_mismatch": 5
+        }
+      },
+      "postprocess_and_acceptance": {
+        "confusion": {
+          "TP": 38,
+          "TN": 4,
+          "FP": 27
+        },
+        "false_accept_patterns": {
+          "distributed_deformation": 19,
+          "localized_supported_deformation": 3,
+          "coherent_offset": 5
+        },
+        "recovery": {
+          "recovered": 38,
+          "all_correct_candidates_gate_rejected": 19,
+          "ranking_loss": 3
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "unstable_projection": 18,
+          "unstable_line_influence": 3,
+          "visible_line_mismatch": 4
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "unstable_projection": 44,
+          "unstable_line_influence": 8,
+          "visible_line_mismatch": 5
+        }
+      }
+    },
+    "cam3": {
+      "legacy": {
+        "confusion": {
+          "FP": 7,
+          "TN": 45,
+          "TP": 1,
+          "FN": 16
+        },
+        "false_accept_patterns": {
+          "localized_extrapolation": 6,
+          "distributed_deformation": 1
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 42,
+          "recovered": 1
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "inliers_below8": 41,
+          "all14_inside": 39
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "inliers_below8": 72,
+          "all14_inside": 73
+        }
+      },
+      "acceptance_only": {
+        "confusion": {
+          "TN": 38,
+          "FP": 19,
+          "FN": 7,
+          "TP": 5
+        },
+        "false_accept_patterns": {
+          "localized_supported_deformation": 6,
+          "distributed_deformation": 9,
+          "coherent_offset": 3,
+          "localized_extrapolation": 1
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 36,
+          "ranking_loss": 2,
+          "recovered": 5
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "unstable_projection": 36,
+          "unstable_line_influence": 28,
+          "visible_line_mismatch": 2
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "unstable_projection": 74,
+          "unstable_line_influence": 42,
+          "visible_line_mismatch": 2
+        }
+      },
+      "postprocess_and_acceptance": {
+        "confusion": {
+          "TN": 36,
+          "FP": 19,
+          "FN": 9,
+          "TP": 5
+        },
+        "false_accept_patterns": {
+          "localized_supported_deformation": 6,
+          "distributed_deformation": 9,
+          "coherent_offset": 3,
+          "localized_extrapolation": 1
+        },
+        "recovery": {
+          "all_correct_candidates_gate_rejected": 35,
+          "ranking_loss": 2,
+          "recovered": 5
+        },
+        "all_good_rejected_reason_images_overlapping": {
+          "unstable_projection": 35,
+          "unstable_line_influence": 26,
+          "visible_line_mismatch": 2
+        },
+        "correct_rejected_candidate_reasons_overlapping": {
+          "unstable_projection": 71,
+          "unstable_line_influence": 41,
+          "visible_line_mismatch": 2
+        }
+      }
+    }
+  },
+  "video_shared_counterfactual": {
+    "cam0": {
+      "legacy": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_052/cam0",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.5982158320225768
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_052/cam0",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.5982158320225768
+        },
+        "oracle_correct_accepted_exists": true
+      },
+      "acceptance_only": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_046/cam0",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.0861121060657446
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_036/cam0",
+          "region_index": 4,
+          "correct": true,
+          "score": 1.9448105734060224
+        },
+        "oracle_correct_accepted_exists": true
+      },
+      "postprocess_and_acceptance": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_046/cam0",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.085552637940986
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_036/cam0",
+          "region_index": 4,
+          "correct": true,
+          "score": 1.9448105734060224
+        },
+        "oracle_correct_accepted_exists": true
+      }
+    },
+    "cam1": {
+      "legacy": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_064/cam1",
+          "region_index": 7,
+          "correct": false,
+          "score": 1.3537196075765072
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_025/cam1",
+          "region_index": 2,
+          "correct": false,
+          "score": 5.396064217097464
+        },
+        "oracle_correct_accepted_exists": true
+      },
+      "acceptance_only": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_028/cam1",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.2329564307064844
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_057/cam1",
+          "region_index": 0,
+          "correct": false,
+          "score": 1.4715922807248183
+        },
+        "oracle_correct_accepted_exists": true
+      },
+      "postprocess_and_acceptance": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_028/cam1",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.2329564366498484
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_057/cam1",
+          "region_index": 0,
+          "correct": false,
+          "score": 1.4715922802917336
+        },
+        "oracle_correct_accepted_exists": true
+      }
+    },
+    "cam2": {
+      "legacy": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_062/cam2",
+          "region_index": 7,
+          "correct": true,
+          "score": 0.9735881354399143
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_046/cam2",
+          "region_index": 7,
+          "correct": true,
+          "score": 3.0637074252324936
+        },
+        "oracle_correct_accepted_exists": true
+      },
+      "acceptance_only": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_062/cam2",
+          "region_index": 7,
+          "correct": true,
+          "score": 0.9735881354399143
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_030/cam2",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.2090417765449302
+        },
+        "oracle_correct_accepted_exists": true
+      },
+      "postprocess_and_acceptance": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_062/cam2",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.0188962295246764
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_030/cam2",
+          "region_index": 7,
+          "correct": true,
+          "score": 1.2090417765449302
+        },
+        "oracle_correct_accepted_exists": true
+      }
+    },
+    "cam3": {
+      "legacy": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_035/cam3",
+          "region_index": 9,
+          "correct": false,
+          "score": 2.2388768893243913
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_033/cam3",
+          "region_index": 10,
+          "correct": false,
+          "score": 3.5304002611828142
+        },
+        "oracle_correct_accepted_exists": true
+      },
+      "acceptance_only": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_040/cam3",
+          "region_index": 9,
+          "correct": true,
+          "score": 1.2501946749302846
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_060/cam3",
+          "region_index": 1,
+          "correct": true,
+          "score": 2.181566058538448
+        },
+        "oracle_correct_accepted_exists": true
+      },
+      "postprocess_and_acceptance": {
+        "quality_min": {
+          "key": "meiji_4cam/video_000/clip_040/cam3",
+          "region_index": 9,
+          "correct": true,
+          "score": 1.2501064044742098
+        },
+        "medoid": {
+          "key": "meiji_4cam/video_000/clip_060/cam3",
+          "region_index": 1,
+          "correct": true,
+          "score": 2.183700032820197
+        },
+        "oracle_correct_accepted_exists": true
+      }
+    }
+  }
+}

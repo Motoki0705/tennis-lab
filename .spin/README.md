@@ -40,11 +40,13 @@ shaderの両方をimportして検証する。
 | コマンド | 用途 |
 |---|---|
 | `spin doctor [--strict]` | Python、`.venv`、lockfile、主要 CLI、submodule を診断する。通常は任意機能の不足を警告し、`--strict` では警告も失敗にする |
+| `spin ops status\|install\|on\|off\|run\|logs [target]` | 運用unitを制御する。対象・導入・停止照合・接続エラーの契約は [ops_control README](../.agents/ops/ops_control/README.md) |
 | `spin setup-nht [--with-sfm-learned \| --render-only]` | NHT submoduleを固定commitへ更新し、公開CLIを独立した`uv tool`環境へインストールする。`--render-only`ではtrainerを構築しない |
 | `spin lint [--fix] [PATHS...]` | `src/`, `tests/`, `.spin/` を Ruff で検査する。`--changed --base <ref>` で差分だけを検査できる |
 | `spin typecheck [PATHS...]` | 既定では `origin/main` との差分だけを mypy で検査する。`--all` で全体を検査する |
 | `spin test [PYTEST_ARGS...]` | `local_data` / `cuda` marker を除外して pytest を実行する。`--all`, `--coverage`, `--serial` を利用できる |
 | `spin setup [--no-hooks]` | `uv sync --locked` と pre-commit hook の導入を行う |
+| `spin worktrees scan\|cleanup [--dry-run]` | 作成から336時間の登録worktree期限を確認・強制削除する。`spin ops` の `worktree-cleanup` で日次timerを制御する。[契約と状態](../.agents/ops/worktree_cleanup/README.md) |
 
 例:
 
@@ -97,3 +99,5 @@ GPU環境へ戻す場合は`uv sync --locked`を実行する。
 新しい横断的な開発コマンドは `.spin/cmds.py` に追加する。学習や推論のように
 Hydra config が正規のインターフェースである処理は、各 task の `scripts/` と README
 に残し、ここで設定を二重管理しない。
+
+`git-sync` の定期更新・拒否理由・共通lockと状態の確認は [git-sync README](../.agents/ops/git_sync/README.md) を参照する。

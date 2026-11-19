@@ -1,0 +1,8 @@
+{
+  "python": "3.11.15",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "implementation_commit": "edf33290d5e22383dd3d66e4e277ec2538c81f62",
+  "opencv": "5.0.0",
+  "numpy": "2.3.5",
+  "gpu_used": false
+}

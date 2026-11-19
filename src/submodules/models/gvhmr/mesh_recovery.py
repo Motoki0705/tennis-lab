@@ -270,6 +270,9 @@ class SmplVertexReconstructor:
         self._smplx: torch.nn.Module | None = None
         self._smplx2smpl: torch.Tensor | None = None
 
+    def load(self) -> None:
+        self._ensure_loaded()
+
     def _ensure_loaded(self) -> None:
         if self._smplx is not None:
             return
@@ -346,6 +349,9 @@ class SmplCoco17Reconstructor:
         smpl_assets.require_files()
         self._smpl_assets = smpl_assets
         self._model: torch.nn.Module | None = None
+
+    def load(self) -> None:
+        self._ensure_loaded()
 
     def _ensure_loaded(self) -> None:
         if self._model is None:

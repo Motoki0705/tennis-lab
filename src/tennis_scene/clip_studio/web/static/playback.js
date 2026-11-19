@@ -9,6 +9,16 @@ export function timecode(value) {
   return sign + [Math.floor(ms / 3600000), Math.floor(ms / 60000) % 60,
     Math.floor(ms / 1000) % 60].map(n => String(n).padStart(2, '0')).join(':') + '.' + String(ms % 1000).padStart(3, '0');
 }
+// Percent geometry of a range (or a point when start === end) inside the visible timeline
+// window [lo, hi]; null when nothing of it is visible.
+export function segmentPercent(start, end, view) {
+  const [lo, hi] = view;
+  if (!(hi > lo)) throw new RangeError('Timeline view must have a positive span');
+  if (!(end >= start)) throw new RangeError('Segment end must not precede its start');
+  const left = Math.max(start, lo), right = Math.min(end, hi);
+  if (start === end ? start < lo || start > hi : right <= left) return null;
+  return {left: 100 * (left - lo) / (hi - lo), width: 100 * (right - left) / (hi - lo)};
+}
 export function zoomView(view, factor, anchorX, anchorY) {
   if (!Number.isFinite(factor) || factor <= 0) throw new RangeError('Zoom factor must be positive and finite');
   const scale = clamp(view.scale * factor, 1, 8);
@@ -36,6 +46,7 @@ export class Playback {
     this.generation = 0;
     this.playEpoch = 0;
     this.previewPending = false;
+    this.seekEpoch = 0;
     this.tiles = [];
   }
   load(project) {
@@ -51,21 +62,23 @@ export class Playback {
         const zoomReadout = document.createElement('span'); zoomReadout.className = 'zoom-readout'; zoomReadout.textContent = '100%';
         const reset = document.createElement('button'); reset.textContent = '等倍'; reset.hidden = true;
         reset.setAttribute('aria-label', `${source.camera_id} の拡大表示を等倍に戻す`);
-        const focus = document.createElement('button'); focus.textContent = 'フォーカス';
+        const focus = document.createElement('button'); focus.className = 'focus-button'; focus.textContent = 'フォーカス';
         focus.onclick = () => this.onSelect(index);
         controls.append(zoomReadout, reset, focus); head.append(title, controls);
         const picture = document.createElement('div'); picture.className = 'picture';
         picture.title = 'Ctrl + ホイールでポインター位置を中心に拡大・縮小';
+        // The stream is attached by layout() only while this camera is shown.
         const video = document.createElement('video'); video.preload = 'metadata'; video.muted = true; video.playsInline = true;
-        video.src = `/api/media/${index}`;
+        video.hidden = true;
         const img = document.createElement('img'); img.alt = `${source.camera_id} の確認フレーム`;
         const label = document.createElement('span'); label.className = 'frame-label';
         picture.append(video, img, label); tile.append(head, picture); this.container.append(tile);
         const tileState = {tile, picture, video, img, label, zoomReadout, reset, url: null,
-          view: {scale: 1, offsetX: 0, offsetY: 0}};
+          loaded: false, frameRequest: null, view: {scale: 1, offsetX: 0, offsetY: 0}};
         picture.addEventListener('wheel', event => this.zoom(index, event), {passive: false});
         reset.onclick = () => this.resetZoom(index);
         video.addEventListener('error', () => {
+          if (!tileState.loaded) return;
           label.textContent = 'ブラウザがこの動画を再生できません。H.264 MP4を用意してください。停止フレームは確認できます。';
           label.classList.add('error');
           if (index === this.selected) { this.pause(false); this.onStatus(label.textContent, true); }
@@ -83,12 +96,32 @@ export class Playback {
     this.layout(); this.seek(this.time);
   }
   visible(index) { return !this.focus || index === this.selected; }
+  // Only shown cameras hold a media stream and request paused frames; the others are released.
   layout() {
     this.container.classList.toggle('focus', this.focus);
-    this.tiles.forEach(({tile}, index) => {
-      tile.hidden = !this.visible(index); tile.classList.toggle('selected', index === this.selected);
+    this.tiles.forEach((tile, index) => {
+      const visible = this.visible(index);
+      tile.tile.hidden = !visible; tile.tile.classList.toggle('selected', index === this.selected);
+      if (visible) this.attach(tile, index); else this.release(tile);
     });
   }
+  attach(tile, index) {
+    if (tile.loaded) return;
+    tile.loaded = true;
+    tile.video.src = `/api/media/${index}`;
+  }
+  release(tile) {
+    if (!tile.loaded) return;
+    tile.loaded = false;
+    tile.frameRequest?.abort(); tile.frameRequest = null;
+    tile.video.pause(); tile.video.hidden = true;
+    // Removing src and calling load() drops the decoder, buffered data and the HTTP range stream.
+    tile.video.removeAttribute('src'); tile.video.load();
+    if (tile.url) URL.revokeObjectURL(tile.url);
+    tile.url = null; tile.img.removeAttribute('src'); tile.img.hidden = true;
+    tile.label.textContent = ''; tile.label.classList.remove('error');
+  }
+  loadedCameras() { return this.tiles.flatMap((tile, index) => tile.loaded ? [index] : []); }
   select(index) { this.pause(false); this.selected = index; ++this.generation; this.layout(); this.seek(this.time); }
   setFocus(focus) { this.pause(false); this.focus = focus; ++this.generation; this.layout(); this.seek(this.time); }
   zoom(index, event) {
@@ -115,6 +148,7 @@ export class Playback {
   seek(time) {
     this.pause(false);
     this.time = clamp(time, ...this.project.extent);
+    ++this.seekEpoch; // labels are reset below, so even a same-time seek needs a fresh preview
     this.onTime(this.time, false);
     this.tiles.forEach(({video, img, label}, index) => {
       video.hidden = true;
@@ -128,11 +162,12 @@ export class Playback {
   }
   async preview() {
     this.previewPending = true;
-    const generation = this.generation, requestedTime = this.time, revision = this.project.revision;
+    const generation = this.generation, seekEpoch = this.seekEpoch, requestedTime = this.time, revision = this.project.revision;
     await Promise.all(this.tiles.map(async (tile, index) => {
       if (!this.visible(index)) return;
+      const request = new AbortController(); tile.frameRequest = request;
       try {
-        const response = await fetch(`/api/frame/${index}?time=${requestedTime}&revision=${revision}`);
+        const response = await fetch(`/api/frame/${index}?time=${requestedTime}&revision=${revision}`, {signal: request.signal});
         if (generation !== this.generation || this.playing) return;
         if (response.status === 204) { tile.img.hidden = true; tile.label.textContent = 'この時刻の映像はありません'; return; }
         if (!response.ok) throw new Error((await response.json()).detail || 'プレビュー取得失敗');
@@ -143,13 +178,16 @@ export class Playback {
         tile.img.hidden = false;
         tile.label.textContent = `frame ${response.headers.get('X-Frame-Index')} · ${timecode(requestedTime + this.project.sources[index].offset_sec)}`;
       } catch (error) {
+        if (error.name === 'AbortError') return;
         if (generation === this.generation && !this.playing) {
           tile.label.textContent = error.message; tile.label.classList.add('error'); this.onStatus(error.message, true);
         }
+      } finally {
+        if (tile.frameRequest === request) tile.frameRequest = null;
       }
     }));
     this.previewPending = false;
-    if (requestedTime !== this.time || generation !== this.generation) this.schedulePreview();
+    if (seekEpoch !== this.seekEpoch || requestedTime !== this.time || generation !== this.generation) this.schedulePreview();
   }
   pause(preview = true) {
     ++this.playEpoch;
@@ -192,8 +230,9 @@ export class Playback {
     if (this.loop && this.time >= this.loop.end_sec) { this.seekAndPlay(this.loop.start_sec); return; }
     this.tiles.forEach(({video, img, label}, index) => {
       const camera = this.project.sources[index];
+      if (!this.visible(index)) return;
       const local = this.time + camera.offset_sec;
-      if (!this.visible(index) || local < 0 || local >= camera.duration_sec) {
+      if (local < 0 || local >= camera.duration_sec) {
         video.pause(); video.hidden = true; img.hidden = true;
         label.textContent = 'この時刻の映像はありません'; return;
       }

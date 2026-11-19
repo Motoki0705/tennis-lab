@@ -513,63 +513,60 @@ def reconstruct_player_bodies(
     if body is not None and players:
         if raw.boxes_xys is None:
             raise ValueError("Body recovery requires recorded detector boxes")
-        try:
-            for player, identity in enumerate(grouped.identities):
-                matches = [
-                    item for item in recovered.bodies if item.person_id == int(identity)
-                ]
-                if not matches:
-                    continue
-                if len(matches) != 1:
-                    raise ValueError("Body artifacts contain duplicate person IDs")
-                placement = trace_player_placement(
-                    matches[0],
-                    skeleton,
-                    grouped,
-                    cameras,
-                    player=player,
-                    body=body,
-                    fps=raw.fps,
-                    placement_config=placement_config,
-                )
-                if not isinstance(placement, _PlayerPlacement):
-                    raise TypeError("Placement trace is missing production arrays")
-                diagnostics["source_cameras"][str(int(identity))] = (
-                    placement.source_camera
-                )
-                diagnostics["segments"].extend(placement.segment_diagnostics)
-                if placement.player_diagnostics is None:
-                    continue
-                diagnostics["players"][str(int(identity))] = (
-                    placement.player_diagnostics
-                )
-                betas[player] = placement.betas
-                poses[player] = placement.poses
-                position[player] = placement.position
-                yaw[player] = placement.yaw
-                root_valid[player] = placement.root_valid
-                roots_reason[player] = placement.root_reasons
-                heading_valid[player] = placement.heading_valid
-                mesh_error[player] = placement.mesh_error
-                accepted = placement.heading_valid & (
-                    placement.error <= reprojection_px
-                )
-                mesh_valid[player] = accepted
-                orient[player, accepted] = placement.global_orient[accepted]
-                if placement.vertices is not None:
-                    if vertices is None:
-                        vertices = np.zeros(
-                            (
-                                players,
-                                frames,
-                                placement.vertices.shape[1],
-                                3,
-                            ),
-                            np.float32,
-                        )
-                    vertices[player, accepted] = placement.vertices[accepted]
-        finally:
-            body.unload()
+        for player, identity in enumerate(grouped.identities):
+            matches = [
+                item for item in recovered.bodies if item.person_id == int(identity)
+            ]
+            if not matches:
+                continue
+            if len(matches) != 1:
+                raise ValueError("Body artifacts contain duplicate person IDs")
+            placement = trace_player_placement(
+                matches[0],
+                skeleton,
+                grouped,
+                cameras,
+                player=player,
+                body=body,
+                fps=raw.fps,
+                placement_config=placement_config,
+            )
+            if not isinstance(placement, _PlayerPlacement):
+                raise TypeError("Placement trace is missing production arrays")
+            diagnostics["source_cameras"][str(int(identity))] = (
+                placement.source_camera
+            )
+            diagnostics["segments"].extend(placement.segment_diagnostics)
+            if placement.player_diagnostics is None:
+                continue
+            diagnostics["players"][str(int(identity))] = (
+                placement.player_diagnostics
+            )
+            betas[player] = placement.betas
+            poses[player] = placement.poses
+            position[player] = placement.position
+            yaw[player] = placement.yaw
+            root_valid[player] = placement.root_valid
+            roots_reason[player] = placement.root_reasons
+            heading_valid[player] = placement.heading_valid
+            mesh_error[player] = placement.mesh_error
+            accepted = placement.heading_valid & (
+                placement.error <= reprojection_px
+            )
+            mesh_valid[player] = accepted
+            orient[player, accepted] = placement.global_orient[accepted]
+            if placement.vertices is not None:
+                if vertices is None:
+                    vertices = np.zeros(
+                        (
+                            players,
+                            frames,
+                            placement.vertices.shape[1],
+                            3,
+                        ),
+                        np.float32,
+                    )
+                vertices[player, accepted] = placement.vertices[accepted]
     for player in range(players):
         result = reject_excessive_speed(
             TriangulatedPoints(

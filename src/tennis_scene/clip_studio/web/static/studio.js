@@ -1,4 +1,4 @@
-import {Playback, clamp, stepSeconds, timecode} from './playback.js';
+import {Playback, clamp, segmentPercent, stepSeconds, timecode} from './playback.js';
 import {DatasetReview} from './review.js';
 const $ = id => document.getElementById(id);
 let project, selected = null, markIn = null, markOut = null, saving = false, view = null, proposal = null;
@@ -20,7 +20,7 @@ function bind(id, handler, event = 'click') {
 function setSyncPanel(visible) {
   $('sync-panel').hidden = !visible;
   $('sync-toggle').setAttribute('aria-expanded', visible);
-  $('sync-toggle').textContent = visible ? '同期調整を閉じる' : '同期調整を開く';
+  $('sync-toggle').textContent = visible ? '同期終了' : '同期調整を開く';
   $('sync-panel').parentElement.classList.toggle('sync-visible', visible);
 }
 const review = new DatasetReview(status);
@@ -38,22 +38,36 @@ function setView(start, span) {
   $('view-start').textContent = timecode(view[0]); $('view-end').textContent = timecode(view[1]);
   renderTrack();
 }
+function place(element, segment) {
+  element.style.left = `${segment.left}%`; element.style.width = `${segment.width}%`;
+  $('clip-track').append(element);
+}
+// One segment bar for saved clips and the pending I/O marks, shared by normal and fullscreen views.
 function renderTrack() {
   $('clip-track').replaceChildren();
   project.clips.forEach(clip => {
-    const left = Math.max(clip.start_sec, view[0]), right = Math.min(clip.end_sec, view[1]);
-    if (right <= left) return;
+    const segment = segmentPercent(clip.start_sec, clip.end_sec, view);
+    if (!segment) return;
     const item = document.createElement('button'); item.title = clip.name; item.setAttribute('aria-label', `選択 ${clip.name}`);
     item.classList.toggle('active', clip.name === selected);
-    item.style.left = `${100 * (left - view[0]) / (view[1] - view[0])}%`;
-    item.style.width = `${100 * (right - left) / (view[1] - view[0])}%`;
-    item.onclick = () => selectClip(clip.name); $('clip-track').append(item);
+    item.onclick = () => selectClip(clip.name); place(item, segment);
+  });
+  if (markIn !== null && markOut !== null && markOut > markIn) {
+    const segment = segmentPercent(markIn, markOut, view);
+    if (segment) { const range = document.createElement('span'); range.className = 'mark-range'; place(range, segment); }
+  }
+  [['mark-in-point', markIn, '開始'], ['mark-out-point', markOut, '終了']].forEach(([className, time, name]) => {
+    const segment = time === null ? null : segmentPercent(time, time, view);
+    if (!segment) return;
+    const point = document.createElement('span'); point.className = `mark-point ${className}`;
+    point.title = `${name} ${timecode(time)}`; place(point, segment);
   });
 }
 function marks() {
   $('in-time').textContent = markIn === null ? '—' : timecode(markIn);
   $('out-time').textContent = markOut === null ? '—' : timecode(markOut);
   $('create').disabled = saving || markIn === null || markOut === null || markOut <= markIn;
+  if (view) renderTrack();
 }
 function clearLoop() { playback.loop = null; $('loop').textContent = '区間リピート'; }
 function selectClip(name) {
@@ -105,7 +119,7 @@ function renderProject(initial = false) {
       $(id).replaceChildren(); project.sources.forEach((source,index) => { const option = new Option(source.camera_id, index); $(id).add(option); });
     });
   }
-  review.load(project, selected); playback.load(project);
+  applyMode(); review.load(project, selected); playback.load(project);
   if (!view) setView(...[project.extent[0], project.extent[1] - project.extent[0]]);
   else setView(view[0], view[1] - view[0]);
   const [a,b] = project.common;
@@ -127,15 +141,43 @@ async function mutate(operation) {
 function step(direction, multiplier = 1) {
   clearLoop(); playback.seek(playback.time + direction * stepSeconds($('step').value, project.sources[playback.selected].fps, multiplier));
 }
+// Multi-camera streams exist only while comparing or syncing; finishing sync returns to the
+// focused camera, which releases every other camera's video stream and frame requests.
 bind('focus', () => setMode(true)); bind('compare', () => setMode(false));
-bind('sync-toggle', () => setSyncPanel($('sync-panel').hidden));
-bind('sync-close', () => setSyncPanel(false));
+bind('sync-toggle', () => { if ($('sync-panel').hidden) { setMode(false); setSyncPanel(true); } else finishSync(); });
+bind('sync-close', () => finishSync());
+function finishSync() { setMode(true); status(`同期調整を終了しました。${project.sources[playback.selected].camera_id} だけを読み込みます。`); }
 function setMode(focus) {
+  if (focus) setSyncPanel(false);
   playback.setFocus(focus);
   ['focus','compare'].forEach(id => { const active = (id === 'focus') === focus; $(id).classList.toggle('active', active); $(id).setAttribute('aria-pressed', active); });
+  applyMode();
 }
+// Clip mode = editable single-camera work: dataset provenance and the all-camera frame table are hidden.
+function applyMode() {
+  const clipMode = playback.focus && !project.read_only;
+  document.body.classList.toggle('clip-mode', clipMode);
+  review.setActive(!clipMode, playback.time);
+  $('fullscreen').disabled = !playback.focus;
+}
+function isFullscreen() { return document.fullscreenElement === $('stage'); }
+async function toggleFullscreen() {
+  if (isFullscreen()) { await document.exitFullscreen(); return; }
+  if (!playback.focus) throw new Error('全画面表示は単一カメラで利用できます。');
+  if (!document.fullscreenEnabled) throw new Error('このブラウザでは全画面表示を利用できません。');
+  await $('stage').requestFullscreen();
+}
+document.addEventListener('fullscreenchange', () => {
+  const active = isFullscreen();
+  $('fullscreen').textContent = active ? '⛶ 全画面を終了' : '⛶ 全画面'; $('fullscreen').setAttribute('aria-pressed', active);
+});
+bind('fullscreen', () => toggleFullscreen());
+function setSettings(open) { $('settings-menu').hidden = !open; $('settings').setAttribute('aria-expanded', open); }
+bind('settings', () => setSettings($('settings-menu').hidden));
+document.addEventListener('pointerdown', e => { if (!$('settings-menu').hidden && !e.target.closest('.settings')) setSettings(false); });
+function renderRate() { const rate = Number($('rate').value); $('settings').textContent = rate === 1 ? '⚙' : `⚙ ${rate}×`; }
 bind('camera', () => playback.select(Number($('camera').value)), 'change');
-bind('play', () => playback.play()); bind('rate', () => playback.setRate(Number($('rate').value)), 'change');
+bind('play', () => playback.play()); bind('rate', () => { playback.setRate(Number($('rate').value)); renderRate(); }, 'change');
 bind('back', () => step(-1)); bind('forward', () => step(1));
 bind('seek', () => { clearLoop(); playback.seek(Number($('seek').value)); }, 'input');
 bind('jump', () => { const time = $('seek-time').valueAsNumber; if (!Number.isFinite(time)) throw new Error('移動先の時刻を入力してください。'); clearLoop(); playback.seek(time); setView(playback.time - (view[1]-view[0])/2, view[1]-view[0]); });
@@ -193,6 +235,7 @@ async function pollJob() {
   } catch(error) { status(error.message,true); pollTimer = setTimeout(pollJob, 2000); }
 }
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('settings-menu').hidden) { setSettings(false); $('settings').focus(); return; }
   if (!project || e.isComposing || e.altKey) return;
   if (e.target.closest('textarea,select,input:not([type=range])') || e.target.isContentEditable) return;
   if (e.key === ' ' && e.target.closest('button')) return;
@@ -202,6 +245,7 @@ document.addEventListener('keydown', e => {
   const actions = {' ':'play',i:'mark-in',o:'mark-out',c:'create'};
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1,e.shiftKey ? 10 : 1); }
   else if (e.key === ',' || e.key === '.') { e.preventDefault(); clearLoop(); playback.seek(playback.time + (e.key === ',' ? -1 : 1)/project.sources[playback.selected].fps); }
+  else if (e.key.toLowerCase() === 'f' && !e.repeat) { e.preventDefault(); toggleFullscreen().catch(error => status(error.message, true)); }
   else if (actions[e.key.toLowerCase()]) { e.preventDefault(); if (!e.repeat) $(actions[e.key.toLowerCase()]).click(); }
 });
 try {
@@ -211,5 +255,5 @@ try {
     $('startup-notice').classList.toggle('warning', notice.warning);
     $('startup-notice').hidden = false;
   }
-  project = await api('project'); renderProject(true); status(project.read_only ? '読取専用です。保存clipを選び、停止して同期とdataset登録を確認できます。' : '単一カメラでラリーを切り出せます。同期確認は「カメラ比較」へ。'); await pollJob(); }
+  project = await api('project'); renderProject(true); status(project.read_only ? '読取専用です。保存clipを選び、停止して同期とdataset登録を確認できます。' : '単一カメラでラリーを切り出せます。同期は「同期調整を開く」、全画面は F。'); await pollJob(); }
 catch(error) { status(error.message,true); }
