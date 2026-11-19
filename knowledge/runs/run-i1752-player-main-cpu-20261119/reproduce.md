@@ -18,5 +18,5 @@ replayは既存evaluate.pyを呼び、NN構築・load・native loader・Inferenc
 69clipのcheckerは保存した本番コマンドを文字列として読み、実Hydra設定と入力検証から1計画を作る。
 モデル実行とPlanExecutor.runは禁止し、仮のstoreはTemporaryDirectoryへ置く。
 
-全体テストは `CUDA_VISIBLE_DEVICES='' .venv/bin/python -m pytest tests/unit/tennis_scene tests/integration/tennis_scene tests/unit/submodules tests/unit/tasks/court_side tests/e2e/tennis_scene/test_video_batch_cli.py -n 4 --tb=short --durations=0 --durations-min=0 -q`。
+全体テストは `CUDA_VISIBLE_DEVICES='' .venv/bin/python -m pytest tests/unit/tennis_scene tests/integration/tennis_scene tests/unit/submodules tests/unit/tasks/court_side tests/unit/utils/video tests/e2e/tennis_scene/test_video_batch_cli.py -n 4 --tb=short --durations=0 --durations-min=0 -q`。
 収集数は同じ範囲へ `--collect-only -q -o addopts='--strict-markers --import-mode=importlib'` を指定して測定する。
