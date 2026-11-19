@@ -1,22 +1,21 @@
 # court_side
 
 各cameraのcamera-localコートが、reference cameraのコートに対して180度 half-turn しているか（side）を、
-**多視点のball観測だけ**を証拠とする幾何的な仮説検定で決める。学習モデルは使わない。
+多視点の観測に基づく幾何で決める。`court_side.evidence` は `ball`（既定）と `player` を選べる。
 
 出力先の規約は[タスク出力規約](../OUTPUTS.md)を参照。
 
 保存済みの同期観測・校正・side診断は[dataset review画面](review/README.md)で確認できます。
 専用の学習datasetはなく、既存component storeがレビュー対象です。
 
-## なぜballだけか
+## 観測と座標
 
 - CourtKP14とコートラインは `Rz(π)` に対して完全に対称で、camera-local校正は常にcameraを `-Y` 側に置く。
   1台のcameraだけではsideは原理的に決まらない。
-- ballは1個しかないので、camera間の対応付けが要らない。人物を証拠にすると人物対応（#933）が必要になり、
-  その人物対応がsideを使うため循環する。
+- ballは1個しかないので、camera間の対応付けが要らない。プレーヤーを使う場合は、同時刻に写った足元の点集合を比べる。
 - コートの対称軸（ネット中央の真上、`x=y=0`）上のballはどの仮説でも同じに見えるので、判定の情報を持たない。
 
-## 判定（`hypothesis.py`）
+## ボールから判定する（`hypothesis.py`）
 
 reference cameraを固定し、他のcameraごとに「そのまま／half-turn」の `2^(V-1)` 通りの仮説を列挙する。
 まず、直前に残したframeと観測viewの組が同じで、どのviewも `min_motion_px` 未満しか動いていないframeを除く。
@@ -45,6 +44,29 @@ DLTは外れviewを除外しない。誤った姿勢のcameraを多数決で無�
 
 閾値の正本はpipelineの設定 `court_side:`（[pipeline.yaml](../../tennis_scene/configs/pipeline.yaml)）。
 既定はclipごとの判定。固定カメラで同じ動画の証拠をまとめる設定・診断・build/loadは[動画共有のcourt side](../../tennis_scene/pipeline/video_court_side/README.ja.md)、下流の接続は[tennis_scene pipeline](../../tennis_scene/pipeline/README.md)を参照。
+
+## プレーヤーから判定する
+
+`court_side.evidence=player` を指定すると、校正と `player_selection/<camera>` の観測から判定する。
+選手だけの3D再構成を実行するときは、次のoverrideでボール関連の3段を計画から外せる。
+
+```bash
+court_side.evidence=player \
+ball_detection.enabled=false \
+ball_reconstruction.enabled=false
+```
+
+各cameraの観測bboxの下端中央を、camera-local校正で地面の `z=0` へ投影する。判定に渡すのは同時刻の点の集合で、
+人物IDや外観特徴に関係なく、各仮説で各camera対の点集合を最小合計距離で一対一に比較する。
+人数が違うcamera対では、観測が少ない方の点数に合わせる。
+中心反転した自分自身との全点対が `symmetry_distance_m` 以内なら、そのcameraの観測は判定から除く。
+複数cameraで点集合の変化が `min_motion_m` 未満の繰り返しも除く。
+
+各点対のcostは `min((距離 / match_distance_m)^2, 1)`。camera対内、frame内のcamera対、全frameの順に平均する。
+supportは、同一frameの全camera対で全対応点が `match_distance_m` 以内のframeの割合。
+全仮説のcost・support・frame数を出し、上記の判定規則と同じ理由で `CourtSideUndecided` を返す。
+閾値は `court_side.player` に置く。既定の距離2.5 mは低いcameraからbbox下端を地面に投影した際の位置ずれを許容するための値。
+中心対称の許容距離0.5 mと移動量0.15 mで情報の少ない観測を除き、8 frame・support 0.2・cost 0.7・margin 0.05の各閾値で判定する。
 
 ## 合成ベンチマークと閾値の選定（`benchmark.py`）
 

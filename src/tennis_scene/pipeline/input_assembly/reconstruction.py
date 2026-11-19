@@ -13,7 +13,10 @@ from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmen
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
-from src.tennis_scene.pipeline.components.court_side import CourtSideInput
+from src.tennis_scene.pipeline.components.court_side import (
+    CourtSideInput,
+    PlayerCourtSideInput,
+)
 from src.tennis_scene.pipeline.components.identity import PlayerAssociationInput
 from src.tennis_scene.pipeline.components.triangulation import TriangulationInput
 from src.tennis_scene.pipeline.contracts import AssemblyContext
@@ -37,6 +40,16 @@ class CourtSideInputAssembler:
 
 
 @dataclass(frozen=True)
+class PlayerCourtSideInputAssembler:
+    version: int = 1
+
+    def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PlayerCourtSideInput:
+        calibration: CourtCalibrationOutput = artifacts["calibration"]
+        tracks = tuple(artifacts[f"tracks_{view.camera.camera_id}"].tracks for view in calibration.calibration.views)
+        return PlayerCourtSideInput(context.source, calibration, tracks)
+
+
+@dataclass(frozen=True)
 class PlayerAssociationInputAssembler:
     version: int = 2
 
@@ -48,14 +61,15 @@ class PlayerAssociationInputAssembler:
 @dataclass(frozen=True)
 class CameraAlignmentInputAssembler:
     human_threshold: float
-    ball_threshold: float
+    ball_threshold: float | None
     version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> CameraAlignmentInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]
         active = tuple(v.source_index for v in calibration.calibration.views)
         people = identified_people(gather_people(context.source, artifacts).select_views(active), artifacts["identities"], self.human_threshold)
-        ball = single_ball_observations(gather_balls(context.source, artifacts).select_views(active), threshold=self.ball_threshold)
+        ball = None if self.ball_threshold is None else single_ball_observations(
+            gather_balls(context.source, artifacts).select_views(active), threshold=self.ball_threshold)
         return CameraAlignmentInput(context.source, calibration, artifacts["side"], people, ball)
 
 

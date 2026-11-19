@@ -68,7 +68,8 @@ class TennisSceneOrchestrator:
         self._video_court_key: tuple[object, object, str] | None = None
         self.video_court_side: VideoCourtSideArtifact | None = None
         self._video_court_side_key: tuple[object, ...] | None = None
-        self.code_identity = document_digest(compatible_source_digests(source_digests(PROJECT_ROOT / "src")))
+        self.code_identity = document_digest(compatible_source_digests(
+            source_digests(PROJECT_ROOT / "src"), ball_court_side=config.court_side_evidence == "ball"))
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
