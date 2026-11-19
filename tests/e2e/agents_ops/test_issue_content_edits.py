@@ -170,18 +170,24 @@ def test_graphql_failure_is_never_partial_success(
     api: Any, monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
     client = importlib.import_module("parent.github").GitHub("o/r")
-    module = importlib.import_module("parent.github")
 
-    def run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        request = json.loads(kwargs["input"])
+    def request(
+        self: Any, method: str, endpoint: str, request: dict[str, Any]
+    ) -> subprocess.CompletedProcess[str]:
+        assert method == "POST" and endpoint == "graphql"
         assert "userContentEdits" in request["query"]
         assert request["variables"]["number"] == 1
         return subprocess.CompletedProcess(
-            args, 1 if failure == "transport" else 0,
-            json.dumps({"data": page([]), "errors": [{"message": "unavailable history"}]}),
+            [],
+            1 if failure == "transport" else 0,
+            json.dumps(
+                {"data": page([]), "errors": [{"message": "unavailable history"}]}
+            ),
             "transport failure",
         )
 
-    monkeypatch.setattr(module.subprocess, "run", run)
+    monkeypatch.setattr(
+        importlib.import_module("issues.transport").HTTPClient, "request", request
+    )
     with pytest.raises(ValueError, match="graphql"):
         api.read_body_history(client, 1)

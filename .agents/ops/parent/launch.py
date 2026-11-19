@@ -9,6 +9,7 @@ from typing import Any
 from issues import Issue
 
 from .policy import closing_issues, dependencies, nonempty, progress, raw_section
+from .worker_slots import workers
 
 DEFAULT_LAUNCH_POLICY = {
     "schema_version": 1,
@@ -52,7 +53,7 @@ def plan_launches(
         for n in children
     }
     reserved = []
-    for task_key, reservation in tasks.items():
+    for task_key, _, reservation in workers(tasks):
         if "worker_ended" in reservation:
             ended = reservation["worker_ended"]
             if (

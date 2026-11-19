@@ -1,0 +1,209 @@
+{
+  "schema": "scene_dpt_validation_parity.v1",
+  "plan_sha256": "480084c77be5d8b1b213d7b3a50a7c6368245ec4b2ee11c56af3870c22e9353a",
+  "checkpoint_sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+  "commit": "7610d05ed9eb6d46152beebd1ba2fda7935ab889",
+  "torch": "2.13.0+cu130",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "memory_fraction": 0.7,
+  "input_decoder": "torchvision.io.decode_jpeg/nvjpeg (same encoded JPEG bytes)",
+  "by_precision": {
+    "bf16": {
+      "frames": 104,
+      "max_source_px_difference": 75.86054652929306,
+      "max_score_difference": 0.012666523456573486,
+      "mismatches": [
+        {
+          "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000000775-000001100",
+          "frame_index": 28,
+          "kind": "reviewed_empty",
+          "source_px_difference": 0.07576119899749756,
+          "score_difference": 0.006217628717422485,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 55,
+          "kind": "reviewed_empty",
+          "source_px_difference": 6.870215892791748,
+          "score_difference": 0.0,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 62,
+          "kind": "reviewed_empty",
+          "source_px_difference": 3.97337806224823,
+          "score_difference": 0.003664851188659668,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 64,
+          "kind": "reviewed_empty",
+          "source_px_difference": 0.050213396549224854,
+          "score_difference": 0.005164384841918945,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 51,
+          "kind": "observed",
+          "source_px_difference": 13.36117559671402,
+          "score_difference": 0.0011163949966430664,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 52,
+          "kind": "observed",
+          "source_px_difference": 11.443671226501465,
+          "score_difference": 0.0,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 107,
+          "kind": "out_of_frame",
+          "source_px_difference": 0.2369408905506134,
+          "score_difference": 0.009104609489440918,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 108,
+          "kind": "out_of_frame",
+          "source_px_difference": 0.6196035742759705,
+          "score_difference": 0.012666523456573486,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 109,
+          "kind": "out_of_frame",
+          "source_px_difference": 0.2992215156555176,
+          "score_difference": 0.011635959148406982,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 110,
+          "kind": "out_of_frame",
+          "source_px_difference": 0.9554843008518219,
+          "score_difference": 0.007687568664550781,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 111,
+          "kind": "out_of_frame",
+          "source_px_difference": 1.4075070545077324,
+          "score_difference": 0.003919035196304321,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 112,
+          "kind": "out_of_frame",
+          "source_px_difference": 1.3360709324479103,
+          "score_difference": 0.0033833980560302734,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 114,
+          "kind": "out_of_frame",
+          "source_px_difference": 75.86054652929306,
+          "score_difference": 0.003179416060447693,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 115,
+          "kind": "out_of_frame",
+          "source_px_difference": 1.203818440437317,
+          "score_difference": 0.0031626224517822266,
+          "passed": false
+        }
+      ],
+      "tolerance": {
+        "source_px_atol": 1.0,
+        "score_atol": 0.005
+      },
+      "seconds": 3.764531769003952,
+      "peak_allocated_bytes": 3062703616,
+      "peak_reserved_bytes": 5521801216,
+      "mismatch_count": 14
+    },
+    "fp32": {
+      "frames": 104,
+      "max_source_px_difference": 75.94953519105911,
+      "max_score_difference": 0.006675615906715393,
+      "mismatches": [
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 41,
+          "kind": "observed",
+          "source_px_difference": 9.27369374036789,
+          "score_difference": 0.001141667366027832,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 42,
+          "kind": "masked",
+          "source_px_difference": 2.007028639316559,
+          "score_difference": 0.0003873109817504883,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 44,
+          "kind": "reviewed_empty",
+          "source_px_difference": 13.756349354982376,
+          "score_difference": 0.0003464818000793457,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+          "frame_index": 59,
+          "kind": "reviewed_empty",
+          "source_px_difference": 16.53439074754715,
+          "score_difference": 0.000946044921875,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 52,
+          "kind": "observed",
+          "source_px_difference": 11.403282403945923,
+          "score_difference": 0.0005429387092590332,
+          "passed": false
+        },
+        {
+          "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000002735-000003385",
+          "frame_index": 114,
+          "kind": "out_of_frame",
+          "source_px_difference": 75.94953519105911,
+          "score_difference": 0.0019272714853286743,
+          "passed": false
+        }
+      ],
+      "tolerance": {
+        "source_px_atol": 2.0,
+        "score_atol": 0.01
+      },
+      "seconds": 2.639775195995753,
+      "peak_allocated_bytes": 3402720256,
+      "peak_reserved_bytes": 5406457856,
+      "mismatch_count": 6
+    }
+  },
+  "passed": false,
+  "raw_report": {
+    "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/validation-parity.json",
+    "size_bytes": 71005,
+    "sha256": "bc733a041ee8d7092697c5e32632e6683fa88e4c6c5619e66aec185474f88e16"
+  },
+  "curation": "Every mismatch retained. Per-frame passing differences remain in the immutable raw report."
+}

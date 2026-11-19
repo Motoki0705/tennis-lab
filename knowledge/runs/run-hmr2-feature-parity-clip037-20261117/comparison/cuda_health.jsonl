@@ -1,0 +1,5 @@
+{"timestamp_utc": "2026-11-17T16:27:49.522118+00:00", "operation": "base versus separated body inference", "status": "NVIDIA GeForce RTX 5060 Ti, 621.24, 16311 MiB, 754 MiB, 0 %"}
+{"timestamp_utc": "2026-11-17T16:28:49.644244+00:00", "operation": "base versus separated body inference", "status": "NVIDIA GeForce RTX 5060 Ti, 621.24, 16311 MiB, 881 MiB, 0 %"}
+{"timestamp_utc": "2026-11-17T16:29:49.731580+00:00", "operation": "base versus separated body inference", "status": "NVIDIA GeForce RTX 5060 Ti, 621.24, 16311 MiB, 955 MiB, 0 %"}
+{"timestamp_utc": "2026-11-17T16:30:49.803863+00:00", "operation": "base versus separated body inference", "status": "NVIDIA GeForce RTX 5060 Ti, 621.24, 16311 MiB, 3997 MiB, 67 %"}
+{"timestamp_utc": "2026-11-17T16:31:07.911971+00:00", "operation": "base versus separated body inference", "status": "NVIDIA GeForce RTX 5060 Ti, 621.24, 16311 MiB, 955 MiB, 0 %"}

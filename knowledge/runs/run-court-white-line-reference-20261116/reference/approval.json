@@ -1,0 +1,25 @@
+{
+  "approval": {
+    "date": "2026-11-16",
+    "evidence": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6917118209",
+    "reviewed_commit": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+    "review_method": "Human inspected original-resolution RGB crops and selected 承認する.",
+    "accepted_limitations": [
+      "far_baseline extrapolated from other painted lines",
+      "approximately 5px temporal change in cam1 and cam3"
+    ],
+    "temporal_segmentation": false,
+    "mean_tolerance_px": 10,
+    "max_tolerance_px": 25,
+    "false_accept_target": 0,
+    "correct_acceptance_target": 0.9,
+    "instruction_turn": "c101f6257cd34cbaa260dc537a3e2438"
+  },
+  "preapproval_reference_sha256": "a53b250de0faa40a8ca005beda578099ae518997dd150bb4c57dac21c9d40b29",
+  "approved_reference_sha256": "90ed3bbdeae4a553cf82c9fb13c49ee56cf45e17f0436b0c30ae83929de08e4b",
+  "geometry_sha256_before": "1b9c48abe5578a69d99d6a1253a3842f264d46a2af898f1a632ae1c1c7f8ba7e",
+  "geometry_sha256_after": "1b9c48abe5578a69d99d6a1253a3842f264d46a2af898f1a632ae1c1c7f8ba7e",
+  "geometry_equal": true,
+  "historical_freeze_targets": "preapproval-reference.json (same bytes as prior references.json)",
+  "historical_result_key": "provisional now denotes this approved white-line reference; identifiers and numerical values retained"
+}

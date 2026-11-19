@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205243880144724202_2026-11-15T15-21-59-855275797Z_256924_scene-x3d-parity",
+  "name": "scene-x3d-parity",
+  "command": "PYTHONPATH=. OMP_NUM_THREADS=2 .venv/bin/python knowledge/runs/run-scene-x3d-dpt-20261116/verify_validation.py --plan knowledge/runs/run-scene-x3d-dpt-20261116/validation-plan.json --store outputs/tennis_scene/evaluate/x3d-dpt-20261116/validation-inputs/store --checkpoint ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt --output outputs/tennis_scene/evaluate/x3d-dpt-20261116/validation-parity.json",
+  "provider": "codex",
+  "session": "01a1dfbe-8da3-7440-9833-340a1ae044c1",
+  "issue": "2151",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "7610d05ed9eb6d46152beebd1ba2fda7935ab889",
+  "branch": "codex/scene-x3d-dpt-ball",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-x3d-dpt-ball",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-x3d-dpt-ball",
+  "captured_at": "2026-11-16T00:22:00+09:00"
+}

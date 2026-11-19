@@ -1,0 +1,13 @@
+{
+  "bf16": {
+    "frames": 104,
+    "mismatches": 5,
+    "max_source_px_difference": 16.38134855031967,
+    "max_score_difference": 0.0034130215644836426
+  },
+  "mechanism_note": "Compilation changed numerical rounding. Source code identity alone does not establish cross-version/cross-GPU output equivalence.",
+  "isolated_framework_check": "Completed: torch 2.14.1 + torchvision 0.29.1, shared venv unchanged; BF16 still 5 mismatches, max 16.605078399181366 source px.",
+  "final_gpu_decode": "Completed: model-device decoding, BF16 still 5 mismatches, max 16.38134855031967 source px.",
+  "paired_local_source_check": "Completed: coords/scores identical for BF16 and FP32 across 160 outputs each. BF16 dense heatmap diff 0.00043995119631290436 exceeds separately declared 1e-6; FP32 all differences 0.",
+  "conclusion": "Historical parity remains unestablished. Framework matching and model-device decoding did not resolve it. Cross-GPU/compiler/decoder contribution not isolated; tolerance and subset not changed."
+}

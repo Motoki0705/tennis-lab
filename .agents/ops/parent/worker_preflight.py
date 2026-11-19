@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues import Issue
-from lib.agent_settings import execution_contract
+from lib.agent_settings import session_contract
 from worker_logs.sources import original as original_text
 
 from .execution import ExecutionBasisStale, observed_authorization, requirement_body
@@ -27,6 +27,19 @@ SNAPSHOT_KEYS = {
     "phase",
     "decision_id",
     "context_sha256",
+}
+REPLACEMENT_KEYS = {
+    "replacement_id",
+    "recorded_at",
+    "reason",
+    "restart_evidence",
+    "from_run",
+    "from_runtime",
+    "previous_runtime",
+    "registered_runs",
+    "to_run",
+    "to_runtime",
+    "turn_id",
 }
 
 
@@ -55,7 +68,7 @@ def state(task: dict[str, Any]) -> dict[str, Any]:
     if (
         not isinstance(value, dict)
         or type(value.get("schema_version")) is not int
-        or value["schema_version"] not in {1, 2}
+        or value["schema_version"] not in {1, 2, 3}
         or value.get("phase") not in {"planning", "implementing"}
         or value.get("delegation_id") != task.get("delegation_id")
         or not isinstance(value.get("lineage_id"), str)
@@ -71,6 +84,47 @@ def state(task: dict[str, Any]) -> dict[str, Any]:
         validate_snapshot(turn.get("snapshot"))
         if turn["snapshot"]["lineage_id"] != value["lineage_id"]:
             raise ValueError("turn belongs to another worker lineage")
+    if value["schema_version"] == 3:
+        replacements = value.get("session_replacements")
+        if not isinstance(replacements, list) or not replacements:
+            raise ValueError("malformed worker session replacement history")
+        for replacement in replacements:
+            if (
+                not isinstance(replacement, dict)
+                or set(replacement)
+                not in (REPLACEMENT_KEYS, REPLACEMENT_KEYS | {"cancelled"})
+                or replacement.get("reason")
+                not in {"recovery_error", "missing_session_id"}
+                or not isinstance(replacement.get("from_run"), dict)
+                or not isinstance(replacement.get("from_runtime"), dict)
+                or not isinstance(replacement.get("registered_runs"), list)
+                or (
+                    replacement["to_runtime"] is not None
+                    and not isinstance(replacement["to_runtime"], dict)
+                )
+                or (
+                    "cancelled" in replacement
+                    and type(replacement["cancelled"]) is not bool
+                )
+                or any(
+                    not isinstance(replacement.get(key), str)
+                    or not replacement[key].strip()
+                    for key in (
+                        "replacement_id",
+                        "turn_id",
+                        "to_run",
+                        "restart_evidence",
+                        "recorded_at",
+                    )
+                )
+                or not any(
+                    t["snapshot"]["turn_id"] == replacement["turn_id"]
+                    and t.get("source") == replacement["to_run"]
+                    and bool(t.get("cancelled")) == bool(replacement.get("cancelled"))
+                    for t in value["turns"]
+                )
+            ):
+                raise ValueError("malformed worker session replacement history")
     return value
 
 
@@ -105,7 +159,7 @@ def context(
     parent, items = session.work_items() if work_items is None else work_items
     if child not in items:
         raise ValueError("worker requires a direct child or the standalone issue")
-    task = session.row["tasks"].get(str(child), {})
+    task = session.worker_task(child)
     found: dict[int, dict[str, Any]] = {}
 
     def visit(n: int, body: str) -> None:
@@ -188,7 +242,7 @@ def review_errors(task: dict[str, Any]) -> tuple[str, ...]:
 def observe(
     session: ParentSession, child: int, *, persist: bool = False
 ) -> dict[str, Any]:
-    task = session.row.get("tasks", {}).get(str(child), {})
+    task = session.worker_task(child)
     if not task.get("delegated"):
         return {
             "phase": "not_delegated",
@@ -211,27 +265,66 @@ def summary(task: dict[str, Any], *, stale: bool = False) -> dict[str, Any]:
             "refresh_required": False,
         }
     value = state(task)
-    return {
+    result: dict[str, Any] = {
         "phase": value["phase"],
         "status": value["phase"],
         "next_action": "parent_judgement",
         "refresh_required": False,
         "legacy_result_migrated": "legacy_result" in value,
     }
+    replacements = value.get("session_replacements", [])
+    if replacements:
+        latest = replacements[-1]
+        result["session_replacement"] = {
+            "count": len(replacements),
+            "state": "cancelled"
+            if latest.get("cancelled")
+            else "bound"
+            if latest["to_runtime"] is not None
+            else "reserved",
+            "reason": latest["reason"],
+        }
+    return result
 
 
 def runtime_binding(record: dict[str, Any]) -> dict[str, str]:
     contract = record["contract"]
     return {
-        "contract_sha256": digest(execution_contract(contract)),
+        "contract_sha256": digest(session_contract(contract)),
         "session_id": nonempty(
             record.get("runtime", {}).get("session_id"), "saved worker session"
         ),
     }
 
 
-def bind_runtime(value: dict[str, Any], record: dict[str, Any]) -> None:
+def bind_runtime(
+    value: dict[str, Any], record: dict[str, Any], *, directory: Path | None = None
+) -> None:
     observed = runtime_binding(record)
+    replacement = next(
+        (
+            r
+            for r in reversed(value.get("session_replacements", []))
+            if not r.get("cancelled")
+        ),
+        None,
+    )
+    if replacement is not None and replacement["to_runtime"] is None:
+        location = (
+            str(directory.resolve()) if directory is not None else record.get("run_dir")
+        )
+        if (
+            location != replacement["to_run"]
+            or observed["contract_sha256"]
+            != replacement["from_runtime"]["contract_sha256"]
+            or observed["session_id"] == replacement["from_runtime"]["session_id"]
+        ):
+            raise ValueError(
+                "runtime does not match the explicit worker session replacement"
+            )
+        replacement["to_runtime"] = copy.deepcopy(observed)
+        value["runtime"] = observed
+        return
     legacy = {**observed, "contract_sha256": digest(record["contract"])}
     if value["runtime"] is not None and value["runtime"] not in (observed, legacy):
         raise ValueError("worker session/contract differs from the planning lineage")
@@ -242,14 +335,15 @@ def latest_evidence(
     session: ParentSession, child: int, *, persist_ended: bool = True
 ) -> tuple[Path, dict[str, Any]]:
     """Reuse the launcher's completion checks; never infer end from a final."""
-    task = session.row["tasks"][str(child)]
+    task = session.worker_task(child)
     if session.row.get("dispatch") is not None:
         from .development import Supervisor, ended, worker_jobs
 
-        jobs = worker_jobs(session.row["dispatch"], child)
+        jobs = worker_jobs(session.row["dispatch"], child, session.worker)
         if not jobs or jobs[-1]["delegation_id"] != task["delegation_id"]:
             raise ValueError("no runtime for the current worker delegation")
-        record = ended(jobs[-1])
+        with session.gh.io_scope():
+            record = ended(jobs[-1])
         if record is None:
             raise ValueError("cancelled reservation has no planning final")
         Supervisor._check_contract(jobs[-1], record)
@@ -268,8 +362,9 @@ def latest_evidence(
 
     runner_ended(session, child, persist=persist_ended)
     directory = latest_run(session, task)
-    validate_run(task, directory)
-    proof = Runtime(RUNNER).inspect(directory)
+    with session.gh.io_scope():
+        validate_run(task, directory)
+        proof = Runtime(RUNNER).inspect(directory)
     if not Runtime(RUNNER).ended(proof):
         raise ValueError("worker termination and cleanup must be confirmed")
     return directory, proof["record"]
@@ -282,7 +377,7 @@ def decide(
     nonempty(answer, "parent planning answer")
     if action not in {"approve", "investigate", "reject"}:
         raise ValueError("unknown worker planning decision")
-    task = session.row["tasks"][str(child)]
+    task = session.worker_task(child)
     value = state(task)
     fresh, _ = observe_context(session, child, value, persist=False)
     if not value["turns"] or value["turns"][-1]["snapshot"]["phase"] != "planning":
@@ -296,11 +391,12 @@ def decide(
         and record.get("prompt_sha256") != turn["prompt_sha256"]
     ):
         raise ValueError("saved planning instruction does not match the runtime")
-    bind_runtime(value, record)
-    raw = (directory / "final.md").read_bytes()
-    text = raw.decode("utf-8")
-    nonempty(text, "planning final")
-    final_sha = hashlib.sha256(raw).hexdigest()
+    bind_runtime(value, record, directory=directory)
+    with session.gh.io_scope():
+        raw = (directory / "final.md").read_bytes()
+        text = raw.decode("utf-8")
+        nonempty(text, "planning final")
+        final_sha = hashlib.sha256(raw).hexdigest()
     previous = [
         d
         for d in value["decisions"]
@@ -355,12 +451,14 @@ def prepare_turn(
     additional: str | None = None,
     previous_record: dict[str, Any] | None = None,
     planning: bool = False,
+    replacement: dict[str, Any] | None = None,
+    previous_directory: Path | None = None,
 ) -> tuple[dict[str, Any], str]:
-    task = session.row["tasks"][str(child)]
+    task = session.worker_task(child)
     value = copy.deepcopy(state(task))
     fresh = context(session, child)
     if previous_record is not None:
-        bind_runtime(value, previous_record)
+        bind_runtime(value, previous_record, directory=previous_directory)
     pending = [
         d
         for d in value["decisions"]
@@ -375,13 +473,14 @@ def prepare_turn(
         source = next(
             t for t in value["turns"] if t["snapshot"]["turn_id"] == decision["turn_id"]
         )
-        if (
-            hashlib.sha256(
-                (Path(source["source"]) / "final.md").read_bytes()
-            ).hexdigest()
-            != decision["final_sha256"]
-        ):
-            raise ValueError("planning final changed after the parent answer")
+        with session.gh.io_scope():
+            if (
+                hashlib.sha256(
+                    (Path(source["source"]) / "final.md").read_bytes()
+                ).hexdigest()
+                != decision["final_sha256"]
+            ):
+                raise ValueError("planning final changed after the parent answer")
         text = "## 親の判断\n\n" + decision["answer"]
         if instruction is not None:
             text += "\n\n" + original_text(instruction)
@@ -394,7 +493,7 @@ def prepare_turn(
     if additional is not None:
         text += "\n\n## 親の追加指示\n\n" + original_text(additional)
     value.update(
-        schema_version=2,
+        schema_version=max(2, value["schema_version"]),
         context=fresh,
         refresh_required=False,
         phase=selected_phase,
@@ -433,6 +532,12 @@ def prepare_turn(
             },
         }
     )
+    if replacement is not None:
+        value["schema_version"] = 3
+        value.setdefault("session_replacements", []).append(
+            {**copy.deepcopy(replacement), "turn_id": turn_id}
+        )
+        value["runtime"] = None
     return value, text
 
 
@@ -463,7 +568,7 @@ def check_admission(
     *,
     current: dict[str, Any] | None = None,
 ) -> None:
-    value = state(session.row["tasks"][str(child)])
+    value = state(session.worker_task(child))
     validate_snapshot(snapshot)
     # Admit exactly the turn reserved by the current parent. Changed prose is
     # supplied as an observation; it does not fabricate a different instruction.
@@ -471,16 +576,27 @@ def check_admission(
         raise ValueError("worker turn differs from the reserved instruction")
 
 
-def require_implementation(session: ParentSession, child: int) -> None:
-    task = session.row["tasks"].get(str(child), {})
-    if not task.get("delegated"):
-        return
-    directory, record = latest_evidence(session, child)
+def result_turn(task: dict[str, Any]) -> dict[str, Any] | None:
+    """Resolve the current result instruction, preserving empty legacy history."""
     value = state(task)
     turn = next((t for t in reversed(value["turns"]) if not t.get("cancelled")), None)
+    if value["turns"] and turn is None:
+        raise ValueError("no non-cancelled worker turn to verify")
+    return turn
+
+
+def require_implementation(session: ParentSession, child: int) -> str | None:
+    """Verify the actual runtime and return the turn ID that was verified."""
+    task = session.worker_task(child)
+    if not task.get("delegated"):
+        return None
+    turn = result_turn(task)
+    directory, record = latest_evidence(session, child)
+    value = state(task)
     if turn is not None and (
         turn["source"] != str(directory)
         or record.get("prompt_sha256") != turn.get("prompt_sha256")
     ):
         raise ValueError("worker result does not match the saved instruction")
-    bind_runtime(value, record)
+    bind_runtime(value, record, directory=directory)
+    return turn["snapshot"]["turn_id"] if turn is not None else None

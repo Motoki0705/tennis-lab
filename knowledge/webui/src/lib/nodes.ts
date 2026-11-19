@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import matter from "gray-matter";
+import { readCitations } from "./citation-library";
 import {
   KNOWLEDGE_DIR,
   NODES_DIR,
@@ -162,11 +163,6 @@ export async function getGraph(): Promise<KnowledgeGraph> {
   for (const file of paperFiles) {
     const { data } = matter(await fs.readFile(file, "utf8"));
     targets.set(path.resolve(file), `/?paper=${encodeURIComponent(data.id)}`);
-    if (data.pdf)
-      targets.set(
-        path.resolve(path.dirname(file), "paper.pdf"),
-        `/api/papers/${data.id}`,
-      );
   }
   const papers: Paper[] = await Promise.all(
     paperFiles.map(async (file) => {
@@ -178,8 +174,9 @@ export async function getGraph(): Promise<KnowledgeGraph> {
         authors: asStringArray(data.authors),
         tasks: asStringArray(data.tasks),
         source: data.source,
-        ...(data.license ? { license: String(data.license) } : {}),
-        ...(data.pdf ? { pdfUrl: `/api/papers/${data.id}` } : {}),
+        summary: data.summary,
+        reason: data.reason,
+        externalIds: data.external_ids,
         bodyHtml: renderMarkdown(content, file, targets),
       };
     }),
@@ -194,5 +191,11 @@ export async function getGraph(): Promise<KnowledgeGraph> {
     summaryFile,
     targets,
   );
-  return { nodes, edges: buildEdges(nodes), papers, summaryHtml };
+  return {
+    nodes,
+    edges: buildEdges(nodes),
+    papers,
+    summaryHtml,
+    citations: await readCitations(papers),
+  };
 }

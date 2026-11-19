@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING, Any
 
 from parent.github import GitHub
@@ -82,6 +83,31 @@ def writable(snapshot: dict[str, Any]) -> None:
         raise ValueError("Project is closed or current gh account cannot update it")
 
 
+def item_identity(item: dict[str, Any] | None) -> dict[str, Any] | None:
+    if item is None:
+        return None
+    # The raw GraphQL aliases duplicate values and are stale in our expected
+    # projection after a write. Compare the actual content and projected values.
+    return {key: item[key] for key in ("id", "isArchived", "content", "values")}
+
+
+def view_identity(view: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **{key: view[key] for key in ("name", "number", "layout", "filter")},
+        **{key: sorted(view[key]) for key in ("visible", "groups", "columns")},
+    }
+
+
+def setup_identity(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "project": snapshot["project"],
+        "fields": {row["id"]: row for row in snapshot["fields"]},
+        "views": {row["id"]: view_identity(row) for row in snapshot["views"]},
+        "items": {row["id"]: item_identity(row) for row in snapshot["items"]},
+        "workflows": {row["id"]: row for row in snapshot["workflows"]},
+    }
+
+
 def setup(
     api: Projects, owner: str, project_number: int, apply: bool
 ) -> dict[str, Any]:
@@ -94,6 +120,10 @@ def setup(
             if field["name"] in (*BUILTINS, *FIELDS):
                 number(field.get("databaseId"))
     if apply:
+        latest = api.snapshot(owner, project_number)
+        if setup_identity(latest) != setup_identity(snapshot):
+            raise ValueError("Project changed before writing; inspect and retry")
+        expected = copy.deepcopy(setup_identity(snapshot))
         project_id = snapshot["project"]["id"]
         for action in plan:
             if action["operation"] == "create_field":
@@ -115,10 +145,11 @@ def setup(
                     payload,
                     f"projectV2Field {{ {FIELD} }}",
                 )
-                nonempty(
-                    object_value(created.get("projectV2Field")).get("id"),
-                    "created field ID",
-                )
+                field = object_value(created.get("projectV2Field"))
+                field_id = nonempty(field.get("id"), "created field ID")
+                if field_id in expected["fields"]:
+                    raise ValueError("created Project field identity already exists")
+                expected["fields"][field_id] = field
             else:
                 # New field IDs come from GitHub, including after a previous interrupted setup.
                 fields = validate_fields(api.connection(project_id, "fields", FIELD))
@@ -128,7 +159,7 @@ def setup(
                     ]
                 }
                 if action.get("columns"):
-                    api.create_board(
+                    view_id = api.create_board(
                         snapshot["project"]["owner"]["login"],
                         project_number,
                         {
@@ -149,6 +180,16 @@ def setup(
                             ],
                         },
                     )
+                    if view_id in expected["views"]:
+                        raise ValueError("created Project view identity already exists")
+                    expected["views"][view_id] = {
+                        "name": action["name"],
+                        "layout": action["layout"],
+                        "filter": action["filter"],
+                        "visible": sorted(config["visibleFieldIds"]),
+                        "groups": action["groups"],
+                        "columns": action["columns"],
+                    }
                     continue
                 if action["operation"] == "create_view":
                     created = api.mutate(
@@ -166,6 +207,8 @@ def setup(
                         object_value(created.get("projectV2View")).get("id"),
                         "created view ID",
                     )
+                    if view_id in expected["views"]:
+                        raise ValueError("created Project view identity already exists")
                 else:
                     view_id = action["id"]
                 updated = api.mutate(
@@ -181,7 +224,30 @@ def setup(
                 )
                 if object_value(updated.get("projectV2View")).get("id") != view_id:
                     raise ValueError("updated view identity mismatch")
+                expected["views"][view_id] = {
+                    **expected["views"].get(view_id, {}),
+                    "name": action["name"],
+                    "layout": action["layout"],
+                    "filter": action["filter"],
+                    "visible": sorted(config["visibleFieldIds"]),
+                }
         snapshot = api.snapshot(owner, project_number)
+        actual = setup_identity(snapshot)
+        # New table views have server defaults for grouping/number. Existing
+        # views must retain those properties; board creation specifies its axes.
+        views_match = actual["views"].keys() == expected["views"].keys() and all(
+            all(
+                actual["views"][key].get(field) == value
+                for field, value in view.items()
+            )
+            for key, view in expected["views"].items()
+        )
+        if not views_match or any(
+            actual[key] != expected[key] for key in expected if key != "views"
+        ):
+            raise ValueError(
+                "Project inputs or identities changed during setup; inspect and retry"
+            )
         if setup_plan(snapshot):
             raise ValueError(
                 "Project setup did not converge; rerun with the same input"
@@ -206,9 +272,10 @@ def setup(
 def observe(
     gh: GitHub, api: Projects, parent: int, owner: str, project_number: int
 ) -> dict[str, Any]:
-    snapshot = api.snapshot(owner, project_number)
-    tree = read_tree(api, gh.repo, parent)
-    pulls = related_pulls(gh, tree)
+    with gh.fresh_reads():
+        snapshot = api.snapshot(owner, project_number)
+        tree = read_tree(api, gh.repo, parent)
+        pulls = related_pulls(gh, tree)
     by_content: dict[str, dict[str, Any]] = {}
     for item in snapshot["items"]:
         content_id = item["content"]["id"]
@@ -437,7 +504,7 @@ def fingerprint(observation: dict[str, Any]) -> dict[str, Any]:
     return {
         "tree": observation["tree"],
         "pulls": observation["pulls"],
-        "items": observation["items"],
+        "items": {n: item_identity(item) for n, item in observation["items"].items()},
         "project": observation["snapshot"]["project"],
         "fields": observation["snapshot"]["fields"],
     }
@@ -463,7 +530,8 @@ def sync(
             )
         project_id = observation["snapshot"]["project"]["id"]
         fields = validate_fields(observation["snapshot"]["fields"])
-        items = observation["items"]
+        expected = copy.deepcopy(observation)
+        items = expected["items"]
         for action in plan:
             n = action["issue"]
             if action["operation"] == "add_item":
@@ -476,7 +544,16 @@ def sync(
                 items[n] = {
                     "id": nonempty(
                         object_value(added.get("item")).get("id"), "added item ID"
-                    )
+                    ),
+                    "isArchived": False,
+                    "content": {
+                        "__typename": "Issue",
+                        "id": action["content_id"],
+                        "number": n,
+                        "url": observation["tree"][n]["url"],
+                        "repository": observation["tree"][n]["repository"],
+                    },
+                    "values": {name: None for name in FIELDS},
                 }
                 continue
             item_id = items[n]["id"]
@@ -514,7 +591,12 @@ def sync(
                 )
             if object_value(updated.get("projectV2Item")).get("id") != item_id:
                 raise ValueError("updated Project item identity mismatch")
+            items[n]["values"][action["field"]] = action["value"]
         observation = observe(gh, api, parent, owner, project_number)
+        if fingerprint(observation) != fingerprint(expected):
+            raise ValueError(
+                "Inputs or item identities changed during Project update, or writes did not converge; inspect and rerun with the same input"
+            )
         if sync_plan(observation, parent, event, spec):
             raise ValueError(
                 "Project update did not converge; inspect and rerun with the same input"
@@ -537,9 +619,15 @@ def parent_command(
     spec: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     session.owner()
-    api = Projects(store=session.store)
+    api = Projects(store=session.store if apply else None)
     if command == "project-setup":
-        return setup(api, owner, project_number, apply)
+        issue = api.issue(session.gh.repo, session.parent) if apply else None
+        result = setup(api, owner, project_number, apply)
+        if apply and api.issue(session.gh.repo, session.parent) != issue:
+            raise ValueError(
+                "Parent issue changed during Project setup; inspect and retry"
+            )
+        return result
     if spec is None or event is None:
         raise ValueError("project-sync requires event and spec")
     session.public(spec)

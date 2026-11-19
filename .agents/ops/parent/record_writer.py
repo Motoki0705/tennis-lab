@@ -1,0 +1,178 @@
+"""Durable, reconciled comments; new machine records have one evidence destination."""
+
+from __future__ import annotations
+
+import subprocess
+from collections.abc import Callable
+from contextlib import ExitStack
+from typing import TYPE_CHECKING, Any
+
+from worker_logs.journal import atomic, locked
+
+from . import comment_journal
+from .history import comment_url, parse_history
+from .policy import digest, number
+from .state import RegistryConflict
+
+if TYPE_CHECKING:
+    from .session import ParentSession
+
+
+def post_once(
+    session: ParentSession,
+    issue: int,
+    body: str,
+    key: str,
+    *,
+    projection: bool = False,
+    validate: Callable[[list[dict[str, Any]]], None] | None = None,
+) -> dict[str, Any]:
+    """A lost response is reconciled. Absence after a sent intent never causes POST."""
+    session.public(body)
+    gh = session.gh
+    path = (
+        session.store.directory
+        / "comment-outbox"
+        / f"{digest([gh.repo.casefold(), issue, key])}.json"
+    )
+    identity = {
+        "version": 2,
+        "repo": gh.repo.casefold(),
+        "parent": session.parent,
+        "issue": number(issue),
+        "source": "pr"
+        if projection
+        else "legacy_parent_comment"
+        if issue == session.parent
+        else "evidence_issue",
+        "publisher": session.login,
+        "body_sha256": digest(body),
+        "key": key,
+    }
+    with ExitStack() as locks, gh.fresh_reads():
+        with gh.io_scope():
+            locks.enter_context(locked(path))
+        saved = (
+            comment_journal.load(path) if path.exists() or path.is_symlink() else None
+        )
+        if saved is not None and saved["version"] == 1:
+            identity = {
+                k: v for k, v in identity.items() if k not in {"parent", "source"}
+            }
+            identity["version"] = 1
+        if saved is not None and (
+            set(saved) != set(identity) | {"state", "comment_id"}
+            or any(saved.get(k) != v for k, v in identity.items())
+            or saved["state"] not in {"sent", "bound"}
+            or type(saved["version"]) is not int
+            or (saved["state"] == "sent" and saved["comment_id"] is not None)
+        ):
+            raise ValueError("comment outbox conflict; inspect the original operation")
+        if saved is not None and saved["state"] == "bound":
+            number(saved["comment_id"])
+        rows = gh.comments(issue)
+        matches = [
+            c
+            for c in rows
+            if c.get("user", {}).get("login") == session.login and c.get("body") == body
+        ]
+        if len(matches) > 1:
+            raise ValueError("duplicate comments for one publication")
+        if (
+            saved
+            and saved["state"] == "bound"
+            and (not matches or matches[0]["id"] != saved["comment_id"])
+        ):
+            raise ValueError("published comment changed or disappeared")
+        if not matches:
+            if saved is not None:
+                raise ValueError(
+                    "comment publication uncertain; reconcile before any new POST"
+                )
+            if validate is not None:
+                # Validate the same fresh rows used for duplicate detection,
+                # after acquiring the outbox lock, rather than fetching them
+                # once for preparation and again here without intervening I/O.
+                validate(rows)
+            atomic(path, {**identity, "state": "sent", "comment_id": None})
+            try:
+                gh.write(
+                    "POST", f"repos/{gh.repo}/issues/{issue}/comments", {"body": body}
+                )
+            except RegistryConflict:
+                raise
+            except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
+                raise ValueError(
+                    "comment publication uncertain; retry only to reconcile"
+                ) from exc
+            matches = [
+                c
+                for c in gh.comments(issue)
+                if c.get("user", {}).get("login") == session.login
+                and c.get("body") == body
+            ]
+            if len(matches) != 1:
+                raise ValueError("comment publication could not be verified")
+        comment = matches[0]
+        atomic(
+            path, {**identity, "state": "bound", "comment_id": number(comment["id"])}
+        )
+        return {
+            **comment,
+            "_parent_record_issue": issue,
+            "_parent_record_source": "legacy_parent_comment"
+            if issue == session.parent
+            else "evidence_issue",
+        }
+
+
+def write_record(session: ParentSession, body: str) -> dict[str, Any]:
+    """Legacy bytes are reused, never copied. Validate the prospective full history."""
+    with session.gh.fresh_reads():
+        return _write_record(session, body)
+
+
+def _write_record(session: ParentSession, body: str) -> dict[str, Any]:
+    history = session.gh.record_history(session.parent, session.login)
+    for comment in history.comments:
+        if (
+            comment.get("user", {}).get("login") == session.login
+            and comment.get("body") == body
+        ):
+            if comment.get("_parent_record_source") == "evidence_issue":
+                return post_once(
+                    session, number(comment["_parent_record_issue"]), body, digest(body)
+                )
+            return post_once(session, session.parent, body, digest(body))
+    manager = session.gh.evidence_issues()
+    destination = history.evidence_issue
+    if destination is None or manager.needs_binding(session.parent, session.login):
+        destination = manager.ensure(
+            session.parent, session.login, store=session.gh._store
+        ).number
+    else:
+        # Keep ensure's work-issue check even though container creation is not
+        # needed. A parent relabelled as evidence/proposal cannot receive a new
+        # machine record merely because its old container still exists.
+        session.gh.issue(session.parent)
+    # read_history has just validated the listing AND the saved binding remotely.
+    # An existing container requires no creation lock or second identical find.
+    # First binding and absent/uncertain creation still need ensure's independent
+    # locked observation and durable journal update.
+
+    def validate(rows: list[dict[str, Any]]) -> None:
+        cid = 1 + max((c["id"] for c in history.comments + rows), default=0)
+        parse_history(
+            session.gh.repo,
+            session.parent,
+            session.login,
+            history.parent_comments,
+            [*rows, {"id": cid, "body": body, "user": {"login": session.login}}],
+            evidence_issue=destination,
+        ).require_valid()
+
+    return post_once(session, destination, body, digest(body), validate=validate)
+
+
+def url(session: ParentSession, comment: dict[str, Any]) -> str:
+    return comment_url(session.gh.repo, session.parent, comment)

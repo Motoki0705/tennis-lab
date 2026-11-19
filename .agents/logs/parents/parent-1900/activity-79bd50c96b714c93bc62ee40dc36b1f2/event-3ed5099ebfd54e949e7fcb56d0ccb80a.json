@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "4a4a703be98644688d34b6a0c61091e0",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.improvement; artifact=command response; content_sha256=a9c90f94bc34cf1338edc65a86bcea2b8e53233f0d526bab9c7e5177bf4ca564; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "755523f8d7e64c44bc406378fb663af9",
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.improvement: success; {\n  \"candidate_id\": \"I-1900-worker-descendants-reaped\",\n  \"child\": 1900,\n  \"revision\": 1\n}",
+      "verifies": []
+    },
+    "id": "3ed5099ebfd54e949e7fcb56d0ccb80a",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "79bd50c96b714c93bc62ee40dc36b1f2",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T23:21:20.735346+00:00"
+      },
+      "recorded_at": "2026-11-14T23:21:20.735363+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

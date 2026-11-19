@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-17",
+  "common_h_reviewed": true,
+  "accepted_for_downstream": true,
+  "source": "Parent instruction to worker #2191, turn c4c7bed22d114a2da39b7a77252fca41",
+  "quote": "緑の線は完全にコートを示している。これを下流で用いていけばよい",
+  "scope": {
+    "clips": 3,
+    "cameras": 4,
+    "native_resolution_crops": true,
+    "clip_ids": "not specified in parent instruction",
+    "all_69_clip_images_reviewed": false
+  },
+  "rationale": [
+    "共通Hが承認済み参照と一致した",
+    "人間が共通Hを目視確認した",
+    "検査不成立の主因は隣接線の誤抽出であり、10px級の整合した動きの証拠はない"
+  ],
+  "limitation": "clipの途中でcameraが動いた場合、自動では検出されないことがある"
+}

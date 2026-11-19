@@ -1,0 +1,104 @@
+{
+  "cam1": {
+    "status_counts": {
+      "failed": 9,
+      "ok": 57,
+      "warning": 3
+    },
+    "geometry_reasons": {
+      "insufficient_independent_line_support": 8,
+      "unverified_finite_line_identity": 8,
+      "uncertain_local_projection": 1
+    },
+    "measurement_failures": {
+      "insufficient_independent_line_support": 4,
+      "measured": 1,
+      "frame_correspondence_fit_failed": 4
+    },
+    "projection_std_px": {
+      "min": 4.101548234034699,
+      "median": 4.306469112488012,
+      "p95": 4.615818474234054,
+      "max": 5.384966429559348
+    },
+    "selected_model_accepted": [
+      false
+    ],
+    "used_fit_clip_count": 68
+  },
+  "cam3": {
+    "status_counts": {
+      "failed": 69
+    },
+    "geometry_reasons": {
+      "uncertain_local_projection": 55,
+      "insufficient_independent_line_support": 14,
+      "unverified_finite_line_identity": 14
+    },
+    "measurement_failures": {
+      "measured": 55,
+      "frame_correspondence_fit_failed": 9,
+      "insufficient_independent_line_support": 4,
+      "ambiguous_frame_line_assignment": 1
+    },
+    "projection_std_px": {
+      "min": 5.637554845071962,
+      "median": 7.136820635756676,
+      "p95": 8.363857455618069,
+      "max": 9.590695653695484
+    },
+    "selected_model_accepted": [
+      false
+    ],
+    "used_fit_clip_count": 62
+  },
+  "cam0": {
+    "status_counts": {
+      "failed": 25,
+      "ok": 44
+    },
+    "geometry_reasons": {
+      "uncertain_local_projection": 25
+    },
+    "measurement_failures": {
+      "measured": 25
+    },
+    "projection_std_px": {
+      "min": 4.314634568802448,
+      "median": 4.490761357756169,
+      "p95": 5.353395005699812,
+      "max": 5.64193110208125
+    },
+    "selected_model_accepted": [
+      false
+    ],
+    "used_fit_clip_count": 69
+  },
+  "cam2": {
+    "status_counts": {
+      "failed": 66,
+      "ok": 3
+    },
+    "geometry_reasons": {
+      "uncertain_local_projection": 38,
+      "insufficient_independent_line_support": 28,
+      "unverified_finite_line_identity": 28
+    },
+    "measurement_failures": {
+      "measured": 38,
+      "frame_correspondence_fit_failed": 24,
+      "ambiguous_frame_line_assignment": 1,
+      "insufficient_independent_line_support": 3
+    },
+    "projection_std_px": {
+      "min": 4.975529655917124,
+      "median": 5.124482486288524,
+      "p95": 5.319741428067574,
+      "max": 5.963696014983513
+    },
+    "selected_model_accepted": [
+      false
+    ],
+    "used_fit_clip_count": 64
+  }
+}

@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from parent import worker_slots
 from worker_logs.journal import decode
 from worker_logs.schema import json_bytes, sha
 
@@ -156,6 +157,8 @@ def runtime_record(
                         "runner.result: agent_spawned observed",
                         at=stamp(value.get("started_at")),
                     )
+                from .trace_capture import worker_fact
+
                 op.result(
                     value,
                     artifact="result.json",
@@ -166,6 +169,11 @@ def runtime_record(
                         value, op.row["counter_key"], op.row.get("model_specified_by")
                     ),
                     at=stamp(value.get("started_at")),
+                    observation=worker_fact(
+                        "running", None, source("runner.result", "result.json", value)
+                    )
+                    if op.row["scope"]["delegation"]
+                    else None,
                 )
                 return
             spawned = value.get("agent_spawned")
@@ -200,6 +208,8 @@ def runtime_record(
             )
             if status == "success" and final["status"] == "unavailable":
                 status = "partial"
+            from .trace_capture import worker_fact
+
             op.result(
                 value,
                 artifact="result.json",
@@ -207,6 +217,13 @@ def runtime_record(
                 summary=f"runner.result: {value['result']}; turn_end_reason={reason}; exit_code={value.get('exit_code')}; task acceptance unconfirmed",
                 key=key,
                 final_report=final,
+                observation=worker_fact(
+                    "not_started" if state == "rejected_before_start" else "ended",
+                    final,
+                    source("runner.result", "result.json", value),
+                )
+                if op.row["scope"]["delegation"]
+                else None,
                 auxiliary=runtime_auxiliary(
                     value, op.row["counter_key"], op.row.get("model_specified_by")
                 ),
@@ -232,7 +249,7 @@ def bind_job(store: Any, key: str, row: dict[str, Any], job: dict[str, Any]) -> 
     op = current()
     try:
         if op is None:
-            phase = row["tasks"][str(job["child"])].get("preflight", {})
+            phase = worker_slots.job_record(row, job).get("preflight", {})
             scope = {
                 "repo": key.rpartition("#")[0],
                 "parent": int(key.rpartition("#")[2]),
@@ -281,7 +298,7 @@ def bind_job(store: Any, key: str, row: dict[str, Any], job: dict[str, Any]) -> 
                     "parent_choice" if job.get("model") else "settings",
                 )
                 bound._save()
-            bind_worker_task(row["tasks"][str(job["child"])], operation=bound)
+            bind_worker_task(worker_slots.job_record(row, job), operation=bound)
     except Exception:
         if op is None:
             try:
@@ -393,47 +410,46 @@ def job_environment(job: dict[str, Any]) -> dict[str, str]:
         return dict(os.environ)
 
 
-def saved_jobs(parents: dict[str, Any]) -> None:
+def saved_jobs(jobs: list[dict[str, Any]]) -> None:
     """Observe durable cancellation/runner-return facts, including no result.json."""
-    for row in parents.values():
-        for job in (row.get("dispatch") or {}).get("jobs", {}).values():
-            reference = job.get("decision_capture")
-            if not reference:
-                continue
-            op = None
-            try:
-                op = Operation.load(Path(reference))
-                runtime_path = Path(job["directory"]) / "runtime/result.json"
-                if runtime_path.exists():
-                    runtime_record(
-                        runtime_path,
-                        decode(runtime_path.read_bytes()),
-                        operation=op,
-                    )
-                elif job.get("cancelled_before_start") or job.get("runner_exit") in {
-                    2,
-                    127,
-                }:
-                    with op.transaction():
-                        if not op.row["closed"]:
-                            op.finish(
-                                {
-                                    "cancelled_before_start": bool(
-                                        job.get("cancelled_before_start")
-                                    ),
-                                    "runner_exit": job.get("runner_exit"),
-                                    "diagnostic": job.get("diagnostic"),
-                                },
-                                state="rejected_before_start",
-                                status="rejected",
-                                summary="dispatcher: rejected before start; no runtime result or parent verification",
-                                artifact="saved dispatcher job",
-                            )
-            except Exception:
-                if op is not None:
-                    op.mark_failed(lost_source="dispatcher.job")
-                else:
-                    warn()
+    for job in jobs:
+        reference = job.get("decision_capture")
+        if not reference:
+            continue
+        op = None
+        try:
+            op = Operation.load(Path(reference))
+            runtime_path = Path(job["directory"]) / "runtime/result.json"
+            if runtime_path.exists():
+                runtime_record(
+                    runtime_path,
+                    decode(runtime_path.read_bytes()),
+                    operation=op,
+                )
+            elif job.get("cancelled_before_start") or job.get("runner_exit") in {
+                2,
+                127,
+            }:
+                with op.transaction():
+                    if not op.row["closed"]:
+                        op.finish(
+                            {
+                                "cancelled_before_start": bool(
+                                    job.get("cancelled_before_start")
+                                ),
+                                "runner_exit": job.get("runner_exit"),
+                                "diagnostic": job.get("diagnostic"),
+                            },
+                            state="rejected_before_start",
+                            status="rejected",
+                            summary="dispatcher: rejected before start; no runtime result or parent verification",
+                            artifact="saved dispatcher job",
+                        )
+        except Exception:
+            if op is not None:
+                op.mark_failed(lost_source="dispatcher.job")
+            else:
+                warn()
 
 
 def worker_log(
@@ -473,10 +489,17 @@ def worker_log(
             if before
             else None
         )
-        owned = op is None or op.row["operation"] not in {
-            "publish",
-            "retry_publication",
-        }
+        owned = (
+            op is None
+            or op.row["operation"]
+            not in {
+                "publish",
+                "retry_publication",
+            }
+            or op.row["scope"]["delegation"]
+            != {"key": "d-" + original["public_key"], "turn": original["sequence"]}
+            or op.row["scope"]["issue"] != original["issue"]
+        )
         if owned:
             op = Operation.begin(
                 directory,
@@ -506,29 +529,9 @@ def worker_log(
             if not op.row["previous_result_id"] and not op.records("result"):
                 op.row["previous_result_id"] = previous
             op._save()
-        evidence = []
-        final = None
-        if value.get("saved_to_main") and row.get("head") and row.get("files"):
-            from worker_logs.schema import path as log_path
+        from .trace_capture import worker_log_snapshot
 
-            meta = decode(row["files"]["meta.json"])
-            base = f"https://github.com/{repo}/blob/{row['head']}/{log_path(meta)}"
-            evidence = [
-                {
-                    "kind": "public",
-                    "url": base + "/meta.json",
-                    "revision": row["head"],
-                    "content_sha256": sha(row["files"]["meta.json"].encode()),
-                }
-            ]
-            final = observed(
-                {
-                    "kind": "public",
-                    "url": base + "/final.md",
-                    "revision": row["head"],
-                    "content_sha256": sha(row["files"]["final.md"].encode()),
-                }
-            )
+        final, observation, evidence = worker_log_snapshot(row, value)
         token = CURRENT.set(op)
         try:
             from .capture import observe
@@ -544,6 +547,7 @@ def worker_log(
                 artifact="worker-log journal publication view",
                 evidence=evidence,
                 final_report=final,
+                observation=observation,
             )
         finally:
             CURRENT.reset(token)

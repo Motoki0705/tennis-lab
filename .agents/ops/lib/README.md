@@ -3,32 +3,186 @@
 `agent_exec.sh` はこのcheckoutの `.venv/bin/python` で `agent_runtime.py` を実行する。
 Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1ターンを実行・保存する。
 担当registry、実行枠、GitHub操作、タスクの合否判定は呼出元が管理する。
+親文脈のあるruntime結果・欠測と後続の親判断は [判断記録](../decision_logs/README.ja.md#捕捉元と未対応入口)で辿る。
+記録対象外のrunnerも同節に明記する。
 
 | ファイル | 責務 |
 |---|---|
 | `identity.py` | parent・board・Herdr表示・レビューが共有する環境由来のroot session識別。IDの引数指定や推測をせず、混在と子agentを拒否する |
 | `codex_queue.py` | boardとcodex-scheduled-followupが共有するqueue投入と実行証拠の照合。timerや担当操作は持たない |
-| `agents.conf` | 役割の既定値・実装子の代替モデル・用途別の固定プロファイル |
+| `agents.conf` | 役割の既定値・用途別の固定プロファイル |
 | `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
 | `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |
 | `agent_output.py` | 出力JSON Schemaの固定と構造化結果の検証 |
-| `agy_headless.py` | issue補足追加用agyの読み取り専用1回実行。固定版・logのモデル・構造化結果を照合 |
+| `agy_headless.py` | issue補足追加と引用読解用agyの読み取り専用1回実行。profileの固定版・logのモデル・構造化結果を照合 |
 | `agy_permissions.py` | コマンド・引数・フラグの定義から、両端を固定したagyの権限規則を生成 |
 | `agy_hook.py` | 使い捨てworkspaceのPreToolUse設定と、controller側で動く拒否・記録処理 |
 | `agy_capture.py` | 本番と調査ハーネスで共有するstreamのコマンド捕捉・正規化・集計 |
-| `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
+| `agent_runtime.py` / `agent_runtime_impl.py` | checkoutを保護する薄い入口 / run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
 
 固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
+
+## メインcheckoutと運用jobの排他
+
+`checkout_lock.py` はGit共通ディレクトリの `ops-code.lock` を共有する。
+有限の運用jobは `.agents/ops/checkout_job.py --repo <main> -- <command...>` で起動し、
+コードのimport前から終了まで共有lockを保持する。exec後もFDを継承するため、子が継承したFDを
+閉じるまで排他が続く。systemdのcleanup・report・triage・dispatch判定はこの入口を使う。
+手動で同じ運用jobを実行するときもこの入口を使う。lockファイルは削除しない。
+
+### 既存CLIと新規jobの接続
+
+有限jobの公開入口はlauncherの外から呼ぶと75で拒否する。launcherはexec前にlock FDと
+repo rootを子へ渡し、入口の `require_checkout_job()` が実FDのinode・共有lock・中断マーカーを
+検査する。環境変数を設定するだけでは通らない。手動実行とsystemdの起動方法は同じ。
+
+| 入口 | 起動方法 |
+|---|---|
+| `ops-report/ops_report.py` の全subcommand | 有限launcher。直接file実行は拒否 |
+| `cleanup/cleanup.py` のscan/apply-auto/delete | 有限launcher。直接file実行は拒否 |
+| `worktree_cleanup` のscan/cleanup（dry-run含む） | 有限launcher。直接module実行は拒否 |
+| `storage_tier` の全subcommand（dry-run含む） | 有限launcher。直接module実行は拒否 |
+| `dispatcher run` / `dispatcher.judgement` | 有限launcher。直接の判定起動は拒否 |
+| `dispatcher supervise` | `--supervisor` 専用launcher。直接CLIや有限launcherからは拒否 |
+| `board web` | `--board-web-port PORT` 専用launcher。直接CLIからは拒否 |
+| dispatcherのinit/status/enable/disable/shutdown等、boardの投稿・状態CLI | 判定agentや常駐jobを起動しない管理入口。直接利用可能 |
+
+新しい有限jobはCLIのproject importより前に次を置き、serviceと手動例を
+上の有限launcherへ接続する。CLIを呼ばない内部Python APIのテストは、必要な依存を直接渡してよい。
+
+```python
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # .agents/ops
+if __name__ == "__main__":
+    from lib.checkout_lock import require_checkout_job
+    require_checkout_job()
+# project imports and main follow
+```
+
+```bash
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/<job>/<entry>.py <arguments...>
+```
+
+別の有限CLIをsubprocessで呼ぶ場合もlauncherを使う。Pythonのsubprocessは既定でFDを閉じるため、
+環境変数だけを引き継いでも入口は拒否する。内部APIを呼ぶ場合は、呼出元jobのlock保持中に実行する。
+
+`--supervisor` の試験用state overrideはlauncherの `--state-dir` / `--parent-state-dir`、
+`--once` は `--` の後へ渡す。常駐入口は共有lockを寿命全体で保持しないため専用modeを使う。
+
+常駐dispatcherは `checkout_job.py --repo <main> --supervisor` でimportを保護し、各周期の
+reconcile/assign/launchでは設定したjob checkoutと実行コードのGit共通lockを共有で取る。
+どちらかが更新中・復旧待ちなら周期を見送る。寿命全体では保持しない。
+`ops-control.lock` はspinによるdispatcherのON/OFFと保守時の停止・再開を直列化する。
+保守側は両lockを非待機で取得し、jobや制御操作と競合したら延期する。
+board webは `checkout_job.py --repo <main> --board-web-port 8790` でimportを保護し、
+HTTP requestごとにも非待機の共有lockを取る。更新中のrequestは503で再試行を求め、
+registry待ちのHTTP workerがwebの保守終了を塞がない。保守側が停止・再開する。
+常駐serviceに共有lockを寿命全体で保持させない。
+
+state rootは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents`。
+共通lockはstate rootを変更しても変わらず、同じGit共通ディレクトリへ集約される。
+
+更新中は同じGit共通ディレクトリの `ops-code.blocked` も保持する。更新processが失われても
+launcherはマーカーが残る間、コードをimportせず75で拒否し、supervisorも新規処理を始めない。
+マーカーを手動で消さず、mainの追跡ファイルとGit操作を修復してからgit-syncを再実行する。
+更新側が整合性を確認してマーカーを解除する。
 
 `opsproc.run_process_group()` の任意引数 `cancel` は `threading.Event`。
 set済みなら起動せず、実行中のsetはprocess groupを停止・回収して `ProcessCancelled(CommandError)`
 を送出する。timeout・通常終了の回収と、cancelを指定しない既存呼出の動作は保持する。
 呼出元はrequest取消・service停止のEventを接続し、後段commitとの同期を別途行う。
 
+### 対話CLIの保護
+
+長時間動き得る次の15入口は、stdlibによるpath設定と `checkout_lock.run_cli()` の呼出だけを行う。
+`run_cli()` は共有lockを取った後に本体moduleをimportし、メインcheckoutのコードを終了まで保護する。
+Pythonは入口全体をlock取得前にcompileするため、入口へ実処理・project importを置かない。
+**起動方法は従来どおりで、launcherの追加は不要**。
+同じ入口の短いstatus/help操作も保護する。subcommandの選別と入口の取りこぼしを避け、
+Gitメタデータの読取とlock操作に留めるための判断である。
+
+| 入口 | lock取得後の本体 | 保持する期間・用途 |
+|---|---|---|
+| `python -m parent` | `parent.cli_impl` | worker待機・補足待ち・公開・復旧を含む全体。`improvement-expire` は有限launcherも必須 |
+| `python -m parent.cli` | `parent.cli_impl` | 同上 |
+| `review/merge_gate.py` | `lib.ops_review.merge_gate_impl` | 自動進行controllerのレビュー・CI待機・merge・merge後確認の全体 |
+| `lib/agent_exec.sh` | `lib/agent_runtime.py` 経由 | runner終了まで。監視・出力解析・回収中も保護 |
+| `lib/agent_runtime.py` | `lib.agent_runtime_impl` | 同上。直接file起動も保護 |
+| `python -m explain_html` | `explain_html.cli_impl` | start/serveを含む全体。背景serveも自身で取得 |
+| `python -m ci_watch` | `ci_watch.cli` | GitHubのページ取得・複数対象の収集が終わるまで |
+| `python -m project_progress` | `project_progress.cli_impl` | 同上 |
+| `python -m issue_supplement` | `issue_supplement.cli` | 生成・検証・取得serverを含む全体 |
+| `python -m review.evaluation` | `lib.ops_review.evaluation.cli_impl` | 比較・検証の全体 |
+| `python -m lib.review_tools.mcp_server` | `lib.review_tools.mcp_server_impl` | stdio取得serverの終了まで |
+| `python -m lib.review_tools.review_server` | `lib.review_tools.review_server_impl` | 同上 |
+| `python -m opsreport.mcp_server` | `opsreport.mcp_server_impl` | stdio取得serverの終了まで |
+| `python -m opsreport.reproduction_server` | `opsreport.reproduction_server_impl` | stdio CPU検証serverの終了まで |
+| `dispatcher/worker.py` | `dispatcher.worker_impl` | 予約照合からrunner待機・終了記録まで |
+
+lockの対象は `checkout_lock.py` 自身の実体が属するcheckoutで決める。cwd、`--repo`、
+state先で別checkoutのlockを取らない。linked worktree由来のコードには寿命lockを取らない。
+内部APIのimportも新たな寿命lockを取らない。registry transactionの保護は次節のとおり。
+入口のbootstrapは自身の `.git` / gitdir / commondirを直接読み、外部commandを起動しない。
+separate git-dirのメインも保護し、壊れたメタデータは75で拒否する。
+共通Git照会も `GIT_DIR` / `GIT_COMMON_DIR` / `GIT_WORK_TREE` の継承値を除外する。
+
+更新側が排他lockを持っていれば、待機をstderrへ出し、**更新完了を待ってからproject importを始める**。
+取得・repoの識別に失敗した場合や、取得後にも中断マーカーが残る場合は、理由を出して75で拒否する。
+lockなしの実行へ切り替えない。通常の共有lockのFDはexecで閉じ、Pythonのfork子でも閉じるため、
+外部Codex/Claude・toolだけが存続しても親CLIのlockを保持しない。ただしメインのコードを使う
+子のrunner/serverは上表の自身の入口で独立に保持する。有限launcherの既存FD継承契約とは区別する。
+
+`agent_exec.sh` は短いbootstrap全体を1つのcompound commandとしてbashに先にparseさせ、
+Pythonへexecする。Pythonがlock待機している間にbashがscriptの続きを読み直すことはない。
+
+boardの投稿/status、worker_status、herdr_labels、issuesの短い管理CLIとhookは寿命lockの対象外。
+常駐dispatcher/board webは周期lockと保守停止を使い、寿命全体では保持しない。
+`src/` の学習・評価、training queue workerはこの保護の対象外。
+
+延期時はkernelの `/proc/locks` と `/proc/<PID>/cmdline` から実際の保持者を取得し、
+`lock_holders`（`entry`・`pid`・read/writeの`mode`）をgit-syncのstatus/journalに記録する。
+任意の引数・promptは記録しない。PIDファイルは作らず、異常終了後の古い記録で延期しない。
+取得中に終了したPIDは除き、権限不足等の詳細取得失敗は `inspection_error` として明示する。
+
+### registryと保守呼出のlock順
+
+reviewの本体・親の内部APIは `lib.ops_review` の固有import名から既存のreviewソースを読む。
+他モデルの同名 `review` package/namespaceが先に読み込まれていても、それを置換しない。
+
+parent/dispatcherの `Store.locked()` / `consistent_snapshot()` とworktree expiryのjournal回復は、必ず
+**checkout → registry** の順に取得する。所有者変更・board送信の `Store.ownership()` を使う経路は、
+**checkout → ownership → registry** とし、ownershipを保持してcheckoutを待たない。
+直接Python APIやworktreeからの呼出も、transaction中は
+sourceのGit共通ディレクトリの共有lockを取る。保存済みjobがメイン由来のrunnerを参照する場合も、
+registryを持ったままrunnerのcheckout待ちに入らないためである。registryを一時解放するI/O中も
+checkoutは保持し、再取得の順序を変えない。更新が先ならregistry取得前に理由を出して待つ。
+registry transactionを終了してからrunnerを待つ経路では、次のtransactionで改めて
+checkoutから取得する。runner待機・GitHub通信をregistryの保持下へ戻さない。
+`consistent_snapshot()` はregistryを共有読取後に、自分で追加したcheckout lockを検証後に解放する。
+呼出元のGitHub I/Oでregistryを保持せず、入口の寿命lockは終了まで続く。
+
+dispatcherの `__main__.py` / `cli.py` / `dispatch.py` も薄いbootstrapで、
+`dispatcher.cli_impl` のimport前に保護する。runは有限launcher、superviseは専用launcherという
+既存契約を維持する。git-syncの `__main__.py` / `sync.py` は本体と依存のimportだけを共有lock下で
+行い、自身の排他lock取得前にその共有lockを解放する。本体には遅延project importを置かない。
+復旧主体のgit-syncだけは残存マーカーがあっても起動し、既存のpreflightでcheckoutを検証して回復する。
+
+更新側の `Maintenance.pause()` → dispatcher statusと、`Runtime.inspect()` →
+runner status/stopだけは、親の実FDを `pass_fds` と専用contextで同期子へ明示的に渡す。
+入口はGit共通ディレクトリ・FDのinodeと `/proc/self/fdinfo` の実flockを照合する。
+排他contextはstatus/stopに限定し、flockを取り直さないため更新側の排他を共有へ降格しない。
+これにより更新中も保守照会・停止が完了する。通常の直接CLIは更新完了を待つ。
+contextの環境変数は入口で消費し、継承FDは再exec不可・fork時closeに戻す。
+status/stopを中継するwrapperもFDを明示的に継承する。環境変数だけの中継は実FD検証で拒否する。
+外部agentのrun/resume・worker起動には渡さず、親CLIの終了後に不当に更新を止めない。
+
 ## agyの共通呼び出し部品
 
-`agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加の writer/verifier 用の同期Python API。
+`agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加と引用読解用の同期Python API。
 導入・ログイン・更新・手動疎通は [runner README](../../../scripts/github_actions/README.md#agyの導入と疎通) にある。
 `sys.path` にこの `lib/` を加え、次の公開APIを使う。`jsonschema` が必要で、schemaの方言と
 外部参照の拒否は既存の `OutputSchema` に従う。
@@ -55,7 +209,7 @@ else:
 
 `run_headless(*, agy: Path, cwd: Path, prompt_file: Path, json_schema: Path,
 log_file: Path, timeout: float = DEFAULT_TIMEOUT, model: str | None = None,
-config_file: Path = DEFAULT_CONFIG) -> AgyResult` が公開する呼び出し契約。
+config_file: Path = DEFAULT_CONFIG, profile: str = "issue_supplement") -> AgyResult` が公開する呼び出し契約。
 相対パスは呼出元のcwdを基準に解決する。prompt/schemaはUTF-8ファイル。
 `cwd` は呼出元が用意し片付ける使い捨てworkspace、`log_file` はその外側の非公開領域を必須とする。
 controller checkout内で直接呼び出さず、smokeもテンプレートのコピーを使い捨てworkspaceへ置く。
@@ -72,6 +226,13 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
   4キーは `AGY_VERSION`, `AGY_URL`, `AGY_SHA256`, `ISSUE_SUPPLEMENT_AGY_MODEL`。
   導入テスト用の明示configでは `file://` のtarballも使える。通常は公式GitHub Releaseの版付きasset URLと
   release APIが返したSHA-256 digestを固定する。
+  引用読解は `profile="citation"` を明示し、`CITATION_AGY_VERSION` / `CITATION_AGY_URL` /
+  `CITATION_AGY_SHA256` / `CITATION_AGY_MODEL` の別pinを使う。`load_config(..., profile="citation")`
+  でも同じ設定を取得する。実行APIのmodel引数は選んだprofileのpinと一致する値だけを許可する。
+  citationは1.5.9 / `gemini-4-hydrogen-high`、issue_supplementの既定は従来の1.4.11 /
+  `gemini-3.8-flash-high`。モデルの実効log labelもprofileごとに照合し、別モデルへfallbackしない。
+  `DEFAULT_AGY` のCI用パスは維持する。ローカル呼出側は `agy=Path.home() / ".local/bin/agy"`
+  を渡す。共有の読み取り権限・user settings guard・JSON検証は同じものを使う。
 - `model` の省略時は `ISSUE_SUPPLEMENT_AGY_MODEL` を使い、明示しても固定値と異なれば起動前に拒否する。
   `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
   logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。
@@ -341,20 +502,54 @@ timer・systemd操作やagent起動は含まない。
 
 `--role parent` は `--agent claude`、`--role implementation` は `--agent codex` と同じ。
 両方の指定は拒否する。既定値の正本は [`agents.conf`](agents.conf)。
-親はOpus / xhigh、実装子はSol / max。実装子は `--model gpt-6-astra` で代替モデルを明示選択でき、
-effortはmaxを必須とする。親effortは設定または `--effort` で変更できる。
+親はOpus / xhigh、実装子はSol / max。[自動CI・gate修正](../../skills/parent-session/references/review.md)にはhighを使う。親effortは設定または `--effort` で変更できる。
 
 - プロファイルなし: 完全な役割既定値 → タスクの `--model` / `--effort` の順。
   overrideがあっても不足・不正な既定設定を許容しない。
 - `--profile review` / `ops_report` / `ops_scout` / `issue_judgement`: プロファイルの固定値を使う。
   `--model` / `--effort` / `--role` との併用を拒否する。
+  reviewだけは下記の専用選択入力を受け付ける。他profileの設定・引数・継続契約は変えない。
   `ops_report` はClaude親、`ops_scout` はCodex調査子、`issue_judgement` はCodex着手判定に対応する。
 - configは隣の `agents.conf`。明示設定は `--config-file FILE`。内容はリテラルな
   `NAME=value` とコメントだけで、shellとして評価しない。環境変数の同名pinは読まない。
   CLI自身のmodel/effort/service tier設定より明示引数を優先し、実効値も別途照合する。
 
-利用可能モデルへの事前アクセス確認は行わない。指定モデルを1回起動し、失敗・異なる実効値を
-非ゼロ終了にする。他モデルへの振替や自動再試行はしない。
+利用可能モデルへの事前アクセス確認は行わない。指定モデルを1回起動し、失敗を非ゼロ終了にする。
+review以外では選択値と異なる実効値もエラーにする。他モデルへの振替や自動再試行はしない。
+
+`CODEX_CONTINUATION_MODELS` は保存済み実装workerの照合と同一sessionの再開に使えるモデルを追加する。
+`REVIEW_CODEX_CONTINUATION_PAIRS` は保存済みreviewの同一sessionで再開できるmodel:effortの組を追加する。
+新規起動は現行のモデルpinだけを使う。実装workerのsession付替えは委任に保存されたモデルが現行pinにもある場合に受理する。
+再開では前回の `selected.model` を固定し、`selection_sources.model` と `overrides.model` は元の選択を表す。
+reviewは保存済みの選択と方針を復元する。継続専用の許可を使ったターンでは `contract.settings.model_continuation` に根拠となるpin名を記録する。
+
+### レビュー専用の選択入力
+
+`agents.conf`の`REVIEW_SELECTION_MODE`は`fixed`（Sol）。履歴の読み取りでは旧設定 `select` も扱う。
+`REVIEW_SELECTION_POLICY_VERSION`と`REVIEW_CODEX_ALLOWED_PAIRS`は方針の版と許可するmodel:effortの組を定義する。
+固定値・tierは既存の`REVIEW_CODEX_*`を使い、固定値自身も許可された組であることを必須とする。
+select時の実行model/effortは明示選択を使い、`REVIEW_CODEX_MODEL`を省略時の振替先にしない。
+現行のモデル指定と使用量確認は[モデル選択手順](../../skills/parent-session/references/review.md)を参照。
+同名の環境変数を読まず、設定欠落・未知の版・不正な組・重複を拒否する。
+
+正式レビューは親CLIが固定した選択を`--review-selection-file FILE`で渡す。
+この入力はCodexのreview profileかつread-onlyでだけ受理する。
+JSONの`kind=run`は`policy,selected,specified_by,reason,human,handoff`を持つ。
+`policy`は`version,mode,fixed,allowed_pairs`、`selected`は`model,effort,service_tier`。
+`specified_by`は`settings / parent_choice / human_instruction`。
+人間の拘束は`human={model,effort,reference}`。不要ならnull。
+旧handoff metadataは保存記録の読取り用に保持するが、新規の自動進行ではnullを使う。
+レビューの続行・追加実行は [自動進行](../review/README.md) から明示する。
+選択・理由・拘束は`lib/review_settings.py`の共通検査を使う。
+
+fixedでは固定値と一致する明示指定だけを許し、selectでは明示選択と理由を必須とする。
+runnerは新規起動前に保存された方針と現在のreview設定を照合する。
+選択を`contract.review_selection`と`review-selection.json`へ保存する。reviewの実効model・effort・tierは観測として保持し、選択値との一致は要求しない。
+実効tierが未取得なら理由付きunavailableを維持する。
+resumeで別の選択を指定すると起動前に拒否する。通常の許可組で再開する場合は関連方針の一致も必要。
+コメント・他profile・configパスだけの変更は引き続き実行契約を変えない。
+専用入力を省略する新規reviewはfixedで受理する。
+`kind=recover`は元runの参照であり、runnerへの起動入力にはできない。
 
 ## 起動・継続
 
@@ -384,6 +579,10 @@ task ID省略時は初回promptのSHA-256をキーにする。後続workflowは�
 
 再開では初回と同じagent/profile/mode/task/worktree/branch/read_dirsと実行設定を使う。
 前回の明示model/effort overrideは省略すれば保持し、異なる実行値の指定は拒否する。
+修正turnの `--repair-id ID --repair-pr N` はwriteのimplementation resume専用で、effortをhighにする。
+`contract.repair` に識別情報を保存し、この指定があるターンのeffortだけsessionの契約比較から正規化する。
+次の通常resumeはmaxへ戻る。同じ修正IDはsession内で再利用できず、呼出側の保存予約から結果を回収する。
+task・モデル・session・worktree・branch・profile・service tier等の変更は通常どおり拒否する。
 configのパス・全体のSHA・既定値とoverrideの出典は来歴として保存する。
 照合は選択されたmodel/effort/service tier等の実行値で行い、コメント・他profile・configパスだけの変更では止めない。
 初回sessionのlockを全ターンで共有し、稼働中・古いrunからの再開を拒否する。
@@ -397,6 +596,22 @@ WSLでCODEX_HOMEがdrvfs上にあるとdaemonのUnix socketが作れないため
 Codexのread-only再開は `exec --sandbox read-only ... resume` の親引数でsandboxを指定する。
 `--last`、fork、新sessionへの自動振替は使わない。
 JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.com/codex/noninteractive)。
+
+### レビューのWeb検索
+
+Codexのreview profileは、初回・再開とも `-c 'web_search="disabled"'` を渡し、
+ユーザーのCLI設定にかかわらず組込みWeb検索を無効にする。
+指定値は `contract.settings.web_search` と `invocation.json` の実引数に残す。
+この値がない旧review runや異なる値のrunは実行契約が異なるため、resumeで黙って設定を変えない。
+他profileと実装workerのWeb検索設定は変更しない。
+
+公式の[設定仕様](https://learn.chatgpt.com/docs/config-file/config-reference)では既定はcached検索であり、
+read-only sandboxの指定だけでは組込み検索を無効化しない。
+Codex CLI 0.168.0の `exec --help` / `exec resume --help` と
+`app-server --strict-config -c 'web_search="disabled"' --print-startup-config` で設定の受理を確認した。
+レビューは固定した要件・差分と[専用取得ツール](review_tools/README.md)を使うため、
+設定を外部検索へ依存させない。必要な根拠を確認できなければ確認不能として返す。
+この設定は過去のSIGTERMの送り手やWeb検索との因果関係を特定するものではない。
 
 ### JSON Schemaによる構造化出力
 
@@ -523,6 +738,9 @@ Claudeイベント・保存JSON・Codex transcript・最終構造化出力の重
   usage/modelUsage/costは取得できたresultの値を保存し、請求確定額へ読み替えない。
 - `runner` / `process`: PID、boot ID、start ticks。生存確認はPIDだけで判定しない。
   `cli_exit_code` はCLIの実終了、`exit_code` はwrapperの終了、`terminated_pids` は回収対象。
+  `cli_exit_signal` はCLIがシグナル終了したときの正の番号で、それ以外はnull（旧記録にはキーがない）。
+  stop/timeoutの回収でCLIへ送ったシグナルもこの値へ記録するが、終了理由は `stopped` / `timeout` を維持する。
+  出力検査のエラーでrunnerがCLIを回収した場合も、元の検査エラーを終了理由に保つ。
   `cleanup_complete` が未確認、または前のCLI/groupが残る場合は再開を拒否する。
   session IDはイベント受信時に保存する。強制終了直前の未保存情報は推定しない。
 - `transcript_before`: Codex継続の起動前transcriptのパス・byte数・SHA-256・turn ID。
@@ -542,10 +760,23 @@ stdoutは `schema_version`, `run_id`, `result`, `turn_end_reason`, `exit_code`, 
 | `invalid_output` / `metadata_error` | 1 | 空・破損・未完了イベント、最終文不一致、実効値取得失敗 |
 | `runtime_error` / `usage_limit` | 非0（CLIが0なら1） | runtime失敗。枠不足の識別は構造化errorの文言による補助分類 |
 | `cli_error` / `startup_failed` | CLI終了値 / 127 | 起動・認証・モデル利用不能など。詳細はローカルstderr |
+| `cli_signal` | 128 + シグナル番号 | runnerが停止・回収を始める前にCLIがシグナル終了。`cli_exit_code` は負の番号、`cli_exit_signal` は正の番号。出力の有無やruntimeのエラー分類より優先し、最終文を採用しない |
 | `timeout` | 124 | 呼出元が明示した有限正数の `--timeout` 到達。既定は上限なし |
 | `stopped` | 130 / 143 | SIGINT / SIGTERM、またはstopで中断を照合 |
 | `descendants_reaped` | 1 | CLI終了後も残ったtoolsを回収。タスク完了にはしない |
 | `cleanup_failed` | 1 | プロセス回収未確認。supervisorが照合するまで再開しない |
+
+Codexの `error` は原文を `runtime_errors` と `events.jsonl` に保持する。
+既知の `Reconnecting... n/m (workspace routing discovery timed out)`（正整数でn<=m）だけは、
+同じrunの開始後、最終応答と唯一のturn.completedより前にあり、全errorがこの形式の場合に回復候補とする。
+CLI終了値0、finalファイルとの一致、session/turnと実効設定、cleanup完了、残存プロセスなし、
+強制回収された子孫なしを従来どおり確認した後だけcompletedになる。
+未知error・turn.failed・完了後のerror・最終文不一致・未完了・停止・回収失敗は成功へ変えない。
+`lib.agent_events.runtime_errors_failed(record)` が保存イベント・final・終了証拠を再照合する共通分類関数で、
+worker公開・dispatcher判定・ops-reportも使う。非空のruntime_errorsだけで失敗へ戻さず、
+completedラベルだけでエラーを無視しない。既存のfailed resultを遡及変更する機能ではない。
+runtime.runtime_errorsは必須で、明示的な空配列だけがエラーなしを表す。キー欠落・null・不正型を
+空配列で補わず失敗として扱う。呼出元による契約・実効設定の検査も維持する。
 
 設定・入力・再開契約の事前拒否は終了値2でCLIを起動しない。run dir作成前の拒否は
 result.jsonを生成しないので、呼出元は終了値とJSONの有無を両方確認する。
@@ -560,6 +791,8 @@ result.jsonを生成しないので、呼出元は終了値とJSONの有無を�
 statusは保存結果とrunner/CLI/CLI process groupの生存を返す。読み取りだけで状態を変えない。
 通常のstopは同じboot/start ticksのrunnerへTERMを送り、終了記録を待つ。
 runnerはCLI groupをTERM→KILLし、subreaperで引き受けた別sessionの子孫も回収する。
+停止要求が重なっても終端のresult/session記録を保存できるよう、
+SIGINT/SIGTERMのhandlerは子孫回収後の最終保存まで保持する。
 stdoutを先に閉じたCLIも、停止・timeoutを監視し続ける。
 
 runnerがSIGKILL等で失われた場合、`running` の残存は成功でも稼働の証拠でもない。

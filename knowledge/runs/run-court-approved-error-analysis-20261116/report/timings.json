@@ -1,0 +1,41 @@
+{
+  "existing_meiji4_cpu_seconds_per_image_all_regions": {
+    "legacy": {
+      "n": 276,
+      "mean": 21.339469886695873,
+      "median": 19.038071138500527,
+      "p90": 30.819314396503614,
+      "p95": 36.83240285274587,
+      "max": 55.10915411300084
+    },
+    "current": {
+      "n": 276,
+      "mean": 29.929979126119747,
+      "median": 28.796494467496814,
+      "p90": 39.75838312400447,
+      "p95": 43.769075194250036,
+      "max": 61.9977503859991
+    }
+  },
+  "factorial_a1": {
+    "cases": 221,
+    "solves": 1176,
+    "seconds": 462.99945299400133
+  },
+  "factorial_paired": {
+    "cases": 221,
+    "seconds": 353.23336592598935,
+    "workers": 6
+  },
+  "observation_ablation": {
+    "cases": 42,
+    "solves": 168,
+    "seconds": 32.71338634099811
+  },
+  "rgb_pilot": {
+    "cases": 32,
+    "seconds": 5.186745643004542,
+    "workers": 4
+  },
+  "new_RGB_scope": "one model-selected initializer per image; compare to total existing region search only with this scope difference explicit"
+}

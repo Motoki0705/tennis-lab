@@ -1,0 +1,13 @@
+{
+  "adjudication_canonical_sha256": "94faf090a21ae6f01a1584d3eceb81407a0348cf09cc5743855a625536324e2e",
+  "adjudication_file_byte_sha256": "097709b09fee715df2cddf7b8f5afa607a3e3e6ac9009afc505c7a4c4a2cf1c6",
+  "format_corrections": [],
+  "fully_classified_findings": 17,
+  "gold_and_output_fingerprints_unchanged": true,
+  "harness_code_sha256": "a5ef339e78316049caa794df37d348870c035613e1732358622d46fd8730093c",
+  "judgments": 14,
+  "native_invocations_in_recalculation": 0,
+  "report_source_commit": "ead90050ba2ab03feada76af017a7876763330f5",
+  "schema_version": 1,
+  "status": "passed"
+}

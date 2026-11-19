@@ -1,0 +1,15 @@
+{
+  "variant": "main",
+  "started_at_utc": "2026-11-17T17:17:35.468178+00:00",
+  "status": "complete",
+  "device_memory_sampling_ms": 1000,
+  "device_memory_samples": 2124,
+  "query_timeout_seconds": 10.0,
+  "heartbeat_timeout_seconds": 180.0,
+  "driver": "621.24",
+  "pid": 314196,
+  "returncode": 0,
+  "finished_at_utc": "2026-11-17T17:54:47.417910+00:00",
+  "device_memory_peak_mib": 4533,
+  "device_memory_min_mib": 757
+}

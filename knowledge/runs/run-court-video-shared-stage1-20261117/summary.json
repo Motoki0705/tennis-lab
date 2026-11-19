@@ -1,0 +1,333 @@
+{
+  "R1": {
+    "head": "3e8ecf5b9e7f30b28bf964b1d009f24b8cae45b7",
+    "seconds": 269.5157848710078,
+    "summary_sha256": "7cc827f3195da33db208ba263cdf808d8e168ea0e1b677dfda917facf29053c3",
+    "protocol_sha256": "6cd6024a50524f05137a4bdbb0215fcc8333fd1873b9e1c9f4b5b868a2649579",
+    "source_hashes": {
+      "src/tasks/court_detection/geometry/video_shared/__init__.py": "33375011f63d3f8b1f13a2f672b6b19362735a6f87f2745fb8af4b042ef2b73f",
+      "src/tasks/court_detection/geometry/video_shared/candidates.py": "3bca3c90d0b245c8f1beeda1a32e7739ee9a5e5d96fe8049ffc071c43093d6f0",
+      "src/tasks/court_detection/geometry/video_shared/fit.py": "446a44f16a698b5650686ffbe6744ac7ef9507765548b9d875b3ca478577768c",
+      "src/tasks/court_detection/geometry/video_shared/observations.py": "6f4913752df1585f3afea964188d3734d76b1a0d9afd3000f3b90bb0e6d1f470"
+    },
+    "settings": {
+      "paint": {
+        "version": "semantic_consensus_v2",
+        "radius_px": 48.0,
+        "fine_radius_px": 6.0,
+        "sample_spacing_px": 8.0,
+        "profile_step_px": 0.5,
+        "profile_sigma_px": 0.6,
+        "min_gradient": 2.0,
+        "min_contrast": 6.0,
+        "min_width_px": 1.0,
+        "max_width_px": 18.0,
+        "line_angle_limit_degrees": 8.0,
+        "line_inlier_distance_px": 1.5,
+        "ransac_trials": 500,
+        "min_line_locations": 8,
+        "min_coverage": 0.35,
+        "min_court_lines": 5,
+        "max_line_residual_px": 3.0,
+        "ambiguity_support_ratio": 0.8,
+        "ambiguity_separation_px": 3.0,
+        "max_projection_std_px": 5.0,
+        "max_leave_line_out_px": 10.0,
+        "max_normalized_condition": 10000.0,
+        "max_nfev": 200
+      },
+      "min_lines": 6,
+      "min_transverse": 3,
+      "min_longitudinal": 3,
+      "min_clips_per_line": 3,
+      "samples_per_group": 24,
+      "max_common_line_p95_px": 6.0,
+      "equivalent_projection_px": 3.0,
+      "initializer_cluster_px": 12.0,
+      "max_nfev": 200,
+      "max_condition": 10000.0
+    },
+    "cameras": {
+      "cam0": {
+        "initializers": 187,
+        "accepted_candidates": 131,
+        "reasons": [
+          "ambiguous_line_assignment"
+        ]
+      },
+      "cam1": {
+        "initializers": 96,
+        "accepted_candidates": 0,
+        "reasons": [
+          "no_acceptable_shared_court"
+        ]
+      },
+      "cam2": {
+        "initializers": 82,
+        "accepted_candidates": 5,
+        "reasons": [
+          "ambiguous_line_assignment"
+        ]
+      },
+      "cam3": {
+        "initializers": 203,
+        "accepted_candidates": 0,
+        "reasons": [
+          "no_acceptable_shared_court"
+        ]
+      }
+    }
+  },
+  "R2": {
+    "head": "dfff8d7511b715a95acb1517d1306f1aab4f4e3b",
+    "seconds": 418.90406113502104,
+    "summary_sha256": "f1549a095d9106e336f8e05a28900e34ba0971988addb6de17e51b31b9f40c66",
+    "protocol_sha256": "37124a80372c4100dd27b67616270d1a48ca0e18f9c11b4f9c49cad0a5c09f48",
+    "source_hashes": {
+      "src/tasks/court_detection/geometry/video_shared/__init__.py": "33375011f63d3f8b1f13a2f672b6b19362735a6f87f2745fb8af4b042ef2b73f",
+      "src/tasks/court_detection/geometry/video_shared/candidates.py": "3bca3c90d0b245c8f1beeda1a32e7739ee9a5e5d96fe8049ffc071c43093d6f0",
+      "src/tasks/court_detection/geometry/video_shared/endpoints.py": "591495e845adedc16600b8641d9ad6a3ad0022a4e6db692ef5b6d1aecd3a982e",
+      "src/tasks/court_detection/geometry/video_shared/fit.py": "c407e8aef04ccc9dfc4b03abacffd046d0fa533b50a1dee219ce1078162e3b07",
+      "src/tasks/court_detection/geometry/video_shared/observations.py": "a0276294e775c719d613a4a81b6a7f413ea6b569328bd158ec7062fc30aa950e"
+    },
+    "settings": {
+      "paint": {
+        "version": "semantic_consensus_v2",
+        "radius_px": 48.0,
+        "fine_radius_px": 6.0,
+        "sample_spacing_px": 8.0,
+        "profile_step_px": 0.5,
+        "profile_sigma_px": 0.6,
+        "min_gradient": 2.0,
+        "min_contrast": 6.0,
+        "min_width_px": 1.0,
+        "max_width_px": 18.0,
+        "line_angle_limit_degrees": 8.0,
+        "line_inlier_distance_px": 1.5,
+        "ransac_trials": 500,
+        "min_line_locations": 8,
+        "min_coverage": 0.35,
+        "min_court_lines": 5,
+        "max_line_residual_px": 3.0,
+        "ambiguity_support_ratio": 0.8,
+        "ambiguity_separation_px": 3.0,
+        "max_projection_std_px": 5.0,
+        "max_leave_line_out_px": 10.0,
+        "max_normalized_condition": 10000.0,
+        "max_nfev": 200
+      },
+      "min_lines": 6,
+      "min_transverse": 2,
+      "min_longitudinal": 3,
+      "min_clips_per_line": 3,
+      "samples_per_group": 24,
+      "max_common_line_p95_px": 6.0,
+      "equivalent_projection_px": 3.0,
+      "initializer_cluster_px": 12.0,
+      "max_nfev": 200,
+      "max_condition": 10000.0
+    },
+    "cameras": {
+      "cam0": {
+        "initializers": 187,
+        "accepted_candidates": 116,
+        "reasons": [
+          "ambiguous_line_assignment"
+        ]
+      },
+      "cam1": {
+        "initializers": 96,
+        "accepted_candidates": 30,
+        "reasons": [
+          "ambiguous_line_assignment"
+        ]
+      },
+      "cam2": {
+        "initializers": 82,
+        "accepted_candidates": 4,
+        "reasons": []
+      },
+      "cam3": {
+        "initializers": 203,
+        "accepted_candidates": 0,
+        "reasons": [
+          "no_acceptable_shared_court"
+        ]
+      }
+    }
+  },
+  "R3": {
+    "head": "757f0fc225625049b47b6787e6b5ba693462f805",
+    "seconds": 451.1667902400077,
+    "summary_sha256": "d41fa57d500f932544ca1f3da084c7bba4a98ff769b00b918f903da8f3c52a91",
+    "protocol_sha256": "4e7a1544d7b4d5b9a2a6891951997dec8b2c9db63e476f09346249493eb3f13c",
+    "source_hashes": {
+      "src/tasks/court_detection/geometry/video_shared/__init__.py": "33375011f63d3f8b1f13a2f672b6b19362735a6f87f2745fb8af4b042ef2b73f",
+      "src/tasks/court_detection/geometry/video_shared/candidates.py": "3bca3c90d0b245c8f1beeda1a32e7739ee9a5e5d96fe8049ffc071c43093d6f0",
+      "src/tasks/court_detection/geometry/video_shared/consensus.py": "fb170798345a3a5815e9f39c7be4403578c94fe3a3929ab0dab6ecd6d0ca45af",
+      "src/tasks/court_detection/geometry/video_shared/drift.py": "b651226c23cd5392daf57f492b477c8d055e140d7f45d3d9bf0b7928c787506d",
+      "src/tasks/court_detection/geometry/video_shared/endpoints.py": "591495e845adedc16600b8641d9ad6a3ad0022a4e6db692ef5b6d1aecd3a982e",
+      "src/tasks/court_detection/geometry/video_shared/fit.py": "c407e8aef04ccc9dfc4b03abacffd046d0fa533b50a1dee219ce1078162e3b07",
+      "src/tasks/court_detection/geometry/video_shared/observations.py": "a0276294e775c719d613a4a81b6a7f413ea6b569328bd158ec7062fc30aa950e"
+    },
+    "settings": {
+      "paint": {
+        "version": "semantic_consensus_v2",
+        "radius_px": 48.0,
+        "fine_radius_px": 6.0,
+        "sample_spacing_px": 8.0,
+        "profile_step_px": 0.5,
+        "profile_sigma_px": 0.6,
+        "min_gradient": 2.0,
+        "min_contrast": 6.0,
+        "min_width_px": 1.0,
+        "max_width_px": 18.0,
+        "line_angle_limit_degrees": 8.0,
+        "line_inlier_distance_px": 1.5,
+        "ransac_trials": 500,
+        "min_line_locations": 8,
+        "min_coverage": 0.35,
+        "min_court_lines": 5,
+        "max_line_residual_px": 3.0,
+        "ambiguity_support_ratio": 0.8,
+        "ambiguity_separation_px": 3.0,
+        "max_projection_std_px": 5.0,
+        "max_leave_line_out_px": 10.0,
+        "max_normalized_condition": 10000.0,
+        "max_nfev": 200
+      },
+      "min_lines": 6,
+      "min_transverse": 2,
+      "min_longitudinal": 3,
+      "min_clips_per_line": 3,
+      "samples_per_group": 24,
+      "max_common_line_p95_px": 6.0,
+      "equivalent_projection_px": 3.0,
+      "initializer_cluster_px": 12.0,
+      "max_nfev": 200,
+      "max_condition": 10000.0
+    },
+    "cameras": {
+      "cam0": {
+        "accepted_individual": 4,
+        "reasons": [
+          "ambiguous_observed_stripes"
+        ]
+      },
+      "cam1": {
+        "accepted_individual": 1,
+        "reasons": []
+      },
+      "cam2": {
+        "accepted_individual": 0,
+        "reasons": [
+          "no_acceptable_shared_court"
+        ]
+      },
+      "cam3": {
+        "accepted_individual": 0,
+        "reasons": [
+          "no_acceptable_shared_court"
+        ]
+      }
+    }
+  },
+  "R4": {
+    "head": "a9fd35ff4c37bfddf1bd65cd3bb6492a84d34cb8",
+    "seconds": 7.0546481370111,
+    "summary_sha256": "d4dab24114dd5b92514d97718bb41e942e4238ea114cd7dca8bf10f736cc50b6",
+    "protocol_sha256": "5d8353b9bddc77b1e5f7f07bb1b741e086fe556856bfa11cbc4f8bf3787a4762",
+    "source_hashes": {
+      "src/tasks/court_detection/geometry/video_shared/__init__.py": "33375011f63d3f8b1f13a2f672b6b19362735a6f87f2745fb8af4b042ef2b73f",
+      "src/tasks/court_detection/geometry/video_shared/candidates.py": "3bca3c90d0b245c8f1beeda1a32e7739ee9a5e5d96fe8049ffc071c43093d6f0",
+      "src/tasks/court_detection/geometry/video_shared/consensus.py": "df0b5e7ffcdff29f4c5319f944546e6f0fae84759851d6b1c4659cd7a79c3b0b",
+      "src/tasks/court_detection/geometry/video_shared/drift.py": "b651226c23cd5392daf57f492b477c8d055e140d7f45d3d9bf0b7928c787506d",
+      "src/tasks/court_detection/geometry/video_shared/endpoints.py": "591495e845adedc16600b8641d9ad6a3ad0022a4e6db692ef5b6d1aecd3a982e",
+      "src/tasks/court_detection/geometry/video_shared/fit.py": "948126c1769cbb3337848c2e568d8fb5cbc477f3d84e96c44e57765f6ff1e851",
+      "src/tasks/court_detection/geometry/video_shared/observations.py": "a0276294e775c719d613a4a81b6a7f413ea6b569328bd158ec7062fc30aa950e"
+    },
+    "settings": {
+      "paint": {
+        "version": "semantic_consensus_v2",
+        "radius_px": 48.0,
+        "fine_radius_px": 6.0,
+        "sample_spacing_px": 8.0,
+        "profile_step_px": 0.5,
+        "profile_sigma_px": 0.6,
+        "min_gradient": 2.0,
+        "min_contrast": 6.0,
+        "min_width_px": 1.0,
+        "max_width_px": 18.0,
+        "line_angle_limit_degrees": 8.0,
+        "line_inlier_distance_px": 1.5,
+        "ransac_trials": 500,
+        "min_line_locations": 8,
+        "min_coverage": 0.35,
+        "min_court_lines": 5,
+        "max_line_residual_px": 3.0,
+        "ambiguity_support_ratio": 0.8,
+        "ambiguity_separation_px": 3.0,
+        "max_projection_std_px": 5.0,
+        "max_leave_line_out_px": 10.0,
+        "max_normalized_condition": 10000.0,
+        "max_nfev": 200
+      },
+      "min_lines": 6,
+      "min_transverse": 2,
+      "min_longitudinal": 3,
+      "min_clips_per_line": 3,
+      "samples_per_group": 24,
+      "max_common_line_p95_px": 6.0,
+      "equivalent_projection_px": 3.0,
+      "initializer_cluster_px": 12.0,
+      "max_nfev": 200,
+      "max_condition": 10000.0
+    },
+    "cameras": {
+      "cam0": {
+        "accepted_individual": 2,
+        "reasons": []
+      },
+      "cam1": {
+        "accepted_individual": 2,
+        "reasons": []
+      },
+      "cam2": {
+        "accepted_individual": 2,
+        "reasons": [
+          "ambiguous_observed_stripes"
+        ]
+      },
+      "cam3": {
+        "accepted_individual": 1,
+        "reasons": []
+      }
+    },
+    "fixed_selection_instead_of_merging": {
+      "cam0": {
+        "admissible": true,
+        "reasons": [],
+        "max_group_p95_px": 5.4397319853025445,
+        "selected_matrix_sha256": "6425ad94dd1aac29d5ba6e49f115fde04d2682dc3f581e85eb1dd37513b64645"
+      },
+      "cam1": {
+        "admissible": true,
+        "reasons": [],
+        "max_group_p95_px": 5.130572821481126,
+        "selected_matrix_sha256": "34eaeea2c1ecce2b7f888f03919da99fcc11df1c955cdf45863f905af6b1e4e2"
+      },
+      "cam2": {
+        "admissible": true,
+        "reasons": [],
+        "max_group_p95_px": 8.898551283077573,
+        "selected_matrix_sha256": "53e4f31456d66363ced52656d3247517d6390ea4263fad21ff3e1f896a5dc5a5"
+      },
+      "cam3": {
+        "admissible": true,
+        "reasons": [],
+        "max_group_p95_px": 6.497982822392213,
+        "selected_matrix_sha256": "f7255e191210afa335a0d9d6d9f318da480bd103246c4681651edc58f03d4709"
+      }
+    }
+  }
+}

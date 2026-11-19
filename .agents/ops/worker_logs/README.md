@@ -2,7 +2,7 @@
 
 親の具体指示とworkerの最終報告を、実装PRとは別の追記専用ログPRへ保存する。
 手動 `run-worker`、自律 `start-worker` / `continue-worker`、dispatcherの直接入口が同じ保存処理を使う。
-共通runnerのcontract・result schema・終了値は変更しない。公開ログは担当registry、実行証拠、成果の受理を置き換えない。
+runnerの契約・終了判定・終了値は共通ランナーの記録に従う。公開ログは担当registry、実行証拠、成果の受理を置き換えない。
 
 ## 保存する内容と送受信の境界
 
@@ -41,6 +41,9 @@ preflightの `public_key` は私的IDとは独立したuuid4の32桁hex。
 `.gitignore`はログ配下を既定で除外し、この形式ではparents以下のディレクトリ探索と上記3ファイルを許可する。
 raw・stderr等は追跡対象にしない。判断記録と生成READMEの追跡・検査・共有indexは
 [独立した公開形式](../decision_logs/README.ja.md#git公開と閲覧)で扱い、既存3ファイルの例外には含めない。
+結果と親の判断・次の行動は[親の結果・判断一覧](../../logs/parents/README.md)から辿る。
+正常finalを公開できない失敗ターンも判断記録の対象になる。捕捉範囲と未対応入口は
+[判断記録の仕様](../decision_logs/README.ja.md#捕捉元と未対応入口)を参照する。
 
 - `instruction.md`: 親が書いたtask/answerの原文を、必要な無害化後に保存する。標準指示・生成見出し・合成promptは入れない。
 - `final.md`: 親側で受信を確認した最終報告の無害化後の全文。stderr・rawイベント・内部思考は対象外。
@@ -49,11 +52,11 @@ raw・stderr等は追跡対象にしない。判断記録と生成READMEの追�
 | 群 | 内容 |
 |---|---|
 | `schema_version / repo / parent / issue / delegation_key` | version 1、公開repo、親・担当issue・公開系列 |
-| `turn` | sequence、initial/resume、planning/implementing、previous_sequence |
+| `turn` | sequence、initial/resume、planning/implementing、previous_sequence。修正ターンには `repair={pr}` を追加 |
 | `decision` | nullable。approve/investigate/rejectと判断元の公開sequence |
 | `sources` | 標準指示のcommit/path/blob、送信した担当issueのURLと本文digest |
 | `instruction` | task/answer、親の追加指示原文の `additional_instructions` 配列 |
-| `worker` | agent、model/max effortの選択値、観測値または明示的な未取得 |
+| `worker` | agent、model/effortの選択値、観測値または明示的な未取得。通常はmax、[修正ターン](../../skills/parent-session/references/review.md)はhigh |
 | `runtime` | completedというターン終了の事実。タスク成功の認定ではない |
 | `artifacts` | 固定した開始commit、報告に明記された同repoのPR/commit参照 |
 | `files / sanitization` | 公開本文のdigest、無害化の版・本文別の総置換件数・ローカルパスの種類別マスク件数 |
@@ -61,6 +64,7 @@ raw・stderr等は追跡対象にしない。判断記録と生成READMEの追�
 
 担当issueのdigestは送信版を識別するもので、現在のissue URLが過去本文を表示する保証ではない。
 私的なID・絶対パス・合成promptのdigest・秘密の元値は公開metadataに入れない。
+修正ターンの32桁hex・UUIDの修正IDは、公開本文でも伏せる。
 公開PR自身の番号はcommit後に決まるためmetaを更新せず、PR本文の固定marker・HEADとprivate journalで対応付ける。
 
 ## 公開検査
@@ -111,7 +115,7 @@ URLは原文と復号後の両方から取り出し、query/fragmentも復号し
 - PRがmergedであること、HEADとmerge commitがorigin/mainに含まれること、main上の保存内容を照合する。
   ここまで確認して初めて `merged / saved_to_main=true` とする。
 
-通常の [merge gate](../review/README.md#merge-gate) とops-report memoryのCI必須処理は変更しない。
+通常の [merge gate](../../skills/parent-session/references/review.md) とops-report memoryのCI必須処理は変更しない。
 保存実装、schema、公開検査、workflow、規則を変更するコードPRは通常レビューと対象HEADのPython成功が必要。
 
 ## workflowの範囲と制約
@@ -130,27 +134,24 @@ mainにGitHub側の必須checkが導入された場合は、Pendingを無視せ�
 
 ## 状態と復旧CLI
 
-```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  worker-log-status --child 124
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  publish-worker-log --child 124 --turn 2 --dry-run
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  publish-worker-log --child 124 --turn 2
-# 原因を照合・修復したblocked記録を、固定入力のまま再検査する
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  publish-worker-log --child 124 --delegation-key d-<公開キー> --turn 2 --retry
-```
+各ターンの終了後、手動応答の `log_publication` または次のCLIで `saved_to_main` を確認する。
+workerの終了値はrunnerの結果であり、公開CLIも保留なら0を返すため、終了値だけで保存成功とはしない。
+`pending` なら同じturnの `publish-worker-log` で公開を続ける。他の作業を一律停止せず、未保存の事実を残す。
+公開エラーの終了値は2。状態ごとの原因と次の操作は下の表で照合する。
+
+親の操作は [復旧](../../skills/parent-session/references/recovery.md)、ターンと委任の指定は `parent publish-worker-log --help` を参照。
+
 
 新しいworker/sessionを起動しない。statusは読み取り専用、dry-runはGit/HTTPの書込みもjournal更新も行わない。
-公開の再開は現在の担当本人が保存済みsnapshotを照合して行う。issueのclose後も履歴を公開できるが、新しい実装を認可しない。
+通常の公開再開は担当本人が保存済みsnapshotを照合して行う。issueのclose後も履歴を公開できるが、新しい実装を認可しない。
 
 | 状態・error | 意味と次の対応 |
 |---|---|
 | `captured / awaiting_final` | 送信入力の固定だけ。元runの終了・cleanupを確認して公開CLIを再実行 |
 | `ready` | finalと公開3ファイルを固定。Git保存は未完了 |
 | `pending` | commit/push/PR/mergeの途中。PR作成だけでは保存成功ではない |
-| `pending / stage=mergeability_pending` | GitHubの `mergeable` が未確定（null）。待機や定期pollは追加せず、親が後で同じ公開CLIを再実行 |
+| `pending / stage=mergeability_pending` | 旧版がnullで停止した記録。次の書込み操作で照合する。新規公開はnullでも固定HEADのmerge要求へ進む |
+| `blocked / stage=merge_rejected` | 確定したHTTP拒否。405は `merge_conflict`、409はHEAD再照合、403/404/422等は `merge_rejected`。405だけは次の書込み操作で全検査を再実行する |
 | `merged` | PRとorigin/mainの保存を確認済み |
 | `worker_failed / missing_final` | 正常な最終報告の受信を確認できない。元runを確認し、未保存を成功へ変更しない |
 | `blocked` | 公開検査、全差分、HEAD/base、dirty worktree等が不合格。固定原文を変えず原因を確認 |
@@ -172,11 +173,123 @@ commit直後のjournal中断は期待した親・内容からcommitを再利用�
 PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致はその項目を診断に残して拒否する。
 診断原文は通常出力には含めない。
 
-自動hookのworker終了値は従来どおりrunnerの終了値で、手動応答の `log_publication` とこのCLIの状態が保存結果。
-公開CLIはエラーがあれば終了値2。保留の0も保存成功を意味せず、`saved_to_main` を確認する。
 定期poll、新しいtimer、追加agent、通常gateの変更は導入しない。
 
+## 続行・一括回収・終了checkpoint
+
+`parent.log_publication.Continuation` が書込み操作の確定後に同じ親の残件を一度処理する。
+`run-worker` / `start-worker` / `continue-worker` は新turnの予約前に処理する。
+対象は同モジュールの `MUTATIONS` と、`evidence --create`、Projectの `--apply`。
+通常の担当・合意・記録・レビュー・停止/再開・同期・公開・終了/引継ぎの書込みを含む。
+status各種、inspect-worker、basis-input/check、wait-supplement、wait-worker、全dry-run、state-migrateは除外する。
+所有確認は親operation lock→registry lockで行い、公開中は両方を解放する。
+各journalの公開開始直前にも担当・generationを照合し、引継ぎ後は以降のjournalを開始しない。
+同じ照合をsupervisorと明示的な一括回収にも渡し、orphan PRの巡回も世代変更で停止する。
+結果の記録時にgenerationを照合し、後任のregistryを上書きしない。公開失敗は元操作やworkerの終了値を変えない。
+
+worker公開の最終入口は `service.publish(owner_check=...)`。
+`ownership.publication_owner` は開始時の担当session・generationを固定した照合を作り、
+`ownership.require_owner` が各公開の直前に検査する。引継ぎ後の世代へ照合対象を取り直さない。
+拒否は `log_owner_mismatch` で返し、未公開journalをblockedへ書き換えず後任から続行できる状態で残す。
+明示公開後の共通続行も当初の世代に固定し、同じsessionでの再登録を旧操作への新しい公開権限に読み替えない。
+開始時の世代を取得できなかった場合も、後処理で新しい世代を採用せず公開を保留する。
+運用入口はすべて照合を渡す。低層のPublisherは親registryの所有者を決めず、既存の公開安全検査を担当する。
+
+| worker公開を開始する入口 | 固定する担当と照合箇所 |
+|---|---|
+| `publish-worker-log --child N`（`--turn` 省略を含む） | `service._command` が開始時の世代を保持し、各journalと `service.publish` で照合。不一致で巡回を停止 |
+| 親CLIの共通続行・release・handoff | `Continuation.sweep` → `continue_workers` → `service.publish`。終了・引継ぎの処理結果は保持 |
+| supervisorの親終了 | markerの世代・終了statusを固定し、`finish_supervised` → `continue_workers` → `service.publish` |
+| 明示的な `--all-parents` | 回収親の担当・世代を固定し、元の親を変更せず `continue_workers` → `service.publish` |
+| `--adopt-orphan-prs`（元journalあり） | 回収親の照合を通常の `continue_workers` → `service.publish` へ渡す |
+| `--adopt-orphan-prs`（元journalなし） | `recover_orphans` の各PRと `OrphanRecovery.recover` の検査後・merge処理開始前で照合。元turnのlock取得前に行い、registryとturnのlock順序を反転させない |
+| 通常の `run-worker` 終了後 | 起動予約時の世代を `finish_manual` → `finish` → `service.publish` へ渡す。workerの終了値は保持 |
+| supervisorの通常の子終了 | registry内で担当・世代を固定し、lock解放後の各 `service.publish` で照合。不一致の親の残りを停止 |
+
+worker/decisionの公開はいずれもmergeable=nullなら固定HEADのmerge要求へ進み、falseなら拒否する。
+HTTP応答があったmergeはjournalとCLIのmerge_http_statusへ保存する。原文の診断はprivateに留める。
+
+| merge応答 | 記録と続行 |
+|---|---|
+| 200 / merged=true | mainの内容・祖先関係の照合が完了してからmerged |
+| 405 | blocked / merge_conflict、次の書込みでは全検査を再実行する限定経路で再試行 |
+| 409 | HEADを再取得し、不一致ならpr_identity_changed、それ以外はmerge_conflict。blockedで保持 |
+| 403 / 404 / 422（その他の4xxを含む） | blocked / merge_rejected、HTTP statusを保持 |
+| 応答欠落・5xx・不明な応答 | pending / merge_response_uncertain、別のmergeを送る前に既存PR/mainを照合 |
+
+```bash
+# 担当中の回収親が、元の親の担当を取得せず既存journalを続行する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-worker-log --all-parents --source-parent SOURCE_PARENT --dry-run
+# journalが失われたopenログPRを公開内容だけで再検査する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-worker-log --adopt-orphan-prs --pr PR_NUMBER --dry-run
+```
+
+`--source-parent` と `--pr` は複数指定できる。省略時は同repoの既存journal／open worker-log PRを対象にする。
+実行はdry-runを外す。新しいworker・公開キー・二重PRは作らない。
+元journalがあるPRは通常経路へ回す。journal不在PRはbranch/公開パス、唯一のcommit、全差分とPR変更一覧の
+3ファイル追加、blob mode、schema/digest、本文・metadata・PR本文の安全検査、mainの祖先関係と未存在を再検査する。
+元の送信・受信との照合はできないため `original_journal_available=false` を明示する。
+合格した固定HEADだけをmergeしmainを照合する。検査不合格のログPRには固定の理由コメントを付けてcloseする。
+対象外PR、取得失敗で未検証のPR、private記録に問題がある場合はcloseしない。HTTP拒否・応答不明も成功へ変換しない。
+結果はprivateな `orphan-worker-prs/`、一括操作は `publication-recovery/` に保存する。
+通常経路へ回した結果の失敗も外側のerrorへ集約し、明示回収CLIは終了値2を返す。
+dry-runはlock・capture・journal・ref・worktreeを作成/更新せず、GitHubもGETだけを使う。
+
+読取りAPIの正本は `worker_logs.reconciliation`:
+
+```python
+remaining_publications(repo: str, parent: int, *, state_dir: Path) -> list[RemainingPublication]
+```
+
+ロック・subprocess・ネットワーク・captureを使わない。破損を空一覧へ変換しない。
+未mergeの判断ログbatchは、payloadのIDと内容を捕捉journalの固定済み公開envelopeと照合する。
+捕捉・prepareの欠落や不一致はinput_capture_failedとして一覧取得を失敗させ、終了checkpointでは
+remaining_complete=falseを残す。判断ログの公開入口も、未公開ゼロを返す前に同じ照合を行う。
+`RemainingPublication` はTypedDictで、session IDや絶対パスを含まない。
+
+| field | worker_log | decision_log |
+|---|---|---|
+| kind / parent / issue | worker_log、親、担当issue | decision_log、親、issueはNone |
+| public_key / sequence | 既存d-key、turn連番 | batch keyまたはNone、sequenceはNone |
+| state / stage / error | journalの状態と固定エラーコード | batch／未準備の状態と固定エラーコード |
+| pr_number / pr_head | PR番号・固定HEAD、欠測はNone | 現在のbatchのPR・最新revision、欠測はNone |
+| unpublished_count / batch_key | 両方None | 未公開記録数、batch keyまたはNone |
+
+release/handoffは担当変更を確定後、worker続行→終了結果のcapture完了→判断ログ公開の順で処理する。
+typed終了観測は `record_exit(persist=False)` の公開直前snapshotを捕捉する。
+同世代の構造化completion・終了コメントへ結び、supervisorは既存の世代別終了結果も参照する。
+残件は観測時点の値で、公開後の最終checkpointは別に保存する。公開処理自身を再捕捉して次の公開を作らない。
+判断ログは捕捉上限を固定し、既存batchと今回の末尾を最大2回で処理する。pending/blockedなら止める。
+上限を固定する前に、既存capture outboxの凍結済み記録だけを一度再配送する。失われた原文は復元しない。
+配送未完・捕捉欠落が残るとinput_capture_failedとunpublished_count=Noneを返し、未公開ゼロとは扱わない。
+自律親のsupervisorも既存の終了イベントを保存し、ロック解放後に同じ照合を行う。
+判断ログの各batchの公開開始前と終了記録前にも所有者・generationを照合する。引継ぎ済みなら旧世代から新たな
+公開を始めず、旧世代のprivate checkpointにlog_owner_mismatchと現在の再開担当を残す。
+supervisorの旧世代markerは照合して消費するが、後任のregistryへ旧世代の終了結果を上書きしない。
+start/continue-workerのsupervisor照合は親operation lockの前に行い、予約だけをoperation lockで保護する。
+`worker_logs.lifecycle.record_exit()` がprivateな
+`publication-exits/<repo digest>/<parent>/<generation>-<event>.json` にcheckpointを保存し、CLIの
+`publication_exit` へ返す。supervisorではregistryにも保存しstatusから参照できる。
+fieldは `repo, parent, generation, event, observed_at, main_revision, remaining, remaining_complete, publication_actor,
+resume_command, decision_resume_command, error`。eventはended/handoff_pending/handoff_accepted、時刻はUTC、revision欠測はNone。
+remainingは上記APIの一覧。publication_actorはactiveな親番号、担当者不在ならunassigned。
+破損等で全件を読めないときはremaining_complete=falseとerrorを保存し、空一覧を残件ゼロの証拠にしない。
+親statusの一覧も読めなければNoneとpublication_inventory_errorを返す。
+resume_commandはworkerログ、decision_resume_commandは判断ログの再開先。終了済みの元担当sessionも
+自分の親の公開を再開できる。別の担当中の親はworkerログを一括回収できる。
+担当なし親の判断ログは、担当を変えずに[明示的な公開入口](../decision_logs/README.ja.md#git公開と閲覧)から回収できる。
+公開の未完了・破損・取得失敗で担当終了／引継ぎを拒否せず、errorと残件・再開先を残す。
+
+次の書込みも終了イベントも発生しない強制終了の後は、明示的な一括続行を使う。
+過去の失敗runnerを成功へ書き換えたり、失われたjournalをPRから復元したりしない。
+
 ## 検証
+
+入力捕捉のgitとjournal処理、終了後の受領処理はregistry lockの外で行う。
+入力の反映は元のturnを含むtransactionの再照合、managed workerの受領は同じjob/run・委任の
+新しいtransactionでの再照合を条件とする。公開もregistry外で行い、競合を入力捕捉失敗へ変換しない。
 
 unitは公開schema・無害化・追加専用policy、e2eはfake GitHubと使い捨て実gitで公開、並行再送、障害復旧を検証する。
 既存の手動・自律planningテストを拡張し、実際の送信原文、回答、追加指示、phase/modelの対応も確認する。

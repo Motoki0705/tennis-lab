@@ -241,7 +241,6 @@ indexや平均統計量すべてにモデル本体と同じ条件が及ぶとの
 | YouTube由来の映像・独自注釈 | [YouTube利用規約](https://www.youtube.com/static?template=terms)、データのGit commitは該当なし。動画ごとの出典・版は各datasetのprovenanceで管理する。 | 動画ごとの権利・表示条件と利用規約がある。独自注釈を付けても映像の権利や契約条件は消えない。学習利用に関する著作権法第30条の4の判断範囲と契約の論点は[学習データと公開判断](#training-data-publication)を参照。 |
 | ACCAD / AMASS motion | [ACCAD公式](https://accad.osu.edu/research/motion-lab/mocap-system-and-data)、[AMASS公式](https://amass.is.tue.mpg.de/)、Git commitは該当なし。AMASSのACCAD配布を使う場合はその版・契約に従う。 | ACCAD Open Motion Projectの公式表示は [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)。一方、AMASS版には [非商用科学研究用のDataset License](https://amass.is.tue.mpg.de/license.html) と再配布制限がある。元データとAMASSのSMPL形式への変換物を混同しない。 |
 | Meijiのマルチカメラ映像・注釈 | [本プロジェクトの公開準備・合意 #1267](https://github.com/Motoki0705/tennis-lab/issues/1267)。非公開収録データ、Git commitは該当なし。動画・clip単位の識別はdatasetのmanifestによる。 | 被撮影者の同意を取得済み（プロジェクト側の記録）。Apache-2.0の対象外。公開サンプルの範囲・ライセンスは[サンプルdatasetの利用条件](#sample-dataset-terms)を参照。 |
-| `knowledge/Papers/paper-2024-gvhmr/paper.pdf` | [Shen et al., GVHMR, arXiv:2409.06662v1](https://arxiv.org/abs/2409.06662v1)、Git commitは該当なし、論文版はv1。 | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)。著者の原PDFを保持。[同梱の出典表示](knowledge/Papers/paper-2024-gvhmr/paper.md)。論文本体にルートのApache-2.0は適用しない。 |
 
 <a id="published-artifacts"></a>
 

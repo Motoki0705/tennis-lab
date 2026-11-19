@@ -64,7 +64,7 @@ def previous_main(
             ) as archive:
                 coverage = json.loads(archive.read("coverage.json"))
                 if (
-                    coverage["schema_version"] != 2
+                    coverage["schema_version"] not in {2, 3}
                     or coverage["source_sha"] != run["head_sha"]
                     or str(coverage["run_id"]) != str(run["id"])
                     or str(coverage["attempt"]) != str(run["run_attempt"])

@@ -1,0 +1,24 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 6/6 workers
+6 workers [2 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[candidate_subsets] 
+tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[legacy] 
+[gw4] [ 50%] PASSED tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[legacy] 
+[gw1] [100%] PASSED tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[candidate_subsets] 
+
+============================== slowest durations ===============================
+6.75s call     tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[candidate_subsets]
+3.08s call     tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[legacy]
+0.01s setup    tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[legacy]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[candidate_subsets]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[candidate_subsets]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py::test_line_corrects_biased_kp_and_excludes_confident_outliers[legacy]
+============================== 2 passed in 27.63s ==============================

@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "cf36c08ee6d24ea19229a26227753c68",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=output.json; content_sha256=f6f5cf04c7f3c5831414a95318a312249256322ed8ff5e29918b0e78fb0847c2; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "70ba47546a2a49fb8daaf4d38d8bab4e",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.output.json: status=succeeded; verdict=approve; exception=True; previous_review_keys=['c4e0fb9c6a234d4593b80ad478cbacce', '059dd8b7c166423ebbaeb9ed0d21e368', 'bd20ca481d324835a33defec1e1cb073', 'a33f33a5f1e6427e84e60dd59913b8bf', 'ac8d4fea046946d4b5263e052f069444', 'fc97ee2b97b44c2f8b711d9966919d3c']; run [private identifier]として固定HEAD f5df79f67をレビューしました。cross-1は解消済みで、mergeを止めるblocker／majorはありません。",
+      "verifies": []
+    },
+    "id": "2a895868f6c845ab8ce4b08b7614f4ef",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "9df18c34163e47509158b35f39ee67d0",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "b54572e5a00448a1a23f60ccdb0a6c4a"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T21:31:21.710456+00:00"
+      },
+      "recorded_at": "2026-11-14T21:31:21.710471+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 1,
+    "version": 2
+  }
+}

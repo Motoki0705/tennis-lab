@@ -1,0 +1,23 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "静的解析上、URL正規表現が大文字小文字を区別するため、`[HTTPS URL: unsafe authority omitted]` はuserinfoの拒否検査を通りません。絶対パス検査側は大文字小文字を区別せずHTTPSを除外するため、この文字列も拒否されません。認証値が既知のprivate値に含まれなければ、instruction/finalから認証情報付きURLがそのままGitへ公開・自動mergeされます。URL検出にも大文字小文字を区別しない照合を適用する必要があります。",
+          "id": "pr-1699-1",
+          "line": 21,
+          "path": ".agents/ops/worker_logs/safety.py",
+          "rule": "公開前のURL検査で認証情報を拒否する",
+          "severity": "major"
+        }
+      ],
+      "number": 1699,
+      "summary": "指定されたbase/headの差分と関連コードを確認しました。CPU実行は行わず、保存済みのCI成功・親の再実行結果を実行証拠として参照しました。"
+    }
+  ],
+  "summary": "静的レビューを完了し、認証情報の公開につながる重大な欠陥を1件確認しました。",
+  "verdict": "request_changes"
+}

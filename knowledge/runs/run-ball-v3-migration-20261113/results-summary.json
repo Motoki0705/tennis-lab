@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "execution_code_commit": "64f61a41879713169151530c09c8df9fbd2aa4f7",
+  "selection_sha256": "419d5400db70e22db104d23e265c03a954e299659a0512ff53cc87bf933d1756",
+  "inventoried_cameras": 171,
+  "inventoried_frames": 88872,
+  "migrated_cameras": 123,
+  "migrated_frames": 63540,
+  "held_cameras": 48,
+  "held_frames": 25332,
+  "hold_reason_counts": {
+    "processing_completion_unconfirmed_without_missing_review_report": 15,
+    "target_includes_held_ball": 3,
+    "target_includes_held_pre_serve_or_resting_ball": 36
+  },
+  "counts": {
+    "interpolated": 840,
+    "observed": 53141,
+    "occlusion_estimated": 353,
+    "unresolved": 9206
+  },
+  "split_frames": {
+    "test": 18453,
+    "train": 18126,
+    "val": 26961
+  },
+  "generated_negative_candidates": 0,
+  "generated_unprocessed": 0,
+  "receipt": {
+    "digest": "097eb75736131b87489ace33bca43d52f47c52960c63b3c64a28e03fd23a7a48",
+    "path": "campaigns/ball-publications/f29d31e40227abf93ed4637a5979c629dd5709d0f0395092004431dd3fb1a864/receipt.json",
+    "role": "annotation",
+    "size_bytes": 38079
+  },
+  "snapshot": {
+    "digest": "64380d81a9259c66b19bc56aa9a56185a1a9a9da6c538d69ef0b598a754fd49f",
+    "path": "ball_detection/meiji-active-ball-v3-20261113/frames/snapshot.json",
+    "role": "data",
+    "size_bytes": 78642
+  },
+  "replay_equal": true,
+  "small_replay_equal": true,
+  "scene_clips": 41,
+  "scene_camera_artifacts": 123,
+  "learning_samples": [
+    {
+      "frame": 0,
+      "kind": "unresolved",
+      "pts": 0,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "test"
+    },
+    {
+      "frame": 70,
+      "kind": "observed",
+      "pts": 3500000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "test"
+    },
+    {
+      "frame": 142,
+      "kind": "interpolated",
+      "pts": 7100000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "test"
+    },
+    {
+      "frame": 199,
+      "kind": "occlusion_estimated",
+      "pts": 9950000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "test"
+    },
+    {
+      "frame": 0,
+      "kind": "unresolved",
+      "pts": 0,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "train"
+    },
+    {
+      "frame": 28,
+      "kind": "observed",
+      "pts": 1400000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "train"
+    },
+    {
+      "frame": 102,
+      "kind": "interpolated",
+      "pts": 5100000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "train"
+    },
+    {
+      "frame": 192,
+      "kind": "occlusion_estimated",
+      "pts": 9600000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "train"
+    },
+    {
+      "frame": 0,
+      "kind": "unresolved",
+      "pts": 0,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "val"
+    },
+    {
+      "frame": 62,
+      "kind": "observed",
+      "pts": 3100000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "val"
+    },
+    {
+      "frame": 249,
+      "kind": "occlusion_estimated",
+      "pts": 12450000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "val"
+    },
+    {
+      "frame": 439,
+      "kind": "interpolated",
+      "pts": 21950000,
+      "shape": [
+        1,
+        3,
+        1080,
+        1920
+      ],
+      "split": "val"
+    }
+  ],
+  "native_jpeg_bytes": 20690065319,
+  "native_jpeg_archives": 123,
+  "legacy_unchanged": {
+    "annotation_files": 171,
+    "image_baseline_sha256": "0e62dcf9b2b8437f2c8b1e3024f9bd0be1b535d0d8ee67db8a8a3a041dccf492",
+    "image_payload_hashes_recomputed": true,
+    "image_stats_checked": 513,
+    "metadata_and_indexes": 6
+  },
+  "original_media_versions_verified": 171,
+  "reports_root": "outputs/ball_detection/migrate/video-v3/20261113",
+  "usage": {
+    "processed": 63540,
+    "unprocessed": 0,
+    "position_usable": 54334,
+    "final_unknown": 9206,
+    "active_ball_negative_candidate": 0
+  },
+  "hardlinked_native_archives": 123,
+  "protected_prepared_archives": 123,
+  "prepared_archive_protection_id": "publication-migration-images-v1-097eb75736131b87489ace33bca43d52f47c52960c63b3c64a28e03fd23a7a48"
+}

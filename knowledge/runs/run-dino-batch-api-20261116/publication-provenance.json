@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "source_commit": "7ec8be454e7195eecb9f18902ab45060ea39ec44",
+  "raw_evidence": "Original bytes retained outside Git with owner-only directory access; only digests are published.",
+  "transformations": [
+    "Remove conversation identifiers",
+    "Render host-specific paths relative to the repository root",
+    "Represent the selected binary location with TENNIS_LAB_DINO_EXTENSION"
+  ],
+  "hash_scope": "Recorded input manifest digest identifies the private original; public_sha256 identifies each published copy.",
+  "preserved": {
+    "numerical_comparisons": true,
+    "timing": true,
+    "input_hashes": true,
+    "checkpoint_hash": true,
+    "binary_hash": true,
+    "implementation_commits": true,
+    "sequence": 42
+  },
+  "files": [
+    {
+      "path": "knowledge/nodes/tennis_scene/.sequence",
+      "size_bytes": 3,
+      "original_sha256": "084c799cd551dd1d8d5c5f9a5d593b2e931f5e36122ee5c793c1d08a19839cc0",
+      "public_sha256": "084c799cd551dd1d8d5c5f9a5d593b2e931f5e36122ee5c793c1d08a19839cc0"
+    },
+    {
+      "path": "knowledge/nodes/tennis_scene/000042-run-dino-batch-api-20261116.md",
+      "size_bytes": 9809,
+      "original_sha256": "b6f8a47bee42ca136749179851b12d160bd5417294930e0567c951e11e1b9eaa",
+      "public_sha256": "5f4b378ce625e49774a067e10904144111f1d4a876f99d10ce982fe5d399970e"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/compare.py",
+      "size_bytes": 9143,
+      "original_sha256": "19910b824552fc0986b9ef7ffa70343f3b948599b62412fc5edc8720d6c1ca11",
+      "public_sha256": "19910b824552fc0986b9ef7ffa70343f3b948599b62412fc5edc8720d6c1ca11"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/cpu-validation.json",
+      "size_bytes": 2315,
+      "original_sha256": "c48f6d182c34ca0fef66e38f4561d976a097bdcaff26021670eeb00e7d3a8ccc",
+      "public_sha256": "c48f6d182c34ca0fef66e38f4561d976a097bdcaff26021670eeb00e7d3a8ccc"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/git_status.txt",
+      "size_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "public_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/gpu.log",
+      "size_bytes": 1969,
+      "original_sha256": "6cc15517131667ef756272d151e445eabdca8133ba4c6c817cd9b5cedc79032d",
+      "public_sha256": "23ea8be5c0a45c8978db1d6d90e8010401ec7ed60a204a49eaa0236db11df85d"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/inputs.json",
+      "size_bytes": 5556,
+      "original_sha256": "81787c3e9546b0585c5ac43bccb4ef399c633c6fc45e306f048903a4dff10564",
+      "public_sha256": "c79e253e67d3674e8b1462016f8fceea9b9ce5a64029cb20f1f41a153b107335"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/metrics.json",
+      "size_bytes": 937,
+      "original_sha256": "addc10a0b69787b10a46e38fdc036905fcd01ec599161f91cb26001e35f20791",
+      "public_sha256": "addc10a0b69787b10a46e38fdc036905fcd01ec599161f91cb26001e35f20791"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/mutation-batch-axis.log",
+      "size_bytes": 2815,
+      "original_sha256": "8ae69ca7d3a85f46a9b0de822dc6426158cf273fd897005b1e41ad43426f81b6",
+      "public_sha256": "b955b436552e45c97e226daa05db4198a654551decf647d962ea8310adc302d1"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/mutation-image-size.log",
+      "size_bytes": 2906,
+      "original_sha256": "689050a37b4857176f64036f9c0bf282e589060a0d5737085aa24a3039804a36",
+      "public_sha256": "f1ae73d55759f14865ef1172b3241624efc549c7fb0e9cc95ca745c31fabef46"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/prepare.py",
+      "size_bytes": 3017,
+      "original_sha256": "1fcfe68ea6ff52385bb5bdf1cf3dc98809eac07ac76605dc279e0341257f7b3e",
+      "public_sha256": "1fcfe68ea6ff52385bb5bdf1cf3dc98809eac07ac76605dc279e0341257f7b3e"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/protocol.json",
+      "size_bytes": 723,
+      "original_sha256": "d52db98f819187cb43e1344988810dc99db4f5e3bf5fb46b13eed833c054e3fe",
+      "public_sha256": "d52db98f819187cb43e1344988810dc99db4f5e3bf5fb46b13eed833c054e3fe"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/queue-repro-original.sh",
+      "size_bytes": 1377,
+      "original_sha256": "fcb6fe7ba0b39566898f5837cf81ae9083b1f9777f82fdbecd09ae609690b97c",
+      "public_sha256": "f02e5ab27f52e04451b9f09a2a24886c976766434d8977207d3cdebc4044e341"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/repro.sh",
+      "size_bytes": 979,
+      "original_sha256": "433784acb0e05a6aa1c3805d4dbc229769aa08c3574d24356d754fc6ec88f024",
+      "public_sha256": "29ff23baf78bc0aa0bf4d4d3d2b60890b8639f1653ccf77b9dccbf76d782c25c"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/results.json",
+      "size_bytes": 24572,
+      "original_sha256": "ad8e3c48052bf9641cf0742a15f18f43962348e6e65eeb3f151ae57dcd5c0d53",
+      "public_sha256": "0af451d0577f358f31f0da6c8333dd5883d774d3f45bfae05a6ce21d25a019ad"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/run.json",
+      "size_bytes": 1104,
+      "original_sha256": "90773e0543535ceb77d47a1fe97609695f54416bdcb401a16bfd7c462276f02c",
+      "public_sha256": "15dce6926c3799322306244a2e21c7066d5df2a06969e729bc507e6042fe3852"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/scalar_reference.py",
+      "size_bytes": 5662,
+      "original_sha256": "7de6b5eb2b239ff875042bce90a02929abf176a9707950b69a291bf65e1787f4",
+      "public_sha256": "7de6b5eb2b239ff875042bce90a02929abf176a9707950b69a291bf65e1787f4"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/script-provenance.json",
+      "size_bytes": 303,
+      "original_sha256": "40c6339aea369d21ce55cb5d68a8113a6b820bd632c56896286394c8ff1a7aa7",
+      "public_sha256": "40c6339aea369d21ce55cb5d68a8113a6b820bd632c56896286394c8ff1a7aa7"
+    },
+    {
+      "path": "knowledge/runs/run-dino-batch-api-20261116/uncommitted.patch",
+      "size_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "public_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "src/submodules/README.md",
+      "size_bytes": 11515,
+      "original_sha256": "18f5b4ea5afdd8777c6f1ac357d6a7fa5f86b3a65223f4b4e3dfc68b9500f019",
+      "public_sha256": "18f5b4ea5afdd8777c6f1ac357d6a7fa5f86b3a65223f4b4e3dfc68b9500f019"
+    },
+    {
+      "path": "src/submodules/models/dino/person_detector.py",
+      "size_bytes": 8135,
+      "original_sha256": "b025124a2b747b9e3aa3387d51b8ad7cecc474995e06e4bec04bd76ab63f63ac",
+      "public_sha256": "b025124a2b747b9e3aa3387d51b8ad7cecc474995e06e4bec04bd76ab63f63ac"
+    },
+    {
+      "path": "tests/unit/submodules/models/dino/test_person_detector.py",
+      "size_bytes": 10716,
+      "original_sha256": "0c7297a907142ff6def177bc6341522f165e369b341d93824e6d1ccf808bfe8e",
+      "public_sha256": "0c7297a907142ff6def177bc6341522f165e369b341d93824e6d1ccf808bfe8e"
+    }
+  ]
+}

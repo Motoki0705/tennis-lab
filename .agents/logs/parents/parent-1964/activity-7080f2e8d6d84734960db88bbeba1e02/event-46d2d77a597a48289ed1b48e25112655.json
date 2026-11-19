@@ -1,0 +1,85 @@
+{
+  "record": {
+    "data": {
+      "action_id": "43b64c7f39bd4a8f818bf44eceee0a10",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.review-request; artifact=saved parent verification; content_sha256=cecd129a94158fe7b76e58715f644f9cc5e4e2df696ec19fe54d04b981f8bb83; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=cecd129a94158fe7b76e58715f644f9cc5e4e2df696ec19fe54d04b981f8bb83; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[1971]; - worker最終報告: PR #1971 HEAD 02ca25b8501aa001c1f0b19ce46c3cb51d50d8db、52ファイル変更。関連E2E 1090 passed、最終差分 315 passed、完了・再開 26 passed、ラベル同期 41 passed。pre-commit成功。",
+      "verifies": [
+        "b366838a77394e50a8d4fe3ec0a501cc"
+      ]
+    },
+    "id": "46d2d77a597a48289ed1b48e25112655",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "7080f2e8d6d84734960db88bbeba1e02",
+      "delegation": null,
+      "issue": null,
+      "parent": 1964,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "083bd92266a14386b4528c64e2a95110"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-13T08:09:57.151679+00:00"
+      },
+      "recorded_at": "2026-11-13T08:09:57.151694+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

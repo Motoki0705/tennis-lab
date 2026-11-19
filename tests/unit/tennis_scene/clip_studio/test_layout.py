@@ -21,12 +21,12 @@ def _source(
 def test_discovers_video_and_derives_processed_layout(path_resolver) -> None:
     source = _source(
         path_resolver,
-        "tennis_multivew/raw/meiji_3cam/video_002",
+        "tennis_multiview/raw/meiji_3cam/video_002",
         ("cam2.mp4", "cam0.mp4", "cam1.mp4"),
     )
 
     layout = discover_clip_studio_layout(
-        path_resolver, "tennis_multivew/raw/meiji_3cam/video_002"
+        path_resolver, "tennis_multiview/raw/meiji_3cam/video_002"
     )
 
     assert layout.dataset_id == "meiji_3cam"
@@ -38,7 +38,7 @@ def test_discovers_video_and_derives_processed_layout(path_resolver) -> None:
         "cam1.mp4",
         "cam2.mp4",
     ]
-    processed = path_resolver.roots.data_root / "tennis_multivew/processed/meiji_3cam"
+    processed = path_resolver.roots.data_root / "tennis_multiview/processed/meiji_3cam"
     assert layout.projects_path == (processed / "projects.json").resolve()
     assert layout.dataset_directory == (processed / "dataset").resolve()
 
@@ -48,17 +48,17 @@ def test_discovers_video_and_derives_processed_layout(path_resolver) -> None:
     [
         ("other/raw/set/video_000", ("cam0.mp4",), "source_directory must be"),
         (
-            "tennis_multivew/raw/set/session_000",
+            "tennis_multiview/raw/set/session_000",
             ("cam0.mp4",),
             "video_id must match",
         ),
         (
-            "tennis_multivew/raw/set/video_000",
+            "tennis_multiview/raw/set/video_000",
             ("cam0.mp4", "cam2.mp4"),
             "contiguous",
         ),
         (
-            "tennis_multivew/raw/set/video_000",
+            "tennis_multiview/raw/set/video_000",
             ("cam0.mp4", "preview.mp4"),
             "unsupported MP4",
         ),
@@ -74,4 +74,4 @@ def test_rejects_noncanonical_source_layout(
 
 def test_rejects_missing_source_directory(path_resolver) -> None:
     with pytest.raises(FileNotFoundError, match="source directory not found"):
-        discover_clip_studio_layout(path_resolver, "tennis_multivew/raw/set/video_000")
+        discover_clip_studio_layout(path_resolver, "tennis_multiview/raw/set/video_000")

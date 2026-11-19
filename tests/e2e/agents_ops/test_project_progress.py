@@ -197,7 +197,7 @@ class ProjectEnv:
         ]
 
     def run(
-        self, *args: str, ok: bool = True, **env: str
+        self, *args: str, ok: bool = True, parent: str = "1204", **env: str
     ) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
             [
@@ -207,7 +207,7 @@ class ProjectEnv:
                 "--repo",
                 "o/r",
                 "--parent",
-                "1204",
+                str(parent),
                 *args,
             ],
             cwd=ROOT,
@@ -661,14 +661,87 @@ def test_rest_creation_failure_does_not_create_an_unconfigured_board(
     assert len(p.state()["fields"]) == 11 and len(p.state()["views"]) == 4
 
 
+@pytest.mark.parametrize("different_parent", [False, True])
 def test_same_host_parent_lock_serializes_concurrent_setup(
+    project_env: ProjectEnv,
+    different_parent: bool,
+) -> None:
+    p = project_env
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    data = json.loads(registry.read_text())
+    data["parents"]["o/r#1210"] = {
+        **copy.deepcopy(data["parents"]["o/r#1204"]),
+        "session": "codex:other-parent",
+    }
+    registry.write_text(json.dumps(data))
+    parents = [1204, 1210 if different_parent else 1204]
+
+    def apply(parent: int) -> subprocess.CompletedProcess[str]:
+        return p.run(
+            "project-setup",
+            "--apply",
+            parent=str(parent),
+            CODEX_SESSION_ID="other-parent" if parent == 1210 else "progress-owner",
+            PROGRESS_ASSERT_OPERATION_PARENT=str(parent),
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(apply, parents))
+    assert all(result.returncode == 0 for result in results)
+    assert len(p.state()["fields"]) == 11 and len(p.state()["views"]) == 4
+
+
+def test_sync_fresh_prewrite_observation_detects_changed_pr(
     project_env: ProjectEnv,
 ) -> None:
     p = project_env
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        results = list(pool.map(lambda _: p.run("project-setup", "--apply"), range(2)))
-    assert all(result.returncode == 0 for result in results)
-    assert len(p.state()["fields"]) == 11 and len(p.state()["views"]) == 4
+    p.run("project-setup", "--apply")
+    before = len(p.mutations())
+    result = p.sync("initial", p.initial(), "--apply", ok=False, PROGRESS_PR_RACE="1")
+    assert "changed before writing" in result.stderr
+    assert len(p.mutations()) == before
+
+
+def test_setup_rechecks_snapshot_before_first_write(project_env: ProjectEnv) -> None:
+    p = project_env
+    result = p.run(
+        "project-setup", "--apply", ok=False, PROGRESS_SETUP_SNAPSHOT_RACE="1"
+    )
+    assert "changed before writing" in result.stderr
+    assert not p.mutations()
+
+
+@pytest.mark.parametrize("change", ["project", "field", "view"])
+def test_setup_rechecks_written_schema_identity(
+    project_env: ProjectEnv, change: str
+) -> None:
+    p = project_env
+    result = p.run(
+        "project-setup", "--apply", ok=False, PROGRESS_POST_WRITE_CHANGE=change
+    )
+    assert "changed during setup" in result.stderr
+    assert p.mutations()
+
+
+@pytest.mark.parametrize("change", ["project", "issue", "pr", "field", "item"])
+def test_sync_postwrite_verifies_inputs_and_exact_item_identity(
+    project_env: ProjectEnv,
+    change: str,
+) -> None:
+    p = project_env
+    p.run("project-setup", "--apply")
+    result = p.sync(
+        "initial",
+        p.initial(),
+        "--apply",
+        ok=False,
+        PROGRESS_POST_WRITE_CHANGE=change,
+    )
+    assert "changed during Project update" in result.stderr
+    assert p.state()["items"]  # Already applied work is retained for inspection.
 
 
 @pytest.mark.parametrize(

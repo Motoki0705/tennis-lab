@@ -1,22 +1,25 @@
 # cleanup: branch・worktree の掃除（#1060）
 
-ローカルbranchとgit worktreeを **自動削除 / 承認待ち / 保護** に分類する。日次 timer（`apply-auto`）が
-消すのは **worktree を持たない merge 済みのローカルbranch の ref だけ** で、worktree は決して消さない。
-worktree は人間が承認した `delete worktree:<path>` でのみ、しかも **完全に clean なときだけ** 消す。
-承認待ちは `--report-json` に理由つきで出力し、運用レポート（#1057）が掲載する。
+データ・学習出力のローカル保持は [storage-tier](../storage_tier/README.md) を参照する。
 
-## なぜこの範囲か
+ローカルbranchとgit worktreeを **自動削除 / 承認待ち / 保護** に分類する。この `apply-auto` が
+消すのは **worktree を持たない merge 済みのローカルbranch の ref だけ**。
+メインcheckout配下 `.claude/worktrees/` の登録worktreeは、別の
+[worktree-cleanup](../worktree_cleanup/README.md) が作成から336時間で強制削除する。
+期限削除はdirty・使用中・lock等を免除せず、個別承認も求めない。
+以下のclean・承認・保護条件は、この旧手動 `delete worktree:<path>` の契約に限る。
+分類レポートを期限削除の保持根拠として使わない。
+
+## branch整理と期限前の手動削除
 
 当初は worktree も自動削除し、未commit変更は `--discard-changes` で patch に退避する設計だった。
-しかし PR #1065 のクロスレビューで、使用中の worktree を見落とす経路が毎回新たに見つかった
-（rebase 中の branch、`printf %q` された queue job、相対パスの argv、`bash -c` 内の symlink、
-シンボリック参照、削除途中の内容変更など）。複数の Claude/Codex セッションが同じ repo で並行稼働する
-環境では「使用中か」を外から完全に判定する手段がなく、worktree の自動削除の攻撃面は際限がない。
-そこでユーザー判断により、構造的に安全な範囲へ絞った。
+PR #1065 で手動削除をclean・承認制に限定した。#1893 / #1917 の人間の判断により、
+対象範囲内の期限到達後は使用中や作業物があっても強制削除する方式へ変更した。
+作成時刻・停止連携・期限削除の安全性と復旧契約は上記worktree-cleanupを正本とする。
 
-- 自動で消すのは branch ref だけ。worktree を持たない branch には作業ファイルが無く、消しても
+- このtoolが自動で消すのは branch ref だけ。worktree を持たない branch には作業ファイルが無く、消しても
   `deleted.jsonl` の tip から `git branch <name> <tip>` で完全に戻せる。
-- worktree の削除は承認制で、tool は作業物を **一切破棄しない**。`git status --ignored` に
+- このtoolでの手動worktree削除は承認制で、作業物を **一切破棄しない**。`git status --ignored` に
   `.venv` symlink 以外が1つでも出る worktree は消さず、理由を出すだけにする（掃除は人間が行う）。
   使用中判定（プロセス・queue・lock など）は追加の防壁として残す。
 
@@ -26,16 +29,19 @@ worktree は人間が承認した `delete worktree:<path>` でのみ、しかも
 | `inventory.py` | 事実収集（git, `gh pr list`, `/proc`, training queue, `du`） |
 | `classify.py` | 事実→分類の純粋関数。理由コードの一覧（`REASON_KINDS`）の正本 |
 | `config.toml` | 方針パラメータ（全キー必須。未知キーはエラー） |
-| `systemd/` | 日次 timer（`apply-auto`）。`.agents/ops/install_units.sh` で導入 |
+| `systemd/` | 日次 timer（`apply-auto`）。`spin ops install cleanup` で導入 |
 
 ## 使い方
 
+[共通launcherの契約](../lib/README.md#既存cliと新規jobの接続)を使う。直接のfile実行は拒否する。
+
 ```bash
-PY=.venv/bin/python; C=.agents/ops/cleanup/cleanup.py
-$PY $C scan --report-json /tmp/cleanup.json        # dry-run（何も消さない）。--no-disk で du を省略
-$PY $C apply-auto --report-json FILE               # auto_delete の branch だけ削除（timer と同じ）
-$PY $C delete 'branch:feat/x@0123abcd4567'         # 承認済み branch を削除（tip が変わっていたら拒否）
-$PY $C delete 'worktree:/abs/path@0123abcd4567'    # 承認済み worktree を削除（clean なときだけ）
+PY=.venv/bin/python
+C=("$PY" .agents/ops/checkout_job.py --repo "$PWD" -- "$PY" .agents/ops/cleanup/cleanup.py)
+"${C[@]}" scan --report-json /tmp/cleanup.json        # dry-run（何も消さない）。--no-disk で du を省略
+"${C[@]}" apply-auto --report-json FILE               # auto_delete の branch だけ削除（timer と同じ）
+"${C[@]}" delete 'branch:feat/x@0123abcd4567'         # 承認済み branch を削除（tip が変わっていたら拒否）
+"${C[@]}" delete 'worktree:/abs/path@0123abcd4567'    # 承認済み worktree を削除（clean なときだけ）
 ```
 
 - `--repo`（既定: cwd のrepoのメインcheckout）、`--config`（既定: `config.toml`）、
@@ -218,7 +224,9 @@ worktree は clean なものしか消さないので、復元は `git worktree a
 `systemd/tennis-lab-cleanup.{service,timer}`：毎日 04:30（±15分）にメインcheckoutのコードで
 `apply-auto --report-json %S/tennis-lab-agents/cleanup/report-latest.json` を実行する
 （`%S` = `~/.local/state`）。`Persistent=true` で停止中の分は起動時に実行。導入・有効化はPR merge後に
-人間が `.agents/ops/install_units.sh --enable` で行う。
+人間がメインcheckoutから `spin ops install cleanup`、`spin ops on cleanup` の順で行う。
+`cleanup` はbranch整理の独立対象で、`agents` の集合には含まない。停止は `spin ops off cleanup`。
+共通の状態・導入・ログ・user bus/lingerの契約は [ops_control README](../ops_control/README.md) を参照する。
 
 ## テスト
 

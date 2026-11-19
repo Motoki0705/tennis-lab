@@ -1,0 +1,29 @@
+{
+  "status": "interrupted",
+  "completed_comparisons": 0,
+  "queue_exit_code": 143,
+  "main_partial_backend_start_calls": {
+    "court": 3,
+    "ball": 3,
+    "dino": 2,
+    "appearance": 2,
+    "vitpose": 1
+  },
+  "main_partial_backend_return_calls": {
+    "court": 3,
+    "ball": 3,
+    "dino": 2,
+    "appearance": 1,
+    "vitpose": 1
+  },
+  "last_event": {
+    "elapsed_seconds": 1476.8990388899983,
+    "event": "backend_load_start",
+    "model": "appearance"
+  },
+  "partial_device_memory_peak_mib": 5117,
+  "samples": 7057,
+  "last_log_write_at_utc": "2026-11-17T13:37:10.885755+00:00",
+  "cuda_error_text_in_log": null,
+  "reported_reason": "Parent reports human-requested stop after CUDA anomaly; Windows rebooted."
+}

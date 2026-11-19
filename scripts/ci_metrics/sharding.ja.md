@@ -2,7 +2,7 @@
 
 [English](sharding.md) · [简体中文](sharding.zh-CN.md)
 
-CIはlintを独立実行し、要求されたCPU対象を既定10 job（各2 worker）に分けます。手動dispatchでは `shards=1/2/4/6/8/10` と `workers=2/4` を選び、同じsourceで比較できます。ホストに依存する `auto` ではなくworker数を明示します。手動1 jobの基準測定は上限120分、通常shardは60分です。固定名 `Python` は
+CIはlintを独立実行し、要求されたCPU対象を通常の既定10 job（各2 worker）と必須のsystem runtime 1 jobへ分けます。手動dispatchでは `shards=1/2/4/6/8/10` と `workers=2/4` を選び、同じsourceで比較できます。ホストに依存する `auto` ではなくworker数を明示します。手動1 jobの基準測定は上限120分、通常shardは60分です。固定名 `Python` は
 `always()` で動き、plan・lint・全test job・完全性照合の成功を要求し、merge必須checkを維持します。
 PR選別とmain/手動の全件要求は[レーン登録表と計画](README.ja.md#レーン登録表と計画)が正本です。
 先行runの取消はPRだけです。
@@ -10,7 +10,7 @@ PR選別とmain/手動の全件要求は[レーン登録表と計画](README.ja.
 ## 分配とfixture
 
 各workerは現行sourceを通常のCPU markerで収集し、レーン登録表で選ばれるcourt dataset統合も含めます。
-CPU markerで選んだ後、レーン選別前の全件をeventへ記録し、要求されたnodeidを分配します。未登録の新規テストも含めます。
+CPU markerで選んだ後、レーン選別前の全件をeventへ記録し、marker対象の `system_deps_nodeids` もeventとmanifestへ記録します。marker対象は必ずRへ含め、通常群にはRからmarker対象を除いたcaseだけを分配し、専用群にはmarker対象全件だけを選びます。依存不要の隣接caseはfileの繰延べ方針を保ちます。未登録の新規テストも含めます。
 `cpu-file-times.json` の実測phase時間を使い、重いgroupから負荷の軽いshardへ入れます。
 同点は名前・index順で固定します。既定はfile単位で共有準備を保ち、独立したfunction
 fixtureの重いfileだけ `split_files` に明示して、個別 `test_seconds` で分配できます。
@@ -24,7 +24,7 @@ fixtureの重いfileだけ `split_files` に明示して、個別 `test_seconds`
 
 ## 証拠と失敗
 
-schema-2の各 `shard-gw*.json` に `universe_nodeids`（U）、`requested_nodeids`（R）、
+schema-3の各 `shard-gw*.json` に `system_deps_nodeids` と `universe_nodeids`（U）、`requested_nodeids`（R）、
 `deferred`（D: nodeidとsuite id）、plan/policy/scope、group、選択nodeid（S_i）、profile、未計測値を保存します。
 独立した `cpu_universe` eventにCPU marker後・レーン選別前のUを記録し、`lane-plan.json` に固定要求を残します。
 通常のphase・JUnit・source・環境と合わせ、集約は次を要求します。
@@ -36,22 +36,23 @@ schema-2の各 `shard-gw*.json` に `universe_nodeids`（U）、`requested_nodei
 - U = R ⊎ Dを満たし、各繰延べcaseが登録表とplanで説明できること。
 - 要求scopeの観測が完全で成功し、実行一覧が選択一覧と一致すること。
 - R = S_0 ⊎ ... ⊎ S_nを満たし、欠落・重複・空shardがないこと。
-- plan・lint・全matrix jobが成功すること。skip/cancelは成功へ変換しないこと。
+- marker一覧が独立eventと全shardで一致し、通常群に混入せず、専用群で全件がpassedであること（skip/xfail 0）。
+- plan・lint・全matrix job・専用runtime jobが成功すること。skip/cancelは成功へ変換しないこと。
 
 全manifestから同じcaseを消しても、独立した選別前eventとの照合で検出します。Dはskipにも成功にも数えません。
 集約は `scoped_cpu_success` を表示し、`full_cpu_success` はさらにDが空であることを要求します。
 Uは既存のmarker・明示除外後のCPU対象であり、全環境の全テストを表しません。
-過去のschema-1 artifactは `full_nodeids` の意味を保ち、profile用に読み取れます。schema混在やlane planとの併用は拒否します。
+過去のschema-1/2観測は新runtime coverageを主張せずprofile用に読み取れます。schema-1 artifactは `full_nodeids` の意味を保ち、profile用に読み取れます。schema混在やlane planとの併用は拒否します。
 
 準備失敗、分割失敗、成果物欠落、失敗・取消・別HEAD混入は `Python` を失敗にします。
 意図したCPU除外と既存の正当なsetup/module skipは従来どおり可視化します。matrixの
-fail-fastは無効です。aptのretryとstep時間には上限を設け、取得失敗を検証省略に変えません。
+fail-fastは無効です。[runtime準備の正本](README.ja.md#固定したシステム実行環境)に従って取得時間を制限・検証し、失敗を省略へ変えません。
 
 部分再実行では、同じrun・同じHEAD（`source_sha`）・同じlane plan（`plan_id`）に限り、
 固定planとshardごとの最新結果を使います。再実行しなかった成功shardは以前のattemptでも利用できます。
 attemptは上記の範囲内で混在でき、別run・別HEAD・別planは拒否します。
 
-planのartifact名は `cpu-lane-plan-RUN`、計測は `cpu-test-measurements-RUN-shard-N` です。
+planのartifact名は `cpu-lane-plan-RUN`、計測は `cpu-test-measurements-RUN-shard-N` です。通常indexは0からcount-1、専用runtimeのindexはcountです（既定10）。専用は通常CPU数を増やしません。
 両方のuploadに `overwrite: true` を指定し、再実行したplan/shardだけを置き換えます。
 失敗attemptの計測は上書きで消えることがありますが、job logは残ります。
 全jobの再実行ではGitHubが以前のartifactを削除します。
@@ -90,7 +91,7 @@ phase/JUnit reportを再構築し、source/run/plan、attemptの範囲、全work
 更新profileは、成功したmain pushの全件[run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671)の全10 shard、883 file、14,561件（14,470 passed / 91 skipped / 0 failed）、合計7,543.124 phase秒に基づきます。旧profileでは現行54 fileが未計測で、29件のcourt dataset統合も中央値0.077秒の推定に対して実測406.228秒でした。同じinventoryで旧profileのshard推定は676.570〜676.572秒でしたが、その割当の実測負荷は439.996〜1,101.161秒でした。更新した重みで再配分すると10 shardの推定は754.311〜754.313秒となり、未計測file・分割caseはありません。重複するworker phaseの和でありwall時間の予測ではありません。テストコストが大きく変わったら再生成します。
 
 
-依存準備は既存ffmpeg/rcloneのversionを確認し、不足binaryだけを導入して両コマンドを再確認します。aptは各180秒、network retry 2回・timeout 30秒、Actions stepは8分を上限とします。既存/不足・update/install失敗・timeout・導入後欠落・version失敗の7経路をsubprocessで検証します。
+準備とpin更新の正本は[runtime契約](README.ja.md#固定したシステム実行環境)です。
 
 ## 既定値の選定
 

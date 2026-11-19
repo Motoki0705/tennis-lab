@@ -1,0 +1,88 @@
+{
+  "record": {
+    "data": {
+      "action_id": "c614d107441d4b2f97a5b2b56cebcdb6",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=saved parent verification; content_sha256=e8a8b4b0543177731d9938c3bae9082ab5398ea2317840abcba1dbe58b4e9978; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=e8a8b4b0543177731d9938c3bae9082ab5398ea2317840abcba1dbe58b4e9978; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2214]; PR #2214（HEAD 198b541f6）。completion._criteria が取り出し形式の候補見出し `### I-<元親>-<key>` をグループとして読み、ID `ac-I-<元親>-<key>-<連番>`・表示 `[候補ID] 条件文` を付ける。混在・同一候補の再出現・空グループ・重複・その他の見出しや自由文は明示的に拒否。通常形式の `ac-N` は不変。improvements.md に2行追記。worker報告: 関連178件成功、故障注入でe2e失敗を確認、実際の #2157 で available=true（合意1件＋受入12項目）。",
+      "verifies": [
+        "dfa387a518a74ff69705539ef2c3756c"
+      ]
+    },
+    "id": "5c42711fdb814f66a9eed7b92b49f0b5",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "e2c60bf0f931435d93175d65e0dc1375",
+      "delegation": {
+        "key": "d-489631ace8c54682a3bfd2098539c998",
+        "turn": 1
+      },
+      "issue": 2213,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-17T00:52:07.479455+00:00"
+      },
+      "recorded_at": "2026-11-17T00:52:07.479475+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

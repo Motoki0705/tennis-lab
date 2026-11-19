@@ -1,0 +1,16 @@
+{
+  "head": "37499432b2ced39cbb7cf4723e50f36029f1ba05",
+  "ci_run_id": 44029585753,
+  "ci_url": "https://github.com/Motoki0705/tennis-lab/actions/runs/44029585753",
+  "observed_failed_job_id": 133858246263,
+  "failure": "NameError: name 'VideoCourtConfig' is not defined during configuration catalog get_type_hints",
+  "cause": "PipelineRuntimeConfig added a runtime-inspected type imported only under TYPE_CHECKING",
+  "second_local_failure": "PipelineRuntimeConfig.video_court declares a Python runtime default; defaults must be composition-owned",
+  "fix": "Import VideoCourtConfig at runtime and require the typed field without a Python default; YAML and from_config own None for clip mode",
+  "knowledge_run_id": 44029585889,
+  "knowledge_result": "success",
+  "numeric_clip_default_changed": false,
+  "replay_interrupted_images": 153,
+  "replay_interrupted_mismatches": 0,
+  "interrupted_results_are_full_acceptance": false
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "verified_artifact_snapshot.v1",
+  "generation": "resume-attempt-3",
+  "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/documentation/resume-attempt-3",
+  "manifest_sha256": "44b2a478cd5a5daac041318619a547ddf8c6c676afa5ec8d5ed293d5c2c02916",
+  "manifest_md5": "b79a39a0797c22922978c60adba5ceab",
+  "files": 18,
+  "size_bytes": 276535,
+  "marker_id": null,
+  "seconds": 1.4551759619998847,
+  "status": "verified"
+}

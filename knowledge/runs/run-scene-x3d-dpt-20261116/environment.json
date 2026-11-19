@@ -1,0 +1,15 @@
+{
+  "python": "3.11.15",
+  "local_torch": "2.13.0+cu130",
+  "local_torchvision": "0.28.0+cu130",
+  "training_torch": "2.14.1+cu130",
+  "training_image_decode": {
+    "decoder": "torchvision.io.decode_jpeg/nvjpeg",
+    "version": "0.29.1+cu130",
+    "color_order": "RGB",
+    "device": "cuda",
+    "apply_exif_orientation": false,
+    "cuda_version": "13.0",
+    "pixels_identical_to_opencv": false
+  }
+}

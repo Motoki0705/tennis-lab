@@ -1,0 +1,558 @@
+{
+  "commit": "18a2fea05291eeaccb6d1dbfc81160e26c4080dd",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline",
+  "queue_job": "0-8205064145120710330_2026-11-17T17-17-34-879289669Z_313929_i1751-runtime-main-pair-20261118-a5",
+  "python": "3.11.15",
+  "torch": "2.13.0+cu130",
+  "cuda": "13.0",
+  "started_at_utc": "2026-11-17T17:17:41.295701+00:00",
+  "script_sha256": "0450a01edb8c61c41ddb601d0cce52f1715e7366abd5e9abfcd18d3881c9afb3",
+  "threads": 4,
+  "python_hash_seed": "42",
+  "status": "complete",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "gpu_total_bytes": 17074749440,
+  "runtime_hook": false,
+  "frames": 1010,
+  "scene_status": "ok",
+  "wall_seconds": 2222.512450213,
+  "finished_at_utc": "2026-11-17T17:54:43.808456+00:00",
+  "backend_load_counts": {
+    "court": 3,
+    "ball": 3,
+    "dino": 3,
+    "appearance": 4,
+    "vitpose": 3,
+    "hmr2": 1,
+    "gvhmr": 1,
+    "body_vertices": 1,
+    "body_coco17": 1,
+    "body_root_regressor": 1
+  },
+  "backend_loads": [
+    {
+      "event": "backend_load_return",
+      "model": "court",
+      "seconds": 5.247011569999813,
+      "elapsed_seconds": 107.41271644600056,
+      "at_utc": "2026-11-17T17:19:28.703793+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "court",
+      "seconds": 4.927267506000135,
+      "elapsed_seconds": 143.41180796700064,
+      "at_utc": "2026-11-17T17:20:04.702884+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "court",
+      "seconds": 4.690235654999924,
+      "elapsed_seconds": 178.60763772600058,
+      "at_utc": "2026-11-17T17:20:39.898715+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "ball",
+      "seconds": 1.477197989999695,
+      "elapsed_seconds": 232.60880111400002,
+      "at_utc": "2026-11-17T17:21:33.899878+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "ball",
+      "seconds": 0.3407995959996697,
+      "elapsed_seconds": 327.0848854579999,
+      "at_utc": "2026-11-17T17:23:08.375961+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "ball",
+      "seconds": 0.37032477599950653,
+      "elapsed_seconds": 353.7341120810006,
+      "at_utc": "2026-11-17T17:23:35.025189+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "dino",
+      "seconds": 4.125674827000694,
+      "elapsed_seconds": 381.5919210300008,
+      "at_utc": "2026-11-17T17:24:02.882998+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "appearance",
+      "seconds": 0.5966258210000888,
+      "elapsed_seconds": 686.6100185860005,
+      "at_utc": "2026-11-17T17:29:07.901096+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "vitpose",
+      "seconds": 7.1159622949999175,
+      "elapsed_seconds": 693.8064061350005,
+      "at_utc": "2026-11-17T17:29:15.097483+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "dino",
+      "seconds": 2.5374240749997625,
+      "elapsed_seconds": 958.6991062430006,
+      "at_utc": "2026-11-17T17:33:39.990183+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "appearance",
+      "seconds": 0.6079915999998775,
+      "elapsed_seconds": 1258.562662886,
+      "at_utc": "2026-11-17T17:38:39.853741+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "vitpose",
+      "seconds": 7.499238223999782,
+      "elapsed_seconds": 1266.116735474,
+      "at_utc": "2026-11-17T17:38:47.407811+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "dino",
+      "seconds": 2.6664211580000483,
+      "elapsed_seconds": 1401.6738453410007,
+      "at_utc": "2026-11-17T17:41:02.964922+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "appearance",
+      "seconds": 0.5929202970000915,
+      "elapsed_seconds": 1701.5420423220012,
+      "at_utc": "2026-11-17T17:46:02.833120+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "vitpose",
+      "seconds": 7.399627192999105,
+      "elapsed_seconds": 1709.000756980001,
+      "at_utc": "2026-11-17T17:46:10.291834+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "appearance",
+      "seconds": 0.5698857080005837,
+      "elapsed_seconds": 1913.4190851770009,
+      "at_utc": "2026-11-17T17:49:34.710163+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "hmr2",
+      "seconds": 7.831683929000064,
+      "elapsed_seconds": 2148.3470218330012,
+      "at_utc": "2026-11-17T17:53:29.638099+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "gvhmr",
+      "seconds": 1.408602706000238,
+      "elapsed_seconds": 2165.8335500800013,
+      "at_utc": "2026-11-17T17:53:47.124627+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_vertices",
+      "seconds": 0.6761342440004228,
+      "elapsed_seconds": 2190.4713309040008,
+      "at_utc": "2026-11-17T17:54:11.762407+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_coco17",
+      "seconds": 0.6977675939997425,
+      "elapsed_seconds": 2191.287056616001,
+      "at_utc": "2026-11-17T17:54:12.578133+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_root_regressor",
+      "seconds": 0.002024045999860391,
+      "elapsed_seconds": 2191.3017007940007,
+      "at_utc": "2026-11-17T17:54:12.592775+00:00"
+    }
+  ],
+  "runtime_events": [],
+  "receipt": {
+    "schema": "tennis_scene_run_v3",
+    "status": "ok",
+    "clip_id": "video_000/clip_000",
+    "source": {
+      "clip_id": "video_000/clip_000",
+      "videos": [
+        {
+          "camera_id": "cam0",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+          "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+          "num_frames": 1010,
+          "fps": 59.94006,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam1",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+          "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+          "num_frames": 1010,
+          "fps": 59.94006,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam2",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+          "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+          "num_frames": 1010,
+          "fps": 59.94006,
+          "width": 1920,
+          "height": 1080
+        }
+      ]
+    },
+    "scene_index": "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a5/main/store/scene.json",
+    "validity": {
+      "ball_3d_frames": 772,
+      "player_joint_frames": [
+        1008,
+        993
+      ],
+      "player_root_frames": [
+        1000,
+        993
+      ],
+      "player_smpl_frames": [
+        1000,
+        993
+      ]
+    },
+    "active_stage": null,
+    "stage_status": {
+      "court_detection/cam0": "executed",
+      "court_detection/cam1": "executed",
+      "court_detection/cam2": "executed",
+      "ball_detection/cam0": "executed",
+      "ball_points/cam0": "executed",
+      "ball_detection/cam1": "executed",
+      "ball_points/cam1": "executed",
+      "ball_detection/cam2": "executed",
+      "ball_points/cam2": "executed",
+      "court_calibration": "executed",
+      "person_detection/cam0": "executed",
+      "person_tracking/cam0": "executed",
+      "player_selection/cam0": "executed",
+      "pose_estimation/cam0": "executed",
+      "person_detection/cam1": "executed",
+      "person_tracking/cam1": "executed",
+      "player_selection/cam1": "executed",
+      "pose_estimation/cam1": "executed",
+      "person_detection/cam2": "executed",
+      "person_tracking/cam2": "executed",
+      "player_selection/cam2": "executed",
+      "pose_estimation/cam2": "executed",
+      "court_side": "executed",
+      "player_association": "executed",
+      "camera_alignment": "executed",
+      "player_triangulation": "executed",
+      "ball_triangulation": "executed",
+      "body_view_selection": "executed",
+      "gvhmr": "executed",
+      "body_placement": "executed",
+      "scene_assembly": "executed"
+    },
+    "stage_seconds": {
+      "court_detection/cam0": 36.31879913499961,
+      "court_detection/cam1": 35.43254650900053,
+      "court_detection/cam2": 57.21435498899973,
+      "ball_detection/cam0": 87.1838683699998,
+      "ball_points/cam0": 8.426531850999709,
+      "ball_detection/cam1": 11.118547915999443,
+      "ball_points/cam1": 15.498870430000352,
+      "ball_detection/cam2": 11.061923320999995,
+      "ball_points/cam2": 12.72534639100013,
+      "court_calibration": 0.2332716690007146,
+      "person_detection/cam0": 308.50477734299966,
+      "person_tracking/cam0": 268.46021453699996,
+      "player_selection/cam0": 1.6222640779997164,
+      "pose_estimation/cam0": 0.1343270659999689,
+      "person_detection/cam1": 301.72391422200053,
+      "person_tracking/cam1": 140.0835954610002,
+      "player_selection/cam1": 0.9322885069996119,
+      "pose_estimation/cam1": 0.10709776499970758,
+      "person_detection/cam2": 301.8710240499995,
+      "person_tracking/cam2": 210.3267354510008,
+      "player_selection/cam2": 1.2831426530010503,
+      "pose_estimation/cam2": 0.11467630999868561,
+      "court_side": 0.13137839100090787,
+      "player_association": 7.4751717549988825,
+      "camera_alignment": 0.22451616100079264,
+      "player_triangulation": 215.51980239399927,
+      "ball_triangulation": 4.460443599000428,
+      "body_view_selection": 0.1314343710000685,
+      "gvhmr": 49.2166568169996,
+      "body_placement": 14.806993217998752,
+      "scene_assembly": 2.0308483749995503
+    },
+    "artifacts": {
+      "court_detection/cam0": {
+        "artifact_id": "05f3eed940c44500fbecb92b574145a30b46530716828c52000eb51c82573872",
+        "path": "components/court_detection/05f3eed940c44500fbecb92b574145a30b46530716828c52000eb51c82573872/court_detection.json",
+        "sha256": "3758cd3ea678ad69600696a1cc15472d193ae64b1aa7838ccc4ef1414261108a",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "77cf63bd1bb7cf79011b959e3bcd9ef9a31b3c051be9cde9f0bde8dba49da8a3"
+      },
+      "court_detection/cam1": {
+        "artifact_id": "f2e485085a15c4c0dba2472e8f260defab171b56ee3c62adf191bb1eba163199",
+        "path": "components/court_detection/f2e485085a15c4c0dba2472e8f260defab171b56ee3c62adf191bb1eba163199/court_detection.json",
+        "sha256": "3cd8e5fe2d1524c0cf743b4db18162c15a99be305c1dd3368b2aa5a7a0f9b13e",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "8cde4bc45df93da43f20228b72dc223232d866f9eb8b35cb02c4457880c2816e"
+      },
+      "court_detection/cam2": {
+        "artifact_id": "289d83d4b45d1a4070890d06ff93ac8479f8233dd0703ed3fd53e4179a99756c",
+        "path": "components/court_detection/289d83d4b45d1a4070890d06ff93ac8479f8233dd0703ed3fd53e4179a99756c/court_detection.json",
+        "sha256": "fc7200ed4c8a1046edd957a66bc14b9a347eb6ef967296f2120fc60917a8b8e5",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "4e9261a51672f2917a459202cea9583da08fa26ad7902285db2cc3ec656f425b"
+      },
+      "ball_detection/cam0": {
+        "artifact_id": "a2b7edc1ea3039bbfacc789e48ffecd9095fcbdbec77e654e666324f37bd9fec",
+        "path": "components/ball_detection/a2b7edc1ea3039bbfacc789e48ffecd9095fcbdbec77e654e666324f37bd9fec/ball_detection.json",
+        "sha256": "b1a6449b9f725b2e0e5bc37975bb13ebb21573b519f65d94c791cac85db13910",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "e5569fedfe24728bcb1869cd5d8403d515f9acbc7dccb398a4d9a16eef32cb5c"
+      },
+      "ball_points/cam0": {
+        "artifact_id": "fe86e53b98b172769d6b420a918642bce41dafa47880623b035224895d29bb72",
+        "path": "components/ball_points/fe86e53b98b172769d6b420a918642bce41dafa47880623b035224895d29bb72/ball_points.json",
+        "sha256": "199c25b8060ce4ed1584cb212cef9cf9303d2a8b1159ad25c5e6d5c6b037557a",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "122be1608674f08caa9cc98e44d5178952d42fb3bc88357da857332b1d2072fe"
+      },
+      "ball_detection/cam1": {
+        "artifact_id": "cb6f257fc1c43031d66b83cd3b7e420b3f6f53ad933200fc71e1b913b08cb130",
+        "path": "components/ball_detection/cb6f257fc1c43031d66b83cd3b7e420b3f6f53ad933200fc71e1b913b08cb130/ball_detection.json",
+        "sha256": "72b9b3467d5496f14919cba5243cab8ff67e792ba9e1d52fa26cc6cc27df6f6b",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "541ba8945f8a3a5aa71a6b7a09ebc51164b36a8e5129bd009925b7cd2e3f310f"
+      },
+      "ball_points/cam1": {
+        "artifact_id": "177d9d9700d1a2acb567e47fac4086b0d1fb5273b0cbb8721400781a754ee149",
+        "path": "components/ball_points/177d9d9700d1a2acb567e47fac4086b0d1fb5273b0cbb8721400781a754ee149/ball_points.json",
+        "sha256": "1f7ad7fbec00bf0f04b66d6a29be8d33ae2939ef670ea3f8e930e959a4a76d54",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "c347aed61bb2cc8bb51c735522221a6627a11a1519dfa1ab9dc4bdf4436aa650"
+      },
+      "ball_detection/cam2": {
+        "artifact_id": "3b2c6598915dffcedde04e1e9240cb576096103e242835720f9a0445e70c2640",
+        "path": "components/ball_detection/3b2c6598915dffcedde04e1e9240cb576096103e242835720f9a0445e70c2640/ball_detection.json",
+        "sha256": "8fd1092e7d7afa19d2c5ab2b14208cd8801a22f3ef16ec6c43787a95661c3112",
+        "schema": "ball_detections",
+        "version": 2,
+        "execution_key": "9cb33cb761852a876715b121bd94e3959f9e8ad8f063353e4cf2b071a532daf8"
+      },
+      "ball_points/cam2": {
+        "artifact_id": "f44bd62bd8a5d18967ab26f41333fb62703af02fa5e0ba86628bd581743deb56",
+        "path": "components/ball_points/f44bd62bd8a5d18967ab26f41333fb62703af02fa5e0ba86628bd581743deb56/ball_points.json",
+        "sha256": "ae1bf06864439f41814826d32cb8b7e87189dfc8060fe63c74fd22887d319fc0",
+        "schema": "ball_points",
+        "version": 4,
+        "execution_key": "2f4a8b213c7f515ab7372337aec732c58feb1c91b38cbb8d183a909feb71eb7a"
+      },
+      "court_calibration": {
+        "artifact_id": "905be1f14eec8034e64952c88f09f1ae93ba35854aa6efafa367a0a74f46a706",
+        "path": "components/court_calibration/905be1f14eec8034e64952c88f09f1ae93ba35854aa6efafa367a0a74f46a706/court_calibration.json",
+        "sha256": "3be923be84b8d081e076f485bdaf88e1d483b926f5e5acceb725908818eeb34f",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "d0f1d0a277c8424a8e892bea1d96f006393cbcfe2668524404d21a5f5e35ad20"
+      },
+      "person_detection/cam0": {
+        "artifact_id": "a84cff64a328b2ffecac68b951d45ba589c7fb82ac4e6a918d937ecd25f18aae",
+        "path": "components/person_detection/a84cff64a328b2ffecac68b951d45ba589c7fb82ac4e6a918d937ecd25f18aae/person_detection.json",
+        "sha256": "61d52c679bb81c190ebf8904a73cb713b5360d2a341ac0b506d0ce9452fe829e",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "bffaee7d652f070420ece2f8d6dd73927d22022cc7f56bc22abe7a32213cbf95"
+      },
+      "person_tracking/cam0": {
+        "artifact_id": "16bf76954de2e8fb8319ffde070b0979ee2b3a29b64db68cb1a4801111bb1024",
+        "path": "components/person_tracking/16bf76954de2e8fb8319ffde070b0979ee2b3a29b64db68cb1a4801111bb1024/person_tracking.json",
+        "sha256": "75bbf03dc14db5a9ef13d7e4024272e7cd212c11122d45f1274388e426a1b0d7",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "e51a67b9a10547f37124cf961b1ed5f47435bc9740ee839d07d9dcf52cd13ec8"
+      },
+      "player_selection/cam0": {
+        "artifact_id": "3e47ae837f2029822aa12cc58af1fee5701982114c05b00ebdced19577c282e4",
+        "path": "components/player_selection/3e47ae837f2029822aa12cc58af1fee5701982114c05b00ebdced19577c282e4/player_selection.json",
+        "sha256": "a9e3a77e77a669ff3418a7b70db57c2c5541505c54fe5a2760d2843785950082",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "4f00551f6500af5a973764500fb0c8b22262bfb505bdc6185ff07324d4ec32f2"
+      },
+      "pose_estimation/cam0": {
+        "artifact_id": "8688f1f798b18a07ef419f186f428af685cf14e6f7bd731afff6d8ed3c719951",
+        "path": "components/pose_estimation/8688f1f798b18a07ef419f186f428af685cf14e6f7bd731afff6d8ed3c719951/pose_estimation.json",
+        "sha256": "316db30c67fda02c8cf7a1d59afc99cee264eb2b758faab4a0773eab982d5a00",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "49a812be985492a1822094dc2be5fc28be625b01fd1b05f6d7fb011f24992b36"
+      },
+      "person_detection/cam1": {
+        "artifact_id": "5de70c21b326b5262982feeba9fabc5eef98c6342a50a232ac9964c718432d38",
+        "path": "components/person_detection/5de70c21b326b5262982feeba9fabc5eef98c6342a50a232ac9964c718432d38/person_detection.json",
+        "sha256": "52926d13bbbf23f809517549a1fa6af3e587440ae72719bcf1632a3ba33db27e",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "92428f6e5613d840125231911095eef2fed0347c47b8b06cd8ffd7105b941f82"
+      },
+      "person_tracking/cam1": {
+        "artifact_id": "617c922b8673e365c89be629ff17cdf6c122a0e06f82eabeab77b79146ef71eb",
+        "path": "components/person_tracking/617c922b8673e365c89be629ff17cdf6c122a0e06f82eabeab77b79146ef71eb/person_tracking.json",
+        "sha256": "6b2b3fcc7a78a04fe3eb534187661c60e9c3bb6cf3f26cf7be4f7a2dcfe90a53",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "695f1680f2c095fc805a683002554876410bebccefbd9d4e8830949a61aadeff"
+      },
+      "player_selection/cam1": {
+        "artifact_id": "04fdd19c46231608d015e441b0dc326161c73b85f0e5fc668ba6b33a13b1c6a0",
+        "path": "components/player_selection/04fdd19c46231608d015e441b0dc326161c73b85f0e5fc668ba6b33a13b1c6a0/player_selection.json",
+        "sha256": "d84aa948b7e573943e05dc0c13cfc75eeba37a42b500b07d10a2939d2c3d16ce",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "68e770b05dece37441e3ba538098f8627fdd7d0c4d49d6b5bbd26ad57d679987"
+      },
+      "pose_estimation/cam1": {
+        "artifact_id": "6c50f08d0a784a7e59eceeabcc8ef062b2508e4f38fc0fce23d24d11c15b700e",
+        "path": "components/pose_estimation/6c50f08d0a784a7e59eceeabcc8ef062b2508e4f38fc0fce23d24d11c15b700e/pose_estimation.json",
+        "sha256": "dd8f6e3281c4037644f73490be4da3676314e9d53e2bf8bbe2c6df06b1bb74d6",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "e1416225752aef5037be8418998b162a7465c6d31ddd3e46a8ed6bb23e6de4f3"
+      },
+      "person_detection/cam2": {
+        "artifact_id": "9e2509875913d1bc857cbd5c156dbc03a29fc9fe757c60f8407e52ebf9b063a1",
+        "path": "components/person_detection/9e2509875913d1bc857cbd5c156dbc03a29fc9fe757c60f8407e52ebf9b063a1/person_detection.json",
+        "sha256": "60e77575468791199ac1e1a5b1089880a3bb2a3f57ddcd7b0b289759b305aa83",
+        "schema": "person_detections",
+        "version": 2,
+        "execution_key": "22e0984f30e6128b100dbc6b250f82d4d5ea942970786808868eace781c39290"
+      },
+      "person_tracking/cam2": {
+        "artifact_id": "a6c1d3053c3f05a2b0306b10fd2921befb76c6c5a5175b4b3e4eedef2da6531a",
+        "path": "components/person_tracking/a6c1d3053c3f05a2b0306b10fd2921befb76c6c5a5175b4b3e4eedef2da6531a/person_tracking.json",
+        "sha256": "e7b757a1d74bd68c82ace92d7ee4442c4e20fd4ec6533b4796702edcba995ce9",
+        "schema": "person_tracks",
+        "version": 5,
+        "execution_key": "b9bbd9a5bf850f0daa74e6b0ac7d08495e04108b800a1b199d7440a1c1b86613"
+      },
+      "player_selection/cam2": {
+        "artifact_id": "b7af72e51b9c9dd8657222e036880c7742bb7ad982679ff5d60dda2a0e1e1b4e",
+        "path": "components/player_selection/b7af72e51b9c9dd8657222e036880c7742bb7ad982679ff5d60dda2a0e1e1b4e/player_selection.json",
+        "sha256": "22c6219f381938b95f579e5659414421089f39b71177929f3dd01f62e94bf36a",
+        "schema": "selected_player_tracks",
+        "version": 2,
+        "execution_key": "a85da2bcdd476dc93904913a3576706be8d71916155aceee5567d74e7490f71d"
+      },
+      "pose_estimation/cam2": {
+        "artifact_id": "b98444d42f4040f2f8eeb86244adbc30b5ca948ded52c3226f5848425593793f",
+        "path": "components/pose_estimation/b98444d42f4040f2f8eeb86244adbc30b5ca948ded52c3226f5848425593793f/pose_estimation.json",
+        "sha256": "3573e2da3f944f3bb16d60e5a0f470fa820d01581215f420864613f58c5ae608",
+        "schema": "person_poses",
+        "version": 1,
+        "execution_key": "c6b59300dc5da396ac4bb987f46113435e2738b6f50c700c6131dcd3cb63ceff"
+      },
+      "court_side": {
+        "artifact_id": "38ddc172b5a36f99f24950aff9f407cdff338e805db4d01a1e12c2f7c5b775f0",
+        "path": "components/court_side/38ddc172b5a36f99f24950aff9f407cdff338e805db4d01a1e12c2f7c5b775f0/court_side.json",
+        "sha256": "e1f57b0afc14de8cfdc160c50a3f01df3b12d93d93e436f73033a1bb68a803b0",
+        "schema": "court_side",
+        "version": 3,
+        "execution_key": "0ccc442406f8b581af6565c0596d15402a041b2d65a18ad30833377f0c48cba5"
+      },
+      "player_association": {
+        "artifact_id": "15cb7d21fa3ed782afd1010dc59f0117916334ee07e968daed86b78390af8993",
+        "path": "components/player_association/15cb7d21fa3ed782afd1010dc59f0117916334ee07e968daed86b78390af8993/player_association.json",
+        "sha256": "2322ead36d742884cc6f68dab6ec6effed4b6f8886087547f5698664bf302720",
+        "schema": "person_identities",
+        "version": 3,
+        "execution_key": "9a6bf718bffc032fc17112ae7a7a29683e1f60c6776ff8bc5aff8c4f7e02fc41"
+      },
+      "camera_alignment": {
+        "artifact_id": "6a4ad00db645755268d6664068e5a7cf31074617fa8f9bcfc02fa666dd7e8434",
+        "path": "components/camera_alignment/6a4ad00db645755268d6664068e5a7cf31074617fa8f9bcfc02fa666dd7e8434/camera_alignment.json",
+        "sha256": "379da539aa33be9912067e3874f88c04b40e6bd2e6b12cb9d3cc03767a2bbb94",
+        "schema": "aligned_cameras",
+        "version": 1,
+        "execution_key": "9bd94bd47cd8afd8d27a19562cf18d0957fde0d2a19fea5117a77a1cdc626bc1"
+      },
+      "player_triangulation": {
+        "artifact_id": "9d9ee27c62db4eca34fe73b101943468b9923eeebd3a1eae24ba42fdbb74b6d2",
+        "path": "components/player_triangulation/9d9ee27c62db4eca34fe73b101943468b9923eeebd3a1eae24ba42fdbb74b6d2/player_triangulation.json",
+        "sha256": "bf00997371a29bca0c8e80fd74db0c3063e88a3d590dc7dcc5c1d8f649a957c9",
+        "schema": "player_skeletons",
+        "version": 1,
+        "execution_key": "1afe7c76b33237b82bbb638b4d9f7fe6fc3466dc2986a8e1fcc444f083cf3f92"
+      },
+      "ball_triangulation": {
+        "artifact_id": "18dab1cbd52a6f878793f1908021fb67b3ac3d56ccddf03edb94d074a5b9e3fc",
+        "path": "components/ball_triangulation/18dab1cbd52a6f878793f1908021fb67b3ac3d56ccddf03edb94d074a5b9e3fc/ball_triangulation.json",
+        "sha256": "88511570aae78538ac1f3b9add26e4336d08c3a86a699f16df939401ee312994",
+        "schema": "ball_trajectory",
+        "version": 1,
+        "execution_key": "827aff193a2832c5246abf11d84f5986d68057b561a137b4daa3f22ce4c4bd15"
+      },
+      "body_view_selection": {
+        "artifact_id": "e2dc0f505469796024503d489e05a8be73774be73df0878484b238197565d355",
+        "path": "components/body_view_selection/e2dc0f505469796024503d489e05a8be73774be73df0878484b238197565d355/body_view_selection.json",
+        "sha256": "4cd1dea56200d462b537ba3d04a61568f7b77fb835c7668e28c6abb1956607ea",
+        "schema": "body_view_selection",
+        "version": 1,
+        "execution_key": "22c46d60f72fc72cb110022c446f135bfed07dadb11b93a9669cddf46b2820f1"
+      },
+      "gvhmr": {
+        "artifact_id": "73ec85aea43b1af95a4775f17d9fd94a75908a0cecfef3a99bea73b0f4dd6d7f",
+        "path": "components/gvhmr/73ec85aea43b1af95a4775f17d9fd94a75908a0cecfef3a99bea73b0f4dd6d7f/gvhmr.json",
+        "sha256": "d1c96fdce1b43f849c3d8a54effa3d052767286f9a807eefa67d83258d7bb0f8",
+        "schema": "body_parameters",
+        "version": 1,
+        "execution_key": "689b469b28563bc2c506b33ea55399dcc08ddb6548eff1e909f163d053e45abb"
+      },
+      "body_placement": {
+        "artifact_id": "243c78f0f8f00dde90039ab6b17b47595a283cd1127313ad635ef6b3c4d8b834",
+        "path": "components/body_placement/243c78f0f8f00dde90039ab6b17b47595a283cd1127313ad635ef6b3c4d8b834/body_placement.json",
+        "sha256": "fe2df2df23aa6158e4cbf9713a049f2f5dcf09a137ef87c571d78787c1af8937",
+        "schema": "placed_bodies",
+        "version": 1,
+        "execution_key": "299cbe52638f93e806b5136509bc4780aea1ac2309e564f84a48b34a9e269ee7"
+      },
+      "scene_assembly": {
+        "artifact_id": "1d70ae66bbaa89e71c1f1114e2bff70a04d1a3788887198f1b483cdde478173e",
+        "path": "components/scene_assembly/1d70ae66bbaa89e71c1f1114e2bff70a04d1a3788887198f1b483cdde478173e/scene_assembly.json",
+        "sha256": "4e389c6986c8c47a98a0fdf258c6f62903cbe9729d73faf50280104144504252",
+        "schema": "scene_result",
+        "version": 2,
+        "execution_key": "a96cac4d5608bc85af37fbec722585d83ed2c8b4379c10c6441a84b5648b153b"
+      }
+    }
+  },
+  "peak_allocated_bytes": 3159937536,
+  "peak_reserved_bytes": 3776970752,
+  "allocated_end_bytes": 33554432,
+  "reserved_end_bytes": 167772160,
+  "allocated_after_gc_bytes": 33554432,
+  "reserved_after_gc_bytes": 33554432
+}

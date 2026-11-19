@@ -8,7 +8,10 @@ silently drifting, and keep the always-read files small.
 from __future__ import annotations
 
 import datetime as dt
+import importlib
+import json
 import re
+import shlex
 from pathlib import Path
 
 import pytest
@@ -37,9 +40,17 @@ DOCS = [
     DSH_SKILL.with_name("task-template.md"),
     ROOT / ".agents/ops/parent/README.md",
     ROOT / ".agents/ops/worker_logs/README.md",
+    ROOT / ".agents/ops/decision_logs/README.md",
+    ROOT / ".agents/ops/decision_logs/README.ja.md",
+    ROOT / ".agents/ops/decision_logs/README.zh-CN.md",
+    ROOT / ".agents/ops/lib/README.md",
+    ROOT / ".agents/ops/review/README.md",
+    ROOT / ".agents/ops/dispatcher/parent_bootstrap.md",
+    *sorted((ROOT / ".agents/skills/parent-session/references").glob("*.md")),
     ROOT / ".agents/ops/board/README.md",
     ROOT / ".agents/ops/herdr_labels/README.md",
     ROOT / ".agents/skills/parent-session/SKILL.md",
+    ROOT / ".agents/skills/herdr-session-label/SKILL.md",
     ROOT / ".agents/skills/explain-html/SKILL.md",
     ROOT / ".agents/skills/explain-html/references/authoring.md",
     ROOT / ".agents/skills/explain-html/references/claim-review.md",
@@ -163,6 +174,57 @@ def test_relative_links_resolve(doc: Path) -> None:
     assert not broken, f"{doc.relative_to(ROOT)}: broken links: {broken}"
 
 
+def test_parent_cli_help_examples_match_the_parser(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    cli = importlib.import_module("parent.cli_impl")
+    guidance = importlib.import_module("parent.cli_help")
+    service = importlib.import_module("herdr_labels.service")
+    root = cli.parser()
+    for name, example in guidance.EXAMPLES.items():
+        tokens = shlex.split(example.splitlines()[0])
+        args = root.parse_args(["--parent", "1216", *tokens])
+        assert args.command == name
+        if name in {"register", "handoff"}:
+            assert service.validate_summary(args.summary) == args.summary
+        if name == "review-request":
+            assert args.review_model is None and args.model_reason_file is None
+
+
+def test_parent_cli_completion_examples_cover_the_agreement_and_issue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    examples = importlib.import_module("parent.cli_help").EXAMPLES
+    notifications = importlib.import_module("parent.notifications")
+    completion = importlib.import_module("parent.completion")
+    notice = json.loads(examples["notify"].splitlines()[-1])
+    assert notifications.validate(notice)["kind"] == "completion"
+    finish = json.loads(examples["release"].splitlines()[-1])
+    requirements = {
+        "basis_ref": finish["basis_ref"],
+        "criteria": [{"id": "agreement"}, {"id": "ac-1"}],
+    }
+    completion.validate_finish(finish, requirements, {}, 1216)
+
+
+def test_skill_routes_each_cli_topic_to_a_reference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    topics = importlib.import_module("parent.cli_help").TOPICS
+    skill = ROOT / ".agents/skills/parent-session/SKILL.md"
+    references = {
+        path for _, path, _ in _links(skill) if path.startswith("references/")
+    }
+    assert references == {"references/" + name + ".md" for name in topics}
+    assert references == {
+        str(p.relative_to(skill.parent))
+        for p in (skill.parent / "references").glob("*.md")
+    }
+
+
 def test_entry_chain_from_agents_md_to_memory_summary() -> None:
     agents_targets = {target for _, target, _ in _links(AGENTS_MD)}
     assert ".agents/README.md" in agents_targets
@@ -178,6 +240,21 @@ def test_entry_chain_from_agents_md_to_memory_summary() -> None:
     assert (ROOT / "CLAUDE.md").read_text(encoding="utf-8").splitlines()[
         0
     ] == "@AGENTS.md"
+
+
+def test_decision_record_entry_is_reachable_from_operational_docs() -> None:
+    specification = ROOT / ".agents/ops/decision_logs/README.ja.md"
+    for name in (
+        ".agents/skills/parent-session/references/finish.md",
+        ".agents/ops/parent/README.md",
+        ".agents/ops/worker_logs/README.md",
+        ".agents/ops/lib/README.md",
+    ):
+        doc = ROOT / name
+        assert any(
+            (doc.parent / target.partition("#")[0]).resolve() == specification
+            for _, target, _ in _links(doc)
+        )
 
 
 def test_deepseek_harness_skill_is_discoverable_from_both_agents() -> None:

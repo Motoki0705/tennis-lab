@@ -1,0 +1,13 @@
+親からの追加事実: 起動のためにruntime終了が必要だったので、準備・probe・commit/PR・Drive readbackが完了した段階で親が共通runnerのstopを使いました。exit143/turn_end_reason=stopped、agent/group/runner不在を確認済みです。final_fileは欠測です。これはユーザーの停止・権限取消ではありません。CI完了待ちはこの本番開始に必要ありません（mergeしません）。
+
+その終了によりdeferred-launchはregisteredになり、本番job 0-8205507466335230348_2026-11-12T14-08-53-664769651Z_1594191_ball-query-length-desktop-production-a1 が登録されました。新規投入しないで同じjobとserviceの状態を確認してください。準備commitは eda5ee08073da498347d411e075905f4ac94e25e、draft PR #1931です。
+
+同じ #1899 の担当を継続してください。前ターンの実GPU T64 probe成功、全データ照合、学習状態の限定的なpath移管を親が確認しました。追加の人間判断は不要で、本番開始の既存許可は有効です。
+
+前ターンのcommon runner終了・cleanupと、旧probe PGID 1492475の消滅・queue lock解放を確認し、用意したsystemdの遅延起動とproduction登録の実状態を照合してください。登録済みなら重複投入せず同じjobを使います。新規probeや学習レシピ変更は不要です。古い無関係なqueue記録は変更しないでください。
+
+本番はsystemd管理下の共有queue resource allからだけ起動し、データ・固定training source・torch version・AdamW/RNG/sample/LRを維持します。adapter自体の固定版・正確なcommand・環境・テストと元checkpointの参照が、Driveから復元できるように保存して検証してください。queueのrepro cwdは固定source側でadapterが別worktreeにあるため、adapter sourceの保存を忘れないでください。
+
+起動受入は、再開後finite更新、最初の周期checkpoint（前半6000）のDrive保存と独立readback、前半の固定validation identity、後半の正常開始です。時間内なら後半601のCNN解除も確認。最初の受入が終われば定期的な進捗pollingを終了し、子自身は終了してください。完了/異常/プロセス終了のterminal event記録を保持してください。ユーザーの目的は詳細調査・具体手順・開始なので、全6000後半の完了待ちは要求していません。
+
+実際に開始したjobとserviceのPID/PPID・PGID・queue state、500周期snapshotとreceipt、実測速度/メモリ/残り時間、実行code/command、再開方法、残作業を正確に報告してください。研究issue closeやmergeはしません。validator0回。前ターンを含め本番の正常開始と起動受入を完遂し、親が同じ検証を繰り返さず評価できる小さなacceptance JSONを残してください。時間枠この継続ターンは75分。GPU計算を常駐子の監視にせず、安定後はイベントのみとしてください。

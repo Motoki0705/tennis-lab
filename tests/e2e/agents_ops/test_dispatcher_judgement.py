@@ -7,6 +7,7 @@ import hashlib
 import importlib
 import json
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -103,9 +104,25 @@ def agreement_comment(n: int) -> dict[str, Any]:
 
 class FakeGitHub:
     repo = "o/r"
+    targeted_history = False
+
+    def authenticated_login(self) -> str:
+        return cast(dict[str, str], self.get("user"))["login"]
+
+    def improvement_extractions(self, store: Any) -> dict[str, Any]:
+        return cast(
+            dict[str, Any],
+            importlib.import_module("parent.github").GitHub.improvement_extractions(
+                self, store
+            ),
+        )
 
     def __init__(self) -> None:
         self._fresh = False
+        self._store = None
+        self._outside_store = None
+        self._cache: dict[Any, Any] = {}
+        self.evidence_directory: Path | None = None
         self.issues = {1: issue(1)}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -126,6 +143,8 @@ class FakeGitHub:
             raise ValueError("injected API failure: " + endpoint)
         if endpoint == "user":
             return {"login": "operator"}
+        if endpoint == "repos/o/r/labels/parent-evidence":
+            return {"name": "parent-evidence"}
         if endpoint == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
             if self.enabled_since is None:
                 raise importlib.import_module("issues.cli").GitHubHTTPError(
@@ -144,10 +163,19 @@ class FakeGitHub:
 
         if path == "repos/o/r/issues":
             return paged(
-                [v for _, v in sorted(self.issues.items()) if v["state"] == "open"]
+                [
+                    v
+                    for _, v in sorted(self.issues.items())
+                    if params.get("state") == ["all"] or v["state"] == "open"
+                ]
             )
         if path == "repos/o/r/pulls":
             return paged(self.prs)
+        pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
+        if pull:
+            return copy.deepcopy(
+                next(pr for pr in self.prs if pr["number"] == int(pull[1]))
+            )
         parts = path.removeprefix("repos/o/r/issues/").split("/")
         n = int(parts[0])
         if len(parts) == 1:
@@ -179,6 +207,15 @@ class FakeGitHub:
     def fresh_reads(self) -> Any:
         return importlib.import_module("parent.github").GitHub.fresh_reads(self)
 
+    def _require_scope(self) -> None:
+        importlib.import_module("parent.github").GitHub._require_scope(self)
+
+    def io_scope(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.io_scope(self)
+
+    def detached(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.detached(self)
+
     def identity(self, raw: object) -> int:
         return cast(
             int, importlib.import_module("parent.github").GitHub.identity(self, raw)
@@ -199,6 +236,46 @@ class FakeGitHub:
     def comments(self, n: int) -> list[dict[str, Any]]:
         return self.rows(f"repos/o/r/issues/{n}/comments")
 
+    def evidence_issues(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.evidence_issues(self)
+
+    def history_read_scope(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.history_read_scope(self)
+
+    def evidence_rows(self) -> list[dict[str, Any]]:
+        return cast(
+            list[dict[str, Any]],
+            importlib.import_module("parent.github").GitHub.evidence_rows(self),
+        )
+
+    def record_history(self, n: int, login: str | None = None, **kwargs: Any) -> Any:
+        return importlib.import_module("parent.github").GitHub.record_history(
+            self, n, login, **kwargs
+        )
+
+    def parent_comments(self, n: int, login: str | None = None) -> list[dict[str, Any]]:
+        return cast(list[dict[str, Any]], self.record_history(n, login).comments)
+
+    def record_rows(self, parent: int) -> list[dict[str, Any]]:
+        """Raw fixture rows in both physical media, including deliberate damage."""
+        numbers = [parent] + [
+            n
+            for n, row in self.issues.items()
+            if row["body"].startswith("<!-- parent-evidence:v1 ")
+            and json.loads(
+                row["body"].splitlines()[0][len("<!-- parent-evidence:v1 ") : -4]
+            )["parent"]
+            == parent
+        ]
+        return sorted(
+            [c for n in numbers for c in self.comment_rows.get(n, [])],
+            key=lambda c: c["id"],
+        )
+
+    @property
+    def record_writes(self) -> list[dict[str, Any]]:
+        return [w for w in self.writes if "/comments" in w["endpoint"]]
+
     def pulls(self, issues: set[int] | None = None) -> list[dict[str, Any]]:
         rows = self.rows("repos/o/r/pulls?state=all")
         closing_issues = importlib.import_module("parent.policy").closing_issues
@@ -212,10 +289,25 @@ class FakeGitHub:
     def write(
         self, method: str, endpoint: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
-        if self.on_write:
+        if self.on_write and "/comments" in endpoint:
             self.on_write()
         self.writes.append({"method": method, "endpoint": endpoint, "payload": payload})
+        self._history_rows = None
+        if method == "POST" and endpoint == "repos/o/r/issues":
+            n = max([9000, *self.issues]) + 1
+            row = {
+                **issue(n),
+                **payload,
+                "labels": [{"name": v} for v in payload["labels"]],
+                "user": {"login": "operator"},
+            }
+            self.issues[n] = row
+            return copy.deepcopy(row)
         if method == "PATCH":
+            if re.fullmatch(r"repos/o/r/issues/[0-9]+", endpoint):
+                row = self.issues[int(endpoint.rsplit("/", 1)[1])]
+                row.update(payload)
+                return copy.deepcopy(row)
             cid = int(endpoint.rsplit("/", 1)[1])
             row = next(
                 c for rows in self.comment_rows.values() for c in rows if c["id"] == cid
@@ -260,6 +352,7 @@ class Harness:
             root / "private-state"
         )
         self.gh = FakeGitHub()
+        self.gh._store = self.store
         self.output = root / "response.json"
         self.calls = root / "agent-calls.jsonl"
         bin_dir = root / "bin"
@@ -372,16 +465,18 @@ def test_supplement_changes_before_recording_defer_without_writes(
 def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
     h: Harness,
 ) -> None:
+    standalone = importlib.import_module("issues").STANDALONE_LABEL
+    h.gh.issues[1]["labels"] = [{"name": standalone}]
     h.gh.issues.update(
         {
-            2: issue(2, labels=("ai-proposed", "ready")),
+            2: issue(2, labels=("ai-proposed", "ready", standalone)),
             3: issue(3),
             4: issue(4, labels=("issue:parent",)),
             5: issue(5),
             6: issue(6, state="closed", reason="not_planned"),
             7: issue(7),
             8: issue(8),
-            9: issue(9, labels=("needs-human",)),
+            9: issue(9, labels=("needs-human", standalone)),
             10: issue(10, labels=("ops-report",)),
         }
     )
@@ -420,7 +515,12 @@ def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
     )
     assert {d["issue"]: d["target_parent"] for d in result["decisions"]}[3] == 4
     assert not (h.store.directory / "registry.json").exists()
-    assert all("/comments" in w["endpoint"] for w in h.gh.writes)
+    assert all(
+        "parent-evidence" in w["payload"].get("labels", [])
+        or "/comments" in w["endpoint"]
+        for w in h.gh.writes
+    )
+    assert not any(n < 9000 for n in h.gh.comment_rows)
     assert 10 not in h.gh.comment_rows
     published = json.dumps(h.gh.comment_rows, ensure_ascii=False)
     assert '"event": "agreed"' not in published
@@ -887,6 +987,18 @@ def test_runtime_failure_is_not_task_success(
     assert h.gh.writes == []
 
 
+def test_recovered_routing_error_is_accepted_by_judgement_consumer(
+    h: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_JUDGEMENT_SCENARIO", "reconnect")
+    h.response(decision(1))
+    result = h.run()
+    assert result["result"] == "recorded", result
+    record = json.loads((h.run_dir / "agent-runtime/result.json").read_text())
+    assert record["runtime"]["runtime_errors"] and record["result"] == "completed"
+
+
 def test_same_inputs_still_run_agent_and_update_only_changed_comment(
     h: Harness,
 ) -> None:
@@ -908,8 +1020,43 @@ def test_same_inputs_still_run_agent_and_update_only_changed_comment(
     assert third["result"] == "recorded", third
     assert third["input_sha256"] == first["input_sha256"]
     assert len(h.gh.writes) == writes + 1
-    assert h.gh.writes[-1]["method"] == "PATCH"
-    assert len(h.gh.comment_rows[2]) == 1
+    assert h.gh.writes[-1]["method"] == "POST"
+    rows = h.gh.record_rows(2)
+    assert len(rows) == 2 and rows[0]["body"] != rows[1]["body"]
+    assert not h.gh.comment_rows.get(2)
+
+
+def test_collection_keeps_related_prs_after_an_unrelated_parent_session(
+    h: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    h.gh.issues[2] = issue(2)
+    h.gh.prs = [
+        {
+            "number": 300,
+            "body": "Closes #1",
+            "state": "closed",
+            "merged_at": "2026-10-24T10:00:00Z",
+            "head": {"ref": "completed-work", "sha": "a" * 40},
+        }
+    ]
+    # Keep the production reader's parent-dependent PR routing. The fixture's
+    # usual pulls() deliberately bypasses that routing and concealed this bug.
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=h.store)
+
+    def get(endpoint: str, *, missing_parent: bool = False) -> object:
+        if "/timeline?" in endpoint:
+            return []  # The unrelated parent has no cross-referenced PRs.
+        return h.gh.get(endpoint, missing_parent=missing_parent)
+
+    monkeypatch.setattr(gh, "get", get)
+    with h.store.locked():
+        before = h.collector.collect(gh, h.store, h.work)
+        importlib.import_module("parent.session").ParentSession(gh, h.store, 2, None)
+        after = h.collector.collect(gh, h.store, h.work)
+    assert [p["number"] for p in before["pulls"]] == [300]
+    assert after["pulls"] == before["pulls"]
+    h.collector.assert_material_fresh(before, after, 1)
+    assert gh.parent == 2
 
 
 @pytest.mark.parametrize(
@@ -1015,7 +1162,8 @@ def test_other_subject_changes_do_not_discard_fresh_judgements(
     assert [d["issue"] for d in result["deferred"]] == [2]
     assert [c["parent"] for c in result["candidates"]] == ([1] if apply else [])
     assert [p["issue"] for p in result["publications"]] == ([1] if apply else [])
-    assert all(w["endpoint"] == "repos/o/r/issues/1/comments" for w in h.gh.writes)
+    assert not h.gh.comment_rows.get(1)
+    assert not apply or h.gh.record_rows(1)
     assert json.loads((h.run_dir / "result.json").read_text()) == result
     assert len(h.calls.read_text().splitlines()) == 1
 
@@ -1180,9 +1328,9 @@ def test_change_during_comment_write_cannot_record_a_basis(h: Harness) -> None:
     assert result["result"] == "deferred" and result["candidates"] == []
     assert result["decisions"] == []
     assert result["deferred"][0]["stage"] == "publication"
-    assert len(h.gh.writes) == 1
+    assert len(h.gh.record_writes) == 1
     assert not any(
-        '"event": "execution_basis"' in c["body"] for c in h.gh.comment_rows[1]
+        '"event": "execution_basis"' in c["body"] for c in h.gh.record_rows(1)
     )
 
 
@@ -1195,7 +1343,7 @@ def test_subject_changes_during_writes_preserve_other_candidates(
     h.response(decision(1), decision(2))
 
     def edit() -> None:
-        if len(h.gh.writes) + 1 == write_number:
+        if len(h.gh.record_writes) + 1 == write_number:
             h.gh.on_write = None
             h.gh.issues[changed_subject]["body"] += "\n新しい要件"
 
@@ -1212,7 +1360,7 @@ def test_subject_changes_during_writes_preserve_other_candidates(
         assert 2 not in h.gh.comment_rows
     else:
         bases = [
-            c for c in h.gh.comment_rows[1] if '"event": "execution_basis"' in c["body"]
+            c for c in h.gh.record_rows(1) if '"event": "execution_basis"' in c["body"]
         ]
         assert len(bases) == write_number - 1
 
@@ -1227,7 +1375,7 @@ def test_dependency_change_during_basis_write_is_caught_after_publication(
     h.response(decision(1, deps=(200,)), decision(2))
 
     def edit() -> None:
-        if len(h.gh.writes) == 1:
+        if len(h.gh.record_writes) == 1:
             h.gh.on_write = None
             h.gh.issues[200]["state_reason"] = "not_planned"
 
@@ -1236,7 +1384,7 @@ def test_dependency_change_during_basis_write_is_caught_after_publication(
     assert result["result"] == "recorded", result
     assert [c["parent"] for c in result["candidates"]] == [2]
     assert [d["issue"] for d in result["deferred"]] == [1]
-    assert len(h.gh.comment_rows[1]) == 2
+    assert len(h.gh.record_rows(1)) == 2
 
 
 def test_final_subject_checks_remove_only_candidates_changed_by_later_writes(
@@ -1246,7 +1394,7 @@ def test_final_subject_checks_remove_only_candidates_changed_by_later_writes(
     h.response(decision(1), decision(2))
 
     def edit() -> None:
-        if len(h.gh.writes) == 2:
+        if len(h.gh.record_writes) == 2:
             h.gh.on_write = None
             h.gh.issues[1]["body"] += "\n記録後の変更"
 
@@ -1259,7 +1407,7 @@ def test_final_subject_checks_remove_only_candidates_changed_by_later_writes(
         (1, "final_check")
     ]
     assert [p["issue"] for p in result["publications"]] == [1, 2]
-    assert len(h.gh.writes) == 4
+    assert len(h.gh.record_writes) == 4
 
 
 def test_collection_failure_after_judgement_is_fatal_and_not_a_deferral(
@@ -1384,6 +1532,7 @@ def test_parent_record_error_without_input_changes_is_fatal(
         ("cancelled_dependency", "dependency_wait", "not_planned"),
         ("closed_unmerged_pr", "existing_owner", "PR #100"),
         ("needs_human", "human_hold", "needs-human"),
+        ("improvement", "human_hold", "I-200-result-access"),
         ("supplement_pending", "human_hold", "supplementはpending"),
         ("checking", "human_hold", "phaseはchecking"),
         ("revoked", "human_hold", "phaseはchecking"),
@@ -1418,6 +1567,35 @@ def test_mechanical_guard_is_exposed_and_enforced(
         ]
     elif blocker == "needs_human":
         h.gh.issues[1]["labels"] = [{"name": "needs-human"}]
+    elif blocker == "improvement":
+        from tests.support.agents_ops.improvements import candidate_spec
+
+        api = importlib.import_module("issues.improvement")
+        source = api.ImprovementSource(200, "result-access")
+        h.gh.issues[200] = issue(200, state="closed", reason="completed")
+        h.gh.issues[1]["body"] = source.marker() + "\n\n" + h.gh.issues[1]["body"]
+        candidate = api.event(
+            source,
+            "candidate",
+            1,
+            None,
+            {"source_issue": 200, "spec": candidate_spec(), "legacy": False},
+        )
+        linked = api.event(
+            source,
+            "published",
+            1,
+            candidate["id"],
+            {"issue": 1, "mode": "created", "draft_sha256": "a" * 64},
+        )
+        h.gh.comment_rows[200] = [
+            {
+                "id": 100 + i,
+                "user": {"login": "operator"},
+                "body": api.render_event(value),
+            }
+            for i, value in enumerate([candidate, linked])
+        ]
     elif blocker == "supplement_pending":
         h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
         h.gh.enabled_since = "2026-10-30T00:00:00Z"
@@ -1621,7 +1799,7 @@ def test_ended_owner_with_agreement_and_work_under_another_parent_is_recorded(
     assert held["rationale"] in recorded["rationale"]
     assert recorded["facts"][:2] == held["facts"]
     assert json.loads((h.run_dir / "result.json").read_text()) == result
-    comment = h.gh.comment_rows[10][-1]
+    comment = h.gh.record_rows(10)[-1]
     assert "判定: human_hold" in comment["body"]
     assert "agentの分類: existing_owner" in comment["body"]
     assert held["rationale"] in comment["body"]
@@ -1681,7 +1859,7 @@ def test_rejudgement_after_assignment_updates_display_without_revoking_basis(
             candidate["generation"],
         )
         owner = session_class(h.gh, h.store, 1, "claude:private-owner")
-        owner.register()
+        owner.register("判定後の担当表示")
     h.response(decision(1, "existing_owner"))
     second = h.run(runner=h.fake_runner)
     assert second["result"] == "recorded", second
@@ -1689,7 +1867,8 @@ def test_rejudgement_after_assignment_updates_display_without_revoking_basis(
     assert second["publications"] == [{"issue": 1, "action": "updated"}]
     with h.store.locked():
         assert execution.authorization(owner) == expected
-    [basis] = [e for e in owner.history() if e["event"] == "execution_basis"]
+    with h.store.locked():
+        [basis] = [e for e in owner.history() if e["event"] == "execution_basis"]
     assert basis["ignored_comments"] == []
     assert basis["basis_sha256"] == candidate["basis_sha256"]
 
@@ -1700,8 +1879,10 @@ def test_own_comment_is_not_an_instruction_but_same_marker_by_other_author_is(
     h.response(decision(1))
     first = h.run()
     assert first["result"] == "recorded", first
-    hold = h.gh.comment_rows[1][0]
-    h.gh.comment_rows[1].append({**hold, "id": 500, "user": {"login": "human"}})
+    hold = h.gh.record_rows(1)[0]
+    h.gh.comment_rows.setdefault(1, []).append(
+        {**hold, "id": 500, "user": {"login": "human"}}
+    )
     second = h.run()
     assert second["result"] == "recorded", second
     assert first["input_sha256"] != second["input_sha256"]
@@ -1709,7 +1890,7 @@ def test_own_comment_is_not_an_instruction_but_same_marker_by_other_author_is(
         len(
             [
                 c
-                for c in h.gh.comment_rows[1]
+                for c in h.gh.record_rows(1)
                 if c["body"].startswith("<!-- issue-start-judgement:")
             ]
         )
@@ -1782,7 +1963,7 @@ def test_current_own_display_is_never_an_independent_source(h: Harness) -> None:
     h.response(decision(1))
     assert h.run()["result"] == "recorded"
     d = decision(1)
-    d["sources"].append(f"comment:1:{h.gh.comment_rows[1][0]['id']}")
+    d["sources"].append(f"comment:1:{h.gh.record_rows(1)[0]['id']}")
     h.response(d)
     writes = len(h.gh.writes)
     result = h.run()
@@ -1807,7 +1988,7 @@ def test_human_explicit_stop_is_returned_with_facts_and_resume_condition(
     h.response(held)
     result = h.run()
     assert result["result"] == "recorded" and result["candidates"] == []
-    body = h.gh.comment_rows[1][-1]["body"]
+    body = h.gh.record_rows(1)[-1]["body"]
     assert "人間が素材決定まで見送りを明示した。" in body
     assert "再開条件:" in body and "次の対応:" in body and "確認事実:" in body
     assert "#issuecomment-999" in body
@@ -1855,7 +2036,13 @@ def test_preview_and_cli_print_no_candidates_or_local_private_information(
     changed: bool,
 ) -> None:
     h.response(decision(1))
-    monkeypatch.setattr(h.mod, "GitHub", lambda repo: h.gh)
+
+    def github(repo: str, *, store: Any) -> Any:
+        client = copy.copy(h.gh)
+        client._store = store
+        return client
+
+    monkeypatch.setattr(h.mod, "GitHub", github)
 
     def concurrent_edit(endpoint: str) -> None:
         if changed and h.calls.exists():
@@ -1868,20 +2055,24 @@ def test_preview_and_cli_print_no_candidates_or_local_private_information(
     umask = os.umask(0o022)
     os.umask(umask)
     try:
-        code = h.mod.main(
-            [
-                "--repo",
-                "o/r",
-                "--cwd",
-                str(h.work),
-                "--run-dir",
-                str(h.root / "cli"),
-                "--parent-state-dir",
-                str(h.store.directory),
-                "--timeout",
-                "15",
-            ]
-        )
+        lock = importlib.import_module("lib.checkout_lock")
+        with lock.checkout_lock(h.work) as fd:
+            monkeypatch.setenv(lock.CHECKOUT_ROOT_ENV, str(h.work))
+            monkeypatch.setenv(lock.CHECKOUT_FD_ENV, str(fd))
+            code = h.mod.main(
+                [
+                    "--repo",
+                    "o/r",
+                    "--cwd",
+                    str(h.work),
+                    "--run-dir",
+                    str(h.root / "cli"),
+                    "--parent-state-dir",
+                    str(h.store.directory),
+                    "--timeout",
+                    "15",
+                ]
+            )
     finally:
         os.umask(umask)
     output = capsys.readouterr().out
@@ -1905,3 +2096,43 @@ def test_dirty_code_and_broken_registry_fail_before_agent(h: Harness) -> None:
     result = h.run()
     assert result["result"] == "failed" and not h.calls.exists()
     assert h.gh.writes == []
+
+
+def test_shared_transaction_clients_keep_parent_pr_scope_and_refresh_comments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.e2e.agents_ops.test_dispatcher_supervisor import DispatchHarness
+
+    d = DispatchHarness(tmp_path, monkeypatch)
+    d.h.gh.issues[2] = issue(2)
+    d.h.gh.prs = [
+        {
+            "number": n + 100,
+            "body": f"Closes #{n}",
+            "state": "open",
+            "merged_at": None,
+            "head": {"ref": f"codex/parent-{n}", "sha": str(n) * 40},
+        }
+        for n in (1, 2)
+    ]
+    d.publish_github(monkeypatch)
+    mod = importlib.import_module("parent.github")
+    clients = importlib.import_module("dispatcher.state")
+    session = importlib.import_module("parent.session").ParentSession
+    gh = mod.GitHub("o/r", store=d.h.store)
+    remote = tmp_path / "github.json"
+    with d.h.store.locked():
+        first = session(clients.client_for(gh, d.h.store), d.h.store, 1, None)
+        second = session(clients.client_for(gh, d.h.store), d.h.store, 2, None)
+        assert [p["number"] for p in first.gh.pulls()] == [101]
+        assert [p["number"] for p in second.gh.pulls()] == [102]
+        before = d.h.collector.collect(first.gh, d.h.store, d.h.work, [1, 2])
+        state = json.loads(remote.read_text())
+        state["comments"]["1"] = [
+            {"id": 99, "user": {"login": "human"}, "body": "fresh requirement"}
+        ]
+        remote.write_text(json.dumps(state))
+        after = d.h.collector.collect(first.gh, d.h.store, d.h.work, [1, 2])
+        assert before["issues"]["1"]["comments"] == []
+        assert after["issues"]["1"]["comments"][0]["body"] == "fresh requirement"
+        assert [p["number"] for p in after["pulls"]] == [101, 102]

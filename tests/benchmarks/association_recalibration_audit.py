@@ -119,9 +119,8 @@ def audit(repo: Path, report: Path, plan_path: Path, preflight_path: Path) -> No
             d = store.descriptor(ref)
             settings = d['identity']['settings']
             expected = full['nodes'][f'court_detection/{camera}']['settings']
-            if settings['checkpoint']['sha256'] != expected['checkpoint']['sha256'] \
-                    or settings['config'] != expected['config']:
-                raise ValueError('Court detector config/checkpoint differs')
+            if settings != expected:
+                raise ValueError('Court detector config/assets differ')
             # descriptor verifies its checksum; load also validates every numerical array.
             store.load(ref, ArtifactCodec(CourtKPResult))
             detection_refs[camera] = json_value(ref)

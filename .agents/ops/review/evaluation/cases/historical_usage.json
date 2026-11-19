@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "model": "gpt-6-astra",
+  "effort": "xhigh",
+  "cases": [
+    {
+      "case_id": "pr-1699",
+      "input_tokens": 1970036,
+      "cached_input_tokens": 1818880,
+      "output_tokens": 9261,
+      "source_url": "https://github.com/Motoki0705/tennis-lab/pull/1699#issuecomment-6699937849",
+      "runtime_file_sha256": "b22744cf260547f3cbb3355a9dc997f1bfb9008accda7f5dfe8803cbdce1f940",
+      "basis": "turn.completed",
+      "agent_seconds": 266.9635241031647
+    },
+    {
+      "case_id": "pr-1766",
+      "input_tokens": 2637950,
+      "cached_input_tokens": 2476800,
+      "output_tokens": 11018,
+      "source_url": "https://github.com/Motoki0705/tennis-lab/pull/1766#issuecomment-6727638297",
+      "runtime_file_sha256": "a3196cd69ce83821a2f4424862d2610c3b2dd04e2c6e60d653a986b82c10aeb3",
+      "basis": "turn.completed",
+      "agent_seconds": 343.083233833313
+    },
+    {
+      "case_id": "pr-1867",
+      "input_tokens": 2763414,
+      "cached_input_tokens": 2600704,
+      "output_tokens": 10482,
+      "source_url": "https://github.com/Motoki0705/tennis-lab/pull/1867#issuecomment-6766611865",
+      "runtime_file_sha256": "6779a42d3c73d856ed1e115d77b0d730a7c7b1cba7a90c7ca6d00eff8b6dfe09",
+      "basis": "turn.completed",
+      "agent_seconds": 401.95367646217346
+    },
+    {
+      "case_id": "pr-1872",
+      "input_tokens": 3586460,
+      "cached_input_tokens": 3388928,
+      "output_tokens": 9836,
+      "source_url": "https://github.com/Motoki0705/tennis-lab/pull/1872#issuecomment-6772041725",
+      "runtime_file_sha256": "a7f767750c0e59d42ab36d1d3a90a27a05207c9f65418a0093353c6f67895d90",
+      "basis": "turn.completed",
+      "agent_seconds": 399.081613779068
+    },
+    {
+      "case_id": "pr-1888",
+      "input_tokens": 2377842,
+      "cached_input_tokens": 2205184,
+      "output_tokens": 8225,
+      "source_url": "https://github.com/Motoki0705/tennis-lab/pull/1888#issuecomment-6784863824",
+      "runtime_file_sha256": "fcaeb839ce4620dd89186ddcaa4fa4c1debd884b62c3c3183dc29c0f2f85c161",
+      "basis": "turn.completed",
+      "agent_seconds": 346.95084834098816
+    },
+    {
+      "case_id": "pr-1686",
+      "input_tokens": 1148367,
+      "cached_input_tokens": 1004160,
+      "output_tokens": 6725,
+      "source_url": "https://github.com/Motoki0705/tennis-lab/pull/1686#issuecomment-6674729665",
+      "runtime_file_sha256": "a8d02d50f446561c9626464f485d0a27cd20f83c065dfaa13f98f707657f554f",
+      "basis": "turn.completed",
+      "agent_seconds": 230.1564645767212
+    },
+    {
+      "case_id": "pr-1744",
+      "input_tokens": 1120271,
+      "cached_input_tokens": 995840,
+      "output_tokens": 5382,
+      "source_url": "https://github.com/Motoki0705/tennis-lab/pull/1744#issuecomment-6722826641",
+      "runtime_file_sha256": "4c4941410a7858594976ccebe52d301c22f45c38372bb321eec9797be02cac86",
+      "basis": "turn.completed",
+      "agent_seconds": 166.94157123565674
+    }
+  ],
+  "sol_observation": {
+    "status": "unavailable",
+    "reason": "No Sol formal-review run in the inspected original review state; the pilot supplies its first measurement."
+  }
+}

@@ -451,7 +451,9 @@ def test_rejected_invocations_do_not_launch_task(
     elif failure == "unignored":
         (fixture["worktree"] / ".gitignore").write_text("")
     elif failure == "public-records":
-        (fixture["worktree"] / ".dsh-runs").mkdir(mode=0o755)
+        records = fixture["worktree"] / ".dsh-runs"
+        records.mkdir()
+        records.chmod(0o755)
     elif failure == "key-in-repo":
         options["key-file"] = fixture["worktree"] / "key"
     elif failure == "home-in-repo":

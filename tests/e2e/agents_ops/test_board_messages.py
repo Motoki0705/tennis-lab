@@ -21,6 +21,7 @@ from tests.e2e.agents_ops.test_board import NOW, private_output_absent, run_boar
 from tests.e2e.agents_ops.test_board import board as board
 from tests.e2e.agents_ops.test_herdr_labels import Labels
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
+from tests.support.agents_ops.locks import available
 
 
 @pytest.mark.parametrize(
@@ -1858,10 +1859,17 @@ def test_notifier_observes_committed_post_without_sqlite_writer_lock(
 ) -> None:
     w = message_world
     seen = []
+    probes = []
 
     def route(notification: Any) -> Any:
         # A callback may read the board and briefly acquire a SQLite writer;
         # dispatch must have committed both the post and its uncertainty marker.
+        probes.append(
+            (
+                available(w.labels.registry.with_name("registry.lock")),
+                available(w.labels.registry.with_name("ownership.lock")),
+            )
+        )
         with w.store.transaction() as connection:
             assert connection.execute(
                 "SELECT body FROM posts WHERE id=?", (notification.post_id,)
@@ -1875,6 +1883,7 @@ def test_notifier_observes_committed_post_without_sqlite_writer_lock(
         return w.board.delivery.NotificationResult(True)
 
     root = w.post(notifiers={"codex": route})
+    assert probes == [(True, False)], "registry must be free and ownership fenced"
     assert len(seen) == 1
     assert root["recipients"][0]["state"] == "notified"
 

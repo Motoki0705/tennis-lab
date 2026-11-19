@@ -17,17 +17,27 @@ import pytest
 
 
 @pytest.fixture
-def drive_cli(tmp_path: Path) -> tuple[Callable[..., dict[str, Any]], Path]:
-    rclone = shutil.which("rclone")
-    if rclone is None:
-        pytest.skip("rclone executable required for isolated local integration")
-    assert rclone is not None
-    executable: str = rclone
+def local_config(tmp_path: Path) -> tuple[Path, Path]:
     remote = tmp_path / "remote"
     project = remote / "tennis_lab"
     project.mkdir(parents=True)
     config = tmp_path / "rclone.conf"
     config.write_text(f"[test]\ntype = alias\nremote = {remote}\n")
+    return config, project
+
+
+@pytest.fixture
+def drive_cli(
+    local_config: tuple[Path, Path], request: pytest.FixtureRequest
+) -> tuple[Callable[..., dict[str, Any]], Path]:
+    if request.node.get_closest_marker("system_deps") is None:
+        pytest.fail("real rclone fixture requires the system_deps marker")
+    rclone = shutil.which("rclone")
+    if rclone is None:
+        pytest.skip("rclone executable required for isolated local integration")
+    assert rclone is not None
+    executable: str = rclone
+    config, project = local_config
     script = (
         Path(__file__).resolve().parents[3]
         / ".agents/skills/tennis-drive/scripts/drive.py"
@@ -67,6 +77,7 @@ def drive_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     return importlib.import_module("drive")
 
 
+@pytest.mark.system_deps
 def test_transfer_verify_relocate_and_inventory(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
     tmp_path: Path,
@@ -103,6 +114,7 @@ def test_transfer_verify_relocate_and_inventory(
     assert (remote / "staging/renamed").exists()
 
 
+@pytest.mark.system_deps
 def test_overwrite_is_copy_not_deleting_sync(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
     tmp_path: Path,
@@ -121,6 +133,7 @@ def test_overwrite_is_copy_not_deleting_sync(
     assert (destination / "current").exists()
 
 
+@pytest.mark.system_deps
 def test_single_file_transfer_and_rename(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
     tmp_path: Path,
@@ -135,6 +148,7 @@ def test_single_file_transfer_and_rename(
     assert not (remote / "staging/copy.bin").exists()
 
 
+@pytest.mark.system_deps
 def test_download_overwrite_preserves_unrelated_local_files(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path], tmp_path: Path
 ) -> None:
@@ -157,6 +171,7 @@ def test_download_overwrite_preserves_unrelated_local_files(
     ]
 
 
+@pytest.mark.system_deps
 def test_tree_download_checks_complete_manifest_with_real_rclone(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path], tmp_path: Path
 ) -> None:
@@ -199,6 +214,7 @@ def test_tree_download_checks_complete_manifest_with_real_rclone(
     assert "hash changed" in call(*args, expected=1)["error"]
 
 
+@pytest.mark.system_deps
 def test_mkdir_planning_creation_existing_directory_and_file_conflict(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
 ) -> None:
@@ -215,6 +231,7 @@ def test_mkdir_planning_creation_existing_directory_and_file_conflict(
     call("mkdir", ".", expected=1)
 
 
+@pytest.mark.system_deps
 def test_verification_relocation_and_inventory_allow_listed_colons(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path], tmp_path: Path
 ) -> None:
@@ -235,6 +252,7 @@ def test_verification_relocation_and_inventory_allow_listed_colons(
     assert {entry["path"] for entry in entries} == {"run:01", name}
 
 
+@pytest.mark.system_deps
 def test_inspect_uses_null_for_unrequested_mime_type_and_limits_hashes(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
 ) -> None:
@@ -246,6 +264,7 @@ def test_inspect_uses_null_for_unrequested_mime_type_and_limits_hashes(
     assert set(metadata["hashes"]) == {"md5", "sha1", "sha256"}
 
 
+@pytest.mark.system_deps
 def test_manifests_and_inventory_only_compute_comparison_hashes(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
     drive_module: ModuleType,
@@ -274,6 +293,7 @@ def test_manifests_and_inventory_only_compute_comparison_hashes(
     assert (remote / "data/weights.bin").read_bytes() == b"weights"
 
 
+@pytest.mark.system_deps
 def test_verify_download_streams_when_remote_hashes_are_unavailable(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
     drive_module: ModuleType,
@@ -316,6 +336,7 @@ def test_verify_download_streams_when_remote_hashes_are_unavailable(
     assert json.loads(capsys.readouterr().out)["changed"] == ["."]
 
 
+@pytest.mark.system_deps
 def test_explicit_configuration_overrides_environment(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
     drive_module: ModuleType,
@@ -342,14 +363,13 @@ def test_explicit_configuration_overrides_environment(
 
 
 def test_configuration_is_required_even_when_default_files_exist(
-    drive_cli: tuple[Callable[..., dict[str, Any]], Path],
+    local_config: tuple[Path, Path],
     drive_module: ModuleType,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    call, _ = drive_cli
-    config = Path(call("list")["rclone_config"])
+    config, _ = local_config
     for relative in (
         ".config/rclone/rclone.conf",
         ".config/tennis-lab/rclone-drive.conf",
@@ -366,14 +386,14 @@ def test_configuration_is_required_even_when_default_files_exist(
 
 
 def test_missing_explicit_configuration_never_uses_environment_config(
-    drive_cli: tuple[Callable[..., dict[str, Any]], Path],
+    local_config: tuple[Path, Path],
     drive_module: ModuleType,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    call, _ = drive_cli
-    monkeypatch.setenv("RCLONE_CONFIG", call("list")["rclone_config"])
+    config, _ = local_config
+    monkeypatch.setenv("RCLONE_CONFIG", str(config))
     missing = tmp_path / "missing.conf"
     assert (
         drive_module.main(

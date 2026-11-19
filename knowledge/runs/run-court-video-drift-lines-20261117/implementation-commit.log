@@ -1,0 +1,15 @@
+[WARNING] Unstaged files detected.
+[INFO] Stashing unstaged files to /home/kamimura/.cache/pre-commit/patch1794909534-809334.
+ruff (fix)...............................................................Passed
+mypy.....................................................................Passed
+[INFO] Restored changes from /home/kamimura/.cache/pre-commit/patch1794909534-809334.
+[codex/court-video-shared edf33290d] Diagnose shared court drift from fixed line offsets
+ 17 files changed, 899 insertions(+), 12 deletions(-)
+ create mode 100644 src/tasks/court_detection/geometry/video_drift/README.ja.md
+ create mode 100644 src/tasks/court_detection/geometry/video_drift/README.md
+ create mode 100644 src/tasks/court_detection/geometry/video_drift/README.zh-CN.md
+ create mode 100644 src/tasks/court_detection/geometry/video_drift/__init__.py
+ create mode 100644 src/tasks/court_detection/geometry/video_drift/motion.py
+ create mode 100644 src/tennis_scene/pipeline/video_court/diagnostics.py
+ create mode 100644 src/tennis_scene/pipeline/video_court/drift_build.py
+ create mode 100644 tests/unit/tasks/court_detection/geometry/test_video_drift.py

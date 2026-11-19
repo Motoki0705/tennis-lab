@@ -1,0 +1,206 @@
+{
+  "players_per_side": 2,
+  "frame_sampling_max": 1024,
+  "enabled": {
+    "person_observations": true,
+    "ball_detection": true,
+    "player_reconstruction": true,
+    "ball_reconstruction": true,
+    "gvhmr": true
+  },
+  "source": {
+    "clip_id": "video_000/clip_037",
+    "videos": [
+      {
+        "camera_id": "cam0",
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam0.mp4",
+        "sha256": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+        "num_frames": 292,
+        "fps": 59.94005994005994,
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "camera_id": "cam1",
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam1.mp4",
+        "sha256": "c1b473a238719658a3caa6da81e4b6cae50396c18109956305db5ecba354c9b5",
+        "num_frames": 292,
+        "fps": 59.94005994005994,
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "camera_id": "cam2",
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam2.mp4",
+        "sha256": "8149f06c609a6f209499abf4cd17055a4b8ac4e9be301285c8a5fad4956c5bfc",
+        "num_frames": 292,
+        "fps": 59.94005994005994,
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "camera_id": "cam3",
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam3.mp4",
+        "sha256": "0112a64759ffd98bec0cfc529b779222dded555d883675794d78eba00f5049a1",
+        "num_frames": 292,
+        "fps": 59.94005994005994,
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "components": {
+    "court_detection/cam0": {
+      "schema": "court_observations",
+      "version": 2
+    },
+    "court_detection/cam1": {
+      "schema": "court_observations",
+      "version": 2
+    },
+    "court_detection/cam2": {
+      "schema": "court_observations",
+      "version": 2
+    },
+    "court_detection/cam3": {
+      "schema": "court_observations",
+      "version": 2
+    },
+    "ball_detection/cam0": {
+      "schema": "ball_detections",
+      "version": 2
+    },
+    "ball_points/cam0": {
+      "schema": "ball_points",
+      "version": 4
+    },
+    "ball_detection/cam1": {
+      "schema": "ball_detections",
+      "version": 2
+    },
+    "ball_points/cam1": {
+      "schema": "ball_points",
+      "version": 4
+    },
+    "ball_detection/cam2": {
+      "schema": "ball_detections",
+      "version": 2
+    },
+    "ball_points/cam2": {
+      "schema": "ball_points",
+      "version": 4
+    },
+    "ball_detection/cam3": {
+      "schema": "ball_detections",
+      "version": 2
+    },
+    "ball_points/cam3": {
+      "schema": "ball_points",
+      "version": 4
+    },
+    "court_calibration": {
+      "schema": "local_court_calibration",
+      "version": 1
+    },
+    "person_detection/cam0": {
+      "schema": "person_detections",
+      "version": 2
+    },
+    "person_tracking/cam0": {
+      "schema": "person_tracks",
+      "version": 5
+    },
+    "player_selection/cam0": {
+      "schema": "selected_player_tracks",
+      "version": 2
+    },
+    "pose_estimation/cam0": {
+      "schema": "person_poses",
+      "version": 1
+    },
+    "person_detection/cam1": {
+      "schema": "person_detections",
+      "version": 2
+    },
+    "person_tracking/cam1": {
+      "schema": "person_tracks",
+      "version": 5
+    },
+    "player_selection/cam1": {
+      "schema": "selected_player_tracks",
+      "version": 2
+    },
+    "pose_estimation/cam1": {
+      "schema": "person_poses",
+      "version": 1
+    },
+    "person_detection/cam2": {
+      "schema": "person_detections",
+      "version": 2
+    },
+    "person_tracking/cam2": {
+      "schema": "person_tracks",
+      "version": 5
+    },
+    "player_selection/cam2": {
+      "schema": "selected_player_tracks",
+      "version": 2
+    },
+    "pose_estimation/cam2": {
+      "schema": "person_poses",
+      "version": 1
+    },
+    "person_detection/cam3": {
+      "schema": "person_detections",
+      "version": 2
+    },
+    "person_tracking/cam3": {
+      "schema": "person_tracks",
+      "version": 5
+    },
+    "player_selection/cam3": {
+      "schema": "selected_player_tracks",
+      "version": 2
+    },
+    "pose_estimation/cam3": {
+      "schema": "person_poses",
+      "version": 1
+    },
+    "court_side": {
+      "schema": "court_side",
+      "version": 3
+    },
+    "player_association": {
+      "schema": "person_identities",
+      "version": 3
+    },
+    "camera_alignment": {
+      "schema": "aligned_cameras",
+      "version": 1
+    },
+    "player_triangulation": {
+      "schema": "player_skeletons",
+      "version": 1
+    },
+    "ball_triangulation": {
+      "schema": "ball_trajectory",
+      "version": 1
+    },
+    "body_view_selection": {
+      "schema": "body_view_selection",
+      "version": 1
+    },
+    "gvhmr": {
+      "schema": "body_parameters",
+      "version": 1
+    },
+    "body_placement": {
+      "schema": "placed_bodies",
+      "version": 1
+    },
+    "scene_assembly": {
+      "schema": "scene_result",
+      "version": 2
+    }
+  }
+}

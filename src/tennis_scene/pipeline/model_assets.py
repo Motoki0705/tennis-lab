@@ -1,9 +1,50 @@
-"""Validated model assets; model execution belongs to individual components."""
+"""Validated model assets and their content identities (never loaded models)."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, fields
+from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from src.submodules.configuration import SmplAssetPaths, SubmoduleRuntimeConfig
+from src.utils.checksum import dual_sha256
+
+
+@lru_cache(maxsize=128)
+def _asset_digest(path: Path, stat_identity: tuple[int, ...]) -> str:
+    digest: str = dual_sha256(path)
+    return digest
+
+
+def file_identity(path: Path) -> dict[str, Any]:
+    """Content identity of a required asset; missing assets stop the build."""
+    if not path.is_file():
+        raise FileNotFoundError(f"Required pipeline asset is missing: {path}")
+    stat = path.stat()
+    return {"path": str(path), "sha256": _asset_digest(path, (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))}
+
+
+def asset_identities(enabled: bool, paths: Mapping[str, Path]) -> dict[str, Any]:
+    return {name: file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
+
+
+def asset_hashes(settings: Mapping[str, Any]) -> dict[Path, str]:
+    """Read file_identity snapshots already bound to an artifact's settings."""
+    hashes: dict[Path, str] = {}
+    def collect(value: Any) -> None:
+        if isinstance(value, Mapping):
+            if isinstance(value.get("path"), str) and isinstance(value.get("sha256"), str):
+                path, digest = Path(value["path"]), value["sha256"]
+                if path in hashes and hashes[path] != digest:
+                    raise ValueError(f"Conflicting artifact asset identities: {path}")
+                hashes[path] = digest
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, (tuple, list)):
+            for child in value:
+                collect(child)
+    collect(settings)
+    return hashes
 
 
 @dataclass(frozen=True)

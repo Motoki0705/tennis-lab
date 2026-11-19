@@ -32,7 +32,9 @@ def read_json(text: str) -> Any:
     )
 
 
-def comment_body(repo: str, issue: int, detail: Mapping[str, Any]) -> str:
+def comment_body(
+    repo: str, issue: int, detail: Mapping[str, Any], *, revision: int | None = None
+) -> str:
     payload = {
         "schema_version": 1,
         "repo": repo.casefold(),
@@ -40,6 +42,8 @@ def comment_body(repo: str, issue: int, detail: Mapping[str, Any]) -> str:
         "detail": dict(detail),
         "detail_sha256": digest(detail),
     }
+    if revision is not None:
+        payload["revision"] = number(revision)
     first = (
         PREFIX
         + json.dumps(payload, ensure_ascii=True, sort_keys=True)
@@ -80,14 +84,19 @@ def owned_comment(
         raise ValueError("malformed judgement comment marker")
     data = object_value(read_json(first[len(PREFIX) : -4]))
     if (
-        set(data) != {"schema_version", "repo", "issue", "detail", "detail_sha256"}
+        set(data)
+        not in (
+            {"schema_version", "repo", "issue", "detail", "detail_sha256"},
+            {"schema_version", "repo", "issue", "detail", "detail_sha256", "revision"},
+        )
         or type(data["schema_version"]) is not int
         or data["schema_version"] != 1
         or data["repo"] != repo.casefold()
         or number(data["issue"]) != issue
         or set(object_value(data["detail"])) != DETAIL_KEYS
         or data["detail_sha256"] != digest(data["detail"])
-        or comment_body(repo, issue, data["detail"]) != item["body"]
+        or comment_body(repo, issue, data["detail"], revision=data.get("revision"))
+        != item["body"]
     ):
         raise ValueError(
             "changed or malformed judgement comment; inspect it explicitly"
