@@ -19,7 +19,7 @@ from src.tennis_scene.pipeline.definition import (
     standard_definition,
 )
 from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
-from src.tennis_scene.pipeline.inference_runtime import ModelSpec
+from src.tennis_scene.pipeline.inference_runtime import InferenceComponent, ModelSpec
 from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
@@ -28,6 +28,7 @@ from tests.integration.tennis_scene.test_court_runtime_contracts import (
     CachedCourtStore,
     source,
 )
+from tests.unit.tennis_scene.pipeline.config_factories import model_component
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     materialize_assets,
     runtime,
@@ -109,7 +110,7 @@ def decision(cfg: Any, root: Path, store: CachedCourtStore, target: str) -> Any:
 
 @pytest.mark.parametrize("target,change", [
     ("ball_detection/cam0", "device"), ("ball_detection/cam0", "precision"),
-    ("person_detection/cam0", "device"), ("person_tracking/cam0", "device"),
+    ("person_detection/cam0", "device"), ("person_pose_features/cam0", "device"), ("person_appearance_features/cam0", "device"),
     ("player_selection/cam0", "device"), ("player_association", "device"),
     ("hmr2_features", "device"), ("gvhmr", "device"), ("body_placement", "device"),
 ])
@@ -130,14 +131,14 @@ def test_effective_model_settings_invalidate_own_cache(tmp_path: Path, target: s
     if target.startswith("ball_detection"):
         changed = replace(cfg, ball_detection=replace(cfg.ball_detection, **({"device": "cuda"} if change == "device" else {"precision": "bf16"})))
         assert getattr(cfg.ball_detection, change) != getattr(changed.ball_detection, change)
-    elif target.startswith("player_"):
+    elif target.startswith("player_") or target.startswith("person_appearance_features") :
         changed = replace(cfg, device="cuda")
     else:
         changed = replace(cfg, people=replace(cfg.people, runtime=replace(cfg.people.runtime, device="cuda")))
     assert decision(changed, tmp_path, store, target).action == "execute"
 
 
-@pytest.mark.parametrize("consumer,name", [("person_tracking/cam0", "clipreid_vitb16_market1501"),
+@pytest.mark.parametrize("consumer,name", [("person_appearance_features/cam0", "clipreid_vitb16_market1501"),
     ("player_association", "clipreid_vitb16_market1501"), ("player_association", "dinov3_vitb16")])
 def test_appearance_factory_reads_the_declared_checkpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, consumer: str, name: str) -> None:
     cfg = configured(tmp_path)
@@ -154,7 +155,7 @@ def test_appearance_factory_reads_the_declared_checkpoint(tmp_path: Path, monkey
     monkeypatch.setattr(encoders, "ClipReIDEncoder", fake_clip)
     monkeypatch.setattr(encoders, "DINOv3Encoder", fake_dino)
     node = next(node for node in standard_definition(cfg, source(tmp_path, "clip", 1), code_identity="fixed") if node.name == consumer)
-    spec = node.component.model_specs()["encoder"]
+    spec = model_component(node).model_specs()["encoder"]
     spec.factory()
     assert calls == [spec.weights["checkpoint"]] == [checkpoint]
 
@@ -169,8 +170,8 @@ def test_publication_covers_every_enabled_node_model_asset(tmp_path: Path) -> No
     identity = TennisSceneOrchestrator(cfg).publication_identity()
     published = asset_hashes(identity)
     for node in standard_definition(cfg, source(tmp_path, "clip", 1), code_identity="fixed"):
-        if hasattr(node.component, "model_specs"):
-            for spec in node.component.model_specs().values():
+        if isinstance(node.component, InferenceComponent):
+            for spec in model_component(node).model_specs().values():
                 assert set(spec.weights.values()) <= published.keys(), node.name
 
 
@@ -184,13 +185,13 @@ def test_person_detector_implementation_is_bound_to_all_identities(tmp_path: Pat
     util.write_text("# utilities\n")
     store = CachedCourtStore(tmp_path / "store", "clip")
     first = decision(cfg, tmp_path, store, "person_detection/cam0")
-    spec_a = next(node for node in standard_definition(cfg, source(tmp_path, "clip", 1), code_identity="fixed")
-        if node.name == "person_detection/cam0").component.model_specs()["detector"]
+    spec_a = model_component(next(node for node in standard_definition(cfg, source(tmp_path, "clip", 1), code_identity="fixed")
+        if node.name == "person_detection/cam0")).model_specs()["detector"]
     key_a = spec_a.key
     marker = TennisSceneOrchestrator(cfg).publication_identity()
     path.write_text("# detector implementation B\n")
-    spec_b = next(node for node in standard_definition(cfg, source(tmp_path, "clip", 1), code_identity="fixed")
-        if node.name == "person_detection/cam0").component.model_specs()["detector"]
+    spec_b = model_component(next(node for node in standard_definition(cfg, source(tmp_path, "clip", 1), code_identity="fixed")
+        if node.name == "person_detection/cam0")).model_specs()["detector"]
     assert "dino_source/models/__init__.py" in spec_a.weights
     assert key_a != spec_b.key
     assert first.identity != decision(cfg, tmp_path, store, "person_detection/cam0").identity
@@ -211,7 +212,7 @@ def test_native_dino_selection_is_bound_before_initialization(tmp_path: Path, mo
     monkeypatch.setenv("TENNIS_LAB_DINO_EXTENSION", str(extension))
     node = next(node for node in standard_definition(cfg, source(tmp_path, "clip", 1), code_identity="fixed")
         if node.name == "person_detection/cam0")
-    spec = node.component.model_specs()["detector"]
+    spec = model_component(node).model_specs()["detector"]
     assert extension in asset_hashes(node.settings)
     if change == "different":
         monkeypatch.setenv("TENNIS_LAB_DINO_EXTENSION", str(tmp_path / "other.so"))
@@ -267,7 +268,7 @@ def test_standard_person_precision_and_native_pin_share_one_runtime_model(
 ) -> None:
     case = person_runtime_case(tmp_path, monkeypatch, precision)
     nodes, clip, store, state = case.nodes, case.clip, case.store, case.state
-    specs = [node.component.model_specs()["detector"] for node in nodes]
+    specs = [model_component(node).model_specs()["detector"] for node in nodes]
     assert len({spec.key for spec in specs}) == 1
     assert all(spec.dtype == dtype and spec.weights["extension"] == case.extension for spec in specs)
     marker = TennisSceneOrchestrator(case.cfg).publication_identity()
@@ -293,14 +294,14 @@ def test_standard_person_precision_and_native_pin_share_one_runtime_model(
 def test_native_dino_pin_separates_runtime_cache_and_publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     case = person_runtime_case(tmp_path, monkeypatch, "fp16")
     node = case.nodes[0]
-    key = node.component.model_specs()["detector"].key
+    key = model_component(node).model_specs()["detector"].key
     PlanExecutor(ExecutionPlan([ClipExecution(case.clip.clip_id, [node], case.store)])).run()
     marker = TennisSceneOrchestrator(case.cfg).publication_identity()
     # Replace assets only between independent configurations, never within a plan.
     case.extension.write_bytes(b"pinned native implementation B")
     cfg = replace(case.cfg, court_kp=replace(case.cfg.court_kp))
     changed = next(n for n in standard_definition(cfg, case.clip, code_identity="fixed") if n.name == node.name)
-    assert key != changed.component.model_specs()["detector"].key
+    assert key != model_component(changed).model_specs()["detector"].key
     plan = ExecutionPlan([ClipExecution(case.clip.clip_id, [changed], case.store)])
     assert plan.decide((case.clip.clip_id, node.name)).action == "execute"
     assert marker != TennisSceneOrchestrator(cfg).publication_identity()
