@@ -20,6 +20,7 @@ from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingI
 from src.tennis_scene.pipeline.components.player_selection import PlayerSelectionInput
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationInput
 from src.tennis_scene.pipeline.contracts import AssemblyContext
+from src.utils.video.reader import OpenCVDecodeIdentity
 
 
 @dataclass(frozen=True)
@@ -103,8 +104,9 @@ class PersonPoseFeaturesInputAssembler:
 @dataclass(frozen=True)
 class PersonAppearanceFeaturesInputAssembler:
     version: int = 2
+    expected_decoder: OpenCVDecodeIdentity | None = None
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PersonAppearanceFeaturesInput:
         if context.camera_id is None:
             raise ValueError("Appearance features require a camera scope")
-        return PersonAppearanceFeaturesInput(context.source.video(context.camera_id), artifacts["detections"])
+        return PersonAppearanceFeaturesInput(context.source.video(context.camera_id), artifacts["detections"], self.expected_decoder)

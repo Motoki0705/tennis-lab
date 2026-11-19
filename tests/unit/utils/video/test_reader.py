@@ -9,6 +9,7 @@ from src.utils.video.reader import (
     OpenCVVideoFrameReader,
     RandomAccessVideoReader,
     VideoReadError,
+    probe_video_decoder,
     probe_video_info,
     read_video_frame,
     read_video_rgb,
@@ -90,8 +91,8 @@ class TestRandomAccessVideoReader:
         reader.close()
 
 
-@pytest.mark.parametrize("read", [probe_video_info, lambda path: read_video_frame(path, 0),
-    lambda path: next(iter(OpenCVVideoFrameReader(path))), read_video_rgb], ids=["probe", "frame", "stream", "rgb"])
+@pytest.mark.parametrize("read", [probe_video_info, probe_video_decoder, lambda path: read_video_frame(path, 0),
+    lambda path: next(iter(OpenCVVideoFrameReader(path))), read_video_rgb], ids=["probe", "decoder", "frame", "stream", "rgb"])
 def test_unreadable_media_has_a_distinct_error_type(tmp_path: Path, read) -> None:
     with pytest.raises(VideoReadError, match="Failed to open"):
         read(tmp_path / "missing.mp4")

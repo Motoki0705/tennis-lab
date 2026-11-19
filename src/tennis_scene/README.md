@@ -69,6 +69,8 @@ source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認�
 ボールありでX3D/CSN＋DPT T32を使う場合は`pipeline_config=pipeline_x3d_dpt`も指定します。
 プレーヤーのみではball検出・2D点・三角測量のnodeとモデル読込を省き、sceneのballは無効maskになります。
 省いた段への個別`execution.<段>=load`は共通設定検証で拒否します。
+人物対応での保存CLIP再利用は共通の`player_association.reuse_clip_embeddings`を
+同じoverridesで指定できます。既定は`false`で、benchmarkの比較時に明示して切り替えます。
 
 meiji_4camの例です。
 この動画はダブルスなので、`player_association.players_per_side=2`も明示します。

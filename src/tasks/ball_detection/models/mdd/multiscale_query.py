@@ -55,8 +55,8 @@ class DeformableMHCQueryBlock(nn.Module):
         return self.cross(query, reference, self.path.norms[1](values), shapes, starts, mask)
 
     @torch.compiler.disable  # type: ignore[untyped-decorator]
-    def _checkpointed_spatial_chunk(self, query: Tensor, reference: Tensor, values: Tensor,
-                                    shapes: Tensor, starts: Tensor, mask: Tensor) -> Tensor:
+    def _spatial_chunk_with_checkpoint(self, query: Tensor, reference: Tensor, values: Tensor,
+                                       shapes: Tensor, starts: Tensor, mask: Tensor) -> Tensor:
         # Keep the checkpoint outside Dynamo's higher-order graph: the official
         # custom op deliberately graph-breaks. Recompute normalization, FP32 casts,
         # value projection and native sampling together, one fixed frame chunk.
@@ -77,7 +77,7 @@ class DeformableMHCQueryBlock(nn.Module):
         for first in range(0, b*t, self.chunk_size):
             last = min(first+self.chunk_size, b*t)
             if self.activation_checkpointing and self.training and torch.is_grad_enabled():
-                chunks.append(self._checkpointed_spatial_chunk(
+                chunks.append(self._spatial_chunk_with_checkpoint(
                     queries[first:last], references[first:last], values[first:last],
                     memory.shapes, memory.starts, memory.mask[first:last]))
             else:

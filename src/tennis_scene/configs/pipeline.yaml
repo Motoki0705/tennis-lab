@@ -262,6 +262,7 @@ court_side:
 # task owns the adopted parameter file; the game format is the clip's.
 player_association:
   players_per_side: 1  # 1 = singles, 2 = doubles
+  reuse_clip_embeddings: false  # evaluate saved detection embeddings as a separate condition
 player_reconstruction:
   enabled: true
   reprojection_px: 40.0

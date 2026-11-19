@@ -2,7 +2,7 @@
 id: run-i1752-doubles-reference-20261118
 type: run
 task: tennis_scene
-sequence: 59
+sequence: 74
 recorded_at: '2026-11-18'
 title: 単一入口とダブルスclip000の完成出力を比較
 issue: 1752

@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204937428478711273_2026-11-19T04-29-31-521288726Z_630111_i1756-association-clip-reuse-doubles",
+  "name": "i1756-association-clip-reuse-doubles",
+  "command": "timeout --signal=TERM 900s env PYTHONPATH=. OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 .venv/bin/python knowledge/runs/run-association-clip-reuse-20261119/compare.py --dataset ../video-batch-cli/outputs/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/batch --output outputs/clip-embedding-reuse/gpu-doubles",
+  "provider": "codex",
+  "session": "01a1f1fc-a0b2-7cf3-ad55-092e6e3022cc",
+  "issue": "1756",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ba460cbe53073bc0a0d4320ad16bab171c2a9ec2",
+  "branch": "codex/clip-embedding-reuse",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-embedding-reuse",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-embedding-reuse",
+  "captured_at": "2026-11-19T13:29:32+09:00"
+}

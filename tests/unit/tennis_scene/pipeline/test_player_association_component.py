@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -11,7 +12,10 @@ import numpy as np
 import pytest
 
 from src.tasks.court_side.hypothesis import HypothesisScore
+from src.tasks.person_tracking.sequence import CLIP_ENCODER, TrackEvidence
+from src.tasks.player_association.appearance import sampling
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
+from src.tennis_scene.pipeline.components import person_features
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
@@ -21,9 +25,14 @@ from src.tennis_scene.pipeline.components.identity import (
     PlayerAssociationModule,
     PlayerIdentitiesOutput,
 )
+from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
-from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
+from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource, SourceVideo
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.tennis_scene.pipeline.input_assembly.reconstruction import (
+    PlayerAssociationInputAssembler,
+)
+from src.utils.video import FramePacket
 from tests.unit.tasks.player_association.test_association import (
     CAMERAS,
     FAR,
@@ -36,6 +45,9 @@ from tests.unit.tasks.player_association.test_association import (
     _config,
     _tracks,
 )
+from tests.unit.tennis_scene.pipeline.components.test_association_appearance import (
+    PixelEncoder,
+)
 from tests.unit.tennis_scene.pipeline.config_factories import fake_encoder_spec
 
 IDS = tuple(camera.camera_id for camera in CAMERAS)
@@ -47,8 +59,8 @@ def _source(cameras: tuple[str, ...] = IDS) -> ClipSource:
     return ClipSource("clip", tuple(SourceVideo(c, Path(f"{c}.mp4"), c * 20, FRAMES, FPS, *SIZE) for c in cameras))
 
 
-def _calibration() -> CourtCalibrationOutput:
-    views = tuple(SimpleNamespace(camera=camera.half_turned(turn), source_index=index)
+def _calibration(scale: float = 1.) -> CourtCalibrationOutput:
+    views = tuple(SimpleNamespace(camera=replace(camera.half_turned(turn), intrinsic=np.diag([scale, scale, 1.]) @ camera.intrinsic), source_index=index)
                   for index, (camera, turn) in enumerate(zip(CAMERAS, TURNS, strict=True)))
     return cast(CourtCalibrationOutput, SimpleNamespace(calibration=SimpleNamespace(views=views)))
 
@@ -76,7 +88,7 @@ def _module(**changes: Any) -> PlayerAssociationModule:
 
 
 def _run(module: PlayerAssociationModule, tracks: tuple[PersonTrackingOutput, ...], side: CourtSideOutput | None = None) -> PlayerIdentitiesOutput:
-    return module.process(PlayerAssociationInput(_source(), _calibration(), side or _side(), tracks))
+    return cast(PlayerIdentitiesOutput, module.process(PlayerAssociationInput(_source(), _calibration(), side or _side(), tracks)))
 
 
 def test_players_get_per_frame_ids_on_the_carrier_order_of_every_camera() -> None:
@@ -162,3 +174,70 @@ def test_the_output_contract_rejects_two_boxes_of_one_player_and_players_on_padd
         PlayerIdentitiesOutput(("a", "b"), tracks, padded, {})
     with pytest.raises(ValueError, match="aligned"):
         PlayerIdentitiesOutput(("a", "b"), tracks, players[:, :, 0], {})
+
+
+def test_saved_crops_preserve_association_and_rejected_samples(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Keep the same camera geometry at one fifth of the pixel resolution.
+    width, height = SIZE[0] // 5, SIZE[1] // 5
+    source = ClipSource('clip', tuple(replace(video, width=width, height=height) for video in _source().videos))
+    calibration = _calibration(.2)
+    tracks = [replace(track, boxes_xyxy=track.boxes_xyxy / 5) for track in _singles()]
+    tracks[0].boxes_xyxy[2, 1] = tracks[0].boxes_xyxy[0, 1]  # A duplicated/overlapped observation.
+    encoder = PixelEncoder()
+    spec = fake_encoder_spec(lambda: encoder)
+    producer = person_features.PersonAppearanceFeaturesModule(spec, capture_frame_sha256=True)
+    track_boxes = {track.camera_id: track for track in tracks}
+    person_channels = {'cam0': [20, 170, 90], 'cam1': [170, 20], 'cam2': [20, 170]}
+
+    def reader(path: Path, *, max_frames: int, **kwargs: Any) -> Any:
+        track = track_boxes[path.stem]
+        for frame in range(max_frames):
+            image = np.zeros((height, width, 3), np.uint8)
+            for box, color in zip(track.boxes_xyxy[:, frame], person_channels[track.camera_id], strict=True):
+                x1, y1, x2, y2 = np.rint(box).astype(int)
+                image[y1:y2, x1:x2] = [color, frame + 1, 80]
+            yield FramePacket(frame, image, (width, height))
+
+    monkeypatch.setattr(sampling, 'OpenCVVideoFrameReader', reader)
+    monkeypatch.setattr(person_features, 'OpenCVVideoFrameReader', reader)
+    artifacts: dict[str, Any] = {'calibration': calibration, 'side': _side()}
+    for video, track in zip(source.videos, tracks, strict=True):
+        count, frames = track.observed.shape
+        rows: np.ndarray = np.arange(count * frames, dtype=np.int64).reshape(frames, count) * 2 + 3
+        # Reverse the detection order relative to carrier order. Keep the tracked
+        # embeddings empty to ensure association reads the C5 rows.
+        track_evidence = TrackEvidence(rows[:, ::-1].T, None, np.zeros((count, frames, 1280), np.float32),
+                                       np.zeros_like(track.observed), CLIP_ENCODER)
+        selection = replace(track, evidence=track_evidence)
+        detections = PersonDetectionOutput(video.camera_id, np.arange(frames + 1, dtype=np.int64) * count,
+            track.boxes_xyxy[::-1].transpose(1, 0, 2).reshape(-1, 4), np.ones(count * frames, np.float32), rows.ravel())
+        artifacts[f'tracks_{video.camera_id}'] = SimpleNamespace(tracks=selection)
+        artifacts[f'detections_{video.camera_id}'] = detections
+        artifacts[f'appearance_{video.camera_id}'] = producer.process(person_features.PersonAppearanceFeaturesInput(video, detections))
+
+    config = _config()
+    assert config.appearance is not None
+    config = replace(config, appearance=replace(config.appearance, encoder=CLIP_ENCODER))
+    options: dict[str, Any] = dict(sampling=CropSamplingConfig(min_height_px=20., max_samples=5), device='cpu', enabled=True)
+    context = AssemblyContext(source)
+    encoder.calls.clear()
+    fresh = PlayerAssociationModule(IDS, config, encoder=spec, **options).process(
+        PlayerAssociationInputAssembler().assemble(context, artifacts))
+    assert encoder.calls == [15, 10, 10]
+    saved = PlayerAssociationModule(IDS, config, encoder=replace(spec, factory=lambda: pytest.fail('all crops matched')),
+                                    reuse_clip_embeddings=True, **options).process(
+        PlayerAssociationInputAssembler(reuse_clip_embeddings=True).assemble(context, artifacts))
+
+    np.testing.assert_array_equal(saved.local_track_ids, fresh.local_track_ids)
+    np.testing.assert_array_equal(saved.player_ids, fresh.player_ids)
+    np.testing.assert_array_equal(saved.player_ids[0, :, 0], [0, 1, -1])
+    assert saved.diagnostics['association'] == fresh.diagnostics['association']
+    assert any('appearance' in pair for pair in saved.diagnostics['association']['pairs'])
+    fresh_record, saved_record = (item.diagnostics['appearance'] for item in (fresh, saved))
+    assert fresh_record['recomputed_samples'] == saved_record['reused_samples'] == 35
+    assert fresh_record['reused_samples'] == saved_record['recomputed_samples'] == 0
+    for camera in IDS:
+        for original, reused in zip(fresh_record['tracks'][camera], saved_record['tracks'][camera], strict=True):
+            assert original['recomputed_frames']['reuse_disabled'] == reused['reused_frames']
+            assert {k: original[k] for k in ('track_id', 'samples', 'rejected')} == {k: reused[k] for k in ('track_id', 'samples', 'rejected')}
+    assert saved_record['tracks']['cam0'][0]['rejected']['overlapped'] == 1

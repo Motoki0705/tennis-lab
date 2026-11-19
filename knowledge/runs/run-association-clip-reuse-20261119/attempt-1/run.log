@@ -1,0 +1,26 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8204937620840431580_2026-11-19T04-26-19-159568419Z_621253_i1756-association-clip-reuse (commit=741f0dbb5d9a provider=codex session=01a1f1fc-a0b2-7cf3-ad55-092e6e3022cc)
+video_000/clip_037: prepare CLIP features
+video_000/clip_037: recompute, comparison 1
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-embedding-reuse/src/tennis_scene/pipeline/components/identity.py", line 205, in process_with_models
+    association = associate(cameras, source.fps, config)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-embedding-reuse/src/tasks/player_association/association/associate.py", line 280, in associate
+    raise AssociationUndecided(AMBIGUOUS_PLAYERS, f"Identity {runner_up['identity']} ({runner_up['presence_frames']} frames) is too "
+src.tasks.player_association.association.associate.AssociationUndecided: Identity 2 (290 frames) is too close to player identity 0 (290 frames)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-embedding-reuse/knowledge/runs/run-association-clip-reuse-20261119/compare.py", line 262, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-embedding-reuse/knowledge/runs/run-association-clip-reuse-20261119/compare.py", line 258, in main
+    write_json_atomic(args.output / 'comparison.json', run(clips, args.output, weights, checkpoint_root, external_root, config))
+                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-embedding-reuse/knowledge/runs/run-association-clip-reuse-20261119/compare.py", line 205, in run
+    result = module.process_with_models(request, model)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-embedding-reuse/src/tennis_scene/pipeline/components/identity.py", line 207, in process_with_models
+    raise ReconstructionUnavailable(f"player_association_{undecided.reason}", str(undecided), diagnostics={
+src.tennis_scene.pipeline.errors.ReconstructionUnavailable: Identity 2 (290 frames) is too close to player identity 0 (290 frames)
+exit_code=1

@@ -78,7 +78,7 @@ class _TrackingHarness:
             document_digest(fake_pose_spec().key), document_digest(pose_feature_settings(TrackingConfig().features)))
         appearance = PersonAppearanceFeaturesOutput(self.video.camera_id, detections.frame_offsets, detections.source_rows,
             embeddings, np.ones(n, bool), TrackingConfig().encoder, document_digest(fake_encoder_spec(object).key),
-            document_digest(appearance_feature_settings(TrackingConfig().features)))
+            document_digest(appearance_feature_settings(TrackingConfig().features)), np.zeros((self.video.num_frames, 32), np.uint8))
         tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=self.tmp_path / 'af.pth', show_progress=show_progress,
             expected_pose=fake_pose_spec(), expected_encoder=fake_encoder_spec(object))
         return tracker.process(module.PersonTrackingInput(self.video, detections, pose_features, appearance))

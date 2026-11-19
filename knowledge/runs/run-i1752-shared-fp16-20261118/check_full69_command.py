@@ -90,6 +90,7 @@ def validate(destination):
             assert batch.generation.clip_ids is None
             assert cfg.people.runtime.dino_detector.precision == cfg.people.runtime.vitpose.precision == 'fp16'
             assert cfg.player_association.players_per_side == 2
+            assert not cfg.reuse_clip_embeddings
             assert cfg.video_court.action == 'load' and cfg.video_court_side is None
             assert cfg.court_side_evidence == 'player' and cfg.omit_ball_components
             assert not cfg.enabled['ball_detection'] and not cfg.enabled['ball_reconstruction']
