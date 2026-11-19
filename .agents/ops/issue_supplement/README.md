@@ -119,7 +119,7 @@ RESTの本文PATCHは原子的なcompare-and-swapではない。PATCH後に割�
 ## agyの作業領域と完全性
 
 workflowのsupplement・supplement_retryは履歴を全取得する。呼び出し前に検査側checkoutがcleanであることを確認し、
-HEADを固定する。writer・verifier・修正の**呼び出しごと**に、run dirの隣の一時ディレクトリへ
+HEADを固定する。`submodules: false` のcheckoutでrunner上に残りうるsubmoduleの作業ツリーはclean検査とsnapshotから除外し、index（gitlinkを含む）とHEADの一致は引き続き検証する。writer・verifier・修正の**呼び出しごと**に、run dirの隣の一時ディレクトリへ
 `git worktree add --detach` でそのcommitを展開する。履歴・remoteは元repoを参照するので
 `git log`・`git show`・`gh issue view` のための文脈を維持する。
 呼び出しごとに作り直す理由は、writerが作業領域を変更してもverifierや修正の入力へ持ち越さないため。
