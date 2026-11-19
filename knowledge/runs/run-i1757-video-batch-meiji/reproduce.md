@@ -6,10 +6,12 @@
 | --- | --- |
 | `serial` | 固定した実行commitの `TennisSceneOrchestrator.run` をクリップ順に呼びます。各クリップは独立したモデルruntimeを持ち、共通のdataset publisherから公開します。 |
 | `reuse` | `run_video_batch` CLIで3クリップを1計画に入れます。クリップ・カメラ横断のbatch上限は1、人物対応用CLIP embeddingの再利用は無効です。 |
-| `batched` | #1755取り込み後、採用したadapter・モデル別上限を定義して同CLIで計測します。 |
+| `batched` | `reuse` と同じCLIに `batching.enabled=true` を指定し、#2272の既定のモデル別上限と作業量制限を使います。 |
 | `embedding_reuse` | `reuse` の設定で `player_association.reuse_clip_embeddings=true` を指定します。人物対応へ外観特徴と元検出の4カメラ分を接続します。 |
 
 `serial` と `reuse` はどちらも各モデルの既存のclip内設定を使います。DINOの画像とBallの窓はB=1、ViTPoseとHMR2のcrop上限は16、CLIP-ReIDは64です。ViTPoseの充填率はflip前のcrop数で計算します。GVHMRは1人物segmentずつ実行します。#1748のrecorderと逐次の計測手順を使い、両入口でplayer経路と入力・重み・精度・保存条件をそろえます。
+
+`batched` の既定上限はCourt 2、DINO 2、ViTPose 4（flip有効時の実forward 8）、CLIP 16、HMR2 4、Ball 1です。最大4 source・32 pending item、作業量の上限は3 GiB、共有store cacheの予算は0 byte、clipは同一passです。probeにもこの設定を渡し、解決済みの設定を `preflight.json` に保存します。実forward数とadapterの充填率はrecorderの `inference` と `batch_dispatch` から取得します。 [CLIの設定と作業量の定義](../../../src/tennis_scene/pipeline/README.md#横断バッチの設定)
 
 ## 投入前の確認
 
@@ -25,7 +27,7 @@ worktreeの `.venv`、共有data/ckpt、gitlinkのDINO source、[共有court/ド
 
 ```bash
 driver=knowledge/runs/run-i1757-video-batch-meiji/benchmark.py
-condition=reuse
+condition=batched
 run_name="$condition-heartbeat-1"
 run_dir="outputs/tennis_scene/evaluate/video-batch-benchmark-20261119/$run_name"
 commit=$(git rev-parse HEAD)

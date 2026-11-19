@@ -8,7 +8,7 @@ meiji_4camのclip_000・027・037（計3,532 camera-frame）を、`795d63df1682d
 | CLIP embeddingも再利用 | 1908.02 / 1921.97 | 1823.39 | 1815.32 | 1819.36 / 5.71 |
 | 逐次 | 2118.01 / 2131.75 | 2031.50 | 2005.06 | 2018.28 / 18.69 |
 
-逐次に比べてwarm中央値はモデル再利用で10.68%、CLIP再利用で9.86%短かった。品質照合には後述のボール差があるため、速度と品質の両方を満たす受入は未達。起動込みのモデル再利用は各回 5.76／6.01／5.97 clips/hour、1.88／1.97／1.95 camera-frame/s、CLIP再利用は 5.62／5.92／5.95 clips/hour、1.84／1.94／1.95 camera-frame/s。I/O、公開、保存、batch分布とload回数は各runのJSONにある。 [モデル再利用の実測](reuse-heartbeat-1.json) [CLIP再利用の実測](embedding-reuse-heartbeat-1.json)
+逐次に比べてwarm中央値はモデル再利用で10.68%、CLIP再利用で9.86%短かった。品質照合には後述のボール差があるため、速度と品質の両方を満たす受入は未達。起動込みのモデル再利用は各回 5.76／6.01／5.97 clips/hour、1.88／1.97／1.95 camera-frame/s、CLIP再利用は 5.62／5.92／5.95 clips/hour、1.84／1.94／1.95 camera-frame/s。I/O、公開、保存、batch分布とload回数は各runのJSONにある。 [モデル再利用の実測](../run-i1757-model-reuse-heartbeat-1/reuse-heartbeat-1.json) [CLIP再利用の実測](../run-i1757-embedding-reuse-heartbeat-1/embedding-reuse-heartbeat-1.json)
 
 ## 段階別時間と資源
 

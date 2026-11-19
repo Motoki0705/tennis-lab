@@ -25,10 +25,10 @@ metrics:
   recorder_errors: 0
   quality_acceptance_vs_serial: false
 artifacts:
-  run_dir: knowledge/runs/run-i1757-video-batch-meiji
+  run_dir: knowledge/runs/run-i1757-model-reuse-heartbeat-1
   output_dir: outputs/tennis_scene/evaluate/video-batch-benchmark-20261119/reuse-heartbeat-1
   queue_job: 0-8204917572928512634_2026-11-19T10-00-27-071487365Z_1772136_i1757-reuse-heartbeat-1
-  metrics: knowledge/runs/run-i1757-video-batch-meiji/reuse-heartbeat-1.json
+  metrics: knowledge/runs/run-i1757-model-reuse-heartbeat-1/reuse-heartbeat-1.json
 ---
 
 3クリップ×3回の一括再構成が完走し、すべてのsceneを再読込した。warm中央値1802.76秒は、別commitの逐次基準2018.28秒より10.68%短かった。主要モデルは各回1回ロード。court_sideは全件ball参照と一致した。

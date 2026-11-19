@@ -207,7 +207,7 @@ def test_measurement_rejects_a_probe_from_another_queue_job(
         benchmark.run(tmp_path, "serial", "measurement", "test-head")
 
 
-def test_summary_uses_allocator_peaks_without_a_device_memory_log(
+def test_summary_uses_allocator_peaks_and_dispatch_capacity(
     benchmark: ModuleType,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -221,7 +221,27 @@ def test_summary_uses_allocator_peaks_without_a_device_memory_log(
         measured / "recording.json",
         {
             "total_wall_seconds": 5,
-            "events": [],
+            "metadata": {"batching": {"enabled": True}},
+            "events": [
+                {
+                    "stage": "inference",
+                    "status": "ok",
+                    "attributes": {
+                        "model": "DINO",
+                        "batch_shape": [1, 3, 800, 800],
+                        "batch_items": 1,
+                    },
+                },
+                {
+                    "stage": "batch_dispatch",
+                    "status": "ok",
+                    "attributes": {
+                        "model": "dino",
+                        "batch_capacity": 2,
+                        "batch_items": 1,
+                    },
+                },
+            ],
             "status": "complete",
             "stage_wall_seconds": {},
             "models": [],
@@ -250,3 +270,8 @@ def test_summary_uses_allocator_peaks_without_a_device_memory_log(
     assert report.summarize(tmp_path, destination)
     (measurement,) = benchmark.read(destination)["measurements"]
     assert measurement["resources"] == {"cuda": peaks}
+    batches = {row["stage"]: row for row in measurement["batches"]}
+    assert batches["unscoped"]["items_histogram"] == {"1": 1}
+    assert batches["unscoped"]["fill_fraction"] is None
+    assert batches["batch_dispatch"]["configured_cap"] == 2
+    assert batches["batch_dispatch"]["fill_fraction"] == 0.5

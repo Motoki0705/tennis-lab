@@ -122,12 +122,14 @@ def compose_config(directory, condition="serial"):
 
     reuse_embeddings = SPEC["conditions"][condition]["reuse_clip_embeddings"]
     overrides = [*SPEC["pipeline_overrides"], f"player_association.reuse_clip_embeddings={json.dumps(reuse_embeddings)}"]
+    batching_enabled = condition == "batched"
     with initialize_config_dir(config_dir=str(REPO / "src/tennis_scene/configs"), version_base="1.3"):
         batch_cfg = compose(config_name="run_video_batch", overrides=[
             f"paths.data_root={directory}", f"paths.output_root={directory}",
             f"paths.artifact_root={common_root() / '.worktree-outputs'}",
             "dataset_directory=dataset", f"video_id={SPEC['video_id']}", "progress_directory=progress",
             f"pipeline_config={SPEC['pipeline_config']}", "overwrite=false", "continue_on_error=true",
+            f"batching.enabled={json.dumps(batching_enabled)}", "record_cuda=true",
             f"clip_ids={json.dumps(CLIPS)}", f"pipeline_overrides={json.dumps(overrides)}",
         ])
         parsed = parse_video_batch_config(batch_cfg)
@@ -138,7 +140,8 @@ def compose_config(directory, condition="serial"):
                 or runtime.people.runtime.dino_detector.precision != "fp16"
                 or runtime.people.runtime.vitpose.precision != "fp16"
                 or runtime.player_association.players_per_side != 2
-                or runtime.reuse_clip_embeddings is not reuse_embeddings):
+                or runtime.reuse_clip_embeddings is not reuse_embeddings
+                or parsed.batching.enabled is not batching_enabled or not parsed.record_cuda):
             raise ValueError("Composed settings differ from the pinned experiment")
         yield batch_cfg, pipeline_cfg, runtime
 
@@ -175,7 +178,7 @@ def preflight(root, expected_head, condition):
     verify_dataset(dataset)
     native_dino = validate_dino_extension()
     plans = {}
-    with compose_config(directory, condition) as (_, pipeline_cfg, runtime):
+    with compose_config(directory, condition) as (batch_cfg, pipeline_cfg, runtime):
         orchestrator = TennisSceneOrchestrator.from_runtime_config(runtime)
         shared_court = orchestrator.prepare_video_court()
         identity = orchestrator.publication_identity()
@@ -203,11 +206,13 @@ def preflight(root, expected_head, condition):
             plans[source.clip_id] = {"frames": source.num_frames, "camera_ids": source.camera_ids,
                                      "court_side_inputs": side_inputs, "association_inputs": association_inputs,
                                      "nodes": list(by_name)}
+        batching = OmegaConf.to_container(batch_cfg.batching, resolve=True)
         (root / "pipeline.yaml").write_text(OmegaConf.to_yaml(pipeline_cfg, resolve=True))
     write(root / "preflight.json", {
         "commit": expected_head, "condition": condition, "conditions_sha256": sha(RUN / "conditions.json"),
         "tolerances_sha256": sha(RUN / "tolerances.json"),
         "input_sha256": sha(root / "input.json"), "publication_identity": identity, "plans": plans,
+        "batching": batching,
         "native_dino": {"path": str(native_dino), "sha256": sha(native_dino)},
     })
 
@@ -290,11 +295,11 @@ def batch_run(directory, batch_cfg, identity):
     progress_paths = []
 
     def recorded(*args, **kwargs):
-        result = run(*args, **kwargs, recording_devices=("cuda:0",))
+        result = run(*args, **kwargs)
         progress_paths.append(result.progress_path)
         return result
 
-    # Invoke the actual Hydra entry with its C1 GPU timing enabled through the public runner option.
+    # Capture the result path from the Hydra CLI's public batching and record_cuda route.
     with patch.object(pipeline, "run_video_batch", recorded):
         try:
             cli.main(batch_cfg)
@@ -309,7 +314,7 @@ def batch_run(directory, batch_cfg, identity):
     return progress["clips"], progress_path.with_name("recording.json")
 
 
-def probe_run(directory, orchestrator):
+def probe_run(directory, orchestrator, batching):
     from src.tennis_scene.pipeline.artifacts import json_value
     from src.tennis_scene.pipeline.clip_inputs import prepare_video_inputs
     from src.tennis_scene.pipeline.definition import standard_definition
@@ -325,7 +330,7 @@ def probe_run(directory, orchestrator):
     store = ClipStore(directory / "probe-store", json_value(source), memory_entries=0)
     targets = ("ball_detection/cam0", "person_appearance_features/cam0", "person_pose_features/cam0")
     plan = ExecutionPlan([ClipExecution(clip_id, tuple(nodes), store, False, targets)])
-    PlanExecutor(plan).run()
+    PlanExecutor(plan, batching=batching).run()
     if any(plan.statuses[(clip_id, node)] != "executed" for node in targets):
         raise ValueError("Every GPU probe target must run cold")
     return {node: status for (_, node), status in plan.statuses.items()}
@@ -392,6 +397,7 @@ def worker(root, phase, condition, identity):
         import psutil
         import torch
 
+        from src.tennis_scene.configuration import parse_video_batch_config
         from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
         from src.utils.inference_recording import InferenceRecorder, span
 
@@ -428,7 +434,7 @@ def worker(root, phase, condition, identity):
                         with span("measurement", operation="publication_identity"):
                             if orchestrator.publication_identity() != identity:
                                 raise ValueError("Run weights/configuration differ from CPU preflight")
-                        outcomes = (probe_run(directory, orchestrator) if probe else
+                        outcomes = (probe_run(directory, orchestrator, parse_video_batch_config(batch_cfg).batching) if probe else
                                     serial_run(directory, pipeline_cfg, orchestrator, identity))
             elapsed = time.perf_counter() - started
             final_io = process.io_counters()
@@ -503,9 +509,6 @@ def main():
         root.parent.mkdir(parents=True, exist_ok=True)
         freeze(root)
         return 0
-    dependency = SPEC["conditions"][args.condition].get("wait_for")
-    if dependency:
-        parser.error(f"{args.condition} requires #{dependency} and its explicit adapter configuration")
     verify_head(args.expect_commit)
     if args.action == "preflight":
         preflight(root, args.expect_commit, args.condition)

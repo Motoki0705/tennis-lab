@@ -37,16 +37,20 @@ def as_seconds(event):
     return (event["end_ns"] - event["start_ns"]) * 1e-9
 
 
-def batch_metrics(events):
+def batch_metrics(events, *, batching_enabled=False):
     groups = defaultdict(Counter)
     for event in events:
         attrs = event["attributes"]
-        if event["stage"] == "inference" and "batch_shape" in attrs and event["status"] == "ok":
+        if event["status"] != "ok":
+            continue
+        if event["stage"] == "batch_dispatch":
+            groups[(attrs["model"], "batch_dispatch", attrs["batch_capacity"])][attrs["batch_items"]] += 1
+        elif event["stage"] == "inference" and "batch_shape" in attrs:
             node = attrs.get("node", "unscoped").split("/")[0]
-            groups[(attrs["model"], node)][attrs["batch_items"]] += 1
+            cap = None if batching_enabled else SPEC["native_batch_caps"].get(attrs["model"])
+            groups[(attrs["model"], node, cap)][attrs["batch_items"]] += 1
     rows = []
-    for (model, stage), counts in sorted(groups.items()):
-        cap = SPEC["native_batch_caps"].get(model)
+    for (model, stage, cap), counts in sorted(groups.items()):
         batches = sum(counts.values())
         items = sum(size * count for size, count in counts.items())
         rows.append({"model": model, "stage": stage, "batches": batches, "items": items, "items_histogram": dict(counts),
@@ -103,6 +107,7 @@ def summarize(root, destination):
         measurement = read(path)
         recording_path = directory / measurement["recording"]
         trace = read(recording_path)
+        batching = trace.get("metadata", {}).get("batching", {})
         resources = trace["resources"]
         if trace["status"] == "complete" and not resources.get("cuda"):
             raise ValueError(f"Completed recorder has no CUDA allocator peaks: {recording_path}")
@@ -119,7 +124,8 @@ def summarize(root, destination):
             "recorder_status": trace["status"], "clips": clips, "all_generated": (
                 len(finished) == len(CLIPS) and all(o["status"] == "generated" for o in measurement["outcomes"].values())
             ),
-            "stage_wall_seconds": trace["stage_wall_seconds"], "models": trace["models"], "batches": batch_metrics(events),
+            "stage_wall_seconds": trace["stage_wall_seconds"], "models": trace["models"],
+            "batching": batching, "batches": batch_metrics(events, batching_enabled=batching.get("enabled", False)),
             "resources": resources,
             "intermediate_array_save_seconds": sum(as_seconds(e) for e in events
                                                    if e["attributes"].get("operation") == "artifact_codec"),

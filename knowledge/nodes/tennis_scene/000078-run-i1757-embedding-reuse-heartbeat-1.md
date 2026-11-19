@@ -27,10 +27,10 @@ metrics:
   same_scene_arrays_vs_model_reuse: true
   quality_acceptance_vs_serial: false
 artifacts:
-  run_dir: knowledge/runs/run-i1757-video-batch-meiji
+  run_dir: knowledge/runs/run-i1757-embedding-reuse-heartbeat-1
   output_dir: outputs/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1
   queue_job: 0-8204917572671425689_2026-11-19T10-00-27-328574310Z_1772178_i1757-embedding-reuse-heartbeat-1
-  metrics: knowledge/runs/run-i1757-video-batch-meiji/embedding-reuse-heartbeat-1.json
+  metrics: knowledge/runs/run-i1757-embedding-reuse-heartbeat-1/embedding-reuse-heartbeat-1.json
 ---
 
 3回とも816件すべてに命中し、人物対応のCLIP forwardが16回から0回になった。外観特徴段は毎回14.84〜16.02秒延び、同じHEADのモデル再利用よりwarm中央値が16.60秒長かった。frame SHAの準備と追加artifactの読込・照合があり、forward削減が全体の時間短縮につながらなかった。warmは各2回なので増分の推定にはばらつきがある。
