@@ -23,7 +23,7 @@
 
 - **動画一括推論の現行本番構成**: [player証拠と特徴分離のCPU統合](nodes/tennis_scene/000072-run-i1752-player-main-cpu-20261119.md)で、共有コートload・clip単位のplayer side判定・ball両機能off・ダブルス2・DINO/ViTPose fp16を明示します。ballありのbenchmarkも共通設定で選択可能です。保存済み3clipの単独/共有判定は#2270と完全一致しました。全69clipのplayer証拠の採否、新構成のGPU再測定と本番実行は未確認です。
 - **動画一括推論の過去GPU証拠**: C4の[共有court_side・明示fp16・ダブルス2](nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)で000/037/027の全114nodeが1計画で完了し、GVHMR配置・scene公開まで通りました。各side2 identity、C3管理7resourceは各1load/unload。CPU AFLinkの都度loadは別に記録しています。[同じfp16での単一027比較](nodes/tennis_scene/000065-run-i1752-shared-fp16-reference-20261118.md)は最終scene29配列・metadata・全離散値がexactですが、Ball補助evidence9配列が従来許容を超え、全component一致は未達です。原因と採否は親レビューに残します。69clipは未実行で、25.27〜25.88時間はballありの短い3clipからの条件付き投影で、現行player-only本番の時間ではありません。C1同期・初回compile等を含み、共有side・精度・profilerの差を単独の高速化率にはしません。
-- **3クリップの逐次基準**: meiji_4camの000/027/037はworker起動込み2131.75秒、warmは2031.50秒と2005.06秒。固定許容誤差による逐次3回の保存出力は全組でexact、playerのcourt_sideは9件ともball参照と一致し、全sceneを再読込できました。条件間の速度・品質は比較待ちです。 [逐次基準](nodes/tennis_scene/000075-run-i1757-video-batch-meiji.md)
+- **3クリップの一括計測**: meiji_4camの000/027/037はwarm中央値が逐次2018.28秒、モデル再利用1802.76秒、CLIP embedding再利用1819.36秒でした。両条件のsceneは再読込でき、playerのcourt_sideはball参照と一致しました。旧逐次とはボール検出・軌道・有効性が固定許容差を超え、品質受入は未達です。CLIPは816件全命中し、照合用の外観特徴段が毎回約15秒増えました。同一HEADのモデル再利用とscene配列は一致しました。 [逐次基準](nodes/tennis_scene/000075-run-i1757-video-batch-meiji.md) [モデル再利用](nodes/tennis_scene/000077-run-i1757-model-reuse-heartbeat-1.md) [CLIP再利用](nodes/tennis_scene/000078-run-i1757-embedding-reuse-heartbeat-1.md)
 
 ## Court Detection
 
