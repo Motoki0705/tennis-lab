@@ -100,16 +100,91 @@ def codes(fmt: ModuleType, snapshots: dict[int, Any]) -> set[str]:
     return {problem.code for problem in fmt.check_consistency(snapshots)}
 
 
-def test_parent_two_children_and_standalone_are_distinct(fmt: ModuleType) -> None:
+@pytest.mark.parametrize("labelled", [False, True], ids=["legacy", "standalone"])
+def test_parent_two_children_and_standalone_are_distinct(
+    fmt: ModuleType, labelled: bool
+) -> None:
     snapshots = family(fmt)
     snapshots[50] = fmt.Issue(
-        50, "[バグ] 単独のバグ", "既存の単独テンプレート本文", frozenset({"bug"})
+        50,
+        "[バグ] 単独のバグ",
+        "自由形式の単独本文。発見元: #10、依存先: #11。",
+        frozenset({"bug", *([fmt.STANDALONE_LABEL] if labelled else [])}),
     )
     assert fmt.check_consistency(snapshots) == ()
     assert fmt.parse_title(snapshots[11].title).parent == fmt.ParentRef(
         "開発ループ", 10
     )
     assert fmt.parent_reference(snapshots[11].body) == 10
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param({"labels": frozenset({"issue:parent"})}, id="parent-label"),
+        pytest.param({"labels": frozenset({"issue:child"})}, id="child-label"),
+        pytest.param({"parent": 10}, id="formal-parent"),
+        pytest.param({"children": (11,)}, id="formal-child"),
+        pytest.param(
+            {"body": "## 子タスクのチェックリスト\n\n未分割（子issue未作成）"},
+            id="parent-checklist",
+        ),
+        pytest.param({"body": "親issue: #10"}, id="parent-reference"),
+        pytest.param({"title": "[開発ループ #10] 単独のバグ"}, id="child-title"),
+        pytest.param(
+            {"body": "親issue: #10\n\n## メモ\nA\n\n## メモ\nB"},
+            id="parent-reference-with-duplicate-sections",
+        ),
+        pytest.param(
+            {
+                "body": "## 子タスクのチェックリスト\t\n未分割（子issue未作成）"
+                "\n\n## メモ\nA\n\n## メモ\nB"
+            },
+            id="parent-checklist-with-duplicate-sections",
+        ),
+    ],
+)
+def test_standalone_rejects_role_and_relationship_hints(
+    fmt: ModuleType, change: dict[str, Any]
+) -> None:
+    snapshots = family(fmt)
+    snapshots[50] = replace(
+        fmt.Issue(50, "単独のバグ", "自由形式の本文。", frozenset()),
+        **{
+            **change,
+            "labels": frozenset({fmt.STANDALONE_LABEL})
+            | change.get("labels", frozenset()),
+        },
+    )
+    assert any(
+        problem.issue == 50 and problem.code == "label.standalone"
+        for problem in fmt.check_consistency(snapshots)
+    )
+
+
+@pytest.mark.parametrize(
+    ("labelled", "body", "expected"),
+    [
+        pytest.param(
+            True, "## メモ\nA\n\n## メモ\nB", {"body"}, id="standalone-duplicate"
+        ),
+        pytest.param(False, "## メモ\nA\n\n## メモ\nB", set(), id="legacy-duplicate"),
+        pytest.param(True, "```\n例", {"body"}, id="standalone-unclosed-fence"),
+        pytest.param(False, "```\n例", {"body"}, id="legacy-unclosed-fence"),
+        pytest.param(True, "<!-- 例", {"body"}, id="standalone-unclosed-comment"),
+        pytest.param(False, "<!-- 例", {"body"}, id="legacy-unclosed-comment"),
+    ],
+)
+def test_body_parse_errors_do_not_become_missing_relationships(
+    fmt: ModuleType, labelled: bool, body: str, expected: set[str]
+) -> None:
+    issue = fmt.Issue(
+        50,
+        "自由形式の作業",
+        body,
+        frozenset({fmt.STANDALONE_LABEL} if labelled else ()),
+    )
+    assert codes(fmt, {50: issue}) == expected
 
 
 @pytest.mark.parametrize(
@@ -540,6 +615,14 @@ def test_quoted_metadata_and_html_examples_are_not_issue_data(fmt: ModuleType) -
     assert fmt.parse_sections("<!--\n```\n## 隠した見出し\n-->\n## 本文\n\n説明。") == {
         "本文": "説明。"
     }
+    for wrapper in ("```markdown\n{}\n```", "<!--\n{}\n-->"):
+        issue = fmt.Issue(
+            50,
+            "単独の作業",
+            wrapper.format("親issue: #10\n## 子タスクのチェックリスト"),
+            frozenset({fmt.STANDALONE_LABEL}),
+        )
+        assert fmt.check_consistency({50: issue}) == ()
     marker = fmt.proposal_marker(fmt.ProposalSource("R-1", 90))
     with pytest.raises(ValueError):
         fmt.parse_proposal_source("  " + marker)
@@ -630,6 +713,19 @@ def routes_for(snapshots: dict[int, Any]) -> dict[str, Any]:
 
 @pytest.fixture
 def issue_cli(tmp_path: Path, fmt: ModuleType) -> CliEnv:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "remote",
+            "add",
+            "origin",
+            "git@github.com:o/r.git",
+        ],
+        check=True,
+    )
     fake = tmp_path / "bin"
     fake.mkdir()
     gh = fake / "gh"
@@ -655,11 +751,7 @@ def test_cli_starting_from_a_child_checks_parent_and_siblings_without_writes(
         "issues": [10, 11, 12],
         "problems": [],
     }
-    assert all(
-        call[:3] == ["repo", "view", "--json"]
-        or call[call.index("--method") + 1] == "GET"
-        for call in issue_cli.calls()
-    )
+    assert all(call[call.index("--method") + 1] == "GET" for call in issue_cli.calls())
 
 
 def test_cli_migration_checks_only_the_selected_family(
@@ -675,6 +767,25 @@ def test_cli_migration_checks_only_the_selected_family(
     fixed = issue_cli.run("check", "--repo", "o/r", "--issue", "10")
     assert fixed.returncode == 0, fixed.stderr
     assert all("issues/50" not in call[-1] for call in issue_cli.calls())
+
+
+def test_cli_reports_role_conflict_in_malformed_standalone_body(
+    fmt: ModuleType, issue_cli: CliEnv
+) -> None:
+    issue = fmt.Issue(
+        50,
+        "単独の作業",
+        "親issue: #10\n\n## メモ\nA\n\n## メモ\nB",
+        frozenset({fmt.STANDALONE_LABEL}),
+    )
+    issue_cli.routes = routes_for({50: issue})
+    result = issue_cli.run("check", "--repo", "o/r", "--issue", "50")
+    assert result.returncode == 1, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["ok"] is False
+    assert {"body", "label.standalone"} <= {
+        problem["code"] for problem in payload["problems"]
+    }
 
 
 @pytest.mark.parametrize(
@@ -805,6 +916,11 @@ def test_render_is_deterministic_and_always_a_local_dry_run(
         {"parent": {"identifier": "開発ループ", "number": True}},
         {"children": []},
         {"labels": ["issue:parent"]},
+        {"labels": ["issue:child"]},
+        {"labels": ["issue:standalone"]},
+        {"labels": ["issue:proposal"]},
+        {"role": "standalone"},
+        {"improvement_source": {"parent": 1, "key": "legacy"}},
         {"unknown": "not silently ignored"},
         {"sections": {"このタスクの目的": "目的だけ"}},
     ],
@@ -845,6 +961,13 @@ def test_render_parent_preserves_agreement_and_closed_acceptance(
     assert "以前の合意を削除しない。" in output["body"]
     assert "- [x] 親子関係の矛盾を検出できる" in output["body"]
     assert "- [ ] #13 本文を検査する（取消）" in output["body"]
+    invalid = issue_cli.run(
+        "render",
+        "--spec",
+        "-",
+        spec={**spec, "labels": ["research", fmt.STANDALONE_LABEL]},
+    )
+    assert invalid.returncode == 2 and "role labels are generated" in invalid.stderr
     assert issue_cli.calls() == []
 
 
@@ -869,6 +992,28 @@ def test_manual_templates_share_the_contract(
     assert ".agents/ops/issues/README.md" in text
 
 
+def test_standalone_templates_use_manifest_roles(fmt: ModuleType) -> None:
+    manifest = yaml.safe_load((ROOT / ".github/labels.yml").read_text())
+    hierarchy = {label["name"] for label in manifest["hierarchy"]}
+    assert hierarchy == {
+        fmt.PARENT_LABEL,
+        fmt.CHILD_LABEL,
+        fmt.STANDALONE_LABEL,
+        fmt.PROPOSAL_LABEL,
+    }
+    expected = {
+        "01_bug.md": {"bug", fmt.STANDALONE_LABEL},
+        "02_feature.md": {"enhancement", fmt.STANDALONE_LABEL},
+        "03_research.md": {"research", fmt.STANDALONE_LABEL},
+    }
+    for template in TEMPLATES.glob("*.md"):
+        metadata = yaml.safe_load(template.read_text().split("---", 2)[1])
+        if template.name in expected:
+            assert set(metadata["labels"]) == expected[template.name]
+        else:
+            assert fmt.STANDALONE_LABEL not in metadata["labels"]
+
+
 def test_issue_docs_relative_links_resolve() -> None:
     docs = [OPS / "issues/README.md", *TEMPLATES.glob("*.md")]
     for doc in docs:
@@ -877,3 +1022,33 @@ def test_issue_docs_relative_links_resolve() -> None:
         ):
             if "://" not in target:
                 assert (doc.parent / target.split("#")[0]).exists(), (doc, target)
+
+
+@pytest.mark.parametrize("other", ["issue:parent", "issue:child", "issue:standalone"])
+def test_proposal_is_exclusive_without_requiring_work_sections(
+    fmt: ModuleType, other: str
+) -> None:
+    issue = fmt.Issue(
+        99, "改善提案", "候補一覧", frozenset({fmt.PROPOSAL_LABEL, other})
+    )
+    problems = fmt.check_consistency({99: issue})
+    assert {p.code for p in problems} == {"label.proposal"}
+    clean = fmt.Issue(99, "改善提案", "候補一覧", frozenset({fmt.PROPOSAL_LABEL}))
+    assert fmt.check_consistency({99: clean}) == ()
+
+
+@pytest.mark.parametrize("relation", ["parent", "children", "body_hint"])
+def test_proposal_rejects_formal_and_body_relationship_hints(
+    fmt: ModuleType, relation: str
+) -> None:
+    issue = fmt.Issue(
+        99,
+        "改善提案",
+        "親issue: #10" if relation == "body_hint" else "候補一覧",
+        frozenset({fmt.PROPOSAL_LABEL}),
+        parent=10 if relation == "parent" else None,
+        children=(10,) if relation == "children" else (),
+    )
+    assert any(
+        p.code == "relationship.proposal" for p in fmt.check_consistency({99: issue})
+    )

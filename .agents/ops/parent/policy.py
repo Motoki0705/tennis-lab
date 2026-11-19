@@ -10,6 +10,8 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from issues import Issue, parse_sections, task_status
+from issues.format import raw_section as raw_section
+from issues.format import section_span as section_span
 from issues.format import visible_lines
 
 PREFIX = "<!-- parent-session:v1 "
@@ -20,20 +22,6 @@ PHASES = {
     "agreed": "要件合意済み",
     "autonomous": "自律着手根拠あり",
 }
-REVIEW_STATES = (
-    "targets_fixed",
-    "instructed",
-    "result_received",
-    "fixes_verified",
-    "complete",
-)
-REVIEW_LABELS = dict(
-    zip(
-        REVIEW_STATES,
-        ("対象確定", "指示済み", "結果受領", "修正確認", "完了"),
-        strict=True,
-    )
-)
 ACTIVE = {"active", "handoff_pending"}
 
 
@@ -125,6 +113,42 @@ def events(
                 note_body(body[len(first) + 2 :])
             ):
                 raise ValueError("note marker body digest mismatch")
+        if event.get("event") == "notification_record":
+            from .notifications import render, validate
+
+            if set(event) != {
+                "parent",
+                "event",
+                "key",
+                "notification_sha256",
+                "notification",
+            }:
+                raise ValueError("malformed notification record")
+            spec = validate(object_value(event["notification"]))
+            if (
+                event["key"] != spec["key"]
+                or event["notification_sha256"] != digest(spec)
+                or body != first + "\n\n" + render(spec)
+            ):
+                raise ValueError("notification record digest/body mismatch")
+        if event.get("event") == "notification":
+            from .execution import sha256
+
+            if set(event) != {
+                "parent",
+                "event",
+                "key",
+                "notification_sha256",
+                "record_url",
+                "body_sha256",
+            }:
+                raise ValueError("malformed notification marker")
+            sha256(event["notification_sha256"])
+            nonempty(event["record_url"], "notification record URL")
+            if not body.startswith(first + "\n\n") or event["body_sha256"] != digest(
+                body[len(first) + 2 :]
+            ):
+                raise ValueError("notification marker body digest mismatch")
         if event.get("event") in {"agreed", "proposal_agreed"}:
             agreement = object_value(event.get("agreement"))
             if set(agreement) != {
@@ -214,28 +238,18 @@ def require_agreement(history: Sequence[Mapping[str, Any]]) -> None:
         raise ValueError("親issueの要件合意記録がありません。分割・委任は拒否しました")
 
 
-def review_state(
+def legacy_review_state(
     history: Sequence[Mapping[str, Any]], request: Mapping[str, Any]
 ) -> str | None:
-    current: str | None = None
-    for event in history:
+    """Display the last archived label, without replaying the retired gate."""
+    for event in reversed(history):
         if (
-            event.get("event") != "review"
-            or event.get("review_run_id") != request["review_run_id"]
+            event.get("event") == "review"
+            and event.get("review_run_id") == request["review_run_id"]
+            and isinstance(event.get("state"), str)
         ):
-            continue
-        state = event.get("state")
-        if state not in REVIEW_STATES or event.get("request_sha256") != digest(request):
-            raise ValueError("review event has an invalid state or request digest")
-        expected = 0 if current is None else REVIEW_STATES.index(current) + 1
-        if (
-            state != current
-            and REVIEW_STATES.index(state) != expected
-            and (current, state) != ("instructed", "fixes_verified")
-        ):
-            raise ValueError("public review state skips or reverses a transition")
-        current = str(state)
-    return current
+            return str(event["state"])
+    return None
 
 
 def registration(records: Mapping[str, Any], key: str, session: str) -> None:
@@ -292,7 +306,7 @@ def progress(
         upstream = [visit(d) for d in deps[n]]
         state = task_status(children[n])
         if state != "open":
-            value = state
+            value: str = state
         elif child_stopped(
             children[n].body, tasks.get(str(n), {}).get("stopped", False)
         ):
@@ -348,35 +362,6 @@ def select_prs(
         if pr["head"]["repo"]["full_name"].casefold() != repo.casefold():
             raise ValueError(f"PR #{n}: fork is not supported")
     return [by_number[n] for n in sorted(selected)]
-
-
-def section_span(body: str, heading: str) -> tuple[int, int] | None:
-    """Use the shared Markdown parser as authority; refuse ambiguous raw editing."""
-    sections = parse_sections(body)
-    if heading not in sections:
-        return None
-    headings: list[tuple[str, re.Match[str]]] = []
-    for match in re.finditer(r"(?m)^## (\S.*?)[ \t]*$", body):
-        try:
-            prefix = parse_sections(body[: match.end()])
-        except ValueError as exc:
-            if str(exc) in {"unclosed code fence", "unclosed HTML comment"}:
-                continue  # Examples/comments do not define an editable section.
-            raise
-        name = next(reversed(prefix), None)
-        if name and (not headings or headings[-1][0] != name):
-            headings.append((name, match))
-    if [name for name, _ in headings] != list(sections):
-        raise ValueError("ambiguous raw Markdown section boundaries")
-    index = list(sections).index(heading)
-    return headings[index][1].end(), headings[index + 1][1].start() if index + 1 < len(
-        headings
-    ) else len(body)
-
-
-def raw_section(body: str, heading: str) -> str:
-    span = section_span(body, heading)
-    return body[span[0] : span[1]].strip() if span else ""
 
 
 def replace_section(body: str, heading: str, content: str) -> str:

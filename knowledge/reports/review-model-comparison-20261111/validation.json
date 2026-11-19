@@ -1,0 +1,20 @@
+{
+  "adjudication": "parent_completed",
+  "cache_is_subset_of_input": true,
+  "checked_calls": 14,
+  "cli_report_core_numeric_leaves_unchanged": true,
+  "counter_values_reconciled": true,
+  "distinct_native_sessions_verified": true,
+  "formal_acceptance": false,
+  "guard_checked_files": 60,
+  "native_identity_values_absent": true,
+  "original_output_and_runtime_fingerprints_verified": true,
+  "paired_matrix_complete": true,
+  "parent_adjudication_bytes_preserved": true,
+  "published_file_fingerprints_verified": true,
+  "recalculation_native_calls": 0,
+  "schema_version": 1,
+  "sequential_runtime_intervals_verified": true,
+  "status": "passed",
+  "validated_before_effort_fix": true
+}

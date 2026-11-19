@@ -67,6 +67,7 @@ def record_source() -> tuple[dict[str, Any], dict[str, Any]]:
         "runtime": {
             "session_id": "private-session-value",
             "turn_id": "private-turn-value",
+            "runtime_errors": [],
             "effective": {
                 k: {"status": "observed", "value": v}
                 for k, v in {"model": "gpt-6.1-sol", "effort": "max"}.items()
@@ -91,6 +92,7 @@ class FakeGitHub:
         self.mergeable: bool | None = True
         self.change_head_on_second_get = False
         self.gets = 0
+        self.pause_reads = False
         self.lock = threading.RLock()
 
     def repository(self) -> dict[str, Any]:
@@ -105,6 +107,8 @@ class FakeGitHub:
 
     def get(self, number: int) -> dict[str, Any]:
         with self.lock:
+            if self.pause_reads:
+                raise journal.PublicationError("github_failed", "injected GET boundary")
             self.gets += 1
             pr = self.rows[number]
             if self.change_head_on_second_get and self.gets == 2:
@@ -223,6 +227,7 @@ class LogEnv:
         child: int = 10,
         instruction: str = "\n実際に送った指示\r\n",
         phase: str = "planning",
+        repair: dict[str, Any] | None = None,
     ) -> tuple[Path, dict[str, Any]]:
         tree = self.root / f".claude/worktrees/worker-{parent}-{child}"
         branch = f"codex/worker-{parent}-{child}"
@@ -235,7 +240,7 @@ class LogEnv:
             "previous_turn_id": None,
             "decision_id": None,
         }
-        turn = {
+        turn: dict[str, Any] = {
             "snapshot": snapshot,
             "source": str(directory),
             "head_at_start": self.base,
@@ -247,7 +252,7 @@ class LogEnv:
                 "issue_sha256": schema.sha(b"issue body"),
             },
         }
-        task = {
+        task: dict[str, Any] = {
             "worktree": str(tree),
             "branch": branch,
             "delegation_id": turn["delegation_id"],
@@ -257,15 +262,28 @@ class LogEnv:
                 "decisions": [],
             },
         }
+        if repair is not None:
+            previous = copy.deepcopy(turn)
+            previous["snapshot"]["turn_id"] = "private-previous-turn"
+            previous["snapshot"]["phase"] = "implementing"
+            snapshot.update(
+                phase="implementing", previous_turn_id="private-previous-turn"
+            )
+            turn["repair"] = repair
+            task["preflight"]["turns"] = [previous, turn]
         session = SimpleNamespace(
             row={
                 "session": "codex:private-parent-session",
+                "status": "active",
+                "generation": 1,
+                "reviews": [],
                 "tasks": {str(child): task},
             },
             store=SimpleNamespace(directory=self.state),
             gh=SimpleNamespace(repo="o/r"),
             parent=parent,
         )
+        session.worker_task = lambda number: session.row["tasks"][str(number)]
         prompt = "standard\n" + str(tree) + "\n" + instruction
         path = sources.freeze(session, child, prompt, self.standard)
         self.sessions.append(session)
@@ -274,6 +292,11 @@ class LogEnv:
         record["contract"].update(
             task_id=task["delegation_id"], cwd=str(tree), branch=branch, mode="write"
         )
+        if repair is not None:
+            record["contract"]["repair"] = repair
+            record["contract"]["settings"]["role"] = "implementation"
+            record["contract"]["settings"]["selected"]["effort"] = "high"
+            record["runtime"]["effective"]["effort"]["value"] = "high"
         record["prompt_sha256"] = schema.sha(prompt.encode())
         record["run_id"] = directory.name
         directory.mkdir(parents=True)

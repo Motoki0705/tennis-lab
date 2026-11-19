@@ -1,0 +1,9 @@
+{
+  "queue_job": "0-8205079274629829762_2026-11-17T13-05-25-370170237Z_1364572_i1751-runtime-main-pair-20261117-a2",
+  "status": "failed",
+  "returncodes": {
+    "main": 1,
+    "runtime": 1,
+    "comparison": 1
+  }
+}

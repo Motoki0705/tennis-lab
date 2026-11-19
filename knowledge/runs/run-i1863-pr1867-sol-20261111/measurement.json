@@ -1,0 +1,79 @@
+{
+  "agent_finished_at_epoch": 1794385370.7837512,
+  "agent_invocations": 1,
+  "agent_seconds": 290.4019854068756,
+  "agent_started_at_epoch": 1794385080.3817658,
+  "case_id": "pr-1867",
+  "cli_exit_code": 0,
+  "condition": "reuse_select",
+  "counter": {
+    "basis": "turn",
+    "cached_input_tokens": 1284864,
+    "input_tokens": 1458392,
+    "key": "da77c51156854806816cbaf1161b45ea",
+    "output_tokens": 8936
+  },
+  "elapsed_seconds": 290.555716753006,
+  "episode_id": "pr-1867:gpt-6.1-sol",
+  "events_file_sha256": "1118e7583f078ad58e9f28601409b98bed0d67136a982c6c4bb0b7e6f1b8efb7",
+  "final_file_sha256": "ed5abbf186fd11e7da22857b9ef0a54cb4c40fd107b3e75f7a1d7aa0858d48de",
+  "model": "gpt-6.1-sol",
+  "output_is_public_projection": true,
+  "output_sha256": "7013bf23341c8ac76e1e89747549f383b72eed71d59a247f55ab16284babea9c",
+  "output_status": "valid",
+  "proof_error": null,
+  "qualification_only": true,
+  "reserved_at_epoch": 1794385080.2280345,
+  "role": "paired",
+  "run_id": "da77c51156854806816cbaf1161b45ea",
+  "runner_cleanup_complete": true,
+  "runner_result": "completed",
+  "runtime_settings": {
+    "effective": {
+      "effort": {
+        "source": "Codex turn_context; private transcript location omitted",
+        "status": "observed",
+        "value": "xhigh"
+      },
+      "model": {
+        "source": "Codex turn_context; private transcript location omitted",
+        "status": "observed",
+        "value": "gpt-6.1-sol"
+      },
+      "service_tier": {
+        "reason": "Codex turn_context does not expose effective service_tier",
+        "status": "unavailable",
+        "value": null
+      }
+    },
+    "selected": {
+      "effort": "xhigh",
+      "model": "gpt-6.1-sol",
+      "service_tier": "default"
+    },
+    "validation": "verified"
+  },
+  "runtime_sha256": "78760bdc879eb27cd012817cec35759606cf0610ce6cbf929fb4d22726b871ca",
+  "runtime_status": "completed",
+  "schema_version": 1,
+  "tool_audit": {
+    "completed_item_types": {
+      "agent_message": 4,
+      "mcp_tool_call": 52
+    },
+    "mcp_servers": {
+      "review_evaluation": 52
+    },
+    "mcp_tools": {
+      "code_file": 29,
+      "code_paths": 1,
+      "code_search": 7,
+      "review_context": 3,
+      "review_diff": 12
+    },
+    "started_item_types": {
+      "mcp_tool_call": 52
+    },
+    "unapproved_completed_items": 0
+  }
+}

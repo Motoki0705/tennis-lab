@@ -1,0 +1,15 @@
+{
+  "run_id": "0-8205244284021426274_2026-11-15T15-15-15-978573725Z_209883_dino-batch-api-20261116",
+  "name": "dino-batch-api-20261116",
+  "command": "timeout -k 10s 900s env PYTHONPATH=. TENNIS_LAB_DINO_EXTENSION=\"$TENNIS_LAB_DINO_EXTENSION\" OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 .venv/bin/python outputs/tennis_scene/evaluate/dino_batch_api_20261116/compare.py outputs/tennis_scene/evaluate/dino_batch_api_20261116",
+  "provider": "codex",
+  "issue": "1750",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "f738a1918f966c6a9bc679f3a8e0432843f9ee62",
+  "branch": "codex/dino-batch-api",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": ".",
+  "repo_root": ".",
+  "captured_at": "2026-11-16T00:15:28+09:00"
+}

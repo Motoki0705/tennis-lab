@@ -1,0 +1,455 @@
+{
+  "schema_version": 1,
+  "case_id": "pr-1686",
+  "cutoff": "2026-11-06T01:46:53.155604+00:00",
+  "context": {
+    "parent": {
+      "body": "## 目的・背景\n\n- 標準 `tennis_scene` のball経路で、3D精度が低いと人間が感じている（2026-10-30）。\n- 現行の経路: ConvNeXt UNetのnative heatmap（128×72。1920×1080では1 cell = 15 px）を、全画面argmaxと軸ごとの3点log-parabolaで1点に復号する。続いてscore 0.5の閾値、trajectory gate、camera別の2D外れ値除去・LOESSを通し、frameごとに独立して三角測量する。\n- 同日の調査で、次の要因が疑わしいと分かった（いずれも未計測）。\n  1. 1 frame・1 viewで早く1点に絞るため、誤検出をview間の整合で取り戻せない。top-8候補とdense heatmapは `BallHeatmapEvidence` に保存されているが、下流では使われていない。\n  2. 校正はframe 0のHomographyからの単一平面pinhole・無歪み近似である。同期は最近傍frameへの丸めで、最大±0.5 frame（59.94 fpsで約±8 ms、30 m/sの球で約±25 cm）のずれが残る。\n  3. 教師の座標規約（`x/(W−1)` の格子）と、位置に依存しない畳み込みの縮尺差による、画像端で最大約±5.6 pxの位置依存バイアスの仮説。\n  4. 軸ごとの3点fitは、motion blurで斜めに伸びた山や、sigmoidの飽和に弱い。\n  5. 未較正のpeak値を、閾値・LOESS・DLTの重みに使っている。\n  6. camera別の2D LOESSが、バウンド・打球の角を丸める。\n- 参考値（knowledge `tennis_scene/000031`、clip_000）: 採用inlierの再投影は中央値2.9 px・p95 9.4 px。3 viewから2 viewへの切替で1.08 mの跳びがある。\n- 目的: 考えられる方針をすべて同じ入力・同じ指標で実装し、可視化で比較する。人間が可視化を見て、mainへ入れる方針を選べる状態にする。\n\n## 全体のスコープ\n\n対象:\n- 評価と可視化の共通基盤、clip_000の固定入力、現行経路のbaseline\n- 誤差の内訳の計測（2D復号・校正と同期・候補・平滑化）\n- 方針: 2D復号の改善、top-K候補の多仮説対応付け、候補GMMと確率的三角測量、dense heatmap尤度による3D推定、区間ごとの物理軌道fitとcamera時刻オフセット、court・ball対応による校正と同期のbundle adjustment\n- 全方針の統合比較と可視化\n\n対象外:\n- 検出モデルの再学習（教師の座標規約の見直しを含む）。独立issue #1553 で扱う。\n- 人物・GVHMR・court検出モデルの改善\n- clip_000以外での評価\n- 採用する方針の決定と、そのmerge・既定化（人間が統合比較を見て決める）\n\n## 全体方針・合意事項\n\n### 2026-11-05 の人間の採否決定\n\n- baselineを維持する。誤差分解の診断（#1558のPR #1670）だけをmergeする。\n- 6方式のPR（#1672・#1673・#1674・#1676・#1679・#1681）と統合比較のPR #1682は、mergeせずcloseする。branchは再現のために残す。\n- 不採用の方式と統合比較のknowledgeノード・実行記録は、knowledgeだけを取り出す子のPRでmainへ残す。\n- memory skillで、子が親やレビュアーの指示を「ユーザーの指示」として記録した問題を、子のPRで直す。\n- knowledgeだけのPRとmemory skillの修正PRは、既定のreview設定による明示レビューとCI `Python` 成功の後に自動でmergeする。\n- 後処理・三角測量の側で改善策を試す後継の親（#1683）はキャンセルした。理由は、heatmapの精度そのものが悪く、baselineを超えるには検出モデルの学習戦略の改善が必要なため。\n- 上の残作業の完了をもって、この親を完了しcloseする。\n\n### 2026-11-03 の追加指示\n\n- 今回は成果物の作成まで進める。評価対象は引き続き公開サンプル `video_000/clip_000` の3 cameraとし、動画・必要な入力・生成物をローカルへ保存する。サンプルの正本はREADME記載のHugging Face dataset。\n- 正解の2D ball注釈は人間提供の6 CSVを統合した参照データを使う。人間はcam0末尾の外挿frame 982〜1009のみを正解から除外し、他の提供座標（補間・推定を含む）を正解として使うよう指定した。採点では直接観測と推定の出自を区別し、座標のない不明・遮蔽・未確認や除外した外挿を勝手に埋めない。GPTによる直接注釈は中止済み。\n- 固定入力は、指定されたDrive保存済みstoreを出自とchecksumを検証したうえで利用する。元のコード版を記録し、最新mainが生成したstoreと混同しない。3 cameraのheatmap、top-8候補、patch、校正、side、aligned cameras、ball pointsが含まれることを確認済み。\n- 必要な各成果物を作成し、ローカルの保存先と検証状態をこのissueへ記録する。既存の比較方針、評価条件、採否を人間が可視化後に決める条件は維持する。\n\n- 担当親: Claude Code。起票は2026-10-30にラップトップで行い、実装はデスクトップの親セッションが引き継ぐ。\n- 人間との合意（2026-10-30の会話）:\n  - あらゆる方針を実装して結果を可視化し、人間がその可視化を見て、mainへ入れるものを決める。\n  - 実装はCodex子へ、共通ランナー経由で委任する（`agents.conf` の既定）。\n  - 評価データは、公開サンプルのMeiji `video_000/clip_000`（3 camera、1010 frame、59.94 fps）だけにする。\n  - 再学習は今回のissue群とスコープを分け、独立issue（#1553）にする。\n  - 校正（内部・外部パラメータ）と同期（1 frame未満）の精密化を含める。\n  - 今回はissueの起票だけを行い、実装は後で行う。\n- 親が決めた評価条件（人間は実装の開始時に変更できる。変更は `checking` → `agree` で再合意する）:\n  - 主指標はLOVO（leave-one-view-out）再投影誤差とする。2 viewだけで3Dを推定し、使わなかったviewへ投影して、注釈との距離（中央値・p90・20 px超の率）を測る。3 viewをそれぞれ外して集計する。\n  - 副指標: 全viewの注釈への再投影誤差、有効3D frame率、粗大誤差率、隣接移動量・加速度の外れ、バウンド・打球付近の誤差、計算時間。注釈2Dを同じcameraで三角測量した値を、誤差の下限として併記する。\n  - 閾値・倍率・温度などの調整は、frame [0,505) だけで行う。主な結果はframe [505,1010) で報告し、全区間の値は参考として併記する。\n  - 注釈ballは採点と前半の調整にだけ使い、方針の入力には使わない。\n  - 全方針は同じ固定入力（court校正・side・aligned camera・ball heatmap evidence）を使う。校正を変える方針は、その校正を他の方針と組み合わせた結果も出す。\n  - 各方針は、標準pipelineから選べる方式としてsrcに実装し、既定の動作は変えない。1方針につき1 PRとし、比較だけに使うscriptは `knowledge/runs/` に置く。\n  - どのPRも、人間が採用を決めるまでmergeしない。基盤（評価・可視化）を先にmergeするかどうかも人間が決める。それまでは、後続の子は基盤のbranchへstackする。\n  - GPUを使う処理はtraining queue経由で行う。各方針の比較は、固定入力をCPUでreplayして行う。\n\n## 成果物の所在・次の担当への引継ぎ\n\n以下は同じマシンのrepository rootからの相対パス。`outputs/` と `data/` と `ckpt/` はローカル資産であり、GitHubだけでは取得できない。元の保存先は[Driveのアーカイブ](https://drive.google.com/drive/folders/1s9d66Fr2svupaPkeqpsbijCOjWzDM6au)、公開サンプルの正本は[Hugging Face dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample)。\n\n| 内容 | ローカルの場所と状態 |\n|---|---|\n| 動画 | `data/samples/cam0.mp4`, `cam1.mp4`, `cam2.mp4`, `clip.json`。各1010 frame・1920×1080・59.94006 fps。保存済みstoreの動画hashと一致 |\n| モデル重み | `ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt` と `ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt`。storeの実行記録と一致 |\n| 元の中間生成物 | `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/store/`。元archiveは隣の `input_store.zip`。12パートと結合archiveを検証して復元 |\n| 評価用の固定入力 | 同じ親ディレクトリの `fixed_input_bundle_v1/`。3 cameraのdense heatmap・top-8・patch、court校正、side、aligned cameras、ball points、baseline照合用3Dと依存descriptor。出自は `bundle.json` |\n| baselineの再現確認 | `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/baseline_verification_v1.json`。有効mask・使用view maskは元storeと一致、3D位置の最大差は約0.000001 m |\n| 人間提供の評価用正解 | `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json`。6 CSVから統合した正本。元の6 CSVコピーは同じdirectoryの `source/`。`README.md` に利用方法と状態を記載 |\n\n正解JSONは3 camera × 1010 frameの `positions` と、camera別イベント25行、cam2推定区間16件を含む。`valid_for_scoring=true` は2959件（直接観測2589、ユーザー承認の推定370）。cam0のframe 982〜1009の外挿28件は `valid_for_scoring=false`、座標null。座標を持たない遮蔽26・不明17件も採点しない。推定点を実観測と偽らず出自を残す。既存のGT loaderは本schema／人手と推定値に未対応。#1667の独立readerはPR #1668にあり、ローカルunit 50件・実データ照合済みでレビュー・CI確認前。#1556でこのreaderを `valid_for_scoring` を尊重して採点へ接続し、回帰テストを実装すること。GTは前半の調整と採点にだけ使い、方式の入力には含めない。\n\n統合時の照合結果は `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/validation.json`。6 CSV・3動画のSHA-256、全座標と除外範囲、イベント・推定区間を検証済み。正解JSONのSHA-256は `dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09`。 #1667のreaderを使った別の実データ照合は `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/handoff/reference_reader_result.json`、再実行scriptは隣の `reference_reader_verify_real_data.py`（PR #1668のreaderを使える環境から実行）。3,030行のCSV照合、逆順のcamera/frame選択、3動画のhashと映像属性を確認した。\n\nイベントはcamera別の観測で、cam0とcam1で同じ事象を記録した行がある。frame 596/597、622/623、852/853の3組は1 frameずれる。25行を25個の独立した物理イベントと扱わず、各cameraの元記録・注記を保って扱う。\n\n#1556の基盤コードは `[worktree path omitted]` に未コミットで残る。その27ファイルは `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/handoff/ball3d_foundation_wip_snapshot.tar.gz` に検証済みの保全コピーを作成し、同ディレクトリの `ball3d_foundation_wip_snapshot.json` にbase commitと各SHA-256を記録した。これは未完成・未レビューのコードで、正解loaderが完成したという意味ではない。前回workerのプロセスは存在せず、runtimeの終了・cleanup記録は未確定でPRも未作成。次担当は既存runとworktreeを照合し、未完了差分を保全してから引き継ぐ。正式な方式比較・採点結果・比較動画・統合HTMLはまだ完成していない。\n\n## 全体の完了条件\n\n- 全方針が、固定入力・同じ指標でclip_000に対して実行され、方針ごとのPRとknowledgeノードがある。\n- 統合比較（区間別の指標表、比較動画、3D軌道図、極端frameの確認、HTML比較ページ）が、人間の見られる形で提示されている。\n- 人間が各方針の採否を決め、その決定が親issueに記録されている。採用PRのmergeと不採用PRのcloseは、その決定の後に行う。\n\n## 子タスクのチェックリスト\n\n- [x] #1556 評価・可視化の共通基盤とclip_000の固定入力・baselineを作る\n- [x] #1558 ball 3D誤差の内訳を計測する\n- [ ] #1559 heatmapの2D復号を改善する\n- [ ] #1560 top-K候補をview間と時間で多仮説対応付けする\n- [ ] #1563 候補GMMを確率的三角測量に渡す\n- [ ] #1564 dense heatmap尤度で3D位置を直接推定する\n- [ ] #1565 区間物理軌道とcamera時刻オフセットを同時推定する\n- [ ] #1567 court・ball対応で校正と同期をbundle adjustmentする\n- [ ] #1568 全方針を統合比較し、可視化する\n- [ ] #1665 clip_000の3カメラ映像からGPTで評価用ball観測を作成する（取消）\n- [ ] #1666 予測に依存せず実動画を直接確認する評価用ball注釈入口を作る（取消）\n- [x] #1667 人間提供の統合ball正解を検証して評価用に読み込む\n- [ ] #1684 不採用にした球3D方式と統合比較の記録をknowledgeだけのPRでmainへ残す\n- [ ] #1685 memory skillで、記録してよい「ユーザーの指示」を人間本人の発言に限ると明確にする\n\n## 進捗概要\n\n子の起動予約: #1684。上限: 2。\n- #1556: 完了 — 完了済み。 / 既存PRを照合して継続する: #1669 / 委任予約済み。既存worker・worktreeを照合する。\n- #1558: 完了 — 完了済み。 / 既存PRを照合して継続する: #1670 / 委任予約済み。既存worker・worktreeを照合する。\n- #1559: 継続 — 既存PRを照合して継続する: #1673 / 委任予約済み。既存worker・worktreeを照合する。\n- #1560: 継続 — 既存PRを照合して継続する: #1672 / 委任予約済み。既存worker・worktreeを照合する。\n- #1563: 継続 — 既存PRを照合して継続する: #1674 / 委任予約済み。既存worker・worktreeを照合する。\n- #1564: 継続 — 既存PRを照合して継続する: #1676 / 委任予約済み。既存worker・worktreeを照合する。\n- #1565: 継続 — 既存PRを照合して継続する: #1679 / 委任予約済み。既存worker・worktreeを照合する。\n- #1567: 継続 — 既存PRを照合して継続する: #1681 / 委任予約済み。既存worker・worktreeを照合する。\n- #1568: 継続 — 既存PRを照合して継続する: #1682 / 委任予約済み。既存worker・worktreeを照合する。 / 依存先 #1559: 利用できるPRが一意でない（0件）。 / 依存先 #1560: 利用できるPRが一意でない（0件）。 / 依存先 #1563: 利用できるPRが一意でない（0件）。 / 依存先 #1564: 利用できるPRが一意でない（0件）。 / 依存先 #1565: 利用できるPRが一意でない（0件）。 / 依存先 #1567: 利用できるPRが一意でない（0件）。\n- #1665: 取消 — 取消済み。 / 委任予約済み。既存worker・worktreeを照合する。\n- #1666: 取消 — 取消済み。\n- #1667: 完了 — 完了済み。 / 既存PRを照合して継続する: #1668 / 委任予約済み。既存worker・worktreeを照合する。\n- #1684: 継続 — 既存PRを照合して継続する: #1687 / 委任予約済み。既存worker・worktreeを照合する。\n- #1685: 継続 — 既存PRを照合して継続する: #1686 / 委任予約済み。既存worker・worktreeを照合する。\n\n## 依存関係・進め方\n\n- 最初に基盤（評価・可視化・baseline）を作る。\n- 誤差分解と6つの方針は基盤だけに依存し、互いに独立しているので並列に進める（いずれも基盤のbranchへstackする）。\n- 統合比較は、全方針のPRができた後に、全branchを統合したbranchで行う。校正のbundle adjustmentと他の方針の組合せも、統合比較で評価する。\n- GPUを使うのは、基盤でclip_000を標準pipelineにかける処理だけ。\n\n## 未決事項・人間の判断が必要な点\n\n- 各方針の採否（統合比較を見て決める）。\n- 基盤を先にmergeするか。\n- 親が決めた評価条件を変更するか（実装の開始時に確認する）。\n- このラップトップでの担当は解除する。デスクトップの親セッションが改めて担当登録して引き継ぐ。\n\n\n\n\n\n\n\n\n\n",
+      "number": 1554,
+      "title": "[球三角測量] ball heatmapの後処理と三角測量の方針を実装し、可視化で比較する"
+    },
+    "children": [
+      {
+        "body": "親issue: #1554\n\n## このタスクの目的\n\n#1554の子（#1560のPR #1672、#1564のPR #1676）が、親エージェントの修正指示やレビューagentの指摘を「ユーザーの修正指示」「人間が判断した」として共有memoryへ記録した（親が取り消し済みで、mainには入っていない）。原因は memory skill の「ユーザーの指示を記録する」節で、「ユーザー」が人間本人を指すことと、親やレビュアーの指示が含まれないことが書かれていないため。人間の指示（2026-11-05）: 「memory skill の記述があいまいで、子が親やレビュアーの指示を「ユーザーの指示」として記録しました。この問題を修正しPRを自動でマージすること。」\n\n## 具体的な変更内容・対象範囲\n\n`.agents/skills/memory/SKILL.md` の「ユーザーの指示を記録する」節（例の「PRのレビューで「こう直して」と言われたときなど」と「人間の承認は不要である」の段落を含む）と、同じ前提を持つ記述。\n\n- 記録の対象を、人間本人が会話・issue・PRで出した指示と判断に限ると書く。親エージェントの委任・修正指示、レビューagentの指摘、ほかのエージェントの発言は「ユーザーの指示」ではないと書く。\n- 人間とエージェントが同じGitHub loginを使い、loginで区別できないこと（parent READMEに記載）を踏まえ、人間の発言だと確かめる方法と、確かめられないときは decision/・review/ に人間の判断として書かないことを書く。\n- 委任された子が、親の指示文の中にある人間の発言の引用を記録したい場合の扱い（出典を人間の元の発言へたどれるときだけ、その出典を `source` に書く）を書く。\n- 同じことを2か所に書かない。.agents/README.md・parent-session skill・AGENTS.md に関係する記述があれば、正本を1つにしてリンクで結ぶ。\n- mainの `.agents/memory/` にある decision/・review/ のエントリの `source` を点検し、人間の発言ではない指示を人間の判断として書いたものがないかを確かめ、結果をPR本文に書く。見つかっても、このPRではエントリを変更せず、親へ報告する。\n- 文書の検査やテストがあれば、それを通す。文言の規則をテストで固定する必要があるかは、tests/README.md の方針で判断する。\n\n## 対象外\n\n共有memoryのエントリの追加・変更・削除。memory以外のskillの規則変更。#1671（memoryのPR）の内容。\n\n## 依存関係\n\nなし。\n\n## 作業状況・停止事項\n\n未着手。停止事項なし。\n\n## Acceptance checklist\n\n- [ ] 記録してよい「ユーザーの指示」が人間本人の発言だけだと一意に読める\n  文脈: 親やレビュアーの指示を人間の判断として共有memoryへ残す誤りが、#1672と#1676で2回起きたため。\n  下流への影響: 子・親・レビュアーのどのエージェントも、出典を確かめてからdecision/・review/へ書く。\n  検証方法・証拠: 変更後の節に、対象（人間本人）・対象外（親・レビュアー・他エージェント）・確かめ方・確かめられないときの扱い・引用の出典の書き方がある。#1672・#1676で起きた2つの記録が、新しい記述では書けないことをPR本文で具体的に説明する。\n- [ ] 二重管理がなく、mainの既存エントリの点検結果が残る\n  文脈: 同じ規則を複数の文書に書くと、片方だけが古くなるため。\n  下流への影響: 規則の正本が1つに定まる。\n  検証方法・証拠: 関連文書を検索した結果と、decision/・review/ の全エントリの `source` の点検結果をPR本文に書く。\n- [ ] 日本語のPRを作り、CIの全件成功を確認する\n  文脈: 人間の指示により、レビューとCIの後に自動でmergeするため。\n  下流への影響: mergeでこの子が閉じる。\n  検証方法・証拠: PR本文に `Closes` でこの子を書く。pushごとのCIで `Python` を含む全checkが成功。\n\n<!-- parent-task:v1 parent=1554 key=memory-skill-instruction-attribution spec=d075cd5ca95fc8a8ac030b95dad0e8738cd2f272ec9cfcb0674e5fbca47e9595 -->\n\n## 成果物・関連PR\n\n担当: codex\n\nbranch: `codex/memory-instruction-attribution`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1686 (open)\n\n検証結果:\nPR #1686（head `566dca48cd532e235c13db3a9de06004c8959ecf`、base main、MERGEABLE）を親が確認した。\n\n- 差分は `.agents/skills/memory/SKILL.md` と `.agents/README.md` の2ファイルだけ（+16/-5）。共有memoryのエントリは変更していない。\n- 「ユーザー」を人間本人と定義した。親の委任・修正指示、reviewer agentの指摘、ほかのエージェントの発言は対象外と明記した。同じGitHub loginで発言者を区別できないときの確かめ方と、確かめられないときは decision/・review/ に書かないことも書いた。子が引用を記録するときは、合意コメントへたどって出典を書く。リンク先の見出し（parent README「自由文の進捗・連絡」、parent-session「担当と要件を確定する」）が存在することを確認した。\n- 作業者の報告: 関係するテストは105件成功（`-n 2`、3.27秒）、skill形式の検査も成功。既存の decision/・review/ 10件を点検した結果は、人間の引用・合意記録を確認できたもの3件、元の発言を確認できなかったもの6件、agentの出典が混ざるもの1件（semantic-implementation-names.md）。指示どおり、エントリは変更していない。\n- CI: 最終headで全14 checkがsuccess（`Python` を含む）。\n\n",
+        "number": 1685,
+        "title": "[球三角測量 #1554] memory skillで、記録してよい「ユーザーの指示」を人間本人の発言に限ると明確にする"
+      }
+    ],
+    "prs": [
+      {
+        "body": "Closes #1685\n\n親 #1554 の「2026-11-05 の人間の採否決定」に沿い、親やreviewerの発言を、人間の判断として共有memoryへ記録する誤りを防ぎます。\n\n## 変更内容\n\n- memory skillの「ユーザー」は人間本人と定義し、会話・issue・PRで本人が出した指示・判断だけを対象にしました。親エージェントの委任・修正指示、reviewer agentの指摘、ほかのagentの発言を除外します。親の指示が会話の `user` ロールで届く場合も区別します。\n- 記録前に元発言・前後の文脈・人間の発言を引用した合意記録を読み、本人の発言と確かめます。確認できない場合はdecision/・review/へ追加・更新しません。\n- 子が親の指示文中の人間の引用を記録する場合は、元発言（会話を引用した親issueの合意コメントを含む）へたどって照合できるときだけとし、確認した出典を `source` に書きます。「追加の人間の承認は不要」は、出典確認と既存の書込み条件を満たす記録に限定しました。\n- 規則の正本は `.agents/skills/memory/SKILL.md#ユーザーの指示を記録する` の1か所です。`.agents/README.md` の情報の住み分けから同節へリンクしました。\n\n変更ファイルは `.agents/skills/memory/SKILL.md` と `.agents/README.md` のみです。共有memoryのエントリ・索引・SUMMARYは変更していません。今回の知見もmemoryに記録していません。\n\n## #1672・#1676の記録が新しい規則では書けない理由\n\n[reviewer agentのcross-1](https://github.com/Motoki0705/tennis-lab/issues/1554#issuecomment-6611717955)と、[結果を受けて修正を指示した親の記録](https://github.com/Motoki0705/tennis-lab/issues/1554#issuecomment-6611732364)を確認しました。後者は「親は妥当と判断した」と明記しており、人間本人の判断の記録ではありません。\n\n| 元PR・履歴 | 取り消された記録 | 今回の規則による扱い |\n| --- | --- | --- |\n| #1672、追加 `f1375663e` → 取消 `bd3fe5d3f` | `review/coverage-cohort-quality.md`。sourceを「ユーザーの修正指示」とし、本文で「ユーザーは統合比較には不十分と判断した」と記載 | cross-1はreviewerの指摘であり、修正指示は親の発言。人間の元発言へたどれないため、人間の判断として書けない |\n| #1676、追加 `aec62bf46` → 取消 `cbf18c87a` | `review/coverage-cohort-error-distributions.md`。sourceを「人間と親が妥当と判断」とし、本文で「人間は…とした」と記載 | reviewerの指摘と親の判断に人間の判断を付け足している。親の了承は人間の元発言の代わりにならないため、同じく書けない |\n\n2件ともbranch履歴の追加時の本文と取消を確認しました。これらの記録はmainにはありません。指摘と対応の経緯はissue・PR・knowledgeで追跡できます。\n\n## 関連文書の検索結果と正本\n\n`rg -n 'ユーザーの指示|人間の承認|共有memoryへ|人間.*確認.*引用|同じGitHub login|自律根拠を人間合意' AGENTS.md .agents/README.md .agents/skills/memory/SKILL.md .agents/skills/parent-session/SKILL.md .agents/ops/parent/README.md` を実行しました。\n\n| 文書 | 検索・確認結果 |\n| --- | --- |\n| AGENTS.md | 共有memoryの手順はmemory skillを参照済み。記録対象の規則は複製せず変更なし |\n| .agents/README.md | 情報の住み分けに「ユーザーの判断（共有memoryへ）」があったため、記録対象と出典確認の正本へのリンクを追加。自律根拠を人間合意に読み替えない既存記述は維持 |\n| memory skill | 問題の例と無条件の「人間の承認は不要」、description・層の案内を確認し、上記の境界と正本への導線を修正 |\n| parent-session skill | 「担当と要件を確定する」で人間の確認発言を引用してagreeする手順を確認。memory skillから参照し、同じ手順を複製せず変更なし |\n| parent README | 「入口と合意」「合意・進捗コメント」「自由文の進捗・連絡」「自律着手の実行根拠と呼出契約」を確認。人間とagentが同じGitHub loginを使う制約は既存節を参照し、その規則自体は変更なし |\n\n## mainの既存エントリのsource点検\n\nfetch後の `origin/main`（`0efa24754d68041df20f61013a89e748e4ea6142`）を固定し、`git ls-tree` と `git show` でdecision/の7件・review/の3件、計10件の全 `source` と本文を確認しました。番号のある出典はissue・PR本文と関連コメントも読み、loginから人間と判定していません。\n\n| エントリ（.agents/memory/からの相対パス） | sourceの記載 | 点検結果 |\n| --- | --- | --- |\n| decision/annotation-worker-effort-max.md | 2026-10-16のユーザー決定、#1233（10-17再確認） | #1233にユーザー判断の要約はあるが、人間の元発言・引用は確認できず、帰属は未確認 |\n| decision/ask-only-open-decisions.md | 2026-09-29のユーザー指摘 | 日付と文脈のみ。今回参照できる元発言へのリンクがなく未確認 |\n| decision/ckpt-force-delete-policy.md | 2026-06-21のユーザー判断（PLCS ckpt整理） | 日付と文脈のみ。人間の元発言は未確認 |\n| decision/colab-single-session-sequential.md | 2026-10-30のユーザー指示（Court Detection比較計画） | 日付と文脈のみ。人間の元発言は未確認 |\n| decision/keep-test-values-out-of-production-plans.md | #1233、2026-10-17のユーザー指示 | #1233に要旨はあるが、人間の元発言・引用は確認できず、帰属は未確認 |\n| decision/pr-ci-required.md | #1390の合意コメント、#1541 | [#1390の指定コメント](https://github.com/Motoki0705/tennis-lab/issues/1390#issuecomment-6522108331)に人間の発言の引用と回答の記録があることを確認。#1541はその決定の実装子 |\n| decision/public-docs-english-default.md | #1318、#1388の要件合意、#1425 | [#1318の合意](https://github.com/Motoki0705/tennis-lab/issues/1318#issuecomment-6314731827)と[#1388の合意](https://github.com/Motoki0705/tennis-lab/issues/1388#issuecomment-6358228538)に人間の確認発言の引用があることを確認。#1425は実装の委任先 |\n| review/focused-pull-requests.md | 2026-10-13のユーザー指示（PR分割） | 日付と文脈のみ。人間の元発言は未確認 |\n| review/one-off-experiment-code-not-in-src.md | #1097の整理、#1109、2026-10-14のユーザー指示 | [#1109](https://github.com/Motoki0705/tennis-lab/issues/1109)に人間の会話の引用とその調査範囲を確認。#1097のPR本文・自動レビューを本人の発言とは扱わない。過去に何度も繰り返した回数までは同issueでも未特定 |\n| review/semantic-implementation-names.md | 2026-10-13のユーザー指示、#1087・#1094の指摘 | **agent由来の出典が混在**。[#1087](https://github.com/Motoki0705/tennis-lab/issues/1087)・[#1094](https://github.com/Motoki0705/tennis-lab/issues/1094)は `agent-review-followup` マーカーを持つcross_review.pyの自動起票で、reviewerの指摘。人間の判断を裏付ける出典にはできない。併記された10-13の人間の元発言は未確認で、エントリ全体の誤帰属までは断定しない |\n\n集計: 人間の引用・合意記録へ到達できたもの3件、元発言を確認できないもの6件、agent由来の出典が混在する要確認1件です。「未確認」を人間の判断の確認済みとは扱いません。既存エントリ全体の誤帰属を確定したものはありませんが、特に命名エントリの混在は親へ報告します。指示どおりエントリは一切修正していません。\n\n## 検証とテストを追加しない理由\n\ntests/README.mdの「実装前に設計する」「文書テストで確かめる範囲」に従って、守る契約（出典確認への導線・リンク・memory形式）、検出したい不具合、既存e2eの再利用、追加0件・2 worker以内の予算を決めてから修正しました。\n\n実行コード・schemaは変更しないため、新規テストは追加していません。任意の言い回し・段落一致・キーワードの出現数を固定するテストは同READMEの方針に反し、人間とagentを区別できることも保証しません。意味の確認は上記の実事故2件と受入条件への照合で行いました。\n\n- `test_agents_docs.py::test_relative_links_resolve`、`test_entry_chain_from_agents_md_to_memory_summary`、`test_layer_index_matches_entry_files`、`test_memory_entry_frontmatter`を含む既存ファイル全体を実行。\n- 収集: `OMP_NUM_THREADS=1 .venv/bin/python -m pytest tests/e2e/agents_ops/test_agents_docs.py --collect-only -n 0 -q` → **105件（0.08秒）**。\n- 実行: `OMP_NUM_THREADS=1 .venv/bin/python -m pytest tests/e2e/agents_ops/test_agents_docs.py -n 2 -q --durations=0 --durations-min=0` → **105 passed、失敗・skip 0、3.27秒**（最終差分で再実行。初回も105件成功、3.44秒）。1ケース5秒・setup 1秒の基準を超えたものはなし。\n- skill-creatorの `quick_validate.py .agents/skills/memory` → **Skill is valid!**\n- `git diff --check` 成功、`git diff --exit-code origin/main -- .agents/memory/` 差分なし。\n\n## CI・引継ぎ\n\n最終head: `566dca48cd532e235c13db3a9de06004c8959ecf`。\n\n[CI run 41992233441](https://github.com/Motoki0705/tennis-lab/actions/runs/41992233441) は完了・success。対象headのcheck-runsを全ページ取得し、**全14件がcompleted / success**で、すべて同じheadであることを確認しました（`Python`、CPU tests 0〜9、Lint、CPU lane plan、label）。[Pythonの成功](https://github.com/Motoki0705/tennis-lab/actions/runs/41992233441/job/127131729618)。\n\n2回のpushでCIが起動し、初回headのrunは後続pushで置き換えられました。上記は最終headの結果です。\n\nこの子ではmergeしません。親が明示レビューとCIの後、合意済みのmerge gateで処理します。\n",
+        "changed_paths": [
+          ".agents/README.md",
+          ".agents/skills/memory/SKILL.md"
+        ],
+        "child_issues": [
+          1685
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1686,
+        "title": "memoryに記録する指示を人間本人の発言に限定する"
+      }
+    ],
+    "instruction": "親 #1554 の子 #1685（memory skill の記述修正）の PR #1686 の明示レビューを依頼する。\n\n背景: #1554 の子2件（PR #1672 と #1676）が、親エージェントの修正指示と reviewer agent の指摘を「ユーザーの指示」「人間の判断」として共有memoryへ記録しようとした（親が取り消し、mainには入っていない）。人間は2026-11-05に、memory skill の記述があいまいなことが原因だとして、修正とPRの自動mergeを指示した。\n\n確認してほしい点:\n\n- 記録してよい「ユーザーの指示」が人間本人の発言だけだと一意に読めるか。親の委任・修正指示、reviewer agent の指摘、ほかのエージェントの発言を人間の判断として書ける抜け道が残っていないか。#1672・#1676 の2つの記録（reviewer agent の指摘 cross-1 と親の修正指示を「ユーザーの修正指示」「人間が判断」とした）が、新しい記述では書けないか。\n- 人間とエージェントが同じ GitHub login を使い区別できない前提と矛盾しない、実行できる確かめ方になっているか。確かめられないときの扱いが明確か。\n- 同じ規則を複数の文書に書いていないか（.agents/README.md・AGENTS.md・parent-session skill などとの二重管理）。リンク先の見出しアンカーが実在するか。\n- 既存の手順（記録は作業ブランチに別コミット、memoryだけのPR）や memory の形式を壊していないか。\n- 変更は文書だけで、共有memoryのエントリを変更していないこと。\n\nCI の判定: review MCP の `ci_log` は既知の不具合（#1609）で失敗するので、CIは対象HEADの check run の結論で判断すること。隔離環境でCPUテストのprobeが通らない場合は、それを理由に coverage を incomplete にせず、PR本文と check run の結果（全14件 success）で確認すること。",
+    "parent_comments": []
+  },
+  "github": {
+    "repos/Motoki0705/tennis-lab/issues/1554": {
+      "as_of": "2026-11-06T01:46:53.155604+00:00",
+      "value": {
+        "body": "## 目的・背景\n\n- 標準 `tennis_scene` のball経路で、3D精度が低いと人間が感じている（2026-10-30）。\n- 現行の経路: ConvNeXt UNetのnative heatmap（128×72。1920×1080では1 cell = 15 px）を、全画面argmaxと軸ごとの3点log-parabolaで1点に復号する。続いてscore 0.5の閾値、trajectory gate、camera別の2D外れ値除去・LOESSを通し、frameごとに独立して三角測量する。\n- 同日の調査で、次の要因が疑わしいと分かった（いずれも未計測）。\n  1. 1 frame・1 viewで早く1点に絞るため、誤検出をview間の整合で取り戻せない。top-8候補とdense heatmapは `BallHeatmapEvidence` に保存されているが、下流では使われていない。\n  2. 校正はframe 0のHomographyからの単一平面pinhole・無歪み近似である。同期は最近傍frameへの丸めで、最大±0.5 frame（59.94 fpsで約±8 ms、30 m/sの球で約±25 cm）のずれが残る。\n  3. 教師の座標規約（`x/(W−1)` の格子）と、位置に依存しない畳み込みの縮尺差による、画像端で最大約±5.6 pxの位置依存バイアスの仮説。\n  4. 軸ごとの3点fitは、motion blurで斜めに伸びた山や、sigmoidの飽和に弱い。\n  5. 未較正のpeak値を、閾値・LOESS・DLTの重みに使っている。\n  6. camera別の2D LOESSが、バウンド・打球の角を丸める。\n- 参考値（knowledge `tennis_scene/000031`、clip_000）: 採用inlierの再投影は中央値2.9 px・p95 9.4 px。3 viewから2 viewへの切替で1.08 mの跳びがある。\n- 目的: 考えられる方針をすべて同じ入力・同じ指標で実装し、可視化で比較する。人間が可視化を見て、mainへ入れる方針を選べる状態にする。\n\n## 全体のスコープ\n\n対象:\n- 評価と可視化の共通基盤、clip_000の固定入力、現行経路のbaseline\n- 誤差の内訳の計測（2D復号・校正と同期・候補・平滑化）\n- 方針: 2D復号の改善、top-K候補の多仮説対応付け、候補GMMと確率的三角測量、dense heatmap尤度による3D推定、区間ごとの物理軌道fitとcamera時刻オフセット、court・ball対応による校正と同期のbundle adjustment\n- 全方針の統合比較と可視化\n\n対象外:\n- 検出モデルの再学習（教師の座標規約の見直しを含む）。独立issue #1553 で扱う。\n- 人物・GVHMR・court検出モデルの改善\n- clip_000以外での評価\n- 採用する方針の決定と、そのmerge・既定化（人間が統合比較を見て決める）\n\n## 全体方針・合意事項\n\n### 2026-11-05 の人間の採否決定\n\n- baselineを維持する。誤差分解の診断（#1558のPR #1670）だけをmergeする。\n- 6方式のPR（#1672・#1673・#1674・#1676・#1679・#1681）と統合比較のPR #1682は、mergeせずcloseする。branchは再現のために残す。\n- 不採用の方式と統合比較のknowledgeノード・実行記録は、knowledgeだけを取り出す子のPRでmainへ残す。\n- memory skillで、子が親やレビュアーの指示を「ユーザーの指示」として記録した問題を、子のPRで直す。\n- knowledgeだけのPRとmemory skillの修正PRは、既定のreview設定による明示レビューとCI `Python` 成功の後に自動でmergeする。\n- 後処理・三角測量の側で改善策を試す後継の親（#1683）はキャンセルした。理由は、heatmapの精度そのものが悪く、baselineを超えるには検出モデルの学習戦略の改善が必要なため。\n- 上の残作業の完了をもって、この親を完了しcloseする。\n\n### 2026-11-03 の追加指示\n\n- 今回は成果物の作成まで進める。評価対象は引き続き公開サンプル `video_000/clip_000` の3 cameraとし、動画・必要な入力・生成物をローカルへ保存する。サンプルの正本はREADME記載のHugging Face dataset。\n- 正解の2D ball注釈は人間提供の6 CSVを統合した参照データを使う。人間はcam0末尾の外挿frame 982〜1009のみを正解から除外し、他の提供座標（補間・推定を含む）を正解として使うよう指定した。採点では直接観測と推定の出自を区別し、座標のない不明・遮蔽・未確認や除外した外挿を勝手に埋めない。GPTによる直接注釈は中止済み。\n- 固定入力は、指定されたDrive保存済みstoreを出自とchecksumを検証したうえで利用する。元のコード版を記録し、最新mainが生成したstoreと混同しない。3 cameraのheatmap、top-8候補、patch、校正、side、aligned cameras、ball pointsが含まれることを確認済み。\n- 必要な各成果物を作成し、ローカルの保存先と検証状態をこのissueへ記録する。既存の比較方針、評価条件、採否を人間が可視化後に決める条件は維持する。\n\n- 担当親: Claude Code。起票は2026-10-30にラップトップで行い、実装はデスクトップの親セッションが引き継ぐ。\n- 人間との合意（2026-10-30の会話）:\n  - あらゆる方針を実装して結果を可視化し、人間がその可視化を見て、mainへ入れるものを決める。\n  - 実装はCodex子へ、共通ランナー経由で委任する（`agents.conf` の既定）。\n  - 評価データは、公開サンプルのMeiji `video_000/clip_000`（3 camera、1010 frame、59.94 fps）だけにする。\n  - 再学習は今回のissue群とスコープを分け、独立issue（#1553）にする。\n  - 校正（内部・外部パラメータ）と同期（1 frame未満）の精密化を含める。\n  - 今回はissueの起票だけを行い、実装は後で行う。\n- 親が決めた評価条件（人間は実装の開始時に変更できる。変更は `checking` → `agree` で再合意する）:\n  - 主指標はLOVO（leave-one-view-out）再投影誤差とする。2 viewだけで3Dを推定し、使わなかったviewへ投影して、注釈との距離（中央値・p90・20 px超の率）を測る。3 viewをそれぞれ外して集計する。\n  - 副指標: 全viewの注釈への再投影誤差、有効3D frame率、粗大誤差率、隣接移動量・加速度の外れ、バウンド・打球付近の誤差、計算時間。注釈2Dを同じcameraで三角測量した値を、誤差の下限として併記する。\n  - 閾値・倍率・温度などの調整は、frame [0,505) だけで行う。主な結果はframe [505,1010) で報告し、全区間の値は参考として併記する。\n  - 注釈ballは採点と前半の調整にだけ使い、方針の入力には使わない。\n  - 全方針は同じ固定入力（court校正・side・aligned camera・ball heatmap evidence）を使う。校正を変える方針は、その校正を他の方針と組み合わせた結果も出す。\n  - 各方針は、標準pipelineから選べる方式としてsrcに実装し、既定の動作は変えない。1方針につき1 PRとし、比較だけに使うscriptは `knowledge/runs/` に置く。\n  - どのPRも、人間が採用を決めるまでmergeしない。基盤（評価・可視化）を先にmergeするかどうかも人間が決める。それまでは、後続の子は基盤のbranchへstackする。\n  - GPUを使う処理はtraining queue経由で行う。各方針の比較は、固定入力をCPUでreplayして行う。\n\n## 成果物の所在・次の担当への引継ぎ\n\n以下は同じマシンのrepository rootからの相対パス。`outputs/` と `data/` と `ckpt/` はローカル資産であり、GitHubだけでは取得できない。元の保存先は[Driveのアーカイブ](https://drive.google.com/drive/folders/1s9d66Fr2svupaPkeqpsbijCOjWzDM6au)、公開サンプルの正本は[Hugging Face dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample)。\n\n| 内容 | ローカルの場所と状態 |\n|---|---|\n| 動画 | `data/samples/cam0.mp4`, `cam1.mp4`, `cam2.mp4`, `clip.json`。各1010 frame・1920×1080・59.94006 fps。保存済みstoreの動画hashと一致 |\n| モデル重み | `ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt` と `ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt`。storeの実行記録と一致 |\n| 元の中間生成物 | `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/store/`。元archiveは隣の `input_store.zip`。12パートと結合archiveを検証して復元 |\n| 評価用の固定入力 | 同じ親ディレクトリの `fixed_input_bundle_v1/`。3 cameraのdense heatmap・top-8・patch、court校正、side、aligned cameras、ball points、baseline照合用3Dと依存descriptor。出自は `bundle.json` |\n| baselineの再現確認 | `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/baseline_verification_v1.json`。有効mask・使用view maskは元storeと一致、3D位置の最大差は約0.000001 m |\n| 人間提供の評価用正解 | `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json`。6 CSVから統合した正本。元の6 CSVコピーは同じdirectoryの `source/`。`README.md` に利用方法と状態を記載 |\n\n正解JSONは3 camera × 1010 frameの `positions` と、camera別イベント25行、cam2推定区間16件を含む。`valid_for_scoring=true` は2959件（直接観測2589、ユーザー承認の推定370）。cam0のframe 982〜1009の外挿28件は `valid_for_scoring=false`、座標null。座標を持たない遮蔽26・不明17件も採点しない。推定点を実観測と偽らず出自を残す。既存のGT loaderは本schema／人手と推定値に未対応。#1667の独立readerはPR #1668にあり、ローカルunit 50件・実データ照合済みでレビュー・CI確認前。#1556でこのreaderを `valid_for_scoring` を尊重して採点へ接続し、回帰テストを実装すること。GTは前半の調整と採点にだけ使い、方式の入力には含めない。\n\n統合時の照合結果は `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/validation.json`。6 CSV・3動画のSHA-256、全座標と除外範囲、イベント・推定区間を検証済み。正解JSONのSHA-256は `dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09`。 #1667のreaderを使った別の実データ照合は `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/handoff/reference_reader_result.json`、再実行scriptは隣の `reference_reader_verify_real_data.py`（PR #1668のreaderを使える環境から実行）。3,030行のCSV照合、逆順のcamera/frame選択、3動画のhashと映像属性を確認した。\n\nイベントはcamera別の観測で、cam0とcam1で同じ事象を記録した行がある。frame 596/597、622/623、852/853の3組は1 frameずれる。25行を25個の独立した物理イベントと扱わず、各cameraの元記録・注記を保って扱う。\n\n#1556の基盤コードは `[worktree path omitted]` に未コミットで残る。その27ファイルは `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/handoff/ball3d_foundation_wip_snapshot.tar.gz` に検証済みの保全コピーを作成し、同ディレクトリの `ball3d_foundation_wip_snapshot.json` にbase commitと各SHA-256を記録した。これは未完成・未レビューのコードで、正解loaderが完成したという意味ではない。前回workerのプロセスは存在せず、runtimeの終了・cleanup記録は未確定でPRも未作成。次担当は既存runとworktreeを照合し、未完了差分を保全してから引き継ぐ。正式な方式比較・採点結果・比較動画・統合HTMLはまだ完成していない。\n\n## 全体の完了条件\n\n- 全方針が、固定入力・同じ指標でclip_000に対して実行され、方針ごとのPRとknowledgeノードがある。\n- 統合比較（区間別の指標表、比較動画、3D軌道図、極端frameの確認、HTML比較ページ）が、人間の見られる形で提示されている。\n- 人間が各方針の採否を決め、その決定が親issueに記録されている。採用PRのmergeと不採用PRのcloseは、その決定の後に行う。\n\n## 子タスクのチェックリスト\n\n- [x] #1556 評価・可視化の共通基盤とclip_000の固定入力・baselineを作る\n- [x] #1558 ball 3D誤差の内訳を計測する\n- [ ] #1559 heatmapの2D復号を改善する\n- [ ] #1560 top-K候補をview間と時間で多仮説対応付けする\n- [ ] #1563 候補GMMを確率的三角測量に渡す\n- [ ] #1564 dense heatmap尤度で3D位置を直接推定する\n- [ ] #1565 区間物理軌道とcamera時刻オフセットを同時推定する\n- [ ] #1567 court・ball対応で校正と同期をbundle adjustmentする\n- [ ] #1568 全方針を統合比較し、可視化する\n- [ ] #1665 clip_000の3カメラ映像からGPTで評価用ball観測を作成する（取消）\n- [ ] #1666 予測に依存せず実動画を直接確認する評価用ball注釈入口を作る（取消）\n- [x] #1667 人間提供の統合ball正解を検証して評価用に読み込む\n- [ ] #1684 不採用にした球3D方式と統合比較の記録をknowledgeだけのPRでmainへ残す\n- [ ] #1685 memory skillで、記録してよい「ユーザーの指示」を人間本人の発言に限ると明確にする\n\n## 進捗概要\n\n子の起動予約: #1684。上限: 2。\n- #1556: 完了 — 完了済み。 / 既存PRを照合して継続する: #1669 / 委任予約済み。既存worker・worktreeを照合する。\n- #1558: 完了 — 完了済み。 / 既存PRを照合して継続する: #1670 / 委任予約済み。既存worker・worktreeを照合する。\n- #1559: 継続 — 既存PRを照合して継続する: #1673 / 委任予約済み。既存worker・worktreeを照合する。\n- #1560: 継続 — 既存PRを照合して継続する: #1672 / 委任予約済み。既存worker・worktreeを照合する。\n- #1563: 継続 — 既存PRを照合して継続する: #1674 / 委任予約済み。既存worker・worktreeを照合する。\n- #1564: 継続 — 既存PRを照合して継続する: #1676 / 委任予約済み。既存worker・worktreeを照合する。\n- #1565: 継続 — 既存PRを照合して継続する: #1679 / 委任予約済み。既存worker・worktreeを照合する。\n- #1567: 継続 — 既存PRを照合して継続する: #1681 / 委任予約済み。既存worker・worktreeを照合する。\n- #1568: 継続 — 既存PRを照合して継続する: #1682 / 委任予約済み。既存worker・worktreeを照合する。 / 依存先 #1559: 利用できるPRが一意でない（0件）。 / 依存先 #1560: 利用できるPRが一意でない（0件）。 / 依存先 #1563: 利用できるPRが一意でない（0件）。 / 依存先 #1564: 利用できるPRが一意でない（0件）。 / 依存先 #1565: 利用できるPRが一意でない（0件）。 / 依存先 #1567: 利用できるPRが一意でない（0件）。\n- #1665: 取消 — 取消済み。 / 委任予約済み。既存worker・worktreeを照合する。\n- #1666: 取消 — 取消済み。\n- #1667: 完了 — 完了済み。 / 既存PRを照合して継続する: #1668 / 委任予約済み。既存worker・worktreeを照合する。\n- #1684: 継続 — 既存PRを照合して継続する: #1687 / 委任予約済み。既存worker・worktreeを照合する。\n- #1685: 継続 — 既存PRを照合して継続する: #1686 / 委任予約済み。既存worker・worktreeを照合する。\n\n## 依存関係・進め方\n\n- 最初に基盤（評価・可視化・baseline）を作る。\n- 誤差分解と6つの方針は基盤だけに依存し、互いに独立しているので並列に進める（いずれも基盤のbranchへstackする）。\n- 統合比較は、全方針のPRができた後に、全branchを統合したbranchで行う。校正のbundle adjustmentと他の方針の組合せも、統合比較で評価する。\n- GPUを使うのは、基盤でclip_000を標準pipelineにかける処理だけ。\n\n## 未決事項・人間の判断が必要な点\n\n- 各方針の採否（統合比較を見て決める）。\n- 基盤を先にmergeするか。\n- 親が決めた評価条件を変更するか（実装の開始時に確認する）。\n- このラップトップでの担当は解除する。デスクトップの親セッションが改めて担当登録して引き継ぐ。\n\n\n\n\n\n\n\n\n\n",
+        "number": 1554,
+        "title": "[球三角測量] ball heatmapの後処理と三角測量の方針を実装し、可視化で比較する"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/issues/1554/comments": {
+      "as_of": "2026-11-06T01:46:53.155604+00:00",
+      "value": []
+    },
+    "repos/Motoki0705/tennis-lab/issues/1685": {
+      "as_of": "2026-11-06T01:46:53.155604+00:00",
+      "value": {
+        "body": "親issue: #1554\n\n## このタスクの目的\n\n#1554の子（#1560のPR #1672、#1564のPR #1676）が、親エージェントの修正指示やレビューagentの指摘を「ユーザーの修正指示」「人間が判断した」として共有memoryへ記録した（親が取り消し済みで、mainには入っていない）。原因は memory skill の「ユーザーの指示を記録する」節で、「ユーザー」が人間本人を指すことと、親やレビュアーの指示が含まれないことが書かれていないため。人間の指示（2026-11-05）: 「memory skill の記述があいまいで、子が親やレビュアーの指示を「ユーザーの指示」として記録しました。この問題を修正しPRを自動でマージすること。」\n\n## 具体的な変更内容・対象範囲\n\n`.agents/skills/memory/SKILL.md` の「ユーザーの指示を記録する」節（例の「PRのレビューで「こう直して」と言われたときなど」と「人間の承認は不要である」の段落を含む）と、同じ前提を持つ記述。\n\n- 記録の対象を、人間本人が会話・issue・PRで出した指示と判断に限ると書く。親エージェントの委任・修正指示、レビューagentの指摘、ほかのエージェントの発言は「ユーザーの指示」ではないと書く。\n- 人間とエージェントが同じGitHub loginを使い、loginで区別できないこと（parent READMEに記載）を踏まえ、人間の発言だと確かめる方法と、確かめられないときは decision/・review/ に人間の判断として書かないことを書く。\n- 委任された子が、親の指示文の中にある人間の発言の引用を記録したい場合の扱い（出典を人間の元の発言へたどれるときだけ、その出典を `source` に書く）を書く。\n- 同じことを2か所に書かない。.agents/README.md・parent-session skill・AGENTS.md に関係する記述があれば、正本を1つにしてリンクで結ぶ。\n- mainの `.agents/memory/` にある decision/・review/ のエントリの `source` を点検し、人間の発言ではない指示を人間の判断として書いたものがないかを確かめ、結果をPR本文に書く。見つかっても、このPRではエントリを変更せず、親へ報告する。\n- 文書の検査やテストがあれば、それを通す。文言の規則をテストで固定する必要があるかは、tests/README.md の方針で判断する。\n\n## 対象外\n\n共有memoryのエントリの追加・変更・削除。memory以外のskillの規則変更。#1671（memoryのPR）の内容。\n\n## 依存関係\n\nなし。\n\n## 作業状況・停止事項\n\n未着手。停止事項なし。\n\n## Acceptance checklist\n\n- [ ] 記録してよい「ユーザーの指示」が人間本人の発言だけだと一意に読める\n  文脈: 親やレビュアーの指示を人間の判断として共有memoryへ残す誤りが、#1672と#1676で2回起きたため。\n  下流への影響: 子・親・レビュアーのどのエージェントも、出典を確かめてからdecision/・review/へ書く。\n  検証方法・証拠: 変更後の節に、対象（人間本人）・対象外（親・レビュアー・他エージェント）・確かめ方・確かめられないときの扱い・引用の出典の書き方がある。#1672・#1676で起きた2つの記録が、新しい記述では書けないことをPR本文で具体的に説明する。\n- [ ] 二重管理がなく、mainの既存エントリの点検結果が残る\n  文脈: 同じ規則を複数の文書に書くと、片方だけが古くなるため。\n  下流への影響: 規則の正本が1つに定まる。\n  検証方法・証拠: 関連文書を検索した結果と、decision/・review/ の全エントリの `source` の点検結果をPR本文に書く。\n- [ ] 日本語のPRを作り、CIの全件成功を確認する\n  文脈: 人間の指示により、レビューとCIの後に自動でmergeするため。\n  下流への影響: mergeでこの子が閉じる。\n  検証方法・証拠: PR本文に `Closes` でこの子を書く。pushごとのCIで `Python` を含む全checkが成功。\n\n<!-- parent-task:v1 parent=1554 key=memory-skill-instruction-attribution spec=d075cd5ca95fc8a8ac030b95dad0e8738cd2f272ec9cfcb0674e5fbca47e9595 -->\n\n## 成果物・関連PR\n\n担当: codex\n\nbranch: `codex/memory-instruction-attribution`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1686 (open)\n\n検証結果:\nPR #1686（head `566dca48cd532e235c13db3a9de06004c8959ecf`、base main、MERGEABLE）を親が確認した。\n\n- 差分は `.agents/skills/memory/SKILL.md` と `.agents/README.md` の2ファイルだけ（+16/-5）。共有memoryのエントリは変更していない。\n- 「ユーザー」を人間本人と定義した。親の委任・修正指示、reviewer agentの指摘、ほかのエージェントの発言は対象外と明記した。同じGitHub loginで発言者を区別できないときの確かめ方と、確かめられないときは decision/・review/ に書かないことも書いた。子が引用を記録するときは、合意コメントへたどって出典を書く。リンク先の見出し（parent README「自由文の進捗・連絡」、parent-session「担当と要件を確定する」）が存在することを確認した。\n- 作業者の報告: 関係するテストは105件成功（`-n 2`、3.27秒）、skill形式の検査も成功。既存の decision/・review/ 10件を点検した結果は、人間の引用・合意記録を確認できたもの3件、元の発言を確認できなかったもの6件、agentの出典が混ざるもの1件（semantic-implementation-names.md）。指示どおり、エントリは変更していない。\n- CI: 最終headで全14 checkがsuccess（`Python` を含む）。\n\n",
+        "number": 1685,
+        "title": "[球三角測量 #1554] memory skillで、記録してよい「ユーザーの指示」を人間本人の発言に限ると明確にする"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/pulls/1686": {
+      "as_of": "2026-11-06T01:46:53.155604+00:00",
+      "value": {
+        "body": "Closes #1685\n\n親 #1554 の「2026-11-05 の人間の採否決定」に沿い、親やreviewerの発言を、人間の判断として共有memoryへ記録する誤りを防ぎます。\n\n## 変更内容\n\n- memory skillの「ユーザー」は人間本人と定義し、会話・issue・PRで本人が出した指示・判断だけを対象にしました。親エージェントの委任・修正指示、reviewer agentの指摘、ほかのagentの発言を除外します。親の指示が会話の `user` ロールで届く場合も区別します。\n- 記録前に元発言・前後の文脈・人間の発言を引用した合意記録を読み、本人の発言と確かめます。確認できない場合はdecision/・review/へ追加・更新しません。\n- 子が親の指示文中の人間の引用を記録する場合は、元発言（会話を引用した親issueの合意コメントを含む）へたどって照合できるときだけとし、確認した出典を `source` に書きます。「追加の人間の承認は不要」は、出典確認と既存の書込み条件を満たす記録に限定しました。\n- 規則の正本は `.agents/skills/memory/SKILL.md#ユーザーの指示を記録する` の1か所です。`.agents/README.md` の情報の住み分けから同節へリンクしました。\n\n変更ファイルは `.agents/skills/memory/SKILL.md` と `.agents/README.md` のみです。共有memoryのエントリ・索引・SUMMARYは変更していません。今回の知見もmemoryに記録していません。\n\n## #1672・#1676の記録が新しい規則では書けない理由\n\n[reviewer agentのcross-1](https://github.com/Motoki0705/tennis-lab/issues/1554#issuecomment-6611717955)と、[結果を受けて修正を指示した親の記録](https://github.com/Motoki0705/tennis-lab/issues/1554#issuecomment-6611732364)を確認しました。後者は「親は妥当と判断した」と明記しており、人間本人の判断の記録ではありません。\n\n| 元PR・履歴 | 取り消された記録 | 今回の規則による扱い |\n| --- | --- | --- |\n| #1672、追加 `f1375663e` → 取消 `bd3fe5d3f` | `review/coverage-cohort-quality.md`。sourceを「ユーザーの修正指示」とし、本文で「ユーザーは統合比較には不十分と判断した」と記載 | cross-1はreviewerの指摘であり、修正指示は親の発言。人間の元発言へたどれないため、人間の判断として書けない |\n| #1676、追加 `aec62bf46` → 取消 `cbf18c87a` | `review/coverage-cohort-error-distributions.md`。sourceを「人間と親が妥当と判断」とし、本文で「人間は…とした」と記載 | reviewerの指摘と親の判断に人間の判断を付け足している。親の了承は人間の元発言の代わりにならないため、同じく書けない |\n\n2件ともbranch履歴の追加時の本文と取消を確認しました。これらの記録はmainにはありません。指摘と対応の経緯はissue・PR・knowledgeで追跡できます。\n\n## 関連文書の検索結果と正本\n\n`rg -n 'ユーザーの指示|人間の承認|共有memoryへ|人間.*確認.*引用|同じGitHub login|自律根拠を人間合意' AGENTS.md .agents/README.md .agents/skills/memory/SKILL.md .agents/skills/parent-session/SKILL.md .agents/ops/parent/README.md` を実行しました。\n\n| 文書 | 検索・確認結果 |\n| --- | --- |\n| AGENTS.md | 共有memoryの手順はmemory skillを参照済み。記録対象の規則は複製せず変更なし |\n| .agents/README.md | 情報の住み分けに「ユーザーの判断（共有memoryへ）」があったため、記録対象と出典確認の正本へのリンクを追加。自律根拠を人間合意に読み替えない既存記述は維持 |\n| memory skill | 問題の例と無条件の「人間の承認は不要」、description・層の案内を確認し、上記の境界と正本への導線を修正 |\n| parent-session skill | 「担当と要件を確定する」で人間の確認発言を引用してagreeする手順を確認。memory skillから参照し、同じ手順を複製せず変更なし |\n| parent README | 「入口と合意」「合意・進捗コメント」「自由文の進捗・連絡」「自律着手の実行根拠と呼出契約」を確認。人間とagentが同じGitHub loginを使う制約は既存節を参照し、その規則自体は変更なし |\n\n## mainの既存エントリのsource点検\n\nfetch後の `origin/main`（`0efa24754d68041df20f61013a89e748e4ea6142`）を固定し、`git ls-tree` と `git show` でdecision/の7件・review/の3件、計10件の全 `source` と本文を確認しました。番号のある出典はissue・PR本文と関連コメントも読み、loginから人間と判定していません。\n\n| エントリ（.agents/memory/からの相対パス） | sourceの記載 | 点検結果 |\n| --- | --- | --- |\n| decision/annotation-worker-effort-max.md | 2026-10-16のユーザー決定、#1233（10-17再確認） | #1233にユーザー判断の要約はあるが、人間の元発言・引用は確認できず、帰属は未確認 |\n| decision/ask-only-open-decisions.md | 2026-09-29のユーザー指摘 | 日付と文脈のみ。今回参照できる元発言へのリンクがなく未確認 |\n| decision/ckpt-force-delete-policy.md | 2026-06-21のユーザー判断（PLCS ckpt整理） | 日付と文脈のみ。人間の元発言は未確認 |\n| decision/colab-single-session-sequential.md | 2026-10-30のユーザー指示（Court Detection比較計画） | 日付と文脈のみ。人間の元発言は未確認 |\n| decision/keep-test-values-out-of-production-plans.md | #1233、2026-10-17のユーザー指示 | #1233に要旨はあるが、人間の元発言・引用は確認できず、帰属は未確認 |\n| decision/pr-ci-required.md | #1390の合意コメント、#1541 | [#1390の指定コメント](https://github.com/Motoki0705/tennis-lab/issues/1390#issuecomment-6522108331)に人間の発言の引用と回答の記録があることを確認。#1541はその決定の実装子 |\n| decision/public-docs-english-default.md | #1318、#1388の要件合意、#1425 | [#1318の合意](https://github.com/Motoki0705/tennis-lab/issues/1318#issuecomment-6314731827)と[#1388の合意](https://github.com/Motoki0705/tennis-lab/issues/1388#issuecomment-6358228538)に人間の確認発言の引用があることを確認。#1425は実装の委任先 |\n| review/focused-pull-requests.md | 2026-10-13のユーザー指示（PR分割） | 日付と文脈のみ。人間の元発言は未確認 |\n| review/one-off-experiment-code-not-in-src.md | #1097の整理、#1109、2026-10-14のユーザー指示 | [#1109](https://github.com/Motoki0705/tennis-lab/issues/1109)に人間の会話の引用とその調査範囲を確認。#1097のPR本文・自動レビューを本人の発言とは扱わない。過去に何度も繰り返した回数までは同issueでも未特定 |\n| review/semantic-implementation-names.md | 2026-10-13のユーザー指示、#1087・#1094の指摘 | **agent由来の出典が混在**。[#1087](https://github.com/Motoki0705/tennis-lab/issues/1087)・[#1094](https://github.com/Motoki0705/tennis-lab/issues/1094)は `agent-review-followup` マーカーを持つcross_review.pyの自動起票で、reviewerの指摘。人間の判断を裏付ける出典にはできない。併記された10-13の人間の元発言は未確認で、エントリ全体の誤帰属までは断定しない |\n\n集計: 人間の引用・合意記録へ到達できたもの3件、元発言を確認できないもの6件、agent由来の出典が混在する要確認1件です。「未確認」を人間の判断の確認済みとは扱いません。既存エントリ全体の誤帰属を確定したものはありませんが、特に命名エントリの混在は親へ報告します。指示どおりエントリは一切修正していません。\n\n## 検証とテストを追加しない理由\n\ntests/README.mdの「実装前に設計する」「文書テストで確かめる範囲」に従って、守る契約（出典確認への導線・リンク・memory形式）、検出したい不具合、既存e2eの再利用、追加0件・2 worker以内の予算を決めてから修正しました。\n\n実行コード・schemaは変更しないため、新規テストは追加していません。任意の言い回し・段落一致・キーワードの出現数を固定するテストは同READMEの方針に反し、人間とagentを区別できることも保証しません。意味の確認は上記の実事故2件と受入条件への照合で行いました。\n\n- `test_agents_docs.py::test_relative_links_resolve`、`test_entry_chain_from_agents_md_to_memory_summary`、`test_layer_index_matches_entry_files`、`test_memory_entry_frontmatter`を含む既存ファイル全体を実行。\n- 収集: `OMP_NUM_THREADS=1 .venv/bin/python -m pytest tests/e2e/agents_ops/test_agents_docs.py --collect-only -n 0 -q` → **105件（0.08秒）**。\n- 実行: `OMP_NUM_THREADS=1 .venv/bin/python -m pytest tests/e2e/agents_ops/test_agents_docs.py -n 2 -q --durations=0 --durations-min=0` → **105 passed、失敗・skip 0、3.27秒**（最終差分で再実行。初回も105件成功、3.44秒）。1ケース5秒・setup 1秒の基準を超えたものはなし。\n- skill-creatorの `quick_validate.py .agents/skills/memory` → **Skill is valid!**\n- `git diff --check` 成功、`git diff --exit-code origin/main -- .agents/memory/` 差分なし。\n\n## CI・引継ぎ\n\n最終head: `566dca48cd532e235c13db3a9de06004c8959ecf`。\n\n[CI run 41992233441](https://github.com/Motoki0705/tennis-lab/actions/runs/41992233441) は完了・success。対象headのcheck-runsを全ページ取得し、**全14件がcompleted / success**で、すべて同じheadであることを確認しました（`Python`、CPU tests 0〜9、Lint、CPU lane plan、label）。[Pythonの成功](https://github.com/Motoki0705/tennis-lab/actions/runs/41992233441/job/127131729618)。\n\n2回のpushでCIが起動し、初回headのrunは後続pushで置き換えられました。上記は最終headの結果です。\n\nこの子ではmergeしません。親が明示レビューとCIの後、合意済みのmerge gateで処理します。\n",
+        "changed_paths": [
+          ".agents/README.md",
+          ".agents/skills/memory/SKILL.md"
+        ],
+        "child_issues": [
+          1685
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1686,
+        "title": "memoryに記録する指示を人間本人の発言に限定する"
+      }
+    }
+  },
+  "provenance": {
+    "kind": "projection_of_saved_pre_review_context",
+    "source_context_sha256": "b4345548208fd53aed1581a1e1a861b165d84087c364598d52aec990d1dc4176",
+    "excluded_comments": [
+      {
+        "id": 6523724010,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6523736220,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6523749771,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6524443727,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591180823,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591200045,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591224833,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591241675,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591314781,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591347301,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591618704,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591650043,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6591660648,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6593373817,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6593417741,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6593439490,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6593447282,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6593460037,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6593765056,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6593773441,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6593790817,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6595989174,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596001998,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596010634,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596057744,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596168511,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596169668,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596307507,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596339364,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596345893,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596441074,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596446087,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596447145,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596711879,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596716916,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596808229,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596809500,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596982519,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6596992828,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6597252925,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6598205152,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6598208932,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6598212866,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6598218567,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6598819660,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6607510849,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6607533249,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6607923520,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6607951852,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6609712315,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6610461385,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6610476215,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6611431580,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6611445845,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6611717955,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6611732364,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6614399350,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6614405476,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6615044899,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6615055744,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6652352606,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6652565114,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6674581561,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6674582956,
+        "reason": "operational_record_excluded"
+      }
+    ],
+    "sanitization_replacements": 0,
+    "unavailable": [
+      "PR and child discussions were not captured; unregistered endpoints are rejected",
+      "CI payload is the captured checks summary, not reconstructed raw logs"
+    ]
+  }
+}

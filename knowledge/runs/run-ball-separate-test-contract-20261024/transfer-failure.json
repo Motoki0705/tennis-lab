@@ -1,0 +1,305 @@
+{
+  "cause_inference": "Concurrent first payload uploads created three shards folders before path verification; the driver refused ambiguous paths",
+  "command_process_exists": false,
+  "dataset_verified": false,
+  "destination_before": {
+    "count": 7,
+    "entries": [
+      {
+        "id": "1-JFH7qD9vrlvKU7aNiOqFcQnG6IiFkiP",
+        "modified": "2026-10-23T03:46:26.522Z",
+        "path": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+        "size_bytes": null,
+        "type": "directory"
+      },
+      {
+        "id": "1khxjDWrSbcvq34y4MRZNGrFK2jvyTmVa",
+        "modified": "2026-10-23T10:39:26.515Z",
+        "path": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/annotations",
+        "size_bytes": null,
+        "type": "directory"
+      },
+      {
+        "id": "1WnXk9xixvWUIJrj_Q5gTQQqHvmS7XDqW",
+        "modified": "2026-10-23T01:00:01.150Z",
+        "path": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/distribution.json",
+        "size_bytes": 672909,
+        "type": "file"
+      },
+      {
+        "id": "1oRxS0ZANmoxPugUAJsqrz2IElg89Ok0K",
+        "modified": "2026-10-23T10:39:07.271Z",
+        "path": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/index.npz",
+        "size_bytes": 53378860,
+        "type": "file"
+      },
+      {
+        "id": "1EzSevHqVYzeSb47lBKrhaxFGHKuSo7sP",
+        "modified": "2026-10-23T10:39:19.026Z",
+        "path": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/inputs",
+        "size_bytes": null,
+        "type": "directory"
+      },
+      {
+        "id": "1FqgwNwfq_pTQTTfsdAN3r54MubrsS1KT",
+        "modified": "2026-10-23T10:39:07.288Z",
+        "path": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/metadata.json",
+        "size_bytes": 1106415,
+        "type": "file"
+      },
+      {
+        "id": "1iuSwZp8on-BP4GmEA7BZ5tOEvAKUhdYM",
+        "modified": "2026-10-23T03:47:04.153Z",
+        "path": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/shards",
+        "size_bytes": null,
+        "type": "directory"
+      }
+    ],
+    "schema_version": 1,
+    "truncated": false
+  },
+  "distribution_sha256": "fbf6e1081c6a1de7812070a5af1fba492e8a8f88c46b1b06c5d0740aecd3e588",
+  "drive_changes_stopped": true,
+  "drive_path": "data/ball_detection/ball-mix1800-720p-all-frame-test-v1",
+  "drive_root_id": "1p98j7fUsj2dl7ZZbjwFFy4X033PZwWka",
+  "expected_bytes": 28359923470,
+  "expected_files": 388,
+  "inventory_after": {
+    "action": "inventory",
+    "ambiguous_paths": [
+      "shards"
+    ],
+    "entries": [
+      {
+        "hashes": {},
+        "id": "145k8aW8-9ouKLLQmrfducboqAK3nfo9X",
+        "modified": "2026-10-24T05:56:29.840Z",
+        "path": "shards",
+        "size_bytes": -1,
+        "type": "directory"
+      },
+      {
+        "hashes": {},
+        "id": "1D0XuZy4yDmixARzdzJfy7au5qtoYCFRn",
+        "modified": "2026-10-24T05:56:30.424Z",
+        "path": "shards",
+        "size_bytes": -1,
+        "type": "directory"
+      },
+      {
+        "hashes": {},
+        "id": "1mjj9GyER6fFoWxtgbIIgz66DHYIObqkX",
+        "modified": "2026-10-24T05:56:30.403Z",
+        "path": "shards",
+        "size_bytes": -1,
+        "type": "directory"
+      },
+      {
+        "hashes": {
+          "md5": "6c55d002f5a16d223aab76b57bbe3b93"
+        },
+        "id": "1TTVOowcvdnd0PiyKiWGhyD46RGGOiZdc",
+        "matches_source_size_md5": true,
+        "modified": "2026-09-27T14:07:49.644Z",
+        "path": "shards/clip-00000.bin",
+        "size_bytes": 45707719,
+        "type": "file"
+      },
+      {
+        "hashes": {
+          "md5": "d9bc2ba9b0189a550a91735c9c716ddc"
+        },
+        "id": "13qGdBg6rx0NSm6Pu3qaMTWD0jgPUtKmN",
+        "matches_source_size_md5": true,
+        "modified": "2026-09-27T14:07:48.508Z",
+        "path": "shards/clip-00001.bin",
+        "size_bytes": 18801536,
+        "type": "file"
+      },
+      {
+        "hashes": {
+          "md5": "a663c085f5ad708b337606106d27b9ff"
+        },
+        "id": "1mjCnYXvNIYPmk3F00LNU6aE_DnUl9k3i",
+        "matches_source_size_md5": true,
+        "modified": "2026-09-27T14:07:49.180Z",
+        "path": "shards/clip-00002.bin",
+        "size_bytes": 28695680,
+        "type": "file"
+      },
+      {
+        "hashes": {
+          "md5": "68b963e217fd8213021bc621bafc92d5"
+        },
+        "id": "1awyav1KAv91TUJfcrCS13YVUM716vPun",
+        "matches_source_size_md5": true,
+        "modified": "2026-09-27T14:07:50.568Z",
+        "path": "shards/clip-00003.bin",
+        "size_bytes": 43108633,
+        "type": "file"
+      }
+    ],
+    "observed_at": "2026-10-24T05:57:14.078026+00:00",
+    "path": "data/ball_detection/ball-mix1800-720p-all-frame-test-v1",
+    "rclone_config": "<home>/.config/tennis-lab/rclone-drive.conf",
+    "remote_root": "gdrive:tennis_lab",
+    "schema_version": 1
+  },
+  "inventory_before": {
+    "action": "inventory",
+    "ambiguous_paths": [],
+    "entries": [],
+    "observed_at": "2026-10-24T05:56:15.973126+00:00",
+    "path": "data/ball_detection/ball-mix1800-720p-all-frame-test-v1",
+    "rclone_config": "<home>/.config/tennis-lab/rclone-drive.conf",
+    "remote_root": "gdrive:tennis_lab",
+    "schema_version": 1
+  },
+  "manifest_published": false,
+  "partial_payload_bytes": 136313568,
+  "partial_payload_files": 4,
+  "quota_before": {
+    "action": "quota",
+    "bytes": {
+      "free": 4586013084919,
+      "other": 34799862912,
+      "total": 5497558138880,
+      "trashed": 150427241715,
+      "used": 876745191049
+    },
+    "observed_at": "2026-10-24T05:53:03.266938+00:00",
+    "remote_root": "gdrive:tennis_lab",
+    "schema_version": 1,
+    "scope": "account"
+  },
+  "raw_receipts": "tmp/test-distribution-transfer",
+  "recovery_requires_parent_decision": true,
+  "schema_version": 1,
+  "status": "failed_ambiguous_drive_paths",
+  "supervisor": {
+    "argv": [
+      ".venv/bin/python",
+      "knowledge/runs/run-ball-portable-distribution-20261023/transfer_data.py",
+      "--distribution",
+      "<distribution-worktree>/tmp/ball-portable-distribution/test",
+      "--source-store",
+      "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot",
+      "--drive-path",
+      "data/ball_detection/ball-mix1800-720p-all-frame-test-v1",
+      "--receipts",
+      "<worktree>/tmp/test-distribution-transfer"
+    ],
+    "boot_id": "41fa84dd-f4de-45d5-88de-f5f4e61d2649",
+    "command_pid": 3679523,
+    "cwd": "<worktree>",
+    "elapsed_seconds": 245.49758049100637,
+    "finished_at": "2026-10-24T05:57:16.634128+00:00",
+    "pid": 3679501,
+    "process_group_id": 3679501,
+    "returncode": 1,
+    "schema_version": 1,
+    "session_id": 3679501,
+    "start_token": "9910915",
+    "started_at": "2026-10-24T05:53:26.066824+00:00",
+    "status": "failed"
+  },
+  "supervisor_process_exists": false,
+  "upload_operations": [
+    {
+      "argv": [
+        "<worktree>/.venv/bin/python",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--timeout-seconds",
+        "1800",
+        "upload",
+        "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00013.bin",
+        "data/ball_detection/ball-mix1800-720p-all-frame-test-v1/shards/clip-00000.bin",
+        "--verify"
+      ],
+      "elapsed_seconds": 50.00103041999682,
+      "result": {
+        "command": "upload",
+        "error": "Ambiguous Drive path gdrive:tennis_lab/data/ball_detection/ball-mix1800-720p-all-frame-test-v1/shards; IDs=['1D0XuZy4yDmixARzdzJfy7au5qtoYCFRn', '1mjj9GyER6fFoWxtgbIIgz66DHYIObqkX', '145k8aW8-9ouKLLQmrfducboqAK3nfo9X']",
+        "ok": false,
+        "schema_version": 1
+      },
+      "returncode": 1,
+      "schema_version": 1,
+      "started_at": "2026-10-24T05:56:15.986055+00:00",
+      "stderr": "payload-upload-316e04b171.stderr.log",
+      "stdout": "payload-upload-316e04b171.stdout.json"
+    },
+    {
+      "argv": [
+        "<worktree>/.venv/bin/python",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--timeout-seconds",
+        "1800",
+        "upload",
+        "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00014.bin",
+        "data/ball_detection/ball-mix1800-720p-all-frame-test-v1/shards/clip-00001.bin",
+        "--verify"
+      ],
+      "elapsed_seconds": 43.14554151199991,
+      "result": {
+        "command": "upload",
+        "error": "Ambiguous Drive path gdrive:tennis_lab/data/ball_detection/ball-mix1800-720p-all-frame-test-v1/shards; IDs=['1D0XuZy4yDmixARzdzJfy7au5qtoYCFRn', '1mjj9GyER6fFoWxtgbIIgz66DHYIObqkX', '145k8aW8-9ouKLLQmrfducboqAK3nfo9X']",
+        "ok": false,
+        "schema_version": 1
+      },
+      "returncode": 1,
+      "schema_version": 1,
+      "started_at": "2026-10-24T05:56:15.986717+00:00",
+      "stderr": "payload-upload-63e41072c3.stderr.log",
+      "stdout": "payload-upload-63e41072c3.stdout.json"
+    },
+    {
+      "argv": [
+        "<worktree>/.venv/bin/python",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--timeout-seconds",
+        "1800",
+        "upload",
+        "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00018.bin",
+        "data/ball_detection/ball-mix1800-720p-all-frame-test-v1/shards/clip-00003.bin",
+        "--verify"
+      ],
+      "elapsed_seconds": 43.44588271700195,
+      "result": {
+        "command": "upload",
+        "error": "Ambiguous Drive path gdrive:tennis_lab/data/ball_detection/ball-mix1800-720p-all-frame-test-v1/shards; IDs=['1D0XuZy4yDmixARzdzJfy7au5qtoYCFRn', '1mjj9GyER6fFoWxtgbIIgz66DHYIObqkX', '145k8aW8-9ouKLLQmrfducboqAK3nfo9X']",
+        "ok": false,
+        "schema_version": 1
+      },
+      "returncode": 1,
+      "schema_version": 1,
+      "started_at": "2026-10-24T05:56:15.990379+00:00",
+      "stderr": "payload-upload-b3f5b88f6a.stderr.log",
+      "stdout": "payload-upload-b3f5b88f6a.stdout.json"
+    },
+    {
+      "argv": [
+        "<worktree>/.venv/bin/python",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--timeout-seconds",
+        "1800",
+        "upload",
+        "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00015.bin",
+        "data/ball_detection/ball-mix1800-720p-all-frame-test-v1/shards/clip-00002.bin",
+        "--verify"
+      ],
+      "elapsed_seconds": 46.52059200999793,
+      "result": {
+        "command": "upload",
+        "error": "Ambiguous Drive path gdrive:tennis_lab/data/ball_detection/ball-mix1800-720p-all-frame-test-v1/shards; IDs=['1D0XuZy4yDmixARzdzJfy7au5qtoYCFRn', '1mjj9GyER6fFoWxtgbIIgz66DHYIObqkX', '145k8aW8-9ouKLLQmrfducboqAK3nfo9X']",
+        "ok": false,
+        "schema_version": 1
+      },
+      "returncode": 1,
+      "schema_version": 1,
+      "started_at": "2026-10-24T05:56:15.987461+00:00",
+      "stderr": "payload-upload-d78ea8482b.stderr.log",
+      "stdout": "payload-upload-d78ea8482b.stdout.json"
+    }
+  ]
+}

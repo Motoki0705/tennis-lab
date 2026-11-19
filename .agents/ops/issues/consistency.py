@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from .format import (
     CHILD_LABEL,
     PARENT_LABEL,
+    PROPOSAL_LABEL,
+    STANDALONE_LABEL,
     TASKS_HEADING,
     ParsedTitle,
     TaskStatus,
@@ -77,12 +79,16 @@ def check_consistency(issues: Mapping[int, Issue]) -> tuple[Problem, ...]:
         except ValueError:
             title_hint = None
         try:
-            has_checklist = TASKS_HEADING in parse_sections(issue.body)
-            has_reference = any(
-                line.startswith("親issue:") for line in visible_lines(issue.body)
-            )
-        except ValueError:
+            lines = visible_lines(issue.body)
+        except ValueError as exc:
+            # An unreadable body cannot establish the absence of role hints.
+            add("body", str(exc))
             has_checklist = has_reference = False
+        else:
+            has_checklist = any(
+                line.rstrip() == f"## {TASKS_HEADING}" for line in lines
+            )
+            has_reference = any(line.startswith("親issue:") for line in lines)
         is_parent = (
             PARENT_LABEL in issue.labels or bool(issue.children) or has_checklist
         )
@@ -92,6 +98,26 @@ def check_consistency(issues: Mapping[int, Issue]) -> tuple[Problem, ...]:
             or bool(title_hint and title_hint.parent)
             or has_reference
         )
+        if STANDALONE_LABEL in issue.labels and (is_parent or is_child):
+            add(
+                "label.standalone",
+                f"{STANDALONE_LABEL} conflicts with parent/child roles or relationships",
+            )
+        if PROPOSAL_LABEL in issue.labels:
+            if {PARENT_LABEL, CHILD_LABEL, STANDALONE_LABEL} & issue.labels:
+                add("label.proposal", "proposal conflicts with another role label")
+            if (
+                issue.parent is not None
+                or issue.children
+                or has_checklist
+                or has_reference
+                or bool(title_hint and title_hint.parent)
+            ):
+                add(
+                    "relationship.proposal",
+                    "proposal cannot have parent/children or work-role hints",
+                )
+            is_parent = is_child = False
         if is_parent and PARENT_LABEL not in issue.labels:
             add("label.parent", f"missing {PARENT_LABEL}")
         if is_child and CHILD_LABEL not in issue.labels:
@@ -119,6 +145,13 @@ def check_consistency(issues: Mapping[int, Issue]) -> tuple[Problem, ...]:
                     add("body.parent", "body parent differs from GitHub parent")
             except ValueError:
                 pass  # Already reported by validate_body.
+        elif STANDALONE_LABEL in issue.labels:
+            # Report standalone parse errors without requiring parent/child
+            # sections. Legacy bodies without role hints keep their format.
+            try:
+                parse_sections(issue.body)
+            except ValueError as exc:
+                add("body", str(exc))
         if issue.parent is not None:
             if issue.parent not in issues:
                 add("relationship.parent", f"missing parent snapshot #{issue.parent}")

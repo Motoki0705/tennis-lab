@@ -1,0 +1,63 @@
+{
+  "kind": "manual_RGB_net_top_band_exclusion",
+  "reason": "Elevated net tape is not a painted ground marking; endpoint locations selected from original frame 0, before reading predictions or rescoring. Expanded by 8 pixels for band thickness and sag.",
+  "half_width_px": 8,
+  "cameras": {
+    "cam0": {
+      "endpoints_xy": [
+        [
+          725,
+          423
+        ],
+        [
+          1318,
+          435
+        ]
+      ],
+      "source": "frames/cam0/clip_000_frame_000000.png",
+      "source_bgr_sha256": "8482c8cd1949931d74b2c88ed93f3ff6fcc43e5731ad5a03be72508c66d15984"
+    },
+    "cam1": {
+      "endpoints_xy": [
+        [
+          455,
+          464
+        ],
+        [
+          1101,
+          464
+        ]
+      ],
+      "source": "frames/cam1/clip_000_frame_000000.png",
+      "source_bgr_sha256": "f6491749b083da091fb6e8744e6b763b869c0d6d0771963f2f3dd68008baea73"
+    },
+    "cam2": {
+      "endpoints_xy": [
+        [
+          790,
+          449
+        ],
+        [
+          1400,
+          445
+        ]
+      ],
+      "source": "frames/cam2/clip_000_frame_000000.png",
+      "source_bgr_sha256": "10da854442286a0d882ec5a253a6607c6aee41073ea22387f30eb130f83d18d7"
+    },
+    "cam3": {
+      "endpoints_xy": [
+        [
+          708,
+          320
+        ],
+        [
+          1305,
+          267
+        ]
+      ],
+      "source": "frames/cam3/clip_000_frame_000000.png",
+      "source_bgr_sha256": "626ffe181f7a9388e90730435ef052c5df3dd3da76806f7db2b852400a5fab84"
+    }
+  }
+}

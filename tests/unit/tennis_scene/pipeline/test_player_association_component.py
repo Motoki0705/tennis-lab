@@ -36,6 +36,7 @@ from tests.unit.tasks.player_association.test_association import (
     _config,
     _tracks,
 )
+from tests.unit.tennis_scene.pipeline.config_factories import fake_encoder_spec
 
 IDS = tuple(camera.camera_id for camera in CAMERAS)
 # cam2's calibration is its camera-local court: half-turned relative to the reference.
@@ -130,7 +131,7 @@ def test_inputs_and_encoders_must_agree_with_the_declaration() -> None:
     with pytest.raises(ValueError, match="exactly when"):
         PlayerAssociationModule(IDS, _config(), sampling=CropSamplingConfig(), encoder=None, device="cpu", enabled=True)
     named = PlayerAssociationModule(IDS, _config(), sampling=CropSamplingConfig(), device="cpu", enabled=True,
-                                    encoder=lambda: cast(Any, SimpleNamespace(name="other", input_size=(256, 128))))
+                                    encoder=fake_encoder_spec(lambda: cast(Any, SimpleNamespace(name="other", input_size=(256, 128)))))
     with pytest.raises(ValueError, match="not the configured"):
         _run(named, _singles())
     with pytest.raises(ValueError, match="other cameras"):

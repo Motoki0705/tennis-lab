@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# name: court-fixed-support-rgb-capture
+# added: 2026-11-17T00:58:22+09:00
+# provider: codex
+# session: 01a1e30b-a305-7672-8355-525787fd6380
+# issue: 2190
+# resource: half
+# external_teardown_ack: 0
+# prune_ckpt: 0
+# idempotency_key_sha256: d21a8bd1f25fa90a7a047eb9f9d41075e3bcc53273654c97d8f199500e87112d
+# request_sha256: 09c5758e22b999630986ddebe72654886885108de45e2ba210a2ef180e4f2ef6
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+export TENNIS_RUN_ID=0-8205155297448446735_2026-11-16T15-58-22-551553264Z_3814868_court-fixed-support-rgb-capture
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205155297448446735_2026-11-16T15-58-22-551553264Z_3814868_court-fixed-support-rgb-capture
+export TENNIS_GPU_RESOURCE=half
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205155297448446735_2026-11-16T15-58-22-551553264Z_3814868_court-fixed-support-rgb-capture --name court-fixed-support-rgb-capture --provider codex --session 01a1e30b-a305-7672-8355-525787fd6380 --issue 2190 --cmd OMP_NUM_THREADS=1\ OPENBLAS_NUM_THREADS=1\ PYTHONPATH=.\ .venv/bin/python\ knowledge/runs/run-court-fixed-support-rgb-20261117/capture.py
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=. .venv/bin/python knowledge/runs/run-court-fixed-support-rgb-20261117/capture.py

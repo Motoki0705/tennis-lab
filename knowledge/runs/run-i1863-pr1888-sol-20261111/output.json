@@ -1,0 +1,23 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "PR A が reviewed、PR B が not_reviewed の結果は、正常終了した runtime でも全体が failed/incomplete になります。一方、evaluate_coverage と merge gate は A の承認を許可します。この早期 return はその結果の runtime 検査を省略するため、保存した agent-runtime/result.json が別モデル・effortの記録へ差し替わったり欠損したりしても、実効値・runtime digest・公開 runtime_settings の不一致を検出せず、公開再開と A の merge を許します。全体の succeeded 判定だけでなく、採用可能な reviewed coverage を持つ結果にも照合を必須にしてください。静的な経路確認による指摘です。",
+          "id": "pr-1888-1",
+          "line": 347,
+          "path": ".agents/ops/review/review_recovery.py",
+          "rule": "一部PRが確認済みの incomplete 結果にも runtime 照合を適用する",
+          "severity": "major"
+        }
+      ],
+      "number": 1888,
+      "summary": "指定された head/base の差分、関連コード、追加テストを静的に確認しました。"
+    }
+  ],
+  "summary": "静的レビューを完了し、merge gate の実効モデル照合に major 1件を確認しました。実行検証は行っていません。",
+  "verdict": "request_changes"
+}

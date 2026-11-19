@@ -1,0 +1,27 @@
+{
+  "initial": {
+    "rows": 276,
+    "cameras": 4,
+    "clips": 69,
+    "width": 1920,
+    "height": 1080,
+    "frames": 6,
+    "table": 5
+  },
+  "warning": {
+    "camera": "cam1",
+    "clip": "video_000/clip_002",
+    "status": "warning",
+    "frame": 1363,
+    "source": "file:///home/kamimura/projects/tennis-lab/.worktree-outputs/court-video-shared/tennis_scene/evaluate/court-video-drift-lines-20261117/review/cam1/clip_002/frame-001363/source.jpg"
+  },
+  "final": {
+    "status": "failed",
+    "crops": 4,
+    "source": "file:///home/kamimura/projects/tennis-lab/.worktree-outputs/court-video-shared/tennis_scene/evaluate/court-video-drift-lines-20261117/review/cam3/clip_068/frame-000046/source.jpg",
+    "frame": 46,
+    "worst": 46
+  },
+  "result": "passed",
+  "gpu_disabled": true
+}

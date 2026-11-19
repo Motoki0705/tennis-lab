@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205031227420113411_2026-11-18T02-26-12-579886588Z_2339132_i2238-precision-meiji-full",
+  "name": "i2238-precision-meiji-full",
+  "command": "env PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=42 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/outputs/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib/MultiScaleDeformableAttention.so .venv/bin/python -u knowledge/runs/run-person-stage-precision-meiji-20261118/gpu_guard.py --health outputs/precision/full/health knowledge/runs/run-person-stage-precision-meiji-20261118/benchmark.py --dataset data/tennis_multiview/processed/meiji_4cam/dataset --shared-root /home/kamimura/projects/tennis-lab/.worktree-outputs/court-video-shared --pin knowledge/runs/run-person-stage-precision-meiji-20261118/full-inputs.json --output outputs/precision/full --smoke outputs/precision/smoke/health/status.json",
+  "provider": "codex",
+  "session": "01a1ec52-c2ef-70e3-bd48-588f68ed717e",
+  "issue": "2238",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ba5d26a0767955563ed24a85bb0d9d8bddcc6c16",
+  "branch": "codex/person-stage-speed",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-stage-speed",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/person-stage-speed",
+  "captured_at": "2026-11-18T11:26:13+09:00"
+}

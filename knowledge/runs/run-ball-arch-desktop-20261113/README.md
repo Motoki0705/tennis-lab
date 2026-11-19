@@ -1,5 +1,7 @@
 # RTX 5060 Ti continuation of the architecture campaign
 
+**C3未完了・途中結果（2026-11-19）**。T1/T2/C1/C2は完了済みだが、C3の完走と統合評価は未確認。C3の再開は固定tag `ball-arch-c3-exec-7d7a2e4fa` のsourceで行い、このPRのmain統合後sourceへ切り替えない。CPUでのmain統合確認は [integration-cpu.json](integration-cpu.json) と [再現スクリプト](integration_cpu.py) を参照。
+
 **Attempt 7 is running C3 from its verified zero-update
 initialization generation** after the human-requested attempt-6 stop. Updates
 1–11 (the first compiled update plus ten subsequent updates) passed finite-value,

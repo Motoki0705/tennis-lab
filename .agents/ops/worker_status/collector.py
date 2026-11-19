@@ -123,7 +123,7 @@ def latest_run(
             or not re.fullmatch(r"[0-9a-f]{32}", run["delegation_id"])
             or not isinstance(run["run_dir"], str)
             or not run["run_dir"]
-            or run["kind"] not in {"initial", "resume", "registered"}
+            or run["kind"] not in {"initial", "resume", "registered", "replacement"}
         ):
             raise ValueError("invalid worker run")
         if "preflight" in run:
@@ -533,10 +533,14 @@ def collect_status(
                     "children": [],
                 }
                 for child in sorted({int(k) for k in row["tasks"]} | set(remote)):
-                    record["children"].append(
-                        child_status(
+                    primary = row["tasks"].get(str(child), {})
+                    for name, task in [
+                        ("primary", primary),
+                        *primary.get("helpers", {}).items(),
+                    ]:
+                        observation = child_status(
                             child,
-                            row["tasks"].get(str(child), {}),
+                            task,
                             row,
                             guard,
                             state=store.directory,
@@ -547,7 +551,9 @@ def collect_status(
                             tail_bytes=tail_bytes,
                             tool_limit=tool_limit,
                         )
-                    )
+                        if primary.get("helpers"):
+                            observation["worker_name"] = guard.text(name)["text"]
+                        record["children"].append(observation)
                 if not github:
                     fresh = registry(store)
                     guard.observe_parents(fresh)

@@ -13,7 +13,7 @@ import time
 from collections.abc import Callable, Iterable
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -31,10 +31,11 @@ def quantiles(samples: Iterable[float]) -> dict[str, float]:
     values: NDArray[np.float64] = np.asarray(list(samples), dtype=np.float64)
     if not values.size or not bool(np.isfinite(values).all()):
         raise ValueError("Latency samples must be nonempty and finite")
+    percentiles = cast(NDArray[np.float64], np.percentile(values, (50, 90, 95)))
     return dict(
         zip(
             ("p50", "p90", "p95"),
-            (float(x) for x in np.percentile(values, (50, 90, 95))),
+            (float(x) for x in percentiles),
             strict=True,
         )
     )

@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "8af9f5353e4241dd982ad12c769da781",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.review-prepare; artifact=command response; content_sha256=0e14fb91250294627db44042b2f01094df14985743b7776a78548966da740847; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "failure",
+      "summary": "parent.review-prepare: post-start failure; ValueError; details in private evidence",
+      "verifies": []
+    },
+    "id": "ea45db3965ab43aca4d68933359a63e9",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "660603b46eec4d42a86d6e0ed7f9d279",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "677958d34d5a42fa960627729861c6e9"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T05:19:37.325776+00:00"
+      },
+      "recorded_at": "2026-11-14T05:19:37.325792+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

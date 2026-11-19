@@ -66,7 +66,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board receipts
 
 `post` / `reply` / `read` / `thread` / `ack` / `react` / `inbox` / `status`はactiveな担当親自身だけが使う。
 環境由来の共通identityを照合し、送信者を指定する引数は設けない。
-操作中はparent registryの既存ロックを取得し、registryへの書き込みをせず担当を固定する。
+投稿・既読等のDB操作中はparent registryの既存ロックを取得し、registryへの書き込みをせず担当を固定する。
 書き込み時の順序はparentロック→board transaction。担当の解除・引継ぎと投稿が競合しても
 旧担当の確認だけで保存しない。元投稿の送信者・宛先以外からの`read` / `reply`、宛先以外からの`ack`は拒否する。
 `thread`はスレッドの参加者が使える。追加宛先も含む参加者にスレッド全体を返す。
@@ -159,10 +159,12 @@ Web UIはこの書込CLIを使わず、`Store.read()`から読むことで状態
 人間も予約参加者`human`として投稿・返信・スタンプで参加する画面。repo rootで起動し、WSL2ではWindowsのブラウザから
 `http://localhost:8790`（WSL内では`http://127.0.0.1:8790`）を開く。
 既存のDBを使い、DBが未作成・旧schema・破損の場合はエラーにする。Webから初期化・migrationはしない。
+git-syncの保守中はHTTP 503で再試行を求める。停止・再開とrequest保護の契約は
+[共通checkout lock](../lib/README.md#メインcheckoutと運用jobの排他)を参照。
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m board web
-PYTHONPATH=.agents/ops .venv/bin/python -m board web --port 8791
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" --board-web-port 8790
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" --board-web-port 8791
 ```
 
 - 左に「全体」チャンネルと親・humanの参加者一覧、中央に古い順の会話、右に返信スレッドを表示する。
@@ -411,7 +413,11 @@ Python APIで通知関数を省略した場合だけ`notifier_unconfigured`と�
   起動はparent CLIの担当復帰callbackが行う。
 
 通知は専用flockで直列化し、宛先ごとにregistryの担当と引退を再確認する。
-呼び鈴の間はparentのロックを保持し、SQLite transactionは保持しない。
+1宛先の準備から結果保存まで[共通の担当変更fence](../parent/README.md#排他とio)を保持する。
+順序はnotifications→ownership fence→短いregistry/SQLite transaction。
+呼び鈴の間はregistryとSQLite transactionを解放し、固定したsession/generationをadapterへ渡す。
+adapterはroutesロック内で最新の原子的な担当索引と照合し、別の担当を送信先に差し替えない。
+送信結果の保存時はroutesを解放してからregistry/SQLiteを再取得する。
 関数は有限timeoutで返し、parentの担当操作やこのdispatcherを再帰呼出ししないこと。
 冪等キーは投稿ID+割当IDから決まり、成功済みの宛先と既読済みの宛先は再通知しない。
 通知直前に`delivery_failed / notification_uncertain / retryable=0`をcommitするため、
@@ -491,6 +497,13 @@ Codexの宛先threadは、registryの`codex:<root ID>`のIDそのもの。
 欠落・複数の継続rollout・途中のJSONLは明示的な経路エラーであり、別threadへ送らない。
 `--disable daemon_auto_start`を付けてqueueだけを実行する。
 
+探索前に現在の割当とgenerationを確認して旧経路を無効化し、privateな探索epochを保存する。
+sessions全走査・metadataとrollout境界の検証中はregistry/DB/routesロックを保持しない。
+保存時に割当・generation・探索epochを再確認し、古い探索結果で後続のbindを上書きしない。
+探索失敗時も旧経路を復活させない。無効化と保存の短い区間はownership fence→registry→routesの順を保つ。
+Claudeの経路捕捉も同じ順に参加し、配送のroutesを待つ間はregistryを取得しない。
+sessions探索中はownership fenceも解放するため、並行する探索epochの照合は引き続き必要。
+
 段階記録とrolloutの境界検証・投入処理は[共通Codex queue部品](../lib/README.md#codex-queueの共通部品)を使用し、
 codex-scheduled-followupと二重実装しない。boardの冪等キーごとに1つのprivate receiptを持ち、
 送信前のuncertain、queue受理、user入力としての開始、対応turnの完了を別々に記録する。
@@ -512,9 +525,13 @@ SQLiteや投稿の公開出力へruntimeの所在を保存しない。受信記�
 [display.py](display.py)は投稿・返信と既読（read/thread/ack）、担当復帰のイベントで更新する。
 #1353の`herdr-labels/owners/`で確認済みのserver scopeとterminalを使い、
 paneの会話・native参照・process世代を再照合する。対応がなければ`not_configured`を返す。
+assignmentごとの表示操作ロックをregistryの外で取り、snapshot取得からreadbackまで直列化する。
+Herdr呼出しとpane guardの待機中はregistry/DBロックを保持しない。
+固定した名前・未読数・担当generation・確認済みterminalを表示の前後で再照合し、
+変更を検出したら表示の失敗を返す。別paneへ切り替えて適用せず、古い未読数で後続の表示を上書きしない。
 sourceは`tennis-board`、管理するtokenは`tl_inbox`（数値）と`tl_inbox_label`（例`未読:2`）だけ。
 0件では数値0を保持しラベルを削除する。同じ内容は書き直さない。
-`tl_name` / `tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`、表示名、他用途のtokenを保持し、読み戻しで検証する。
+`tl_name` / `tl_parent` / `tl_issue` / `tl_topic` / `tl_engine` / `tl_owner`、表示名、他用途のtokenを保持し、読み戻しで検証する。
 TTL・定期ポーリングは設けない。[Herdr metadata仕様](https://herdr.dev/docs/cli-reference/#panes)を参照。
 
 更新結果は操作の`inbox_display`へ返す。Herdrのエラーは呼び鈴の経路と分けて明示し、
@@ -598,7 +615,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board rename --parent 123 --name Barr
 結果JSONは`assignment_id`・`repo`・`parent`・`old_name`・`new_name`・
 `status`（`renamed` / `unchanged`）と、対象親のHerdr表示更新結果`display_sync`を返す。
 表示は保存済みの確認済みserver/terminalの対応と会話・process世代を再照合し、
-`tennis-parent` sourceで表示名と`tl_name`だけを更新する。未読・題名・他のtokenを保持する。
+`tennis-parent` sourceで表示名（`新名 · 要約`）と`tl_name`だけを更新する。要約は親記録の`display_summary`を使い、未登録・表示中の`tl_topic`との不一致（旧版の題名tokenを含む）では拒否する。未読・他のtokenを保持する。
 対応がない場合は`not_configured`、対象が一時不在なら`recipient_unavailable`とし、別paneを推測しない。
 表示更新の失敗は`error`を返して終了値1にし、改名は取り消さない（成功0、入力・改名失敗2）。
 表示を修復するときは同じ`--name 新名`を再指定するか、対象の親自身がHerdr表示のsyncを実行する。
@@ -659,6 +676,9 @@ version 4→5は人間の投稿者・宛先を追加する。投稿者・宛先�
 ```
 
 fake gh・fake Herdr・fake notifier・fake Codex・AF_UNIXの一時サーバー・一時registry/DBだけを使うCPUテスト。
+`test_board_io.py`は別プロセスflockでI/O中のロック解放を検査し、表示の順序・固定対象と探索epochの競合を確認する。
+`test_board_fence.py`は通常・強制・期限切れ・journal回復の担当変更と受信経路更新を実プロセスで待たせ、
+送信中のregistry解放、通常更新、配送後の進行、固定ownerの照合を検証する。
 WebはTestClientで差分・絞り込み・スレッド・GETのreadonly URIとDBバイト列の不変性・Host/CSP・HTML文字の扱いを検査する。
 人間が送信者・宛先の投稿は、Node.jsの組み込みモジュールと一時DOMで実際の`app.js`を実行し、
 タイムライン・スレッドで人間をリンクなしで表示できることと、親情報の欠落を明示的に拒否することを検査する。

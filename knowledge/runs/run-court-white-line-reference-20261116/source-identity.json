@@ -1,0 +1,46 @@
+{
+  "source_commit": "b533eb7abdcb4fe7bdd125d41e2675cd75ceef4c",
+  "output_root": "outputs/tennis_scene/evaluate/court-reference-white-lines-20261116",
+  "large_outputs_retained": [
+    {
+      "path": "fit-final/cam2-evidence.json",
+      "bytes": 329779,
+      "sha256": "22efe5b3a567d98fba98c500a0f4a674e7d3d2954c96bc32df5df85e32996af2"
+    },
+    {
+      "path": "fit-final/cam0-evidence.json",
+      "bytes": 372758,
+      "sha256": "292f45951b4435e0104b3dba60b25a98dd289b02f41c6569fdd96764b58e122b"
+    },
+    {
+      "path": "fit-final/cam3-evidence.json",
+      "bytes": 331169,
+      "sha256": "6e04aeba39496b38b9aa990dfb396af0d1ceb5f1dd962546fcbbeb2216b5ecb4"
+    },
+    {
+      "path": "fit-final/cam1-evidence.json",
+      "bytes": 336290,
+      "sha256": "7cbd87606e4268d0f9065779991a8c8695629d09769bc34110ec3d99a98638ed"
+    },
+    {
+      "path": "fit-a1/references.json",
+      "bytes": 30526,
+      "sha256": "61d737bab86a90ef49bcc6fdded4995ee0f09098962038ac98902725e3fed3e8"
+    },
+    {
+      "path": "fit-a2/references.json",
+      "bytes": 31540,
+      "sha256": "761db73b6a503163fdbbf36eee5f30ac98f00c7c2fa2e877334a39884fc0f1e6"
+    },
+    {
+      "path": "review/manifest.json",
+      "bytes": 22312,
+      "sha256": "3460800fa7aa35dbd9937e774101c22525af9e612a6e0a5a3bfd61bbadc9c3a5"
+    },
+    {
+      "path": "remaining/manifest.json",
+      "bytes": 181340,
+      "sha256": "5a39511dbd2c59ab627f2bc5a051fba03536981c251f35f0df006d0778bde3bd"
+    }
+  ]
+}

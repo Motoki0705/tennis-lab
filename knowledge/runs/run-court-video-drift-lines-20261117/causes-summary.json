@@ -1,0 +1,88 @@
+{
+  "posthoc_only": true,
+  "used_for_acceptance": false,
+  "official_verdicts_unchanged": true,
+  "frames": 437,
+  "seconds": 159.71283729598508,
+  "cameras": {
+    "cam0": {
+      "frames": 128,
+      "unmatched_lines": {
+        "left_doubles": 123,
+        "centre_service": 1,
+        "left_singles": 4
+      },
+      "conditional_status_counts": {
+        "ok": 128
+      },
+      "conditional_reasons": {
+        "None": 128
+      },
+      "conditional_mean_range_px": [
+        0.09001892799056846,
+        0.8659339796708877
+      ]
+    },
+    "cam1": {
+      "frames": 11,
+      "unmatched_lines": {
+        "right_singles": 11
+      },
+      "conditional_status_counts": {
+        "ok": 10,
+        "warning": 1
+      },
+      "conditional_reasons": {
+        "None": 10,
+        "camera_moved_possible": 1
+      },
+      "conditional_mean_range_px": [
+        3.575418465933065,
+        3.979654969540564
+      ]
+    },
+    "cam2": {
+      "frames": 51,
+      "unmatched_lines": {
+        "left_singles": 27,
+        "near_baseline": 10,
+        "near_service": 22,
+        "centre_service": 1
+      },
+      "conditional_status_counts": {
+        "ok": 41,
+        "failed": 10
+      },
+      "conditional_reasons": {
+        "None": 41,
+        "drift_unobservable": 10
+      },
+      "conditional_mean_range_px": [
+        0.15116770014404501,
+        18.265991259338332
+      ]
+    },
+    "cam3": {
+      "frames": 247,
+      "unmatched_lines": {
+        "right_doubles": 149,
+        "near_baseline": 43,
+        "near_service": 54,
+        "right_singles": 42,
+        "centre_service": 1
+      },
+      "conditional_status_counts": {
+        "ok": 204,
+        "failed": 43
+      },
+      "conditional_reasons": {
+        "None": 204,
+        "drift_unobservable": 43
+      },
+      "conditional_mean_range_px": [
+        0.8327520610748338,
+        4.659178529830613
+      ]
+    }
+  }
+}

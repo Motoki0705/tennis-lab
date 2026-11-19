@@ -1,0 +1,62 @@
+[
+  {
+    "case": "court_side_saved",
+    "cap": 2048,
+    "all_arrays_finite": true,
+    "output_sha256": "5fc544cbf4dc21ee649abf6858249b263ec76c271a36901ad70236a70baf3915"
+  },
+  {
+    "case": "court_side_saved",
+    "cap": 4096,
+    "all_arrays_finite": true,
+    "output_sha256": "5fc544cbf4dc21ee649abf6858249b263ec76c271a36901ad70236a70baf3915"
+  },
+  {
+    "case": "camera_alignment_saved_ball_only",
+    "cap": 2048,
+    "all_arrays_finite": true,
+    "output_sha256": "73dd7cdcc9a97526e15a4e39ca2acc314a680a7a416123b6da6a9801422b2f43"
+  },
+  {
+    "case": "camera_alignment_saved_ball_only",
+    "cap": 4096,
+    "all_arrays_finite": true,
+    "output_sha256": "73dd7cdcc9a97526e15a4e39ca2acc314a680a7a416123b6da6a9801422b2f43"
+  },
+  {
+    "case": "body_view_selection_saved_provisional",
+    "cap": 2048,
+    "all_arrays_finite": true,
+    "output_sha256": "02285cc1bc24ea3c082309a5fa2f36b22e8b00837a9d224df3e7c4f6f7644724"
+  },
+  {
+    "case": "body_view_selection_saved_provisional",
+    "cap": 4096,
+    "all_arrays_finite": true,
+    "output_sha256": "02285cc1bc24ea3c082309a5fa2f36b22e8b00837a9d224df3e7c4f6f7644724"
+  },
+  {
+    "case": "camera_alignment_dense",
+    "cap": 2048,
+    "all_arrays_finite": true,
+    "output_sha256": "2ad36f83134b124e23073d21ab18e3f66a087103bc8a7b6e8f97b1275fa1af54"
+  },
+  {
+    "case": "camera_alignment_dense",
+    "cap": 4096,
+    "all_arrays_finite": true,
+    "output_sha256": "2ad36f83134b124e23073d21ab18e3f66a087103bc8a7b6e8f97b1275fa1af54"
+  },
+  {
+    "case": "body_view_selection_dense",
+    "cap": 2048,
+    "all_arrays_finite": true,
+    "output_sha256": "89ce48ddbb5794beb2dc16706b9031306f253631092be64133a5a2e9586e0838"
+  },
+  {
+    "case": "body_view_selection_dense",
+    "cap": 4096,
+    "all_arrays_finite": true,
+    "output_sha256": "89ce48ddbb5794beb2dc16706b9031306f253631092be64133a5a2e9586e0838"
+  }
+]

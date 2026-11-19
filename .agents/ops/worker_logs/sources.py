@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from lib.agent_events import runtime_errors_failed
+
 from . import journal, schema
 from .journal import PublicationError, require
 from .safety import Guard
@@ -93,7 +95,7 @@ def standard_reference(raw: bytes) -> dict[str, str]:
 
 
 def freeze(session: Any, child: int, prompt: str, standard: bytes) -> Path:
-    task = session.row["tasks"][str(child)]
+    task = session.worker_task(child)
     phase = task["preflight"]
     key = public_key(phase)
     turn = phase["turns"][-1]
@@ -164,6 +166,18 @@ def freeze(session: Any, child: int, prompt: str, standard: bytes) -> Path:
         "run_directory": turn["source"],
         "task_id": task["delegation_id"],
     }
+    if "repair" in turn:
+        from lib.repair_turn import validate_request
+
+        validate_request(turn["repair"])
+        source["repair"] = dict(turn["repair"])
+        repair_id = turn["repair"]["repair_id"]
+        if re.fullmatch(
+            r"[a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}",
+            repair_id,
+            re.IGNORECASE,
+        ):
+            source["private"].append(repair_id)
     result = subprocess.run(
         ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
         cwd=task["worktree"],
@@ -261,6 +275,7 @@ def receive(path: Path, proof: dict[str, Any]) -> dict[str, Any]:
             if (
                 record.get("result") != "completed"
                 or record.get("turn_end_reason") != "completed"
+                or runtime_errors_failed(record)
             ):
                 journal.fail(path, row, "worker_failed", state="worker_failed")
                 return journal.view(row)
@@ -346,10 +361,16 @@ def render(source: dict[str, Any], receipt: dict[str, Any]) -> dict[str, bytes]:
     )
     additional = [guard.sanitize(s) for s in source["additional"]]
     settings = record["contract"]["settings"]
+    repair = source.get("repair")
+    if repair is not None:
+        from lib.repair_turn import validate_contract
+
+        validate_contract(record["contract"])
+    require(record["contract"].get("repair") == repair, "runner_settings_changed")
     require(
         settings["agent"] == "codex"
         and settings.get("profile") is None
-        and settings["selected"]["effort"] == "max",
+        and settings["selected"]["effort"] == ("high" if repair is not None else "max"),
         "runner_settings_changed",
     )
     selected = {k: settings["selected"][k] for k in ("model", "effort")}
@@ -413,6 +434,7 @@ def render(source: dict[str, Any], receipt: dict[str, Any]) -> dict[str, bytes]:
             "kind": source["kind"],
             "phase": source["phase"],
             "previous_sequence": source["sequence"] - 1 or None,
+            **({"repair": {"pr": repair["pr"]}} if repair is not None else {}),
         },
         "decision": source["decision"],
         "sources": {

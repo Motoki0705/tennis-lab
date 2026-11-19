@@ -1,0 +1,24 @@
+{
+  "latest_c3_base": "1bef628a9c2c5761d241ddc5c1b98c0f89625b35",
+  "acceptance_commit": "5a0f48053e6a479ff345cc858002752cd4f1794f",
+  "body_source_hashes_unchanged": true,
+  "submodule_model_sources_unchanged": true,
+  "old_max_frames": 1024,
+  "new_default_max_frames": 2048,
+  "grid_equal": true,
+  "sampled_frames": 146,
+  "source_video": {
+    "camera_id": "cam0",
+    "fps": 59.94005994005994,
+    "height": 1080,
+    "num_frames": 292,
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam0.mp4",
+    "sha256": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+    "width": 1920
+  },
+  "knowledge_sequence_mapping": {
+    "44": 52,
+    "45": 53
+  },
+  "historical_run_ids_and_repro_bundles_unchanged": true
+}

@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "c874e0dc07d94fcb942e6c4b1bf29211",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.create-child; artifact=improvement approval gate; content_sha256=6329f919a3525f5c5f7b823b66c02266f60422261d4a4d67f2734dac6eb849bb; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "rejected",
+      "summary": "I-1878-merge-gate-api-scope: execution approval rejected; no implementation launch",
+      "verifies": []
+    },
+    "id": "c776a7ae9e7942ee9c0ed1ea64d1e21b",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "293800d0db204e4e99d7b6d887e43c50",
+      "delegation": null,
+      "issue": null,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-16T00:25:11.685214+00:00"
+      },
+      "recorded_at": "2026-11-16T00:25:11.685228+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

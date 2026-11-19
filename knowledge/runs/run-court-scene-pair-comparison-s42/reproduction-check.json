@@ -1,0 +1,21 @@
+{
+  "schema": "court_scene_pair_reproduction_check_v1",
+  "repro_shell_completed": true,
+  "raw_report_count": 9,
+  "byte_identical_generated_files": 13,
+  "files": {
+    "b00_addition.csv": "6fe00d817c00f1dd8f8c74167ac5002cbe361a941480ad343cb6cfd6eb76dbdc",
+    "comparison.json": "49a09ed0b02a434880e69c30b7d971f36d024b095571ecc3b2bfe913817c2ee5",
+    "contrasts.csv": "e882713fb7bd7b52f2603b5778691b9b0779c49f4b94694fbdefddb1420564d9",
+    "crosscheck.json": "2094d2ff25b4b15f5ddfba12c116101f943db39d5b9d8219ac11e4942b8c7425",
+    "real_all.csv": "c1e441b46b2714fd5d063b133329170b66068baa029b10ed376b961743bc27e3",
+    "real_pairs.csv": "a4325ba80bbee4bb4ddc3c686785d1398cce0c7f31a6946805ae590792990872",
+    "synthetic-kp-median.png": "0cfcbf29de2ab1f553befb376b6ce9f9c0f87c66087d9d78be552b29a4bd9dfd",
+    "synthetic-kp_mean_distance_px.csv": "eba6a3cd2cda482807b97b4d0a68a3795226b07ba9cbbb55b48631f2f9412ce4",
+    "synthetic-kp_median_distance_px.csv": "c83a1acf1f0ec015689e360ade29f48017ba5fa5fa4def3de6f6f762fe2521b9",
+    "synthetic-line_dice.csv": "2e7efafd7ca3539790c119180b42c7ba2fbe872be23547cca38bc31ea0405d73",
+    "synthetic-seg_miou.csv": "b47486303b00225c9fdc335759105d971b824159ac847ddfa6f8f915370484dc",
+    "synthetic-semantic_line_miou.csv": "74a6244cd56f063b7cf745b6d8466f47dbc2b5f36e31e26d349d3926944993d1",
+    "synthetic_long.csv": "1cf934383cd91ab1fbc27b3aa4ee4ae889479f86c5884f60ee55db4b38767597"
+  }
+}

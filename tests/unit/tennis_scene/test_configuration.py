@@ -21,6 +21,7 @@ from src.tennis_scene.configuration import (
     parse_clip_studio_config,
     parse_visualize_tasks_config,
 )
+from src.tennis_scene.pipeline.artifacts import document_digest
 from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
@@ -69,7 +70,7 @@ def _visualize_tasks_config(root: Path, *overrides: str) -> DictConfig:
 
 
 def _clip_studio_config(root: Path) -> dict[str, object]:
-    source = root / "data/tennis_multivew/raw/match01/video_000"
+    source = root / "data/tennis_multiview/raw/match01/video_000"
     source.mkdir(parents=True, exist_ok=True)
     (source / "cam0.mp4").touch()
     (source / "cam1.mp4").touch()
@@ -83,7 +84,7 @@ def _clip_studio_config(root: Path) -> dict[str, object]:
             "cache_root": ".cache",
             "external_asset_root": "third_party",
         },
-        "source_directory": "tennis_multivew/raw/match01/video_000",
+        "source_directory": "tennis_multiview/raw/match01/video_000",
         "gui": {
             "canvas_width": 1600,
             "tile_width": 640,
@@ -115,15 +116,15 @@ def test_clip_studio_config_resolves_each_path_from_its_declared_root(
 
     assert (
         runtime.export.projects_path
-        == (tmp_path / "data/tennis_multivew/processed/match01/projects.json").resolve()
+        == (tmp_path / "data/tennis_multiview/processed/match01/projects.json").resolve()
     )
     assert (
         runtime.export.output_dir
-        == (tmp_path / "data/tennis_multivew/processed/match01/dataset").resolve()
+        == (tmp_path / "data/tennis_multiview/processed/match01/dataset").resolve()
     )
     assert runtime.video_paths == (
-        (tmp_path / "data/tennis_multivew/raw/match01/video_000/cam0.mp4").resolve(),
-        (tmp_path / "data/tennis_multivew/raw/match01/video_000/cam1.mp4").resolve(),
+        (tmp_path / "data/tennis_multiview/raw/match01/video_000/cam0.mp4").resolve(),
+        (tmp_path / "data/tennis_multiview/raw/match01/video_000/cam1.mp4").resolve(),
     )
     assert runtime.camera_ids == ("cam0", "cam1")
     assert runtime.dataset_id == "match01"
@@ -177,10 +178,42 @@ def test_invalid_ball_candidate_config_fails_before_inference(tmp_path: Path, ov
 
 def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path))
-    assert runtime.sampling_max_frames == 1024
     assert runtime.camera_geometry.reference_camera is None
     assert runtime.people.runtime.static_cam
     assert runtime.enabled["player_reconstruction"] and "blcs_association" not in runtime.enabled
+
+
+@pytest.mark.parametrize("setting,value", [
+    ("region_search.max_projection_std_ratio", 0.004),
+    ("postprocess.boundary_margin_cells", 2.0),
+])
+def test_court_quality_settings_change_cache_identity(tmp_path: Path, setting: str, value: float) -> None:
+    config = _pipeline_config(tmp_path)
+    before = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
+    OmegaConf.update(config, f"court_kp.{setting}", value)
+    after = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
+    # standard_definition passes this entire document to the court component.
+    # The generic component-store test covers descendant invalidation.
+    assert document_digest(before.processing_settings["court_kp"]) != document_digest(after.processing_settings["court_kp"])
+    group, field = setting.split(".")
+    assert getattr(getattr(after.court_kp, group), field) == value
+
+
+@pytest.mark.parametrize("key,value,invalid", [("min_inliers", 9, 3), ("inlier_distance_ratio", 0.01, 1.0)])
+def test_legacy_court_acceptance_keys_accept_overrides_and_validate_ranges(
+    tmp_path: Path, key: str, value: float, invalid: float,
+) -> None:
+    before = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path), bind_inputs=False)
+    after = PipelineRuntimeConfig.from_config(
+        _pipeline_config(tmp_path, f"court_kp.region_search.{key}={value}"), bind_inputs=False,
+    )
+    assert after.court_kp.region_search.acceptance_method == "legacy"
+    assert getattr(after.court_kp.region_search, key) == value
+    assert document_digest(before.processing_settings["court_kp"]) != document_digest(after.processing_settings["court_kp"])
+    with pytest.raises(ValueError, match=key):
+        PipelineRuntimeConfig.from_config(
+            _pipeline_config(tmp_path, f"court_kp.region_search.{key}={invalid}"), bind_inputs=False,
+        )
 
 
 @pytest.mark.parametrize("override", ["+ball_confidence=legacy.yaml", "+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5", "+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt"])

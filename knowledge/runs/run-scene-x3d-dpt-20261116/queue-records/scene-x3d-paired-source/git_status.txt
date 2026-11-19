@@ -1,0 +1,3 @@
+ M knowledge/runs/run-scene-x3d-dpt-20261116/cpu-verification.json
+?? knowledge/runs/run-scene-x3d-dpt-20261116/ci-history.json
+?? knowledge/runs/run-scene-x3d-dpt-20261116/validation-parity-gpu-decode.json

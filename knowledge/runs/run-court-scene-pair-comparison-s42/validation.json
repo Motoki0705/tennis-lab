@@ -1,0 +1,62 @@
+{
+  "schema": "court_scene_pair_comparison_validation_v1",
+  "pytest": {
+    "passed": 25,
+    "new_cases": 23,
+    "reused_original_validator_cases": 2,
+    "elapsed_seconds": 1.96,
+    "maximum_setup_seconds": 0.02,
+    "maximum_call_seconds": 0.06,
+    "max_parametrized_cases_per_function": 12,
+    "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES= .venv/bin/python -m pytest -n 0 knowledge/runs/run-court-scene-pair-comparison-s42/test_compare.py knowledge/runs/run-court-scene-pair-comparison-s42/test_curves.py knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean --durations=0 --durations-min=0"
+  },
+  "ruff": {
+    "passed": true,
+    "own_source_files": 7
+  },
+  "mypy": {
+    "passed": true,
+    "own_source_files": 7,
+    "follow_imports": "skip"
+  },
+  "pre_commit": {
+    "passed": true,
+    "note": "Staged knowledge paths are outside the ruff/mypy hook filters, so both hooks skip. The seven new analysis/test/staging files were checked directly."
+  },
+  "knowledge_validate": {
+    "base_ref": "aac0f649a9ad8f26f28b6977799459084aca7e12",
+    "check_summary": true,
+    "errors": 0,
+    "warnings": 0,
+    "nodes": 635
+  },
+  "repro_paths": {
+    "missing": 0,
+    "unverifiable": 20,
+    "note": "Existing legacy commits unavailable in this clone; no new missing paths."
+  },
+  "old_nodes_and_run_evidence_unchanged": true,
+  "repro_shell_byte_identical_generated_files": 13,
+  "source_capture_rerun_byte_identical": true,
+  "independent_crosscheck": {
+    "schema": "court_scene_pair_comparison_crosscheck_v1",
+    "verified": true,
+    "raw_report_count": 9,
+    "exact_extracted_cells": 527,
+    "independent_arithmetic_cells": 65,
+    "maximum_absolute_difference": 0.0,
+    "csv_json_cells_exact": 780,
+    "comparison_sha256": "49a09ed0b02a434880e69c30b7d971f36d024b095571ecc3b2bfe913817c2ee5",
+    "method": "Direct raw JSON extraction; Fraction exact binary means independently of compare.py; all output CSV cells checked against JSON."
+  },
+  "figures_inspected": [
+    "synthetic-kp-median.png",
+    "run-court-scene-pair-p02-s42/curves.png",
+    "run-court-scene-pair-p03-s42/curves.png",
+    "run-court-scene-pair-p12-s42/curves.png",
+    "run-court-scene-pair-p13-s42/curves.png",
+    "run-court-scene-pair-p23-s42/curves.png"
+  ],
+  "new_gpu_vm_queue_operations": 0,
+  "scope": "CPU aggregation and documentation of finished results only; no additional model evaluation, checkpoint selection or deployment change."
+}

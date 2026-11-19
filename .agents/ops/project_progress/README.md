@@ -141,11 +141,18 @@ Project更新・担当予約・agent起動・レビュー・merge・timerの変�
 権限不足を失敗にする。項目不足を既存Statusで補わない。cross-repositoryの子は明示調査を求める。
 archived itemは勝手に再追加せず、UIで明示的にunarchiveしてから再実行する。
 
-同一ホストの書込みを直列化する。取得中のregistryロック解放・再検査と操作ロックの順序は
-[parent registry](../parent/README.md#責務と状態の正本)を参照する。syncは最初の書込み直前にissue/PR/Projectを再取得し、
-変化していたら拒否する。GitHub全体をatomicには更新できないため、途中失敗・応答喪失後は同じspec/eventで再実行する。
+同一ホストの書込みは、親の操作ロックと同じowner/Project番号の共通操作ロックで直列化する。
+両操作ロックは通信中も保持し、query・mutation・REST POSTではregistryロックを解放する。
+transactionに結んだclientは通信前後で担当を再検査し、担当・generation等の変更を終了値2で拒否する。
+操作ロックの順序は[parent registry](../parent/README.md#責務と状態の正本)を参照する。
+setupは書込前後のProjectと親issue、syncは観測ごとにfreshなissue/PR/Projectを取得する。
+書込前の変化と、書込後の予定した差分以外の変化を拒否し、field/item/viewのIDの取り替えも検出する。
+GitHub全体をatomicには更新できないため、担当変更を検出した時も適用済みの書込は取り消さない。
+途中失敗・応答喪失後は同じspec/eventで再実行する。
 フィールド・ビュー名とcontent IDを照合して不足分だけを更新し、最終再取得で収束を確認する。
 既存同名項目の型・選択肢が違う場合は上書きせず止め、UIで内容を照合する。
 
 fake gh・一時registryによる試験は `tests/e2e/agents_ops/test_project_progress.py`。
 この実装の試験は実GitHubへの書込みや本物のagentを必要としない。
+
+改善提案は[作業対象外の役割](../issues/README.md#役割とテンプレートの選択)として、階層取得・投影と各viewのfilterから除外する。

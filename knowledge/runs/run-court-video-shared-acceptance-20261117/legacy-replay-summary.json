@@ -1,0 +1,46 @@
+{
+  "images": 3545,
+  "regions": 8530,
+  "seconds": 5530.114854142012,
+  "workers": 8,
+  "limit": null,
+  "datasets": {
+    "meiji_3cam": {
+      "regions": 2109,
+      "accepted": 165,
+      "any_h": 171,
+      "all_exact": 171,
+      "images": 171
+    },
+    "meiji_4cam": {
+      "regions": 3312,
+      "accepted": 152,
+      "any_h": 276,
+      "all_exact": 276,
+      "images": 276
+    },
+    "synthetic_court_test": {
+      "regions": 886,
+      "accepted": 30,
+      "any_h": 579,
+      "all_exact": 886,
+      "images": 886
+    },
+    "tennis_clip": {
+      "regions": 12,
+      "accepted": 1,
+      "any_h": 1,
+      "all_exact": 1,
+      "images": 1
+    },
+    "tennis_court_detector_val": {
+      "regions": 2211,
+      "accepted": 2153,
+      "any_h": 2211,
+      "all_exact": 2211,
+      "images": 2211
+    }
+  },
+  "mismatches": [],
+  "historical_run73_choice_mismatches": []
+}

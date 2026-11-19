@@ -1,0 +1,60 @@
+{
+  "schema": "court_scene_pair_extracted_metrics_v1",
+  "condition": "scene-3",
+  "real": {
+    "kp_mean_distance_px": 43.695472717285156,
+    "kp_median_distance_px": 3.6769473552703857,
+    "seg_miou": 0.3322363793849945,
+    "line_dice": 0.455488383769989,
+    "semantic_line_miou": 0.23183582723140717
+  },
+  "synthetic_scene_macro": {
+    "kp_mean_distance_px": 5.003663260727476,
+    "kp_median_distance_px": 2.949115216732025,
+    "seg_miou": 0.9317676335586209,
+    "line_dice": 0.6099038820050655,
+    "semantic_line_miou": 0.3971447249160151
+  },
+  "synthetic_scenes": {
+    "B00": {
+      "count": 1056,
+      "metrics": {
+        "kp_mean_distance_px": 1.834960082886397,
+        "kp_median_distance_px": 1.4381535053253174,
+        "seg_miou": 0.9728302362356728,
+        "line_dice": 0.7113505902921394,
+        "semantic_line_miou": 0.4930483384938325
+      }
+    },
+    "B01": {
+      "count": 643,
+      "metrics": {
+        "kp_mean_distance_px": 3.233027830775083,
+        "kp_median_distance_px": 1.8823752403259277,
+        "seg_miou": 0.9586032170035061,
+        "line_dice": 0.6950279855664097,
+        "semantic_line_miou": 0.42477549012469246
+      }
+    },
+    "B02": {
+      "count": 462,
+      "metrics": {
+        "kp_mean_distance_px": 2.512408372172462,
+        "kp_median_distance_px": 1.6967544555664062,
+        "seg_miou": 0.9695424253347174,
+        "line_dice": 0.71606484682353,
+        "semantic_line_miou": 0.4740615045500878
+      }
+    },
+    "B03": {
+      "count": 278,
+      "metrics": {
+        "kp_mean_distance_px": 12.43425675707596,
+        "kp_median_distance_px": 6.779177665710449,
+        "seg_miou": 0.8260946556605875,
+        "line_dice": 0.31717210533818296,
+        "semantic_line_miou": 0.1966935664954477
+      }
+    }
+  }
+}

@@ -14,6 +14,7 @@ from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRInput
+from src.tennis_scene.pipeline.components.hmr2_features import HMR2FeaturesInput
 from src.tennis_scene.pipeline.contracts import AssemblyContext
 from src.tennis_scene.pipeline.input_assembly.observations import (
     gather_people,
@@ -35,11 +36,19 @@ class BodyViewSelectionInputAssembler:
 
 
 @dataclass(frozen=True)
-class GVHMRInputAssembler:
+class HMR2FeaturesInputAssembler:
     version: int = 1
 
+    def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> HMR2FeaturesInput:
+        return HMR2FeaturesInput(context.source, artifacts["selection"])
+
+
+@dataclass(frozen=True)
+class GVHMRInputAssembler:
+    version: int = 2
+
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> GVHMRInput:
-        return GVHMRInput(artifacts["selection"])
+        return GVHMRInput(context.source, artifacts["selection"], artifacts["features"])
 
 
 @dataclass(frozen=True)

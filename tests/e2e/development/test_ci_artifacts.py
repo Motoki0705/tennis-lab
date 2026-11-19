@@ -49,6 +49,7 @@ def test_artifact_selection_pages_checks_and_pins_exact_download_ids(
         _artifact(10, plan),
         _artifact(20, prefix + "0"),
         _artifact(30, prefix + "1"),
+        _artifact(35, prefix + "2"),
     ]
     if scenario.startswith("duplicate_"):
         rows.append(
@@ -59,7 +60,7 @@ def test_artifact_selection_pages_checks_and_pins_exact_download_ids(
     elif scenario.startswith("missing_"):
         rows.pop(0 if scenario == "missing_plan" else 2)
     elif scenario == "extra_shard":
-        rows.append(_artifact(40, prefix + "2"))
+        rows.append(_artifact(40, prefix + "3"))
     elif scenario == "expired_shard":
         rows[2]["expired"] = True
     # Keep the expected inventory (and duplicate errors) on a later page. Other
@@ -123,10 +124,11 @@ def test_artifact_selection_pages_checks_and_pins_exact_download_ids(
             _artifact(10, plan),
             _artifact(20, prefix + "0"),
             _artifact(30, prefix + "1"),
+            _artifact(35, prefix + "2"),
         ]
         assert github_output.read_text().splitlines() == [
             "plan_artifact_id=10",
-            "shard_artifact_ids=20,30",
+            "shard_artifact_ids=20,30,35",
         ]
         assert read_manifest(output, "123", 2) == manifest
     else:
@@ -162,6 +164,7 @@ def test_artifact_selection_controls_the_coverage_verdict(
             _artifact(10, "cpu-lane-plan-123"),
             _artifact(20, "cpu-test-measurements-123-shard-0"),
             _artifact(30, "cpu-test-measurements-123-shard-1"),
+            _artifact(35, "cpu-test-measurements-123-shard-2"),
         ],
     }
     if fault == "duplicate_plan":

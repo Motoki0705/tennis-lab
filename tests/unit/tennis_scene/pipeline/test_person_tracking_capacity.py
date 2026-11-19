@@ -12,12 +12,18 @@ from src.tasks.person_tracking.sequence import TrackingConfig
 from src.tennis_scene.pipeline.components import person_tracking as module
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import SourceVideo
-from tests.unit.tennis_scene.pipeline.config_factories import make_people_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    fake_encoder_spec,
+    make_people_config,
+    materialize_model_weights,
+)
 
 
 def test_more_than_six_people_keep_their_raw_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     class Pose:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+        def load(self) -> None:
             pass
         def unload(self) -> None:
             pass
@@ -50,8 +56,8 @@ def test_more_than_six_people_keep_their_raw_rows(tmp_path: Path, monkeypatch: p
         np.full(32, .9, np.float32), np.arange(32, dtype=np.int64))
     video = SourceVideo('cam0', tmp_path / 'x.mp4', 'hash', 4, 30., 800, 200)
     tracker = module.PersonTrackingModule(TrackingConfig(), people=make_people_config(tmp_path),
-        encoder=Encoder, aflink_checkpoint=tmp_path / 'aflink.pth')
-    result = tracker.process(module.PersonTrackingInput(video, detection))
+        encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'aflink.pth')
+    result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detection))
     assert result.track_ids.tolist() == list(range(1, 9))
     assert result.observed[:, 2:].all() and not result.tracklet_links
     assert result.evidence is not None

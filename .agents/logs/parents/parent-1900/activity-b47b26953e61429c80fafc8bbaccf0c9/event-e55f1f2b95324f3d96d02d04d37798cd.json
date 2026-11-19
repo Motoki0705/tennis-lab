@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "e7d59fbdf952446da343a843f8a4618b",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=output.json; content_sha256=0a098b043b3ebb6de748965cc04855c7f4c850e8e3ac99dc89d7963453fe14d7; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "661a5f6f9c674d26aba4d0c8dcf0cbf6",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.output.json: status=succeeded; verdict=approve; exception=True; previous_review_keys=['c4e0fb9c6a234d4593b80ad478cbacce', '059dd8b7c166423ebbaeb9ed0d21e368', 'bd20ca481d324835a33defec1e1cb073', 'a33f33a5f1e6427e84e60dd59913b8bf', 'ac8d4fea046946d4b5263e052f069444', 'fc97ee2b97b44c2f8b711d9966919d3c', 'b54572e5a00448a1a23f60ccdb0a6c4a', '11e07b4d8ea34a049c75aad67f665a58', 'c9c21f9d4bcb4da092a87b5b8987d71c']; run [private identifier] の固定HEADをレビューしました。前回のmajor 1件は解消され、追加のblocker／majorはありません。最新HEADのCI全14ジョブとPython集約ログの成功をGitHub連携で確認しました。review MCPのGitHub取得はghの版不足で失敗し、隔離CPUテストは許可リスト未設定のため実行していません。",
+      "verifies": []
+    },
+    "id": "e55f1f2b95324f3d96d02d04d37798cd",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "b47b26953e61429c80fafc8bbaccf0c9",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "162483ea6a874c68a53064511584d155"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T05:08:09.766567+00:00"
+      },
+      "recorded_at": "2026-11-15T05:08:09.766583+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 1,
+    "version": 2
+  }
+}

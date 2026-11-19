@@ -39,7 +39,10 @@ before its first node; retired topics take no new nodes.
 
 For queue runs, Colab jobs, historical logs, manual runs/groups, and papers, use
 [record.md](references/record.md). It contains the commands and evidence guidance.
-Generated documents are drafts: fill findings/research notes before validation.
+Run/group documents are drafts: fill findings before validation. Papers require
+a primary source URL, summary and human adoption reason at registration and
+contain no attached full text. Citation exploration stays separate until explicit
+adoption; the shared contract/API and commands are linked from record.md.
 One run belongs to one task; link other nodes and papers by ID, with relation
 types from the [relation registry](../../../knowledge/registry/relations.yaml).
 Edit an existing node directly for corrections; `--force` replaces its content.

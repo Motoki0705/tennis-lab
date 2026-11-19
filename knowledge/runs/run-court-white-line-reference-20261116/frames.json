@@ -1,0 +1,610 @@
+{
+  "dataset_manifest_sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099",
+  "sampling": "clips 0,17,34,51,68; frame 0,floor(N/2),N-1; fixed before fit",
+  "size_hw": [
+    1080,
+    1920
+  ],
+  "records": [
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 0,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+      "path": "frames/cam0/clip_000_frame_000000.png",
+      "bgr_sha256": "8482c8cd1949931d74b2c88ed93f3ff6fcc43e5731ad5a03be72508c66d15984",
+      "png_sha256": "095796e1934badbb6a46d754b42b1814ec7e54f161ae6fa9d257170beb2dd5a7"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 178,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+      "path": "frames/cam0/clip_000_frame_000178.png",
+      "bgr_sha256": "56bf1b2837591f48e7c225aba223ce2c78e6d8d0ac4acfa71a01dd23c8a0532a",
+      "png_sha256": "57b6daa1ee7eb511288ea0c11cbfc54d45de028935873fe69e314bc9bf565be8"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 355,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+      "path": "frames/cam0/clip_000_frame_000355.png",
+      "bgr_sha256": "343434d197f666e406c3b33d9798f4b757c457d202a6b70777cf7fc4c6a23eb4",
+      "png_sha256": "22217901a4400e026e44770aa745e7fcea5717fb270b913f26493005c412aa45"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 0,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+      "path": "frames/cam1/clip_000_frame_000000.png",
+      "bgr_sha256": "f6491749b083da091fb6e8744e6b763b869c0d6d0771963f2f3dd68008baea73",
+      "png_sha256": "5e2e5c76258ba7f5e76fce9366517be6e1d53512ca5531cb8e1d93aff148398d"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 178,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+      "path": "frames/cam1/clip_000_frame_000178.png",
+      "bgr_sha256": "db8170be701545672727415f1ded82d4c92aa47d2b28f751262f713755d2f5f6",
+      "png_sha256": "092cca6b9413c3a8bcfd20a86b5b2af0c10f28f5d7c725f6b0a746a1c63bab5e"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 355,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+      "path": "frames/cam1/clip_000_frame_000355.png",
+      "bgr_sha256": "cc26ac1d407cc9cdaea194e552f15ec69e10c332b33a42e4cd7339a1ed1aa612",
+      "png_sha256": "3fcc2395f99dc8d074cef0d134a4df2b2271b88d101d3e98978b423778acf0b5"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 0,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+      "path": "frames/cam2/clip_000_frame_000000.png",
+      "bgr_sha256": "10da854442286a0d882ec5a253a6607c6aee41073ea22387f30eb130f83d18d7",
+      "png_sha256": "ee04c48537f0218e65e54d4a55a42ae84feaf1425745fcc66c4fe37fe92fb999"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 178,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+      "path": "frames/cam2/clip_000_frame_000178.png",
+      "bgr_sha256": "bbe5cd0de378f6a9c6ed0b665f6aa95a35ea1e95d1caac368baf34a893fcfb42",
+      "png_sha256": "21358c775bd8ad972704167d2c4008c1758f2a73e355284d358d04872d9b61a2"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 355,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+      "path": "frames/cam2/clip_000_frame_000355.png",
+      "bgr_sha256": "7bf8b191bbae8a16b90ea36dacb8a83ed98c6be34dfe65a3be179985f1674ebc",
+      "png_sha256": "42bd2abbac0648267a157f6580d3ff728e23cda940b0811207fdb62e842508cc"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 0,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam3.mp4",
+      "path": "frames/cam3/clip_000_frame_000000.png",
+      "bgr_sha256": "626ffe181f7a9388e90730435ef052c5df3dd3da76806f7db2b852400a5fab84",
+      "png_sha256": "9931139baa66864be35a7617e142e85a134a7ddc02134b1aaff66555c44fdb09"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 178,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam3.mp4",
+      "path": "frames/cam3/clip_000_frame_000178.png",
+      "bgr_sha256": "54343edd0dd9d171858cb0d742d5c08dae40c5497c519566eea17f72cb872356",
+      "png_sha256": "6585e2ab93d6322a5d5689e8c510d55cea5d06fd55870a2a20cd923593553abe"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_000",
+      "frame_index": 355,
+      "frame_count": 356,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_000/media/cam3.mp4",
+      "path": "frames/cam3/clip_000_frame_000355.png",
+      "bgr_sha256": "bf09d318e13494e1d8216bfc5068df5b7567489d0dbd26fde1fe433df055afee",
+      "png_sha256": "609676fba540193a3bedfc464ca6098f40bdd7519296a6c4268b43d32f96801f"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 0,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam0.mp4",
+      "path": "frames/cam0/clip_017_frame_000000.png",
+      "bgr_sha256": "c7d9422ae0c503d8360089913eaad7e7474cbf6246c8204e1bbf229846e1a49e",
+      "png_sha256": "d8d843b585169b921c29ea5fd8db20a63e53e382bfebdbd337afa17eda20b693"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 182,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam0.mp4",
+      "path": "frames/cam0/clip_017_frame_000182.png",
+      "bgr_sha256": "702dab8afe3e25dcb54877af7a88f971005a70fedb43c57805150695751cc29a",
+      "png_sha256": "b631eafcb33c59211066fa084869edab8b00ac8bbc3fac2b2a36d24e09244916"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 363,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam0.mp4",
+      "path": "frames/cam0/clip_017_frame_000363.png",
+      "bgr_sha256": "a0196b264d7b9bbfc507b5eb496c64bec96ed826c8a3df31728efec568fd9b29",
+      "png_sha256": "b942c9211032b909ebf695dd5b0c362570ea6ce76a17931a3f22a9fc50a82740"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 0,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam1.mp4",
+      "path": "frames/cam1/clip_017_frame_000000.png",
+      "bgr_sha256": "878fb2ef914c1e31b86a1c7f5d45680b8ac77dcb6e6b38ae6a3d505c5b04c910",
+      "png_sha256": "876e794f309f44385e35821fdf2b0e457bfc318e2c1b736e75a0408e7f4ea5b6"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 182,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam1.mp4",
+      "path": "frames/cam1/clip_017_frame_000182.png",
+      "bgr_sha256": "8b29439fde1f6924902725822aca4bcd47909dafe6271c4bf0d8114ddf8faef9",
+      "png_sha256": "a33a7a8a765aeac18ce10cf9a15034c7d3ce33882a98cb4e223f67350352f81c"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 363,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam1.mp4",
+      "path": "frames/cam1/clip_017_frame_000363.png",
+      "bgr_sha256": "a80f1090ac89d2b7e911eb9ecf931f958661586e4463347f3cf64e58534aeb6b",
+      "png_sha256": "3803a4da0b33c32e5de17fa36b32665e364464a34411ff1f38f66bed00beff29"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 0,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam2.mp4",
+      "path": "frames/cam2/clip_017_frame_000000.png",
+      "bgr_sha256": "2d2cfb87737e40d0be5490791032c43eb32380d984d7b31c95da8af74111ff96",
+      "png_sha256": "2d91e8d31de4bc54ba3dc3a55a670b83ea73e095978da0db3809e6713972c18d"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 182,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam2.mp4",
+      "path": "frames/cam2/clip_017_frame_000182.png",
+      "bgr_sha256": "80f0b35c357432719706ebc2cd3eca58854a3f5fbf21f259c16f289df1dd673c",
+      "png_sha256": "c08811e128fbc0e3498e23e6f06d81c281daf9bf5817c026e6a8df03b82f1ddd"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 363,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam2.mp4",
+      "path": "frames/cam2/clip_017_frame_000363.png",
+      "bgr_sha256": "6e5a976e7e32ebca45c92d08d2afeee02b3b1410cdd74d372999493a6b273711",
+      "png_sha256": "27b3f71e8dca1ef375d26541f43ac8a4c3bebd9967475332b3b1e9815f4f2012"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 0,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam3.mp4",
+      "path": "frames/cam3/clip_017_frame_000000.png",
+      "bgr_sha256": "4093b3e4ef3e9ac4da9353c4b25b8df92d66d7afe9c3dd8f3ae3d204cc53c410",
+      "png_sha256": "6accf2ccbe9ca2d53ae5cc2ad2a4abb4b49170668ade7be6eb0d14aa2b500316"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 182,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam3.mp4",
+      "path": "frames/cam3/clip_017_frame_000182.png",
+      "bgr_sha256": "e3d3f40dac1359254d9a817b9a197eada7a03197b4656e7a2bfc30445b414922",
+      "png_sha256": "e7265481ef306a7f9f12b10a274ea3028115eee4cfff04c89d8f7b982fb461d5"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_017",
+      "frame_index": 363,
+      "frame_count": 364,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_017/media/cam3.mp4",
+      "path": "frames/cam3/clip_017_frame_000363.png",
+      "bgr_sha256": "0d8e3de6d9338bef4e2b396eddaf1697390faa78c657e9e9f39b1ef4c43942b6",
+      "png_sha256": "0c644210f430cc28b0489188731b9d4e112944875494aa6651ef0e637b3ad34e"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 0,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam0.mp4",
+      "path": "frames/cam0/clip_034_frame_000000.png",
+      "bgr_sha256": "2cb6c4e32877f8cc388134a2820e478a4d578822ffcdcbb7e898858d8216bb48",
+      "png_sha256": "8666842cbdd0efde724598d6daa347ae9d29abd6fcc7e84881a746d7f7145b86"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 562,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam0.mp4",
+      "path": "frames/cam0/clip_034_frame_000562.png",
+      "bgr_sha256": "0ff58b5180b8fbd8e3d0a64199dfbf8bf96595048b4d8f69d30c41b534516b79",
+      "png_sha256": "a170437699a86f03cd6d4e9865b143ebb956adfd5c2ba23092d13e975693eb8f"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 1123,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam0.mp4",
+      "path": "frames/cam0/clip_034_frame_001123.png",
+      "bgr_sha256": "c460e44a0077868b82237a87bceecffc4c556b5428f93b4a9700a8160c3efdd0",
+      "png_sha256": "64b12c8cc5b09db5b7d62b709cac0f8e4c39ab7fe2238a9cb3a205e33c1205e4"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 0,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam1.mp4",
+      "path": "frames/cam1/clip_034_frame_000000.png",
+      "bgr_sha256": "3f9d08b6be4888759654065e8e1a5575b74888bfe29fe9e0d14c0b3ad5b4ab3d",
+      "png_sha256": "3353f2db5e6d8b9c71165851ca35e7191b19e4d5c4a21a8c9914f97bc263beb3"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 562,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam1.mp4",
+      "path": "frames/cam1/clip_034_frame_000562.png",
+      "bgr_sha256": "c1cf44aa4eeef3db742adb30be954b85ea691322803ed59b4a4c7f53b35990cf",
+      "png_sha256": "10282c2a92b6876388a79d3b7d18f1acec17a6ca48896518b6277adce6604e3e"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 1123,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam1.mp4",
+      "path": "frames/cam1/clip_034_frame_001123.png",
+      "bgr_sha256": "27c08273305335f944e0b5d9fcbbd65985957a04f747f85bbbab04e4f1fd4035",
+      "png_sha256": "e506fb00752ac015133875477fe1befa7e96b2ff8d60a2057cf779d5d0c8b172"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 0,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam2.mp4",
+      "path": "frames/cam2/clip_034_frame_000000.png",
+      "bgr_sha256": "47c355d2266a2a64ea0b56e6c1c9ebc7ea5b3bd3edba5492382f494bca9f022a",
+      "png_sha256": "d8e3e62274bdb83e04ea66f5c0d451175ac9f1f23e69ee721c06b6b7efebf69a"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 562,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam2.mp4",
+      "path": "frames/cam2/clip_034_frame_000562.png",
+      "bgr_sha256": "d4a226c912157b396b8bed38081266e569bc249dacedf7554ba0142cadad0b33",
+      "png_sha256": "d052adeb9950070074c767d8a7acbaeca47446ff3f4209b3f46d68bbd861d7e9"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 1123,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam2.mp4",
+      "path": "frames/cam2/clip_034_frame_001123.png",
+      "bgr_sha256": "98db21f269f05c0659e6aeed74a6f2e05f8cc28d557f4ea455e002c1b92e18f3",
+      "png_sha256": "9c5977783cc176f82b270665eaf98d8cbe1329e62906d399ef37a4a84fd36922"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 0,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam3.mp4",
+      "path": "frames/cam3/clip_034_frame_000000.png",
+      "bgr_sha256": "46f2e722b66c632d95bfd3569af994089681841d023be29dc071ae69a0eed83c",
+      "png_sha256": "745c2681af64d8405a6deabb0b795c8434911f1e3846abae652aee1b588c7758"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 562,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam3.mp4",
+      "path": "frames/cam3/clip_034_frame_000562.png",
+      "bgr_sha256": "f368bf6eaa8ff9b3a256c1831ed6bf578b2b0073e529e5ffb0e9ac9e4a046fa9",
+      "png_sha256": "616519b6cec78023190d31306c8cd422aa2e4e4889d2a7d80ef48cc4f5dd6b6a"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_034",
+      "frame_index": 1123,
+      "frame_count": 1124,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_034/media/cam3.mp4",
+      "path": "frames/cam3/clip_034_frame_001123.png",
+      "bgr_sha256": "91e10472f57824d5e896cbe5ce2a39f8855e79c781283b4283ba3cf05a0ec514",
+      "png_sha256": "23daa77203430ca7d4cda7894af11b57702e005dc62bd93e0bc71ec968a166ae"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 0,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam0.mp4",
+      "path": "frames/cam0/clip_051_frame_000000.png",
+      "bgr_sha256": "8ab07a7dffd4fefbc629f31c132e9b35e6ef19e065f7e6a82db5581442873a97",
+      "png_sha256": "c8a8c02fbe97643fe5fa7b95554b24b076533e09e7697dd6f7e49e6f72b86d2f"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 150,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam0.mp4",
+      "path": "frames/cam0/clip_051_frame_000150.png",
+      "bgr_sha256": "023307d8237034765c761acd59b649765fbc63303823fa2c7a560cf5c336089e",
+      "png_sha256": "bbda4a341b0f86ebe67fa0b6c0aafe57bea9958aed4a6eb2d7fa3865be0c7c8b"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 299,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam0.mp4",
+      "path": "frames/cam0/clip_051_frame_000299.png",
+      "bgr_sha256": "3a46686de0be4327af966b0105366afb6a0feb68a166b4bd84713be172cad40f",
+      "png_sha256": "6da526ae02f001e08fb4e9eb144eb17467888a1d5df41b7b64171932db5a313f"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 0,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam1.mp4",
+      "path": "frames/cam1/clip_051_frame_000000.png",
+      "bgr_sha256": "883840e261ab1bf22f77b29be910d3af3c4753923444ec241c75ff7910b250bc",
+      "png_sha256": "1934041c63b978a18f75e81989c42fbd53d5b0aace6dccb7485b1cbc5205ac35"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 150,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam1.mp4",
+      "path": "frames/cam1/clip_051_frame_000150.png",
+      "bgr_sha256": "9a51c40813bcbab3aa76b4435d4a3e0002ca4d4bd5290afd465e675a47fce4f0",
+      "png_sha256": "fa09ccf7886792c87988fbeaf07348c4b9ea33c2a0e25a64276858df71885b9c"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 299,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam1.mp4",
+      "path": "frames/cam1/clip_051_frame_000299.png",
+      "bgr_sha256": "a6589bbdc20600fffb3487536d8a7ec5256f225c1555a7e1ab63113e237ce7e4",
+      "png_sha256": "e8a9c624458fedce12b608729e55e3b54d9c5c5795d1031af29e10c5e96f5c6e"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 0,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam2.mp4",
+      "path": "frames/cam2/clip_051_frame_000000.png",
+      "bgr_sha256": "a38887d0f8d42a51f30dfc2c56956ff0cadd2dc010e8f6af97ad7207587a8e3e",
+      "png_sha256": "f9e5a1bf0cff834abce332fa11b7972ef8bd30faeda858acce5d19f441e42af5"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 150,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam2.mp4",
+      "path": "frames/cam2/clip_051_frame_000150.png",
+      "bgr_sha256": "fd254aae82807f0b1a20028c64babec71e04030be2373b677571ced716a3da32",
+      "png_sha256": "84038bdf0de64891548123b560ebaf76908958f429276239746bac0e46d72faa"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 299,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam2.mp4",
+      "path": "frames/cam2/clip_051_frame_000299.png",
+      "bgr_sha256": "61e8a37ec5bb8b59d1bf7882bc6be738a6737f2b8c8d790d92a06232125299a2",
+      "png_sha256": "9e92b6695f7945c50c88c4ef0bac027c4816f869f3f1f32ba5ce1f6a6b632e72"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 0,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam3.mp4",
+      "path": "frames/cam3/clip_051_frame_000000.png",
+      "bgr_sha256": "a62e410a37a5976d135420b423a7779edaf34c1657b676ce874bd03ae3401b20",
+      "png_sha256": "81ea8f3005431e443322054515133aa37800808b08109d954505f6b22d44f8dc"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 150,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam3.mp4",
+      "path": "frames/cam3/clip_051_frame_000150.png",
+      "bgr_sha256": "e614bfc0d4861a3207b19de070a5c7aa5775fec26fc14c330aa88371e2ca25ee",
+      "png_sha256": "3d07ef5ae12e8bb4ead67aacf721585bb5578803486b28c2b735eba6943566fb"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_051",
+      "frame_index": 299,
+      "frame_count": 300,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_051/media/cam3.mp4",
+      "path": "frames/cam3/clip_051_frame_000299.png",
+      "bgr_sha256": "19fe682e4934326022bc21929d5d3627ad8322297128f8acaa4d207f5339c292",
+      "png_sha256": "669f4a3cb3ef35a75584c1d8a732e623a9a891144d08ccd3a24b45f7fc7d2a01"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 0,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam0.mp4",
+      "path": "frames/cam0/clip_068_frame_000000.png",
+      "bgr_sha256": "232f83d3e25dd79eb8b1e107431d4ab21ff6799463eaecf57c75dfa0b0c435cb",
+      "png_sha256": "84eab1718bed8c5dfee95052b0248814c895d622a3066a2428a0c39611035c9d"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 231,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam0.mp4",
+      "path": "frames/cam0/clip_068_frame_000231.png",
+      "bgr_sha256": "0180ae0cfced2a4c72172bdfa73729c679cd18079b442c58ba220e3c8a97fb33",
+      "png_sha256": "4b2e08df00db6c1f007cf584cb7324d20b7497bae10732a9bd89d382db21a555"
+    },
+    {
+      "camera": "cam0",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 461,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam0.mp4",
+      "path": "frames/cam0/clip_068_frame_000461.png",
+      "bgr_sha256": "cd2e6824f9d165bcc68a6b0783a9394196ca7baf50a73a68ca5180821d408fc0",
+      "png_sha256": "bf27c6e7c6e00a91dc4c8f15a41cd5ecf057f8688d66bb501bc55c2ea2467792"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 0,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam1.mp4",
+      "path": "frames/cam1/clip_068_frame_000000.png",
+      "bgr_sha256": "15efbc9c04463972d72b566c48aafdfed2d57bdd962ac754ca00b0ab47690ef7",
+      "png_sha256": "03b0bb89e85060eb5703ce32bca390965417cbe7b1bc91541b2527b496a71248"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 231,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam1.mp4",
+      "path": "frames/cam1/clip_068_frame_000231.png",
+      "bgr_sha256": "bda17243b550a596827725482cd839a04b02a215539637e9f559e1680c2e4e72",
+      "png_sha256": "10031c84e32d77574e5fdbeebb3015e54ab428390e272e85ecc5cc5e32f42db0"
+    },
+    {
+      "camera": "cam1",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 461,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam1.mp4",
+      "path": "frames/cam1/clip_068_frame_000461.png",
+      "bgr_sha256": "6a7422a061325af86edece39bca173b101c0976b628917bb456ab6469cfd1ffb",
+      "png_sha256": "ef6a0611cb52650f50eda4eeb8d64a0ac38705d896da433fd510a6d02ff8e730"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 0,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam2.mp4",
+      "path": "frames/cam2/clip_068_frame_000000.png",
+      "bgr_sha256": "6df162fc4d046a3cc32771623688c466d6fba57bc78ece77b39c0451366bc7c0",
+      "png_sha256": "02b0b2946f37b472c46f0e36d7bb1c8a90b01e57ff858753d73974ad149f42e5"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 231,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam2.mp4",
+      "path": "frames/cam2/clip_068_frame_000231.png",
+      "bgr_sha256": "118d8c211f0c5ce81bac5f10e2c886df45ad70c8b2a00fb19dc92162788f7da4",
+      "png_sha256": "ce3830a2469dc0f3bb826f68167cc5d19763266d38d852dfbfd0b5ff3ea793b8"
+    },
+    {
+      "camera": "cam2",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 461,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam2.mp4",
+      "path": "frames/cam2/clip_068_frame_000461.png",
+      "bgr_sha256": "98ff4b1b70f26c86f7068169c0ba656c157bdb45b65b3eedffae685c56dfc814",
+      "png_sha256": "f793e80a63de146d70b8af9de2097d59368c4b3b4308ee2115f72ba440af200a"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 0,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam3.mp4",
+      "path": "frames/cam3/clip_068_frame_000000.png",
+      "bgr_sha256": "10d6aa40b4a09280c4f17fafcb9180b3070bd388f8a27b5571342c2bf9edaee4",
+      "png_sha256": "808a2eb2086f774ad1177b2f2f44b7a93b79e6b7c4d8a53a6fed8a1f2fc7d01e"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 231,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam3.mp4",
+      "path": "frames/cam3/clip_068_frame_000231.png",
+      "bgr_sha256": "b1f9b2e8abf37f3246ba64268901bd0bc3bd672ef6039f66d3f9f27ad87f41bc",
+      "png_sha256": "a2d8ad8b790cc175df67c8ea6a3ed03a9826d8fd4e4c79be770dad751725c7cd"
+    },
+    {
+      "camera": "cam3",
+      "clip_id": "video_000/clip_068",
+      "frame_index": 461,
+      "frame_count": 462,
+      "video": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_068/media/cam3.mp4",
+      "path": "frames/cam3/clip_068_frame_000461.png",
+      "bgr_sha256": "a499adfc4c057b42717a5d42aafdeb4669d4c558e51af29c91127d575dc76521",
+      "png_sha256": "b68ece82a25f745e3563279c533cbbe44f1c2428a8349fcdbf3dfaf50b80fb33"
+    }
+  ]
+}

@@ -19,7 +19,7 @@ from tests.e2e.agents_ops.test_ops_report_retrieval import (
 
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 sys.path.insert(0, str(OPS))
-server: Any = importlib.import_module("lib.review_tools.review_server")
+server: Any = importlib.import_module("lib.review_tools.review_server_impl")
 
 
 def test_multiple_pinned_commits_exclude_dirty_worktree_and_other_revisions(
@@ -138,3 +138,28 @@ def test_failed_ci_fetch_then_fetch_only_retry_is_captured(
         r["data"]["auxiliary"]["usage"]["status"] == "unavailable" for r in results
     )
     assert len(scenario.calls()) == 2
+
+
+def test_progression_tools_cannot_enumerate_or_read_outside_targets(
+    scenario: Scenario,
+) -> None:
+    client = server.ReviewRetrieval(
+        {
+            "repo": str(scenario.repo),
+            "commits": [scenario.base],
+            "repository": "o/r",
+            "run_id": "scoped-review",
+            "journal_dir": str(scenario.journal / "scoped"),
+            "github_scope": {"issues": [17], "prs": [19]},
+        }
+    )
+    before = scenario.calls()
+    assert "github_items" not in client.tools
+    assert not client.call("github_items", {"kind": "issue"})["ok"]
+    assert (
+        client.call("github_item", {"kind": "issue", "number": 18})["error"]["code"]
+        == "FORBIDDEN_SCOPE"
+    )
+    assert client.call("ci_runs", {})["error"]["code"] == "FORBIDDEN_SCOPE"
+    assert scenario.calls() == before
+    assert client.call("github_item", {"kind": "issue", "number": 17})["ok"]

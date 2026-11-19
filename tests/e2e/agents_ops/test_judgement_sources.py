@@ -195,7 +195,7 @@ def test_cited_source_changes_during_writes_remove_the_reader_candidate(
         {1, 3} if stage == "publication" else {1, 2, 3}
     )
     assert any(
-        "execution_basis" in c["body"].splitlines()[0] for c in h.gh.comment_rows[1]
+        "execution_basis" in c["body"].splitlines()[0] for c in h.gh.record_rows(1)
     ) == (stage == "final_check")
 
 

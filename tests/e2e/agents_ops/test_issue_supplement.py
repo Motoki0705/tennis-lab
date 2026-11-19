@@ -869,12 +869,25 @@ def judgement(disposition: str = "startable") -> str:
 
 
 @pytest.mark.parametrize("record", [agreement(), execution_basis(), judgement()])
+@pytest.mark.parametrize("medium", ["legacy_parent_comment", "evidence_issue"])
 def test_existing_execution_records_skip_without_agent_calls_or_body_writes(
-    supplement_env: SupplementEnv, record: str
+    supplement_env: SupplementEnv, record: str, medium: str
 ) -> None:
     env = supplement_env
     state = env.state()
-    state["comments"] = [comment(record)]
+    if medium == "legacy_parent_comment":
+        state["comments"] = [comment(record)]
+    else:
+        state["evidence_issues"] = [
+            {
+                **state["issue"],
+                "id": 99,
+                "number": 9,
+                "labels": [{"name": "parent-evidence"}],
+                "body": '<!-- parent-evidence:v1 {"parent": 1, "repo": "o/r"} -->',
+            }
+        ]
+        state["evidence_comments"] = [comment(record)]
     env.save(state)
     assert env.run("supplement") == 0 and env.bundle()["status"] == "skipped"
     assert env.calls("agy") == []
@@ -919,7 +932,15 @@ def test_corrupt_owned_judgement_fails_closed_instead_of_using_substring_detecti
 
 @pytest.mark.parametrize(
     "change",
-    ["label", "created_before_activation", "disabled", "done", "failed", "skipped"],
+    [
+        "label",
+        "standalone",
+        "created_before_activation",
+        "disabled",
+        "done",
+        "failed",
+        "skipped",
+    ],
 )
 def test_non_targets_and_already_final_automatic_runs_do_nothing(
     supplement_env: SupplementEnv, change: str
@@ -928,6 +949,10 @@ def test_non_targets_and_already_final_automatic_runs_do_nothing(
     state = env.state()
     if change == "label":
         state["issue"]["labels"] = [{"name": "issue:child"}]
+    elif change == "standalone":
+        state["issue"]["labels"] = [
+            {"name": importlib.import_module("issues").STANDALONE_LABEL}
+        ]
     elif change == "created_before_activation":
         state["issue"]["created_at"] = "2026-10-29T00:00:00Z"
     elif change == "disabled":
@@ -1764,3 +1789,25 @@ def test_manual_validation_uses_production_repair_flow_without_github_writes(
     assert env.mutations() == []
     with pytest.raises(validation.agy.AgyError):
         validation.agy._check_user_settings(env.root)
+
+
+@pytest.mark.parametrize("kind", ["proposal", "extraction"])
+def test_improvement_projection_and_approved_extraction_are_not_supplemented(
+    supplement_env: SupplementEnv, kind: str
+) -> None:
+    env = supplement_env
+    state = env.state()
+    marker = (
+        "<!-- parent-improvement-proposal:v1 parent=2 generation=1 -->"
+        if kind == "proposal"
+        else "<!-- parent-improvement-extraction:v1 parent=2 proposal=3 candidates=I-2-first -->"
+    )
+    state["issue"]["body"] = marker + "\n\n" + env.original
+    if kind == "proposal":
+        state["issue"]["labels"].append({"name": "issue:proposal"})
+    env.save(state)
+    assert env.run("supplement") == 0
+    assert env.bundle()["status"] == "not_target"
+    assert env.calls("agy") == []
+    assert env.run("apply") == 0
+    assert env.state()["issue"]["body"] == state["issue"]["body"]

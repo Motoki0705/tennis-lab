@@ -1,0 +1,1 @@
+{"clips": ["video_000/clip_037", "video_000/clip_000"], "conditions": ["fp32", "vitpose_bf16", "vitpose_fp16", "dino_bf16", "dino_fp16", "vitpose_no_flip"]}

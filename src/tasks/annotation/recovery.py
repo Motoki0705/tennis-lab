@@ -185,6 +185,7 @@ def _annotation_decision(
         request.work_id,
         str(attempt) + ".json",
     )
+    decision: AnnotationContinuation | None = None
     try:
         if verification_error is not None:
             raise verification_error
@@ -254,7 +255,18 @@ def _annotation_decision(
             raise ValueError(
                 "automatic decision belongs to another policy/request/attempt"
             )
-    else:
+        if (
+            decision.action == "hold"
+            and decision.state == "invalid_saved_progress"
+            and row["state"] == "timed_out"
+            and status.summary["complete"]
+        ):
+            # Verified repairs can seal a fully saved timeout. Keep the original
+            # hold immutable and persist a separate completion decision before
+            # finalization, so interruption recovers through the same tick path.
+            decision_path = decision_path.with_suffix("") / "completion.json"
+            decision = None
+    if decision is None:
         action = "hold"
         if row["state"] == "timed_out":
             if status.summary["complete"]:

@@ -74,11 +74,13 @@ class MDDHeatmapAdapter:
                 or output.shape[1] != self.config.frames or min(output.shape[-2:]) < 2
                 or not output.is_floating_point() or not bool(torch.isfinite(output).all())):
             raise BallModelIOError(f"Heatmap-only output requires finite floating B,{self.config.frames},H,W logits")
-        probabilities = output.detach().float().sigmoid().cpu()
+        # Match training evaluation: decode on the model device in FP32, then
+        # transfer the public fields. Moving first changes subpixel rounding.
+        probabilities = output.detach().float().sigmoid()
         coords, confidence = heatmaps_to_argmax(probabilities)
         if self.subpixel:
             coords = refine_peaks_log_parabolic(probabilities, coords)
-        return BallPrediction(coords=coords, confidence=confidence, heatmaps=probabilities,
+        return BallPrediction(coords=coords.cpu(), confidence=confidence.cpu(), heatmaps=probabilities.cpu(),
             candidates=decode_candidates(probabilities, config=self.candidate_config, subpixel_refine=self.subpixel))
 
 

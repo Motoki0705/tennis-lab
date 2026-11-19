@@ -3,7 +3,7 @@
 [日本語](sharding.ja.md) · [简体中文](sharding.zh-CN.md)
 
 The CI workflow runs lint independently and partitions the requested CPU target
-over ten test jobs by default, each with two pytest workers. Manual dispatch
+over ten ordinary test jobs by default, each with two pytest workers, plus one required system-runtime job. Manual dispatch
 accepts `shards=1/2/4/6/8/10` and `workers=2/4` for same-source scheduling comparisons. Worker counts are explicit rather than host-dependent `auto`.
 The manual one-job reference has a 120-minute limit; ordinary shards retain 60 minutes. The fixed `Python` job runs with
 `always()` and succeeds only when plan, lint, all test jobs and the coverage audit succeed.
@@ -15,7 +15,7 @@ defines PR selection and full main/manual requests. Only PR runs cancel previous
 Every worker collects the current source using the normal `spin test` CPU marker
 expression, including the court dataset integration selected through the lane registry. The shard hook runs after
 ordinary marker selection. It journals the CPU universe before lane selection,
-then assigns the requested nodeids, including unregistered new tests.
+then records the `system_deps_nodeids` subset in both that event and the worker manifest. Marked cases always enter R; file deferral still applies to unmarked neighbours. Only R minus that subset is assigned to ordinary shards. The dedicated job selects exactly the marked subset, including unregistered new tests.
 
 `cpu-file-times.json` stores measured summed phase seconds. The greedy assignment
 places the most expensive group into the currently lightest shard, with stable
@@ -37,14 +37,14 @@ Run one local partition from a fixed checkout:
   --shard-index 0 --shard-count 10 --shard-weights scripts/ci_metrics/cpu-file-times.json
 ```
 
-Use indices 0–9 in separate output directories to cover the suite. The unpartitioned
+Use ordinary indices 0–9 and index 10 (`--shard-index 10 --shard-count 10`) for the system-runtime job in separate output directories to cover the suite. Generally, index equal to count denotes the runtime job; it does not increase the ordinary CPU count. The unpartitioned
 full CPU command in [README](README.md#run-and-recover) remains available. Each
 partition reports `full_cpu_baseline=false`; only the complete aggregate can prove
 full CPU coverage. Lane selection precedes sharding; timing and `slow` markers do not decide membership.
 
 ## Evidence and failure semantics
 
-Each schema-2 `shard-gw*.json` records `universe_nodeids` (U), `requested_nodeids` (R),
+Each schema-3 `shard-gw*.json` records `system_deps_nodeids` and `universe_nodeids` (U), `requested_nodeids` (R),
 `deferred` (D: nodeid to suite id), plan/policy/scope identity, group assignment,
 selected nodeids (S_i), profile identity and unknown estimates. A separate
 `cpu_universe` event records U after CPU marker selection and before lane selection.
@@ -59,20 +59,20 @@ recomputes the per-shard report from those events and requires:
 - U = R disjoint-union D, with every deferred node justified by the registry and plan;
 - successful complete observations of the requested scope and executed inventory equal to the selected plan;
 - R = S_0 disjoint-union ... disjoint-union S_n; no missing, duplicate or empty shard;
-- successful plan, lint and every matrix job; skipped/cancelled jobs are not successes.
+- system marker inventories matching independent pre-selection events and every other shard; ordinary shards contain no marked cases, the runtime job contains every marked case exactly once, and all runtime outcomes are passed (zero skip/xfail);
+- successful plan, lint, every matrix job and the system-runtime job; skipped/cancelled jobs are not successes.
 
 Deleting the same case from every manifest is detected against the independent
 pre-selection events. Deferred cases are neither skips nor successes. The aggregate
 reports `scoped_cpu_success`; `full_cpu_success` additionally requires D to be empty.
 The existing marker/explicit exclusions define the CPU universe, not all tests in
-every possible environment. Historical schema-1 artifacts retain `full_nodeids`
+every possible environment. Historical schema-1/2 observations remain readable for profiling without claiming the new runtime coverage. Schema-1 artifacts retain `full_nodeids`
 and remain readable for profiling; mixing schemas or using them with a lane plan fails.
 
 Preparation failures, invalid partitioning, missing artifacts, failure, cancellation
 or a newer HEAD fail `Python`. Intentional CPU exclusions and genuine setup/module
 skips retain the existing semantics and remain visible. Matrix fail-fast is disabled
-so other shards can still leave evidence. Apt network retries and each apt step are
-bounded; failure is not converted into test omission.
+so other shards can still leave evidence. Runtime downloads are bounded and verified as specified in the [runtime preparation contract](README.md#pinned-system-runtimes); failures are never converted into omission.
 
 Partial reruns reuse the fixed lane plan and the latest result of each shard,
 including successful shards from earlier attempts, only within the same run,
@@ -80,7 +80,7 @@ source HEAD (`source_sha`) and lane plan (`plan_id`). Attempts may differ within
 the bounds above; another run, HEAD or plan is rejected.
 
 The plan artifact is `cpu-lane-plan-RUN`; measurements are
-`cpu-test-measurements-RUN-shard-N`. Both upload with `overwrite: true`, replacing
+`cpu-test-measurements-RUN-shard-N` (N=ordinary shard count for the runtime job). Both upload with `overwrite: true`, replacing
 only the rerun plan/shard. Measurements from a failed attempt can be overwritten;
 its job logs remain available. GitHub deletes earlier artifacts when rerunning all jobs.
 Downloads use the run-wide REST API with explicit `run-id` and `github-token`.
@@ -123,7 +123,7 @@ By default, retain the observed `split_files`. Repeat `--split-file tests/path.p
 
 The refreshed profile uses the complete successful main push [run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671): all ten shards, 883 files, 14,561 cases (14,470 passed / 91 skipped / 0 failed), and 7,543.124 summed phase seconds. The old profile left 54 current files unmeasured, including the 29-case court dataset integration: its median estimate was 0.077 s versus 406.228 s measured. On this same inventory, old weights estimated 676.570–676.572 s per shard, but the measured costs of those assignments were 439.996–1,101.161 s. Reassigning with refreshed weights estimates 754.311–754.313 s across ten shards, with no unmeasured files or split cases. These are overlapping worker phase costs, not wall-time predictions. Reprofile after material test-cost changes.
 
-System preparation verifies existing ffmpeg/rclone versions, installs only missing binaries, and verifies both commands afterward. Each apt command is bounded by 180 seconds (two network retries, 30-second network timeouts); the Actions step is bounded by eight minutes. Seven subprocess scenarios cover existing/missing binaries, update/install failures, timeout, missing output and version failure.
+System preparation and pin maintenance are owned by the [runtime contract](README.md#pinned-system-runtimes).
 
 ## Default selection
 

@@ -8,6 +8,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+if __name__ == "__main__":
+    from lib.checkout_lock import require_checkout_job
+
+    require_checkout_job()
+
 from opsreport.cli import main
 
 if __name__ == "__main__":

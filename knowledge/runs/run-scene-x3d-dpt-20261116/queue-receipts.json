@@ -1,0 +1,324 @@
+{
+  "schema": "scene_dpt_queue_receipts.v1",
+  "records": [
+    {
+      "run_id": "0-8205240979798389228_2026-11-15T16-10-20-201610771Z_729588_scene-x3d-paired-source",
+      "queue_terminal": [
+        "failed"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205240979798389228_2026-11-15T16-10-20-201610771Z_729588_scene-x3d-paired-source",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-paired-source/git_status.txt",
+          "sha256": "97d5ae253163979ecca091ed1312922bf44ecf33ced8c2428cb55f7407de716c",
+          "size_bytes": 207
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-paired-source/repro.sh",
+          "sha256": "e42828af68b598d47d218d49b0d4f5e63bf0be6c0c5735336556ae9a909c57e5",
+          "size_bytes": 1440
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-paired-source/run.json",
+          "sha256": "954160ad33a62dccb1906b88983b9af04832c9c67a880c848c4b0147fb9c7b37",
+          "size_bytes": 1171
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-paired-source/uncommitted.patch",
+          "sha256": "6cbe8ce688ae60528da51a0dd5a5911bd165941ec14584502e92aaaf62e7ba81",
+          "size_bytes": 515
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205241245145059334_2026-11-15T16-05-54-854940665Z_721921_scene-x3d-meiji-three-final",
+      "queue_terminal": [
+        "done"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205241245145059334_2026-11-15T16-05-54-854940665Z_721921_scene-x3d-meiji-three-final",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-three-final/git_status.txt",
+          "sha256": "75bc54efa2b987adcca6b7286c7e6136cf32acc317b2d3ae72f75d915c5bd7fc",
+          "size_bytes": 146
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-three-final/repro.sh",
+          "sha256": "3fdfac4e518b971d90d8ce6806b5a88934d3a2a2620192fa071c62b07b167182",
+          "size_bytes": 1359
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-three-final/run.json",
+          "sha256": "a6acbd3463c2ffadd9db05d521aabf631731fc8589fd54b0784ceb0dc3772f16",
+          "size_bytes": 1094
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-three-final/uncommitted.patch",
+          "sha256": "6cbe8ce688ae60528da51a0dd5a5911bd165941ec14584502e92aaaf62e7ba81",
+          "size_bytes": 515
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205241245395929762_2026-11-15T16-05-54-604070237Z_721889_scene-x3d-meiji-four-final",
+      "queue_terminal": [
+        "done"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205241245395929762_2026-11-15T16-05-54-604070237Z_721889_scene-x3d-meiji-four-final",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-four-final/git_status.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-four-final/repro.sh",
+          "sha256": "c867c04e921eb54186b241ad96763b7f75fbaa5874c00d668a32d12c2c494691",
+          "size_bytes": 1362
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-four-final/run.json",
+          "sha256": "f62c020ba63e9b0ee93f243c1bc9d0ecd7cc947885377e3b8915baaed24614c9",
+          "size_bytes": 1096
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-four-final/uncommitted.patch",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205241311515102675_2026-11-15T16-04-48-484897324Z_719623_scene-x3d-parity-gpu-decode",
+      "queue_terminal": [
+        "failed"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205241311515102675_2026-11-15T16-04-48-484897324Z_719623_scene-x3d-parity-gpu-decode",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-gpu-decode/git_status.txt",
+          "sha256": "0da81abc0e4a13e2edbd62259813067ef6a3bb0fe13ff771c41c1a99728a40b3",
+          "size_bytes": 152
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-gpu-decode/repro.sh",
+          "sha256": "20acf54eb6b1424dbe5ec12d09245001021997e269f20307fb41d556b2b663ef",
+          "size_bytes": 1422
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-gpu-decode/run.json",
+          "sha256": "c351d17f95fde0e43ca40fe3d106dcf6393c47be7febf7f3eb7eac949a32bcdb",
+          "size_bytes": 1157
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-gpu-decode/uncommitted.patch",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205241746612448818_2026-11-15T15-57-33-387551181Z_688517_scene-x3d-meiji-x3d-a2",
+      "queue_terminal": [
+        "done"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205241746612448818_2026-11-15T15-57-33-387551181Z_688517_scene-x3d-meiji-x3d-a2",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-x3d-a2/git_status.txt",
+          "sha256": "45735bf8176ffc70c5147fc84dd100903db682e5f7082347771f28411d07621f",
+          "size_bytes": 75
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-x3d-a2/repro.sh",
+          "sha256": "e44f4f524786ceb77166fe0a8baf3b873d3673a6e4bc0a64abc8f8913e92390a",
+          "size_bytes": 1352
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-x3d-a2/run.json",
+          "sha256": "802badd0173ccb1e0a9d284ccfcb48ad247e07b89c4e5238acdf6a46ac7d35bc",
+          "size_bytes": 1082
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-x3d-a2/uncommitted.patch",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205241901671999129_2026-11-15T15-54-58-328000870Z_672886_scene-x3d-meiji-three-i935",
+      "queue_terminal": [
+        "done"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205241901671999129_2026-11-15T15-54-58-328000870Z_672886_scene-x3d-meiji-three-i935",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-three-i935/git_status.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-three-i935/repro.sh",
+          "sha256": "c233ad0a3a36324807529b924f34b9521faca961540ff652122653412467e3bb",
+          "size_bytes": 1353
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-three-i935/run.json",
+          "sha256": "6620b532e7389c5b44a4ca29c2c974a0a6f00e40fcd7c36cac4c823aea5bb2f4",
+          "size_bytes": 1087
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-three-i935/uncommitted.patch",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205242053145044929_2026-11-15T15-52-26-854955070Z_644764_scene-x3d-parity-torch214",
+      "queue_terminal": [
+        "failed"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205242053145044929_2026-11-15T15-52-26-854955070Z_644764_scene-x3d-parity-torch214",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-torch214/git_status.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-torch214/repro.sh",
+          "sha256": "3fa2128f9e71dad7af544494c1446d3fbcf5f35cdd2aa85c3ef77ca15337015b",
+          "size_bytes": 1477
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-torch214/run.json",
+          "sha256": "4e033754db98338089df829afd533ee83abba8bdfad588100e1441ef4e7cc1ca",
+          "size_bytes": 1210
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-torch214/uncommitted.patch",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205242148783156580_2026-11-15T15-50-51-216843419Z_629618_scene-x3d-meiji-i935-a2",
+      "queue_terminal": [
+        "done"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205242148783156580_2026-11-15T15-50-51-216843419Z_629618_scene-x3d-meiji-i935-a2",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-i935-a2/git_status.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-i935-a2/repro.sh",
+          "sha256": "920a04a2887e27f71bd8e44f0fd6409920461a25e8777b7c5eadebd3bee9b4d2",
+          "size_bytes": 1354
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-i935-a2/run.json",
+          "sha256": "b8321539c4f436360d67d49e4b3d94d8fe4307b608b0ce24d337103ae72245a4",
+          "size_bytes": 1085
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-i935-a2/uncommitted.patch",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205243276496709774_2026-11-15T15-32-03-503290225Z_361987_scene-x3d-meiji-i935",
+      "queue_terminal": [
+        "failed"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205243276496709774_2026-11-15T15-32-03-503290225Z_361987_scene-x3d-meiji-i935",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-i935/git_status.txt",
+          "sha256": "20a9cafb2cf88327f2e7f6e1f948f511e941e4834040938982456c4cea94fcef",
+          "size_bytes": 416
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-i935/repro.sh",
+          "sha256": "dfa4eaea5caf4eff639a1f5ae31c8b36ae9f5d790e3c8d62f893399e60dd63cd",
+          "size_bytes": 1351
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-i935/run.json",
+          "sha256": "3db31015c4f71fe664777852a8c1a542411b2ac35d753ab76877fbe9947e8af2",
+          "size_bytes": 1079
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-meiji-i935/uncommitted.patch",
+          "sha256": "145864320f231c18a6ba8281a4cadf7a045f8c51f667f543c2e81bee1782fd01",
+          "size_bytes": 777
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205243773306442735_2026-11-15T15-23-46-693557264Z_265127_scene-x3d-parity-compiled",
+      "queue_terminal": [
+        "failed"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205243773306442735_2026-11-15T15-23-46-693557264Z_265127_scene-x3d-parity-compiled",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-compiled/git_status.txt",
+          "sha256": "c9e29e4e7ec39a5ca917d236100413c0c26680b768283f95932d667f45a6d19e",
+          "size_bytes": 131
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-compiled/repro.sh",
+          "sha256": "668f6b7a3a7f5992d5658cf68a3e84c2bbc8463e1779ae10e6dd710bc84b6709",
+          "size_bytes": 1418
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-compiled/run.json",
+          "sha256": "a43bbdd0fd1304ff15fa80396e66db7ac29cc9bf7d650459267b13974586ff6d",
+          "size_bytes": 1151
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity-compiled/uncommitted.patch",
+          "sha256": "145864320f231c18a6ba8281a4cadf7a045f8c51f667f543c2e81bee1782fd01",
+          "size_bytes": 777
+        }
+      ]
+    },
+    {
+      "run_id": "0-8205243880144724202_2026-11-15T15-21-59-855275797Z_256924_scene-x3d-parity",
+      "queue_terminal": [
+        "failed"
+      ],
+      "source": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205243880144724202_2026-11-15T15-21-59-855275797Z_256924_scene-x3d-parity",
+      "files": [
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity/git_status.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity/repro.sh",
+          "sha256": "fa2bdc0bf088f8f75e5bda34dcf80543131ecdfe5d57da09d229c69417bb20e2",
+          "size_bytes": 1345
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity/run.json",
+          "sha256": "1c133cf3000242d6fbffd36421403ba23a7af2c27e856950def92afe50e6ecad",
+          "size_bytes": 1069
+        },
+        {
+          "path": "knowledge/runs/run-scene-x3d-dpt-20261116/queue-records/scene-x3d-parity/uncommitted.patch",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      ]
+    }
+  ]
+}

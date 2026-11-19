@@ -1,0 +1,43 @@
+{
+  "clips": [
+    5,
+    13,
+    22,
+    30,
+    39,
+    47,
+    56,
+    64
+  ],
+  "cases": 32,
+  "fitter_source_sha256": "bcb1069e01c43a4409177d41e3e192e54551fd7fb4a2b673218c85e3ec9207f3",
+  "RGB_only_after_model_initializer": true,
+  "manual_masks_used": false,
+  "reference_used_during_fit": false,
+  "parameters": {
+    "radius_px": 48.0,
+    "sample_spacing_px": 8.0,
+    "profile_step_px": 0.5,
+    "profile_sigma_px": 0.6,
+    "min_gradient": 2.0,
+    "min_contrast": 6.0,
+    "min_width_px": 1.0,
+    "max_width_px": 18.0,
+    "line_angle_limit_degrees": 8.0,
+    "line_inlier_distance_px": 1.5,
+    "ransac_trials": 500,
+    "min_line_locations": 8,
+    "min_frame_count": 8,
+    "min_coverage": 0.35,
+    "court_line_tolerance_px": 3.0,
+    "min_court_lines": 5,
+    "loss": "soft_l1",
+    "loss_scale_px": 1.5,
+    "seed": 2190,
+    "fine_radius_px": 6.0
+  },
+  "single_frame_minimum_frames": 1,
+  "input_selection": "eight spaced clip indices, disjoint from all reference-building clips",
+  "not_independent_validation": "same camera/template and fitter family as reference; shared bias remains even with disjoint frames",
+  "not_a_new_acceptance_rule": "RGB fit success is not declared accepted; no gate thresholds are tuned"
+}

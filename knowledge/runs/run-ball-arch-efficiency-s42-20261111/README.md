@@ -1,5 +1,7 @@
 # Ball architecture efficiency campaign
 
+**C3未完了・途中結果（2026-11-19）**。未学習L4計測は完了しているが、本学習を含む統合結果は確定していない。C3の再開は固定tag `ball-arch-c3-exec-7d7a2e4fa` のsourceで行う。デスクトップ移管後の実行引継ぎは後続の #1955 で管理する。
+
 Issue #1859. The source/recipes of #1675 are read-only inputs. This campaign has
 five models and 54,000 optimizer updates: T1 (MMMCCC) → T2 (CCCMMM) → C1 → C2 → C3.
 Each query model has two connected 6k stages and re-freezes its CNN for the first

@@ -1,0 +1,18 @@
+{
+  "tests": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' .venv/bin/python -B -m pytest tests/unit/tennis_scene tests/integration/tennis_scene --durations=0",
+    "passed": 1215,
+    "wall_seconds": 50.44,
+    "raw_log": "outputs/hmr2_feature_acceptance_20261117/integrated-tests.log",
+    "raw_log_bytes": 446797,
+    "raw_log_sha256": "7d379d402ebbedb53125c2dcf5fc4b7a916fd607fcf977159414f92cea0b8b46",
+    "central_case_max_call_seconds_displayed": 0.99,
+    "central_case_max_setup_seconds_displayed": 0.01,
+    "existing_gallery_all_components_call_seconds": 6.48
+  },
+  "knowledge_validation": {
+    "base_ref": "8ef9781463e9dcd3d5a7587c1720217e276a2eaf",
+    "errors": 0,
+    "warnings": 0
+  }
+}
