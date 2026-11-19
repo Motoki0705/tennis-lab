@@ -11,5 +11,5 @@ evidence: "#1390 の2026-10-30の方針変更が現在も有効であること�
 待ち時間を理由に、CI未完了・失敗のPRをmergeする運用へ独断で戻さない。毎日のCIと自己修復ループは廃止する判断も同時に示した。
 
 **使い方:** コミットに `[skip ci]` を付けない。レビューと指摘解消に加え、対象HEADの `Python` 成功を
-[自動進行の軽いgate](../../ops/review/README.md#軽いgate) で確認してからmergeする。
+[自動進行の軽いgate](../../skills/parent-session/references/review.md) で確認してからmergeする。
 運用レポート専用memory PRのレビュー等の例外は [限定経路](../../ops/ops-report/README.md#専用memoryの保存) を参照する。

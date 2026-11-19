@@ -25,7 +25,10 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
-from tests.support.agents_ops.model_pins import WORKER_ALTERNATE_MODEL
+from tests.support.agents_ops.model_pins import (
+    WORKER_ALTERNATE_MODEL,
+    WORKER_DEFAULT_MODEL,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / ".agents/ops/lib/agent_exec.sh"
@@ -185,7 +188,7 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
     run(
         p,
         "--model",
-        WORKER_ALTERNATE_MODEL,
+        WORKER_DEFAULT_MODEL,
         "--model-reason-file",
         p.note("幾何の設計。"),
     )
@@ -218,7 +221,7 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
     replacement(p)
     saved = task(p)
     assert saved["delegation_id"] == before["delegation_id"]
-    assert saved["model"] == WORKER_ALTERNATE_MODEL
+    assert saved["model"] == WORKER_DEFAULT_MODEL
     assert saved["model_reason"] == before["model_reason"]
     assert saved["worker_runs"][:-1] == before["worker_runs"]
     assert saved["preflight"]["turns"][:-1] == before.get("preflight", {}).get(

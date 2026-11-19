@@ -532,6 +532,7 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
             state["session_id"],
             output_schema,
             verify_settings=settings.get("profile") != "review",
+            review=settings.get("profile") == "review",
         )
         previous_turn = state["last_turn_id"]
         result: dict[str, Any] = {
@@ -719,6 +720,7 @@ def recover_lost_turn(result: dict[str, Any], state: dict[str, Any]) -> None:
         contract["settings"]["selected"],
         saved["requested_session_id"] or saved["session_id"] or state["session_id"],
         verify_settings=contract["settings"].get("profile") != "review",
+        review=contract["settings"].get("profile") == "review",
     )
     run_dir = Path(result["run_dir"])
     started_turns = 0

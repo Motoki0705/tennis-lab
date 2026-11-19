@@ -29,7 +29,7 @@ from lib.agent_settings import implementation_model
 from worker_logs import service as worker_logs
 from worker_logs.sources import original, read_original
 
-from . import work_targets, worker_preflight
+from . import work_targets, worker_preflight, worker_slots
 from .adopted_tasks import check_task_adoptions
 from .execution import (
     authorization,
@@ -129,9 +129,15 @@ def accepted(session: ParentSession, env: dict[str, str]) -> dict[str, Any]:
     return dispatch
 
 
-def worker_jobs(dispatch: dict[str, Any], child: int) -> list[dict[str, Any]]:
+def worker_jobs(
+    dispatch: dict[str, Any], child: int, worker: str = "primary"
+) -> list[dict[str, Any]]:
     return sorted(
-        (j for j in dispatch["jobs"].values() if j["child"] == child),
+        (
+            j
+            for j in dispatch["jobs"].values()
+            if j["child"] == child and j.get("worker_name", "primary") == worker
+        ),
         key=lambda j: j["sequence"],
     )
 
@@ -179,6 +185,8 @@ def start_worker(
     continuation: str | None = None,
     additional: str | None = None,
     planning: bool = False,
+    handoff_from_astra: str | None = None,
+    handoff_evidence: str | None = None,
 ) -> dict[str, Any]:
     """Reserve via parent.delegate, then use the dispatcher start-child contract.
 
@@ -206,7 +214,7 @@ def start_worker(
                 dispatch = accepted(session, env)
                 previous_jobs = [
                     observation_intent(session.store, session.row, job, "continue")
-                    for job in worker_jobs(dispatch, child)
+                    for job in worker_jobs(dispatch, child, session.worker)
                 ]
                 checkpoint = session.store.checkpoint()
             for previous in previous_jobs:
@@ -223,7 +231,7 @@ def start_worker(
                 raise ValueError("dispatcher execution basis changed")
             check_dependencies(session, dispatch)
             check_handoff_capacity(session.store.parents, control.schedule, session.key)
-            jobs = worker_jobs(dispatch, child)
+            jobs = worker_jobs(dispatch, child, session.worker)
             previous_record = None
             prepared = None
             if continuation is not None:
@@ -263,7 +271,7 @@ def start_worker(
                     )
                     # A same-value request must retain the original override provenance.
                     model = settings["overrides"].get("model")
-                task = session.row["tasks"][str(child)]
+                task = session.worker_task(child)
                 branch, worktree = task["branch"], Path(task["worktree"])
                 # Admission precedes a new delegation/job reservation.
                 prepared, prompt = worker_preflight.prepare_turn(
@@ -275,7 +283,7 @@ def start_worker(
                     previous_record=previous_record,
                     planning=planning,
                 )
-            elif jobs:
+            elif jobs and handoff_from_astra is None:
                 raise ValueError("existing worker: inspect it and use continue-worker")
             if branch is None or worktree is None:
                 raise ValueError("a dedicated branch and worktree are required")
@@ -289,7 +297,8 @@ def start_worker(
                 branch,
                 worktree,
                 None,
-                continuation,
+                continuation or handoff_evidence,
+                handoff_from_astra=handoff_from_astra,
                 continue_existing=continuation is not None,
             )
             parent, items = session.work_items()
@@ -298,7 +307,7 @@ def start_worker(
             check_dependencies(session, dispatch)
             if authorization(session) != dispatch["authorization"]:
                 raise ValueError("execution basis changed after delegation")
-            task = session.row["tasks"][str(child)]
+            task = session.worker_task(child)
             if prepared is None:
                 prepared, prompt = worker_preflight.prepare_turn(
                     session,
@@ -319,6 +328,7 @@ def start_worker(
                 items[child].body,
                 original(prompt),
                 turn,
+                worker=session.worker,
             )
             text = prepared_instruction.text
             worker_logs.capture(session, child, items[child].body, prepared_instruction)
@@ -328,7 +338,7 @@ def start_worker(
             session.store.save()
             delegation = claim["assignment"]["delegation_id"]
         job_id = control.start_child(
-            session.parent, child, delegation, text, env, model
+            session.parent, child, delegation, text, env, model, worker=session.worker
         )
         return {
             "child": child,
@@ -346,7 +356,7 @@ def _inspection_target(
     dispatch = managed(row)
     if not dispatch:
         raise ValueError("worker inspection requires a managed parent")
-    jobs = worker_jobs(dispatch, child)
+    jobs = worker_jobs(dispatch, child, session.worker)
     if not jobs:
         raise ValueError("no managed runtime for this issue")
     job = jobs[-1]
@@ -427,7 +437,8 @@ def stop_worker(
         dispatch = managed(session.owner())
         if not dispatch:
             raise ValueError("worker stop requires a managed parent")
-        stopped = session.stop_or_resume(child, detail, False)
+        individual = bool(session.row["tasks"].get(str(child), {}).get("helpers"))
+        stopped = {} if individual else session.stop_or_resume(child, detail, False)
         plan = None if stopped.get("target_conflict") else session.launch_plan()
         targets = {child} | (
             {t["child"] for t in plan["tasks"] if t["state"] == "held"}
@@ -438,6 +449,13 @@ def stop_worker(
         for job in dispatch["jobs"].values():
             if (
                 job["role"] != "implementation"
+                or (
+                    individual
+                    and (
+                        job["child"] != child
+                        or job.get("worker_name", "primary") != session.worker
+                    )
+                )
                 or job["child"] not in targets
                 or job["phase"] == "ended"
             ):
@@ -484,7 +502,7 @@ def cancellation_workers_ended(session: ParentSession, child: int) -> None:
         raise ValueError(f"#{child}: cancelled worker termination is still pending")
     dispatch = managed(session.row)
     if dispatch:
-        for job in worker_jobs(dispatch, child):
+        for job in worker_jobs(dispatch, child, session.worker):
             with session.gh.io_scope():
                 ended(job)
 
@@ -769,6 +787,17 @@ def worker_command(
         require_client(gh, store)
     with store.snapshot() if args.command == "inspect-worker" else store.locked():
         session = ParentSession(gh, store, parent, identity)
+        session.worker = worker_slots.select(
+            session.row,
+            args.child,
+            getattr(args, "worker", None),
+            creating=args.command == "start-worker",
+        )
+        manual = session.row.get("dispatch") is None
+    if manual and args.command in {"inspect-worker", "stop-worker"}:
+        from .manual_workers import inspect_manual
+
+        return inspect_manual(session, args.child, stop=args.command == "stop-worker")
     if args.command == "inspect-worker":
         return inspect_worker(session, args.child)
     if args.command == "stop-worker":
@@ -790,6 +819,10 @@ def worker_command(
         if args.command == "continue-worker"
         else None,
         planning=args.planning,
+        handoff_from_astra=getattr(args, "handoff_from_astra", None),
+        handoff_evidence=Path(args.handoff_evidence_file).read_text()
+        if getattr(args, "handoff_evidence_file", None)
+        else None,
         additional=read_original(args.additional_instruction_file)
         if getattr(args, "additional_instruction_file", None)
         else None,

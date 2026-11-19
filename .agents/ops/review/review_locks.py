@@ -17,6 +17,7 @@ from parent.policy import digest
 def targets(directory: Path, state: dict[str, Any]) -> Iterator[None]:
     leases = directory / "progression-targets"
     leases.mkdir(mode=0o700, parents=True, exist_ok=True)
+    receipts = []
     with ExitStack() as stack:
         for target in sorted(state["targets"].values(), key=lambda t: t["number"]):
             name = digest([state["request"]["repo"].casefold(), target["number"]])
@@ -31,9 +32,15 @@ def targets(directory: Path, state: dict[str, Any]) -> Iterator[None]:
                 previous = read(receipt)["progression"]
                 if previous != state["id"]:
                     prior = read(directory / "progressions" / previous / "state.json")
-                    if prior["targets"][str(target["number"])]["stage"] != "completed":
+                    if (
+                        state["request"].get("kind") != "post_merge_confirmation"
+                        or prior["targets"][str(target["number"])]["stage"]
+                        != "completed"
+                    ):
                         raise ValueError(
                             "PR has an unfinished progression; continue that request"
                         )
+            receipts.append(receipt)
+        for receipt in receipts:
             save(receipt, {"progression": state["id"]})
         yield

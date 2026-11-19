@@ -147,3 +147,23 @@ def test_saved_reconnection_diagnostics_need_original_evidence(
     if change == "failed":
         record.update(result="failed", turn_end_reason="runtime_error", exit_code=1)
     assert events_module.runtime_errors_failed(record) is (change != "none")
+
+
+@pytest.mark.parametrize(
+    "review,late,failed",
+    [(True, False, False), (False, False, True), (True, True, True)],
+)
+def test_capacity_reconnect_requires_verified_review_completion(
+    events_module: Any, review: bool, late: bool, failed: bool
+) -> None:
+    capacity = {
+        "type": "error",
+        "message": "Reconnecting... 2/5 (Selected model is at capacity. Please try a different model.)",
+    }
+    events = events_module.Events("codex", {"model": "fixture"}, None, review=review)
+    sequence = (
+        [*START, FINAL, capacity, DONE] if late else [*START, capacity, FINAL, DONE]
+    )
+    for event in sequence:
+        events.feed(json.dumps(event).encode())
+    assert events.failed is failed

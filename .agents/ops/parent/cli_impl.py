@@ -43,21 +43,33 @@ WORK_ITEM_HELP = (
 
 
 def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(description=__doc__)
+    from .cli_help import configure
+
+    root = argparse.ArgumentParser(
+        prog="parent",
+        description="親Issueの担当、委任、正式レビュー、受入を管理。共通引数は操作名の前に指定する。",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     try:
         models = implementation_models()
     except (OSError, ValueError) as exc:
         root.error(str(exc))
-    root.add_argument("--repo", help="owner/repo; default: unique GitHub remote")
+    root.add_argument("--repo", help="対象のowner/repo。省略時はgit remoteから特定")
     root.add_argument(
-        "--state-dir", type=Path, help="the same registry as dispatcher/review/merge"
+        "--state-dir",
+        type=Path,
+        help="親registryの場所。自律親はbootstrapのparent_state_dirを指定",
     )
-    root.add_argument("--dispatcher-state-dir", type=Path)
+    root.add_argument(
+        "--dispatcher-state-dir",
+        type=Path,
+        help="自律親のワーカー操作に使うbootstrapのdispatcher_state_dir",
+    )
     root.add_argument(
         "--parent",
-        help="issue number or https://github.com/owner/repo/issues/N",
+        help="担当する親Issue番号またはGitHub Issue URL",
     )
-    commands = root.add_subparsers(dest="command", required=True)
+    commands = root.add_subparsers(dest="command", required=True, metavar="COMMAND")
     commands.add_parser("register").add_argument(
         "--summary",
         help="sidebar summary (<= 24 display columns); required unless already saved",
@@ -194,11 +206,19 @@ def parser() -> argparse.ArgumentParser:
     receipt.add_argument("--proposal", required=True)
     delegate = commands.add_parser("delegate")
     delegate.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
-    delegate.add_argument("--agent", choices=("claude", "codex"), required=True)
+    delegate.add_argument("--agent", choices=("codex",), required=True)
     delegate.add_argument("--branch", required=True)
-    delegate.add_argument("--worktree", type=Path, required=True)
+    delegate.add_argument(
+        "--worktree",
+        type=Path,
+        required=True,
+        help="メインcheckoutの .claude/worktrees 配下に作成済みの専用worktree",
+    )
     delegate.add_argument("--dependencies", type=int, nargs="*")
-    delegate.add_argument("--restart-evidence-file")
+    delegate.add_argument(
+        "--restart-evidence-file",
+        help="再予約または旧Astraからの引継ぎで、元の担当の終了と引継ぎ内容を記したファイル",
+    )
     result = commands.add_parser("record-result")
     result.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     result.add_argument("--evidence-file", required=True)
@@ -240,13 +260,13 @@ def parser() -> argparse.ArgumentParser:
     )
     manual.add_argument(
         "--model-reason-file",
-        help="parent's selection reason; required for an initial alternate model",
+        help="optional note retained with the worker record",
     )
     run_record = commands.add_parser("record-worker-run")
     run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
     wait = commands.add_parser(
-        "wait-worker", help="read-only wait for the latest recorded manual worker run"
+        "wait-worker", help="指定ワーカーの最新runの終了と回収を待つ"
     )
     wait.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     wait.add_argument(
@@ -293,10 +313,20 @@ def parser() -> argparse.ArgumentParser:
     inspection.add_argument("--prs", type=int, nargs="+", required=True)
     request = commands.add_parser("review-request")
     request.add_argument("--prs", type=int, nargs="+", required=True)
-    request.add_argument("--evidence-file", required=True)
+    request.add_argument(
+        "--evidence-file",
+        required=True,
+        help="受入条件・対象HEAD・テスト結果を記したファイル",
+    )
     request.add_argument("--reason-file")
-    request.add_argument("--instruction-file", required=True)
-    request.add_argument("--wait", action="store_true")
+    request.add_argument(
+        "--instruction-file",
+        required=True,
+        help="原要件とレビューで確認すべき点を記したファイル",
+    )
+    request.add_argument(
+        "--wait", action="store_true", help="最初の通知または完了まで待つ"
+    )
     request.add_argument("--agent-exec", type=Path)
     request.add_argument("--agent-timeout", type=float, default=1800)
     request.add_argument("--cpu-tests-file", type=Path)
@@ -309,16 +339,48 @@ def parser() -> argparse.ArgumentParser:
     confirmation.add_argument("--wait", action="store_true")
     resume = commands.add_parser("merge-continue")
     resume.add_argument("--run-id")
-    resume.add_argument("--instruction-file", required=True)
-    resume.add_argument("--rereview", action="store_true")
+    resume.add_argument(
+        "--instruction-file",
+        required=True,
+        help="majorごとの対処・検証または続行理由を記したファイル",
+    )
     resume.add_argument("--prs", nargs="+", type=int)
     resume.add_argument("--wait", action="store_true")
-    review_choice_arguments(resume)
     waiting = commands.add_parser("wait-merge")
     waiting.add_argument("--run-id")
     waiting.add_argument("--after", type=int, default=0)
     waiting.add_argument("--timeout", type=float)
+    for name in (
+        "delegate",
+        "run-worker",
+        "wait-worker",
+        "record-worker-ended",
+        "record-worker-run",
+        "start-worker",
+        "continue-worker",
+        "inspect-worker",
+        "stop-worker",
+        "decide-worker-plan",
+        "refresh-worker-plan",
+        "worker-log-status",
+        "publish-worker-log",
+    ):
+        commands.choices[name].add_argument(
+            "--worker",
+            help="統合担当はprimary、補助担当は委任時に付けた名前。複数担当の操作時に指定する",
+        )
+    for name in ("delegate", "start-worker"):
+        commands.choices[name].add_argument(
+            "--handoff-from-astra",
+            metavar="DELEGATION_ID",
+            help="終了した旧Astra担当の委任ID。同じPR・branch・worktreeを新しいSol担当へ移す",
+        )
+    commands.choices["start-worker"].add_argument(
+        "--handoff-evidence-file",
+        help="旧Astraからの引継ぎ理由・成果と未処理指摘の記録",
+    )
     decision_capture.add_parsers(commands)
+    configure(root, commands.choices)
     return root
 
 
@@ -335,7 +397,10 @@ def _main(argv: list[str] | None = None) -> int:
                     "--source-parent requires --all-parents; --pr requires --adopt-orphan-prs"
                 )
             if (args.all_parents or args.adopt_orphan_prs) and (
-                args.turn is not None or args.delegation_key is not None or args.retry
+                args.turn is not None
+                or args.delegation_key is not None
+                or args.worker is not None
+                or args.retry
             ):
                 raise ValueError(
                     "bulk recovery does not accept --turn, --delegation-key or --retry"
@@ -442,6 +507,7 @@ def _main(argv: list[str] | None = None) -> int:
                 f"{gh.repo.casefold()}#{parent}",
                 number(args.child),
                 timeout=args.timeout,
+                worker=args.worker,
             )
             print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
             return code
@@ -571,54 +637,12 @@ def _main(argv: list[str] | None = None) -> int:
 
             path = latest(store, gh.repo, parent, args.run_id)
             after = len(view(path)["events"])
-            chosen = None
-            if any(
-                getattr(args, name) is not None
-                for name in (
-                    "review_model",
-                    "review_effort",
-                    "model_reason_file",
-                    "review_model_source",
-                    "human_review_model",
-                    "human_review_effort",
-                    "human_model_reference",
-                    "review_config_file",
-                )
-            ):
-                if not args.rereview:
-                    raise ValueError("a model choice requires --rereview")
-                from lib.ops_review.progression import read as read_progression
-
-                from .review_choice import selection as review_choice
-
-                current_progression = read_progression(path)
-                saved = (
-                    current_progression["review"].get("selection")
-                    or current_progression["request"]["review_selection"]
-                )
-                human = saved.get("human")
-                if human:
-                    args.human_review_model = args.human_review_model or human.get(
-                        "model"
-                    )
-                    args.human_review_effort = args.human_review_effort or human.get(
-                        "effort"
-                    )
-                    args.human_model_reference = (
-                        args.human_model_reference or human["reference"]
-                    )
-                chosen = review_choice(None, args)
             continue_progression(
                 path,
                 store,
                 nonempty(identity, "parent identity"),
                 read_text(args.instruction_file),
-                rereview=args.rereview,
                 prs=args.prs,
-                review_selection=chosen,
-                review_config_file=str(args.review_config_file.resolve())
-                if args.review_config_file
-                else None,
             )
             value = wait(path, after=after) if args.wait else view(path)
             value = continuation.complete(args, value)
@@ -636,6 +660,7 @@ def _main(argv: list[str] | None = None) -> int:
                 publish_logs=args.command == "publish-worker-log",
                 sequence=number(args.turn) if args.turn is not None else None,
                 key=args.delegation_key,
+                worker=args.worker,
                 dry_run=getattr(args, "dry_run", False),
                 retry=getattr(args, "retry", False),
             )
@@ -671,6 +696,7 @@ def _main(argv: list[str] | None = None) -> int:
                 child=number(args.child),
                 prompt=args.prompt_file,
                 resume=args.resume,
+                worker=args.worker,
                 repair=repair_request(args.repair_id, args.repair_pr)
                 if args.repair_id is not None or args.repair_pr is not None
                 else None,
@@ -747,6 +773,15 @@ def _main(argv: list[str] | None = None) -> int:
             history_reads,
         ):
             session = ParentSession(gh, store, parent, identity)
+            if hasattr(args, "worker"):
+                from .worker_slots import select
+
+                session.worker = select(
+                    session.row,
+                    args.child,
+                    args.worker,
+                    creating=args.command == "delegate",
+                )
             command = args.command
             result: Any
             if command in {"project-setup", "project-sync"}:
@@ -892,7 +927,8 @@ def _main(argv: list[str] | None = None) -> int:
                     args.branch,
                     args.worktree,
                     args.dependencies,
-                    read_text(args.restart_evidence_file)
+                    handoff_from_astra=args.handoff_from_astra,
+                    restart=read_text(args.restart_evidence_file)
                     if args.restart_evidence_file
                     else None,
                 )
@@ -1128,7 +1164,7 @@ def _main(argv: list[str] | None = None) -> int:
             if observed_exit is not None:
                 print(json.dumps(observed_exit, ensure_ascii=False, sort_keys=True))
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
-        print(f"parent-session: {exc}", file=sys.stderr)
+        print(f"parent-session: {exc}\n操作の説明: parent {args.command} --help", file=sys.stderr)
         return 2
     finally:
         if capture_token is not None:

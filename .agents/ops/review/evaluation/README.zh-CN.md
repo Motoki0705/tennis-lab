@@ -175,7 +175,7 @@ repo-root ignore 规则按文档例验证，不豁免真实服务的凭证 URL�
 
 最小方案没有 gold blocker，且仅重复一次。暂定负例不证明不存在缺陷；缓存、顺序和工具差异仍有不确定性。
 历史比较报告保留当时的策略和证据。当前正式审查策略、示例、用量查询及 fixed 回退以
-[父级模型选择步骤](../../parent/README.md#正式レビューのモデル選択)为准。
+[父级模型选择步骤](../../../skills/parent-session/references/review.md)为准。
 此 harness 在部署设置为 fixed 或 select 时都显式选择比较模型，
 保留已批准的 Astra/xhigh 参考设置和不可变证据。
 

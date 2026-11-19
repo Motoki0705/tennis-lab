@@ -28,8 +28,7 @@ from tests.e2e.agents_ops.test_dispatcher_judgement import (
 )
 from tests.support.agents_ops.locks import available
 from tests.support.agents_ops.model_pins import (
-    OLD_ASTRA,
-    WORKER_ALTERNATE_MODEL,
+    OLD_SOL,
     WORKER_DEFAULT_MODEL,
     previous_config,
 )
@@ -1044,7 +1043,7 @@ def test_children_redelegation_cannot_hide_live_workers(
     row["tasks"].pop("12")
     d.update(row)
     first = d.control.start_child(1, 10, "10", "task", env)
-    d.control.start_child(1, 11, "11", "task", env, WORKER_ALTERNATE_MODEL)
+    d.control.start_child(1, 11, "11", "task", env, WORKER_DEFAULT_MODEL)
     row = d.row()
     row["tasks"]["10"]["delegation_id"] = "new-delegation"
     row["tasks"]["10"]["worker_ended"] = {
@@ -1504,7 +1503,7 @@ def registered_repair(
             previous_config(d.h.root / "previous.conf"),
             "codex",
             None,
-            OLD_ASTRA,
+            OLD_SOL,
             None,
             "write",
         ),
@@ -1554,7 +1553,7 @@ def test_registered_progression_reserves_repair_without_parent_runtime_environme
     )
     job = d.row()["dispatch"]["jobs"][repair_id]
     assert job["resume_from"] == str(record_path.parent)
-    assert job["model"] == OLD_ASTRA
+    assert job["model"] == OLD_SOL
     assert job["task_id"] == creator["task_id"]
     assert job["repair"] == {"schema_version": 1, "repair_id": "ci-1", "pr": 42}
     with pytest.raises(ValueError, match="another request"):
@@ -1573,7 +1572,7 @@ def test_registered_progression_reserves_repair_without_parent_runtime_environme
     argv = json.loads(captured.read_text())
     assert argv[:3] == ["resume", "--resume-from", str(record_path.parent)]
     assert argv[argv.index("--effort") + 1] == "high"
-    assert argv[argv.index("--model") + 1] == OLD_ASTRA
+    assert argv[argv.index("--model") + 1] == OLD_SOL
     assert argv[argv.index("--repair-id") + 1] == "ci-1"
     # Registration is checked again at admission, before another runtime starts.
     row = d.row()
@@ -1868,7 +1867,7 @@ def test_real_implementation_slots_and_sol_astra_wiring(
         jobs = [
             d.control.start_child(1, 10, "10", "implementation", env),
             d.control.start_child(
-                1, 11, "11", "implementation", env, WORKER_ALTERNATE_MODEL
+                1, 11, "11", "implementation", env, WORKER_DEFAULT_MODEL
             ),
         ]
         d.control.launch_reserved()
@@ -1902,7 +1901,7 @@ def test_real_implementation_slots_and_sol_astra_wiring(
             assert evidence["contract"]["settings"]["selected"]["effort"] == "max"
             assert evidence["cleanup_complete"] is True
             assert job["phase"] == "ended"
-        assert selected == [WORKER_DEFAULT_MODEL, WORKER_ALTERNATE_MODEL]
+        assert selected == [WORKER_DEFAULT_MODEL, WORKER_DEFAULT_MODEL]
     finally:
         d.control.reconcile(stop=True)
         wait_until(

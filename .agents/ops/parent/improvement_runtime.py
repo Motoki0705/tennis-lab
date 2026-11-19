@@ -14,6 +14,8 @@ from decision_logs.capture import runtime_environment
 from dispatcher.runtime import Runtime, alive, process_identity
 from issues.improvement import human_state
 
+from parent import worker_slots
+
 from .execution import authorization
 from .improvements import get, lock_key, require
 from .repair_admission import require_repair_labels
@@ -43,6 +45,7 @@ def execute_manual(
     delegation: str,
     *,
     generation: int,
+    worker: str = "primary",
     reserved_run: dict[str, Any],
     reserved_turn: dict[str, Any],
 ) -> ManualExecution:
@@ -57,7 +60,7 @@ def execute_manual(
             store.operation(f"{gh.repo.casefold()}#{parent}"),
             store.locked(),
         ):
-            session = ParentSession(gh, store, parent, identity)
+            session = ParentSession(gh, store, parent, identity, worker=worker)
             task = current_task(session, child)
             attempt = None
             if "--repair-id" in command:
@@ -86,6 +89,7 @@ def execute_manual(
                 or latest_run(session, task) != directory
                 or task.get("worker_ended")
                 or task.get("stopped")
+                or session.row["tasks"][str(child)].get("stopped")
                 or task.get("authorization") != current
             ):
                 raise ValueError(
@@ -159,7 +163,7 @@ def reconcile_stop(
     The explicit human decision authorizes this targeted stop. Source completion,
     target ownership, logs and the old execution evidence are never reset.
     """
-    manual: list[tuple[int, str, Path, dict[str, Any] | None]] = []
+    manual: list[tuple[int, str, str, Path, dict[str, Any] | None]] = []
     with store.operation(lock_key(gh.repo)), store.locked():
         source_session = ParentSession(gh, store, source_parent, identity)
         source, observed = get(source_session, candidate)
@@ -196,7 +200,7 @@ def reconcile_stop(
         if not managed:
             from .manual_workers import run_directory, worker_runs
 
-            for n, task in row["tasks"].items():
+            for n, name, task in worker_slots.workers(row["tasks"]):
                 run_entries = [
                     run
                     for run in worker_runs(task)
@@ -211,7 +215,9 @@ def reconcile_stop(
                         if launcher.get("directory") == str(directory)
                         else None
                     )
-                    manual.append((int(n), task["delegation_id"], directory, process))
+                    manual.append(
+                        (int(n), name, task["delegation_id"], directory, process)
+                    )
         store.save()
     errors: list[str] = []
     if managed:
@@ -235,7 +241,7 @@ def reconcile_stop(
         from .manual_workers import RUNNER, validate_run
 
         complete = True
-        for n, delegation, directory, process in manual:
+        for n, name, delegation, directory, process in manual:
             try:
                 if process is not None and alive(process):
                     os.kill(process["pid"], signal.SIGTERM)
@@ -245,7 +251,7 @@ def reconcile_stop(
                     complete = False
                     continue
                 current_row = store.read_data()["parents"][target_key]
-                task = current_row["tasks"][str(n)]
+                task = worker_slots.record(current_row, n, name)
                 if task.get("delegation_id") != delegation:
                     raise ValueError("manual delegation changed during stop")
                 validate_run(task, directory)
@@ -256,7 +262,7 @@ def reconcile_stop(
                     continue
                 with store.operation(target_key), store.locked():
                     store.focus(target_key)
-                    task = store.parents[target_key]["tasks"][str(n)]
+                    task = worker_slots.record(store.parents[target_key], n, name)
                     current_entries = [
                         entry
                         for entry in worker_runs(task)

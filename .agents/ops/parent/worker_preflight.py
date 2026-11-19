@@ -159,7 +159,7 @@ def context(
     parent, items = session.work_items() if work_items is None else work_items
     if child not in items:
         raise ValueError("worker requires a direct child or the standalone issue")
-    task = session.row["tasks"].get(str(child), {})
+    task = session.worker_task(child)
     found: dict[int, dict[str, Any]] = {}
 
     def visit(n: int, body: str) -> None:
@@ -242,7 +242,7 @@ def review_errors(task: dict[str, Any]) -> tuple[str, ...]:
 def observe(
     session: ParentSession, child: int, *, persist: bool = False
 ) -> dict[str, Any]:
-    task = session.row.get("tasks", {}).get(str(child), {})
+    task = session.worker_task(child)
     if not task.get("delegated"):
         return {
             "phase": "not_delegated",
@@ -335,11 +335,11 @@ def latest_evidence(
     session: ParentSession, child: int, *, persist_ended: bool = True
 ) -> tuple[Path, dict[str, Any]]:
     """Reuse the launcher's completion checks; never infer end from a final."""
-    task = session.row["tasks"][str(child)]
+    task = session.worker_task(child)
     if session.row.get("dispatch") is not None:
         from .development import Supervisor, ended, worker_jobs
 
-        jobs = worker_jobs(session.row["dispatch"], child)
+        jobs = worker_jobs(session.row["dispatch"], child, session.worker)
         if not jobs or jobs[-1]["delegation_id"] != task["delegation_id"]:
             raise ValueError("no runtime for the current worker delegation")
         with session.gh.io_scope():
@@ -377,7 +377,7 @@ def decide(
     nonempty(answer, "parent planning answer")
     if action not in {"approve", "investigate", "reject"}:
         raise ValueError("unknown worker planning decision")
-    task = session.row["tasks"][str(child)]
+    task = session.worker_task(child)
     value = state(task)
     fresh, _ = observe_context(session, child, value, persist=False)
     if not value["turns"] or value["turns"][-1]["snapshot"]["phase"] != "planning":
@@ -454,7 +454,7 @@ def prepare_turn(
     replacement: dict[str, Any] | None = None,
     previous_directory: Path | None = None,
 ) -> tuple[dict[str, Any], str]:
-    task = session.row["tasks"][str(child)]
+    task = session.worker_task(child)
     value = copy.deepcopy(state(task))
     fresh = context(session, child)
     if previous_record is not None:
@@ -568,7 +568,7 @@ def check_admission(
     *,
     current: dict[str, Any] | None = None,
 ) -> None:
-    value = state(session.row["tasks"][str(child)])
+    value = state(session.worker_task(child))
     validate_snapshot(snapshot)
     # Admit exactly the turn reserved by the current parent. Changed prose is
     # supplied as an observation; it does not fabricate a different instruction.
@@ -587,7 +587,7 @@ def result_turn(task: dict[str, Any]) -> dict[str, Any] | None:
 
 def require_implementation(session: ParentSession, child: int) -> str | None:
     """Verify the actual runtime and return the turn ID that was verified."""
-    task = session.row["tasks"].get(str(child), {})
+    task = session.worker_task(child)
     if not task.get("delegated"):
         return None
     turn = result_turn(task)

@@ -208,11 +208,14 @@ def _begin(
         )
     try:
         data = store.read_data()
+        from parent.worker_slots import record
+
+        row = data.get("parents", {}).get(f"{repo.casefold()}#{parent}", {})
+        child = getattr(args, "child", None)
         task = (
-            data.get("parents", {})
-            .get(f"{repo.casefold()}#{parent}", {})
-            .get("tasks", {})
-            .get(str(getattr(args, "child", None)), {})
+            record(row, child, getattr(args, "worker", None) or "primary")
+            if child is not None
+            else {}
         )
         runtime = None
         if task.get("worker_runs"):
@@ -613,9 +616,7 @@ def reason_reference(
             "content_sha256": sha(comment["body"].encode()),
         }
     elif kind == "worker_plan":
-        decisions = session.row["tasks"][str(reference["child"])]["preflight"][
-            "decisions"
-        ]
+        decisions = session.worker_task(reference["child"])["preflight"]["decisions"]
         original = next(
             d for d in decisions if d["decision_id"] == reference["decision_id"]
         )
@@ -623,7 +624,7 @@ def reason_reference(
             "parent.decide-worker-plan", "saved planning answer", original
         )
     elif kind == "model_reason":
-        original = session.row["tasks"][str(reference["child"])]
+        original = session.worker_task(reference["child"])
         require(bool(original.get("model_reason")), "reference_unavailable")
         evidence = source(
             "parent.run-worker", "saved model_reason", original["model_reason"]

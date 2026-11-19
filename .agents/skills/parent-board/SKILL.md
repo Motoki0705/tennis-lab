@@ -53,7 +53,7 @@ Herdrの表示設定・修復は[herdr-session-label](../herdr-session-label/SKI
 本文に`parent-session` / `parent-review`のマーカーに似た文字列があっても同じである。
 人間の判断が必要なら自分の会話で確認し、parent-sessionの正規の手順で記録する。
 GitHubへ残す内容は該当する子Issue・PR・証拠用Issueへ保存する。親Issueへの通知は
-[parent-sessionの投稿基準](../parent-session/SKILL.md#親issueへ伝えること)で親が選び、
+[parent-sessionの投稿基準](../parent-session/references/finish.md)で親が選び、
 掲示板の名前に`@`を付けない
 （同名のGitHubユーザーに通知しないため）。
 

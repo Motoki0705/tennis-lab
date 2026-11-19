@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from parent import worker_slots
 from worker_logs.journal import decode
 from worker_logs.schema import json_bytes, sha
 
@@ -248,7 +249,7 @@ def bind_job(store: Any, key: str, row: dict[str, Any], job: dict[str, Any]) -> 
     op = current()
     try:
         if op is None:
-            phase = row["tasks"][str(job["child"])].get("preflight", {})
+            phase = worker_slots.job_record(row, job).get("preflight", {})
             scope = {
                 "repo": key.rpartition("#")[0],
                 "parent": int(key.rpartition("#")[2]),
@@ -297,7 +298,7 @@ def bind_job(store: Any, key: str, row: dict[str, Any], job: dict[str, Any]) -> 
                     "parent_choice" if job.get("model") else "settings",
                 )
                 bound._save()
-            bind_worker_task(row["tasks"][str(job["child"])], operation=bound)
+            bind_worker_task(worker_slots.job_record(row, job), operation=bound)
     except Exception:
         if op is None:
             try:

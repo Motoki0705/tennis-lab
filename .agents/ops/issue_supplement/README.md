@@ -18,11 +18,11 @@ Variables APIの追加権限を持たないjobでは `read_enabled_since` を呼
 workflow以外の親CLI・dispatcherの取得契約は変更しない。
 有効化前のissue、親ラベルのないissue、処理済みの自動イベントには何も書き込まない。
 子も兼ねる親は親・子両方の本文書式を検査する。
-改善提案と、承認snapshotから[取り出したparent](../parent/improvements.md#承認分の取り出しと復旧)は対象外。起票後の背景追加で承認内容を変えない。
+改善提案と、承認snapshotから[取り出したparent](../../skills/parent-session/references/finish.md#次回改善)は対象外。起票後の背景追加で承認内容を変えない。
 
 同じissueのrunをconcurrencyで直列化し、実行中のrunは取り消さない。
 workflowファイル名 `issue-supplement.yml` と表示名 `issue-supplement #<番号>` は
-[`parent wait-supplement`](../parent/README.md#補足追加の確定待ち)との共有契約。
+[`parent wait-supplement`](../../skills/parent-session/references/ownership.md)との共有契約。
 本文競合によるattempt 2も同じrun内で実行し、runの表示名とowner起点の認可を保持する。
 wait-supplementはこの1つのrunが全jobを終えるまで待つ。別runの起動や追跡は行わない。
 
@@ -44,7 +44,7 @@ wait-supplementはこの1つのrunが全jobを終えるまで待つ。別runの�
    done/skippedや非対象は再実行しない。通常のpendingでも生成前に記録を確認する。
    title・body・labels・created_at・作者・全コメントをprivateなrun dirへ保存する。
    本文が60秒変わらなくなるまで10秒以下の間隔で確認する。10分以内に安定しなければ失敗。
-2. repository ownerをpublisherとして [共通reader](../parent/README.md#機械証拠の保存共通reader) 経由の合意・実行根拠と、
+2. repository ownerをpublisherとして [共通reader](../parent/README.md#責務と状態の正本) 経由の合意・実行根拠と、
    `parent.judgement_comments.owned_comment` が完全検証した `startable` の判定記録を調べる。
    既に記録があれば本文を変更せず `supplement:skipped` にする。引用・別publisher・保留判定は実行根拠にしない。
    壊れた所有コメントは解析失敗とし、補足せず `supplement:failed` にする。

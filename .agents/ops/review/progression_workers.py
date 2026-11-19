@@ -12,7 +12,9 @@ from parent.policy import nonempty
 from parent.session import ParentSession
 
 
-def source(session: ParentSession, child: int) -> dict[str, Any]:
+def source(
+    session: ParentSession, child: int, *, allow_failed: bool = False
+) -> dict[str, Any]:
     """Inspect the latest ended creating runtime, for either worker owner."""
     from dispatcher.runtime import Runtime
 
@@ -22,7 +24,11 @@ def source(session: ParentSession, child: int) -> dict[str, Any]:
     if dispatch:
         from dispatcher.supervisor import Supervisor
 
-        jobs = [j for j in dispatch["jobs"].values() if j["child"] == child]
+        jobs = [
+            j
+            for j in dispatch["jobs"].values()
+            if j["child"] == child and j.get("worker_name", "primary") == "primary"
+        ]
         if not jobs or any(j["phase"] != "ended" for j in jobs):
             raise ValueError("creating worker termination is unconfirmed")
         job = max(jobs, key=lambda j: j["sequence"])
@@ -41,7 +47,7 @@ def source(session: ParentSession, child: int) -> dict[str, Any]:
     record = proof["record"]
     if (
         not Runtime(runner).ended(proof)
-        or record.get("result") != "completed"
+        or (not allow_failed and record.get("result") != "completed")
         or record.get("recovery_error")
     ):
         raise ValueError("creating worker termination/completion is unconfirmed")
@@ -92,7 +98,14 @@ def refresh(
             if not original:
                 raise ValueError("creating worker session provenance is missing")
             old, current = worker["delegation_id"], task["delegation_id"]
-            cursor = old
+            handoff = task.get("astra_handoff", {})
+            migrated = (
+                old == handoff.get("from")
+                and target["number"] in handoff["prs"]
+                and original["session_id"] == handoff["source"]["session_id"]
+                and original["contract"] == handoff["source"]["contract"]
+            )
+            cursor = handoff["to"] if migrated else old
             for step in task.get("preflight", {}).get("continuations", []):
                 if step["from"] == cursor:
                     cursor = step["to"]
@@ -100,7 +113,7 @@ def refresh(
                 raise ValueError("creating worker continuation lineage is unconfirmed")
             runner_ended(session, worker["child"], persist=False)
             actual = source(session, worker["child"])
-            if (
+            if not migrated and (
                 actual["session_id"] != original["session_id"]
                 or actual["contract"] != original["contract"]
             ):

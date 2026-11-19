@@ -14,6 +14,7 @@ from typing import Any
 from dispatcher.runtime import Runtime, load
 from lib.agent_settings import (
     DEFAULT_CONFIG,
+    check_saved_implementation_model,
     execution_contract,
     implementation_model,
     resolve,
@@ -27,7 +28,7 @@ from worker_logs.ownership import publication_owner
 from worker_logs.sources import original as original_text
 from worker_logs.sources import read_original
 
-from . import worker_preflight
+from . import worker_preflight, worker_slots
 from .execution import authorization
 from .github import GitHub
 from .policy import closing_issues, digest, nonempty, object_value
@@ -50,16 +51,16 @@ MODEL_KEYS = {"model", "model_reason"}
 
 
 def current_task(session: ParentSession, child: int) -> dict[str, Any]:
-    return reserved_task(session.owner(), child)
+    return reserved_task(session.owner(), child, session.worker)
 
 
-def reserved_task(row: dict[str, Any], child: int) -> dict[str, Any]:
+def reserved_task(
+    row: dict[str, Any], child: int, worker: str = "primary"
+) -> dict[str, Any]:
     """Validate a manual reservation, also for readers without ownership."""
     if row.get("dispatch") is not None:
         raise ValueError("manual worker commands cannot change dispatcher workers")
-    task: dict[str, Any] = object_value(
-        object_value(row.get("tasks", {})).get(str(child), {})
-    )
+    task: dict[str, Any] = object_value(worker_slots.record(row, child, worker))
     if (
         not task.get("delegated")
         or task.get("agent") != "codex"
@@ -165,7 +166,7 @@ def model_settings(task: dict[str, Any], record: dict[str, Any]) -> dict[str, An
     selected = object_value(settings.get("selected"))
     overrides = object_value(settings.get("overrides"))
     model = nonempty(selected.get("model"), "saved worker model")
-    implementation_model(None, previous=model)
+    check_saved_implementation_model(model)
     if "repair" in contract:
         validate_repair_contract(contract)
     if (
@@ -531,14 +532,23 @@ def prepare_run(
         r
         for r in planned["reasons"]
         if not (
-            continuation and r["code"] in {"existing_pr", "completed", "parent_closed"}
+            (
+                (
+                    session.worker != "primary"
+                    or task.get("astra_handoff", {}).get("to") == task["delegation_id"]
+                )
+                and r["code"] == "existing_pr"
+            )
+            or continuation
+            and r["code"] in {"existing_pr", "completed", "parent_closed"}
         )
     ]
     if reasons:
         raise ValueError(
             "manual worker is blocked: " + "; ".join(r["message"] for r in reasons)
         )
-    if continuation:
+    migration = task.get("astra_handoff", {}).get("to") == task["delegation_id"]
+    if (continuation or migration) and session.worker == "primary":
         prs = [
             p
             for p in session.gh.pulls()
@@ -584,8 +594,6 @@ def prepare_run(
             raise ValueError("restart evidence requires --resume")
         model = implementation_model(model)
         if model_reason is None:
-            if model != implementation_model(None):
-                raise ValueError("initial alternate model requires --model-reason-file")
             model_reason = "通常の実装として agents.conf の既定モデルを選択。"
         runner_model = model
     else:
@@ -698,6 +706,7 @@ def prepare_run(
         items[child].body,
         instruction,
         turn,
+        worker=session.worker,
     )
     text = prepared_instruction.text
     # Log capture annotates legacy turns. Preserve replaced lineages on every turn.
@@ -763,11 +772,14 @@ def run_worker(
     planning: bool = False,
     replace_session: bool = False,
     repair: dict[str, Any] | None = None,
+    worker: str | None = None,
 ) -> tuple[int, dict[str, Any]]:
     if repair is not None:
         gh.targeted_history = True
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
+        worker = worker_slots.select(session.row, child, worker)
+        session.worker = worker
         session.agreed()
         previous_ended = copy.deepcopy(current_task(session, child).get("worker_ended"))
         previous_runtime = copy.deepcopy(
@@ -793,17 +805,17 @@ def run_worker(
             if attempt["launch_state"] != "reserved":
                 return 0, repair_receipt(child, delegation, command, attempt)
         log_path = (
-            session.row["tasks"][str(child)]["preflight"]["turns"][-1]
+            session.worker_task(child)["preflight"]["turns"][-1]
             .get("log", {})
             .get("journal")
         )
         from decision_logs.observations import bind_worker_task
 
-        bind_worker_task(session.row["tasks"][str(child)])
+        bind_worker_task(session.worker_task(child))
         reserved_owner = {
             k: session.row[k] for k in ("session", "status", "generation")
         }
-        reserved_task = session.row["tasks"][str(child)]
+        reserved_task = session.worker_task(child)
         reserved_run = copy.deepcopy(worker_runs(reserved_task)[-1])
         reserved_turn = copy.deepcopy(reserved_task["preflight"]["turns"][-1])
         reserved_replacement = (
@@ -825,6 +837,7 @@ def run_worker(
         instruction,
         delegation,
         generation=reserved_owner["generation"],
+        worker=worker,
         reserved_run=reserved_run,
         reserved_turn=reserved_turn,
     )
@@ -834,6 +847,7 @@ def run_worker(
     if repair is not None and admission.reused:
         with store.locked():
             session = ParentSession(gh, store, parent, identity)
+            session.worker = worker
             attempt = current_task(session, child)["repair_attempts"][
                 repair["repair_id"]
             ]
@@ -843,7 +857,7 @@ def run_worker(
             with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
                 store.focus(session.key)
                 row = store.parents.get(session.key, {})
-                current = row.get("tasks", {}).get(str(child), {})
+                current = worker_slots.record(row, child, worker)
                 attempt = current["repair_attempts"][repair["repair_id"]]
                 if (
                     any(row.get(k) != reserved_owner[k] for k in reserved_owner)
@@ -879,7 +893,7 @@ def run_worker(
             # construct ParentSession here: its login lookup is network I/O.
             store.focus(session.key)
             row = store.parents.get(session.key, {})
-            current = row.get("tasks", {}).get(str(child), {})
+            current = worker_slots.record(row, child, worker)
             runs = worker_runs(current)
             turns = current.get("preflight", {}).get("turns", [])
             if (
@@ -981,6 +995,7 @@ def run_worker(
 
         with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
             session = ParentSession(gh, store, parent, identity)
+            session.worker = worker
             current = current_task(session, child)
             if (
                 current["delegation_id"] != delegation
@@ -1023,6 +1038,42 @@ def run_worker(
         if (directory / "final.md").exists()
         else None,
     }
+
+
+def inspect_manual(session: ParentSession, child: int, *, stop: bool) -> dict[str, Any]:
+    """The caller holds the parent operation lock while stopping a specific run."""
+    with session.store.snapshot():
+        task = current_task(session, child)
+        directory = latest_run(session, task)
+        delegation = task["delegation_id"]
+        validate_run(task, directory)
+    runtime = Runtime(RUNNER)
+    proof = runtime.inspect(directory, stop=stop)
+    with session.store.locked() if stop else session.store.snapshot():
+        task = current_task(session, child)
+        if (
+            task["delegation_id"] != delegation
+            or latest_run(session, task) != directory
+        ):
+            raise RegistryConflict("manual worker changed during inspection")
+        matching_contract(task, proof["record"])
+        terminated = runtime.ended(proof)
+        if stop and terminated:
+            task["worker_ended"] = {
+                "delegation_id": delegation,
+                "evidence": "Runner confirmed termination and cleanup.",
+            }
+            session.store.save()
+        return {
+            "child": child,
+            "worker": session.worker,
+            "delegation_id": delegation,
+            "termination_confirmed": terminated,
+            "result": proof["record"]["result"],
+            "final_file": str(directory / "final.md")
+            if (directory / "final.md").is_file()
+            else None,
+        }
 
 
 def repair_receipt(

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -30,14 +29,15 @@ def choice_files(
     monkeypatch.syspath_prepend(str(CONFIG.parents[1]))
     settings = importlib.import_module("lib.review_settings")
     config = CONFIG
-    if mode != "select":
-        config = h.root / "review.conf"
+    if mode == "select":
+        # Exercise persisted select-policy contracts using an explicit fixture.
+        config = h.root / "select.conf"
         config.write_text(
-            re.sub(
-                r'^REVIEW_SELECTION_MODE="[^"]*"$',
-                f'REVIEW_SELECTION_MODE="{mode}"',
-                CONFIG.read_text(),
-                flags=re.MULTILINE,
+            CONFIG.read_text()
+            .replace('MODE="fixed"', 'MODE="select"')
+            .replace(
+                f'REVIEW_CODEX_ALLOWED_PAIRS="{REVIEW_FIXED_MODEL}:xhigh"',
+                f'REVIEW_CODEX_ALLOWED_PAIRS="{REVIEW_FIXED_MODEL}:xhigh,{REVIEW_OTHER_MODEL}:xhigh"',
             )
         )
     choice = settings.choose(
@@ -249,6 +249,9 @@ def test_review_resume_keeps_saved_selection_after_pin_change(
         action="resume",
         extra=(*profile, "--resume-from", str(h.root / "initial")),
     )
+    if model == OLD_ASTRA:
+        assert proc.returncode == 2 and not (h.root / "continued").exists()
+        return
     assert proc.returncode == 0, proc.stderr
     before, after = h.result(), h.result("continued")
     assert after["runtime"]["session_id"] == before["runtime"]["session_id"]
