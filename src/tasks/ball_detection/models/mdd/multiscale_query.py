@@ -59,11 +59,14 @@ class DeformableMHCQueryBlock(nn.Module):
         references = references[:, :, None] * memory.valid_ratios[:, None]
         values = memory.values.reshape(b*t, -1, dim)
         chunks = []
-        for first in range(0, b*t, self.chunk_size):
-            last = min(first+self.chunk_size, b*t)
-            image = self.path.norms[1](values[first:last])
-            chunks.append(self.cross(queries[first:last], references[first:last], image,
-                                     memory.shapes, memory.starts, memory.mask[first:last]))
+        # A shared SplitBackward concatenates chunk gradients once. Repeated
+        # slices instead zero and accumulate a full B*T image-memory gradient
+        # for every chunk, even though their frame ranges are disjoint.
+        parts = zip(queries.split(self.chunk_size), references.split(self.chunk_size),
+                    values.split(self.chunk_size), memory.mask.split(self.chunk_size), strict=True)
+        for query, reference, value, mask in parts:
+            image = self.path.norms[1](value)
+            chunks.append(self.cross(query, reference, image, memory.shapes, memory.starts, mask))
         residual = streams + torch.cat(chunks, dim=0).reshape_as(streams)
         return self.path.temporal_span(residual, times)
 
