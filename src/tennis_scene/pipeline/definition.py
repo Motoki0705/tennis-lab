@@ -28,7 +28,10 @@ from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.components.court_side import CourtSideModule
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
 from src.tennis_scene.pipeline.components.hmr2_features import HMR2FeaturesModule
-from src.tennis_scene.pipeline.components.identity import PlayerAssociationModule
+from src.tennis_scene.pipeline.components.identity import (
+    PLAYER_ASSOCIATION,
+    PlayerAssociationModule,
+)
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
 from src.tennis_scene.pipeline.components.person_features import (
     PersonAppearanceFeaturesModule,
@@ -135,7 +138,8 @@ def standard_model_components(cfg: PipelineRuntimeConfig, ids: tuple[str, ...]) 
         "player_selection": PlayerSelectionModule(selection, footpoints=association.footpoints, sampling=sampling,
             encoder=encoder, encoder_name=name if encoder is not None else None, device=cfg.device, enabled=people),
         "pose_estimation": PoseEstimationModule(cfg.people, require_evidence=people, enabled=people),
-        "player_association": PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people, encoder=encoder),
+        PLAYER_ASSOCIATION: PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people, encoder=encoder,
+            reuse_clip_embeddings=cfg.reuse_clip_embeddings, feature_config=cfg.tracking.features),
         "hmr2_features": HMR2FeaturesModule(cfg.people, enabled=body),
         "gvhmr": GVHMRModule(cfg.people, enabled=body),
         "body_placement": BodyPlacementModule(ids, cfg.people, cfg.player_placement, reprojection_px=cfg.player_reprojection_px, enabled=body),
@@ -383,10 +387,15 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         side_settings = video_court_side.node_settings(source.clip_id, cfg.court_side_unobservable_policy, cfg.video_court_unobservable_policy)
     add("court_side", side_module, CourtSideInputAssembler(0.0), {"calibration": "court_calibration", **balls},
         lambda: side_settings, require_component=require_side)
-    add("player_association", components["player_association"],
-        PlayerAssociationInputAssembler(), {"calibration": "court_calibration", "side": "court_side", **{f"tracks_{c}": f"player_selection/{c}" for c in ids}},
-        lambda: {"config": association, "sampling": sampling, "enabled": people_enabled,
-                 "assets": bound_assets(people_enabled and weights is not None, encoder_assets)})
+    association_component = overrides.get(PLAYER_ASSOCIATION, components[PLAYER_ASSOCIATION])
+    reuse_clip_embeddings = isinstance(association_component, PlayerAssociationModule) and association_component.reuse_clip_embeddings
+    association_bindings = {"calibration": "court_calibration", "side": "court_side", **{f"tracks_{c}": f"player_selection/{c}" for c in ids}}
+    if reuse_clip_embeddings:
+        association_bindings.update({f"detections_{c}": f"person_detection/{c}" for c in ids})
+        association_bindings.update({f"appearance_{c}": f"person_appearance_features/{c}" for c in ids})
+    add(PLAYER_ASSOCIATION, components[PLAYER_ASSOCIATION], PlayerAssociationInputAssembler(reuse_clip_embeddings),
+        association_bindings, lambda: {**components[PLAYER_ASSOCIATION].cache_identity(),
+                                       "assets": bound_assets(people_enabled and weights is not None, encoder_assets)})
     identified = {**observations, "identities": "player_association"}
     add("camera_alignment", CameraAlignmentModule(ids, cfg.camera_geometry, player_reprojection_px=cfg.player_reprojection_px,
         ball_reprojection_px=cfg.ball_reprojection_px, joint_confidence=cfg.joint_confidence, max_frames=cfg.sampling_max_frames),

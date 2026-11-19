@@ -108,6 +108,23 @@ def decision(cfg: Any, root: Path, store: CachedCourtStore, target: str) -> Any:
     return plan.decide(("clip", target))
 
 
+def test_association_reuse_policy_separates_cache_and_publication(tmp_path: Path) -> None:
+    cfg = configured(tmp_path)
+    target = 'player_association'
+    store = CachedCourtStore(tmp_path / 'store', 'clip')
+    fresh = decision(cfg, tmp_path, store, target)
+    store.refs[target] = ArtifactRef('d' * 64, 'fake.json', 'e' * 64, fresh.identity['schema'],
+                                    fresh.identity['version'], document_digest(fresh.identity))
+    assert decision(cfg, tmp_path, store, target).action == 'cached'
+    reuse = runtime(tmp_path, overrides=("gvhmr.enabled=true", "player_association.reuse_clip_embeddings=true"))
+    changed = decision(reuse, tmp_path, store, target)
+    assert changed.action == 'execute'
+    assert not fresh.identity['settings']['reuse_clip_embeddings']
+    assert changed.identity['settings']['reuse_clip_embeddings']
+    assert set(changed.dependencies) - set(fresh.dependencies) == {'detections_cam0', 'appearance_cam0'}
+    assert TennisSceneOrchestrator(cfg).publication_identity() != TennisSceneOrchestrator(reuse).publication_identity()
+
+
 @pytest.mark.parametrize("target,change", [
     ("ball_detection/cam0", "device"), ("ball_detection/cam0", "precision"),
     ("person_detection/cam0", "device"), ("person_pose_features/cam0", "device"), ("person_appearance_features/cam0", "device"),

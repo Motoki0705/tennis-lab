@@ -172,8 +172,8 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 | node / schema | version | 数値配列と契約 |
 |---|---|---|
 | `person_pose_features/<camera>` / `person_pose_features` | 2 | `frame_offsets` int64 (T+1)、`source_rows` int64 (N)、`keypoints` float32 (N,17,3)、`model_identity`・`preprocessing_identity`。元画素x/yと加工しないheatmap peak |
-| `person_appearance_features/<camera>` / `person_appearance_features` | 3 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、明示したCLIP encoder名・`encoder_identity`・`preprocessing_identity`。無効cropはzero＋false |
-| `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v2・外観特徴v3のcamera・全frame offset・元row・期待するモデル/前処理identityを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
+| `person_appearance_features/<camera>` / `person_appearance_features` | 4 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、CLIP encoder名・`encoder_identity`・`preprocessing_identity`。検出のあるframeはデコード済みBGR画像の`frame_sha256` uint8 (T,32)を持つ。無効cropはzero＋false |
+| `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v2・外観特徴v4のcamera・全frame offset・元row・期待するモデル/前処理identityを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
 | `player_selection/<camera>` / `selected_player_tracks` | 3 | 保存した追跡特徴の選別とgroup軸への対応付け |
 | `pose_estimation/<camera>` / `person_poses` | 2 | 選別groupの実観測poseを再利用。標準経路で再推論しない |
 
@@ -236,7 +236,7 @@ CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だ�
 `selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
 追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
 設定した選別encoderで明示的に再計算し、appearance診断へsourceと理由を記録する。
-旧person_tracks v5/v6・pose特徴v1・外観特徴v1/v2・selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
+旧person_tracks v5/v6・pose特徴v1・外観特徴v1〜v3・selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。
@@ -246,6 +246,10 @@ poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、ha
 [src/tasks/player_association](../../tasks/player_association/README.md)の対応付けを、校正済みcameraのtrackのboxと
 `court_side`が決めたsideに適用する。方式のパラメータはtaskの採用済みdefault YAMLを読み、
 シングルス/ダブルスは`player_association.players_per_side`で明示する。CLIPの重みを資産identityに含める。
+`player_association.reuse_clip_embeddings`は既定の`false`で全sampleを再推論し、`true`で保存特徴の再利用を有効にする。
+`true`では通常のsampling後に元検出row・box・画像・encoder・前処理を照合し、一致した個別embeddingを読む。
+照合できないsampleはカメラ内で最大64cropずつ同じCLIP runtimeで推論する。方針はcache identityに含まれ、
+`diagnostics.appearance`に再利用数・再推論数とtrackごとのframe・理由が残る。
 比較用の旧尺度・別encoderはtaskの比較APIから使用する。
 player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switchの前後で別の人物を持てる。
 決まらないclipは`ReconstructionUnavailable`（reason `player_association_<停止理由>`、全scoreと途中の決定）で停止する。

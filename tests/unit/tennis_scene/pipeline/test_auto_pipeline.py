@@ -166,7 +166,7 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
             detection.frame_offsets, detection.source_rows, np.zeros((frames * count, 17, 3), np.float32), 'a' * 64, 'b' * 64))
         fixed(f"person_appearance_features/{camera}", PersonAppearanceFeaturesModule.io, PersonAppearanceFeaturesOutput(camera,
             detection.frame_offsets, detection.source_rows, np.zeros((frames * count, 1280), np.float32),
-            np.zeros(frames * count, bool), "clipreid_vitb16_market1501", "a" * 64, 'b' * 64))
+            np.zeros(frames * count, bool), "clipreid_vitb16_market1501", "a" * 64, 'b' * 64, np.zeros((frames, 32), np.uint8)))
         fixed(f"person_tracking/{camera}", PersonTrackingModule.io, PersonTrackingOutput(camera,
             np.arange(count, dtype=np.int64), boxes, people.observed[v].T,
             tuple((i,) for i in range(count)), ()))
