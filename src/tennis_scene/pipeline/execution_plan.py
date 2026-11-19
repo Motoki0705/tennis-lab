@@ -198,11 +198,14 @@ class ExecutionPlan:
 
     def ready(self, required: frozenset[NodeKey] | None = None) -> tuple[NodeKey, ...]:
         selected = self.required if required is None else required
-        pending_families = {self.nodes[key].name.split('/')[0] for key in selected if key not in self.references}
-        return tuple(key for key in self.order if key in selected and key not in self.statuses
+        # Ordering barriers wait for work to finish. Only artifact inputs require
+        # a successful publication, so a failed clip cannot stall other clips.
+        pending = selected - self.statuses.keys()
+        pending_families = {self.nodes[key].name.split('/')[0] for key in pending}
+        return tuple(key for key in self.order if key in pending
                      and all(parent in self.references for parent in self.dependencies[key].values())
                      and not any(family in pending_families for family in self.nodes[key].after_components)
-                     and all(parent in self.references for parent in self.ordering_dependencies[key] if parent in selected))
+                     and not any(parent in pending for parent in self.ordering_dependencies[key]))
 
     def clip_complete(self, clip_id: str) -> bool:
         if clip_id not in self.clips:
