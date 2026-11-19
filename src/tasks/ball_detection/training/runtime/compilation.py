@@ -11,21 +11,24 @@ from torch import nn
 COMPILE_MODES = ("off", "default", "reduce-overhead", "max-autotune")
 
 
-def compile_coordinate_model(model: nn.Module, *, mode: str, recompile_limit: int = 8) -> None:
+def compile_coordinate_model(model: nn.Module, *, mode: str, recompile_limit: int = 8, fullgraph: bool = True) -> None:
     if mode not in COMPILE_MODES or recompile_limit < 1:
         raise ValueError("Invalid coordinate compilation mode or recompile limit")
     if getattr(model, "_compiled_call_impl", None) is not None:
         raise ValueError("Model was already compiled; configure its runtime exactly once")
+    if type(fullgraph) is not bool:
+        raise ValueError("Declare fullgraph as a boolean")
     # Execution metadata is neither a parameter nor a registered child module.
     model.__dict__["_coordinate_compile_mode"] = mode
     model.__dict__["_coordinate_recompile_limit"] = recompile_limit
+    model.__dict__["_coordinate_compile_fullgraph"] = fullgraph
     if mode == "off":
         return
     if next(model.parameters()).device.type != "cuda":
         raise ValueError("Coordinate model compilation is supported on CUDA; no eager fallback")
     # In-place compilation preserves model type and unprefixed state_dict names.
     with coordinate_compile_scope(model):
-        model.compile(backend="inductor", mode=mode, fullgraph=True, dynamic=False,
+        model.compile(backend="inductor", mode=mode, fullgraph=fullgraph, dynamic=False,
                       recompile_limit=recompile_limit)
 
 
@@ -47,7 +50,7 @@ def coordinate_compile_scope(model: nn.Module) -> Iterator[None]:
 def coordinate_compilation_report(model: nn.Module) -> dict[str, Any]:
     mode = getattr(model, "_coordinate_compile_mode", "off")
     report: dict[str, Any] = dict(mode=mode, backend="inductor" if mode != "off" else None,
-                                 fullgraph=mode != "off", dynamic=False,
+                                 fullgraph=bool(mode != "off" and getattr(model, "_coordinate_compile_fullgraph", True)), dynamic=False,
                                  recompile_limit=getattr(model, "_coordinate_recompile_limit", 8),
                                  backward_pass_autocast="off")
     if mode != "off":

@@ -22,23 +22,32 @@ from src.tasks.ball_detection.models.mdd import (
     MDDMHCQueryConfig,
     MDDTemporalQueryConfig,
 )
+from src.tasks.ball_detection.models.mdd.multiscale_config import (
+    MDDMultiScaleQueryConfig,
+)
+from src.tasks.ball_detection.models.mdd.multiscale_query import (
+    DeepMDDMultiScaleQueryDetector,
+)
 from src.tasks.ball_detection.preprocessing.rgb_mdd import input_transform_from_contract
 
 TemporalConfig: TypeAlias = MDDHeatmapConfig | MDDTemporalQueryConfig
 TemporalModel: TypeAlias = HeatmapModel | DeepMDDQueryDetector
 QUERY_SCHEMA = "mdd_temporal_coordinates.v1"
 MHC_QUERY_SCHEMA = "mdd_mhc_coordinates.v1"
-QUERY_CONFIG_TYPES = (MDDTemporalQueryConfig, MDDMHCQueryConfig)
+MULTISCALE_QUERY_SCHEMA = "mdd_multiscale_coordinates.v1"
+QUERY_CONFIG_TYPES = (MDDTemporalQueryConfig, MDDMHCQueryConfig, MDDMultiScaleQueryConfig)
 
 
 def build_temporal_model(
     config: TemporalConfig, *, mdd_a: float = 0.2, mdd_b: float = 0.15
 ) -> TemporalModel:
+    if type(config) is MDDMultiScaleQueryConfig:
+        return DeepMDDMultiScaleQueryDetector(config, mdd_a=mdd_a, mdd_b=mdd_b)
     if type(config) is MDDMHCQueryConfig:
         return DeepMDDMHCQueryDetector(config, mdd_a=mdd_a, mdd_b=mdd_b)
     if type(config) is MDDTemporalQueryConfig:
         return DeepMDDQueryDetector(config, mdd_a=mdd_a, mdd_b=mdd_b)
-    return build_mdd_heatmap_detector(config, mdd_a=mdd_a, mdd_b=mdd_b).model
+    return build_mdd_heatmap_detector(cast(MDDHeatmapConfig, config), mdd_a=mdd_a, mdd_b=mdd_b).model
 
 
 def temporal_forward(model: TemporalModel, rgb: Tensor, timestamps: Tensor) -> Tensor:
@@ -53,26 +62,29 @@ def temporal_forward(model: TemporalModel, rgb: Tensor, timestamps: Tensor) -> T
 
 def temporal_model_payload(model: TemporalModel) -> dict[str, Any]:
     if isinstance(model, DeepMDDQueryDetector):
+        multiscale = type(model) is DeepMDDMultiScaleQueryDetector and type(model.config) is MDDMultiScaleQueryConfig
         mhc = type(model) is DeepMDDMHCQueryDetector and type(model.config) is MDDMHCQueryConfig
         legacy = type(model) is DeepMDDQueryDetector and type(model.config) is MDDTemporalQueryConfig
-        if not (mhc or legacy):
+        if not (mhc or legacy or multiscale):
             raise ValueError(
                 "Temporal coordinates require their explicit variable-T config"
             )
         return dict(
-            schema=MHC_QUERY_SCHEMA if mhc else QUERY_SCHEMA,
-            model_kind="mdd_mhc_query" if mhc else "mdd_temporal_query",
+            schema=MULTISCALE_QUERY_SCHEMA if multiscale else MHC_QUERY_SCHEMA if mhc else QUERY_SCHEMA,
+            model_kind="mdd_multiscale_query" if multiscale else "mdd_mhc_query" if mhc else "mdd_temporal_query",
             model_config=asdict(model.config),
             input_contract=model.mdd.input_contract(),
             state_dict=model.state_dict(),
         )
-    return cast(dict[str, Any], heatmap_model_payload(model))
+    artifact: dict[str, Any] = heatmap_model_payload(model)
+    return artifact
 
 
 def restore_temporal_model(saved: dict[str, Any]) -> TemporalModel:
     kinds: dict[str, tuple[str, type[MDDTemporalQueryConfig]]] = {
         QUERY_SCHEMA: ("mdd_temporal_query", MDDTemporalQueryConfig),
         MHC_QUERY_SCHEMA: ("mdd_mhc_query", MDDMHCQueryConfig),
+        MULTISCALE_QUERY_SCHEMA: ("mdd_multiscale_query", MDDMultiScaleQueryConfig),
     }
     schema = saved.get("schema")
     if schema not in kinds:

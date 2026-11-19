@@ -43,6 +43,7 @@ def source_identity() -> dict[str, Any]:
     task = root / "src/tasks/ball_detection"
     directories = ("models/mdd", "preprocessing", "model_io", "data", "training", "evaluation", "checkpoints")
     paths = {path for directory in directories for path in (task / directory).rglob("*.py")}
+    paths.update((root / "src/utils/models/components/ops/msda").rglob("*.py"))
     paths.update(root / name for name in (
         "src/tasks/ball_detection/configuration.py", "src/utils/configuration/cli.py",
         "src/tasks/ball_detection/scripts/train.py", "src/tasks/ball_detection/scripts/evaluate.py",

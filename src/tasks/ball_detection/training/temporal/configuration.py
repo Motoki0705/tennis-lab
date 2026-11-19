@@ -16,15 +16,21 @@ from src.tasks.ball_detection.models.mdd import (
     MDDMHCQueryConfig,
     MDDTemporalQueryConfig,
 )
+from src.tasks.ball_detection.models.mdd.multiscale_config import (
+    MDDMultiScaleQueryConfig,
+)
+from src.tasks.ball_detection.models.mdd.stage_config import MDDStageHeatmapConfig
 
 
 def load_model_config(path: Path, architecture: str) -> TemporalConfig:
     raw = yaml.safe_load(path.read_text())
     choices: dict[tuple[str, str], type[TemporalConfig]] = {
         ("dpt", "mdd_dpt_heatmap"): MDDHeatmapConfig,
+        ("dpt", "mdd_stage_dpt_heatmap"): MDDStageHeatmapConfig,
         ("hybrid", "mdd_heatmap_hybrid"): MDDHeatmapHybridConfig,
         ("query", "mdd_temporal_query"): MDDTemporalQueryConfig,
         ("query", "mdd_mhc_query"): MDDMHCQueryConfig,
+        ("query", "mdd_multiscale_query"): MDDMultiScaleQueryConfig,
     }
     name = raw.pop("name", None) if isinstance(raw, dict) else None
     cls = choices.get((architecture, name)) if isinstance(name, str) else None
@@ -38,6 +44,12 @@ def load_model_config(path: Path, architecture: str) -> TemporalConfig:
         )
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
         raw[key] = tuple(raw[key])
+    if cls is MDDStageHeatmapConfig:
+        raw["stage_blocks"] = tuple(raw["stage_blocks"])
+        raw["expansion_ratios"] = tuple(raw["expansion_ratios"])
+    if cls is MDDMultiScaleQueryConfig:
+        raw["spatial_layers"] = tuple(raw["spatial_layers"])
+        raw["msda_levels"] = tuple(raw["msda_levels"])
     return cls(**raw)
 
 

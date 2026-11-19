@@ -74,3 +74,21 @@ def test_source_identity_records_the_shared_mhc_implementation() -> None:
     relative = "src/utils/models/components/mhc.py"
     expected = hashlib.sha256((Path(code["directory"]) / relative).read_bytes()).hexdigest()
     assert code["source_sha256"][relative] == expected
+
+
+def test_dpt_initializes_multiscale_query_encoder_without_relabeling_the_parent(tmp_path: Path) -> None:
+    from tests.unit.tasks.ball_detection.models.mdd.test_multiscale_query import (
+        multiscale_config,
+    )
+
+    source = replace(small_model("dpt"), encoder_variant="x3d_csn", temporal_mixing="depthwise3d",
+                     residual_blocks=(0, 1, 1, 1, 1, 1))
+    path = tmp_path / "parent.pt"
+    artifact = save_artifact(path, source)
+    config = multiscale_config(frames=64)
+    model, receipt = initialize_finetuning(path, expected_sha256=dual_sha256(path), parent_update=2, config=config)
+    assert receipt["mode"] == "encoder"
+    for name in receipt["transferred_keys"]:
+        torch.testing.assert_close(model.state_dict()[name], artifact["state_dict"][name], rtol=0, atol=0)
+    assert any("sampling_offsets" in name for name in receipt["new_keys"])
+    assert model.config == config
