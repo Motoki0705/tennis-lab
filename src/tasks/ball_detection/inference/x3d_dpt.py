@@ -25,6 +25,7 @@ from src.tasks.ball_detection.training.runtime.compilation import (
     coordinate_compile_scope,
 )
 from src.utils.device import resolve_device
+from src.utils.inference_recording import span
 
 
 def scene_dpt_input_contract(*, image_size: tuple[int, int], frames: int, input_channels: int) -> dict[str, Any]:
@@ -91,11 +92,14 @@ class X3DDPTPredictor:
         if tuple(images.shape[-2:]) != self.image_size:
             raise BallModelIOError(f"X3D/CSN + DPT requires image size {self.image_size}")
         with torch.inference_mode(), coordinate_compile_scope(self.model):
-            rgb = images.to(self.device, non_blocking=True)
-            with torch.autocast(self.device.type, dtype=torch.bfloat16, enabled=self.precision == "bf16"):
+            with span("transfer", model="Ball"):
+                rgb = images.to(self.device, non_blocking=True)
+            with (span("inference", model="Ball", batch_shape=list(rgb.shape)),
+                  torch.autocast(self.device.type, dtype=torch.bfloat16, enabled=self.precision == "bf16")):
                 logits = self.model(rgb)
             expected = (len(images), self.configured_frames, (self.image_size[0] + 3) // 4, (self.image_size[1] + 3) // 4)
             if tuple(logits.shape) != expected:
                 raise BallModelIOError(f"DPT must return native /4 heatmaps {expected}, got {tuple(logits.shape)}")
-            return MDDHeatmapAdapter(self.model.config, subpixel=self.subpixel_refine,
-                                     candidate_config=candidate_config).decode_output(logits)
+            with span("postprocess", model="Ball"):
+                return MDDHeatmapAdapter(self.model.config, subpixel=self.subpixel_refine,
+                                         candidate_config=candidate_config).decode_output(logits)
