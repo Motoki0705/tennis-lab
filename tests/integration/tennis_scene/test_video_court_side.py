@@ -17,7 +17,8 @@ from src.tennis_scene.pipeline.definition import (
 )
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.runner import ComponentRunner
-from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
+from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, unpack_value
 from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
 from src.tennis_scene.pipeline.video_court_side import (
     PinnedSideInputs,
@@ -125,7 +126,20 @@ def republish_second_ball_stream(pipeline, court, store, source):
         pipeline.components[name].result = output
 
 
-def test_shared_player_build_and_load_rejects_a_ball_decision(tmp_path, monkeypatch):
+def test_shared_player_build_load_and_publish_without_ball(tmp_path, monkeypatch):
+    import shutil
+
+    from src.tennis_scene.pipeline.clip_inputs import (
+        resolve_dataset_clip,
+        select_dataset_clips,
+    )
+    from src.tennis_scene.pipeline.dataset_publication import (
+        ANNOTATION_RELATIVE_DIR,
+        completed_annotation,
+        publish_annotation,
+    )
+    from tests.integration.tennis_scene.test_video_court import make_build_request
+
     pipeline, paths, sources, court, ball_pins = prefix_stores(tmp_path, monkeypatch, "agreement")
     ball = build(pipeline, court, ball_pins, tmp_path)
     assert ball.decision.evidence == "ball" and "evidence" not in ball.decision.document()
@@ -141,6 +155,19 @@ def test_shared_player_build_and_load_rejects_a_ball_decision(tmp_path, monkeypa
                                     video_court=court, overrides=pipeline.components)
         runner = ComponentRunner(nodes, store)
         runner.run(targets=["court_calibration", *(f"player_selection/{c}" for c in CAMERAS)])
+        if i == 1:
+            # Keep the observed boxes and mask in the old selection layout.
+            # Its unrelated tracking features cannot be decoded as current TrackEvidence.
+            for camera in CAMERAS:
+                node = f"player_selection/{camera}"
+                ref = runner.references[node]
+                saved = store.descriptor(ref)
+                payload = unpack_value(saved["payload"], (store.root / ref.path).parent, saved["arrays"])
+                payload["tracks"]["evidence"] = {"legacy_feature_format": True}
+                store.publish(node, payload, ArtifactCodec(dict), schema=ref.schema, version=2,
+                              identity={"fixture": "legacy_player_selection"},
+                              dependencies={key: ArtifactRef(**value) for key, value in saved["dependencies"].items()},
+                              provenance={"origin": "fixture"})
         pins[source.clip_id] = PinnedSideInputs.from_store(store.root, evidence="player")
         assert not any(node.startswith("ball_") for node in runner.nodes)
     request = build_request(tmp_path, pins)
@@ -162,6 +189,28 @@ def test_shared_player_build_and_load_rejects_a_ball_decision(tmp_path, monkeypa
                          clip_id=CLIPS[0])
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
     assert pipeline.last_receipt["video_court_side"]["evidence"] == "player"
+
+    make_build_request(tmp_path, paths)
+    dataset = tmp_path / "dataset"
+    inputs = resolve_dataset_clip(dataset, select_dataset_clips(dataset, CLIPS[:1])[0])
+    directory = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
+    shutil.copytree(pins[CLIPS[0]].directory, directory)
+    assert not any(path.name.startswith("ball_") for path in (directory / "components").iterdir())
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
+    identity = pipeline.publication_identity()
+    marker = publish_annotation(inputs, scene, pipeline_config_yaml="fixture: true\n", publication_identity=identity)
+    assert completed_annotation(inputs, identity) == marker
+
+    verdicts = identity["video_court_side_clips"]
+    mismatch = {**identity, "video_court_side_clips": {**verdicts, CLIPS[0]: {**verdicts[CLIPS[0]], "evidence": "ball"}}}
+    with pytest.raises(ValueError, match="shared decision or policy"):
+        publish_annotation(inputs, scene, pipeline_config_yaml="", publication_identity=mismatch)
+    selection = directory / pins[CLIPS[0]].references["player_selection/cam0"]["path"]
+    name = next(iter(json.loads(selection.read_text())["arrays"]))
+    with (selection.parent / name).open("ab") as array:
+        array.write(b"corruption")
+    with pytest.raises(ValueError, match="array checksum mismatch"):
+        completed_annotation(inputs, identity)
 
 
 @pytest.mark.parametrize(("kind", "status", "reason"), [

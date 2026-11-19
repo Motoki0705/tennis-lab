@@ -27,7 +27,7 @@ court_side.video_shared.artifact_digest="$SIDE_DIGEST"
 | `ball` | `ball_points/<camera>` | `PinnedSideInputs.from_store(directory).digest` |
 | `player` | `player_selection/<camera>` | `PinnedSideInputs.from_store(directory, evidence="player").digest` |
 
-sourceと入力の版を固定するため、後続sceneを同じstoreに公開してもpinは有効です。1 clipの動画の例です。
+sourceと入力の版を固定するため、後続sceneを同じstoreに公開してもpinは有効です。playerのpinでは、保存済みの選別v2とv3から観測bboxとmaskを読みます。1 clipの動画の例です。
 
 ```json
 {
@@ -55,4 +55,4 @@ buildの再利用と準備済みbuildの計画作成では、requestのSHA・証
 
 build・loadともに、証拠に選んだ全clipの全cameraに現在の `court_kp.video_shared.unobservable_policy` を適用します。棄却された観測があればclip・camera・drift理由を返して停止します。直接APIでは `court_policy` にこの設定を渡します（既定 `warn`）。証拠集合から外したclipも、自身の実行・公開時には同じコート採否検査を受けます。
 
-clip側の自動cacheと明示loadは、共有digest・コートとsideの両方針・入力依存が一致する共有componentの出力を採用します。共有モードのcourt_sideへのimportとoverrideは拒否します。datasetの完成markerを作成・再利用する際も、clipの採否と、そのcomponentを依存に持つscene exportを確認します。
+clip側の自動cacheと明示loadは、共有digest・コートとsideの両方針・入力依存が一致する共有componentの出力を採用します。共有モードのcourt_sideへのimportとoverrideは拒否します。datasetの完成markerを作成・再利用する際は、clipの採否、scene exportから共有componentへの依存、共有判定で使った証拠の配列checksumを確認します。

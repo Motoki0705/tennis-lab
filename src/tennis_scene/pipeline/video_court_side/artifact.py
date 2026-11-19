@@ -159,7 +159,7 @@ class VideoCourtSideArtifact:
             reason = f"court_side_{local.reason}"
         elif local.hypotheses[0].view_half_turns != d.shared.hypotheses[0].view_half_turns:
             status, reason = "failed", "court_side_video_shared_conflict"
-        return {"status": status, "reason": reason}
+        return {"status": status, "reason": reason, **({"evidence": d.evidence} if d.evidence == "player" else {})}
 
     def clip_report(self, clip_id: str, policy: str) -> dict[str, Any]:
         d = self.decision
@@ -167,8 +167,7 @@ class VideoCourtSideArtifact:
         return {"directory": str(self.directory), "artifact_digest": self.digest, "diagnostics_digest": d.diagnostics_digest,
                 "camera_ids": list(d.camera_ids), "reference_camera": d.reference_camera, "clip_id": clip_id,
                 "sampled_frames": measurement.sampled_frames, **self.clip_verdict(clip_id, policy), "unobservable_policy": policy,
-                "standalone": json_value(measurement.standalone), "shared": json_value(d.shared),
-                **({"evidence": d.evidence} if d.evidence == "player" else {})}
+                "standalone": json_value(measurement.standalone), "shared": json_value(d.shared)}
 
     def require_clip(self, clip_id: str, policy: str) -> None:
         if self.clip_verdict(clip_id, policy)["status"] == "failed":

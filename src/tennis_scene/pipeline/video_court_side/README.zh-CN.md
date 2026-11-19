@@ -27,7 +27,7 @@ court_side.video_shared.artifact_digest="$SIDE_DIGEST"
 | `ball` | `ball_points/<camera>` | `PinnedSideInputs.from_store(directory).digest` |
 | `player` | `player_selection/<camera>` | `PinnedSideInputs.from_store(directory, evidence="player").digest` |
 
-该摘要包含视频来源和输入组件的版本，同一目录后续发布的场景可以沿用它。下面是只有一个片段的视频示例。
+该摘要包含视频来源和输入组件的版本，同一目录后续发布的场景可以沿用它。球员证据可从已保存的筛选产物 v2 和 v3 读取观测框及掩码。下面是只有一个片段的视频示例。
 
 ```json
 {
@@ -55,4 +55,4 @@ court_side.video_shared.artifact_digest="$SIDE_DIGEST"
 
 构建和加载都会把当前的 `court_kp.video_shared.unobservable_policy` 应用于每个证据片段的所有相机。任何观测被拒绝都会停止采用该结果，并给出片段、相机和漂移原因。调用底层 API 时通过 `court_policy` 传入该设置（默认 `warn`）。未参与视频判定的片段在自身执行或发布时也须通过球场检查。
 
-片段自动缓存和显式加载均要求共享组件生成的输出，并校验输入依赖、共享摘要和两项策略。共享模式拒绝导入或替换 court_side 组件。创建和复用数据集完成标记时，也会检查片段判定及场景导出对该组件的依赖。
+片段自动缓存和显式加载均要求共享组件生成的输出，并校验输入依赖、共享摘要和两项策略。共享模式拒绝导入或替换 court_side 组件。创建和复用数据集完成标记时，会检查片段判定、场景导出对共享组件的依赖以及共享判定所用证据的数组校验和。

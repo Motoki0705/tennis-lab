@@ -6,10 +6,11 @@
 |---|---|
 | `token_encoder.py` | Conv2d / Average / Pixel Unshuffle / Haarの1/16圧縮と、局所2D/3D処理による1/64 token化 |
 | `cnn_encoder.py`、`blocks.py` | 深い残差/ConvNeXt V2系/FasterNet系CNN。4解像度の特徴を返し、dense3d/factorizedの時間処理を選択 |
-| `x3d_csn.py` | 学習時と同じpointwise expand2→depthwise 3D→project残差blockとframe-local GroupNorm |
+| `x3d_csn.py` | pointwise expand2→depthwise 3D→project残差block、frame-local GroupNormと空間downsample |
 | `pose.py` | DeepSets / Attention Pooling / Hierarchical Transformer / Skeleton GNNによるframeごとのpose token |
 | `attention.py` | 同時刻のCross-Attentionと実時間RoPEのSelf-Attention。pose融合とquery-onlyの違いは明示する |
 | `detectors.py` | MDDPoseDetector、MDDQueryDetector、MDDDPTDetector、DeepMDDQueryDetector |
+| `mhc_query.py` | 4つの画像query、1ストリームの時間処理、mHCによる残差書き戻しと平均座標readout |
 | `hybrid.py` | 時間queryを最下層にconcat。heatmap専用と、既存の存在head付きhybridを別classで構築 |
 | `execution.py` | frame分割とactivation checkpointing。学習parameterや時間長依存のstateを持たない |
 | `variants.py` | 有効なpose32条件＋poseなしquery-only4条件を列挙 |
@@ -40,10 +41,6 @@ RGBのdtype・shape・設定したフレーム数は`model_io`で検証する。
 深いquery decoderはSwiGLU（中間幅8/3 dimを64単位で切上げ）、dim256なら704。
 
 DPTは`src/utils/models/dpt.py`をcourtと共有し、CNNの4特徴を融合して入力1/4のheatmap logitsを出す。
-`build_mdd_encoder` は `encoder_variant=x3d_csn` と `temporal_mixing=depthwise3d` の組を明示選択できる。
-stemのdepthは0、各stageの時間半径は残差depthの累積となる。学習済みT32の標準構成は
-幅16/32/64/128/256/512、depth0/1/2/3/3/2、DPT幅128、時間stride1。
-sceneへの接続とcheckpointの空間metadataは [pipeline README](../../../../tennis_scene/pipeline/README.md)を参照。
 2段目の事後学習は同一CNNだけをstrict転送し、新規query decoderを学習する。encoder固定/解除は学習側が制御する。
 
 ## 任意長のheatmap専用モデル
@@ -53,7 +50,7 @@ sceneへの接続とcheckpointの空間metadataは [pipeline README](../../../..
 `DeepMDDHeatmapHybridDetector` を選ぶ。両方とも5ch入力とnative /4 logits
 `(B,T,ceil(H/4),ceil(W/4))` を持ち、存在head・存在loss・存在gateを持たない。
 720pの入力をresizeせずに渡すと、出力は180×320になる。
-CNNはConvNeXt V2系factorized、DPT幅128、queryは幅256・4層・8 heads・FFN704を維持する。
+既存の配布YAMLのCNNはConvNeXt V2系factorized、DPT幅128、queryは幅256・4層・8 heads・FFN704を維持する。
 Tを変えても、チャンネル数や層数は変えない。
 全設定はPython構築でも明示指定が必須。以下の既定値はYAMLが持ち、Python側では補完しない。
 
@@ -63,7 +60,7 @@ Tを変えても、チャンネル数や層数は変えない。
 | `frame_chunk_size` | nullで分割無効、正整数でCNNとframe-local DPTを時間分割。既定null |
 | `activation_checkpointing` | CNNの各spatial stage、queryの各block、DPTからheatmap headまでの各frame chunkを再計算。既定false |
 
-CNNは2層の時間方向kernel=3、stride=1で、特徴の時間半径は順に0/0/1/2。
+既存CNNは2層の時間方向kernel=3、stride=1で、特徴の時間半径は順に0/0/1/2。
 分割時は前後2枚の実frameをhaloとして読み、4特徴すべてからhaloを除いて結合する。
 実clip端だけでzero paddingを行う。RGB→MDDは分割前に実行するため、chunk先頭で差分を0へ戻さない。
 GroupNorm・GRNはframeごとで、halo外への時間依存を作らない。
@@ -154,3 +151,116 @@ query→hybridでDPTを新規初期化する処理とは別の初期化modeで�
 DPT・heatmap head・presence headは持たない。`model_io/mdd_temporal.py`が保存種別を厳密に分け、
 `mdd_temporal_coordinates.v1`を元のTで復元する。段階間のCNN／全重みとAdamW状態の転送は
 [学習手順](../../training/README.md)で管理し、設定のTを書き換えて再開することは拒否する。
+
+## X3D/CSN encoderと4ストリームmHC座標モデル
+
+`encoder_variant: x3d_csn` と `temporal_mixing: depthwise3d` を組にして指定する。
+`build_mdd_encoder` がDPTとqueryのCNN構築箇所で選択し、従来のCNNの登録名・計算順は維持する。
+`MDDHeatmapConfig`でも選択でき、DPT decoderは同じ4特徴を使う。sceneで採用する学習済みT32はDPT幅128。
+sceneへの接続とcheckpointの空間metadataは [pipeline README](../../../../tennis_scene/pipeline/README.md)を参照。
+このencoderの標準幅は16/32/64/128/256/512。最初は3×3の空間stride2 stemで、
+その後の5 stageはdepthwise空間3×3 stride2→pointwiseで幅を変え、
+残差blockを1/2/3/3/2個ずつ置く（`residual_blocks: [0,1,2,3,3,2]`）。
+残差blockはpointwiseで幅を2倍→depthwise 3×3×3 Conv3D→pointwiseで元の幅へ戻し、
+frameごとのGroupNormとGELUを使う。時間strideは全層1。
+幅・深さは明示configで変更できるが、stemの残差depthは0とする。
+
+出力は従来と同じ `/8,/16,/32,/64` の `(B,T,C,H,W)` で、空間sizeは切上げる。
+各残差blockの3D kernelだけが時間半径を1増やすため、標準構成の各特徴の半径は
+3/6/9/11、最深部のhaloは正確に11となる。空間downsampleと正規化は時間依存を増やさない。
+haloは深さの合計から求める整数で、parameter・bufferやT依存stateを追加しない。
+分割時も実clip端でだけpaddingし、haloを除いた4特徴を結合する。
+`frame_chunk_size`と`activation_checkpointing`は明示指定時だけ使い、配布YAMLではnull/false。
+CNNはstageごと、queryはblockごとにcheckpointする。実学習で有効化する前に相談し、
+メモリ削減を理由に自動で切り替えない。
+
+`MDDMHCQueryConfig` / `configs/model/mdd_mhc_query.yaml` と
+`DeepMDDMHCQueryDetector` は、従来の単一queryと区別した座標モデルを構築する。
+5ch入力、保存T=64、head幅64（`heads=dim/64`）、SwiGLU幅は8/3 dimを64単位で切上げる。
+4つのqueryはそれぞれ独立にN(0,.02)から初期化する。各層の処理は次のとおり。
+
+1. 4 queryが同じframeの `/64` memoryを共有Cross-Attentionで読む。
+   CNNの512ch（標準構成）をdimへ射影し、空間位置を加える。memoryは更新しない。
+2. 共有の `src/utils/models/components/mhc.py` の `pre` で4→1へ圧縮する。
+3. その1ストリームに、実timestampsのRoPE付き時間Attention残差、SwiGLU FFN残差を順に加える。
+4. 最終圧縮状態から元の圧縮状態を引いた**残差を含まない更新**を、同じmHCの `post` で4へ書き戻す。
+   AttentionとFFNを合わせて1つのmHC spanとし、個別には包まない。
+
+最終4ストリームを平均→LayerNorm→Linear(2)→FP32 sigmoidし、`(B,T,2)`座標を返す。
+DPT・heatmap・presence headは構築しない。mHC係数幅64、Sinkhorn20回、eps=1e-6、
+identity bias4、学習可能なupdate scaleの初期値0をすべてconfigに明記する。
+初回更新時の時間Attention/FFN branchの勾配は0で、update scaleが学習されると勾配が流れる。
+Attention dropout .1とRoPE base10000は従来の時間queryと同じ。
+
+公開temporal runnerでは`architecture='query'`のまま、新旧のmodel名で選ぶ。
+新しい重みartifactは `schema=mdd_mhc_coordinates.v1` / `model_kind=mdd_mhc_query`。
+全config・入力契約・元のTを検証し、旧schemaや欠落fieldを読み替えない。
+同じ構成のT32/64/128間では全stateをstrict転送でき、T変更をresumeとして扱わない。
+
+## Stage-wise X3D/CSN residual blocks
+
+`MDDStageHeatmapConfig` / `mdd_stage_dpt_heatmap` is a separate heatmap kind with
+explicit `stage_blocks` and `expansion_ratios` for stages 1..5. The stem and
+spatial downsample/channel transitions are fixed. `ib` expands then applies a
+3×3×3 depthwise convolution; `convnext` applies the same depthwise convolution
+before expansion; `ffn` has only the two pointwise convolutions. All keep the
+same FrameGroupNorm/GELU rules and residual output activation. Expanded width is
+`ceil(channels * expansion_ratio)`. This is not the `convnext_v2` encoder.
+
+Legacy X3D/CSN artifacts remain fixed at IB/e=2 with exactly the original state
+names and execution order. An explicit all-IB/e=2 stage encoder can load those
+encoder weights strictly. Stage artifacts retain their own complete config and
+cannot be relabelled as legacy artifacts.
+
+For depths 0/1/2/3/3/2, all-IB or ConvNeXt→IB has temporal radii 3/6/9/11 at
+/8,/16,/32,/64. ConvNeXt→FFN has radii 3/3/3/3: stages 3..5 do not mix time.
+Convolution-only spatial receptive fields are respectively 55/167/391/711 and
+55/71/103/167 pixels; FrameGroupNorm also couples all spatial positions within
+each frame, so these are not the full normalized network's spatial support.
+
+## Layer-wise MSDA / CA queries
+
+`MDDMultiScaleQueryConfig` / `mdd_multiscale_query` explicitly selects C/M per
+layer. C reads only /64 with the legacy cross-attention. M reads the ordered
+/8,/16,/32,/64 pyramid (or the explicit /16,/32,/64 option), projected to the
+common query width. The /64 projection and spatial-position projection are
+shared with C; M also adds a learned level embedding. No image tokens are
+updated. Four learned queries stay distinct; the temporal RoPE/mHC/SwiGLU span
+and mean-stream coordinate readout are unchanged.
+
+Each M layer generates a 2D reference from its normalized input query using
+Linear→sigmoid. It is a latent edge-normalized feature-grid reference, not the
+endpoint-normalized output-head UV or a GT coordinate. Official offsets are in
+feature cells and divided by (W,H). Bilinear sampling uses zero outside the
+grid. Fixed full images have no invalid feature tokens, including partial CNN
+border cells, so the explicit padding mask is false and valid ratios are one.
+The existing source-image cell-center encoding is preserved for each stride.
+
+B×T is the frame batch; `msda_chunk_size` bounds native calls and is serialized.
+A chunk must satisfy the official `min(batch,im2col_step)` divisibility rule;
+there is no padding or batch correction. Per-kind/ordinal initialization uses
+seed-derived independent RNG scopes, pairing M and C weights across reordered
+layouts without changing data/augmentation seeds.
+
+Activation checkpointing remains opt-in through `activation_checkpointing: false`.
+When enabled, `checkpoint_scope` selects `msda` (each native frame chunk including
+normalization, FP32 casts, projections and sampling) or `encoder_msda` (also every
+CNN stage). The default scope is `encoder_msda`; historical configs/artifacts lacking that field use
+this default with their saved disabled flag. Parameter and buffer names do not
+change. Non-reentrant replay preserves dropout RNG and autocast; native chunk
+replay is explicitly outside Dynamo because the official op graph-breaks.
+The scope is part of the saved model/recipe, so ordinary full-state resume rejects
+changing it. Evaluation and inference do not checkpoint.
+
+The [official MSDA boundary](../../../../utils/models/components/ops/msda/README.md)
+executes its complete official projection/sampling/output module in FP32 under
+BF16 autocast. Its explicit compiler-disabled boundary permits graph breaks in
+multi-scale models; compilation errors are not suppressed. Legacy models retain
+full-graph compilation. Construction/restoration on CPU is supported; executing
+an M layer on CPU, without the selected binary, or in an unsupported dtype fails.
+
+The stage and MSDA YAML examples live in `configs/temporal_models/`. Pass them
+explicitly to the temporal CLI's `--model-config`; they are not general Hydra
+`model=` selectors. Their CPU/CUDA, checkpoint and actual-runner contracts are
+verified by the dedicated stage/MSDA tests above. The legacy public mHC Hydra
+selector also participates in the shared CPU model lifecycle contract registry.

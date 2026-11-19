@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -26,7 +27,6 @@ from src.tennis_scene.pipeline.components.ball_points import BALL_POINTS_PORT
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
-from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.components.player_selection import PlayerSelectionModule
 from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
@@ -96,10 +96,24 @@ def court_side_io(camera_ids: tuple[str, ...]) -> ComponentIO[CourtSideInput, Co
 
 
 @dataclass(frozen=True)
+class PlayerBoxObservations:
+    camera_id: str
+    boxes_xyxy: NDArray[np.float32]  # (rows, source frames, 4)
+    observed: NDArray[np.bool_]
+
+    def __post_init__(self) -> None:
+        if (self.boxes_xyxy.ndim != 3 or self.boxes_xyxy.shape[-1] != 4
+                or self.observed.shape != self.boxes_xyxy.shape[:2]):
+            raise ValueError("Court side needs player boxes and masks with matching row and frame axes")
+        if self.boxes_xyxy.dtype != np.float32 or self.observed.dtype != np.bool_ or not np.isfinite(self.boxes_xyxy).all():
+            raise ValueError("Court side needs finite float32 boxes and boolean observations")
+
+
+@dataclass(frozen=True)
 class PlayerCourtSideInput:
     source: ClipSource
     calibration: CourtCalibrationOutput
-    tracks: tuple[PersonTrackingOutput, ...]  # calibrated views only
+    observations: Mapping[str, PlayerBoxObservations]
 
     def sample(
         self, max_frames: int, config: PlayerCourtSideConfig,
@@ -108,10 +122,11 @@ class PlayerCourtSideInput:
         indices = sampled_frame_indices(source.num_frames, source.fps, max_frames=max_frames)
         footpoint_config = FootpointConfig(config.bottom_border_px * source.pixel_threshold_scale)
         sampled = []
-        for view, tracks in zip(self.calibration.calibration.views, self.tracks, strict=True):
-            if tracks.camera_id != view.camera.camera_id or tracks.observed.shape[1] != source.num_frames:
+        for view in self.calibration.calibration.views:
+            boxes = self.observations[view.camera.camera_id]
+            if boxes.camera_id != view.camera.camera_id or boxes.observed.shape[1] != source.num_frames:
                 raise ValueError("Player court side requires tracks matching the calibrated cameras and source timeline")
-            xy, valid = ground_footpoints(tracks.boxes_xyxy[:, indices], tracks.observed[:, indices],
+            xy, valid = ground_footpoints(boxes.boxes_xyxy[:, indices], boxes.observed[:, indices],
                                           view.camera, source.size[1], footpoint_config)
             sampled.append(PlayerFootpoints(xy.transpose(1, 0, 2), valid.T))
         return indices, tuple(sampled)

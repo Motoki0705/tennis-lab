@@ -15,6 +15,7 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 )
 from src.tennis_scene.pipeline.components.court_side import (
     CourtSideInput,
+    PlayerBoxObservations,
     PlayerCourtSideInput,
 )
 from src.tennis_scene.pipeline.components.identity import PlayerAssociationInput
@@ -45,8 +46,11 @@ class PlayerCourtSideInputAssembler:
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PlayerCourtSideInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]
-        tracks = tuple(artifacts[f"tracks_{view.camera.camera_id}"].tracks for view in calibration.calibration.views)
-        return PlayerCourtSideInput(context.source, calibration, tracks)
+        observations = {}
+        for camera in context.source.camera_ids:
+            tracks = artifacts[f"tracks_{camera}"].tracks
+            observations[camera] = PlayerBoxObservations(tracks.camera_id, tracks.boxes_xyxy, tracks.observed)
+        return PlayerCourtSideInput(context.source, calibration, observations)
 
 
 @dataclass(frozen=True)

@@ -280,25 +280,37 @@ def test_no_ball_observations_stop_at_the_side_decision(tmp_path: Path, monkeypa
     assert pipeline.last_receipt["error_diagnostics"]["pair_frames"] == {"cam0-cam1": 0, "cam0-cam2": 0, "cam1-cam2": 0}
 
 
-def test_player_only_scene_uses_player_tracks_and_has_no_ball_nodes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("include_ball", [False, True], ids=["player-only", "with-ball"])
+def test_player_side_scene_plans_the_requested_ball_stages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, include_ball: bool,
+) -> None:
     from src.tennis_scene.pipeline.definition import enabled_model_assets
 
     court, people, balls = inputs()
     stages: dict[str, Any] = {name: stage for name, stage in camera_stages(court, people, balls).items()
-                              if not name.startswith("ball_detection/")}
+                              if include_ball or not name.startswith("ball_detection/")}
     project_fixture_player_boxes(stages)
     stages["player_association"] = TrackIdentities(people.camera_ids)
-    cfg = runtime(tmp_path, overrides=("court_side.evidence=player", "ball_detection.enabled=false",
-                                      "ball_reconstruction.enabled=false", "ball_detection.checkpoint=null"))
-    assert "ball" not in enabled_model_assets(cfg)
+    enabled = "true" if include_ball else "false"
+    cfg = runtime(tmp_path, overrides=("court_side.evidence=player", f"ball_detection.enabled={enabled}",
+                                      f"ball_reconstruction.enabled={enabled}",
+                                      *(("ball_detection.checkpoint=null",) if not include_ball else ())))
+    assert ("ball" in enabled_model_assets(cfg)) is include_ball
     pipeline = TennisSceneOrchestrator(cfg, components=stages)
     scene = pipeline.run(patch_video_probe(tmp_path, monkeypatch), video_role=PathRole.DATA, camera_ids=people.camera_ids,
                          store_root=tmp_path / "player-store")
-    assert scene.player_kp_3d_vis.all() and not scene.ball_3d_valid.any() and not scene.ball_3d.any()
+    assert scene.player_kp_3d_vis.all()
+    assert bool(scene.ball_3d_valid.any()) is include_ball and bool(scene.ball_3d.any()) is include_ball
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
     runner = pipeline.last_runner
-    assert runner is not None and all(not name.startswith("ball_") for _, name in runner.plan.nodes)
+    assert runner is not None
+    expected_ball_nodes = {
+        "ball_triangulation", *(f"ball_detection/{c}" for c in people.camera_ids), *(f"ball_points/{c}" for c in people.camera_ids),
+    } if include_ball else set()
+    assert {name for _, name in runner.plan.nodes if name.startswith("ball_")} == expected_ball_nodes
+    assert all(runner.statuses[node] == "executed" for node in expected_ball_nodes)
     side_nodes = {name for _, name in runner.plan.target_nodes([(runner.clip_id, "court_side")])}
+    assert side_nodes.isdisjoint(expected_ball_nodes)
     assert "player_association" not in side_nodes and "pose_estimation/cam0" not in side_nodes
     assert {f"player_selection/{camera}" for camera in people.camera_ids} <= side_nodes
     side = runner.output("court_side")

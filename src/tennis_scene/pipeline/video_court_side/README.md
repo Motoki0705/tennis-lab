@@ -36,6 +36,7 @@ The request lists the stores for **every clip** in the shared court. Every store
 | `player` | `player_selection/<camera>` | `PinnedSideInputs.from_store(directory, evidence="player").digest` |
 
 The revision pin covers the source and active input references. Publishing a downstream scene in the same store leaves the pin valid.
+Player pins can read the observed boxes and masks from saved selection versions 2 and 3.
 A one-clip-video request has this shape.
 
 ```json
@@ -77,4 +78,4 @@ Reusing a build or binding a prepared build to a plan verifies the request hash,
 
 Both actions apply the current `court_kp.video_shared.unobservable_policy` to every camera in every contributing clip. A rejected observation stops adoption and identifies the clip, camera and drift reason. Pass this setting as `court_policy` to the direct APIs (default `warn`). Each excluded clip must also pass its own court policy when it runs or publishes.
 
-Automatic clip cache hits and explicit component loads require the shared component's output with matching dependencies, shared digest and both execution policies. The shared side rejects imports and component overrides. Creating or reusing a dataset completion marker verifies the clip verdict and the scene export's dependency on that component.
+Automatic clip cache hits and explicit component loads require the shared component's output with matching dependencies, shared digest and both execution policies. The shared side rejects imports and component overrides. Creating or reusing a dataset completion marker verifies the clip verdict, the scene export's dependency on that component, and the array checksums for the evidence used by the shared decision.

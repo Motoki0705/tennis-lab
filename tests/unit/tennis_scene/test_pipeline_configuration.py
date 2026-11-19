@@ -107,6 +107,26 @@ def test_invalid_player_court_side_config_is_rejected(overrides: list[str], erro
         _runtime(overrides)
 
 
+@pytest.mark.parametrize("stage", ["ball_detection", "ball_points", "ball_triangulation"])
+def test_omitted_ball_stage_rejects_individual_load(stage: str) -> None:
+    with pytest.raises(ConfigurationError, match=rf"execution\.{stage}=load"):
+        _runtime(["court_side.evidence=player", "ball_detection.enabled=false",
+                  "ball_reconstruction.enabled=false", f"execution.{stage}=load"])
+
+
+def test_player_only_configuration_allows_global_cache_load() -> None:
+    runtime = _runtime(["court_side.evidence=player", "ball_detection.enabled=false",
+                        "ball_reconstruction.enabled=false", "cache.source=load"])
+    assert runtime.omit_ball_components and runtime.cache_source == "load"
+
+
+def test_ball_evidence_retains_the_loaded_detector_and_points_chain() -> None:
+    runtime = _runtime(["ball_detection.enabled=false", "ball_reconstruction.enabled=false", "execution.court_side=load",
+                        "execution.ball_detection=load", "execution.ball_points=load"])
+    assert not runtime.omit_ball_components
+    assert all(runtime.component_sources[stage] == "load" for stage in ("court_side", "ball_detection", "ball_points"))
+
+
 def test_default_sampling_covers_long_meiji_clip_and_still_refuses_truncation() -> None:
     runtime = _runtime([], bind_inputs=False)
     indices = sampled_frame_indices(2108, 60000 / 1001, max_frames=runtime.sampling_max_frames)

@@ -58,8 +58,9 @@
 
 ## コートside（court_side）
 
-- **現行**　ballだけの幾何仮説検定で決めます。既定はclip単位で、固定カメラと共有コートでは動画単位の判定を選べます。どちらも同じ閾値（min_margin 0.15）です。[合成ベンチマーク](nodes/court_side/000001-run-i932-synthetic-side-thresholds.md)
+- **現行**　既定はball観測を使うclip単位の判定です。固定カメラと共有コートでは動画単位を選べます。ballのmin_marginは両モードとも0.15です。[合成ベンチマーク](nodes/court_side/000001-run-i932-synthetic-side-thresholds.md)
 - **固定4カメラの実測**　meiji_4cam/video_000全69 clipでX3D/CSN+DPTの観測を統合すると、cam2・cam3がhalf-turn、margin 0.267。単独で一致51、margin不足18、矛盾0で、共有court sideは全69 clipで利用できました。[実測と全件表](nodes/court_side/000007-run-court-side-video-shared-20261118.md)
+- **選手の足元による判定**　`court_side.evidence=player` で選択できます。meiji_4camのclip_000・027・037でcam2・cam3のhalf-turnが単独・共有とも一致し、共有marginは0.237でした。この3clipで照合距離3.0 mを選びました。[3clipの実測](nodes/court_side/000008-run-i2269-player-court-side-20261119.md)
 - **限界と次の確認**　この動画での正解ラベルに対する誤判定率、別収録への一般化、全69 clipの人物対応以降は未検証です。旧ft-e13では別の51 clip中7 clipが確定しました（誤判定0、[過去の比較](nodes/court_side/000002-run-i932-meiji-clips-side-20260927.md)）。confidenceフィルタ廃止時の安全benchは元dataset欠測のため未完です。[安全benchの記録](nodes/court_side/000006-run-i935-unfiltered-production-safety-20261002.md)
 
 ## PLCS・BLCS・SLCS（研究用の推定モデル）

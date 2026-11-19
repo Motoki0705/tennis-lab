@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 
 from src.utils.models.components.ffn_layers import default_ffn_dim
+from src.utils.models.components.mhc import MHCConfig
 
 
 @dataclass(frozen=True)
@@ -205,10 +206,53 @@ class MDDTemporalQueryConfig(MDDPretrainConfig):
         return cls(**_temporal_config_fields(path, "mdd_temporal_query", cls))
 
 
-def _temporal_config_fields(path: Path, name: str, config_type: type[MDDPretrainConfig]) -> dict[str, Any]:
+@dataclass(frozen=True)
+class MDDMHCQueryConfig(MDDTemporalQueryConfig):
+    """Four query streams with one mHC span per temporal-attention/FFN pair."""
+
+    num_streams: int
+    mhc_coefficient_dim: int
+    mhc_sinkhorn_iters: int
+    mhc_eps: float
+    mhc_residual_identity_bias: float
+    mhc_update_scale_init: float
+
+    def __post_init__(self) -> None:
+        MDDTemporalQueryConfig.__post_init__(self)
+        if self.encoder_variant != "x3d_csn":
+            raise ValueError("mHC queries require the explicit X3D/CSN encoder")
+        if type(self.num_streams) is not int or self.num_streams != 4:
+            raise ValueError("mHC queries require exactly four learned streams")
+        if type(self.dim) is not int or type(self.heads) is not int or self.dim != 64 * self.heads:
+            raise ValueError("mHC attention requires head width 64 (heads=dim/64)")
+        # The shared component owns numerical validation; do not duplicate it.
+        self.mhc_config()
+
+    def mhc_config(self) -> MHCConfig:
+        return MHCConfig(
+            dim=self.dim,
+            num_streams=self.num_streams,
+            coefficient_dim=self.mhc_coefficient_dim,
+            sinkhorn_iters=self.mhc_sinkhorn_iters,
+            eps=self.mhc_eps,
+            residual_identity_bias=self.mhc_residual_identity_bias,
+            update_scale_init=self.mhc_update_scale_init,
+        )
+
+    @classmethod
+    def load(cls, path: Path) -> MDDMHCQueryConfig:
+        return cls(**_temporal_config_fields(path, "mdd_mhc_query", cls))
+
+
+def _temporal_config_fields(path: Path, name: str, config_type: type[MDDPretrainConfig], *,
+                            optional_defaults: dict[str, Any] | None = None) -> dict[str, Any]:
     raw = yaml.safe_load(path.read_text())
     if not isinstance(raw, dict) or raw.pop("name", None) != name:
         raise ValueError(f"Expected {name} model config")
+    if optional_defaults is not None:
+        for key, value in optional_defaults.items():
+            if key not in raw:
+                raw[key] = value
     if set(raw) != set(config_type.__dataclass_fields__):
         raise ValueError("Temporal model configuration must declare every field exactly")
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):

@@ -68,6 +68,15 @@ def test_multiple_points_cannot_all_match_the_same_point():
     assert stopped.value.hypotheses[0].support == 0.
 
 
+def test_equally_distant_matchings_do_not_depend_on_point_order():
+    # Two assignments have total distance 4 m. Their clipped costs and support differ.
+    a = np.array([[[1. + .5 * t, -7.], [2. + .5 * t, -7.]] for t in range(3)])
+    b = a + [2., 0.]
+    original, _ = collect_player_side_evidence(("a", "b"), "a", (view(a), view(b)), CONFIG)
+    permuted, _ = collect_player_side_evidence(("a", "b"), "a", (view(a[:, ::-1]), view(b)), CONFIG)
+    assert len(original.hypotheses) == 2 and permuted.hypotheses == original.hypotheses
+
+
 def test_nearly_symmetric_sets_do_not_contribute_even_when_moving():
     symmetric = view([[[3. + .3 * t, -7.], [-2.8 - .3 * t, 7.1]] for t in range(4)])
     asymmetric = view([[[3. + .3 * t, -7.]] for t in range(4)])

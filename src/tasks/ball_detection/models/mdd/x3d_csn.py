@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import Tensor, nn
 
 from src.tasks.ball_detection.models.mdd.config import MDDPretrainConfig
 from src.tasks.ball_detection.models.mdd.execution import checkpoint_call
+from src.tasks.ball_detection.models.mdd.stage_config import MDDStageHeatmapConfig
 
 
 class FrameGroupNorm(nn.GroupNorm):
@@ -19,18 +22,28 @@ class FrameGroupNorm(nn.GroupNorm):
 
 
 class X3DCSNBlock(nn.Module):
-    """Expand by two, depthwise 3x3x3, project, then add the residual."""
+    """IB, expansion-before/after DW, or pointwise FFN; frame-local norms."""
 
-    def __init__(self, channels: int) -> None:
+    def __init__(self, channels: int, *, kind: str = "ib", expansion: float = 2.0) -> None:
         super().__init__()
-        expanded = 2 * channels
-        self.layers = nn.Sequential(
+        if kind not in {"ib", "convnext", "ffn"}:
+            raise ValueError("Unknown X3D/CSN block kind")
+        if type(expansion) not in (float, int) or not math.isfinite(expansion) or expansion < 1:
+            raise ValueError("Expansion must be finite and >= 1")
+        self.hidden_channels = math.ceil(channels * expansion)
+        expanded = self.hidden_channels
+        expand = [
             nn.Conv3d(channels, expanded, 1, bias=False),
             FrameGroupNorm(1, expanded),
             nn.GELU(),
-            nn.Conv3d(expanded, expanded, 3, padding=1, groups=expanded, bias=False),
-            FrameGroupNorm(1, expanded),
-            nn.GELU(),
+        ]
+        dw_channels = expanded if kind == "ib" else channels
+        depthwise = [
+            nn.Conv3d(dw_channels, dw_channels, 3, padding=1, groups=dw_channels, bias=False),
+            FrameGroupNorm(1, dw_channels), nn.GELU(),
+        ] if kind != "ffn" else []
+        self.layers = nn.Sequential(
+            *(expand + depthwise if kind == "ib" else depthwise + expand),
             nn.Conv3d(expanded, channels, 1, bias=False),
             FrameGroupNorm(1, channels),
         )
@@ -55,7 +68,23 @@ class X3DCSNEncoder(nn.Module):
             raise ValueError("X3D/CSN requires x3d_csn/depthwise3d configuration")
         self.activation_checkpointing = config.activation_checkpointing
         self.frame_chunk_size = config.frame_chunk_size
-        self.temporal_radius = sum(config.residual_blocks)
+        kinds = config.stage_blocks if isinstance(config, MDDStageHeatmapConfig) else ("ib",) * 5
+        expansions = config.expansion_ratios if isinstance(config, MDDStageHeatmapConfig) else (2.0,) * 5
+        radii, fields, radius, field, jump = [], [], 0, 3, 2
+        for stage, (kind, depth) in enumerate(zip(kinds, config.residual_blocks[1:], strict=True), 1):
+            field += 2 * jump
+            jump *= 2
+            if kind != "ffn":
+                radius += depth
+                field += 2 * jump * depth
+            if stage >= 2:
+                radii.append(radius)
+                fields.append(field)
+        self.temporal_radius = radius
+        self.feature_temporal_radii = tuple(radii)
+        # Convolution-only spatial support; FrameGroupNorm additionally mixes
+        # every spatial position within each frame (never across time).
+        self.convolutional_spatial_fields = tuple(fields)
         widths = (*config.stem_channels, *config.mixed_channels)
         self.feature_channels = widths[2:]
         stem = nn.Sequential(
@@ -65,7 +94,7 @@ class X3DCSNEncoder(nn.Module):
             nn.GELU(),
         )
         stages: list[nn.Module] = [stem]
-        for previous, width, depth in zip(widths[:-1], widths[1:], config.residual_blocks[1:], strict=True):
+        for previous, width, depth, kind, expansion in zip(widths[:-1], widths[1:], config.residual_blocks[1:], kinds, expansions, strict=True):
             stages.append(nn.Sequential(
                 nn.Conv3d(previous, previous, (1, 3, 3), stride=(1, 2, 2),
                           padding=(0, 1, 1), groups=previous, bias=False),
@@ -74,7 +103,7 @@ class X3DCSNEncoder(nn.Module):
                 nn.Conv3d(previous, width, 1, bias=False),
                 FrameGroupNorm(1, width),
                 nn.GELU(),
-                *(X3DCSNBlock(width) for _ in range(depth)),
+                *(X3DCSNBlock(width, kind=kind, expansion=expansion) for _ in range(depth)),
             ))
         self.stages = nn.ModuleList(stages)
 
