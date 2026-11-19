@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
@@ -13,6 +14,7 @@ import numpy as np
 from src.tennis_scene.archive import load_scene_result, save_scene_result
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
+from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
 from src.tennis_scene.schema import SceneResult
 from src.utils.inference_recording import measured, temporary_directory
 
@@ -38,12 +40,21 @@ def export_scene(store: ClipStore, scene: SceneResult, reference: ArtifactRef) -
 
     ``reference`` is the adopted ``scene_assembly`` artifact that produced
     ``scene``. An existing export directory for the same artifact is immutable
-    and reused as-is.
+    and validated before adoption. Creation and adoption share the clip lock.
     """
     exports = store.root / "exports"
     exports.mkdir(exist_ok=True)
     destination = exports / reference.artifact_id
-    if not destination.exists():
+    scene_path: Path = destination / "scene.npz"
+
+    def prepare() -> None:
+        if destination.exists():
+            current = json.loads(store.index_path.read_text())["exports"].get("scene")
+            if current is not None and current.get("inputs") == json_value({"scene_assembly": reference}):
+                # Never bless changed bytes by replacing the previously recorded checksum.
+                indexed_scene_path(store.index_path)
+            validate_scene_export(scene, scene_path)
+            return
         temporary = Path(tempfile.mkdtemp(prefix=".writing-", dir=exports))
         try:
             with temporary_directory(temporary):
@@ -52,7 +63,6 @@ def export_scene(store: ClipStore, scene: SceneResult, reference: ArtifactRef) -
         finally:
             if temporary.exists():
                 shutil.rmtree(temporary)
-    scene_path: Path = destination / "scene.npz"
     store.record_export("scene", {"scene": scene_path, "metadata": destination / "scene.metadata.json"},
-        {"scene_assembly": reference})
+        {"scene_assembly": reference}, prepare=prepare)
     return scene_path

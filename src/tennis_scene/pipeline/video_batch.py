@@ -169,6 +169,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                 video_court_side = orchestrator.prepare_video_court_side(video_court)
                 if video_court_side is not None:
                     progress.document["video_court_side"] = {
+                        "evidence": video_court_side.decision.evidence,
                         "artifact_digest": video_court_side.digest,
                         "diagnostics_digest": video_court_side.decision.diagnostics_digest,
                         "unobservable_policy": cfg.court_side_unobservable_policy,
@@ -193,6 +194,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                     nodes = standard_definition(cfg, source, code_identity=orchestrator.code_identity,
                                                 overrides=orchestrator.components, video_court=video_court,
                                                 video_court_side=video_court_side)
+                    orchestrator.validate_plan_assets(nodes)
                     # The plan retains every store. Keep decoded heatmaps/meshes
                     # clip-local so a whole video does not accumulate in RAM.
                     store = ClipStore(inputs.clip_dir / ANNOTATION_RELATIVE_DIR, json_value(source), memory_entries=0)
@@ -207,9 +209,9 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
 
             def publish(clip_id: str) -> None:
                 clip = bound[clip_id]
-                clip.media.snapshot.assert_unchanged()
                 clip.inputs.snapshot.assert_unchanged()
-                scene, archive = executor.finalize_clip(clip_id)
+                scene, archive = orchestrator.finalize_clip(executor, clip_id, clip.media.snapshot,
+                    video_court=video_court, video_court_side=video_court_side)
                 marker = publish_annotation(clip.inputs, scene, pipeline_config_yaml=pipeline_config_yaml,
                                             publication_identity=identity, expected_scene=archive)
                 progress.outcome(VideoClipOutcome(clip_id, "generated", marker))

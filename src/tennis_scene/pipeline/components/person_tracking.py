@@ -22,6 +22,7 @@ from src.tasks.person_tracking.sequence import (
 from src.tasks.person_tracking.strongsort_offline import AFLink, ReconstructedTracks
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.components.person_features import (
+    APPEARANCE_FEATURES_PORT,
     PersonAppearanceFeaturesOutput,
     PersonPoseFeaturesOutput,
     appearance_feature_settings,
@@ -121,7 +122,7 @@ class PersonTrackingModule:
 
     io = ComponentIO("person_tracking", PersonTrackingInput, PersonTrackingOutput,
         {"detections": InputPort("person_detections", 2), "poses": InputPort("person_pose_features", 2),
-         "appearance": InputPort("person_appearance_features", 3)}, "person_tracks", version=7)
+         "appearance": APPEARANCE_FEATURES_PORT}, "person_tracks", version=7)
 
     def __init__(self, config: TrackingConfig, *, aflink_checkpoint: Path | None = None,
                  expected_pose: ModelSpec[Any] | None = None, expected_encoder: ModelSpec[Any] | None = None,

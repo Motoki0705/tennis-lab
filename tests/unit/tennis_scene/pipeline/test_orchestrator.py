@@ -33,6 +33,11 @@ def _source(tmp_path: Path) -> Any:
 
 def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -> None:
     from src.tennis_scene.pipeline.definition import standard_definition
+    from src.tennis_scene.pipeline.input_assembly.reconstruction import (
+        BallTriangulationInputAssembler,
+        CameraAlignmentInputAssembler,
+        CourtSideInputAssembler,
+    )
     from src.tennis_scene.pipeline.runner import ComponentRunner
     from src.tennis_scene.pipeline.storage.clip_store import ClipStore
     source = _source(tmp_path)
@@ -51,7 +56,9 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
         assert nodes[consumer].bindings["ball_cam0"] == "ball_points/cam0"
         assert nodes[consumer].io.inputs["ball_cam0"].schema == "ball_points"
         assert nodes[consumer].io.inputs["ball_cam0"].version == 4
-        assert nodes[consumer].assembler.ball_threshold == 0
+        assembler = nodes[consumer].assembler
+        assert isinstance(assembler, (CourtSideInputAssembler, CameraAlignmentInputAssembler, BallTriangulationInputAssembler))
+        assert assembler.ball_threshold == 0
     assert order.index("court_side") < order.index("camera_alignment")
     assert nodes["gvhmr"].bindings == {"selection": "body_view_selection", "features": "hmr2_features"}
     assert nodes["gvhmr"].io.version == 2

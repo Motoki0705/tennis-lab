@@ -9,7 +9,7 @@ The remaining frames are sampled evenly over the track.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -22,7 +22,10 @@ from src.tasks.player_association.appearance.encoders import AppearanceEncoder
 from src.tasks.player_association.appearance.parts import NativeParts
 from src.utils.geometry.bbox import pairwise_iou
 from src.utils.inference_recording import measured
-from src.utils.video import OpenCVVideoFrameReader
+from src.utils.video import FramePacket, OpenCVVideoFrameReader
+from src.utils.video.reader import OpenCVDecodeIdentity
+
+DEFAULT_BATCH_SIZE = 64
 
 
 @dataclass(frozen=True)
@@ -109,24 +112,32 @@ def crop(frame_bgr: NDArray[np.uint8], box: NDArray[np.floating], size: tuple[in
     return np.ascontiguousarray(patch[..., ::-1].transpose(2, 0, 1), np.float32) / 255.
 
 
-def embed_samples(video: Path, boxes: NDArray[np.floating], samples: list[TrackSamples], encoders: Iterable[AppearanceEncoder],
-                  *, batch_size: int = 64) -> dict[str, list[NDArray[np.float32]]]:
-    """Per encoder, per track ``(K, D)`` embeddings of the sampled frames (one pass over the video)."""
-    encoders = list(encoders)
+def iter_sampled_frames(video: Path, samples: list[TrackSamples], *, expected_decoder: OpenCVDecodeIdentity | None = None
+                        ) -> Iterator[tuple[FramePacket[NDArray[np.uint8]], list[int]]]:
+    """Stream sampled frames and the track rows that requested each frame."""
     wanted: dict[int, list[int]] = {}
     for row, track in enumerate(samples):
         for frame in track.frames.tolist():
             wanted.setdefault(frame, []).append(row)
+    if wanted:
+        for packet in OpenCVVideoFrameReader(video, max_frames=max(wanted) + 1, expected_decoder=expected_decoder):
+            rows = wanted.pop(packet.index, None)
+            if rows:
+                yield packet, rows
+        if wanted:
+            raise RuntimeError(f"{video} ended before {sum(map(len, wanted.values()))} sampled crops were read")
+
+
+def embed_samples(video: Path, boxes: NDArray[np.floating], samples: list[TrackSamples], encoders: Iterable[AppearanceEncoder],
+                  *, batch_size: int = DEFAULT_BATCH_SIZE) -> dict[str, list[NDArray[np.float32]]]:
+    """Per encoder, per track ``(K, D)`` embeddings of the sampled frames (one pass over the video)."""
+    encoders = list(encoders)
     sizes = {encoder.input_size for encoder in encoders}
     crops: dict[tuple[int, int], list[tuple[int, NDArray[np.float32]]]] = {size: [] for size in sizes}
-    if wanted:
-        for packet in OpenCVVideoFrameReader(video, max_frames=max(wanted) + 1):
-            for row in wanted.get(packet.index, ()):
-                for size in sizes:
-                    crops[size].append((row, crop(packet.frame, boxes[row, packet.index], size)))
-        missing = sum(map(len, wanted.values())) - len(next(iter(crops.values())))
-        if missing:
-            raise RuntimeError(f"{video} ended before {missing} sampled crops were read")
+    for packet, rows in iter_sampled_frames(video, samples):
+        for row in rows:
+            for size in sizes:
+                crops[size].append((row, crop(packet.frame, boxes[row, packet.index], size)))
     result: dict[str, list[NDArray[np.float32]]] = {}
     for encoder in encoders:
         items = crops[encoder.input_size]

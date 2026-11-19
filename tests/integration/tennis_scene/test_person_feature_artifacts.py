@@ -47,7 +47,7 @@ def saved_inputs(tmp_path: Path) -> tracking.PersonTrackingInput:
         document_digest(fake_pose_spec().key), document_digest(pose_feature_settings(TrackingConfig().features)))
     appearance = PersonAppearanceFeaturesOutput('cam0', offsets, rows, np.concatenate([f.embeddings for f in frames]),
         np.concatenate([f.appearance_valid for f in frames]), TrackingConfig().encoder, document_digest(fake_encoder_spec(object).key),
-        document_digest(appearance_feature_settings(TrackingConfig().features)))
+        document_digest(appearance_feature_settings(TrackingConfig().features)), np.zeros((len(frames), 32), np.uint8))
     # Exercise real schema-directed persistence, with mmap inputs as in ClipStore.
     for name, artifact in [('pose', poses), ('appearance', appearance)]:
         directory = tmp_path / name

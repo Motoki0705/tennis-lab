@@ -198,14 +198,16 @@ class ExecutionPlan:
 
     def ready(self, required: frozenset[NodeKey] | None = None) -> tuple[NodeKey, ...]:
         selected = self.required if required is None else required
-        # Ordering barriers wait for work to finish. Only artifact inputs require
-        # a successful publication, so a failed clip cannot stall other clips.
-        pending = selected - self.statuses.keys()
-        pending_families = {self.nodes[key].name.split('/')[0] for key in pending}
-        return tuple(key for key in self.order if key in pending
+        # Scheduling barriers wait for all live work, including other clips.
+        # A withdrawn clip cannot produce more references, but must not hold
+        # unrelated clips behind a feature-stage barrier. Data inputs below
+        # still require published references, never failed/blocked statuses.
+        settled = self.references.keys() | {key for key, status in self.statuses.items() if status in {"failed", "blocked"}}
+        pending_families = {self.nodes[key].name.split('/')[0] for key in selected if key not in settled}
+        return tuple(key for key in self.order if key in selected and key not in self.statuses
                      and all(parent in self.references for parent in self.dependencies[key].values())
                      and not any(family in pending_families for family in self.nodes[key].after_components)
-                     and not any(parent in pending for parent in self.ordering_dependencies[key]))
+                     and all(parent in settled for parent in self.ordering_dependencies[key] if parent in selected))
 
     def clip_complete(self, clip_id: str) -> bool:
         if clip_id not in self.clips:

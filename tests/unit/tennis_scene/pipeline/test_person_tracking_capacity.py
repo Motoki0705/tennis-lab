@@ -41,7 +41,8 @@ def test_more_than_six_people_keep_their_raw_rows(tmp_path: Path, monkeypatch: p
     pose_features = PersonPoseFeaturesOutput('cam0', detection.frame_offsets, detection.source_rows, poses,
         document_digest(fake_pose_spec().key), document_digest(pose_feature_settings(TrackingConfig().features)))
     appearance = PersonAppearanceFeaturesOutput('cam0', detection.frame_offsets, detection.source_rows, embeddings, np.ones(32, bool), TrackingConfig().encoder,
-        document_digest(fake_encoder_spec(object).key), document_digest(appearance_feature_settings(TrackingConfig().features)))
+        document_digest(fake_encoder_spec(object).key), document_digest(appearance_feature_settings(TrackingConfig().features)),
+        np.zeros((video.num_frames, 32), np.uint8))
     tracker = module.PersonTrackingModule(TrackingConfig(), aflink_checkpoint=tmp_path / 'aflink.pth',
         expected_pose=fake_pose_spec(), expected_encoder=fake_encoder_spec(object))
     result = tracker.process(module.PersonTrackingInput(video, detection, pose_features, appearance))

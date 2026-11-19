@@ -31,6 +31,10 @@ from src.tennis_scene.pipeline.runner import (
 )
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.utils.inference_recording import InferenceRecorder, span
+from tests.unit.tasks.ball_detection.inference.test_x3d_dpt import (
+    artifact as artifact,
+)
+from tests.unit.tasks.ball_detection.inference.test_x3d_dpt import load as load_x3d
 
 
 @dataclass(frozen=True)
@@ -198,3 +202,30 @@ def test_ball_records_the_mdd_forward_shape_instead_of_rgb_shape(tmp_path: Path)
     assert forward["attributes"]["batch_shape"] == [2, 2, 5, 6, 8]
     assert forward["attributes"]["batch_items"] == 2
     assert prediction.coords.shape == (2, 5, 2)
+
+
+def test_x3d_predict_records_full_and_tail_batches_in_video_progress(tmp_path: Path, artifact: Path) -> None:
+    from src.tennis_scene.pipeline.video_batch import VideoBatchProgress
+
+    predictor = load_x3d(artifact)
+    images = torch.arange(3 * 2 * 3 * 24 * 40).remainder(251).to(torch.uint8).reshape(3, 2, 3, 24, 40)
+    batches = (images[:2], images[2:])
+    expected = [predictor.predict(batch) for batch in batches]
+    progress = VideoBatchProgress(tmp_path / "progress", "fixture", "video_000", (), "fixture: x3d\n", {},
+                                 overwrite=False, continue_on_error=True, recording_devices=())
+    with progress.recorder:
+        actual = [predictor.predict(batch) for batch in batches]
+    progress.flush()
+    events = [event for event in progress.recorder.events if event["stage"] == "inference"]
+    assert [event["attributes"]["batch_shape"] for event in events] == [[2, 2, 3, 24, 40], [1, 2, 3, 24, 40]]
+    assert [event["attributes"]["batch_items"] for event in events] == [2, 1]
+    assert all(event["status"] == "ok" for event in events)
+    assert progress.document["batch_shapes"]["Ball"] == {
+        "[2, 2, 3, 24, 40]": {"succeeded": 1, "failed": 0, "items": 2},
+        "[1, 2, 3, 24, 40]": {"succeeded": 1, "failed": 0, "items": 1},
+    }
+    for a, b in zip(expected, actual, strict=True):
+        for name in ("coords", "confidence", "heatmaps"):
+            torch.testing.assert_close(getattr(a, name), getattr(b, name), atol=0, rtol=0)
+        for name in ("coords", "scores", "valid"):
+            torch.testing.assert_close(getattr(a.candidates, name), getattr(b.candidates, name), atol=0, rtol=0)

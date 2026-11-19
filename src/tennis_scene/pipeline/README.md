@@ -101,8 +101,12 @@ hubからimportした`dinov3.*`の`__file__`も宣言inventoryと照合する。
 新しいprocessが必要となる。同内容のモデルをruntime内で共有する内容キーの契約は変わらない。
 人物検出DINOも、models/utilのimportとbuild後に同じ出自検査を行う。
 repository配下のsymlink（ディレクトリ・循環・切れたリンクを含む）は、Python import対象の全列挙を保証できないため生成前に拒否する。
-既知の制限: 実行中にPython sourceを追加・書換する運用と、dataset入口の完成marker identity取得後に
-checkpointを置き換える運用は対象外（親 #1734 の判断）。実行中の資産は固定する。
+dataset入口は完成marker identityの資産スナップショットを保持し、計画の各nodeが同じ内容を
+束縛していることを実行前に照合する。identity取得から計画作成までのcheckpoint置換も停止する。
+単一入口と一括入口は共通の最終化で、入力・共有court（driftを含む）・共有court_side・資産を
+export直前に再検証する。既存exportは記録済みchecksumと再構成結果を照合してから採用し、
+同じ世代の作成・検証・index更新をclip lockで直列化する。
+既知の制限: 実行中にPython sourceを追加・書換する運用は対象外。実行中の資産は固定する。
 順序選択の未常駐モデルの宣言は、種類・設定・資産pathだけで必要数を見積もり、資産を要求しない。
 初回借用と、常駐モデルに対する同条件の残り需要を調べる段階で内容キーを解決する。
 分岐により借用されない任意モデルの資産が無くても、cache/loadや他モデルの処理を妨げない。
@@ -176,8 +180,8 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 | node / schema | version | 数値配列と契約 |
 |---|---|---|
 | `person_pose_features/<camera>` / `person_pose_features` | 2 | `frame_offsets` int64 (T+1)、`source_rows` int64 (N)、`keypoints` float32 (N,17,3)、`model_identity`・`preprocessing_identity`。元画素x/yと加工しないheatmap peak |
-| `person_appearance_features/<camera>` / `person_appearance_features` | 3 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、明示したCLIP encoder名・`encoder_identity`・`preprocessing_identity`。無効cropはzero＋false |
-| `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v2・外観特徴v3のcamera・全frame offset・元row・期待するモデル/前処理identityを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
+| `person_appearance_features/<camera>` / `person_appearance_features` | 4 | 同じoffset/row、`embeddings` float32 (N,1280)、`appearance_valid` bool (N)、CLIP encoder名・`encoder_identity`・`preprocessing_identity`。再利用が有効なら検出のあるframeのデコード済みBGR画像のSHA-256を`frame_sha256` uint8 (T,32)に記録する。無効cropはzero＋false |
+| `person_tracking/<camera>` / `person_tracks` | 7 | 検出v2・pose特徴v2・外観特徴v4のcamera・全frame offset・元row・期待するモデル/前処理identityを照合し、CPUでStrongSORT++/AFLink/GSIを実行 |
 | `player_selection/<camera>` / `selected_player_tracks` | 3 | 保存した追跡特徴の選別とgroup軸への対応付け |
 | `pose_estimation/<camera>` / `person_poses` | 2 | 選別groupの実観測poseを再利用。標準経路で再推論しない |
 
@@ -240,7 +244,7 @@ CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だ�
 `selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
 追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
 設定した選別encoderで明示的に再計算し、appearance診断へsourceと理由を記録する。
-旧person_tracks v5/v6・pose特徴v1・外観特徴v1/v2・selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
+旧person_tracks v5/v6・pose特徴v1・外観特徴v1〜v3・selected_player_tracks v2はexecuteで再生成する。galleryでは旧形式も表示できる。
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。
@@ -250,6 +254,14 @@ poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、ha
 [src/tasks/player_association](../../tasks/player_association/README.md)の対応付けを、校正済みcameraのtrackのboxと
 `court_side`が決めたsideに適用する。方式のパラメータはtaskの採用済みdefault YAMLを読み、
 シングルス/ダブルスは`player_association.players_per_side`で明示する。CLIPの重みを資産identityに含める。
+`player_association.reuse_clip_embeddings`は既定の`false`で全sampleを再推論し、`true`で保存特徴の再利用を有効にする。
+`true`では通常のsampling後に元検出row・box・画像・encoder・前処理を照合し、一致した個別embeddingを読む。
+`true`に切り替えた初回は画像SHA-256を含む外観特徴を生成する。
+照合できないsampleはカメラ内で最大64cropずつ同じCLIP runtimeで推論する。方針はcache identityに含まれ、
+`diagnostics.appearance`に再利用数・再推論数とtrackごとのframe・理由が残る。
+C9を有効にした場合は、実際に選ばれた動画デコードbackend・captureの設定とcropの環境を、外観特徴・人物対応の
+cacheおよびclipの完成markerに記録する。推論時に開き直した動画も照合する。条件の異なる成果物はexecuteで再生成し、
+loadは不一致で停止する。古い完成markerから再生成するときは`overwrite=true`を指定する。
 比較用の旧尺度・別encoderはtaskの比較APIから使用する。
 player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switchの前後で別の人物を持てる。
 決まらないclipは`ReconstructionUnavailable`（reason `player_association_<停止理由>`、全scoreと途中の決定）で停止する。

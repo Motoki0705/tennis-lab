@@ -313,7 +313,7 @@ def test_two_clips_keep_stores_and_dependencies_separate_under_ready_policy(tmp_
 def test_unknown_execute_key_keeps_the_explicit_readiness_error(tmp_path: Path, key: NodeKey) -> None:
     spec = clip(tmp_path)
     executor = PlanExecutor(ExecutionPlan([spec]))
-    with pytest.raises(ValueError, match="not ready"):
+    with pytest.raises(ValueError, match="outside the execution plan"):
         executor.execute(key)
     assert not executor.plan.references
     assert all(model(node).calls == 0 for node in spec.nodes)

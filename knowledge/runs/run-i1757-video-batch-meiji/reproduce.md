@@ -15,7 +15,7 @@
 
 過去の同じ3クリップの一括runは約32分、device VRAM peakは6,198 MiB、RSS peakは約8.5 GiB、保存先は約1.9 GiBでした。これらを時間・容量の見積りに使います。逐次の追加ロードと新しい中間保存に余裕を取り、条件ごとに最長180分、GPU all枠、PyTorch allocator 10 GiBで実行します。queueがall枠を確保した後、probe開始直前の `nvidia-smi` 1回でGPU名・driver・空きVRAMを記録し、空きVRAM 12 GiB相当、利用可能RAM 12 GiB、空きdisk 12 GiBを確認します。probeは同じ入力・設定のclip_027/cam0でDINO・ViTPose・CLIP-ReID・Ballの段を8分以内に実行します。身体段の資源見積りには過去の全段runも使います。 [先行run](../../nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)
 
-CPU事前確認とqueue内の初期照会を経て、全条件を共通のheartbeat監視で実行します。最後の更新から180秒、または外部から計ったprobe 480秒・本計測10,800秒のうち先に来た制限で停止します。ログと最後のheartbeatを保存し、取得できた場合はスレッドスタックも残します。probeと本計測は同じqueue jobで続けて実行します。 [照会の切り分け結果](../../nodes/tennis_scene/000073-run-i1757-dino-gpu-health.md)
+CPU事前確認とqueue内の初期照会を経て、全条件を共通のheartbeat監視で実行します。最後の更新から180秒、または外部から計ったprobe 480秒・本計測10,800秒のうち先に来た制限で停止します。ログと最後のheartbeatを保存し、取得できた場合はスレッドスタックも残します。probeと本計測は同じqueue jobで続けて実行します。 [照会の切り分け結果](../../nodes/tennis_scene/000076-run-i1757-dino-gpu-health.md)
 
 各条件で初回1回、warm 2回を予約します。warmの2回で範囲・標本標準偏差を出せる最小回数です。毎回空のcomponent storeから再計算し、初回は新規workerと空のInductor/Triton cache、warmは同じworkerのimport・CUDA/compile状態を使います。モデルは各入口の通常の寿命でロード・解放します。OS page cacheは通常運用の状態を保ちます。
 

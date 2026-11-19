@@ -122,16 +122,14 @@ class PlanExecutor:
 
     def execute(self, key: NodeKey) -> ArtifactRef:
         """Run or load one ready node; completed nodes are never reconsidered."""
-        if key not in self.plan.nodes:
-            raise ValueError(f"Component is not ready: {key}")
         if key not in self.plan.required:
             raise ValueError("Targets are outside the execution plan")
         with self._runtime(frozenset({key})) as runtime:
             return self._execute(key, runtime, required=frozenset({key}))
 
-    def _execute(self, key: NodeKey, runtime: InferenceRuntime, *,
-                 required: frozenset[NodeKey] | None = None, continue_on_error: bool = False) -> ArtifactRef:
-        if key in self.plan.references:
+    def _execute(self, key: NodeKey, runtime: InferenceRuntime, *, required: frozenset[NodeKey] | None = None,
+                 continue_on_error: bool = False) -> ArtifactRef:
+        if key in self.plan.references or key not in self.plan.nodes:
             return self._execute_recorded(key, runtime, required=required, continue_on_error=continue_on_error)
         node = self.plan.nodes[key]
         with recording_context(clip_id=key[0], camera_id=node.context.camera_id, node=key[1]), span("node", source=node.source) as event:
@@ -140,8 +138,8 @@ class PlanExecutor:
             finally:
                 event["outcome"] = self.plan.statuses.get(key, "failed")
 
-    def _execute_recorded(self, key: NodeKey, runtime: InferenceRuntime, *,
-                          required: frozenset[NodeKey] | None, continue_on_error: bool) -> ArtifactRef:
+    def _execute_recorded(self, key: NodeKey, runtime: InferenceRuntime, *, required: frozenset[NodeKey] | None,
+                          continue_on_error: bool) -> ArtifactRef:
         plan = self.plan
         if key in plan.references:
             return plan.references[key]
@@ -196,7 +194,7 @@ class PlanExecutor:
             with span("postprocess", operation="component"):
                 output = (node.component.process_with_models(inputs, models)
                           if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
-                node.validate_output(output)
+            node.validate_output(output)
         return output, decision
 
     def output(self, key: NodeKey) -> Any:

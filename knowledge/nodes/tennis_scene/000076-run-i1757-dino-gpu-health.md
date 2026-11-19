@@ -2,7 +2,7 @@
 id: run-i1757-dino-gpu-health
 type: run
 task: tennis_scene
-sequence: 73
+sequence: 76
 recorded_at: '2026-11-19'
 title: DINO fp16の停止とGPU定期照会の切り分け
 issue: 1757

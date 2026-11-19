@@ -24,6 +24,7 @@ from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
+from src.utils.video.reader import OpenCVDecodeIdentity
 from tests.integration.tennis_scene.test_court_runtime_contracts import (
     CachedCourtStore,
     source,
@@ -106,6 +107,28 @@ def decision(cfg: Any, root: Path, store: CachedCourtStore, target: str) -> Any:
     plan.references.update({key: ArtifactRef("a" * 64, "fake.json", "b" * 64,
         node.io.output_schema, node.io.version, "c" * 64) for key, node in plan.nodes.items() if key[1] != target})
     return plan.decide(("clip", target))
+
+
+def test_association_reuse_policy_separates_cache_and_publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr('src.tennis_scene.pipeline.appearance_media.probe_video_decoder',
+                       lambda _: OpenCVDecodeIdentity('fixture', {}, {}))
+    cfg = configured(tmp_path)
+    target = 'player_association'
+    store = CachedCourtStore(tmp_path / 'store', 'clip')
+    fresh = decision(cfg, tmp_path, store, target)
+    store.refs[target] = ArtifactRef('d' * 64, 'fake.json', 'e' * 64, fresh.identity['schema'],
+                                    fresh.identity['version'], document_digest(fresh.identity))
+    assert decision(cfg, tmp_path, store, target).action == 'cached'
+    reuse = runtime(tmp_path, overrides=("gvhmr.enabled=true", "player_association.reuse_clip_embeddings=true"))
+    changed = decision(reuse, tmp_path, store, target)
+    assert changed.action == 'execute'
+    assert not fresh.identity['settings']['reuse_clip_embeddings']
+    assert changed.identity['settings']['reuse_clip_embeddings']
+    assert set(changed.dependencies) - set(fresh.dependencies) == {'detections_cam0', 'appearance_cam0'}
+    features = 'person_appearance_features/cam0'
+    assert not decision(cfg, tmp_path, store, features).identity['settings']['capture_frame_sha256']
+    assert decision(reuse, tmp_path, store, features).identity['settings']['capture_frame_sha256']
+    assert TennisSceneOrchestrator(cfg).publication_identity() != TennisSceneOrchestrator(reuse).publication_identity()
 
 
 @pytest.mark.parametrize("target,change", [

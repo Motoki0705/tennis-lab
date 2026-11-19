@@ -101,8 +101,7 @@ def test_person_settings_change_only_their_stage_cache_identities(
             ("person_detection/cam0", "detector", cfg.people.runtime.dino_detector.precision),
             ("person_pose_features/cam0", "pose", cfg.people.runtime.vitpose.precision),
         ):
-            spec = model_component(plan.nodes[("test", node)]).model_specs()[slot]
-            assert spec.dtype == {"fp32": "float32", "bf16": "bfloat16", "fp16": "float16"}[precision]
+            assert model_component(plan.nodes[("test", node)]).model_specs()[slot].dtype == {"fp32": "float32", "bf16": "bfloat16", "fp16": "float16"}[precision]
     # Keep the upstream references fixed to isolate the local identity changes.
     for key in base.order:
         reference = ArtifactRef(key[1], f"{key[1]}.json", "fixed-content",

@@ -1,6 +1,6 @@
 # DINO fp16のGPU停止の切り分け
 
-[実行結果と考察](../../nodes/tennis_scene/000073-run-i1757-dino-gpu-health.md)と[測定値・イベントのJSON](evidence.json)を参照してください。
+[実行結果と考察](../../nodes/tennis_scene/000076-run-i1757-dino-gpu-health.md)と[測定値・イベントのJSON](evidence.json)を参照してください。
 
 [#1757の逐次probe](../run-i1757-video-batch-meiji/reproduce.md)の `video_000/clip_027` の `cam0` を使う。両条件で標準の人物検出コンポーネントを使い、全235フレームを先頭から順に、DINO fp16の単一フレーム推論で処理する。動画・設定・重み・DINOソース・ネイティブ拡張は逐次probeの固定記録と照合する。
 

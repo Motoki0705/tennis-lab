@@ -63,7 +63,8 @@ def validate(destination):
         from src.tennis_scene.configuration import parse_video_batch_config
         from src.tennis_scene.pipeline.artifacts import json_value
         from src.tennis_scene.pipeline.clip_inputs import prepare_video_inputs
-        from src.tennis_scene.pipeline.definition import standard_definition
+        from src.tennis_scene.pipeline.components.court_side import PlayerCourtSideModule
+        from src.tennis_scene.pipeline.definition import enabled_model_assets, standard_definition
         from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
         from src.tennis_scene.pipeline.inference_runtime import InferenceRuntime
         from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
@@ -89,7 +90,11 @@ def validate(destination):
             assert batch.generation.clip_ids is None
             assert cfg.people.runtime.dino_detector.precision == cfg.people.runtime.vitpose.precision == 'fp16'
             assert cfg.player_association.players_per_side == 2
-            assert cfg.video_court.action == cfg.video_court_side.action == 'load'
+            assert not cfg.reuse_clip_embeddings
+            assert cfg.video_court.action == 'load' and cfg.video_court_side is None
+            assert cfg.court_side_evidence == 'player' and cfg.omit_ball_components
+            assert not cfg.enabled['ball_detection'] and not cfg.enabled['ball_reconstruction']
+            assert 'ball' not in enabled_model_assets(cfg)
             before = markers(batch.generation.dataset_directory)
             dataset_id, prepared = prepare_video_inputs(batch.generation.dataset_directory, batch.video_id)
             assert dataset_id == 'meiji_4cam' and len(prepared) == 69
@@ -103,10 +108,9 @@ def validate(destination):
                     cfg.resolver.validate(PathRole.DATA, video.path)
                 court.bind(clip.media.source)
             side = orchestrator.prepare_video_court_side(court)
-            assert side is not None
+            assert side is None
             identity = orchestrator.publication_identity()
-            verdicts = Counter(identity['video_court_side_clips'][c.inputs.record.clip_id]['status'] for c in prepared)
-            assert verdicts['failed'] == 0
+            assert 'video_court_side_digest' not in identity
             dtypes = Counter()
             stages = Counter()
             with tempfile.TemporaryDirectory(prefix='video-batch-plan-') as temporary:
@@ -122,18 +126,27 @@ def validate(destination):
                             assert specs['detector'].dtype == 'float16'
                             assert 'extension' in specs['detector'].weights
                             dtypes['dino.float16'] += 1
-                        elif node.io.name == 'person_tracking':
+                        elif node.io.name == 'person_pose_features':
                             assert specs['pose'].dtype == 'float16'
                             dtypes['vitpose.float16'] += 1
+                        elif node.io.name == 'person_tracking':
+                            assert not specs  # Main runs tracking from stored pose/appearance features.
+                            dtypes['tracking.cpu'] += 1
                         elif node.io.name == 'pose_estimation':
                             assert not specs  # Pose is reused from the feature tracker in main.
                             dtypes['pose.evidence_reuse'] += 1
                         elif node.io.name == 'court_side':
-                            node.require_component()
+                            assert isinstance(node.component, PlayerCourtSideModule)
+                            assert node.require_component is None
+                            assert set(node.bindings.values()) == {'court_calibration', *(f'player_selection/{c}' for c in source.camera_ids)}
+                        assert not node.name.startswith('ball_')
+                        assert all(spec.kind != 'ball' for spec in specs.values())
                     store = ClipStore(Path(temporary) / source.clip_id, json_value(source), memory_entries=0)
                     clips.append(ClipExecution(source.clip_id, nodes, store, cfg.cache_overwrite))
                 plan = ExecutionPlan(clips)
-                assert len(plan.nodes) == 69 * 38
+                # Four cameras: 4 court + calibration + 6 people stages/camera
+                # + 9 clip stages (including separated HMR2 features), no ball.
+                assert len(plan.nodes) == 69 * (4 + 1 + 6 * 4 + 9)
                 assert not plan.references and not plan.statuses
                 assert len(plan.clips) == 69
             assert markers(batch.generation.dataset_directory) == before
@@ -146,13 +159,16 @@ def validate(destination):
                 'dataset_id': dataset_id, 'clips': len(prepared), 'frames_per_camera': frames,
                 'camera_ids': list(prepared[0].media.source.camera_ids), 'plan_count': 1,
                 'nodes': len(plan.nodes), 'stages': dict(stages), 'dtypes': dict(dtypes),
-                'shared_side_verdicts': dict(verdicts), 'court_digest': court.digest, 'side_digest': side.digest,
+                'court_side_mode': 'clip', 'court_side_evidence': cfg.court_side_evidence,
+                'ball_detection_enabled': cfg.enabled['ball_detection'],
+                'ball_reconstruction_enabled': cfg.enabled['ball_reconstruction'],
+                'court_digest': court.digest, 'side_digest': None,
                 'dino_extension': environment['TENNIS_LAB_DINO_EXTENSION'],
                 'dino_extension_sha256': sha(Path(environment['TENNIS_LAB_DINO_EXTENSION'])),
                 'completed_markers_unchanged': len(before), 'model_factories_called': 0,
                 'native_binaries_loaded': 0, 'plan_executed': False, 'cuda_initialized': False,
                 'elapsed_seconds': time.perf_counter() - started,
-                'limits': 'Parsing, all input/court/side admission and plan construction only; current Ball observations, actual inference, export and GPU numerical equivalence were not executed.',
+                'limits': 'Parsing, all input/shared-court admission and plan construction only; player side decisions require future observations and were not executed for all69. Actual inference, export and GPU numerical equivalence were not executed.',
             }
     destination.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))

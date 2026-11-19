@@ -2,7 +2,7 @@
 id: run-i1757-video-batch-meiji
 type: run
 task: tennis_scene
-sequence: 72
+sequence: 75
 recorded_at: '2026-11-19'
 title: meiji_4camの3クリップ逐次計測と保存出力の一致
 issue: 1757

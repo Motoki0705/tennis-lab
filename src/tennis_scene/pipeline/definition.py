@@ -11,6 +11,10 @@ from src.tasks.court_side.hypothesis import PlayerCourtSideConfig
 from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
+from src.tennis_scene.pipeline.appearance_media import (
+    APPEARANCE_MEDIA,
+    appearance_media_identity,
+)
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_annotations import (
     ImportedBallAnnotationModule,
@@ -32,7 +36,10 @@ from src.tennis_scene.pipeline.components.court_side import (
 )
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
 from src.tennis_scene.pipeline.components.hmr2_features import HMR2FeaturesModule
-from src.tennis_scene.pipeline.components.identity import PlayerAssociationModule
+from src.tennis_scene.pipeline.components.identity import (
+    PLAYER_ASSOCIATION,
+    PlayerAssociationModule,
+)
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
 from src.tennis_scene.pipeline.components.person_features import (
     PersonAppearanceFeaturesModule,
@@ -135,13 +142,15 @@ def standard_model_components(cfg: PipelineRuntimeConfig, ids: tuple[str, ...]) 
            if not cfg.omit_ball_components else {}),
         "person_detection": PersonDetectionModule(cfg.people, enabled=people, merge_duplicates=cfg.merge_duplicate_person_boxes),
         "person_pose_features": pose,
-        "person_appearance_features": PersonAppearanceFeaturesModule(tracking, cfg.tracking.features, enabled=people),
+        "person_appearance_features": PersonAppearanceFeaturesModule(tracking, cfg.tracking.features, enabled=people,
+            capture_frame_sha256=cfg.reuse_clip_embeddings),
         "person_tracking": PersonTrackingModule(cfg.tracking, aflink_checkpoint=cfg.aflink_checkpoint, enabled=people,
             expected_pose=pose.model_specs().get('pose'), expected_encoder=tracking),
         "player_selection": PlayerSelectionModule(selection, footpoints=association.footpoints, sampling=sampling,
             encoder=encoder, encoder_name=name if encoder is not None else None, device=cfg.device, enabled=people),
         "pose_estimation": PoseEstimationModule(cfg.people, require_evidence=people, enabled=people),
-        "player_association": PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people, encoder=encoder),
+        PLAYER_ASSOCIATION: PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people, encoder=encoder,
+            reuse_clip_embeddings=cfg.reuse_clip_embeddings, feature_config=cfg.tracking.features),
         "hmr2_features": HMR2FeaturesModule(cfg.people, enabled=body),
         "gvhmr": GVHMRModule(cfg.people, enabled=body),
         "body_placement": BodyPlacementModule(ids, cfg.people, cfg.player_placement, reprojection_px=cfg.player_reprojection_px, enabled=body),
@@ -162,6 +171,15 @@ def declared_model_identities(cfg: PipelineRuntimeConfig, stage: str, component:
 def publication_model_identities(cfg: PipelineRuntimeConfig) -> dict[str, Any]:
     return {stage: declared_model_identities(cfg, stage, component)
         for stage, component in standard_model_components(cfg, ()).items()}
+
+
+def binds_appearance_media(cfg: PipelineRuntimeConfig, overrides: Mapping[str, Any]) -> bool:
+    if PLAYER_ASSOCIATION in overrides:
+        module = overrides[PLAYER_ASSOCIATION]
+        return (isinstance(module, PlayerAssociationModule) and module.enabled
+                and module.reuse_clip_embeddings and module.encoder is not None)
+    return (cfg.enabled["person_observations"] and cfg.reuse_clip_embeddings
+            and cfg.player_association.appearance is not None)
 
 
 def component_override_identity(cfg: PipelineRuntimeConfig, component: Any) -> dict[str, Any]:
@@ -240,6 +258,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             raise ValueError("Clip is missing from the shared court side artifact")
     nodes: list[ComponentNode] = []
     components = standard_model_components(cfg, ids)
+    appearance_media = appearance_media_identity(ids, source.paths) if binds_appearance_media(cfg, overrides) else None
+    decoders = {} if appearance_media is None else appearance_media["decoders"]
 
     def bound_assets(enabled: bool, paths: dict[str, Any]) -> dict[str, Any]:
         return {name: cfg.court_kp.asset_catalog.file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
@@ -258,6 +278,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             resolved = settings()
             if isinstance(component, InferenceComponent):
                 resolved = {**resolved, "models": declared_model_identities(cfg, stage, component)}
+        if appearance_media is not None and stage in {"person_appearance_features", PLAYER_ASSOCIATION}:
+            resolved[APPEARANCE_MEDIA] = {**appearance_media, "decoders": decoders if camera is None else {camera: decoders[camera]}}
         mode = "load" if cfg.cache_source == "load" else cfg.component_sources[stage]
         nodes.append(ComponentNode(name, component, component.io, assembler, bindings,
             AssemblyContext(source, camera), json_value(resolved), code_identity, mode, require_component=require_component,
@@ -353,7 +375,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                 "assets": bound_assets(people_enabled, {"pose": cfg.people.vitpose_checkpoint})}, camera=camera,
             after_components=('person_detection',))
         add(f"person_appearance_features/{camera}", components["person_appearance_features"],
-            PersonAppearanceFeaturesInputAssembler(), {"detections": f"person_detection/{camera}"},
+            PersonAppearanceFeaturesInputAssembler(expected_decoder=decoders.get(camera)), {"detections": f"person_detection/{camera}"},
             lambda: {**components['person_appearance_features'].cache_identity(), "encoder": cfg.tracking.encoder,
                 "assets": bound_assets(people_enabled, {} if tracking_encoder is None else dict(tracking_encoder.weights)),
                 "enabled": people_enabled}, camera=camera, after_components=('person_detection', 'person_pose_features'))
@@ -363,7 +385,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         if isinstance(pose_component, PersonPoseFeaturesModule) and isinstance(appearance_component, PersonAppearanceFeaturesModule):
             tracker = PersonTrackingModule(cfg.tracking, aflink_checkpoint=cfg.aflink_checkpoint, enabled=people_enabled,
                 expected_pose=pose_component.model_specs().get('pose'), expected_encoder=appearance_component.model_specs().get('encoder'),
-                pose_preprocessing=pose_component.cache_identity(), appearance_preprocessing=appearance_component.cache_identity())
+                pose_preprocessing=pose_component.cache_identity(), appearance_preprocessing=appearance_component.preprocessing_settings())
         add(f"person_tracking/{camera}", tracker, PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}", "poses": f"person_pose_features/{camera}",
              "appearance": f"person_appearance_features/{camera}"}, partial(tracking_settings, tracker), camera=camera)
@@ -400,10 +422,15 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         side_settings = {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames, "ball_threshold": 0.0}
     add("court_side", side_module, side_assembler, {"calibration": "court_calibration", **side_observations},
         lambda: side_settings, require_component=require_side)
-    add("player_association", components["player_association"],
-        PlayerAssociationInputAssembler(), {"calibration": "court_calibration", "side": "court_side", **tracks},
-        lambda: {"config": association, "sampling": sampling, "enabled": people_enabled,
-                 "assets": bound_assets(people_enabled and weights is not None, encoder_assets)})
+    association_component = overrides.get(PLAYER_ASSOCIATION, components[PLAYER_ASSOCIATION])
+    reuse_clip_embeddings = isinstance(association_component, PlayerAssociationModule) and association_component.reuse_clip_embeddings
+    association_bindings = {"calibration": "court_calibration", "side": "court_side", **tracks}
+    if reuse_clip_embeddings:
+        association_bindings.update({f"detections_{c}": f"person_detection/{c}" for c in ids})
+        association_bindings.update({f"appearance_{c}": f"person_appearance_features/{c}" for c in ids})
+    add(PLAYER_ASSOCIATION, components[PLAYER_ASSOCIATION], PlayerAssociationInputAssembler(reuse_clip_embeddings, expected_decoders=decoders),
+        association_bindings, lambda: {**components[PLAYER_ASSOCIATION].cache_identity(),
+                                       "assets": bound_assets(people_enabled and weights is not None, encoder_assets)})
     identified = {**observations, "identities": "player_association"}
     ball_threshold = 0.0 if include_ball else None
     add("camera_alignment", CameraAlignmentModule(ids, cfg.camera_geometry, player_reprojection_px=cfg.player_reprojection_px,

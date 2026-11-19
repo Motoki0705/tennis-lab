@@ -10,6 +10,11 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from src.tennis_scene.pipeline.appearance_media import (
+    APPEARANCE_MEDIA,
+    appearance_media_identity,
+    require_appearance_media,
+)
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
@@ -123,7 +128,7 @@ def validate_dataset_result(result: SceneResult, record: DatasetClipRecord) -> N
         )
 
 
-def _required_body_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
+def _required_body_and_appearance_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
     # Custom SceneRunner identities retain their own declared output contract.
     if identity.get('schema') != 'declared_component_pipeline_v1':
         return {}
@@ -132,14 +137,20 @@ def _required_body_components(inputs: DatasetClipInputs, identity: Mapping[str, 
     root = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
     document = json.loads((root / 'scene.json').read_text())
     reference = document['exports']['scene']['inputs']['scene_assembly']
-    artifacts: dict[str, Any] = require_current_body_artifacts(root, reference)
-    return artifacts
+    required: dict[str, Any] = require_current_body_artifacts(root, reference)
+    if APPEARANCE_MEDIA in identity:
+        node = "player_association"
+        reference = document["artifacts"][node]
+        descriptor = read_component_descriptor(root, reference, node=node, source_sha256=document["source_sha256"])
+        require_appearance_media(descriptor, identity[APPEARANCE_MEDIA])
+        required[node] = reference
+    return required
 
 
 def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
-    """Admit shared sides first, then require the published scene's body lineage."""
+    """Admit shared sides first, then verify the other required scene components."""
     if "video_court_side_digest" not in identity:
-        return _required_body_components(inputs, identity)
+        return _required_body_and_appearance_components(inputs, identity)
     from src.tennis_scene.pipeline.video_court_side.component import (
         SharedCourtSideModule,
     )
@@ -171,7 +182,13 @@ def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str,
     if evidence not in ("ball", "player"):
         raise ValueError(f"Invalid shared court side evidence for publication ({clip})")
     PinnedSideInputs.from_store(root, evidence=evidence).verify_arrays()
-    return {**_required_body_components(inputs, identity), "court_side": ref}
+    return {**_required_body_and_appearance_components(inputs, identity), "court_side": ref}
+
+
+def _clip_publication_identity(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> Mapping[str, object]:
+    if identity.get("bind_appearance_media") is True:
+        return {**identity, APPEARANCE_MEDIA: appearance_media_identity(inputs.camera_ids, inputs.video_paths)}
+    return identity
 
 
 def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mapping[str, object], *, overwrite: bool = False) -> Path | None:
@@ -184,6 +201,7 @@ def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mappin
     with clip_store_lock(destination.parent):
         if not destination.exists():
             return None
+        publication_identity = _clip_publication_identity(inputs, publication_identity)
         marker = json.loads(destination.read_text())
         if (marker.get("publication_identity_sha256") != document_digest(publication_identity)
                 or marker.get("clip_manifest_sha256") != inputs.manifest_sha256
@@ -202,6 +220,7 @@ def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeli
                        publication_identity: Mapping[str, object], expected_scene: Path | None = None) -> Path:
     """Validate a complete clip and atomically publish its dataset marker."""
     with span("publication"), clip_store_lock(inputs.clip_dir / ANNOTATION_RELATIVE_DIR):
+        publication_identity = _clip_publication_identity(inputs, publication_identity)
         validate_dataset_result(result, inputs.record)
         inputs.snapshot.assert_unchanged()
         destination: Path = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
