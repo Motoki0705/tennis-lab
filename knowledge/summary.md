@@ -22,6 +22,7 @@
 - **6方式の比較と採否**: [統合比較](nodes/tennis_scene/000041-run-ball3d-integrated-comparison-20261104.md)では後半LOVOとcoverageの一貫した改善は得られず、人間はbaseline維持を決定しました。後処理・三角測量側の追加改善はキャンセルされ、検出モデルの学習戦略の改善が必要と判断されました。比較は1 clip・近似校正・推定を含む2D参照に限られます。詳細は[凍結アーカイブ](history/summary-2026-11-05.md)を参照してください。
 
 - **動画一括推論の実GPU受入**: C4の[共有court_side・明示fp16・ダブルス2](nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)で000/037/027の全114nodeが1計画で完了し、GVHMR配置・scene公開まで通りました。各side2 identity、C3管理7resourceは各1load/unload。CPU AFLinkの都度loadは別に記録しています。[同じfp16での単一027比較](nodes/tennis_scene/000065-run-i1752-shared-fp16-reference-20261118.md)は最終scene29配列・metadata・全離散値がexactですが、Ball補助evidence9配列が従来許容を超え、全component一致は未達です。原因と採否は親レビューに残します。69clipは未実行で、25.27〜25.88時間は今回の短い3clipからの条件付き投影です。C1同期・初回compile等を含み、共有side・精度・profilerの差を単独の高速化率にはしません。
+- **3クリップの逐次基準**: meiji_4camの000/027/037はworker起動込み2131.75秒、warmは2031.50秒と2005.06秒。固定許容誤差による逐次3回の保存出力は全組でexact、playerのcourt_sideは9件ともball参照と一致し、全sceneを再読込できました。条件間の速度・品質は比較待ちです。 [逐次基準](nodes/tennis_scene/000072-run-i1757-video-batch-meiji.md)
 
 ## Court Detection
 
