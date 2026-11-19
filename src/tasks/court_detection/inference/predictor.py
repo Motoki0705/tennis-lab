@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, Literal, Self, TypeAlias, cast
 
@@ -48,6 +48,7 @@ from src.tasks.court_detection.model_io.keypoint_decoder import (
 )
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
+from src.utils.geometry.image_size import resize_short_side_aligned
 from src.utils.inference_recording import measured, span
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
@@ -147,6 +148,34 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         postprocess: Literal["hybrid", "none"] = "hybrid",
         heads: Iterable[CourtTargetKind] | None = None,
     ) -> CourtPrediction:
+        requested = self._requested_heads(heads, postprocess)
+        return self._predict_prepared((self._prepare_image(image),), requested, postprocess)[0]
+
+    def batch_image_size(self, height: int, width: int) -> tuple[int, int]:
+        """Padded model input size for the checkpoint's validation geometry."""
+        spec = self.adapter.spec
+        if not spec.pose_long_side:
+            resized_width, resized_height = resize_short_side_aligned(width, height, spec.short_side)
+            return resized_height, resized_width
+        scale = spec.short_side / max(height, width)
+        content = max(1, round(height * scale)), max(1, round(width * scale))
+        return (content[0] + (-content[0]) % spec.patch_size,
+                content[1] + (-content[1]) % spec.patch_size)
+
+    def prepare_batch_image(self, image: CourtImage) -> PreparedCourtImage:
+        """Prepare one image on the host for a later compatible batch."""
+        return self._prepare_image(image, device=torch.device("cpu"))
+
+    def predict_prepared(
+        self, prepared: Sequence[PreparedCourtImage], *,
+        postprocess: Literal["hybrid", "none"] = "hybrid",
+        heads: Iterable[CourtTargetKind] | None = None,
+    ) -> list[CourtPrediction]:
+        """Predict a compatible batch and decode every row in its own geometry."""
+        return self._predict_prepared(prepared, self._requested_heads(heads, postprocess), postprocess)
+
+    def _requested_heads(self, heads: Iterable[CourtTargetKind] | None,
+                         postprocess: Literal["hybrid", "none"]) -> tuple[CourtTargetKind, ...]:
         if postprocess not in {"hybrid", "none"}:
             raise CourtModelIOError("postprocess must be 'hybrid' or 'none'")
         requested = (
@@ -171,57 +200,72 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
                 raise CourtModelIOError(
                     "Hybrid postprocess requires ordered KP14 and max_peaks=1"
                 )
-        prepared = self._prepare_image(image)
-        images = prepared.images
-        original_size = prepared.original_size_hw
-        content_height, content_width = prepared.content_size_hw
+        return requested
+
+    def _predict_prepared(
+        self, prepared: Sequence[PreparedCourtImage], requested: tuple[CourtTargetKind, ...],
+        postprocess: Literal["hybrid", "none"],
+    ) -> list[CourtPrediction]:
+        if not prepared:
+            return []
+        tensors = [item.images for item in prepared]
+        if any(tensor.shape != tensors[0].shape or tensor.device != tensors[0].device for tensor in tensors):
+            raise CourtModelIOError("Court batch images must have the same prepared shape and device")
+        images = tensors[0] if len(tensors) == 1 else torch.cat(tensors)
+        if images.device != self.device:
+            with span("transfer", model="Court"):
+                images = images.to(self.device)
         with torch.no_grad():
             call = self.adapter.prepare_images(
-                images,
-                content_size_hw=torch.tensor(
-                    [prepared.content_size_hw], device=images.device
-                ),
+                images, content_size_hw=torch.tensor([item.content_size_hw for item in prepared], device=images.device),
             )
             with span("inference", model="Court", batch_shape=list(images.shape)):
                 output = cast(CourtLogits | CourtModelOutput, self.model(*call.model_args))
             with span("postprocess", model="Court"):
                 self.adapter.validate_logits(output, call)
-                logits = (
-                    output.dense_logits if isinstance(output, CourtModelOutput) else output
+                logits = output.dense_logits if isinstance(output, CourtModelOutput) else output
+                return [self._decode_prediction(logits, index, item, requested, postprocess)
+                        for index, item in enumerate(prepared)]
+
+    def _decode_prediction(
+        self, logits: CourtLogits, index: int, prepared: PreparedCourtImage,
+        requested: tuple[CourtTargetKind, ...], postprocess: Literal["hybrid", "none"],
+    ) -> CourtPrediction:
+        original_size = prepared.original_size_hw
+        content_height, content_width = prepared.content_size_hw
+        decoded: dict[CourtTargetKind, CourtDecodedPrediction] = {}
+        for kind in requested:
+            content_logits = logits[kind][index:index + 1, :, :content_height, :content_width]
+            if kind == "kp":
+                prediction = decode_court_keypoint_logits(
+                    content_logits,
+                    original_size_hw=prepared.content_size_hw,
+                    subpixel_refine=self.subpixel_refine,
+                    config=self.decoder_config,
                 )
-                decoded: dict[CourtTargetKind, CourtDecodedPrediction] = {}
-                for kind in requested:
-                    content_logits = logits[kind][..., :content_height, :content_width]
-                    if kind == "kp":
-                        prediction = decode_court_keypoint_logits(
-                            content_logits,
-                            original_size_hw=prepared.content_size_hw,
-                            subpixel_refine=self.subpixel_refine,
-                            config=self.decoder_config,
-                        )
-                        points = prediction.keypoints * prediction.keypoints.new_tensor(
-                            prepared.source_from_model_xy
-                        )
-                        valid = (
-                            prediction.valid
-                            & (points[..., 0] >= 0)
-                            & (points[..., 0] < original_size[1])
-                            & (points[..., 1] >= 0)
-                            & (points[..., 1] < original_size[0])
-                        )
-                        decoded[kind] = CourtKeypointPrediction(
-                            points,
-                            prediction.scores.masked_fill(~valid, 0),
-                            valid,
-                            prediction.heatmaps,
-                        )
-                    else:
-                        decoded[kind] = self.adapter.decode_prediction(
-                            kind,
-                            content_logits,
-                            original_size_hw=original_size,
-                            subpixel_refine=False,
-                        )
+                points = prediction.keypoints * prediction.keypoints.new_tensor(
+                    prepared.source_from_model_xy
+                )
+                valid = (
+                    prediction.valid
+                    & (points[..., 0] >= 0)
+                    & (points[..., 0] < original_size[1])
+                    & (points[..., 1] >= 0)
+                    & (points[..., 1] < original_size[0])
+                )
+                decoded[kind] = CourtKeypointPrediction(
+                    points,
+                    prediction.scores.masked_fill(~valid, 0),
+                    valid,
+                    prediction.heatmaps,
+                )
+            else:
+                decoded[kind] = self.adapter.decode_prediction(
+                    kind,
+                    content_logits,
+                    original_size_hw=original_size,
+                    subpixel_refine=False,
+                )
         geometry = None
         if postprocess == "hybrid":
             kp, line = decoded["kp"], decoded["line"]
@@ -252,7 +296,8 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         )
 
     @measured("preprocess")
-    def _prepare_image(self, image: CourtImage) -> PreparedCourtImage:
+    def _prepare_image(self, image: CourtImage, *, device: torch.device | None = None) -> PreparedCourtImage:
+        destination = self.device if device is None else device
         if isinstance(image, Tensor):
             if image.ndim not in {3, 4}:
                 raise CourtModelIOError(
@@ -263,9 +308,9 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
                 raise CourtModelIOError("Court predictors accept exactly one image")
             size = (image.shape[-2], image.shape[-1])
             with span("transfer", model="Court"):
-                images = images.to(self.device)
+                images = images.to(destination)
             return PreparedCourtImage(images, size, (1.0, 1.0), size)
-        return prepare_court_input(image, spec=self.adapter.spec, device=self.device)
+        return prepare_court_input(image, spec=self.adapter.spec, device=destination)
 
     @property
     def decoder_config(self) -> CourtKeypointDecoderConfig:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import math
 import os
 import shutil
 import sys
@@ -176,8 +177,15 @@ class ClipStore:
         return cast(dict[str, Any], read_component_descriptor(self.root, json_value(reference), node=None, source_sha256=self.source_key))
 
     @measured("artifact_load")
-    def load(self, reference: ArtifactRef, codec: ArtifactReader[OutputT]) -> OutputT:
+    def load(self, reference: ArtifactRef, codec: ArtifactReader[OutputT], *,
+             reserve: Callable[[int], None] | None = None) -> OutputT:
         descriptor = self.descriptor(reference)
+        if reserve is not None:
+            # Charge the mappings, restored metadata and temporary buffers
+            # before the codec maps/copies arrays and validates their values.
+            array_bytes = sum(math.prod(item["shape"]) * np.dtype(item["dtype"]).itemsize
+                              for item in descriptor["arrays"].values())
+            reserve(2 * (array_bytes + artifact_memory_bytes(descriptor["payload"])))
         # Validate bytes on every disk read; a memory hit refers to the same immutable ID.
         if self.shared_cache is not None:
             value = self.shared_cache.get((self.root, reference.artifact_id))

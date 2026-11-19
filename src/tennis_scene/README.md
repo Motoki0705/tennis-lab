@@ -57,7 +57,10 @@ source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認�
 
 `run_video_batch`は`dataset.json`に登録された同じ`video_id`の全clipを1つの
 `ExecutionPlan`へまとめます。モデルを段階ごとに共有し、各推論はclip・cameraごとの
-既存windowとbatch設定を使います。既定は通常の`pipeline`設定です。
+既存windowとbatch設定を使うのが既定です。`batching.enabled=true`で互換なframe・検出crop・
+時間窓を複数clip/cameraから集めます。各上限と比較条件は
+[横断バッチの設定](pipeline/README.md#横断バッチの設定)を参照してください。
+既定のpipelineは`pipeline`です。
 構成は単一入口と同じ[設定](../tasks/court_side/README.md#プレーヤーから判定する)を
 `pipeline_overrides`で明示します。
 
@@ -82,6 +85,7 @@ meiji_4camの例です。
 .venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
   video_id=video_000 \
+  batching.enabled=true \
   pipeline_config=pipeline \
   'pipeline_overrides=["court_kp.mode=clip","court_side.mode=clip","court_side.evidence=player","ball_detection.enabled=false","ball_reconstruction.enabled=false","player_association.players_per_side=2"]'
 ```
@@ -94,7 +98,7 @@ ARTIFACT rootの`tennis_scene/court_shared/meiji_4cam`からloadする例です�
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
-  video_id=video_000 pipeline_config=pipeline \
+  video_id=video_000 batching.enabled=true pipeline_config=pipeline \
   "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"court_side.mode=clip\",\"court_side.evidence=player\",\"ball_detection.enabled=false\",\"ball_reconstruction.enabled=false\",\"player_association.players_per_side=2\"]"
 ```
 
@@ -135,7 +139,9 @@ componentの強制再計算には`pipeline_overrides=["cache.overwrite=true"]`�
 
 OUTPUT配下の`progress_directory/<実行ID>/progress.json`へ対象・設定・node状態・clipの
 成功／skip／失敗／blocked、モデルload/unload、実batch shapeごとの件数を保存します。
-隣の`recording.json`は[C1 recorder](../utils/inference_recording.md)の段階別計測です。
+隣の`recording.json`には[C1 recorder](../utils/inference_recording.md)が充填率、
+clipをまたいだbatch数、実行passごとのモデルload回数・動画open回数、作業量のピークを記録します。
+`record_cuda=true`で同期付きCUDA計測とVRAMピークを有効にできます。
 再開時は新しい進捗記録を作り、component storeから状態を照合します。
 datasetの完成判定にはclipごとの`annotation.json`と採用中scene exportを使います。
 

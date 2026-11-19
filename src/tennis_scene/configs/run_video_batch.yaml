@@ -19,9 +19,10 @@ batching:
     ball: 1
   max_sources: 4
   max_pending_items: 32
-  max_working_bytes: 1073741824
+  max_working_bytes: 2147483648
   store_cache_bytes: 0
   clips_per_pass: null
+record_cuda: false
 progress_directory: ${tennis_output:tennis_scene,generate,video_batch,${tennis_run_id:}}
 hydra:
   run:

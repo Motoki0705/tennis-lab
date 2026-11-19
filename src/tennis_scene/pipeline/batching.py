@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Callable, Generator, Hashable, Sequence
+from collections.abc import Callable, Generator, Hashable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -40,7 +41,7 @@ class BatchConfig:
     sizes: BatchSizes = field(default_factory=BatchSizes)
     max_sources: int = 4
     max_pending_items: int = 32
-    max_working_bytes: int = 1024**3
+    max_working_bytes: int = 2 * 1024**3
     store_cache_bytes: int = 0
     clips_per_pass: int | None = None
 
@@ -95,6 +96,14 @@ class SourceMemory:
     def close(self) -> None:
         self.budget.release(self.size)
         self.size = 0
+
+    @contextmanager
+    def workspace(self, size: int) -> Iterator[None]:
+        self.budget.reserve(size)
+        try:
+            yield
+        finally:
+            self.budget.release(size)
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,7 +223,8 @@ def drain_batch_jobs(
             sources = {(unit.address.clip_id, unit.address.camera_id) for unit in units}
             with span("batch_dispatch", model=model, batch_items=len(units), batch_capacity=capacity,
                       fill_fraction=len(units) / capacity, source_count=len(sources),
-                      clip_count=len({clip for clip, _ in sources})):
+                      clip_count=len({clip for clip, _ in sources}), queued_items=pending + len(queue),
+                      active_sources=len(active)):
                 results = first.adapter.infer_batch(units, first.models)
                 if len(results) != len(units):
                     raise RuntimeError("Batch adapter changed the inference unit count")

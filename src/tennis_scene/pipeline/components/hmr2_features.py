@@ -35,7 +35,6 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
-from src.tennis_scene.pipeline.storage.clip_store import artifact_memory_bytes
 from src.utils.video import OpenCVVideoFrameReader
 
 
@@ -155,7 +154,7 @@ class HMR2FeaturesModule(InferenceComponent[HMR2FeaturesInput, HMR2FeaturesOutpu
             raise ValueError("HMR2 batch clip does not match the body selection")
         validate_body_selection(source, selection)
         request_rows = sum(len(request.source_frames) for body in selection.selections for request in body.requests)
-        memory.reserve(artifact_memory_bytes(selection) + request_rows * (1024 * 5 + 544))
+        memory.reserve(request_rows * (1024 * 5 + 544))
         if request_rows:
             memory.reserve(source.size[0] * source.size[1] * 10 + 3 * 256 * 256 * 8)
         routes: dict[str, list[tuple[int, int, int, NDArray[np.float32]]]] = {}

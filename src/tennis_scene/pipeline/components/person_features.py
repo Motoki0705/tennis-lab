@@ -50,7 +50,6 @@ from src.tennis_scene.pipeline.inference_runtime import (
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig, file_identity
 from src.tennis_scene.pipeline.model_resources import model_identities, vitpose_model
-from src.tennis_scene.pipeline.storage.clip_store import artifact_memory_bytes
 from src.utils.video import OpenCVVideoFrameReader
 from src.utils.video.reader import OpenCVDecodeIdentity
 
@@ -267,7 +266,7 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
         # and one normalized crop while suspended. Track result rows as well.
         if len(rows):
             memory.reserve(video.height * video.width * 10 + 3 * 256 * 256 * 8)
-        memory.reserve(artifact_memory_bytes(detections) + len(rows) * (17 * 3 * 5 + 72))
+        memory.reserve(len(rows) * (17 * 3 * 5 + 72))
         poses: NDArray[np.float32] = np.empty((len(rows), 17, 3), np.float32)
         written: NDArray[np.bool_] = np.zeros(len(rows), bool)
         flip = self.people.runtime.vitpose.flip_test
@@ -378,7 +377,7 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
         video, detections = inputs.video, inputs.detections
         rows = require_alignment(video, detections)
         identity = models.identity(self.batch_alias)
-        memory.reserve(artifact_memory_bytes(detections) + len(rows) * (CLIP_DIMENSION * 12 + 128)
+        memory.reserve(len(rows) * (CLIP_DIMENSION * 12 + 128)
                        + video.num_frames * _IMAGE_DIGEST_SIZE)
         if len(rows):
             memory.reserve(video.height * video.width * 9)

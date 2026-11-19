@@ -24,10 +24,13 @@ def main(cfg: DictConfig) -> int:
     runtime = parse_video_batch_config(cfg)
     generation = runtime.generation
     pipeline_cfg, pipeline = _compose_pipeline_config(generation, config_name=runtime.pipeline_config)
+    if runtime.record_cuda and not pipeline.device.startswith("cuda"):
+        raise ValueError("record_cuda requires an explicit CUDA pipeline device")
     result = run_video_batch(generation.dataset_directory, runtime.video_id, TennisSceneOrchestrator.from_runtime_config(pipeline),
         pipeline_config_yaml=OmegaConf.to_yaml(pipeline_cfg, resolve=True), clip_ids=generation.clip_ids,
         overwrite=generation.overwrite, continue_on_error=generation.continue_on_error,
-        progress_directory=runtime.progress_directory, batching=runtime.batching)
+        progress_directory=runtime.progress_directory, batching=runtime.batching,
+        recording_devices=(pipeline.device,) if runtime.record_cuda else ())
     for outcome in result.outcomes:
         LOGGER.log(logging.ERROR if outcome.status in {"failed", "blocked"} else logging.INFO,
                    "%s %s%s", outcome.clip_id, outcome.status, "" if outcome.error is None else f" {outcome.error}")

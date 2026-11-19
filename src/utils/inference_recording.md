@@ -42,6 +42,13 @@ count separately from the doubled flip-test model batch. GVHMR records one
 sequence with its actual time dimension. Empty detections produce no inference
 batch; node outcomes distinguish execution, cache hits and load-only use.
 
+For video batching, `batch_dispatches` summarizes adapter dispatch counts,
+logical batch sizes, fill fraction, cross-source and cross-clip dispatches,
+and peak queue/source counts. `batch_shapes` reports the forward shapes
+recorded by the models. `model_loads_by_pass` and `video_reads_by_pass` count
+loads and decoder opens by explicit video pass. Video metadata probes are
+outside the decoder-open count.
+
 The versioned `inference_recording_v1` JSON contains raw spans, parent and thread
 IDs, relative nanosecond start/end times, status, model assets with file SHA-256,
 device/dtype, batch shape counts, resources and summaries. Weight hashes are
@@ -62,7 +69,7 @@ existing component; their loads are recorded without inventing an unload.
 `stage_inclusive_seconds` sums spans and can exceed wall time due to nesting and
 prefetch overlap. `stage_wall_seconds` partitions the measured interval without
 double counting: deepest active span, then GPU work, then latest start wins.
-Coarse clip/node spans do not win attribution. `unattributed` covers uninstrumented
+Coarse clip/node/video-pass spans do not win attribution. `unattributed` covers uninstrumented
 work and boundary overhead. Component CPU work is enclosed in a postprocess span;
 explicit decode, preprocess, transfer and inference spans take precedence.
 The partition sums to `total_wall_seconds`. It is an attribution convention,

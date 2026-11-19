@@ -166,7 +166,8 @@ class InferenceRecorder:
             if event["stage"] == "batch_dispatch":
                 stats = dispatches.setdefault(attrs["model"], {"batches": 0, "failed": 0, "items": 0,
                                              "total_capacity": 0, "sizes": Counter(), "cross_source_batches": 0,
-                                             "cross_clip_batches": 0, "fill_fraction": 0.0})
+                                             "cross_clip_batches": 0, "fill_fraction": 0.0,
+                                             "peak_queued_items": 0, "peak_active_sources": 0})
                 stats["batches"] += 1
                 stats["failed"] += event["status"] != "ok"
                 stats["items"] += attrs["batch_items"]
@@ -175,6 +176,8 @@ class InferenceRecorder:
                 stats["cross_source_batches"] += attrs["source_count"] > 1
                 stats["cross_clip_batches"] += attrs["clip_count"] > 1
                 stats["fill_fraction"] = stats["items"] / stats["total_capacity"]
+                stats["peak_queued_items"] = max(stats["peak_queued_items"], attrs["queued_items"])
+                stats["peak_active_sources"] = max(stats["peak_active_sources"], attrs["active_sources"])
             if event["stage"] == "video_read":
                 component = str(attrs.get("node", "unknown")).split("/")[0]
                 video_reads[str(attrs.get("video_pass", "outside_plan"))][component] += 1

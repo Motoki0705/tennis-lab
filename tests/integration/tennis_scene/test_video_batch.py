@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 
 from src.tennis_scene.archive import load_scene_result
+from src.tennis_scene.pipeline.batching import BatchConfig
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.inference_runtime import (
     InferenceComponent,
@@ -186,6 +187,21 @@ def test_one_plan_reuses_each_model_once_and_records_real_batch_sizes(tmp_path: 
     events.clear()
     second = execute(pipeline, dataset)
     assert [o.status for o in second.outcomes] == ["skipped"] * count and not second.plan.nodes and not events
+
+
+def test_explicit_clip_passes_reload_and_record_models(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pipeline, dataset, _, _, events = harness(tmp_path, monkeypatch)
+    result = execute(pipeline, dataset, batching=BatchConfig(enabled=True, clips_per_pass=1))
+    assert [outcome.status for outcome in result.outcomes] == ["generated", "generated"]
+    receipt = json.loads(result.progress_path.read_text())
+    assert [p["clips"] for p in receipt["passes"]] == [["video_000/clip_000"], ["video_000/clip_001"]]
+    assert Counter(events) == {("load", "fake_ball"): 2, ("unload", "fake_ball"): 2,
+                               ("load", "fake_pose"): 2, ("unload", "fake_pose"): 2}
+    recorder = json.loads(result.progress_path.with_name("recording.json").read_text())
+    assert recorder["model_loads_by_pass"] == {"0": {"fake_ball": 1, "fake_pose": 1},
+                                              "1": {"fake_ball": 1, "fake_pose": 1}}
+    assert 0 < recorder["metadata"]["budget"]["working_peak_bytes"] <= receipt["batching"]["max_working_bytes"]
+    assert recorder["metadata"]["budget"]["store_cache_peak_bytes"] == 0
 
 
 def test_batch_matches_single_entry_and_reuses_mixed_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

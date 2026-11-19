@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Generator, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -17,11 +18,20 @@ from src.tasks.court_detection.inference.contracts import (
     validate_hybrid_inference_config,
 )
 from src.tasks.court_detection.inference.regions import (
+    CourtRegionPrediction,
     CourtRegionSearchConfig,
     Region,
     assess_region_prediction,
     predict_court_region,
+    region_proposals,
     select_court_region,
+)
+from src.tennis_scene.pipeline.batching import (
+    BatchAdapter,
+    BatchAddress,
+    BatchSource,
+    BatchUnit,
+    SourceMemory,
 )
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
 from src.tennis_scene.pipeline.court_assets import CourtAssetCatalog
@@ -38,6 +48,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from src.tasks.court_detection.inference.predictor import CourtPredictor
+    from src.tasks.court_detection.model_io.images import PreparedCourtImage
 
 LOGGER = logging.getLogger(__name__)
 
@@ -107,6 +118,14 @@ class CourtKPResult:
         return len(errors) == 0, errors
 
 
+@dataclass(frozen=True)
+class _CourtBatchImage:
+    rgb: NDArray[np.uint8]
+    prepared: PreparedCourtImage
+    region: Region
+    selection: dict[str, Any] | None
+
+
 class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
     """Detect camera-local KP14 on frame 0 of one static camera.
 
@@ -115,6 +134,8 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
     """
 
     io = ComponentIO("court_detection", CourtDetectionInput, CourtKPResult, {}, "court_observations", 2)
+    batch_model = "court"
+    batch_alias = "court"
 
     def __init__(self, config: CourtKPConfig) -> None:
         self.config = config
@@ -130,7 +151,8 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
                 "postprocess": self.config.postprocess, "region_search": self.config.region_search}, self._load_predictor)
 
     def asset_identities(self) -> dict[str, Any]:
-        return self.config.asset_catalog.identities(self.config.checkpoint, self.config.resolver)
+        identities: dict[str, Any] = self.config.asset_catalog.identities(self.config.checkpoint, self.config.resolver)
+        return identities
 
     def model_identity(self) -> dict[str, Any]:
         spec = self._model_spec({})
@@ -153,11 +175,85 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
     def process_with_models(self, inputs: CourtDetectionInput, models: ModelBorrower) -> CourtKPResult:
         video = inputs.video
         predictor: CourtPredictor = models.borrow("court")
+        return self._result(video, self.predict_image(self._read_rgb(video), predictor))
+
+    def batch_adapter(self) -> BatchAdapter:
+        return self
+
+    def open_batch(self, clip_id: str, inputs: CourtDetectionInput, models: ModelBorrower,
+                   memory: SourceMemory) -> BatchSource:
+        video = inputs.video
+        # BGR/RGB, full-image quality assessment and candidate diagnostics.
+        memory.reserve(video.width * video.height * 24)
+        output: CourtKPResult | None = None
+
+        def units() -> Generator[BatchUnit, None, None]:
+            predictor: CourtPredictor = models.borrow(self.batch_alias)
+            rgb = self._read_rgb(video)
+            full = (0, 0, video.width, video.height)
+            channels = int(sum(head.output_channels for head in predictor.adapter.spec.target_bundle.targets.values()))
+
+            def estimate(region: Region) -> int:
+                x0, y0, x1, y1 = region
+                height, width = y1 - y0, x1 - x0
+                h, w = predictor.batch_image_size(height, width)
+                return int(h * w * (3 * 4 * 3 + channels * 4 * 3) + height * width * 16)
+
+            selection = None
+            region = full
+            if self.config.region_search.enabled:
+                candidates = region_proposals(rgb)
+                # Search uses the existing ordered, single-image candidate policy.
+                with memory.workspace(2 * max(estimate(item) for item in candidates)):
+                    chosen, selection = self._select_region(rgb, predictor)
+                if chosen is None:
+                    raise RuntimeError("Enabled Court region search must select a region")
+                region = chosen
+            x0, y0, x1, y1 = region
+            item_bytes = estimate(region)
+            with memory.workspace(item_bytes):
+                prepared = predictor.prepare_batch_image(np.ascontiguousarray(rgb[y0:y1, x0:x1]))
+            yield BatchUnit(BatchAddress(clip_id, video.camera_id, 0), tuple(prepared.images.shape),
+                            _CourtBatchImage(rgb, prepared, region, selection), item_bytes)
+
+        def write(unit: BatchUnit, result: CourtImagePrediction) -> None:
+            nonlocal output
+            if unit.address.source_frame != 0 or output is not None:
+                raise ValueError("Court must write frame 0 exactly once")
+            output = self._result(video, result)
+
+        def finish() -> CourtKPResult:
+            if output is None:
+                raise ValueError("Court did not predict source frame 0")
+            return output
+
+        return BatchSource(units(), write, finish)
+
+    def infer_batch(self, units: Sequence[BatchUnit], models: ModelBorrower) -> Sequence[Any]:
+        predictor: CourtPredictor = models.borrow(self.batch_alias)
+        items: list[_CourtBatchImage] = [unit.payload for unit in units]
+        decoded = predictor.predict_prepared([item.prepared for item in items], postprocess="hybrid", heads=("kp", "line"))
+        results: list[CourtImagePrediction | ValueError] = []
+        for item, prediction in zip(items, decoded, strict=True):
+            try:
+                assessed = assess_region_prediction(prediction, item.rgb, item.region, self.config.region_search)
+                points, valid, diagnostic = self._geometry(assessed)
+                results.append(CourtImagePrediction(points, valid, diagnostic, item.selection))
+            except ValueError as error:
+                results.append(error)
+        return results
+
+    @staticmethod
+    def _read_rgb(video: SourceVideo) -> NDArray[np.uint8]:
         packet = read_video_frame(video.path, 0)
         if tuple(packet.original_size) != (video.width, video.height):
             raise ValueError(f"Court frame size {packet.original_size} disagrees with source {(video.width, video.height)}")
         rgb = cast("NDArray[np.uint8]", cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB))
-        prediction = self.predict_image(rgb, predictor)
+        if rgb.dtype != np.uint8 or rgb.ndim != 3 or rgb.shape[-1] != 3 or min(rgb.shape[:2]) <= 1:
+            raise ValueError("Court image must be uint8 RGB (H,W,3)")
+        return rgb
+
+    def _result(self, video: SourceVideo, prediction: CourtImagePrediction) -> CourtKPResult:
         if self._checkpoint_identity is None:
             raise RuntimeError("Court assets must be bound before inference")
         checkpoint = self._checkpoint_identity
@@ -204,18 +300,18 @@ class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
     ) -> tuple[NDArray[np.float32], NDArray[np.bool_], dict[str, Any]]:
         if region is None:
             prediction = predictor.predict(frame_rgb, postprocess="hybrid", heads=("kp", "line"))
-            full = assess_region_prediction(prediction, frame_rgb, (0, 0, frame_rgb.shape[1], frame_rgb.shape[0]), self.config.region_search)
-            points, visible = full.downstream_keypoints()
-            diagnostic = full.geometry_diagnostics()
-            schema = prediction.keypoint_schema
+            assessed = assess_region_prediction(prediction, frame_rgb, (0, 0, frame_rgb.shape[1], frame_rgb.shape[0]), self.config.region_search)
         else:
-            region_prediction = predict_court_region(predictor, frame_rgb, region, quality_config=self.config.region_search)
-            points, visible = region_prediction.downstream_keypoints()
-            diagnostic = region_prediction.geometry_diagnostics()
-            schema = region_prediction.cropped.keypoint_schema
+            assessed = predict_court_region(predictor, frame_rgb, region, quality_config=self.config.region_search)
+        return self._geometry(assessed)
+
+    @staticmethod
+    def _geometry(prediction: CourtRegionPrediction) -> tuple[NDArray[np.float32], NDArray[np.bool_], dict[str, Any]]:
+        points, visible = prediction.downstream_keypoints()
+        diagnostic: dict[str, Any] = prediction.geometry_diagnostics()
         if points.shape != (NUM_COURT_KEYPOINTS, 2) or visible.shape != (NUM_COURT_KEYPOINTS,):
             raise ValueError("Hybrid court geometry must contain ordered KP14")
-        _require_camera_view_schema(schema)
+        _require_camera_view_schema(prediction.cropped.keypoint_schema)
         diagnostic["output_keypoint_contract"] = KEYPOINT_CONTRACT
         return points, visible, diagnostic
 

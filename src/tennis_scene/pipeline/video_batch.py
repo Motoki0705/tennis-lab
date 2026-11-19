@@ -11,7 +11,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
-from src.tennis_scene.pipeline.batching import BatchConfig
+from src.tennis_scene.pipeline.batching import BatchConfig, SourceMemory
 from src.tennis_scene.pipeline.clip_inputs import (
     PreparedDatasetClip,
     prepare_video_inputs,
@@ -98,11 +98,11 @@ class VideoBatchProgress:
                 count = counts.setdefault(shape, {"succeeded": 0, "failed": 0, "items": attributes["batch_items"]})
                 count["succeeded" if event["status"] == "ok" else "failed"] += 1
         if self.plan is not None:
-            self.document["nodes"] = {clip_id: {
-                name: {"status": self.plan.statuses.get((clip_id, name), "pending"),
-                       "seconds": self.plan.seconds.get((clip_id, name))}
-                for key_clip, name in self.plan.order if key_clip == clip_id}
-                for clip_id in self.plan.clips}
+            nodes: dict[str, dict[str, Any]] = {clip_id: {} for clip_id in self.plan.clips}
+            for clip_id, name in self.plan.order:
+                key = clip_id, name
+                nodes[clip_id][name] = {"status": self.plan.statuses.get(key, "pending"), "seconds": self.plan.seconds.get(key)}
+            self.document["nodes"] = nodes
         write_json_atomic(self.path, self.document)
 
     @contextmanager
@@ -215,10 +215,15 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
             def publish(clip_id: str) -> None:
                 clip = bound[clip_id]
                 clip.inputs.snapshot.assert_unchanged()
-                scene, archive = orchestrator.finalize_clip(executor, clip_id, clip.media.snapshot,
-                    video_court=video_court, video_court_side=video_court_side)
-                marker = publish_annotation(clip.inputs, scene, pipeline_config_yaml=pipeline_config_yaml,
-                                            publication_identity=identity, expected_scene=archive)
+                memory = SourceMemory(executor.working_memory) if batching.enabled else None
+                try:
+                    scene, archive = orchestrator.finalize_clip(executor, clip_id, clip.media.snapshot,
+                        video_court=video_court, video_court_side=video_court_side, memory=memory)
+                    marker = publish_annotation(clip.inputs, scene, pipeline_config_yaml=pipeline_config_yaml,
+                                                publication_identity=identity, expected_scene=archive)
+                finally:
+                    if memory is not None:
+                        memory.close()
                 progress.outcome(VideoClipOutcome(clip_id, "generated", marker))
 
             pass_size = batching.clips_per_pass or max(1, len(clips))

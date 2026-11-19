@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Generator, Iterator, Sequence
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from torch import Tensor
 
 from src.tasks.ball_detection.inference import BallDetectionPredictor
 from src.tasks.ball_detection.inference.trajectory_gate import (
@@ -15,11 +18,20 @@ from src.tasks.ball_detection.inference.trajectory_gate import (
     apply_trajectory_gate,
 )
 from src.tasks.ball_detection.inference.x3d_dpt import X3DDPTPredictor
-from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
+from src.tasks.ball_detection.model_io.contracts import (
+    BallCandidateConfig,
+    BallPrediction,
+)
+from src.tennis_scene.pipeline.batching import (
+    BatchAdapter,
+    BatchAddress,
+    BatchSource,
+    BatchUnit,
+    SourceMemory,
+)
 from src.tennis_scene.pipeline.components.ball_evidence import (
     BallHeatmapEvidence,
-    SelectedBallFrame,
-    assemble_ball_evidence,
+    BallWindowEvidence,
 )
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
 from src.tennis_scene.pipeline.inference_runtime import (
@@ -38,6 +50,7 @@ from src.utils.video import (
     iter_temporal_batches,
     iter_temporal_windows,
 )
+from src.utils.video.types import TemporalWindow
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -155,6 +168,8 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
     """Detect one unidentified ball observation stream for one camera video."""
 
     io = ComponentIO("ball_detection", BallDetectionInput, BallDetectionOutput, {}, "ball_detections", version=2)
+    batch_model = "ball"
+    batch_alias = "ball"
 
     def __init__(self, config: BallDetectionConfig, *, enabled: bool = True) -> None:
         self.config = config
@@ -204,8 +219,63 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
             return BallDetectionOutput(video.camera_id, frames, np.zeros((video.num_frames, 2), np.float32),
                 np.zeros(video.num_frames, np.float32), np.zeros(video.num_frames, bool), np.zeros(video.num_frames, np.uint8), "disabled", None)
         ball_uv, score, evidence = self._predict_video(video, models.borrow("ball"))
+        return self._result(video, frames, ball_uv, score, evidence)
+
+    def _result(self, video: SourceVideo, frames: NDArray[np.int64], ball_uv: NDArray[np.float32],
+                score: NDArray[np.float32], evidence: BallHeatmapEvidence) -> BallDetectionOutput:
         uv_px, score, observed = self._accept_detections(denormalize_grid_keypoints(ball_uv, video.width, video.height), score)
         return BallDetectionOutput(video.camera_id, frames, uv_px, score, observed, observed.astype(np.uint8), "model_score", evidence)
+
+    def batch_adapter(self) -> BatchAdapter | None:
+        return self if self.enabled else None
+
+    def open_batch(self, clip_id: str, inputs: BallDetectionInput, models: ModelBorrower,
+                   memory: SourceMemory) -> BatchSource:
+        video = inputs.video
+        config = self.config
+        length = config.num_frames
+        height, width = config.image_size
+        is_dpt = config.model_type == "x3d_csn_dpt"
+        sample_bytes = height * width * 3 * (1 if is_dpt else 4)
+        # Reader rolling window, one new transformed frame, decoded RGB
+        # workspace and the evidence metadata. The output grid is charged on
+        # first write, once its shape is validated by the predictor.
+        memory.reserve((length + 2) * sample_bytes + video.width * video.height * 6)
+        grid_pixels = ((height + 3) // 4) * ((width + 3) // 4) if is_dpt else height * width
+        candidates = config.candidates
+        item_bytes = length * (sample_bytes * (3 + int(config.pin_memory)) + grid_pixels * 4 * 3
+                               + candidates.max_candidates * (32 + candidates.patch_size**2 * 5))
+        output = BallWindowEvidence(video, aggregation=config.overlap_aggregation, tail_policy=config.tail_policy, memory=memory)
+
+        def units() -> Generator[BatchUnit, None, None]:
+            for window in self._windows(video, length):
+                yield BatchUnit(BatchAddress(clip_id, video.camera_id, window.start_index,
+                                             window_end=window.frame_indices[-1] + 1),
+                                (config.model_type, length, config.image_size), window, item_bytes)
+
+        def write(unit: BatchUnit, result: tuple[BallPrediction, int]) -> None:
+            window: TemporalWindow[Tensor] = unit.payload
+            if (window.start_index != unit.address.source_frame
+                    or window.frame_indices[-1] + 1 != unit.address.window_end):
+                raise ValueError("Ball window does not match its source address")
+            output.add(window.frame_indices, window.start_index, *result)
+
+        def finish() -> BallDetectionOutput:
+            frames: NDArray[np.int64] = np.arange(video.num_frames, dtype=np.int64)
+            return self._result(video, frames, *output.finish())
+
+        return BatchSource(units(), write, finish)
+
+    def infer_batch(self, units: Sequence[BatchUnit], models: ModelBorrower) -> Sequence[Any]:
+        predictor: BallDetectionPredictor | X3DDPTPredictor = models.borrow(self.batch_alias)
+        if predictor.configured_frames != self.config.num_frames:
+            raise ValueError("Ball checkpoint window length does not match its declaration")
+        batch = next(iter_temporal_batches([unit.payload for unit in units], batch_size=len(units),
+                                          pin_memory=self.config.pin_memory))
+        prediction: BallPrediction = predictor.predict(batch.tensor, candidate_config=self.config.candidates)
+        if len(prediction.coords) != len(units):
+            raise ValueError("Ball model changed the window batch axis")
+        return [(prediction, index) for index in range(len(units))]
 
     def _accept_detections(
         self, uv_px: NDArray[np.float32], score: NDArray[np.float32]
@@ -235,7 +305,17 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
         predictor: BallDetectionPredictor | X3DDPTPredictor,
     ) -> tuple[NDArray[np.float32], NDArray[np.float32], BallHeatmapEvidence]:
         """Stream video windows through the predictor."""
-        sequence_length = predictor.configured_frames
+        batches = iter_temporal_batches(self._windows(video, predictor.configured_frames),
+            batch_size=int(self.config.batch_size), pin_memory=bool(self.config.pin_memory))
+        prefetched_batches = PrefetchIterator(batches, max_prefetch=int(self.config.prefetch_batches))
+        output = BallWindowEvidence(video, aggregation=self.config.overlap_aggregation, tail_policy=self.config.tail_policy)
+        for batch in prefetched_batches:
+            prediction = predictor.predict(batch.tensor, candidate_config=self.config.candidates)
+            for index, window in enumerate(batch.windows):
+                output.add(window.frame_indices, window.start_index, prediction, index)
+        return output.finish()
+
+    def _windows(self, video: SourceVideo, sequence_length: int) -> Iterator[TemporalWindow[Tensor]]:
         stride = (
             sequence_length
             if self.config.window_stride is None
@@ -252,53 +332,11 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
         transform = (BgrToRgbUint8Transform(image_size=self.config.image_size)
                      if self.config.model_type == "x3d_csn_dpt" else
                      BgrToTensorTransform(image_size=self.config.image_size, normalize_imagenet=False))
+        packets = iter(OpenCVVideoFrameReader(video.path, max_frames=video.num_frames))
         frame_stream = (
-            FramePacket(
-                index=packet.index,
-                frame=transform(packet.frame),
-                original_size=packet.original_size,
-            )
-            for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames)
+            FramePacket(packet.index, transform(packet.frame), packet.original_size)
+            for packet in packets
         )
-        windows = iter_temporal_windows(
-            frame_stream,
-            sequence_length=sequence_length,
-            stride=stride,
-            tail_policy=self.config.tail_policy,
-        )
-        batches = iter_temporal_batches(
-            windows,
-            batch_size=int(self.config.batch_size),
-            pin_memory=bool(self.config.pin_memory),
-        )
-        prefetched_batches = PrefetchIterator(
-            batches,
-            max_prefetch=int(self.config.prefetch_batches),
-        )
-
-        selected: dict[int, SelectedBallFrame] = {}
-
-        for batch in prefetched_batches:
-            prediction = predictor.predict(batch.tensor, candidate_config=self.config.candidates)
-            for window_index, window in enumerate(batch.windows):
-                for time_index, frame_index in enumerate(window.frame_indices):
-                    new = SelectedBallFrame(prediction, window_index, time_index, window.start_index)
-                    old = selected.get(frame_index)
-                    if old is None:
-                        take = True
-                    elif centre_policy:
-                        take = (abs(2 * time_index - (sequence_length - 1)), window.start_index) < (
-                            abs(2 * old.time_index - (sequence_length - 1)), old.window_start)
-                    else:
-                        take = self.config.overlap_aggregation == "last_window_wins" or new.score >= old.score
-                    if take:
-                        selected[frame_index] = new
-
-        if set(selected) != set(range(video.num_frames)):
-            raise ValueError(f"Ball detector covered {len(selected)} of {video.num_frames} frames of {video.camera_id}; "
-                             f"tail_policy={self.config.tail_policy!r} cannot produce the complete source timeline")
-        ordered = [selected[index] for index in range(video.num_frames)]
-        ball_uv = np.stack([f.prediction.coords[f.batch_index, f.time_index].numpy() for f in ordered])
-        score = np.asarray([f.score for f in ordered], dtype=np.float32)
-        evidence = assemble_ball_evidence(ordered, source_size_wh=(video.width, video.height))
-        return ball_uv, score, evidence
+        with closing(frame_stream):
+            yield from iter_temporal_windows(frame_stream, sequence_length=sequence_length,
+                                             stride=stride, tail_policy=self.config.tail_policy)

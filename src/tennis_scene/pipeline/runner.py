@@ -33,7 +33,11 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelEventHook,
 )
 from src.tennis_scene.pipeline.model_assets import asset_hashes
-from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
+from src.tennis_scene.pipeline.storage.clip_store import (
+    ArtifactRef,
+    ClipStore,
+    artifact_memory_bytes,
+)
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SceneResult
@@ -129,7 +133,8 @@ class PlanExecutor:
     def _batch_adapter(self, key: NodeKey) -> BatchAdapter | None:
         node = self.plan.nodes[key]
         if node.source == "execute" and isinstance(node.component, InferenceComponent):
-            return node.component.batch_adapter()
+            adapter: BatchAdapter | None = node.component.batch_adapter()
+            return adapter
         return None
 
     def _batch_peers(self, key: NodeKey, ready: tuple[NodeKey, ...], runtime: InferenceRuntime
@@ -188,13 +193,14 @@ class PlanExecutor:
                         with recording_context(clip_id=key[0], camera_id=node.context.camera_id, node=key[1]):
                             decisions[key] = decision = plan.decide(key)
                             if decision.action != "execute":
-                                self._load_reused(key, decision)
+                                self._load_reused(key, decision, memory)
+                                memory.close()
                                 runtime.discard((key,))
                                 self._publish(key, None, decision)
                                 plan.seconds[key] = time.monotonic() - starts[key]
                                 notify(key[0])
                                 continue
-                            source = adapter.open_batch(key[0], self._assemble(key, decision), borrowers[key], memory)
+                            source = adapter.open_batch(key[0], self._assemble(key, decision, memory), borrowers[key], memory)
                             jobs.append(BatchJob(key, node.context.camera_id, adapter, borrowers[key], source, memory))
                             del source
                     except Exception as error:
@@ -253,9 +259,10 @@ class PlanExecutor:
             raise ValueError(f"Component is not ready: {key}")
         plan.active_node = key
         started = time.monotonic()
+        memory = SourceMemory(self.working_memory) if self.batching.enabled else None
         try:
             with runtime.node(key, continue_on_error=continue_on_error) as models:
-                output, decision = self._execute_node(key, models)
+                output, decision = self._execute_node(key, models, memory)
             reference = self._publish(key, output, decision)
             plan.active_node = None
             return reference
@@ -263,6 +270,8 @@ class PlanExecutor:
             plan.statuses[key] = "failed"
             raise
         finally:
+            if memory is not None:
+                memory.close()
             plan.seconds[key] = time.monotonic() - started
 
     def _publish(self, key: NodeKey, output: Any, decision: NodeDecision) -> ArtifactRef:
@@ -280,16 +289,24 @@ class PlanExecutor:
         plan.statuses[key] = {"execute": "executed", "load": "loaded", "cached": "cached"}[decision.action]
         return reference
 
-    def _load_reused(self, key: NodeKey, decision: NodeDecision) -> None:
+    def _load_reused(self, key: NodeKey, decision: NodeDecision, memory: SourceMemory | None) -> None:
         node, store = self.plan.nodes[key], self.plan.clips[key[0]].store
         if decision.reference is None:
             raise RuntimeError("Reused component has no artifact reference")
-        node.validate_output(store.load(decision.reference, ArtifactCodec(node.io.output_type)))
+        node.validate_output(self._read_artifact(store, decision.reference, node.io.output_type, memory))
 
-    def _assemble(self, key: NodeKey, decision: NodeDecision) -> Any:
+    @staticmethod
+    def _read_artifact(store: ClipStore, reference: ArtifactRef, output_type: type[Any],
+                       memory: SourceMemory | None) -> Any:
+        codec = ArtifactCodec(output_type)
+        if memory is None:
+            return store.load(reference, codec)
+        return store.load(reference, codec, reserve=memory.reserve)
+
+    def _assemble(self, key: NodeKey, decision: NodeDecision, memory: SourceMemory | None) -> Any:
         plan = self.plan
         node, store = plan.nodes[key], plan.clips[key[0]].store
-        artifacts = {port: store.load(ref, ArtifactCodec(plan.nodes[plan.dependencies[key][port]].io.output_type))
+        artifacts = {port: self._read_artifact(store, ref, plan.nodes[plan.dependencies[key][port]].io.output_type, memory)
                      for port, ref in decision.dependencies.items()}
         with span("preprocess", operation="input_assembly"):
             inputs = node.assembler.assemble(node.context, artifacts)
@@ -297,14 +314,17 @@ class PlanExecutor:
             raise TypeError(f"Assembler returned wrong input type for {key[1]}")
         return inputs
 
-    def _execute_node(self, key: NodeKey, models: ModelBorrower) -> tuple[Any, NodeDecision]:
+    def _execute_node(self, key: NodeKey, models: ModelBorrower, memory: SourceMemory | None) -> tuple[Any, NodeDecision]:
         plan = self.plan
         node = plan.nodes[key]
         decision = plan.decide(key)
         if decision.action != "execute":
-            self._load_reused(key, decision)
+            self._load_reused(key, decision, memory)
             return None, decision
-        inputs = self._assemble(key, decision)
+        inputs = self._assemble(key, decision, memory)
+        estimate = getattr(node.component, "estimate_working_bytes", None)
+        if memory is not None and callable(estimate):
+            memory.reserve(estimate(inputs))
         with span("postprocess", operation="component"):
             output = (node.component.process_with_models(inputs, models)
                       if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
@@ -314,15 +334,17 @@ class PlanExecutor:
     def output(self, key: NodeKey) -> Any:
         return self.plan.clips[key[0]].store.load(self.plan.references[key], ArtifactCodec(self.plan.nodes[key].io.output_type))
 
-    def finalize_clip(self, clip_id: str) -> tuple[SceneResult, Path]:
+    def finalize_clip(self, clip_id: str, *, memory: SourceMemory | None = None) -> tuple[SceneResult, Path]:
         """Export a completed clip independently of any other clip's outcome."""
         plan = self.plan
         if not plan.clip_complete(clip_id) or (clip_id, "scene_assembly") not in plan.references:
             raise ValueError(f"Cannot finalize an incomplete clip: {clip_id}")
         key = (clip_id, "scene_assembly")
-        scene = self.output(key)
+        scene = self._read_artifact(plan.clips[clip_id].store, plan.references[key], plan.nodes[key].io.output_type, memory)
         if not isinstance(scene, SceneResult):
             raise TypeError("scene_assembly must produce a SceneResult")
+        if memory is not None:
+            memory.reserve(artifact_memory_bytes(scene))
         if clip_id not in plan.exports:
             plan.exports[clip_id] = export_scene(plan.clips[clip_id].store, scene, plan.references[key])
         return scene, plan.exports[clip_id]

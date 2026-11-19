@@ -1138,7 +1138,7 @@ _VIDEO_BATCH_SCHEMA = StrictConfigSchema(
     name="tennis_scene.run_video_batch",
     fields={**_GENERATE_SCHEMA.fields, "video_id": ConfigField.of(str),
             "pipeline_config": ConfigField.of(str), "progress_directory": ConfigField.of(str),
-            "batching": ConfigField.of(dict)},
+            "batching": ConfigField.of(dict), "record_cuda": ConfigField.of(bool)},
 )
 
 
@@ -1149,6 +1149,7 @@ class VideoBatchRuntimeConfig:
     pipeline_config: str
     progress_directory: Path
     batching: BatchConfig
+    record_cuda: bool
 
 
 def parse_video_batch_config(cfg: DictConfig) -> VideoBatchRuntimeConfig:
@@ -1166,7 +1167,8 @@ def parse_video_batch_config(cfg: DictConfig) -> VideoBatchRuntimeConfig:
     except (TypeError, ValueError, KeyError) as error:
         raise SemanticConfigurationError(f"Invalid batching configuration: {error}") from error
     return VideoBatchRuntimeConfig(generation, video_id, pipeline_config,
-        PathResolver(generation.roots).resolve(PathRole.OUTPUT, cast(str, value["progress_directory"])), batching)
+        PathResolver(generation.roots).resolve(PathRole.OUTPUT, cast(str, value["progress_directory"])), batching,
+        cast(bool, value["record_cuda"]))
 
 
 def validate_video_batch_boundary(cfg: DictConfig) -> None:
