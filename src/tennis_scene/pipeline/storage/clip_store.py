@@ -8,7 +8,7 @@ import os
 import shutil
 import tempfile
 from collections import OrderedDict
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -182,13 +182,17 @@ class ClipStore:
                 shutil.rmtree(temporary)
 
     @measured("publication")
-    def record_export(self, name: str, files: Mapping[str, Path], inputs: Mapping[str, ArtifactRef]) -> None:
+    def record_export(self, name: str, files: Mapping[str, Path], inputs: Mapping[str, ArtifactRef], *,
+                      prepare: Callable[[], None] | None = None) -> None:
+        """Prepare/validate files and adopt their checksums under one clip lock."""
         with self._lock():
             index = self._index()
             for node, reference in inputs.items():
                 if index["artifacts"].get(node) != json_value(reference):
                     raise ValueError(f"Cannot export a superseded component artifact: {node}")
             assert_current_component_lineage(index, self.root, json_value(inputs))
+            if prepare is not None:
+                prepare()
             index["exports"][name] = {"files": {key: {"path": str(path.resolve().relative_to(self.root)), "sha256": dual_sha256(path)} for key, path in files.items()},
                 "inputs": json_value(inputs)}
             index["revision"] += 1

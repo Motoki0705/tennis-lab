@@ -11,7 +11,7 @@ from src.tennis_scene.pipeline.artifacts import (
     json_value,
     write_json_atomic,
 )
-from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
+from src.tennis_scene.pipeline.clip_inputs import InputSnapshot, prepare_clip_source
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.components.person_features import (
     appearance_feature_settings,
@@ -29,7 +29,12 @@ from src.tennis_scene.pipeline.direct_annotation import saved_scene, scene_recei
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.imports import BallAnnotationImporter
 from src.tennis_scene.pipeline.inference_runtime import ModelEventHook
-from src.tennis_scene.pipeline.runner import ComponentRunner
+from src.tennis_scene.pipeline.model_assets import ModelAssetSnapshot
+from src.tennis_scene.pipeline.runner import (
+    ComponentNode,
+    ComponentRunner,
+    PlanExecutor,
+)
 from src.tennis_scene.pipeline.source_identity import (
     compatible_source_digests,
     source_digests,
@@ -69,6 +74,7 @@ class TennisSceneOrchestrator:
         self.last_runner: ComponentRunner | None = None
         self.last_store: ClipStore | None = None
         self._scene_export: Path | None = None
+        self._publication_assets: ModelAssetSnapshot | None = None
         self.video_court: VideoCourtArtifact | None = None
         self._video_court_key: tuple[object, object, str] | None = None
         self.video_court_side: VideoCourtSideArtifact | None = None
@@ -98,7 +104,7 @@ class TennisSceneOrchestrator:
             options = people_runtime.get(name, {})
             if options.get("precision") == "fp32":
                 del options["precision"]
-        return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
+        identity = {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": settings, "execution": dict(cfg.component_sources),
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             "models": publication_model_identities(cfg),
@@ -116,6 +122,29 @@ class TennisSceneOrchestrator:
             **({'video_court_cameras': shared.manifest['cameras'],
                 'video_court_unobservable_policy': cfg.video_court_unobservable_policy,
                 'video_court_drift_cameras': drift_identity(shared).get('camera_digests', {})} if shared is not None else {})}
+        self._publication_assets = ModelAssetSnapshot.capture(identity)
+        self._publication_assets.assert_unchanged()
+        return identity
+
+    def validate_plan_assets(self, nodes: Sequence[ComponentNode]) -> None:
+        """The plan must bind the asset versions already promised by its marker."""
+        if self._publication_assets is not None:
+            for node in nodes:
+                self._publication_assets.require_settings(node.settings)
+            self._publication_assets.assert_unchanged()
+
+    def finalize_clip(self, executor: PlanExecutor, clip_id: str, snapshot: InputSnapshot, *,
+                      video_court: VideoCourtArtifact | None, video_court_side: VideoCourtSideArtifact | None) -> tuple[SceneResult, Path]:
+        """Verify the exact inputs/shared products of this plan immediately before export."""
+        snapshot.assert_unchanged()
+        if video_court is not None:
+            video_court.verify()
+        if video_court_side is not None:
+            video_court_side.verify()
+        if self._publication_assets is not None:
+            self._publication_assets.assert_unchanged()
+        scene, archive = executor.finalize_clip(clip_id)
+        return scene, archive
 
     def prepare_video_court(self) -> VideoCourtArtifact | None:
         from src.tennis_scene.pipeline.video_court import prepare_video_court
@@ -246,15 +275,12 @@ class TennisSceneOrchestrator:
                 nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components,
                                             video_court=shared, video_court_side=side)
             if direct is None or direct.resume != "publication":
+                self.validate_plan_assets(nodes)
                 runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite, model_event=self.model_event)
                 self.last_runner = runner
                 runner.run()
-                inputs.snapshot.assert_unchanged()
-                if shared is not None:
-                    shared.verify()
-                if side is not None:
-                    side.verify()
-                scene, archive = runner.finalize_clip()
+                scene, archive = self.finalize_clip(runner.executor, runner.clip_id, inputs.snapshot,
+                                                   video_court=shared, video_court_side=side)
                 if direct is not None and workflow is not None:
                     self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive, people_runtime=self.config.people.runtime)
             self._scene_export = archive
