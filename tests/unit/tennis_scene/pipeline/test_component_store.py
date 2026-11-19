@@ -12,6 +12,7 @@ import pytest
 from numpy.typing import NDArray
 
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
+from src.tennis_scene.pipeline.batching import BatchMemoryLimit, WorkingMemory
 from src.tennis_scene.pipeline.contracts import (
     AssemblyContext,
     ClipSource,
@@ -20,7 +21,7 @@ from src.tennis_scene.pipeline.contracts import (
     SourceVideo,
 )
 from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
-from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.clip_store import ClipStore, ClipStoreCache
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
 
@@ -132,6 +133,44 @@ def test_source_mismatch_cannot_reuse_another_clip(tmp_path: Path) -> None:
     ClipStore(tmp_path, {"clip": "a"})
     with pytest.raises(ValueError, match="source/schema"):
         ClipStore(tmp_path, {"clip": "b"})
+
+
+def test_byte_cache_is_shared_and_load_preflights_mapped_arrays(tmp_path: Path) -> None:
+    cache = ClipStoreCache(3200)
+    codec = ArtifactCodec(Values)
+    stores = [ClipStore(tmp_path / str(i), {"clip": i}, shared_cache=cache) for i in range(5)]
+    refs = [store.publish("first", Values(np.full(512, i, np.float32), ("cam0",)), codec,
+            schema="values", version=1, identity={}, dependencies={}, provenance={"origin": "test"})
+            for i, store in enumerate(stores)]
+    for i, (store, reference) in enumerate(zip(stores, refs, strict=True)):
+        np.testing.assert_array_equal(store.load(reference, codec).numbers, np.full(512, i))
+    for store, reference in zip(stores[:-1], refs[:-1], strict=True):
+        assert cache.get((store.root, reference.artifact_id)) is None
+    assert 2048 <= cache.peak_bytes <= 3200
+    with pytest.raises(BatchMemoryLimit, match="max_working_bytes"):
+        stores[0].load(refs[0], codec, reserve=WorkingMemory(1024).reserve)
+    np.testing.assert_array_equal(stores[0].load(refs[0], codec).numbers, np.zeros(512))
+    assert cache.get((stores[-1].root, refs[-1].artifact_id)) is None
+
+    store, ref = stores[0], refs[0]
+    cached = cache.get((store.root, ref.artifact_id))
+    assert cached is not None and store.load(ref, codec) is cached
+    array = (store.root / ref.path).parent / "array_0000.npy"
+    original = array.read_bytes()
+    corrupt_value = np.float32(89).tobytes()
+    with array.open("r+b") as stream:
+        stream.seek(-len(corrupt_value), 2)
+        stream.write(corrupt_value)
+    assert array.stat().st_size == len(original)
+    with pytest.raises(ValueError, match="array checksum mismatch"):
+        store.load(ref, codec)
+
+    repaired = array.with_suffix(".repaired.npy")
+    repaired.write_bytes(original)
+    repaired.replace(array)
+    actual = store.load(ref, codec)
+    assert actual is not cached
+    np.testing.assert_array_equal(actual.numbers, np.zeros(512))
 
 
 def test_replacing_implementation_uses_same_io_and_invalidates_its_outputs(tmp_path: Path) -> None:

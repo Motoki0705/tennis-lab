@@ -94,13 +94,24 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
             batches = iter_person_crops(request.video_path, request.bbx_xys, request.frame_indices, batch_size=self.batch_size)
         features = []
         for images, _ in tqdm(batches, desc="HMR2 features"):
-            with span("transfer", model="HMR2"):
-                imgs_batch = images.to(self._device)
-            with span("inference", model="HMR2", batch_shape=list(imgs_batch.shape)):
-                feature = self._model({"img": imgs_batch})
-            with span("postprocess", model="HMR2"):
-                features.append(feature.detach().cpu())
+            features.append(self._predict_crop_batch(images))
 
         return ImageFeatureResult(
             features=torch.cat(features, dim=0).float() if features else torch.empty(0, 1024)
         )  # (F, 1024)
+
+    def predict_crops(self, images: torch.Tensor) -> ImageFeatureResult:
+        """Infer one externally bounded batch of prepared ImageNet person crops."""
+        self.load()
+        with torch.no_grad():
+            return ImageFeatureResult(self._predict_crop_batch(images).float())
+
+    def _predict_crop_batch(self, images: torch.Tensor) -> torch.Tensor:
+        if self._model is None:
+            raise RuntimeError("HMR2 model did not load before prediction.")
+        with span("transfer", model="HMR2"):
+            imgs_batch = images.to(self._device)
+        with span("inference", model="HMR2", batch_shape=list(imgs_batch.shape)):
+            feature = self._model({"img": imgs_batch})
+        with span("postprocess", model="HMR2"):
+            return feature.detach().cpu()

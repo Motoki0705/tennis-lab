@@ -116,6 +116,11 @@ def post_dark_udp(coords, batch_heatmaps, kernel=3):
     B, K, H, W = batch_heatmaps.shape
     N = coords.shape[0]
     assert B == 1 or B == N
+    # Nonpositive peaks carry (-1, -1). Only valid coordinates may read
+    # neighbours from the flattened, per-joint padded heatmaps.
+    valid = (coords >= 0).all(axis=-1)
+    if not valid.any():
+        return coords
     for heatmaps in batch_heatmaps:
         for heatmap in heatmaps:
             cv2.GaussianBlur(heatmap, (kernel, kernel), 0, heatmap)
@@ -126,7 +131,7 @@ def post_dark_udp(coords, batch_heatmaps, kernel=3):
 
     index = coords[..., 0] + 1 + (coords[..., 1] + 1) * (W + 2)
     index += (W + 2) * (H + 2) * np.arange(0, B * K).reshape(-1, K)
-    index = index.astype(int).reshape(-1, 1)
+    index = index[valid].astype(int)[:, None]
     i_ = batch_heatmaps_pad[index]
     ix1 = batch_heatmaps_pad[index + 1]
     iy1 = batch_heatmaps_pad[index + W + 2]
@@ -138,14 +143,13 @@ def post_dark_udp(coords, batch_heatmaps, kernel=3):
     dx = 0.5 * (ix1 - ix1_)
     dy = 0.5 * (iy1 - iy1_)
     derivative = np.concatenate([dx, dy], axis=1)
-    derivative = derivative.reshape(N, K, 2, 1)
     dxx = ix1 - 2 * i_ + ix1_
     dyy = iy1 - 2 * i_ + iy1_
     dxy = 0.5 * (ix1y1 - ix1 - iy1 + i_ + i_ - ix1_ - iy1_ + ix1_y1_)
     hessian = np.concatenate([dxx, dxy, dxy, dyy], axis=1)
-    hessian = hessian.reshape(N, K, 2, 2)
+    hessian = hessian.reshape(-1, 2, 2)
     hessian = np.linalg.inv(hessian + np.finfo(np.float32).eps * np.eye(2))
-    coords -= np.einsum("ijmn,ijnk->ijmk", hessian, derivative).squeeze()
+    coords[valid] -= np.einsum("nij,nj->ni", hessian, derivative)
     return coords
 
 

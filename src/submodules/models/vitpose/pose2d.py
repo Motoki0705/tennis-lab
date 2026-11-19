@@ -142,38 +142,41 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         keypoints = []
         batch_iterator = tqdm(batches, desc="ViTPose") if self.show_progress else batches
         for images, bbx_xys_batch in batch_iterator:
-            with span("transfer", model="ViTPose"):
-                imgs_batch = images[:, :, :, 32:224].to(self._device)
-            with span("inference", model="ViTPose", batch_shape=[len(images) * (2 if self.flip_test else 1), *imgs_batch.shape[1:]],
-                      batch_items=len(images), flip_test=self.flip_test), torch.autocast(
-                self.device.type,
-                dtype=self._autocast_dtype,
-                enabled=self._autocast_dtype is not None,
-            ):
-                if self.flip_test:
-                    heatmap, heatmap_flipped = self._pose(
-                        torch.cat([imgs_batch, imgs_batch.flip(3)], dim=0)
-                    ).chunk(2)
-                    heatmap_flipped = flip_heatmap_coco17(heatmap_flipped)
-                    heatmap = (heatmap + heatmap_flipped) * 0.5
-                    del heatmap_flipped
-                else:
-                    heatmap = self._pose(imgs_batch.clone())  # (B, J, 64, 48)
-
-            with span("postprocess", model="ViTPose"):
-                # mmpose-style UDP post-processing back to full-image pixels
-                heatmap_np = heatmap.float().cpu().numpy()
-                center = bbx_xys_batch[:, :2].numpy()
-                scale = (
-                    torch.cat(
-                        (bbx_xys_batch[:, [2]] * 24 / 32, bbx_xys_batch[:, [2]]), dim=1
-                    )
-                    / 200
-                ).numpy()
-                preds, maxvals = keypoints_from_heatmaps(
-                    heatmaps=heatmap_np, center=center, scale=scale, use_udp=True
-                )
-                kp2d = np.concatenate((preds, maxvals), axis=-1)
-                keypoints.append(torch.from_numpy(kp2d))
+            keypoints.append(self._predict_crop_batch(images, bbx_xys_batch))
 
         return Pose2DResult(keypoints=torch.cat(keypoints, dim=0).float() if keypoints else torch.empty(0, 17, 3))
+
+    def predict_crops(self, images: torch.Tensor, boxes_xys: torch.Tensor) -> Pose2DResult:
+        """Infer one externally bounded batch of prepared ImageNet person crops."""
+        self.load()
+        with torch.no_grad():
+            return Pose2DResult(self._predict_crop_batch(images, boxes_xys).float())
+
+    def _predict_crop_batch(self, images: torch.Tensor, boxes: torch.Tensor) -> torch.Tensor:
+        if self._pose is None:
+            raise RuntimeError("ViTPose model did not load before prediction.")
+        with span("transfer", model="ViTPose"):
+            imgs_batch = images[:, :, :, 32:224].to(self._device)
+        with span("inference", model="ViTPose", batch_shape=[len(images) * (2 if self.flip_test else 1), *imgs_batch.shape[1:]],
+                  batch_items=len(images), flip_test=self.flip_test), torch.autocast(
+            self.device.type, dtype=self._autocast_dtype, enabled=self._autocast_dtype is not None,
+        ):
+            if self.flip_test:
+                heatmap, heatmap_flipped = self._pose(
+                    torch.cat([imgs_batch, imgs_batch.flip(3)], dim=0)
+                ).chunk(2)
+                heatmap_flipped = flip_heatmap_coco17(heatmap_flipped)
+                heatmap = (heatmap + heatmap_flipped) * 0.5
+                del heatmap_flipped
+            else:
+                heatmap = self._pose(imgs_batch.clone())  # (B, J, 64, 48)
+
+        with span("postprocess", model="ViTPose"):
+            # MMPose-style UDP post-processing back to full-image pixels.
+            heatmap_np = heatmap.float().cpu().numpy()
+            center = boxes[:, :2].numpy()
+            scale = (torch.cat((boxes[:, [2]] * 24 / 32, boxes[:, [2]]), dim=1) / 200).numpy()
+            preds, maxvals = keypoints_from_heatmaps(
+                heatmaps=heatmap_np, center=center, scale=scale, use_udp=True
+            )
+            return torch.from_numpy(np.concatenate((preds, maxvals), axis=-1))

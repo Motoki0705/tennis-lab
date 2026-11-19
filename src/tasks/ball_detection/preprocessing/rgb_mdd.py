@@ -39,6 +39,14 @@ class RGBToRGBMDD(RGBToMDD):
             return torch.cat((pixels, mdd), dim=1)
 
 
+def rgb_mdd_working_bytes(frames: int, height: int, width: int) -> int:
+    """Peak FP32 RGB+MDD storage for one window, including the encoder input."""
+    # cat holds 3 RGB planes, 2 MDD planes and the 5-plane output. The
+    # luminance path peaks at 3 RGB + 1 gray + 2 output + up to 4 difference
+    # or arithmetic planes per temporal position, within the same bound.
+    return frames * height * width * 10 * 4
+
+
 def build_input_transform(input_channels: int, *, a: float = .2, b: float = .15, frames: int = 32) -> RGBToMDD:
     if type(input_channels) is not int or input_channels not in (2, 5):
         raise ValueError("Input channels must explicitly select 2 (MDD) or 5 (RGB+MDD)")

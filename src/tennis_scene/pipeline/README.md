@@ -10,6 +10,7 @@
 | `definition.py` | 実装の選択、入力portとproducerの明示的な接続、モデル資産・設定の束縛 |
 | `execution_plan.py` | 複数clipの依存計画、宣言の互換性・循環検査、nodeごとのcache/load判定 |
 | `runner.py` | 依存が揃ったnodeの実行・公開、clipの最終化。`ComponentRunner`は単一clipの互換入口 |
+| `batching.py` | componentが宣言した推論単位の互換分割、有限queue、作業量の上限と書き戻し |
 | `inference_runtime.py` | 内容ベースの共有キー、モデルの遅延読込・借用・最終需要後の解放、計測hook |
 | `model_resources.py` | 複数componentが使うViTPose・外観encoderの共通モデル宣言 |
 | `clip_inputs.py` | datasetのclip選択・manifest/media解決、sourceの同期・frame数検証、実行前後の入力照合 |
@@ -52,13 +53,52 @@ callbackから最終化とdataset公開を呼び、後続clipの処理を待た�
 `completion_results[clip_id]`（`ClipCompletionResult`）へ保存する。
 callbackの例外はそのまま呼出し側へ伝わる。同じexecutorを再開しても、失敗したcallbackは再通知しない。
 呼出し側はnode完了と公開成否を分けて読み、失敗clipの処理と独立した他clipの再開を判断する。
-他clipの完了を待たず、失敗・未処理のclipは最終化しない。モデルの共有・寿命管理やbatch化は実行計画の責務に含めない。
+失敗・未処理のclipは最終化しない。モデルの共有と寿命はruntimeが管理し、runnerはready nodeのbatchを実行する。
 既存の`ComponentRunner(nodes, store)`・`run(targets=...)`・`output(name)`は1clipの同じ計画へ委譲する。
 
 単一動画入口は`prepare_clip_source`で実mediaの時間軸を検証し、入力hashを実行後・export前に照合する。
 dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manifestとrecordの時間軸・mediaを検証し、
 同じ単一clip入口を呼ぶ。完成markerの呼出し順序と失敗継続は
 [generate_dataset](../generate_dataset/README.md)を参照する。共通関数は複数clip入口からも個別に呼び出せる。
+
+## 横断バッチの設定
+
+`run_video_batch`の`batching.enabled=true`で、推論componentが`batch_adapter()`を宣言したstageに横断バッチを使う。
+adapterはモデルalias、推論単位の列挙、互換キー、forward、書き戻しを持つ。
+推論単位の宛先はclip・camera・source frameと、該当する検出row、Ballのwindow、HMR2の人物・segmentで決まる。
+同じモデル宣言を持つready nodeを複数clipから優先して開き、sourceごとに順次decodeする。
+互換キーごとに有限queueを設け、満杯になったbatchと末尾を処理する。完成したcamera/clipの成果物を順次公開する。
+
+| キー | 初期値 | 単位と制約 |
+|---|---:|---|
+| `batching.sizes.court` | 2 | 各cameraのframe 0。推論入力のパディング後shapeが同じ画像を組み合わせる。領域探索の候補評価は各画像の既存順で実行 |
+| `batching.sizes.dino` | 2 | resize後の形状が同じ全画面入力。元の画像サイズでboxを復元 |
+| `batching.sizes.vitpose` | 4 | 検出crop数。flip test有効時の実forwardは最大8行 |
+| `batching.sizes.clip` | 16 | 有効な外観crop。元の検出rowにembeddingを書き戻す |
+| `batching.sizes.hmr2` | 4 | 身体view選択済みcrop。cameraごとに連続decodeし、人物・segment・frameへ書き戻す |
+| `batching.sizes.ball` | 1 | 固定長窓のB軸。T軸は元の1clip・1camera内で、backfill、overlap所有窓、gateと平滑化を維持 |
+| `batching.max_sources` | 4 | 同時に開く推論source数。通常はcameraごと、HMR2はclipごとに数える |
+| `batching.max_pending_items` | 32 | 互換キー全体でqueueに保持する推論単位数。全モデルのbatch上限以上 |
+| `batching.max_working_bytes` | 3 GiB | decode作業領域、queue内の入力、前後処理、保持中のfeature/evidence、読み出すartifactとSMPL頂点を含む明示的な作業量 |
+| `batching.store_cache_bytes` | 0 | 全clipのClipStoreが共有するLRUのバイト上限。0でディスクから読む |
+| `batching.clips_per_pass` | null | 既定では選択した全clipを1回のruntimeで実行。整数で1passあたりのclip数を指定 |
+
+作業量の上限を超える場合は、その時点の要求量を示して停止する。ViTPoseはflipで増えるcropとheatmap、
+Ballは固定長のrolling window、stack、heatmap、候補patch、camera単位の蓄積配列を見積もる。
+X3DではFP32のRGB・MDDと結合後の5チャネル入力の同時保持分を、forward前に窓ごとに予約する。
+720×1280・T32でこの前処理は1窓あたり1,125 MiB。固定3clipの最長356 frameを4 sourceで
+同時に処理すると、B=1の予約は約2.24 GiBに収まる。B=2では約3.69 GiBとなり、上限の明示指定が必要。
+Body placementはclip全体のSMPL頂点と人物ごとの一時配列を考慮する。
+作業量は配列の予約ベースで、モデルの重み・内部activation、OpenCV内部のbuffer、OSのfile cacheを含む
+process全体のRSS/VRAMはrecorderの実測値で確認する。CUDAエラー・OOMは呼出し元へ伝播する。
+batch上限・精度・対象を変更する再実行は設定で指定する。
+ClipStoreはcache hitでも配列のchecksumを検証し、破損したentryを破棄してエラーを返す。
+
+同じadapterのB=1条件は、`batching.enabled=true`に加えて
+`'batching.sizes={court:1,dino:1,vitpose:1,clip:1,hmr2:1,ball:1}'`を指定する。
+`batching.enabled=false`は各componentの既存バッチを使うモデル再利用条件となる。
+比較時は同じ入力・重み・精度と独立したstoreを使う。GVHMRは選択済みsegment単位で実行する。
+初期値でのGPU速度、充填率、品質差の受入記録は[固定3clip比較 #1757](https://github.com/Motoki0705/tennis-lab/issues/1757)で扱う。
 
 ## モデルの所有と寿命
 

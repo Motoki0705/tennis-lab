@@ -336,8 +336,8 @@ class CourtModelIOAdapter(nn.Module):
     def decode_output(
         self, output: CourtLogits | CourtModelOutput
     ) -> CourtLogits | CourtDecodedOutput:
+        self.validate_logits(output)
         logits = output.dense_logits if isinstance(output, CourtModelOutput) else output
-        self.validate_logits(logits)
         return MappingProxyType(dict(logits))
 
     def prepare_images(
@@ -421,21 +421,38 @@ class CourtModelIOAdapter(nn.Module):
         logits: CourtLogits | CourtModelOutput,
         call: CourtModelCall | None = None,
     ) -> None:
-        if isinstance(logits, CourtModelOutput):
-            logits = logits.dense_logits
+        for name, value in self._output_tensors(logits, call):
+            _require_finite(value, name=name)
+
+    def prediction_row_errors(
+        self, output: CourtLogits | CourtModelOutput, call: CourtModelCall,
+    ) -> dict[int, CourtModelIOError]:
+        """Validate the batch layout and attribute nonfinite values to source rows."""
+        errors: dict[int, CourtModelIOError] = {}
+        for name, value in self._output_tensors(output, call):
+            finite_rows = torch.isfinite(value).flatten(1).all(1).tolist()
+            for row, finite in enumerate(finite_rows):
+                if not finite and row not in errors:
+                    errors[row] = CourtModelIOError(f"{name} must contain only finite values.")
+        return errors
+
+    def _output_tensors(
+        self, output: CourtLogits | CourtModelOutput, call: CourtModelCall | None,
+    ) -> list[tuple[str, Tensor]]:
+        logits = output.dense_logits if isinstance(output, CourtModelOutput) else output
         if not isinstance(logits, Mapping):
             raise CourtModelIOError("Court model output must be a target mapping.")
         if set(logits) != set(self.spec.target_bundle.kinds):
             raise CourtModelIOError(
                 "Court model output keys must exactly match the target bundle."
             )
+        values: list[tuple[str, Tensor]] = []
         for kind, spec in self.spec.target_bundle.targets.items():
             value = logits[kind]
             if not isinstance(value, Tensor) or value.ndim != 4:
                 raise CourtModelIOError(f"Court {kind} logits must be rank-4 Tensor.")
             if not value.is_floating_point():
                 raise CourtModelIOError(f"Court {kind} logits must be floating.")
-            _require_finite(value, name=f"Court {kind} logits")
             if value.shape[1] != spec.output_channels:
                 raise CourtModelIOError(
                     f"Court {kind} logits require {spec.output_channels} channels."
@@ -449,6 +466,10 @@ class CourtModelIOAdapter(nn.Module):
                 raise CourtModelIOError(
                     f"Court {kind} logits must preserve batch/spatial shape."
                 )
+            values.append((f"Court {kind} logits", value))
+        if isinstance(output, CourtModelOutput) and output.pose is not None:
+            values.append(("Raw Court pose", output.pose.values))
+        return values
 
     def training_result(
         self,
@@ -461,7 +482,7 @@ class CourtModelIOAdapter(nn.Module):
         dense_logits = (
             logits.dense_logits if isinstance(logits, CourtModelOutput) else logits
         )
-        self.validate_logits(dense_logits, call.model_call)
+        self.validate_logits(logits, call.model_call)
         raw_losses: dict[CourtTargetKind, Tensor] = {}
         configured_weights: dict[CourtTargetKind, Tensor] = {}
         effective_weights: dict[CourtTargetKind, Tensor] = {}
@@ -897,7 +918,7 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
             output = CourtModelOutput(dense_logits=output)
         if not isinstance(output, CourtModelOutput):
             raise CourtModelIOError("Court model output must be CourtModelOutput.")
-        self.validate_logits(output.dense_logits, call)
+        self.validate_logits(output, call)
         if output.pose is None:
             raise CourtModelIOError("Pose-enabled adapter requires raw pose output.")
         if call is not None and output.pose.values.shape[0] != call.batch_size:
