@@ -74,6 +74,15 @@ def probe_video_decoder(video_path: str | Path) -> OpenCVDecodeIdentity:
         capture.release()
 
 
+def _open_frame_capture(video_path: str | Path) -> cv2.VideoCapture:
+    with span("video_read", media=str(video_path)):
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            cap.release()
+            raise VideoReadError(f"Failed to open video: {video_path}")
+        return cap
+
+
 def probe_video_info(video_path: str | Path) -> VideoInfo:
     """Read video metadata without decoding all frames."""
     cap = cv2.VideoCapture(str(video_path))
@@ -98,10 +107,7 @@ def read_video_frame(
     if frame_index < 0:
         raise ValueError(f"frame_index must be non-negative, got {frame_index}")
 
-    cap = cv2.VideoCapture(str(video_path))
-    if not cap.isOpened():
-        raise VideoReadError(f"Failed to open video: {video_path}")
-
+    cap = _open_frame_capture(video_path)
     try:
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
         ok, frame_bgr = cap.read()
@@ -133,10 +139,7 @@ class OpenCVVideoFrameReader:
         self.expected_decoder = expected_decoder
 
     def __iter__(self) -> Iterator[FramePacket[NDArray[np.uint8]]]:
-        cap = cv2.VideoCapture(str(self.video_path))
-        if not cap.isOpened():
-            raise VideoReadError(f"Failed to open video: {self.video_path}")
-
+        cap = _open_frame_capture(self.video_path)
         try:
             if self.expected_decoder is not None and _decode_identity(cap) != self.expected_decoder:
                 raise ValueError(f"Video decoder changed after planning: {self.video_path}")
@@ -192,9 +195,7 @@ class RandomAccessVideoReader:
         if frame_index < 0:
             raise ValueError(f"frame_index must be non-negative, got {frame_index}")
         if self._cap is None:
-            cap = cv2.VideoCapture(str(self.video_path))
-            if not cap.isOpened():
-                raise VideoReadError(f"Failed to open video: {self.video_path}")
+            cap = _open_frame_capture(self.video_path)
             self._cap = cap
             self._next_index = 0
         cap = self._cap

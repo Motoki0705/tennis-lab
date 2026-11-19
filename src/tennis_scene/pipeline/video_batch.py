@@ -11,6 +11,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
+from src.tennis_scene.pipeline.batching import BatchConfig
 from src.tennis_scene.pipeline.clip_inputs import (
     PreparedDatasetClip,
     prepare_video_inputs,
@@ -30,9 +31,9 @@ from src.tennis_scene.pipeline.execution_plan import (
 )
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
-from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.clip_store import ClipStore, ClipStoreCache
 from src.utils.configuration import PathRole
-from src.utils.inference_recording import InferenceRecorder, span
+from src.utils.inference_recording import InferenceRecorder, recording_context, span
 from src.utils.io import utc_now_iso
 
 
@@ -60,10 +61,12 @@ class VideoBatchProgress:
 
     def __init__(self, directory: Path, dataset_id: str, video_id: str,
                  prepared: Sequence[PreparedDatasetClip], pipeline_yaml: str, identity: Mapping[str, Any],
-                 *, overwrite: bool, continue_on_error: bool, recording_devices: Sequence[str]) -> None:
+                 *, overwrite: bool, continue_on_error: bool, recording_devices: Sequence[str],
+                 batching: BatchConfig) -> None:
         self.path = directory / uuid4().hex / "progress.json"
         self.recorder = InferenceRecorder(self.path.with_name("recording.json"), devices=recording_devices,
-            metadata={"dataset_id": dataset_id, "video_id": video_id, "condition": "model_reuse_only"})
+            metadata={"dataset_id": dataset_id, "video_id": video_id, "batching": json_value(batching),
+                      "condition": "model_reuse_and_batching" if batching.enabled else "model_reuse_only"})
         self.plan: ExecutionPlan | None = None
         self.outcomes: dict[str, VideoClipOutcome] = {}
         self.cursor = 0
@@ -72,6 +75,7 @@ class VideoBatchProgress:
             "status": "running", "started_at": utc_now_iso(), "active_node": None,
             "pipeline_config_yaml": pipeline_yaml, "publication_identity": json_value(identity),
             "overwrite": overwrite, "continue_on_error": continue_on_error,
+            "batching": json_value(batching), "passes": [],
             "targets": [{"record": clip.inputs.record.to_dict(), "manifest_sha256": clip.inputs.manifest_sha256,
                          "media_sha256": dict(clip.inputs.media_sha256)} for clip in prepared],
             "clips": {clip.inputs.record.clip_id: {"status": "pending"} for clip in prepared},
@@ -121,9 +125,11 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                     pipeline_config_yaml: str, clip_ids: Sequence[str] | None = None,
                     overwrite: bool = False, continue_on_error: bool = True,
                     progress_directory: Path | None = None,
-                    recording_devices: Sequence[str] = ()) -> VideoBatchResult:
-    """Preflight all inputs, then drain one plan without changing inference batches."""
+                    recording_devices: Sequence[str] = (), batching: BatchConfig | None = None) -> VideoBatchResult:
+    """Preflight the fixed inputs, then drain the plan using explicit batch limits."""
     cfg = orchestrator.config
+    batching = BatchConfig() if batching is None else batching
+    store_cache = ClipStoreCache(batching.store_cache_bytes)
     if cfg.max_frames is not None or cfg.direct_annotation is not None:
         raise ValueError("Video batches require complete clips and the model pipeline")
     cfg.resolver.validate(PathRole.DATA, dataset_directory)
@@ -134,7 +140,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
     directory = (dataset_directory / "videos" / video_id / "annotations" / "tennis_scene" / "batch"
                  if progress_directory is None else progress_directory)
     progress = VideoBatchProgress(directory, dataset_id, video_id, prepared, pipeline_config_yaml, {},
-        overwrite=overwrite, continue_on_error=continue_on_error, recording_devices=recording_devices)
+        overwrite=overwrite, continue_on_error=continue_on_error, recording_devices=recording_devices, batching=batching)
     bound = {clip.inputs.record.clip_id: clip for clip in prepared}
     clips = []
 
@@ -195,9 +201,8 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                                                 overrides=orchestrator.components, video_court=video_court,
                                                 video_court_side=video_court_side)
                     orchestrator.validate_plan_assets(nodes)
-                    # The plan retains every store. Keep decoded heatmaps/meshes
-                    # clip-local so a whole video does not accumulate in RAM.
-                    store = ClipStore(inputs.clip_dir / ANNOTATION_RELATIVE_DIR, json_value(source), memory_entries=0)
+                    store = ClipStore(inputs.clip_dir / ANNOTATION_RELATIVE_DIR, json_value(source),
+                                      memory_entries=0, shared_cache=store_cache)
                     clips.append(ClipExecution(key, nodes, store, cfg.cache_overwrite))
                 except Exception as error:
                     failed(key, error)
@@ -205,7 +210,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                         raise
             plan = ExecutionPlan(clips)
             progress.plan = plan
-            executor = PlanExecutor(plan, model_event=orchestrator.model_event, node_event=progress.node_event)
+            executor = PlanExecutor(plan, model_event=orchestrator.model_event, node_event=progress.node_event, batching=batching)
 
             def publish(clip_id: str) -> None:
                 clip = bound[clip_id]
@@ -216,7 +221,20 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                                             publication_identity=identity, expected_scene=archive)
                 progress.outcome(VideoClipOutcome(clip_id, "generated", marker))
 
-            executor.run(on_clip_complete=publish, continue_on_error=continue_on_error, on_clip_error=failed)
+            pass_size = batching.clips_per_pass or max(1, len(clips))
+            progress.recorder.metadata["passes"] = progress.document["passes"]
+            try:
+                for offset in range(0, len(clips), pass_size):
+                    clip_group = {spec.clip_id for spec in clips[offset:offset + pass_size]}
+                    pass_index = len(progress.document["passes"])
+                    progress.document["passes"].append({"index": pass_index, "clips": [key for key in bound if key in clip_group]})
+                    targets = [key for key in plan.order if key in plan.required and key[0] in clip_group]
+                    with recording_context(video_pass=pass_index), span("video_pass", clip_count=len(clip_group)):
+                        executor.run(targets=targets, on_clip_complete=publish,
+                                     continue_on_error=continue_on_error, on_clip_error=failed)
+            finally:
+                budget = {"working_peak_bytes": executor.working_memory.peak, "store_cache_peak_bytes": store_cache.peak_bytes}
+                progress.recorder.metadata["budget"] = progress.document["budget"] = budget
             progress.recorder.metadata["outcomes"] = json_value(progress.outcomes)
     except BaseException as error:
         progress.document.update(status="interrupted" if not isinstance(error, Exception) else "failed",

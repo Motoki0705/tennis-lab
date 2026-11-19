@@ -37,6 +37,7 @@ from src.tasks.player_association.association.config import (
 )
 from src.tasks.player_association.association.config import load_association_config
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
+from src.tennis_scene.pipeline.batching import BatchConfig, BatchSizes
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
 from src.tennis_scene.pipeline.components.court_kp import (
@@ -1136,7 +1137,8 @@ def _generate_dataset_runtime(value: Mapping[str, object]) -> GenerateDatasetRun
 _VIDEO_BATCH_SCHEMA = StrictConfigSchema(
     name="tennis_scene.run_video_batch",
     fields={**_GENERATE_SCHEMA.fields, "video_id": ConfigField.of(str),
-            "pipeline_config": ConfigField.of(str), "progress_directory": ConfigField.of(str)},
+            "pipeline_config": ConfigField.of(str), "progress_directory": ConfigField.of(str),
+            "batching": ConfigField.of(dict)},
 )
 
 
@@ -1146,6 +1148,7 @@ class VideoBatchRuntimeConfig:
     video_id: str
     pipeline_config: str
     progress_directory: Path
+    batching: BatchConfig
 
 
 def parse_video_batch_config(cfg: DictConfig) -> VideoBatchRuntimeConfig:
@@ -1157,8 +1160,13 @@ def parse_video_batch_config(cfg: DictConfig) -> VideoBatchRuntimeConfig:
     pipeline_config = cast(str, value["pipeline_config"])
     if pipeline_config not in {"pipeline", "pipeline_x3d_dpt"}:
         raise SemanticConfigurationError("pipeline_config must select pipeline or pipeline_x3d_dpt")
+    batch_value = dict(cast(dict[str, Any], value["batching"]))
+    try:
+        batching = BatchConfig(sizes=BatchSizes(**batch_value.pop("sizes")), **batch_value)
+    except (TypeError, ValueError, KeyError) as error:
+        raise SemanticConfigurationError(f"Invalid batching configuration: {error}") from error
     return VideoBatchRuntimeConfig(generation, video_id, pipeline_config,
-        PathResolver(generation.roots).resolve(PathRole.OUTPUT, cast(str, value["progress_directory"])))
+        PathResolver(generation.roots).resolve(PathRole.OUTPUT, cast(str, value["progress_directory"])), batching)
 
 
 def validate_video_batch_boundary(cfg: DictConfig) -> None:

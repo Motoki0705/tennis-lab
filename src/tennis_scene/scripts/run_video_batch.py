@@ -27,7 +27,7 @@ def main(cfg: DictConfig) -> int:
     result = run_video_batch(generation.dataset_directory, runtime.video_id, TennisSceneOrchestrator.from_runtime_config(pipeline),
         pipeline_config_yaml=OmegaConf.to_yaml(pipeline_cfg, resolve=True), clip_ids=generation.clip_ids,
         overwrite=generation.overwrite, continue_on_error=generation.continue_on_error,
-        progress_directory=runtime.progress_directory)
+        progress_directory=runtime.progress_directory, batching=runtime.batching)
     for outcome in result.outcomes:
         LOGGER.log(logging.ERROR if outcome.status in {"failed", "blocked"} else logging.INFO,
                    "%s %s%s", outcome.clip_id, outcome.status, "" if outcome.error is None else f" {outcome.error}")
