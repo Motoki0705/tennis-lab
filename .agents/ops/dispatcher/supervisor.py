@@ -14,8 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from lib.agent_settings import implementation_model
-from parent import worker_preflight
+from lib.agent_settings import check_saved_implementation_model, implementation_model
+from parent import worker_preflight, worker_slots
 from parent.adopted_tasks import check_task_adoptions
 from parent.execution import (
     authorization,
@@ -99,12 +99,12 @@ def children_pending(row: dict[str, Any]) -> list[int]:
     # Reuse the reservation/end-evidence contract from parent.launch. A stopped
     # or closed task still counts until the current delegation has ended.
     pending = set()
-    for key, task in row["tasks"].items():
+    for key, name, task in worker_slots.workers(row["tasks"]):
         if not task.get("delegated"):
             continue
         ended = task.get("worker_ended")
         if ended is None:
-            pending.add(number(int(key)))
+            pending.add((number(int(key)), name))
         elif (
             not isinstance(ended, dict)
             or set(ended) != {"delegation_id", "evidence"}
@@ -118,11 +118,11 @@ def children_pending(row: dict[str, Any]) -> list[int]:
         # Keep old runtime records as well: replacing a delegation must never
         # erase a live worker from the capacity calculation.
         pending.update(
-            job["child"]
+            (job["child"], job.get("worker_name", "primary"))
             for job in dispatch["jobs"].values()
             if job["role"] == "implementation" and job["phase"] != "ended"
         )
-    return sorted(pending)
+    return [n for n, _ in sorted(pending)]
 
 
 def occupies(row: dict[str, Any]) -> bool:
@@ -197,7 +197,11 @@ def job_snapshot(row: dict[str, Any], job: dict[str, Any]) -> dict[str, Any]:
                 )
             },
             "job": job,
-            "task": row["tasks"].get(str(job["child"]))
+            "task": {
+                k: v
+                for k, v in worker_slots.job_record(row, job).items()
+                if k != "helpers"
+            }
             if job["child"] is not None
             else None,
         }
@@ -268,7 +272,9 @@ class Supervisor:
         require_client(gh, store)
         self.gh, self.store, self.schedule = gh, store, schedule
 
-    def _session(self, key: str, row: dict[str, Any]) -> ParentSession:
+    def _session(
+        self, key: str, row: dict[str, Any], worker: str = "primary"
+    ) -> ParentSession:
         if key.rpartition("#")[0] != self.gh.repo.casefold():
             raise ValueError("managed repository mismatch")
         return ParentSession(
@@ -276,6 +282,7 @@ class Supervisor:
             self.store,
             number(int(key.rpartition("#")[2])),
             row["session"],
+            worker=worker,
         )
 
     def _authorized(self, key: str, row: dict[str, Any]) -> None:
@@ -381,7 +388,7 @@ class Supervisor:
                 "runtime assignment/generation/authorization changed or stopped"
             )
         self._authorized(key, row)
-        session = self._session(key, row)
+        session = self._session(key, row, job.get("worker_name", "primary"))
         if "repair" in job:
             self._validate_repair_registration(key, row, job)
         if job["role"] == "parent" and dispatch.get("controller_mode") == "handoff":
@@ -396,7 +403,7 @@ class Supervisor:
             if dispatch["active_job"] != job["id"]:
                 raise ValueError("parent reservation was superseded")
         else:
-            task = row["tasks"].get(str(job["child"]), {})
+            task = worker_slots.job_record(row, job)
             if (
                 not task.get("delegated")
                 or task.get("delegation_id") != job["delegation_id"]
@@ -432,7 +439,12 @@ class Supervisor:
                 if t["child"] == job["child"]
             )
             reasons = planned["reasons"]
-            if job["resume_from"] is not None and task.get("restart_evidence"):
+            if session.worker != "primary":
+                reasons = [r for r in reasons if r["code"] != "existing_pr"]
+            elif (
+                job["resume_from"] is not None
+                or task.get("astra_handoff", {}).get("to") == job["delegation_id"]
+            ) and task.get("restart_evidence"):
                 related = [
                     p
                     for p in self.gh.pulls({job["child"]})
@@ -603,7 +615,7 @@ class Supervisor:
                     raise ValueError("human improvement approval changed after claim")
                 if job["child"] is not None:
                     require(session, job["child"], fresh=True)
-                    task = row["tasks"][str(job["child"])]
+                    task = worker_slots.job_record(row, job)
                     if (
                         task.get("stopped")
                         or task.get("delegation_id") != job["delegation_id"]
@@ -661,6 +673,8 @@ class Supervisor:
                 if str(Path(j["directory"]) / "runtime") == source
                 and j["role"] == previous["role"]
                 and j["child"] == previous["child"]
+                and j.get("worker_name", "primary")
+                == previous.get("worker_name", "primary")
                 and j["sequence"] < previous["sequence"]
             ]
             if len(matches) != 1:
@@ -683,7 +697,7 @@ class Supervisor:
             return
         job.update(phase="ended", cancelled_before_start=True, diagnostic=reason)
         event(dispatch, "runtime_cancelled", job_id=job["id"], reason=reason)
-        task = row["tasks"].get(str(job["child"]), {})
+        task = worker_slots.job_record(row, job)
         if (
             "preflight" in job
             and "preflight" in task
@@ -712,6 +726,7 @@ class Supervisor:
         row: dict[str, Any],
         *,
         child: int | None = None,
+        worker: str = "primary",
         delegation_id: str | None = None,
         prompt: str | None = None,
         model: str | None = None,
@@ -720,7 +735,7 @@ class Supervisor:
         dispatch = row["dispatch"]
         config = self.schedule.read()["config"]
         gh = client_for(self.gh, self.store, targeted_history=progression_reads(row))
-        task = row["tasks"][str(child)] if child is not None else {}
+        task = worker_slots.record(row, child, worker) if child is not None else {}
         cwd = (
             config["cwd"]
             if child is None
@@ -761,6 +776,7 @@ class Supervisor:
             "phase": "reserved",
             "role": "implementation" if child is not None else "parent",
             "child": child,
+            "worker_name": worker,
             "delegation_id": delegation_id,
             "directory": str(directory),
             "runner": config["runner"],
@@ -768,7 +784,8 @@ class Supervisor:
             "cwd": cwd,
             "branch": branch,
             "task_id": f"development:{key}:generation:{row['generation']}"
-            + (f":child:{child}" if child is not None else ""),
+            + (f":child:{child}" if child is not None else "")
+            + (f":worker:{worker}" if worker != "primary" else ""),
             "model": model,
             "resume_from": resume_from,
             "worker": None,
@@ -1079,12 +1096,12 @@ class Supervisor:
         if contract.get("repair") != job.get("repair"):
             raise ValueError("runner repair contract does not match the reserved job")
         if job["role"] == "implementation":
-            implementation_model(
-                None,
-                previous=nonempty(
-                    settings.get("selected", {}).get("model"), "saved worker model"
-                ),
+            model = nonempty(
+                settings.get("selected", {}).get("model"), "saved worker model"
             )
+            check_saved_implementation_model(model)
+            if job.get("model") and job["model"] != model:
+                raise ValueError("worker runtime model differs from its reservation")
         if "repair" in contract:
             from lib.repair_turn import validate_contract
 
@@ -1110,6 +1127,8 @@ class Supervisor:
         prompt: str,
         env: dict[str, str],
         model: str | None = None,
+        *,
+        worker: str | None = None,
     ) -> str:
         with self.store.locked():
             key = f"{self.gh.repo.casefold()}#{parent}"
@@ -1131,7 +1150,8 @@ class Supervisor:
                 )
             self._authorized(key, row)
             check_handoff_capacity(self.store.parents, self.schedule, key)
-            task = row["tasks"].get(str(child), {})
+            worker = worker_slots.select(row, child, worker)
+            task = worker_slots.record(row, child, worker)
             if (
                 not task.get("delegated")
                 or task.get("delegation_id") != delegation_id
@@ -1141,7 +1161,11 @@ class Supervisor:
                 or task.get("agent") != "codex"
             ):
                 raise ValueError("current Codex delegation reservation is required")
-            related = [j for j in dispatch["jobs"].values() if j["child"] == child]
+            related = [
+                j
+                for j in dispatch["jobs"].values()
+                if j["child"] == child and j.get("worker_name", "primary") == worker
+            ]
             if any(j["phase"] != "ended" for j in related):
                 raise ValueError(
                     "previous child runtime is still reserved/live/unreconciled"
@@ -1161,7 +1185,7 @@ class Supervisor:
             if len(children_pending(row)) > dispatch["child_limit"]:
                 raise ValueError("implementation reservation limit exceeded")
             resume_from = None
-            if related:
+            if related and task.get("astra_handoff", {}).get("to") != delegation_id:
                 previous = max(related, key=lambda j: j["sequence"])
                 resume_from = self.resume_source(row, previous)
             if resume_from is None:
@@ -1184,7 +1208,7 @@ class Supervisor:
             phase = worker_preflight.state(task)
             if not phase["turns"]:
                 # The dispatcher CLI is also an initial entry, never a planning bypass.
-                session = self._session(key, row)
+                session = self._session(key, row, worker)
                 prepared, specific = worker_preflight.prepare_turn(
                     session, child, prompt, resume=False
                 )
@@ -1199,13 +1223,14 @@ class Supervisor:
                     items[child].body,
                     specific,
                     turn,
+                    worker=session.worker,
                 )
                 prompt = prepared_instruction.text
                 worker_logs.capture(
                     session, child, items[child].body, prepared_instruction
                 )
             worker_preflight.check_admission(
-                self._session(key, row),
+                self._session(key, row, worker),
                 child,
                 phase["turns"][-1]["snapshot"]
                 if phase["turns"]
@@ -1216,6 +1241,7 @@ class Supervisor:
                 row,
                 child=child,
                 delegation_id=delegation_id,
+                worker=worker,
                 prompt=prompt,
                 model=model,
                 resume_from=resume_from,
@@ -1325,7 +1351,7 @@ class Supervisor:
             reason=record["turn_end_reason"],
         )
         if job["role"] == "implementation":
-            task = row["tasks"].get(str(job["child"]), {})
+            task = worker_slots.job_record(row, job)
             if task.get("delegation_id") == job["delegation_id"]:
                 task["worker_ended"] = {
                     "delegation_id": job["delegation_id"],

@@ -83,6 +83,12 @@ def test_corrupt_array_stops_instead_of_displaying_it(snapshot: Path) -> None:
         PoseReviewStore(snapshot)
 
 
+def test_unknown_body_parameters_version_is_rejected(snapshot: Path) -> None:
+    replace_payload(snapshot, 'gvhmr', lambda value: value, version=3)
+    with pytest.raises(ValueError, match='Unsupported gvhmr: body_parameters v3'):
+        PoseReviewStore(snapshot)
+
+
 def test_changed_snapshot_stops_before_serving_another_frame(snapshot: Path) -> None:
     store = PoseReviewStore(snapshot)
     index = snapshot / "scene.json"

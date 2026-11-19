@@ -58,15 +58,14 @@ def test_fixed_rollback_and_matching_choice_preserve_astra(
     explicit = settings.choose(policy, model=REVIEW_FIXED_MODEL, reason="固定値を明示")
     assert explicit["selected"] == implicit["selected"]
     assert explicit["specified_by"] == "parent_choice"
-    with pytest.raises(ValueError, match="fixed"):
+    with pytest.raises(ValueError, match="allowed pair|fixed"):
         settings.choose(policy, model=REVIEW_OTHER_MODEL, reason="通常の確認")
 
 
-def test_repository_defaults_require_explicit_model_and_reason(settings: Any) -> None:
+def test_repository_defaults_pin_sol_without_a_reason(settings: Any) -> None:
     policy = settings.load_policy()
-    assert policy["mode"] == "select"
-    with pytest.raises(ValueError, match="--review-model.*--model-reason-file"):
-        settings.choose(policy)
+    assert policy["mode"] == "fixed"
+    assert settings.choose(policy)["selected"]["model"] == "gpt-6.2-sol"
     for reason in (None, "", " \n"):
         with pytest.raises(ValueError, match="--model-reason-file"):
             settings.choose(policy, model=REVIEW_OTHER_MODEL, reason=reason)

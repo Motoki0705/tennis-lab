@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
+from src.submodules.smpl_assets import require_smpl_asset
 from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
@@ -26,6 +27,7 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.components.court_side import CourtSideModule
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
+from src.tennis_scene.pipeline.components.hmr2_features import HMR2FeaturesModule
 from src.tennis_scene.pipeline.components.identity import PlayerAssociationModule
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
 from src.tennis_scene.pipeline.components.person_tracking import (
@@ -51,6 +53,7 @@ from src.tennis_scene.pipeline.input_assembly.body import (
     BodyPlacementInputAssembler,
     BodyViewSelectionInputAssembler,
     GVHMRInputAssembler,
+    HMR2FeaturesInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     BallDetectionInputAssembler,
@@ -124,6 +127,7 @@ def standard_model_components(cfg: PipelineRuntimeConfig, ids: tuple[str, ...]) 
             encoder=encoder, encoder_name=name if encoder is not None else None, device=cfg.device, enabled=people),
         "pose_estimation": PoseEstimationModule(cfg.people, require_evidence=people, enabled=people),
         "player_association": PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people, encoder=encoder),
+        "hmr2_features": HMR2FeaturesModule(cfg.people, enabled=body),
         "gvhmr": GVHMRModule(cfg.people, enabled=body),
         "body_placement": BodyPlacementModule(ids, cfg.people, cfg.player_placement, reprojection_px=cfg.player_reprojection_px, enabled=body),
     }
@@ -268,6 +272,12 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             cfg.people.smpl_assets.require_files()
         return bound_assets(body_enabled, cfg.people.body_assets())
 
+    def hmr2_assets() -> dict[str, Any]:
+        if body_enabled:
+            require_smpl_asset(cfg.people.smpl_assets.hmr2_mean_params, "hmr2_mean_params")
+        return bound_assets(body_enabled, {
+            "checkpoint": cfg.people.hmr2_checkpoint, "mean_params": cfg.people.smpl_assets.hmr2_mean_params})
+
     def shared_settings(camera_id: str) -> dict[str, Any]:
         assert video_court is not None
         return {'mode': 'video_shared', 'camera_artifact_digest': video_court.camera_digest(camera_id),
@@ -362,8 +372,13 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("body_view_selection", BodyViewSelectionModule(ids, max_frames=cfg.sampling_max_frames, enabled=body_enabled),
         BodyViewSelectionInputAssembler(cfg.human_vis_threshold), reconstructed,
         lambda: {"policy": "coverage_confidence_camera_id", "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "enabled": body_enabled})
-    add("gvhmr", components["gvhmr"], GVHMRInputAssembler(), {"selection": "body_view_selection"},
-        lambda: {"assets": body_assets(), "runtime": cfg.people.runtime.hmr2, "enabled": body_enabled})
+    add("hmr2_features", components["hmr2_features"], HMR2FeaturesInputAssembler(),
+        {"selection": "body_view_selection"}, lambda: {
+            "assets": hmr2_assets(),
+            "runtime": cfg.people.runtime.hmr2, "enabled": body_enabled})
+    add("gvhmr", components["gvhmr"], GVHMRInputAssembler(),
+        {"selection": "body_view_selection", "features": "hmr2_features"},
+        lambda: {"assets": body_assets(), "static_cam": cfg.people.runtime.static_cam, "enabled": body_enabled})
     add("body_placement", components["body_placement"], BodyPlacementInputAssembler(cfg.human_vis_threshold),
         {**reconstructed, "skeleton": "player_triangulation", "recovered": "gvhmr"},
         lambda: {"config": cfg.player_placement, "assets": body_assets()})

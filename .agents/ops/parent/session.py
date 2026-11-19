@@ -31,7 +31,7 @@ from issues import (
 )
 from issues.cli import render_spec
 
-from . import execution, proposals, work_targets, worker_preflight
+from . import execution, proposals, work_targets, worker_preflight, worker_slots
 from .github import GitHub
 from .launch import DEFAULT_LAUNCH_POLICY, launch_policy, plan_launches, reason
 from .policy import (
@@ -106,6 +106,8 @@ def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any
         for key, value in task.items()
         if key
         not in {
+            "helpers",
+            "astra_handoff",
             "worker_runs",
             "model_reason",
             "preflight",
@@ -121,9 +123,26 @@ def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any
 
 
 class ParentSession:
+    worker: str = worker_slots.PRIMARY
+
+    def for_worker(self, name: str) -> ParentSession:
+        session = copy.copy(self)
+        session.worker = name
+        return session
+
+    def worker_task(self, child: int) -> dict[str, Any]:
+        return worker_slots.record(self.row, child, self.worker)
+
     def __init__(
-        self, gh: GitHub, store: Store, parent: int, session: str | None
+        self,
+        gh: GitHub,
+        store: Store,
+        parent: int,
+        session: str | None,
+        *,
+        worker: str = worker_slots.PRIMARY,
     ) -> None:
+        self.worker = worker
         self.gh, self.store, self.parent, self.session = gh, store, parent, session
         self.key = f"{gh.repo.casefold()}#{parent}"
         self.endpoint = f"repos/{gh.repo}/issues/{parent}"
@@ -178,7 +197,7 @@ class ParentSession:
         return {
             path
             for row in self.store.parents.values()
-            for task in row["tasks"].values()
+            for _, _, task in worker_slots.workers(row["tasks"])
             for path in private_run_paths(task, self.store.directory)
         }
 
@@ -188,7 +207,10 @@ class ParentSession:
         secrets.add(str(self.store.directory))
         for row in self.store.parents.values():
             secrets.add(row["session"].partition(":")[2])
-            secrets.update(task.get("worktree", "") for task in row["tasks"].values())
+            secrets.update(
+                task.get("worktree", "")
+                for _, _, task in worker_slots.workers(row["tasks"])
+            )
         secrets.update(self.run_paths())
         if any(secret and secret in serialized for secret in secrets):
             raise ValueError(
@@ -340,7 +362,13 @@ class ParentSession:
             "tasks": {
                 n: {
                     **visible_task(task, run_paths),
-                    "worker_phase": worker_preflight.observe(self, int(n))
+                    "helpers": {
+                        name: visible_task(helper, run_paths)
+                        for name, helper in task.get("helpers", {}).items()
+                    },
+                    "worker_phase": worker_preflight.observe(
+                        self.for_worker(worker_slots.PRIMARY), int(n)
+                    )
                     if int(n) in items
                     else worker_preflight.summary(task),
                     "current_work_target": int(n) in items,
@@ -1118,7 +1146,7 @@ class ParentSession:
         self, child: int, delegation_id: str, evidence: str
     ) -> dict[str, Any]:
         row = self.owner()
-        task = row["tasks"].get(str(child), {})
+        task = worker_slots.record(row, child, self.worker)
         if (
             not task.get("delegated")
             or task.get("delegation_id", "legacy") != delegation_id
@@ -1178,7 +1206,9 @@ class ParentSession:
                     "verification": parse_sections(child.body).get(
                         "成果物・関連PR", "未記録"
                     ),
-                    "worker_phase": worker_preflight.observe(self, n),
+                    "worker_phase": worker_preflight.observe(
+                        self.for_worker(worker_slots.PRIMARY), n
+                    ),
                     "artifacts_accepted": bool(
                         task.get("verification", {}).get("evidence")
                     ),
@@ -1225,6 +1255,7 @@ class ParentSession:
         restart: str | None,
         *,
         continue_existing: bool = False,
+        handoff_from_astra: str | None = None,
     ) -> dict[str, Any]:
         self.agreed()
         auth = execution.authorization(self)
@@ -1257,8 +1288,37 @@ class ParentSession:
         reconciled = next(
             t for t in self.reconcile(inputs=inputs)["tasks"] if t["child"] == child
         )
-        previous = self.row["tasks"].get(str(child), {})
-        if reconciled["prs"] and not continue_existing:
+        helper = self.worker != worker_slots.PRIMARY
+        previous = self.worker_task(child)
+        if helper and not self.row["tasks"].get(str(child), {}).get("delegated"):
+            raise ValueError("reserve the primary integration worker before a helper")
+        predecessor = None
+        if handoff_from_astra is not None:
+            from lib.ops_review.progression_workers import source as creator_source
+
+            from .review_handoff import runner_ended
+
+            if (
+                helper
+                or not previous.get("delegated")
+                or previous["delegation_id"] != handoff_from_astra
+            ):
+                raise ValueError(
+                    "handoff requires the current primary Astra delegation ID"
+                )
+            runner_ended(self, child)
+            predecessor = creator_source(self, child, allow_failed=True)
+            if not predecessor["contract"]["settings"]["selected"]["model"].endswith(
+                "-astra"
+            ):
+                raise ValueError("only a retired Astra worker can hand off to Sol")
+            continue_existing = True
+            restart = nonempty(restart, "Astra to Sol handoff evidence")
+            if any(pr["branch"] != branch for pr in reconciled["prs"]):
+                raise ValueError("handoff requires the same closing PR branch")
+        if helper and deps is not None:
+            raise ValueError("a helper inherits the issue dependencies")
+        if reconciled["prs"] and not continue_existing and not helper:
             raise ValueError(
                 "existing PR: reconcile instead of starting another worker"
             )
@@ -1282,6 +1342,21 @@ class ParentSession:
             )
         if restart:
             nonempty(restart, "restart evidence")
+            previous_id = previous.get("delegation_id", "legacy")
+            launched = any(
+                r["delegation_id"] == previous_id
+                for r in previous.get("worker_runs", [])
+            ) or any(
+                job.get("delegation_id") == previous_id
+                for job in (self.row.get("dispatch") or {}).get("jobs", {}).values()
+            )
+            if launched and (
+                previous.get("worker_ended", {}).get("delegation_id")
+                != previous.get("delegation_id", "legacy")
+            ):
+                raise ValueError(
+                    "confirm termination of the previous worker before restarting"
+                )
         planned = next(
             t
             for t in self.launch_plan(
@@ -1289,7 +1364,7 @@ class ParentSession:
             )["tasks"]
             if t["child"] == child
         )
-        if continue_existing:
+        if continue_existing or helper:
             plan = self.launch_plan(override, child, inputs=inputs)
             limit = plan["policy"]["max_parallel_children"]
             if limit is not None and len(plan["active_reservations"]) >= limit:
@@ -1298,7 +1373,8 @@ class ParentSession:
             r
             for r in planned["reasons"]
             if not (
-                continue_existing
+                (helper and r["code"] in {"existing_pr", "already_delegated"})
+                or continue_existing
                 and r["code"] in {"existing_pr", "completed", "parent_closed"}
             )
         ]
@@ -1307,12 +1383,23 @@ class ParentSession:
                 f"#{child} cannot be delegated: "
                 + "; ".join(r["message"] for r in reasons)
             )
-        if agent not in {"claude", "codex"} or not branch.startswith(agent + "/"):
+        if agent != "codex" or not branch.startswith("codex/"):
             raise ValueError("agent/branch prefix mismatch")
         from .snapshot import git, validate_worktree
 
+        primary = self.row["tasks"].get(str(child), {})
         with self.gh.io_scope():
             validate_worktree(worktree, branch)
+            base_commit = git("rev-parse", "HEAD", cwd=worktree).decode().strip()
+            if helper:
+                # An old primary reservation has a branch but no pinned base.
+                base_commit = (
+                    primary.get("base_commit")
+                    or git("merge-base", primary["branch"], "HEAD", cwd=worktree)
+                    .decode()
+                    .strip()
+                )
+                git("merge-base", "--is-ancestor", base_commit, "HEAD", cwd=worktree)
             for base in planned["stacked_on"]:
                 git(
                     "merge-base",
@@ -1321,18 +1408,13 @@ class ParentSession:
                     "HEAD",
                     cwd=worktree,
                 )
-        for n, task in self.row["tasks"].items():
-            if n != str(child) and (
-                task.get("branch") == branch
-                or task.get("worktree") == str(worktree.resolve())
-            ):
-                raise ValueError("each child requires a dedicated branch/worktree")
         task = {
             **previous,
             "title": task_title(children[child]),
             "agent": agent,
             "branch": branch,
             "worktree": str(worktree.resolve()),
+            "base_commit": previous.get("base_commit", base_commit),
             "delegated": True,
             "delegation_id": uuid.uuid4().hex,
             "worker_runs": previous.get("worker_runs", []),
@@ -1352,7 +1434,7 @@ class ParentSession:
                 )
             ),
         }
-        if continue_existing:
+        if continue_existing and predecessor is None:
             previous_phase = copy.deepcopy(worker_preflight.state(previous))
             previous_phase["continuations"].append(
                 {"from": previous_phase["delegation_id"], "to": task["delegation_id"]}
@@ -1361,6 +1443,15 @@ class ParentSession:
             task["preflight"] = previous_phase
         else:
             task["preflight"] = worker_preflight.new(task["delegation_id"])
+        if predecessor is not None:
+            task["astra_handoff"] = {
+                "from": previous["delegation_id"],
+                "to": task["delegation_id"],
+                "source": predecessor,
+                "preflight": previous.get("preflight"),
+                "prs": [pr["number"] for pr in reconciled["prs"]],
+                "evidence": restart,
+            }
         if restart:
             task["restart_evidence"] = restart
         task.pop("worker_ended", None)
@@ -1401,9 +1492,35 @@ class ParentSession:
             raise ValueError(
                 "child launch inputs changed before delegation; reconcile before retry"
             )
+        for owner_key, owner in self.store.parents.items():
+            if owner_key != self.key and owner.get("status") not in {
+                "active",
+                "handoff_pending",
+            }:
+                continue
+            for n, name, assigned in worker_slots.workers(owner["tasks"]):
+                if (owner_key, n, name) != (self.key, child, self.worker) and (
+                    (
+                        owner_key.rpartition("#")[0] == self.key.rpartition("#")[0]
+                        and assigned.get("branch") == branch
+                    )
+                    or assigned.get("worktree") == str(worktree.resolve())
+                ):
+                    raise ValueError("each worker requires a dedicated branch/worktree")
         # Claim durably before returning permission to launch; crash never causes automatic relaunch.
-        self.row["tasks"][str(child)] = task
+        if helper:
+            self.row["tasks"][str(child)].setdefault("helpers", {})[self.worker] = task
+        else:
+            self.row["tasks"][str(child)] = task
         self.store.save()
+        if helper:
+            return {
+                "action": "launch",
+                "parent": self.parent,
+                "child": child,
+                "worker": self.worker,
+                "assignment": visible_task(task, self.run_paths()),
+            }
         content = raw_section(children[child].body, "成果物・関連PR")
         assignment = f"担当: {agent}\n\nbranch: `{branch}`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。"
         body = children[child].body

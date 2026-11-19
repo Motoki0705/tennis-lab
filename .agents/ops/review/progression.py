@@ -184,16 +184,11 @@ class Engine:
         self,
         evidence: str,
         *,
-        rereview: bool = False,
         prs: list[int] | None = None,
-        review_selection: dict[str, Any] | None = None,
-        review_config_file: str | None = None,
         prepare: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         if not evidence.strip():
             raise ValueError("continuation requires the parent's instruction")
-        if rereview and self.state["request"].get("kind") == "post_merge_confirmation":
-            raise ValueError("post-merge confirmation cannot start a review")
         if prs is not None:
             selected = {str(n) for n in prs}
             if (
@@ -206,7 +201,7 @@ class Engine:
             ):
                 raise ValueError("--prs must select unique PRs awaiting the parent")
             findings = self.state["review"].get("result", {}).get("major", [])
-            if not rereview and any(
+            if any(
                 str(n) not in selected for finding in findings for n in finding["prs"]
             ):
                 raise ValueError("major continuation must cover all affected PRs")
@@ -218,39 +213,20 @@ class Engine:
         self.state["decisions"].append(
             {
                 "instruction": evidence,
-                "rereview": rereview,
                 "prs": prs,
                 "changes": self.backend.changes(self.state),
             }
         )
         review = self.state["review"]
-        if rereview:
-            if review["stage"] == "running":
-                raise ValueError(
-                    "review runtime is unconfirmed; inspect it before rereview"
-                )
-            self.state.setdefault("review_history", []).append(copy.deepcopy(review))
-            self.state["review"] = {"stage": "requested", "round": review["round"] + 1}
-            self.state["review"]["selection"] = (
-                review_selection
-                or review.get("selection")
-                or self.state["request"].get("review_selection")
-            )
-            self.state["review"]["config_file"] = (
-                review_config_file
-                or review.get("config_file")
-                or self.state.get("options", {}).get("review_config_file")
-            )
-        elif (
+        if (
             review["stage"] == "parent_wait"
             and review.get("result", {}).get("verdict") == "major"
         ):
             review.update(stage="accepted", major_repaired=evidence)
         elif review["stage"] == "parent_wait":
-            # A saved runtime failure is never turned into an approval.
-            raise ValueError(
-                "review did not complete; an explicit --rereview is required"
-            )
+            # Re-enter the same round. Its durable launch intent either yields
+            # the saved result or blocks an uncertain second invocation.
+            review.update(stage="running")
         for target in self.state["targets"].values():
             if prs is not None and target["number"] not in prs:
                 continue
@@ -267,6 +243,20 @@ class Engine:
         if self.state["status"] == "completed":
             return self.state
         review = self.state["review"]
+        if review["stage"] in {"requested", "running"} and self.state.get(
+            "review_history"
+        ):
+            directory = self.path.parent / f"review-{review['round']}"
+            if not (directory / "execution.json").exists():
+                prior = self.state["review_history"][-1]
+                if prior.get("result", {}).get("verdict") == "major":
+                    review = self.state["review"] = copy.deepcopy(prior)
+                    self.state["status"] = "parent_wait"
+                    self.emit(
+                        "major",
+                        reason="previous major findings require explicit continuation",
+                    )
+                    return self.state
         while review["stage"] in {"requested", "running"}:
             try:
                 reason = self.backend.local(self.state)
@@ -286,6 +276,7 @@ class Engine:
                 # The reviewer has its own intent/result files. Re-entry reads a
                 # completed result or refuses an uncertain launch, never relaunches.
                 result = self.backend.review(self.state, self.path.parent)
+                review.pop("error", None)
                 review["result"] = result
                 if result["verdict"] == "major":
                     review["changes"] = self.backend.changes(self.state)

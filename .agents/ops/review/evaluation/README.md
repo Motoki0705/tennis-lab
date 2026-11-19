@@ -236,7 +236,7 @@ negatives are not proof of defect absence, model caching/order can affect timing
 and the restricted tool set differs from formal review. Historical reports retain
 the policy and evidence recorded at the time. The current formal-review policy,
 examples, usage queries and fixed-mode rollback are defined in the
-[parent model-selection procedure](../../parent/README.md#正式レビューのモデル選択).
+[parent model-selection procedure](../../../skills/parent-session/references/review.md).
 This harness explicitly selects each comparison model under either deployment
 mode, keeping the approved Astra/xhigh reference settings and immutable evidence.
 

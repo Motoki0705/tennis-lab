@@ -181,7 +181,7 @@ Instead of `reason`, use exactly one `reason_ref`:
 | `review_reason` | `run_id`; the fixed review request's reason |
 | `improvement` | `key` and candidate `event_id`; the splitting judgment in the source parent's canonical comment |
 
-`note` and `improvement` references use the [shared parent reader](../parent/README.md#機械証拠の保存共通reader) and the comment URL on the actual medium.
+`note` and `improvement` references use the [shared parent reader](../parent/README.md#責務と状態の正本) and the comment URL on the actual medium.
 The decision retains a reference/fingerprint, not another copy of the public
 reason. Parent actor keys are random private-session mappings; handoff does not
 relabel earlier decisions. Pass the returned decision ID on the next supported
@@ -189,7 +189,7 @@ command (or review/merge command); its later results reference the linked action
 
 `improvement-decide` records human judgment in the canonical candidate without extending publication authority over an ended source journal.
 The successor captures approval when importing it through agree. Cross-parent references use the source comment URL, not a foreign graph record ID.
-See [end-of-task improvements](../parent/improvements.md) for the operation and human-confirmation trust boundary.
+See [end-of-task improvements](../../skills/parent-session/references/finish.md#次回改善) for the operation and human-confirmation trust boundary.
 
 ## Capture failure and recovery
 

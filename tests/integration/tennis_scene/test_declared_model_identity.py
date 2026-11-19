@@ -111,7 +111,7 @@ def decision(cfg: Any, root: Path, store: CachedCourtStore, target: str) -> Any:
     ("ball_detection/cam0", "device"), ("ball_detection/cam0", "precision"),
     ("person_detection/cam0", "device"), ("person_tracking/cam0", "device"),
     ("player_selection/cam0", "device"), ("player_association", "device"),
-    ("gvhmr", "device"), ("body_placement", "device"),
+    ("hmr2_features", "device"), ("gvhmr", "device"), ("body_placement", "device"),
 ])
 def test_effective_model_settings_invalidate_own_cache(tmp_path: Path, target: str, change: str) -> None:
     cfg = configured(tmp_path)

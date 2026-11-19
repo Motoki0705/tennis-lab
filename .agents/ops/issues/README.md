@@ -22,7 +22,7 @@
 
 この分類ラベルの付与から実行承認・担当予約は生成しない。既存の実行根拠・停止・レビュー・merge条件を維持し、
 `needs-human` は引き続き人間の承認待ちを意味する。提案のラベル操作・本文編集は承認にならない。
-改善提案の正本・公開・会話判断・取り出し・期限は [終了時改善](../parent/improvements.md) を参照する。
+改善提案の正本・公開・会話判断・取り出し・期限は [終了時改善](../../skills/parent-session/references/finish.md#次回改善) を参照する。
 親CLIの担当・委任・worker起動、dispatcher/supervisor、本文補足、Project表示、ops-report/triageの作業対象から提案を除外する。
 
 | 利用場面 | テンプレート |
@@ -101,7 +101,7 @@ repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:
 `issues.evidence.is_evidence_issue` は `parent-evidence` ラベルまたは本文先頭の
 `parent-evidence` マーカーで保存容器を識別する。open/closed、親子ラベルの誤付与、
 未知versionでも作業候補にしない。`require_work_issue` は明示対象や正式関係に混入した容器を拒否する。
-結び付きの認証・作成・履歴の契約は [parent reader](../parent/README.md#機械証拠の保存共通reader) が正本。
+結び付きの認証・作成・履歴の契約は [parent reader](../parent/README.md#責務と状態の正本) が正本。
 
 | 経路 | 除外境界 |
 |---|---|
@@ -126,7 +126,7 @@ repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:
 設定とGitHub上のラベル作成は管理者が別途行う。
 
 有効かつ現在 `issue:parent` を持ち、GitHubの `created_at` が有効化時刻**以降**のissueだけが対象。
-`issue:proposal` と [承認snapshotから取り出したparent](../parent/improvements.md#承認分の取り出しと復旧) は対象外。
+`issue:proposal` と [承認snapshotから取り出したparent](../../skills/parent-session/references/finish.md#次回改善) は対象外。
 呼出側はラベル・作成日時とともに `body` を渡す。それ以外の非対象も `not_target`。対象で確定ラベルがなければ `pending`、あれば以下の状態になる。
 確定ラベルが2種類以上付いていたら、非対象のissueでも例外にする。
 
@@ -175,7 +175,7 @@ state = supplement_state(
   定数・型・`read_enabled_since` は `issues` packageからも公開する。
   `from issues import supplement_state` は関数ではなく同名の**module**を返す。
 
-親CLIのgateと待機は [parent README](../parent/README.md#補足追加の確定待ち)、
+親CLIのgateと待機は [parent README](../../skills/parent-session/references/ownership.md)、
 自律着手の保留と再照合は [dispatcher README](../dispatcher/README.md#判断結果と保留コメント)を参照する。
 
 ## タイトル
@@ -232,7 +232,7 @@ open/closedとも1件1行で載せる。タスク名は子タイトルから親p
 ```
 
 未分割の場合は、一覧節の最初の非空行を `未分割（子issue未作成）` で始める。
-この状態でも親Issue自身を実行できる。分割と委任は別判断で、[parent CLIの単独実行](../parent/README.md#issue自身を実行する)へ進める。
+この状態でも親Issue自身を実行できる。分割と委任は別判断で、[parent CLIの単独実行](../../skills/parent-session/references/workers.md)へ進める。
 直後の句点「。」は任意で、同じ行の説明文や後続の分割候補の段落も記入できる。
 この欄は子が0件の一覧として扱い、説明中のissue参照を子として抽出しない。
 子issueのチェック行（書式が崩れた行を含む）との混在は拒否する。
@@ -313,7 +313,7 @@ parent_body = render_parent_body(
 親・子の `render` specでは役割ラベルを生成するため、任意の `labels` への4種の役割ラベルの混入を拒否する。
 
 レポート経由でも、親は**レポートissueではなく開発用の親issue**。採用、Issue整理、人間合意、自律着手の根拠を
-区別する。既存の手動親は [parent CLI](../parent/README.md#採用提案の受領)、未担当の採用提案は
+区別する。既存の手動親は [parent CLI](../../skills/parent-session/references/ownership.md#採用提案)、未担当の採用提案は
 [triage](../ops-report/README.md#採用提案の自動issue化) が扱う。書式・重複検出には以下を使う。
 
 1. `render_child_body(..., source=ProposalSource(proposal_id, report_number, option))` を使う。
@@ -330,7 +330,7 @@ parent_body = render_parent_body(
 候補の `issues.improvement.ImprovementSource(parent, key)` と構造化コメントreaderを使う。
 提案generationと取り出しの出典は `issues.improvement_proposals.Proposal` / `Extraction` が描画・解析する。
 新規公開は `parent improvement-propose`、会話の判断は `improvement-decide`、承認分の取り出しは `improvement-extract`。
-各マーカー・承認snapshot・冪等な復旧の正本は [終了時改善](../parent/improvements.md) に置く。
+各マーカー・承認snapshot・冪等な復旧の正本は [終了時改善](../../skills/parent-session/references/finish.md#次回改善) に置く。
 旧 `parent-improvement-source` とpublished/decision eventは読み続け、新方式の公開には使わない。
 
 `issues.creation.create_issue_once` は固定draft・送信前receipt・出典照合を共有する。
@@ -425,7 +425,7 @@ closedの理由が不明な子を完了と推測しない。編集中に跨っ�
 `issues.cli.GitHub` と派生するparent clientは `issues.transport.HTTPClient` の
 `requests.Session` でHTTPS接続を再利用する。REST GET・書込み・GraphQLで同じpoolを使い、
 `detached()` も接続を共有する。接続poolとGET cacheは別物で、transaction・鮮度・失効の境界は
-[parent README](../parent/README.md#取得範囲と計測)に従う。長生きする呼出元は `close()` でpoolを閉じる。
+[parent README](../parent/README.md#排他とio)に従う。長生きする呼出元は `close()` でpoolを閉じる。
 
 認証は `GH_TOKEN`、`GITHUB_TOKEN`、`gh auth token --hostname github.com` の順。
 初回通信で解決し、ghで取得したtokenは同じプロセス・認証設定内で1回だけ取得する。

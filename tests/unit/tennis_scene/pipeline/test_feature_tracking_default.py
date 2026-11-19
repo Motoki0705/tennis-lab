@@ -61,7 +61,8 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
     encoder_keys.add(nodes['player_association'].component.model_specs()['encoder'].key)
     assert len(encoder_keys) == 1
     assert nodes['pose_estimation/cam0'].component.model_specs() == {}
-    assert set(nodes['gvhmr'].component.model_specs()) == ({'features', 'mesh'} if body_enabled else set())
+    assert set(nodes['hmr2_features'].component.model_specs()) == ({'features'} if body_enabled else set())
+    assert set(nodes['gvhmr'].component.model_specs()) == ({'mesh'} if body_enabled else set())
     assert set(nodes['body_placement'].component.model_specs()) == ({'body'} if body_enabled else set())
     cfg.aflink_checkpoint.unlink()
     with pytest.raises(FileNotFoundError, match='AFLink'):

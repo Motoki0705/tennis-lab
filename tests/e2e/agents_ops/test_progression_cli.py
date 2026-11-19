@@ -19,7 +19,6 @@ from tests.e2e.agents_ops.test_parent_session import (
 from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
 )
-from tests.support.agents_ops.model_pins import REVIEW_OTHER_MODEL
 
 
 def prepared(p: ParentEnv, *, count: int = 1) -> tuple[list[int], Path, Path]:
@@ -116,10 +115,7 @@ def test_public_request_detached_review_merge_completion(
     assert len([c for c in p.comments(100) if "broad_review" in c["body"]]) == 1
 
 
-@pytest.mark.parametrize("rereview", [False, True])
-def test_public_major_continue_and_history_display(
-    parent_env: ParentEnv, rereview: bool
-) -> None:
+def test_public_major_continue_and_history_display(parent_env: ParentEnv) -> None:
     p = parent_env
     numbers, fake, calls = prepared(p)
     Path(p.env["REVIEW_AGENT_OUTPUT"]).write_text(
@@ -139,39 +135,20 @@ def test_public_major_continue_and_history_display(
     Path(p.env["REVIEW_AGENT_OUTPUT"]).write_text(
         json.dumps({"verdict": "approve", "summary": "修正確認済み", "major": []})
     )
-    config = p.root / "rereview.conf"
-    config.write_bytes(
-        (
-            Path(__file__).resolve().parents[3] / ".agents/ops/lib/agents.conf"
-        ).read_bytes()
+    rejected = p.cli(
+        "merge-continue", "--rereview", "--instruction-file", p.note("再依頼"), ok=False
     )
+    assert "unrecognized arguments" in rejected.stderr
     result = json.loads(
         p.cli(
             "merge-continue",
             "--instruction-file",
             p.note("major修正とテストを確認した。"),
             "--wait",
-            *(
-                [
-                    "--rereview",
-                    "--review-model",
-                    REVIEW_OTHER_MODEL,
-                    "--review-config-file",
-                    str(config),
-                    "--model-reason-file",
-                    p.note("修正範囲が明確なためSolを選ぶ。"),
-                ]
-                if rereview
-                else []
-            ),
         ).stdout
     )
     assert result["status"] == "completed", result
-    assert len(calls.read_text().splitlines()) == (2 if rereview else 1)
-    if rereview:
-        assert result["review"]["config_file"] == str(config)
-        args = json.loads(calls.read_text().splitlines()[-1])["args"]
-        assert args[args.index("--config-file") + 1] == str(config)
+    assert len(calls.read_text().splitlines()) == 1
     inspected = json.loads(p.cli("review-inspect", "--prs", "100").stdout)
     assert inspected["prs"][0]["history"][0]["changes"]["100"]["files"] == 0
 
@@ -459,4 +436,51 @@ def test_private_review_text_is_not_published_or_rereviewed(
     assert result["status"] == "completed", result
     assert result["review"]["result"]["publication_errors"]
     assert not p.comments(100)
+    assert len(calls.read_text().splitlines()) == 1
+
+
+def test_saved_terminal_review_recovers_after_controller_error(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    numbers, fake, calls = prepared(p)
+    Path(p.env["REVIEW_AGENT_OUTPUT"]).write_text(
+        json.dumps(
+            {
+                "verdict": "major",
+                "summary": "fix",
+                "major": [{"prs": numbers, "title": "problem", "detail": "verify fix"}],
+            }
+        )
+    )
+    result = request(p, numbers, fake)
+    directory = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/progressions"
+        / result["review_run_id"]
+    )
+    state_file = directory / "state.json"
+    state = json.loads(state_file.read_text())
+    state["review"] = {"round": 1, "stage": "parent_wait", "error": "interrupted"}
+    state_file.write_text(json.dumps(state))
+    (directory / "review-1/result.json").unlink()
+    recovered = json.loads(
+        p.cli(
+            "merge-continue", "--instruction-file", p.note("recover"), "--wait"
+        ).stdout
+    )
+    assert recovered["review"]["result"]["verdict"] == "major"
+    assert len(calls.read_text().splitlines()) == 1
+    assert "merge" not in [c[1] for c in p.calls() if c[:1] == ["pr"]]
+    final = json.loads(
+        p.cli(
+            "merge-continue",
+            "--instruction-file",
+            p.note("fixed and verified"),
+            "--wait",
+        ).stdout
+    )
+    assert final["status"] == "completed"
+    replay = request(p, numbers, fake)
+    assert replay["review_run_id"] == result["review_run_id"]
     assert len(calls.read_text().splitlines()) == 1

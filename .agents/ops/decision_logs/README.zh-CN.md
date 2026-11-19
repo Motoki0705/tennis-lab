@@ -155,14 +155,14 @@ conditions/expected_result字段；CLI分配ID。初始判断须在 `basis` 提�
 | `review_reason` | `run_id`；固定review请求的理由 |
 | `improvement` | `key` 和候选 `event_id`；原父级正本评论中的拆分判断 |
 
-`note` 和 `improvement` 通过[父级共用reader](../parent/README.md#機械証拠の保存共通reader)验证，并引用实际存储位置的评论URL。
+`note` 和 `improvement` 通过[父级共用reader](../parent/README.md#責務と状態の正本)验证，并引用实际存储位置的评论URL。
 判断保留引用/fingerprint，不再次复制公开理由正文。
 父级actor键是私有session对应的随机公开键；交接不会改变旧判断的作者。
 把返回的判断ID传给下一条支持的CLI（包括review/merge），后续结果通过行动与之连接。
 
 `improvement-decide` 在候选正本中记录人类判断，不扩大已结束原父级journal的发布权限。
 后继父级通过agree导入批准时捕获观察结果。跨父级引用使用来源评论URL，不直接连接其他graph的记录ID。
-操作与人类确认的信任边界见 [结束时改进](../parent/improvements.md)。
+操作与人类确认的信任边界见 [结束时改进](../../skills/parent-session/references/finish.md#次回改善)。
 
 ## 捕获失败与恢复
 

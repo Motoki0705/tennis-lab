@@ -555,7 +555,7 @@ journal破損・欠落や出典矛盾は自動初期化しない。run dirとGit
 
 生成した通常の作業issueは、次の08:00・20:00 JSTの予定回にdispatcherが収集する。専用enqueueやreadyラベルは不要。
 triageから割当判定agent・開発親・実装子・レビュー・mergeは起動しない。採用・Issue整理・自律着手根拠は別物で、
-後の委任では [parentの出典検証](../parent/README.md#子の作成委任再開) と有効な実行根拠を照合する。
+後の委任では [parentの出典検証](../../skills/parent-session/references/workers.md) と有効な実行根拠を照合する。
 開発workflowは、単一anchorのないcontext出典も含め `parent.adopted_tasks.check_task_adoptions(gh, body)` を
 親・対象子の両本文へ実行直前とmerge直前に適用する。この返却は出典の現状確認であり、実行許可ではない。
 #1335のworkflowがこの呼出しとdispatcherの外部入力鮮度検査を担う。先行parent/reviewの根拠・gateは書き換えない。

@@ -57,6 +57,6 @@ labels: ["issue:child"]
 <!-- 今回必須でない改善案。親の improvement --child で記録した安定候補IDと正本コメントへの参照を置く。
 目的・根拠・判断・次の作業の境界の正本は元親の構造化コメント。
 未達のAcceptanceを移して完了にせず、今回の受入条件へ自動追加もしない。
-起票と人間判断の契約: .agents/ops/parent/improvements.md。 -->
+起票と人間判断の契約: .agents/skills/parent-session/references/finish.md。 -->
 
 -

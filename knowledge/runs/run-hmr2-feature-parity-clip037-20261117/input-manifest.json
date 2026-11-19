@@ -1,0 +1,55 @@
+{
+  "clip_id": "video_000/clip_037",
+  "files": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/clip.json",
+      "size": 2062,
+      "sha256": "dc89788e4406ba99a0d36c73491b077f6bb88b545385ba998d142d8d0be91a94"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam0.mp4",
+      "size": 6617788,
+      "sha256": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+      "ffprobe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam1.mp4",
+      "size": 4989172,
+      "sha256": "c1b473a238719658a3caa6da81e4b6cae50396c18109956305db5ecba354c9b5",
+      "ffprobe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam2.mp4",
+      "size": 2896798,
+      "sha256": "8149f06c609a6f209499abf4cd17055a4b8ac4e9be301285c8a5fad4956c5bfc",
+      "ffprobe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clips/clip_037/media/cam3.mp4",
+      "size": 5528034,
+      "sha256": "0112a64759ffd98bec0cfc529b779222dded555d883675794d78eba00f5049a1",
+      "ffprobe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    }
+  ],
+  "main_commit": "18a2fea05291eeaccb6d1dbfc81160e26c4080dd"
+}

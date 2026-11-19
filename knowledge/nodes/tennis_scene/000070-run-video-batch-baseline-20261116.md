@@ -2,7 +2,7 @@
 id: run-video-batch-baseline-20261116
 type: run
 task: tennis_scene
-sequence: 57
+sequence: 70
 recorded_at: '2026-11-16'
 date: '2026-11-16'
 title: 旧入力3clipのCourt停止例と逐次計測基盤

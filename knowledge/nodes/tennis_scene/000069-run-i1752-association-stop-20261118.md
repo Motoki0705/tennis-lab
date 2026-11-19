@@ -2,7 +2,7 @@
 id: run-i1752-association-stop-20261118
 type: run
 task: tennis_scene
-sequence: 56
+sequence: 69
 recorded_at: '2026-11-18'
 title: 共有コート接続後のC4受入は人物対応で停止
 issue: 1752
