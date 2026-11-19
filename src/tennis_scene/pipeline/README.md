@@ -251,6 +251,9 @@ poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、ha
 `true`に切り替えた初回は画像SHA-256を含む外観特徴を生成する。
 照合できないsampleはカメラ内で最大64cropずつ同じCLIP runtimeで推論する。方針はcache identityに含まれ、
 `diagnostics.appearance`に再利用数・再推論数とtrackごとのframe・理由が残る。
+C9を有効にした場合は、実際に選ばれた動画デコードbackend・captureの設定とcropの環境を、外観特徴・人物対応の
+cacheおよびclipの完成markerに記録する。推論時に開き直した動画も照合する。条件の異なる成果物はexecuteで再生成し、
+loadは不一致で停止する。古い完成markerから再生成するときは`overwrite=true`を指定する。
 比較用の旧尺度・別encoderはtaskの比較APIから使用する。
 player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switchの前後で別の人物を持てる。
 決まらないclipは`ReconstructionUnavailable`（reason `player_association_<停止理由>`、全scoreと途中の決定）で停止する。

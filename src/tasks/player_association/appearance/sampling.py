@@ -22,6 +22,7 @@ from src.tasks.player_association.appearance.encoders import AppearanceEncoder
 from src.tasks.player_association.appearance.parts import NativeParts
 from src.utils.geometry.bbox import pairwise_iou
 from src.utils.video import FramePacket, OpenCVVideoFrameReader
+from src.utils.video.reader import OpenCVDecodeIdentity
 
 DEFAULT_BATCH_SIZE = 64
 
@@ -109,14 +110,15 @@ def crop(frame_bgr: NDArray[np.uint8], box: NDArray[np.floating], size: tuple[in
     return np.ascontiguousarray(patch[..., ::-1].transpose(2, 0, 1), np.float32) / 255.
 
 
-def iter_sampled_frames(video: Path, samples: list[TrackSamples]) -> Iterator[tuple[FramePacket[NDArray[np.uint8]], list[int]]]:
+def iter_sampled_frames(video: Path, samples: list[TrackSamples], *, expected_decoder: OpenCVDecodeIdentity | None = None
+                        ) -> Iterator[tuple[FramePacket[NDArray[np.uint8]], list[int]]]:
     """Stream sampled frames and the track rows that requested each frame."""
     wanted: dict[int, list[int]] = {}
     for row, track in enumerate(samples):
         for frame in track.frames.tolist():
             wanted.setdefault(frame, []).append(row)
     if wanted:
-        for packet in OpenCVVideoFrameReader(video, max_frames=max(wanted) + 1):
+        for packet in OpenCVVideoFrameReader(video, max_frames=max(wanted) + 1, expected_decoder=expected_decoder):
             rows = wanted.pop(packet.index, None)
             if rows:
                 yield packet, rows

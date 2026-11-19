@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import Any
 
-import cv2
 import numpy as np
 from numpy.typing import NDArray
 
@@ -25,6 +24,12 @@ from src.tasks.person_tracking.features import (
 )
 from src.tasks.person_tracking.sequence import CLIP_ENCODER
 from src.tasks.player_association.appearance.encoders import AppearanceEncoder
+from src.tennis_scene.pipeline.appearance_media import (
+    APPEARANCE_MEDIA,
+    appearance_crop_settings,
+    require_appearance_media,
+    require_current_appearance_crop,
+)
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
@@ -36,6 +41,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig, file_identity
 from src.tennis_scene.pipeline.model_resources import model_identities, vitpose_model
 from src.utils.video import OpenCVVideoFrameReader
+from src.utils.video.reader import OpenCVDecodeIdentity
 
 CLIP_DIMENSION = 1280
 APPEARANCE_FEATURES_PORT = InputPort('person_appearance_features', 4)
@@ -49,9 +55,7 @@ def pose_feature_settings(config: FeatureConfig, enabled: bool = True) -> dict[s
 def appearance_feature_settings(config: FeatureConfig, enabled: bool = True) -> dict[str, Any]:
     return {'min_appearance_height_px': config.min_appearance_height_px,
             'batch_size': config.appearance_batch_size, 'enabled': enabled,
-            'crop': {'opencv_build': document_digest(cv2.getBuildInformation()),
-                     'opencv_optimized': cv2.useOptimized(), 'opencv_ipp': cv2.ipp.useIPP(),
-                     'numpy': np.__version__},
+            'crop': appearance_crop_settings(),
             'pose_prompt': False, 'output_precision': 'float32'}
 
 
@@ -169,11 +173,12 @@ class PersonFeaturesInput:
 class PersonAppearanceFeaturesInput:
     video: SourceVideo
     detections: PersonDetectionOutput
+    expected_decoder: OpenCVDecodeIdentity | None = None
 
 
-def _frames(video: SourceVideo) -> Iterator[tuple[int, NDArray[np.uint8]]]:
+def _frames(video: SourceVideo, expected_decoder: OpenCVDecodeIdentity | None = None) -> Iterator[tuple[int, NDArray[np.uint8]]]:
     count = 0
-    for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames):
+    for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames, expected_decoder=expected_decoder):
         if packet.index != count:
             raise ValueError('Feature video frame order changed')
         if packet.frame.shape != (video.height, video.width, 3) or packet.frame.dtype != np.uint8:
@@ -262,10 +267,12 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
         return appearance_feature_settings(self.config, self.enabled)
 
     def validate_artifact(self, descriptor: Mapping[str, Any], settings: Mapping[str, Any]) -> None:
+        require_appearance_media(descriptor, settings.get(APPEARANCE_MEDIA))
         _validate_saved_metadata(descriptor['payload'], settings, specs=self.model_specs(),
                                  model_field='encoder_identity', preprocessing=self.preprocessing_settings())
 
     def validate_output(self, output: PersonAppearanceFeaturesOutput, settings: Mapping[str, Any]) -> None:
+        require_current_appearance_crop(settings)
         _validate_saved_metadata({'encoder_identity': output.encoder_identity, 'preprocessing_identity': output.preprocessing_identity},
                                  settings, specs=self.model_specs(), model_field='encoder_identity', preprocessing=self.preprocessing_settings())
 
@@ -285,7 +292,7 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
             encoder = UnpromptedEncoder(model, CLIP_DIMENSION)
             row_indices = {int(row): i for i, row in enumerate(rows)}
             def crops() -> Iterator[AppearanceCrop]:
-                for frame, image in _frames(video):
+                for frame, image in _frames(video, inputs.expected_decoder):
                     start, end = detections.frame_offsets[frame:frame + 2]
                     # Same input validation as FeatureExtractor, before cropping.
                     DetectionFeatures(frame, rows[start:end], detections.boxes_xyxy[start:end], detections.confidence[start:end],

@@ -13,7 +13,11 @@ from src.tennis_scene.pipeline.artifacts import (
 )
 from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
+from src.tennis_scene.pipeline.components.person_features import (
+    appearance_feature_settings,
+)
 from src.tennis_scene.pipeline.definition import (
+    binds_appearance_media,
     check_shared_side_execution,
     component_override_identity,
     enabled_model_assets,
@@ -97,6 +101,9 @@ class TennisSceneOrchestrator:
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             "models": publication_model_identities(cfg),
             "component_overrides": overrides,
+            **({"appearance_preprocessing": appearance_feature_settings(cfg.tracking.features)}
+               if cfg.enabled["person_observations"] else {}),
+            **({"bind_appearance_media": True} if binds_appearance_media(cfg, self.components or {}) else {}),
             **({"court_model_assets": CourtKPModule(cfg.court_kp).asset_identities()}
                if cfg.direct_annotation is None and cfg.video_court is None else {}),
             **({"court_model": CourtKPModule(cfg.court_kp).model_identity()}

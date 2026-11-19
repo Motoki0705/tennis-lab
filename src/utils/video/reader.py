@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
+from dataclasses import dataclass
+from hashlib import sha256
+from math import isfinite
 from pathlib import Path
 from typing import cast
 
@@ -11,6 +15,59 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.utils.video.types import FramePacket, VideoInfo
+
+
+@dataclass(frozen=True)
+class OpenCVDecodeIdentity:
+    backend: str
+    properties: dict[str, float | None]
+    options_sha256: dict[str, str]
+
+
+_DECODE_PROPERTIES = {
+    "format": cv2.CAP_PROP_FORMAT,
+    "mode": cv2.CAP_PROP_MODE,
+    "convert_rgb": cv2.CAP_PROP_CONVERT_RGB,
+    "codec_pixel_format": cv2.CAP_PROP_CODEC_PIXEL_FORMAT,
+    "orientation_auto": cv2.CAP_PROP_ORIENTATION_AUTO,
+    "hw_acceleration": cv2.CAP_PROP_HW_ACCELERATION,
+    "hw_device": cv2.CAP_PROP_HW_DEVICE,
+    "hw_use_opencl": cv2.CAP_PROP_HW_ACCELERATION_USE_OPENCL,
+    "video_stream": cv2.CAP_PROP_VIDEO_STREAM,
+    "threads": cv2.CAP_PROP_N_THREADS,
+}
+
+
+def _decode_identity(capture: cv2.VideoCapture) -> OpenCVDecodeIdentity:
+    backend = capture.getBackendName()
+    properties = {name: capture.get(prop) for name, prop in _DECODE_PROPERTIES.items()}
+    prefixes: tuple[str, ...] = ("OPENCV_VIDEOIO_",)
+    if backend == "FFMPEG":
+        prefixes += ("OPENCV_FFMPEG_",)
+    elif backend == "GSTREAMER":
+        prefixes += ("GST_",)
+    # Capture options may contain credentials, so only content digests enter artifacts.
+    options = {
+        name: sha256(os.fsencode(value)).hexdigest()
+        for name, value in os.environ.items()
+        if name.startswith(prefixes)
+    }
+    return OpenCVDecodeIdentity(
+        backend=backend,
+        properties={name: value if isfinite(value) else None for name, value in properties.items()},
+        options_sha256=options,
+    )
+
+
+def probe_video_decoder(video_path: str | Path) -> OpenCVDecodeIdentity:
+    """Inspect the selected backend and properties of an opened video."""
+    capture = cv2.VideoCapture(str(video_path))
+    try:
+        if not capture.isOpened():
+            raise RuntimeError(f"Failed to open video: {video_path}")
+        return _decode_identity(capture)
+    finally:
+        capture.release()
 
 
 def probe_video_info(video_path: str | Path) -> VideoInfo:
@@ -60,10 +117,15 @@ class OpenCVVideoFrameReader:
     """Stream decoded BGR frames from a video file."""
 
     def __init__(
-        self, video_path: str | Path, *, max_frames: int | None = None
+        self,
+        video_path: str | Path,
+        *,
+        max_frames: int | None = None,
+        expected_decoder: OpenCVDecodeIdentity | None = None,
     ) -> None:
         self.video_path = Path(video_path)
         self.max_frames = max_frames
+        self.expected_decoder = expected_decoder
 
     def __iter__(self) -> Iterator[FramePacket[NDArray[np.uint8]]]:
         cap = cv2.VideoCapture(str(self.video_path))
@@ -71,6 +133,8 @@ class OpenCVVideoFrameReader:
             raise RuntimeError(f"Failed to open video: {self.video_path}")
 
         try:
+            if self.expected_decoder is not None and _decode_identity(cap) != self.expected_decoder:
+                raise ValueError(f"Video decoder changed after planning: {self.video_path}")
             frame_index = 0
             while self.max_frames is None or frame_index < self.max_frames:
                 ok, frame_bgr = cap.read()

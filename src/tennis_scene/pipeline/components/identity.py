@@ -37,6 +37,11 @@ from src.tasks.player_association.association.associate import (
     CameraTracks,
     associate,
 )
+from src.tennis_scene.pipeline.appearance_media import (
+    APPEARANCE_MEDIA,
+    require_appearance_media,
+    require_current_appearance_crop,
+)
 from src.tennis_scene.pipeline.components.association_appearance import (
     SavedAssociationAppearance,
     camera_track_appearances,
@@ -60,6 +65,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelBorrower,
     ModelSpec,
 )
+from src.utils.video.reader import OpenCVDecodeIdentity
 
 PLAYER_ASSOCIATION = "player_association"
 # Version 3: per-frame player IDs (a track may switch people) and the association evidence.
@@ -110,6 +116,7 @@ class PlayerAssociationInput:
     side: CourtSideOutput
     tracks: tuple[PersonTrackingOutput, ...]  # every source camera, in source order
     saved_appearance: Mapping[str, SavedAssociationAppearance] = field(default_factory=dict)
+    expected_decoders: Mapping[str, OpenCVDecodeIdentity] = field(default_factory=dict)
 
 
 def player_association_io(camera_ids: tuple[str, ...], *, reuse_clip_embeddings: bool = False
@@ -148,8 +155,15 @@ class PlayerAssociationModule(InferenceComponent[PlayerAssociationInput, PlayerI
     def model_specs(self) -> dict[str, ModelSpec[AppearanceEncoder]]:
         return {"encoder": self.encoder} if self.enabled and self.encoder is not None else {}
 
+    def validate_artifact(self, descriptor: Mapping[str, Any], settings: Mapping[str, Any]) -> None:
+        require_appearance_media(descriptor, settings.get(APPEARANCE_MEDIA))
+
+    def validate_output(self, output: PlayerIdentitiesOutput, settings: Mapping[str, Any]) -> None:
+        require_current_appearance_crop(settings)
+
     def _appearances(self, source: ClipSource, tracks: list[PersonTrackingOutput], sampling: CropSamplingConfig,
-                     saved: Mapping[str, SavedAssociationAppearance], models: ModelBorrower
+                     saved: Mapping[str, SavedAssociationAppearance], expected_decoders: Mapping[str, OpenCVDecodeIdentity],
+                     models: ModelBorrower,
                      ) -> tuple[list[tuple[TrackAppearance, ...]] | None, dict[str, Any]]:
         if self.encoder is None or self.config.appearance is None:
             return None, {"enabled": False}
@@ -168,7 +182,8 @@ class PlayerAssociationModule(InferenceComponent[PlayerAssociationInput, PlayerI
         for camera in tracks:
             appearance, records, recomputed = camera_track_appearances(source.video(camera.camera_id), camera, sampling,
                 saved=saved.get(camera.camera_id), preprocessing=self.reuse_preprocessing,
-                encoder=self.encoder, name=name, borrow_encoder=borrow_encoder)
+                encoder=self.encoder, name=name, borrow_encoder=borrow_encoder,
+                expected_decoder=expected_decoders.get(camera.camera_id))
             appearances.append(appearance)
             record[camera.camera_id] = records
             reasons.update(recomputed)
@@ -197,7 +212,8 @@ class PlayerAssociationModule(InferenceComponent[PlayerAssociationInput, PlayerI
         config = replace(self.config, footpoints=replace(self.config.footpoints, bottom_border_px=self.config.footpoints.bottom_border_px * scale))
         sampling = replace(self.sampling, min_height_px=self.sampling.min_height_px * scale, border_px=self.sampling.border_px * scale)
         tracks = [by_camera[camera] for camera in camera_ids]
-        appearances, appearance_record = self._appearances(source, tracks, sampling, inputs.saved_appearance, models)
+        appearances, appearance_record = self._appearances(source, tracks, sampling, inputs.saved_appearance,
+                                                           inputs.expected_decoders, models)
         turns = dict(zip(inputs.side.camera_ids, inputs.side.view_half_turns, strict=True))
         cameras = [CameraTracks(view.camera.half_turned(turns[view.camera.camera_id]), source.size, t.track_ids, t.boxes_xyxy, t.observed,
                                 None if appearances is None else appearances[row]) for row, (view, t) in enumerate(zip(views, tracks, strict=True))]

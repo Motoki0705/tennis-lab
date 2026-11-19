@@ -24,6 +24,7 @@ from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
+from src.utils.video.reader import OpenCVDecodeIdentity
 from tests.integration.tennis_scene.test_court_runtime_contracts import (
     CachedCourtStore,
     source,
@@ -108,7 +109,9 @@ def decision(cfg: Any, root: Path, store: CachedCourtStore, target: str) -> Any:
     return plan.decide(("clip", target))
 
 
-def test_association_reuse_policy_separates_cache_and_publication(tmp_path: Path) -> None:
+def test_association_reuse_policy_separates_cache_and_publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr('src.tennis_scene.pipeline.appearance_media.probe_video_decoder',
+                       lambda _: OpenCVDecodeIdentity('fixture', {}, {}))
     cfg = configured(tmp_path)
     target = 'player_association'
     store = CachedCourtStore(tmp_path / 'store', 'clip')

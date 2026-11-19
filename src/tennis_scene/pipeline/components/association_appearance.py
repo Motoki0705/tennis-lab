@@ -32,6 +32,7 @@ from src.tennis_scene.pipeline.components.person_features import (
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.contracts import SourceVideo
 from src.tennis_scene.pipeline.inference_runtime import ModelSpec
+from src.utils.video.reader import OpenCVDecodeIdentity
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,7 @@ def camera_track_appearances(
     video: SourceVideo, tracks: PersonTrackingOutput, sampling: CropSamplingConfig, *,
     saved: SavedAssociationAppearance | None, preprocessing: Mapping[str, Any] | None,
     encoder: ModelSpec[AppearanceEncoder], name: str, borrow_encoder: Callable[[], AppearanceEncoder],
+    expected_decoder: OpenCVDecodeIdentity | None = None,
 ) -> tuple[tuple[TrackAppearance, ...], list[dict[str, Any]], Counter[str]]:
     samples = sample_tracks(tracks.boxes_xyxy, tracks.observed, (video.width, video.height), sampling)
     embeddings: list[dict[int, NDArray[np.float32]]] = [{} for _ in samples]
@@ -85,7 +87,7 @@ def camera_track_appearances(
     detection_rows, camera_reason = _reuse_rows(video, tracks, saved, encoder, preprocessing, name)
 
     def missing_crops() -> Iterator[tuple[int, int, NDArray[np.float32]]]:
-        for packet, track_rows in iter_sampled_frames(video.path, samples):
+        for packet, track_rows in iter_sampled_frames(video.path, samples, expected_decoder=expected_decoder):
             frame, image = packet.index, packet.frame
             reason_for_frame = camera_reason
             if detection_rows is not None:

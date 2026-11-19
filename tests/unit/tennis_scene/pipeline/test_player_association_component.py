@@ -189,7 +189,7 @@ def test_saved_crops_preserve_association_and_rejected_samples(monkeypatch: pyte
     track_boxes = {track.camera_id: track for track in tracks}
     person_channels = {'cam0': [20, 170, 90], 'cam1': [170, 20], 'cam2': [20, 170]}
 
-    def reader(path: Path, *, max_frames: int) -> Any:
+    def reader(path: Path, *, max_frames: int, **kwargs: Any) -> Any:
         track = track_boxes[path.stem]
         for frame in range(max_frames):
             image = np.zeros((height, width, 3), np.uint8)

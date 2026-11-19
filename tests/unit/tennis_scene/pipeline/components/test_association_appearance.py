@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
@@ -52,7 +53,7 @@ def test_only_matching_samples_skip_encoding(tmp_path: Path, monkeypatch: pytest
     image_size = 64, 48
     images: list[NDArray[np.uint8]] = [np.full((48, 64, 3), [5, 20 + 10 * frame, 10], np.uint8) for frame in range(4)]
 
-    def reader(path: Path, *, max_frames: int) -> list[FramePacket[np.ndarray]]:
+    def reader(path: Path, *, max_frames: int, **kwargs: Any) -> list[FramePacket[np.ndarray]]:
         return [FramePacket(frame, image, image_size) for frame, image in enumerate(images[:max_frames])]
 
     monkeypatch.setattr(sampling, 'OpenCVVideoFrameReader', reader)
