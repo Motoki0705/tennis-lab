@@ -65,7 +65,7 @@ def sample_vram(path, measurement):
 
 
 def clip_evidence(dataset, record):
-    store = dataset / record.path / ANNOTATION_RELATIVE_DIR
+    store = (dataset / record.path / ANNOTATION_RELATIVE_DIR).resolve()
     index = read(store / "scene.json") if (store / "scene.json").is_file() else None
     report = {"clip_id": record.clip_id, "scene": None, "court_side": None, "camera_stages": {}}
     if index is not None:
@@ -203,8 +203,9 @@ def compare_value(left, right, node, dataset_roots, path=()):
     if type(left) is not type(right):
         return {"exact": False, "close": False, "types": [type(left).__name__, type(right).__name__]}
     if isinstance(left, np.ndarray):
-        if (node == "person_pose_features" and path == ("keypoints",)
-                or node in {"person_tracking", "player_selection"} and path == ("evidence", "poses")):
+        pose_with_confidence = ((node == "person_pose_features" and path == ("keypoints",))
+                                or (node in {"person_tracking", "player_selection"} and path == ("evidence", "poses")))
+        if pose_with_confidence and left.shape == right.shape and left.ndim and left.shape[-1] == 3:
             return combine({
                 "uv": compare_array(left[..., :2], right[..., :2], "px"),
                 "confidence": compare_array(left[..., 2], right[..., 2], "unitless"),
@@ -317,15 +318,18 @@ def compare(reference, candidate, destination):
     data = pinned_inputs()
     reports = [compare_clip(reference, candidate, clip) for clip in CLIPS]
     pins = [read(attempt.parents[1] / "preflight.json") for attempt in (reference, candidate)]
+    measurements = [read(attempt / "measurement.json") for attempt in (reference, candidate)]
+    same_runtime = all(measurements[0][name] == measurements[1][name] for name in ("torch", "cuda", "threads"))
     fields = ("settings", "checkpoints", "models", "video_court_cameras", "video_court_drift_cameras")
     same_publication_pins = all(pins[0]["publication_identity"].get(k) == pins[1]["publication_identity"].get(k)
                                 for k in fields)
     same_input_pins = all(pins[0][name] == pins[1][name] for name in ("input_sha256", "tolerances_sha256"))
-    accepted = same_publication_pins and same_input_pins and all(
+    accepted = same_runtime and same_publication_pins and same_input_pins and all(
         r["quality_agrees"] and r["player_side_matches_reference"] for r in reports
     ) and any(r["both_scenes_validated"] for r in reports)
     write(destination, {"clips": reports, "quality_acceptance": accepted, "same_input_pins": same_input_pins,
-                        "same_publication_pins": same_publication_pins, "same_commit": pins[0]["commit"] == pins[1]["commit"],
+                        "same_publication_pins": same_publication_pins, "same_runtime": same_runtime,
+                        "same_commit": pins[0]["commit"] == pins[1]["commit"],
                         "selected_camera_frames": sum(r["num_cameras"] * r["num_frames"] for r in data["selected_records"])})
     return accepted
 
