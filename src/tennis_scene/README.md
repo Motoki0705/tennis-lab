@@ -145,8 +145,9 @@ clipをまたいだbatch数、実行passごとのモデルload回数・動画ope
 再開時は新しい進捗記録を作り、component storeから状態を照合します。
 datasetの完成判定にはclipごとの`annotation.json`と採用中scene exportを使います。
 
-meiji_4camの3クリップで逐次・モデル再利用・一括推論を測る手順は
-[動画一括ベンチマーク](../../knowledge/runs/run-i1757-video-batch-meiji/reproduce.md)を参照してください。
+meiji_4camの3クリップで逐次・モデル再利用・一括推論を比べた記録は
+[計測の再現手順と結果](../../knowledge/runs/run-i1757-video-batch-meiji/reproduce.md)にあります。
+同じHEADでの逐次対照と、ボールを外した人物3DのCPU再計算も記録しています。
 入力・共有court・player証拠・保存先の条件と、共有training queueでの起動・完了確認をまとめています。
 
 ## 座標・対応

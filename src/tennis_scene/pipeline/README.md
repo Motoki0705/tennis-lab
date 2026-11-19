@@ -180,7 +180,8 @@ C1のrecorder統合時はその`model_event`を渡し、管理下のモデルで
 
 逐次と一括の比較では、同じレシピとdataset publisherで空のstoreから実行する。
 [実GPU計測手順](../../../knowledge/runs/run-i1757-video-batch-meiji/reproduce.md)に、
-モデル寿命・batch分布・保存と公開の計測境界、公開後の差分確認手順をまとめている。
+モデル寿命・batch分布・保存と公開の計測境界、条件別の実測結果をまとめている。
+公開後の固定許容差による差分照合、人物のみの幾何のCPU再計算、差分動画の再現も同じ手順から行う。
 
 ## 処理単位
 

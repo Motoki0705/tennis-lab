@@ -1,0 +1,341 @@
+{
+  "serial-heartbeat-2": {
+    "video_000/clip_000": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.14024813393317948,
+        "support": 0.8816049658043413,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.031004952291142102,
+        "support": 0.952683615819209
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    },
+    "video_000/clip_027": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.3774813587399394,
+        "support": 0.6148239823982398,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.027584328427614543,
+        "support": 0.9722222222222222
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    },
+    "video_000/clip_037": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.2574290255909258,
+        "support": 0.7529411764705882,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.008820913832074728,
+        "support": 1.0
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    }
+  },
+  "serial-fb6255a-first-1": {
+    "video_000/clip_000": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.149662156759903,
+        "support": 0.8721751412429378,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.031004952291142102,
+        "support": 0.952683615819209
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    },
+    "video_000/clip_027": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.3790392002057375,
+        "support": 0.6086601307189542,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.027584328427614543,
+        "support": 0.9722222222222222
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    },
+    "video_000/clip_037": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.25744262785657673,
+        "support": 0.7588235294117647,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.008820913832074728,
+        "support": 1.0
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    }
+  },
+  "batched-heartbeat-1": {
+    "video_000/clip_000": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.1502328921603009,
+        "support": 0.8718220338983051,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.03135531790752096,
+        "support": 0.9519774011299436
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    },
+    "video_000/clip_027": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.3773980960237603,
+        "support": 0.6148239823982398,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.02759344034315233,
+        "support": 0.9722222222222222
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    },
+    "video_000/clip_037": {
+      "status": "ok",
+      "players": 4,
+      "ball_observed": false,
+      "scene_players_vs_published": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "with_ball_validation": {
+        "cost": 0.2576433343533461,
+        "support": 0.7529411764705882,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "player_only_validation": {
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "cost": 0.008820954579165725,
+        "support": 1.0
+      },
+      "camera_geometry_exact": true,
+      "player_triangulation": {
+        "exact": true,
+        "close": true,
+        "changes": {}
+      },
+      "gpu_body_request_exact": true
+    }
+  }
+}

@@ -1,0 +1,6428 @@
+{
+  "old-serial-to-control": {
+    "quality_acceptance": false,
+    "same_input_pins": true,
+    "same_publication_pins": false,
+    "same_runtime": true,
+    "same_commit": false,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip": "video_000/clip_000",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 356,
+                "ball_detection": 194,
+                "ball_points": 189
+              },
+              "cam1": {
+                "person_detection": 356,
+                "ball_detection": 141,
+                "ball_points": 126
+              },
+              "cam2": {
+                "person_detection": 356,
+                "ball_detection": 185,
+                "ball_points": 185
+              },
+              "cam3": {
+                "person_detection": 356,
+                "ball_detection": 153,
+                "ball_points": 146
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 356,
+                "ball_detection": 194,
+                "ball_points": 189
+              },
+              "cam1": {
+                "person_detection": 356,
+                "ball_detection": 141,
+                "ball_points": 130
+              },
+              "cam2": {
+                "person_detection": 356,
+                "ball_detection": 185,
+                "ball_points": 185
+              },
+              "cam3": {
+                "person_detection": 356,
+                "ball_detection": 153,
+                "ball_points": 147
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 159,
+          "valid_candidate": 159,
+          "common_valid": 159,
+          "mask_changes": 0,
+          "max_abs_component": 0.49743032455444336,
+          "frames_over_tolerance": 134,
+          "max_frame": 211
+        },
+        "ball_mask_change_frames": [],
+        "ball_reason_changes": [
+          [
+            95,
+            1,
+            4
+          ],
+          [
+            96,
+            1,
+            4
+          ]
+        ],
+        "ball_no_2d_or_3d_frames": [
+          71,
+          71
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          3,
+          3
+        ],
+        "player_root": {
+          "valid_ref": 1412,
+          "valid_candidate": 1412,
+          "common_valid": 1412,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint": {
+          "valid_ref": 23978,
+          "valid_candidate": 23978,
+          "common_valid": 23978,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint_mask_change_frames": [],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 0,
+          "ball_rejection_code": 2,
+          "ball_vis": 4,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 0,
+          "player_kp_3d_rejection_code": 0,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 0,
+        "scene_over_tolerance": [
+          "ball_3d",
+          "ball_rejection_code",
+          "ball_uv",
+          "ball_vis"
+        ],
+        "first_ball_nodes": {
+          "ball_detection/cam0": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam1": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam2": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam3": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ]
+        },
+        "first_person_nodes": {},
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "ball_points/cam0",
+          "ball_points/cam1",
+          "ball_points/cam2",
+          "ball_points/cam3",
+          "ball_triangulation",
+          "camera_alignment",
+          "person_appearance_features/cam0",
+          "person_appearance_features/cam1",
+          "person_appearance_features/cam2",
+          "person_appearance_features/cam3",
+          "player_association",
+          "scene_assembly"
+        ],
+        "archive_arrays_exact": false
+      },
+      {
+        "clip": "video_000/clip_027",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 235,
+                "ball_detection": 209,
+                "ball_points": 205
+              },
+              "cam1": {
+                "person_detection": 235,
+                "ball_detection": 123,
+                "ball_points": 121
+              },
+              "cam2": {
+                "person_detection": 235,
+                "ball_detection": 200,
+                "ball_points": 192
+              },
+              "cam3": {
+                "person_detection": 235,
+                "ball_detection": 138,
+                "ball_points": 136
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 235,
+                "ball_detection": 210,
+                "ball_points": 207
+              },
+              "cam1": {
+                "person_detection": 235,
+                "ball_detection": 124,
+                "ball_points": 121
+              },
+              "cam2": {
+                "person_detection": 235,
+                "ball_detection": 198,
+                "ball_points": 193
+              },
+              "cam3": {
+                "person_detection": 235,
+                "ball_detection": 138,
+                "ball_points": 136
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 122,
+          "valid_candidate": 128,
+          "common_valid": 122,
+          "mask_changes": 6,
+          "max_abs_component": 0.06635701656341553,
+          "frames_over_tolerance": 105,
+          "max_frame": 133
+        },
+        "ball_mask_change_frames": [
+          8,
+          71,
+          147,
+          148,
+          149,
+          204
+        ],
+        "ball_reason_changes": [
+          [
+            8,
+            4,
+            0
+          ],
+          [
+            71,
+            6,
+            0
+          ],
+          [
+            147,
+            6,
+            0
+          ],
+          [
+            148,
+            6,
+            0
+          ],
+          [
+            149,
+            6,
+            0
+          ],
+          [
+            204,
+            4,
+            0
+          ],
+          [
+            232,
+            1,
+            3
+          ]
+        ],
+        "ball_no_2d_or_3d_frames": [
+          4,
+          3
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          227,
+          227
+        ],
+        "player_root": {
+          "valid_ref": 932,
+          "valid_candidate": 932,
+          "common_valid": 932,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint": {
+          "valid_ref": 15841,
+          "valid_candidate": 15841,
+          "common_valid": 15841,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint_mask_change_frames": [],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 6,
+          "ball_rejection_code": 7,
+          "ball_vis": 5,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 0,
+          "player_kp_3d_rejection_code": 0,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 0,
+        "scene_over_tolerance": [
+          "ball_3d",
+          "ball_3d_valid",
+          "ball_rejection_code",
+          "ball_uv",
+          "ball_vis"
+        ],
+        "first_ball_nodes": {
+          "ball_detection/cam0": [
+            "confidence",
+            "evidence",
+            "observed",
+            "point_kind",
+            "uv_px"
+          ],
+          "ball_detection/cam1": [
+            "confidence",
+            "evidence",
+            "observed",
+            "point_kind",
+            "uv_px"
+          ],
+          "ball_detection/cam2": [
+            "confidence",
+            "evidence",
+            "observed",
+            "point_kind",
+            "uv_px"
+          ],
+          "ball_detection/cam3": [
+            "confidence",
+            "evidence",
+            "observed",
+            "point_kind",
+            "uv_px"
+          ]
+        },
+        "first_person_nodes": {},
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "ball_points/cam0",
+          "ball_points/cam1",
+          "ball_points/cam2",
+          "ball_points/cam3",
+          "ball_triangulation",
+          "camera_alignment",
+          "person_appearance_features/cam0",
+          "person_appearance_features/cam1",
+          "person_appearance_features/cam2",
+          "person_appearance_features/cam3",
+          "player_association",
+          "scene_assembly"
+        ],
+        "archive_arrays_exact": false
+      },
+      {
+        "clip": "video_000/clip_037",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 292,
+                "ball_detection": 161,
+                "ball_points": 138
+              },
+              "cam1": {
+                "person_detection": 292,
+                "ball_detection": 97,
+                "ball_points": 91
+              },
+              "cam2": {
+                "person_detection": 292,
+                "ball_detection": 216,
+                "ball_points": 216
+              },
+              "cam3": {
+                "person_detection": 292,
+                "ball_detection": 156,
+                "ball_points": 140
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 292,
+                "ball_detection": 161,
+                "ball_points": 139
+              },
+              "cam1": {
+                "person_detection": 292,
+                "ball_detection": 97,
+                "ball_points": 91
+              },
+              "cam2": {
+                "person_detection": 292,
+                "ball_detection": 216,
+                "ball_points": 216
+              },
+              "cam3": {
+                "person_detection": 292,
+                "ball_detection": 156,
+                "ball_points": 140
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 130,
+          "valid_candidate": 129,
+          "common_valid": 128,
+          "mask_changes": 3,
+          "max_abs_component": 0.7100238800048828,
+          "frames_over_tolerance": 116,
+          "max_frame": 195
+        },
+        "ball_mask_change_frames": [
+          193,
+          194,
+          286
+        ],
+        "ball_reason_changes": [
+          [
+            193,
+            0,
+            6
+          ],
+          [
+            194,
+            0,
+            6
+          ],
+          [
+            286,
+            4,
+            0
+          ]
+        ],
+        "ball_no_2d_or_3d_frames": [
+          34,
+          34
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          0,
+          0
+        ],
+        "player_root": {
+          "valid_ref": 1156,
+          "valid_candidate": 1156,
+          "common_valid": 1156,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint": {
+          "valid_ref": 19720,
+          "valid_candidate": 19720,
+          "common_valid": 19720,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint_mask_change_frames": [],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 3,
+          "ball_rejection_code": 3,
+          "ball_vis": 1,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 0,
+          "player_kp_3d_rejection_code": 0,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 0,
+        "scene_over_tolerance": [
+          "ball_3d",
+          "ball_3d_valid",
+          "ball_rejection_code",
+          "ball_uv",
+          "ball_vis"
+        ],
+        "first_ball_nodes": {
+          "ball_detection/cam0": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam1": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam2": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam3": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ]
+        },
+        "first_person_nodes": {},
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "ball_points/cam0",
+          "ball_points/cam1",
+          "ball_points/cam2",
+          "ball_points/cam3",
+          "ball_triangulation",
+          "camera_alignment",
+          "person_appearance_features/cam0",
+          "person_appearance_features/cam1",
+          "person_appearance_features/cam2",
+          "person_appearance_features/cam3",
+          "player_association",
+          "scene_assembly"
+        ],
+        "archive_arrays_exact": false
+      }
+    ],
+    "clip_count": 3,
+    "ball_lineage": {
+      "video_000/clip_000": {
+        "95": {
+          "cam0": {
+            "source_window": [
+              [
+                80,
+                15
+              ],
+              [
+                80,
+                15
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0016307830810546875
+          },
+          "cam1": {
+            "source_window": [
+              [
+                80,
+                15
+              ],
+              [
+                80,
+                15
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6984323263168335,
+              0.6976089477539062
+            ],
+            "detect_xy": [
+              [
+                883.5592651367188,
+                19.385520935058594
+              ],
+              [
+                883.529296875,
+                19.251733779907227
+              ]
+            ],
+            "points_observed": [
+              false,
+              true
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                882.700439453125,
+                22.003196716308594
+              ]
+            ],
+            "heatmap_max_abs": 0.0020744800567626953
+          },
+          "cam2": {
+            "source_window": [
+              [
+                80,
+                15
+              ],
+              [
+                80,
+                15
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.750552773475647,
+              0.750552773475647
+            ],
+            "detect_xy": [
+              [
+                842.6572875976562,
+                240.8072052001953
+              ],
+              [
+                842.8148803710938,
+                240.95428466796875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                846.8819580078125,
+                241.24598693847656
+              ],
+              [
+                847.0090942382812,
+                241.4221649169922
+              ]
+            ],
+            "heatmap_max_abs": 0.0018512606620788574
+          },
+          "cam3": {
+            "source_window": [
+              [
+                80,
+                15
+              ],
+              [
+                80,
+                15
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0017704963684082031
+          }
+        },
+        "96": {
+          "cam0": {
+            "source_window": [
+              [
+                80,
+                16
+              ],
+              [
+                80,
+                16
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0018215179443359375
+          },
+          "cam1": {
+            "source_window": [
+              [
+                80,
+                16
+              ],
+              [
+                80,
+                16
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6934729218482971,
+              0.6934729218482971
+            ],
+            "detect_xy": [
+              [
+                879.8939208984375,
+                6.1156744956970215
+              ],
+              [
+                879.973388671875,
+                6.1156744956970215
+              ]
+            ],
+            "points_observed": [
+              false,
+              true
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                881.7234497070312,
+                8.703173637390137
+              ]
+            ],
+            "heatmap_max_abs": 0.0025115907192230225
+          },
+          "cam2": {
+            "source_window": [
+              [
+                80,
+                16
+              ],
+              [
+                80,
+                16
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7563575506210327,
+              0.7563575506210327
+            ],
+            "detect_xy": [
+              [
+                846.1070556640625,
+                238.69671630859375
+              ],
+              [
+                846.1070556640625,
+                238.69671630859375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                847.159423828125,
+                238.8281707763672
+              ],
+              [
+                847.2562866210938,
+                238.98020935058594
+              ]
+            ],
+            "heatmap_max_abs": 0.001673191785812378
+          },
+          "cam3": {
+            "source_window": [
+              [
+                80,
+                16
+              ],
+              [
+                80,
+                16
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0016307830810546875
+          }
+        },
+        "211": {
+          "cam0": {
+            "source_window": [
+              [
+                192,
+                19
+              ],
+              [
+                192,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7918210625648499,
+              0.7918210625648499
+            ],
+            "detect_xy": [
+              [
+                1043.9107666015625,
+                396.5941467285156
+              ],
+              [
+                1043.9107666015625,
+                396.5941467285156
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1040.987060546875,
+                398.7263488769531
+              ],
+              [
+                1040.983642578125,
+                398.7015075683594
+              ]
+            ],
+            "heatmap_max_abs": 0.002423331141471863
+          },
+          "cam1": {
+            "source_window": [
+              [
+                192,
+                19
+              ],
+              [
+                192,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6477982401847839,
+              0.6477982401847839
+            ],
+            "detect_xy": [
+              [
+                1078.7186279296875,
+                443.90496826171875
+              ],
+              [
+                1078.7186279296875,
+                443.5496520996094
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1083.9210205078125,
+                443.0067138671875
+              ],
+              [
+                1083.899658203125,
+                442.9604797363281
+              ]
+            ],
+            "heatmap_max_abs": 0.0018561482429504395
+          },
+          "cam2": {
+            "source_window": [
+              [
+                192,
+                19
+              ],
+              [
+                192,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7178037762641907,
+              0.7178037762641907
+            ],
+            "detect_xy": [
+              [
+                1009.1229858398438,
+                391.41632080078125
+              ],
+              [
+                1009.1229858398438,
+                391.4477233886719
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1012.2208862304688,
+                401.1461486816406
+              ],
+              [
+                1012.2417602539062,
+                401.1716613769531
+              ]
+            ],
+            "heatmap_max_abs": 0.0026339590549468994
+          },
+          "cam3": {
+            "source_window": [
+              [
+                192,
+                19
+              ],
+              [
+                192,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6934729218482971,
+              0.6926419734954834
+            ],
+            "detect_xy": [
+              [
+                847.0112915039062,
+                256.1871337890625
+              ],
+              [
+                847.051025390625,
+                256.1871337890625
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                845.2129516601562,
+                258.63372802734375
+              ],
+              [
+                845.2647705078125,
+                258.61444091796875
+              ]
+            ],
+            "heatmap_max_abs": 0.002423331141471863
+          }
+        }
+      },
+      "video_000/clip_027": {
+        "8": {
+          "cam0": {
+            "source_window": [
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                8
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8539127111434937,
+              0.8539127111434937
+            ],
+            "detect_xy": [
+              [
+                790.443603515625,
+                372.1502990722656
+              ],
+              [
+                790.3328857421875,
+                372.1112060546875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                793.957275390625,
+                369.97894287109375
+              ],
+              [
+                793.9699096679688,
+                369.9681701660156
+              ]
+            ],
+            "heatmap_max_abs": 0.002555251121520996
+          },
+          "cam1": {
+            "source_window": [
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                8
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5794004201889038,
+              0.5798763036727905
+            ],
+            "detect_xy": [
+              [
+                1557.367919921875,
+                458.4452819824219
+              ],
+              [
+                1557.4227294921875,
+                458.3985290527344
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1555.537841796875,
+                463.3799133300781
+              ],
+              [
+                1555.509521484375,
+                463.3359375
+              ]
+            ],
+            "heatmap_max_abs": 0.0019309520721435547
+          },
+          "cam2": {
+            "source_window": [
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                8
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6361271142959595,
+              0.6361271142959595
+            ],
+            "detect_xy": [
+              [
+                830.2559814453125,
+                387.8011169433594
+              ],
+              [
+                830.2559814453125,
+                387.8011169433594
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                830.2052001953125,
+                387.4936218261719
+              ],
+              [
+                830.2490844726562,
+                387.6813049316406
+              ]
+            ],
+            "heatmap_max_abs": 0.0018306374549865723
+          },
+          "cam3": {
+            "source_window": [
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                8
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.002147674560546875
+          }
+        },
+        "71": {
+          "cam0": {
+            "source_window": [
+              [
+                48,
+                23
+              ],
+              [
+                48,
+                23
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8198933005332947,
+              0.8198933005332947
+            ],
+            "detect_xy": [
+              [
+                876.6297607421875,
+                359.09637451171875
+              ],
+              [
+                876.5823974609375,
+                359.09637451171875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                878.6837158203125,
+                352.39324951171875
+              ],
+              [
+                878.586181640625,
+                352.293212890625
+              ]
+            ],
+            "heatmap_max_abs": 0.0027047693729400635
+          },
+          "cam1": {
+            "source_window": [
+              [
+                48,
+                23
+              ],
+              [
+                48,
+                23
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8255897164344788,
+              0.8255897164344788
+            ],
+            "detect_xy": [
+              [
+                1351.52880859375,
+                399.0898742675781
+              ],
+              [
+                1351.6815185546875,
+                399.0898742675781
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1350.677490234375,
+                403.6498107910156
+              ],
+              [
+                1350.7257080078125,
+                403.58404541015625
+              ]
+            ],
+            "heatmap_max_abs": 0.001844644546508789
+          },
+          "cam2": {
+            "source_window": [
+              [
+                48,
+                23
+              ],
+              [
+                48,
+                23
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6791787147521973,
+              0.6783269047737122
+            ],
+            "detect_xy": [
+              [
+                830.3549194335938,
+                390.56298828125
+              ],
+              [
+                830.2620239257812,
+                390.8021545410156
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                836.2715454101562,
+                391.11309814453125
+              ],
+              [
+                836.14208984375,
+                391.0779113769531
+              ]
+            ],
+            "heatmap_max_abs": 0.0019157007336616516
+          },
+          "cam3": {
+            "source_window": [
+              [
+                48,
+                23
+              ],
+              [
+                48,
+                23
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0018585920333862305
+          }
+        },
+        "133": {
+          "cam0": {
+            "source_window": [
+              [
+                112,
+                21
+              ],
+              [
+                112,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6132366061210632,
+              0.6123096346855164
+            ],
+            "detect_xy": [
+              [
+                1028.2825927734375,
+                412.3052673339844
+              ],
+              [
+                1028.22607421875,
+                412.3052978515625
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1026.9658203125,
+                410.663330078125
+              ],
+              [
+                1025.87353515625,
+                408.067626953125
+              ]
+            ],
+            "heatmap_max_abs": 0.0025694072246551514
+          },
+          "cam1": {
+            "source_window": [
+              [
+                112,
+                21
+              ],
+              [
+                112,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6352224349975586,
+              0.6352224349975586
+            ],
+            "detect_xy": [
+              [
+                666.7256469726562,
+                429.3535461425781
+              ],
+              [
+                666.7256469726562,
+                429.3535461425781
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                667.4047241210938,
+                425.8950500488281
+              ],
+              [
+                667.4527587890625,
+                425.9014892578125
+              ]
+            ],
+            "heatmap_max_abs": 0.001592189073562622
+          },
+          "cam2": {
+            "source_window": [
+              [
+                112,
+                21
+              ],
+              [
+                112,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6379335522651672,
+              0.6379335522651672
+            ],
+            "detect_xy": [
+              [
+                984.8155517578125,
+                494.8457336425781
+              ],
+              [
+                984.6124267578125,
+                494.90045166015625
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                986.4194946289062,
+                492.0683898925781
+              ],
+              [
+                986.6181030273438,
+                492.4008483886719
+              ]
+            ],
+            "heatmap_max_abs": 0.0018546581268310547
+          },
+          "cam3": {
+            "source_window": [
+              [
+                112,
+                21
+              ],
+              [
+                112,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8469578623771667,
+              0.8469578623771667
+            ],
+            "detect_xy": [
+              [
+                1360.4039306640625,
+                307.2885437011719
+              ],
+              [
+                1360.4722900390625,
+                307.2885437011719
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1363.647216796875,
+                304.44598388671875
+              ],
+              [
+                1364.4024658203125,
+                304.6060485839844
+              ]
+            ],
+            "heatmap_max_abs": 0.001593261957168579
+          }
+        },
+        "147": {
+          "cam0": {
+            "source_window": [
+              [
+                128,
+                19
+              ],
+              [
+                128,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6842640042304993,
+              0.6842640042304993
+            ],
+            "detect_xy": [
+              [
+                1031.0360107421875,
+                421.89849853515625
+              ],
+              [
+                1031.010009765625,
+                421.9004211425781
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1043.36669921875,
+                408.2567443847656
+              ],
+              [
+                1043.4219970703125,
+                408.2174072265625
+              ]
+            ],
+            "heatmap_max_abs": 0.002844706177711487
+          },
+          "cam1": {
+            "source_window": [
+              [
+                128,
+                19
+              ],
+              [
+                128,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.66888028383255,
+              0.66888028383255
+            ],
+            "detect_xy": [
+              [
+                621.1270751953125,
+                439.0188293457031
+              ],
+              [
+                621.1270751953125,
+                439.0188293457031
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                620.8248291015625,
+                438.7182312011719
+              ],
+              [
+                620.8416137695312,
+                438.740234375
+              ]
+            ],
+            "heatmap_max_abs": 0.0026226043701171875
+          },
+          "cam2": {
+            "source_window": [
+              [
+                128,
+                19
+              ],
+              [
+                128,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6197014451026917,
+              0.6187804341316223
+            ],
+            "detect_xy": [
+              [
+                960.5369873046875,
+                526.7042846679688
+              ],
+              [
+                960.537109375,
+                526.8379516601562
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0018687248229980469
+          },
+          "cam3": {
+            "source_window": [
+              [
+                128,
+                19
+              ],
+              [
+                128,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6020615696907043,
+              0.6029970645904541
+            ],
+            "detect_xy": [
+              [
+                1431.541259765625,
+                296.203857421875
+              ],
+              [
+                1431.569580078125,
+                296.3194274902344
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1412.4510498046875,
+                300.0323181152344
+              ],
+              [
+                1411.784912109375,
+                300.1143798828125
+              ]
+            ],
+            "heatmap_max_abs": 0.00280645489692688
+          }
+        },
+        "148": {
+          "cam0": {
+            "source_window": [
+              [
+                128,
+                20
+              ],
+              [
+                128,
+                20
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6067315340042114,
+              0.6085940003395081
+            ],
+            "detect_xy": [
+              [
+                1042.9783935546875,
+                399.2017822265625
+              ],
+              [
+                1042.978515625,
+                399.20196533203125
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1043.520263671875,
+                406.46563720703125
+              ],
+              [
+                1043.5291748046875,
+                406.4585266113281
+              ]
+            ],
+            "heatmap_max_abs": 0.0036719441413879395
+          },
+          "cam1": {
+            "source_window": [
+              [
+                128,
+                20
+              ],
+              [
+                128,
+                20
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5997195839881897,
+              0.6011253595352173
+            ],
+            "detect_xy": [
+              [
+                629.5143432617188,
+                437.025146484375
+              ],
+              [
+                629.5051879882812,
+                437.025146484375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                622.3372802734375,
+                436.1298522949219
+              ],
+              [
+                622.3524169921875,
+                436.1307067871094
+              ]
+            ],
+            "heatmap_max_abs": 0.002555251121520996
+          },
+          "cam2": {
+            "source_window": [
+              [
+                128,
+                20
+              ],
+              [
+                128,
+                20
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6067315340042114,
+              0.6067315340042114
+            ],
+            "detect_xy": [
+              [
+                956.7083129882812,
+                521.9170532226562
+              ],
+              [
+                956.7083129882812,
+                521.9170532226562
+              ]
+            ],
+            "points_observed": [
+              false,
+              true
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                952.3889770507812,
+                515.18798828125
+              ]
+            ],
+            "heatmap_max_abs": 0.0026108920574188232
+          },
+          "cam3": {
+            "source_window": [
+              [
+                128,
+                20
+              ],
+              [
+                128,
+                20
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7994422912597656,
+              0.8006919622421265
+            ],
+            "detect_xy": [
+              [
+                1409.8719482421875,
+                298.3826904296875
+              ],
+              [
+                1405.5465087890625,
+                298.7442626953125
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1395.29833984375,
+                297.11798095703125
+              ],
+              [
+                1394.7559814453125,
+                297.2414245605469
+              ]
+            ],
+            "heatmap_max_abs": 0.00207442045211792
+          }
+        },
+        "149": {
+          "cam0": {
+            "source_window": [
+              [
+                128,
+                21
+              ],
+              [
+                128,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7098243832588196,
+              0.7106282711029053
+            ],
+            "detect_xy": [
+              [
+                1044.255126953125,
+                398.50982666015625
+              ],
+              [
+                1044.375,
+                398.544677734375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1043.8050537109375,
+                404.0315856933594
+              ],
+              [
+                1043.814697265625,
+                404.01171875
+              ]
+            ],
+            "heatmap_max_abs": 0.0025052279233932495
+          },
+          "cam1": {
+            "source_window": [
+              [
+                128,
+                21
+              ],
+              [
+                128,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5803520083427429,
+              0.5808276534080505
+            ],
+            "detect_xy": [
+              [
+                618.523681640625,
+                437.8258361816406
+              ],
+              [
+                618.556396484375,
+                437.81561279296875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                626.4924926757812,
+                433.2180480957031
+              ],
+              [
+                626.5055541992188,
+                433.2074890136719
+              ]
+            ],
+            "heatmap_max_abs": 0.0019816160202026367
+          },
+          "cam2": {
+            "source_window": [
+              [
+                128,
+                21
+              ],
+              [
+                128,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6160122752189636,
+              0.6160122752189636
+            ],
+            "detect_xy": [
+              [
+                945.9234008789062,
+                526.7939453125
+              ],
+              [
+                945.9039306640625,
+                526.6519165039062
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                953.0210571289062,
+                506.51446533203125
+              ],
+              [
+                953.6447143554688,
+                510.0841979980469
+              ]
+            ],
+            "heatmap_max_abs": 0.0021139979362487793
+          },
+          "cam3": {
+            "source_window": [
+              [
+                128,
+                21
+              ],
+              [
+                128,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8757869601249695,
+              0.8757869601249695
+            ],
+            "detect_xy": [
+              [
+                1373.3980712890625,
+                289.58294677734375
+              ],
+              [
+                1373.3980712890625,
+                289.58294677734375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1373.37548828125,
+                292.5885009765625
+              ],
+              [
+                1372.6993408203125,
+                292.65057373046875
+              ]
+            ],
+            "heatmap_max_abs": 0.00298231840133667
+          }
+        },
+        "204": {
+          "cam0": {
+            "source_window": [
+              [
+                192,
+                12
+              ],
+              [
+                192,
+                12
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8539127111434937,
+              0.8539127111434937
+            ],
+            "detect_xy": [
+              [
+                902.4598388671875,
+                562.579833984375
+              ],
+              [
+                902.4598388671875,
+                562.579833984375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                901.0650634765625,
+                562.6358642578125
+              ],
+              [
+                901.28662109375,
+                561.2350463867188
+              ]
+            ],
+            "heatmap_max_abs": 0.002301931381225586
+          },
+          "cam1": {
+            "source_window": [
+              [
+                192,
+                12
+              ],
+              [
+                192,
+                12
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7745833992958069,
+              0.7745833992958069
+            ],
+            "detect_xy": [
+              [
+                1558.50244140625,
+                533.32275390625
+              ],
+              [
+                1558.3692626953125,
+                533.318115234375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1556.25,
+                543.049072265625
+              ],
+              [
+                1556.270751953125,
+                542.9744262695312
+              ]
+            ],
+            "heatmap_max_abs": 0.0026695728302001953
+          },
+          "cam2": {
+            "source_window": [
+              [
+                192,
+                12
+              ],
+              [
+                192,
+                12
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6592954993247986,
+              0.6601723432540894
+            ],
+            "detect_xy": [
+              [
+                839.1865234375,
+                390.8006896972656
+              ],
+              [
+                840.3858642578125,
+                392.25
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                842.4317016601562,
+                390.6000061035156
+              ],
+              [
+                841.257080078125,
+                390.7250671386719
+              ]
+            ],
+            "heatmap_max_abs": 0.001837700605392456
+          },
+          "cam3": {
+            "source_window": [
+              [
+                192,
+                12
+              ],
+              [
+                192,
+                12
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7041600942611694,
+              0.703345775604248
+            ],
+            "detect_xy": [
+              [
+                1582.8896484375,
+                231.30494689941406
+              ],
+              [
+                1583.012451171875,
+                231.30491638183594
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1591.03076171875,
+                238.78929138183594
+              ],
+              [
+                1590.6009521484375,
+                238.71536254882812
+              ]
+            ],
+            "heatmap_max_abs": 0.0018702149391174316
+          }
+        },
+        "232": {
+          "cam0": {
+            "source_window": [
+              [
+                203,
+                29
+              ],
+              [
+                203,
+                29
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6187804341316223,
+              0.6197014451026917
+            ],
+            "detect_xy": [
+              [
+                492.7579040527344,
+                992.0758056640625
+              ],
+              [
+                492.7579040527344,
+                992.0654296875
+              ]
+            ],
+            "points_observed": [
+              false,
+              true
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                492.7579040527344,
+                992.0654296875
+              ]
+            ],
+            "heatmap_max_abs": 0.0025694072246551514
+          },
+          "cam1": {
+            "source_window": [
+              [
+                203,
+                29
+              ],
+              [
+                203,
+                29
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0017500966787338257
+          },
+          "cam2": {
+            "source_window": [
+              [
+                203,
+                29
+              ],
+              [
+                203,
+                29
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5836780667304993,
+              0.5851011276245117
+            ],
+            "detect_xy": [
+              [
+                834.8875122070312,
+                385.90911865234375
+              ],
+              [
+                847.7054443359375,
+                392.19573974609375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                839.5037841796875,
+                388.1565856933594
+              ],
+              [
+                843.506591796875,
+                390.10736083984375
+              ]
+            ],
+            "heatmap_max_abs": 0.001876145601272583
+          },
+          "cam3": {
+            "source_window": [
+              [
+                203,
+                29
+              ],
+              [
+                203,
+                29
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0022199898958206177
+          }
+        }
+      },
+      "video_000/clip_037": {
+        "193": {
+          "cam0": {
+            "source_window": [
+              [
+                176,
+                17
+              ],
+              [
+                176,
+                17
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7786493301391602,
+              0.7786493301391602
+            ],
+            "detect_xy": [
+              [
+                924.7350463867188,
+                399.8284912109375
+              ],
+              [
+                924.6737670898438,
+                399.8284912109375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                925.033203125,
+                400.13525390625
+              ],
+              [
+                923.52685546875,
+                401.6140441894531
+              ]
+            ],
+            "heatmap_max_abs": 0.001714169979095459
+          },
+          "cam1": {
+            "source_window": [
+              [
+                176,
+                17
+              ],
+              [
+                176,
+                17
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7718434929847717,
+              0.7718434929847717
+            ],
+            "detect_xy": [
+              [
+                933.6407470703125,
+                439.1919860839844
+              ],
+              [
+                933.6407470703125,
+                439.1919860839844
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                932.8509521484375,
+                437.98602294921875
+              ],
+              [
+                933.0720825195312,
+                438.2112121582031
+              ]
+            ],
+            "heatmap_max_abs": 0.0027399063110351562
+          },
+          "cam2": {
+            "source_window": [
+              [
+                176,
+                17
+              ],
+              [
+                176,
+                17
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7341195344924927,
+              0.7341195344924927
+            ],
+            "detect_xy": [
+              [
+                1105.364013671875,
+                415.01141357421875
+              ],
+              [
+                1105.7752685546875,
+                415.01141357421875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1102.7156982421875,
+                409.88787841796875
+              ],
+              [
+                1102.7255859375,
+                409.7345275878906
+              ]
+            ],
+            "heatmap_max_abs": 0.0016114115715026855
+          },
+          "cam3": {
+            "source_window": [
+              [
+                176,
+                17
+              ],
+              [
+                176,
+                17
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5945512652397156,
+              0.5940803289413452
+            ],
+            "detect_xy": [
+              [
+                1580.1474609375,
+                240.21119689941406
+              ],
+              [
+                1580.260986328125,
+                240.18582153320312
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0031636953353881836
+          }
+        },
+        "194": {
+          "cam0": {
+            "source_window": [
+              [
+                176,
+                18
+              ],
+              [
+                176,
+                18
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7662936449050903,
+              0.7662936449050903
+            ],
+            "detect_xy": [
+              [
+                933.3732299804688,
+                397.45794677734375
+              ],
+              [
+                933.3732299804688,
+                397.2278137207031
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                933.4998779296875,
+                399.20965576171875
+              ],
+              [
+                931.909423828125,
+                400.8125915527344
+              ]
+            ],
+            "heatmap_max_abs": 0.0015906095504760742
+          },
+          "cam1": {
+            "source_window": [
+              [
+                176,
+                18
+              ],
+              [
+                176,
+                18
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7620701193809509,
+              0.7620701193809509
+            ],
+            "detect_xy": [
+              [
+                920.8035278320312,
+                435.6442565917969
+              ],
+              [
+                920.8035278320312,
+                435.6442565917969
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                921.6378173828125,
+                435.9269104003906
+              ],
+              [
+                921.8012084960938,
+                436.13677978515625
+              ]
+            ],
+            "heatmap_max_abs": 0.0029367804527282715
+          },
+          "cam2": {
+            "source_window": [
+              [
+                176,
+                18
+              ],
+              [
+                176,
+                18
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7325918078422546,
+              0.7325918078422546
+            ],
+            "detect_xy": [
+              [
+                1096.203125,
+                414.2652893066406
+              ],
+              [
+                1096.203125,
+                414.4042663574219
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1098.4747314453125,
+                410.82635498046875
+              ],
+              [
+                1098.5396728515625,
+                410.62091064453125
+              ]
+            ],
+            "heatmap_max_abs": 0.0015798211097717285
+          },
+          "cam3": {
+            "source_window": [
+              [
+                176,
+                18
+              ],
+              [
+                176,
+                18
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6233768463134766,
+              0.6242935061454773
+            ],
+            "detect_xy": [
+              [
+                981.0247192382812,
+                272.0890808105469
+              ],
+              [
+                981.03515625,
+                251.0696258544922
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                979.1439208984375,
+                270.0733642578125
+              ],
+              [
+                979.1561279296875,
+                255.2084197998047
+              ]
+            ],
+            "heatmap_max_abs": 0.00298231840133667
+          }
+        },
+        "195": {
+          "cam0": {
+            "source_window": [
+              [
+                176,
+                19
+              ],
+              [
+                176,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7620701193809509,
+              0.7606506943702698
+            ],
+            "detect_xy": [
+              [
+                943.0675659179688,
+                398.5126647949219
+              ],
+              [
+                942.92919921875,
+                398.6303405761719
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                941.3392333984375,
+                398.6395568847656
+              ],
+              [
+                940.1074829101562,
+                399.9058532714844
+              ]
+            ],
+            "heatmap_max_abs": 0.0030498206615448
+          },
+          "cam1": {
+            "source_window": [
+              [
+                176,
+                19
+              ],
+              [
+                176,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7534666657447815,
+              0.7534666657447815
+            ],
+            "detect_xy": [
+              [
+                909.2423095703125,
+                433.8512878417969
+              ],
+              [
+                909.2423095703125,
+                433.8512878417969
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                911.3373413085938,
+                434.8364562988281
+              ],
+              [
+                911.2102661132812,
+                434.5592041015625
+              ]
+            ],
+            "heatmap_max_abs": 0.0028076171875
+          },
+          "cam2": {
+            "source_window": [
+              [
+                176,
+                19
+              ],
+              [
+                176,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.750552773475647,
+              0.750552773475647
+            ],
+            "detect_xy": [
+              [
+                1096.493896484375,
+                414.9031982421875
+              ],
+              [
+                1096.493896484375,
+                415.02081298828125
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1093.7696533203125,
+                410.9324035644531
+              ],
+              [
+                1093.8773193359375,
+                410.68951416015625
+              ]
+            ],
+            "heatmap_max_abs": 0.0029367804527282715
+          },
+          "cam3": {
+            "source_window": [
+              [
+                176,
+                19
+              ],
+              [
+                176,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6039317846298218,
+              0.6020615696907043
+            ],
+            "detect_xy": [
+              [
+                980.7520751953125,
+                265.4583435058594
+              ],
+              [
+                980.7922973632812,
+                265.4208984375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                984.204833984375,
+                267.5872497558594
+              ],
+              [
+                984.2178344726562,
+                259.4460144042969
+              ]
+            ],
+            "heatmap_max_abs": 0.002187371253967285
+          }
+        },
+        "286": {
+          "cam0": {
+            "source_window": [
+              [
+                260,
+                26
+              ],
+              [
+                260,
+                26
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5712883472442627,
+              0.5712883472442627
+            ],
+            "detect_xy": [
+              [
+                275.903564453125,
+                452.4544677734375
+              ],
+              [
+                275.8951416015625,
+                452.4544677734375
+              ]
+            ],
+            "points_observed": [
+              false,
+              true
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                273.36907958984375,
+                453.6343994140625
+              ]
+            ],
+            "heatmap_max_abs": 0.0033319592475891113
+          },
+          "cam1": {
+            "source_window": [
+              [
+                260,
+                26
+              ],
+              [
+                260,
+                26
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.002069428563117981
+          },
+          "cam2": {
+            "source_window": [
+              [
+                260,
+                26
+              ],
+              [
+                260,
+                26
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6039317846298218,
+              0.6039317846298218
+            ],
+            "detect_xy": [
+              [
+                346.5552062988281,
+                694.1180419921875
+              ],
+              [
+                346.3531188964844,
+                694.1148681640625
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                348.47625732421875,
+                695.2926025390625
+              ],
+              [
+                348.4683532714844,
+                695.289794921875
+              ]
+            ],
+            "heatmap_max_abs": 0.0021028369665145874
+          },
+          "cam3": {
+            "source_window": [
+              [
+                260,
+                26
+              ],
+              [
+                260,
+                26
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6893056035041809,
+              0.6893056035041809
+            ],
+            "detect_xy": [
+              [
+                1509.50048828125,
+                251.55160522460938
+              ],
+              [
+                1509.50048828125,
+                251.55160522460938
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1514.4051513671875,
+                253.1602020263672
+              ],
+              [
+                1514.454833984375,
+                253.0879669189453
+              ]
+            ],
+            "heatmap_max_abs": 0.0026140809059143066
+          }
+        }
+      }
+    }
+  },
+  "to-batched": {
+    "quality_acceptance": false,
+    "same_input_pins": true,
+    "same_publication_pins": true,
+    "same_runtime": true,
+    "same_commit": true,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip": "video_000/clip_000",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 356,
+                "ball_detection": 194,
+                "ball_points": 189
+              },
+              "cam1": {
+                "person_detection": 356,
+                "ball_detection": 141,
+                "ball_points": 130
+              },
+              "cam2": {
+                "person_detection": 356,
+                "ball_detection": 185,
+                "ball_points": 185
+              },
+              "cam3": {
+                "person_detection": 356,
+                "ball_detection": 153,
+                "ball_points": 147
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 356,
+                "ball_detection": 194,
+                "ball_points": 189
+              },
+              "cam1": {
+                "person_detection": 356,
+                "ball_detection": 141,
+                "ball_points": 130
+              },
+              "cam2": {
+                "person_detection": 356,
+                "ball_detection": 185,
+                "ball_points": 185
+              },
+              "cam3": {
+                "person_detection": 356,
+                "ball_detection": 153,
+                "ball_points": 147
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 159,
+          "valid_candidate": 159,
+          "common_valid": 159,
+          "mask_changes": 0,
+          "max_abs_component": 0.4975271224975586,
+          "frames_over_tolerance": 147,
+          "max_frame": 211
+        },
+        "ball_mask_change_frames": [],
+        "ball_reason_changes": [],
+        "ball_no_2d_or_3d_frames": [
+          71,
+          71
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          3,
+          3
+        ],
+        "player_root": {
+          "valid_ref": 1412,
+          "valid_candidate": 1412,
+          "common_valid": 1412,
+          "mask_changes": 0,
+          "max_abs_component": 0.0025043487548828125,
+          "frames_over_tolerance": 34,
+          "max_frame": 80
+        },
+        "player_joint": {
+          "valid_ref": 23978,
+          "valid_candidate": 23980,
+          "common_valid": 23976,
+          "mask_changes": 6,
+          "max_abs_component": 0.3005598783493042,
+          "frames_over_tolerance": 311,
+          "max_frame": 124
+        },
+        "player_joint_mask_change_frames": [
+          261,
+          283,
+          299,
+          306,
+          308,
+          316
+        ],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 0,
+          "ball_rejection_code": 0,
+          "ball_vis": 0,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 6,
+          "player_kp_3d_rejection_code": 6,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 1,
+        "scene_over_tolerance": [
+          "ball_3d",
+          "ball_uv",
+          "human_kp_2d",
+          "human_kp_vis",
+          "player_canonical_pose",
+          "player_kp_3d",
+          "player_kp_3d_rejection_code",
+          "player_kp_3d_vis",
+          "player_position",
+          "player_yaw",
+          "smpl_betas",
+          "smpl_body_pose",
+          "smpl_global_orient",
+          "smpl_vertices_local"
+        ],
+        "first_ball_nodes": {
+          "ball_detection/cam0": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam1": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam2": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam3": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ]
+        },
+        "first_person_nodes": {
+          "person_detection/cam0": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ],
+          "person_detection/cam1": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ],
+          "person_detection/cam2": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ],
+          "person_detection/cam3": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ]
+        },
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "ball_points/cam0",
+          "ball_points/cam1",
+          "ball_points/cam2",
+          "ball_points/cam3",
+          "ball_triangulation",
+          "body_placement",
+          "body_view_selection",
+          "camera_alignment",
+          "court_side",
+          "gvhmr",
+          "hmr2_features",
+          "person_appearance_features/cam0",
+          "person_appearance_features/cam1",
+          "person_appearance_features/cam2",
+          "person_appearance_features/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3",
+          "person_pose_features/cam0",
+          "person_pose_features/cam1",
+          "person_pose_features/cam2",
+          "person_pose_features/cam3",
+          "person_tracking/cam0",
+          "person_tracking/cam1",
+          "person_tracking/cam2",
+          "person_tracking/cam3",
+          "player_association",
+          "player_selection/cam0",
+          "player_selection/cam1",
+          "player_selection/cam2",
+          "player_selection/cam3",
+          "player_triangulation",
+          "pose_estimation/cam0",
+          "pose_estimation/cam1",
+          "pose_estimation/cam2",
+          "pose_estimation/cam3",
+          "scene_assembly"
+        ],
+        "archive_arrays_exact": false
+      },
+      {
+        "clip": "video_000/clip_027",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 235,
+                "ball_detection": 210,
+                "ball_points": 207
+              },
+              "cam1": {
+                "person_detection": 235,
+                "ball_detection": 124,
+                "ball_points": 121
+              },
+              "cam2": {
+                "person_detection": 235,
+                "ball_detection": 198,
+                "ball_points": 193
+              },
+              "cam3": {
+                "person_detection": 235,
+                "ball_detection": 138,
+                "ball_points": 136
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 235,
+                "ball_detection": 209,
+                "ball_points": 205
+              },
+              "cam1": {
+                "person_detection": 235,
+                "ball_detection": 123,
+                "ball_points": 121
+              },
+              "cam2": {
+                "person_detection": 235,
+                "ball_detection": 200,
+                "ball_points": 192
+              },
+              "cam3": {
+                "person_detection": 235,
+                "ball_detection": 138,
+                "ball_points": 136
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 128,
+          "valid_candidate": 123,
+          "common_valid": 123,
+          "mask_changes": 5,
+          "max_abs_component": 0.066567063331604,
+          "frames_over_tolerance": 109,
+          "max_frame": 133
+        },
+        "ball_mask_change_frames": [
+          8,
+          71,
+          147,
+          148,
+          149
+        ],
+        "ball_reason_changes": [
+          [
+            8,
+            0,
+            4
+          ],
+          [
+            71,
+            0,
+            6
+          ],
+          [
+            147,
+            0,
+            6
+          ],
+          [
+            148,
+            0,
+            6
+          ],
+          [
+            149,
+            0,
+            6
+          ],
+          [
+            232,
+            3,
+            1
+          ]
+        ],
+        "ball_no_2d_or_3d_frames": [
+          3,
+          4
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          227,
+          227
+        ],
+        "player_root": {
+          "valid_ref": 932,
+          "valid_candidate": 932,
+          "common_valid": 932,
+          "mask_changes": 0,
+          "max_abs_component": 0.023472189903259277,
+          "frames_over_tolerance": 32,
+          "max_frame": 28
+        },
+        "player_joint": {
+          "valid_ref": 15841,
+          "valid_candidate": 15841,
+          "common_valid": 15841,
+          "mask_changes": 0,
+          "max_abs_component": 0.16473913192749023,
+          "frames_over_tolerance": 203,
+          "max_frame": 40
+        },
+        "player_joint_mask_change_frames": [],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 5,
+          "ball_rejection_code": 6,
+          "ball_vis": 5,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 0,
+          "player_kp_3d_rejection_code": 0,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 14,
+        "scene_over_tolerance": [
+          "ball_3d",
+          "ball_3d_valid",
+          "ball_rejection_code",
+          "ball_uv",
+          "ball_vis",
+          "human_kp_2d",
+          "human_kp_vis",
+          "player_canonical_pose",
+          "player_kp_3d",
+          "player_position",
+          "player_yaw",
+          "smpl_betas",
+          "smpl_body_pose",
+          "smpl_global_orient",
+          "smpl_vertices_local"
+        ],
+        "first_ball_nodes": {
+          "ball_detection/cam0": [
+            "confidence",
+            "evidence",
+            "observed",
+            "point_kind",
+            "uv_px"
+          ],
+          "ball_detection/cam1": [
+            "confidence",
+            "evidence",
+            "observed",
+            "point_kind",
+            "uv_px"
+          ],
+          "ball_detection/cam2": [
+            "confidence",
+            "evidence",
+            "observed",
+            "point_kind",
+            "uv_px"
+          ],
+          "ball_detection/cam3": [
+            "confidence",
+            "evidence",
+            "observed",
+            "point_kind",
+            "uv_px"
+          ]
+        },
+        "first_person_nodes": {
+          "person_detection/cam0": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ],
+          "person_detection/cam1": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets"
+          ],
+          "person_detection/cam2": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ],
+          "person_detection/cam3": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ]
+        },
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "ball_points/cam0",
+          "ball_points/cam1",
+          "ball_points/cam2",
+          "ball_points/cam3",
+          "ball_triangulation",
+          "body_placement",
+          "body_view_selection",
+          "camera_alignment",
+          "court_side",
+          "gvhmr",
+          "hmr2_features",
+          "person_appearance_features/cam0",
+          "person_appearance_features/cam1",
+          "person_appearance_features/cam2",
+          "person_appearance_features/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3",
+          "person_pose_features/cam0",
+          "person_pose_features/cam1",
+          "person_pose_features/cam2",
+          "person_pose_features/cam3",
+          "person_tracking/cam0",
+          "person_tracking/cam1",
+          "person_tracking/cam2",
+          "person_tracking/cam3",
+          "player_association",
+          "player_selection/cam0",
+          "player_selection/cam1",
+          "player_selection/cam2",
+          "player_selection/cam3",
+          "player_triangulation",
+          "pose_estimation/cam0",
+          "pose_estimation/cam1",
+          "pose_estimation/cam2",
+          "pose_estimation/cam3",
+          "scene_assembly"
+        ],
+        "archive_arrays_exact": false
+      },
+      {
+        "clip": "video_000/clip_037",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 292,
+                "ball_detection": 161,
+                "ball_points": 139
+              },
+              "cam1": {
+                "person_detection": 292,
+                "ball_detection": 97,
+                "ball_points": 91
+              },
+              "cam2": {
+                "person_detection": 292,
+                "ball_detection": 216,
+                "ball_points": 216
+              },
+              "cam3": {
+                "person_detection": 292,
+                "ball_detection": 156,
+                "ball_points": 140
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 292,
+                "ball_detection": 161,
+                "ball_points": 138
+              },
+              "cam1": {
+                "person_detection": 292,
+                "ball_detection": 97,
+                "ball_points": 91
+              },
+              "cam2": {
+                "person_detection": 292,
+                "ball_detection": 216,
+                "ball_points": 216
+              },
+              "cam3": {
+                "person_detection": 292,
+                "ball_detection": 156,
+                "ball_points": 140
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 129,
+          "valid_candidate": 128,
+          "common_valid": 128,
+          "mask_changes": 1,
+          "max_abs_component": 0.14527320861816406,
+          "frames_over_tolerance": 113,
+          "max_frame": 290
+        },
+        "ball_mask_change_frames": [
+          286
+        ],
+        "ball_reason_changes": [
+          [
+            286,
+            0,
+            4
+          ]
+        ],
+        "ball_no_2d_or_3d_frames": [
+          34,
+          34
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          0,
+          0
+        ],
+        "player_root": {
+          "valid_ref": 1156,
+          "valid_candidate": 1156,
+          "common_valid": 1156,
+          "mask_changes": 0,
+          "max_abs_component": 0.0024805068969726562,
+          "frames_over_tolerance": 21,
+          "max_frame": 14
+        },
+        "player_joint": {
+          "valid_ref": 19720,
+          "valid_candidate": 19720,
+          "common_valid": 19720,
+          "mask_changes": 0,
+          "max_abs_component": 0.4271841049194336,
+          "frames_over_tolerance": 163,
+          "max_frame": 140
+        },
+        "player_joint_mask_change_frames": [],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 1,
+          "ball_rejection_code": 1,
+          "ball_vis": 1,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 0,
+          "player_kp_3d_rejection_code": 0,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 0,
+        "scene_over_tolerance": [
+          "ball_3d",
+          "ball_3d_valid",
+          "ball_rejection_code",
+          "ball_uv",
+          "ball_vis",
+          "human_kp_2d",
+          "human_kp_vis",
+          "player_canonical_pose",
+          "player_kp_3d",
+          "player_position",
+          "player_yaw",
+          "smpl_betas",
+          "smpl_body_pose",
+          "smpl_global_orient",
+          "smpl_vertices_local"
+        ],
+        "first_ball_nodes": {
+          "ball_detection/cam0": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam1": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam2": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ],
+          "ball_detection/cam3": [
+            "confidence",
+            "evidence",
+            "uv_px"
+          ]
+        },
+        "first_person_nodes": {
+          "person_detection/cam0": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ],
+          "person_detection/cam1": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets"
+          ],
+          "person_detection/cam2": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ],
+          "person_detection/cam3": [
+            "boxes_xyxy",
+            "confidence",
+            "frame_offsets",
+            "source_rows"
+          ]
+        },
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "ball_points/cam0",
+          "ball_points/cam1",
+          "ball_points/cam2",
+          "ball_points/cam3",
+          "ball_triangulation",
+          "body_placement",
+          "body_view_selection",
+          "camera_alignment",
+          "court_side",
+          "gvhmr",
+          "hmr2_features",
+          "person_appearance_features/cam0",
+          "person_appearance_features/cam1",
+          "person_appearance_features/cam2",
+          "person_appearance_features/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3",
+          "person_pose_features/cam0",
+          "person_pose_features/cam1",
+          "person_pose_features/cam2",
+          "person_pose_features/cam3",
+          "person_tracking/cam0",
+          "person_tracking/cam1",
+          "person_tracking/cam2",
+          "person_tracking/cam3",
+          "player_association",
+          "player_selection/cam0",
+          "player_selection/cam1",
+          "player_selection/cam2",
+          "player_selection/cam3",
+          "player_triangulation",
+          "pose_estimation/cam0",
+          "pose_estimation/cam1",
+          "pose_estimation/cam2",
+          "pose_estimation/cam3",
+          "scene_assembly"
+        ],
+        "archive_arrays_exact": false
+      }
+    ],
+    "clip_count": 3,
+    "ball_lineage": {
+      "video_000/clip_000": {
+        "211": {
+          "cam0": {
+            "source_window": [
+              [
+                192,
+                19
+              ],
+              [
+                192,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7918210625648499,
+              0.7918210625648499
+            ],
+            "detect_xy": [
+              [
+                1043.9107666015625,
+                396.5941467285156
+              ],
+              [
+                1043.9107666015625,
+                396.5941467285156
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1040.983642578125,
+                398.7015075683594
+              ],
+              [
+                1041.06005859375,
+                398.7209167480469
+              ]
+            ],
+            "heatmap_max_abs": 0.0026930272579193115
+          },
+          "cam1": {
+            "source_window": [
+              [
+                192,
+                19
+              ],
+              [
+                192,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6477982401847839,
+              0.6477982401847839
+            ],
+            "detect_xy": [
+              [
+                1078.7186279296875,
+                443.5496520996094
+              ],
+              [
+                1078.7186279296875,
+                443.9715881347656
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1083.899658203125,
+                442.9604797363281
+              ],
+              [
+                1083.908935546875,
+                443.062255859375
+              ]
+            ],
+            "heatmap_max_abs": 0.001592189073562622
+          },
+          "cam2": {
+            "source_window": [
+              [
+                192,
+                19
+              ],
+              [
+                192,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7178037762641907,
+              0.7178037762641907
+            ],
+            "detect_xy": [
+              [
+                1009.1229858398438,
+                391.4477233886719
+              ],
+              [
+                1009.1229858398438,
+                391.41632080078125
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1012.2417602539062,
+                401.1716613769531
+              ],
+              [
+                1012.3372802734375,
+                401.1534423828125
+              ]
+            ],
+            "heatmap_max_abs": 0.0027749240398406982
+          },
+          "cam3": {
+            "source_window": [
+              [
+                192,
+                19
+              ],
+              [
+                192,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6926419734954834,
+              0.6934729218482971
+            ],
+            "detect_xy": [
+              [
+                847.051025390625,
+                256.1871337890625
+              ],
+              [
+                847.0112915039062,
+                256.1871337890625
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                845.2647705078125,
+                258.61444091796875
+              ],
+              [
+                845.191162109375,
+                258.5700988769531
+              ]
+            ],
+            "heatmap_max_abs": 0.002423331141471863
+          }
+        }
+      },
+      "video_000/clip_027": {
+        "8": {
+          "cam0": {
+            "source_window": [
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                8
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8539127111434937,
+              0.8539127111434937
+            ],
+            "detect_xy": [
+              [
+                790.3328857421875,
+                372.1112060546875
+              ],
+              [
+                790.443603515625,
+                372.1502990722656
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                793.9699096679688,
+                369.9681701660156
+              ],
+              [
+                793.9658203125,
+                370.0389709472656
+              ]
+            ],
+            "heatmap_max_abs": 0.0018377900123596191
+          },
+          "cam1": {
+            "source_window": [
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                8
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5798763036727905,
+              0.5794004201889038
+            ],
+            "detect_xy": [
+              [
+                1557.4227294921875,
+                458.3985290527344
+              ],
+              [
+                1557.367919921875,
+                458.4452819824219
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1555.509521484375,
+                463.3359375
+              ],
+              [
+                1555.5391845703125,
+                463.3603820800781
+              ]
+            ],
+            "heatmap_max_abs": 0.0019309520721435547
+          },
+          "cam2": {
+            "source_window": [
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                8
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6361271142959595,
+              0.6361271142959595
+            ],
+            "detect_xy": [
+              [
+                830.2559814453125,
+                387.8011169433594
+              ],
+              [
+                830.2559814453125,
+                387.8011169433594
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                830.2490844726562,
+                387.6813049316406
+              ],
+              [
+                830.2147216796875,
+                387.4786071777344
+              ]
+            ],
+            "heatmap_max_abs": 0.0018306374549865723
+          },
+          "cam3": {
+            "source_window": [
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                8
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0026280730962753296
+          }
+        },
+        "71": {
+          "cam0": {
+            "source_window": [
+              [
+                48,
+                23
+              ],
+              [
+                48,
+                23
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8198933005332947,
+              0.8198933005332947
+            ],
+            "detect_xy": [
+              [
+                876.5823974609375,
+                359.09637451171875
+              ],
+              [
+                876.5823974609375,
+                359.09637451171875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                878.586181640625,
+                352.293212890625
+              ],
+              [
+                878.6685791015625,
+                352.3941650390625
+              ]
+            ],
+            "heatmap_max_abs": 0.002178400754928589
+          },
+          "cam1": {
+            "source_window": [
+              [
+                48,
+                23
+              ],
+              [
+                48,
+                23
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8255897164344788,
+              0.8255897164344788
+            ],
+            "detect_xy": [
+              [
+                1351.6815185546875,
+                399.0898742675781
+              ],
+              [
+                1351.6815185546875,
+                399.0898742675781
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1350.7257080078125,
+                403.58404541015625
+              ],
+              [
+                1350.6961669921875,
+                403.60992431640625
+              ]
+            ],
+            "heatmap_max_abs": 0.001844644546508789
+          },
+          "cam2": {
+            "source_window": [
+              [
+                48,
+                23
+              ],
+              [
+                48,
+                23
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6783269047737122,
+              0.6791787147521973
+            ],
+            "detect_xy": [
+              [
+                830.2620239257812,
+                390.8021545410156
+              ],
+              [
+                830.3549194335938,
+                390.56298828125
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                836.14208984375,
+                391.0779113769531
+              ],
+              [
+                836.2401733398438,
+                391.10552978515625
+              ]
+            ],
+            "heatmap_max_abs": 0.0019157007336616516
+          },
+          "cam3": {
+            "source_window": [
+              [
+                48,
+                23
+              ],
+              [
+                48,
+                23
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0019050538539886475
+          }
+        },
+        "133": {
+          "cam0": {
+            "source_window": [
+              [
+                112,
+                21
+              ],
+              [
+                112,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6123096346855164,
+              0.6123096346855164
+            ],
+            "detect_xy": [
+              [
+                1028.22607421875,
+                412.3052978515625
+              ],
+              [
+                1028.245361328125,
+                412.57489013671875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1025.87353515625,
+                408.067626953125
+              ],
+              [
+                1027.00390625,
+                410.78131103515625
+              ]
+            ],
+            "heatmap_max_abs": 0.002587363123893738
+          },
+          "cam1": {
+            "source_window": [
+              [
+                112,
+                21
+              ],
+              [
+                112,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6352224349975586,
+              0.6352224349975586
+            ],
+            "detect_xy": [
+              [
+                666.7256469726562,
+                429.3535461425781
+              ],
+              [
+                666.7256469726562,
+                429.2074890136719
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                667.4527587890625,
+                425.9014892578125
+              ],
+              [
+                667.4038696289062,
+                425.77813720703125
+              ]
+            ],
+            "heatmap_max_abs": 0.001592189073562622
+          },
+          "cam2": {
+            "source_window": [
+              [
+                112,
+                21
+              ],
+              [
+                112,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6379335522651672,
+              0.6379335522651672
+            ],
+            "detect_xy": [
+              [
+                984.6124267578125,
+                494.90045166015625
+              ],
+              [
+                984.8155517578125,
+                494.8457336425781
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                986.6181030273438,
+                492.4008483886719
+              ],
+              [
+                986.4573974609375,
+                492.12664794921875
+              ]
+            ],
+            "heatmap_max_abs": 0.0018546581268310547
+          },
+          "cam3": {
+            "source_window": [
+              [
+                112,
+                21
+              ],
+              [
+                112,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8469578623771667,
+              0.8469578623771667
+            ],
+            "detect_xy": [
+              [
+                1360.4722900390625,
+                307.2885437011719
+              ],
+              [
+                1360.4039306640625,
+                307.2885437011719
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1364.4024658203125,
+                304.6060485839844
+              ],
+              [
+                1363.6484375,
+                304.45263671875
+              ]
+            ],
+            "heatmap_max_abs": 0.001593261957168579
+          }
+        },
+        "147": {
+          "cam0": {
+            "source_window": [
+              [
+                128,
+                19
+              ],
+              [
+                128,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6842640042304993,
+              0.6842640042304993
+            ],
+            "detect_xy": [
+              [
+                1031.010009765625,
+                421.9004211425781
+              ],
+              [
+                1031.0360107421875,
+                421.89849853515625
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1043.4219970703125,
+                408.2174072265625
+              ],
+              [
+                1043.382080078125,
+                408.2867431640625
+              ]
+            ],
+            "heatmap_max_abs": 0.0017094016075134277
+          },
+          "cam1": {
+            "source_window": [
+              [
+                128,
+                19
+              ],
+              [
+                128,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.66888028383255,
+              0.66888028383255
+            ],
+            "detect_xy": [
+              [
+                621.1270751953125,
+                439.0188293457031
+              ],
+              [
+                621.1270751953125,
+                439.0188293457031
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                620.8416137695312,
+                438.740234375
+              ],
+              [
+                620.8180541992188,
+                438.73468017578125
+              ]
+            ],
+            "heatmap_max_abs": 0.0026226043701171875
+          },
+          "cam2": {
+            "source_window": [
+              [
+                128,
+                19
+              ],
+              [
+                128,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6187804341316223,
+              0.6197014451026917
+            ],
+            "detect_xy": [
+              [
+                960.537109375,
+                526.8379516601562
+              ],
+              [
+                960.5369873046875,
+                526.7042846679688
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0018687248229980469
+          },
+          "cam3": {
+            "source_window": [
+              [
+                128,
+                19
+              ],
+              [
+                128,
+                19
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6029970645904541,
+              0.6020615696907043
+            ],
+            "detect_xy": [
+              [
+                1431.569580078125,
+                296.3194274902344
+              ],
+              [
+                1431.5159912109375,
+                296.203857421875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1411.784912109375,
+                300.1143798828125
+              ],
+              [
+                1413.005126953125,
+                300.3333740234375
+              ]
+            ],
+            "heatmap_max_abs": 0.002751588821411133
+          }
+        },
+        "148": {
+          "cam0": {
+            "source_window": [
+              [
+                128,
+                20
+              ],
+              [
+                128,
+                20
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6085940003395081,
+              0.6067315340042114
+            ],
+            "detect_xy": [
+              [
+                1042.978515625,
+                399.20196533203125
+              ],
+              [
+                1042.9783935546875,
+                399.2276306152344
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1043.5291748046875,
+                406.4585266113281
+              ],
+              [
+                1043.54150390625,
+                406.4251403808594
+              ]
+            ],
+            "heatmap_max_abs": 0.0036719441413879395
+          },
+          "cam1": {
+            "source_window": [
+              [
+                128,
+                20
+              ],
+              [
+                128,
+                20
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6011253595352173,
+              0.5997195839881897
+            ],
+            "detect_xy": [
+              [
+                629.5051879882812,
+                437.025146484375
+              ],
+              [
+                629.5052490234375,
+                437.025146484375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                622.3524169921875,
+                436.1307067871094
+              ],
+              [
+                622.3211669921875,
+                436.13427734375
+              ]
+            ],
+            "heatmap_max_abs": 0.002555251121520996
+          },
+          "cam2": {
+            "source_window": [
+              [
+                128,
+                20
+              ],
+              [
+                128,
+                20
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6067315340042114,
+              0.6067315340042114
+            ],
+            "detect_xy": [
+              [
+                956.7083129882812,
+                521.9170532226562
+              ],
+              [
+                956.7083129882812,
+                521.9170532226562
+              ]
+            ],
+            "points_observed": [
+              true,
+              false
+            ],
+            "points_xy": [
+              [
+                952.3889770507812,
+                515.18798828125
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0026108920574188232
+          },
+          "cam3": {
+            "source_window": [
+              [
+                128,
+                20
+              ],
+              [
+                128,
+                20
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8006919622421265,
+              0.7994422912597656
+            ],
+            "detect_xy": [
+              [
+                1405.5465087890625,
+                298.7442626953125
+              ],
+              [
+                1405.4385986328125,
+                298.7695617675781
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1394.7559814453125,
+                297.2414245605469
+              ],
+              [
+                1396.186767578125,
+                297.50701904296875
+              ]
+            ],
+            "heatmap_max_abs": 0.0029367804527282715
+          }
+        },
+        "149": {
+          "cam0": {
+            "source_window": [
+              [
+                128,
+                21
+              ],
+              [
+                128,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.7106282711029053,
+              0.7098243832588196
+            ],
+            "detect_xy": [
+              [
+                1044.375,
+                398.544677734375
+              ],
+              [
+                1044.2685546875,
+                398.492431640625
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1043.814697265625,
+                404.01171875
+              ],
+              [
+                1043.8013916015625,
+                403.92059326171875
+              ]
+            ],
+            "heatmap_max_abs": 0.0025052279233932495
+          },
+          "cam1": {
+            "source_window": [
+              [
+                128,
+                21
+              ],
+              [
+                128,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5808276534080505,
+              0.5803520083427429
+            ],
+            "detect_xy": [
+              [
+                618.556396484375,
+                437.81561279296875
+              ],
+              [
+                618.4745483398438,
+                437.81561279296875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                626.5055541992188,
+                433.2074890136719
+              ],
+              [
+                626.4701538085938,
+                433.21820068359375
+              ]
+            ],
+            "heatmap_max_abs": 0.0025004148483276367
+          },
+          "cam2": {
+            "source_window": [
+              [
+                128,
+                21
+              ],
+              [
+                128,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6160122752189636,
+              0.6160122752189636
+            ],
+            "detect_xy": [
+              [
+                945.9039306640625,
+                526.6519165039062
+              ],
+              [
+                945.9234008789062,
+                526.7939453125
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                953.6447143554688,
+                510.0841979980469
+              ],
+              [
+                953.01904296875,
+                506.55615234375
+              ]
+            ],
+            "heatmap_max_abs": 0.0021139979362487793
+          },
+          "cam3": {
+            "source_window": [
+              [
+                128,
+                21
+              ],
+              [
+                128,
+                21
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.8757869601249695,
+              0.8757869601249695
+            ],
+            "detect_xy": [
+              [
+                1373.3980712890625,
+                289.58294677734375
+              ],
+              [
+                1381.0111083984375,
+                291.0075378417969
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1372.6993408203125,
+                292.65057373046875
+              ],
+              [
+                1374.3922119140625,
+                293.0104064941406
+              ]
+            ],
+            "heatmap_max_abs": 0.00298231840133667
+          }
+        },
+        "232": {
+          "cam0": {
+            "source_window": [
+              [
+                203,
+                29
+              ],
+              [
+                203,
+                29
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6197014451026917,
+              0.6197014451026917
+            ],
+            "detect_xy": [
+              [
+                492.7579040527344,
+                992.0654296875
+              ],
+              [
+                492.8770751953125,
+                992.0654296875
+              ]
+            ],
+            "points_observed": [
+              true,
+              false
+            ],
+            "points_xy": [
+              [
+                492.7579040527344,
+                992.0654296875
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0019816160202026367
+          },
+          "cam1": {
+            "source_window": [
+              [
+                203,
+                29
+              ],
+              [
+                203,
+                29
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0016897991299629211
+          },
+          "cam2": {
+            "source_window": [
+              [
+                203,
+                29
+              ],
+              [
+                203,
+                29
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5851011276245117,
+              0.5836780667304993
+            ],
+            "detect_xy": [
+              [
+                847.7054443359375,
+                392.19573974609375
+              ],
+              [
+                834.8875122070312,
+                385.90911865234375
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                843.506591796875,
+                390.10736083984375
+              ],
+              [
+                839.5065307617188,
+                388.14599609375
+              ]
+            ],
+            "heatmap_max_abs": 0.0018116682767868042
+          },
+          "cam3": {
+            "source_window": [
+              [
+                203,
+                29
+              ],
+              [
+                203,
+                29
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.002249479293823242
+          }
+        }
+      },
+      "video_000/clip_037": {
+        "286": {
+          "cam0": {
+            "source_window": [
+              [
+                260,
+                26
+              ],
+              [
+                260,
+                26
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5712883472442627,
+              0.5717666149139404
+            ],
+            "detect_xy": [
+              [
+                275.8951416015625,
+                452.4544677734375
+              ],
+              [
+                275.92431640625,
+                452.4544677734375
+              ]
+            ],
+            "points_observed": [
+              true,
+              false
+            ],
+            "points_xy": [
+              [
+                273.36907958984375,
+                453.6343994140625
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0033319592475891113
+          },
+          "cam1": {
+            "source_window": [
+              [
+                260,
+                26
+              ],
+              [
+                260,
+                26
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.002069428563117981
+          },
+          "cam2": {
+            "source_window": [
+              [
+                260,
+                26
+              ],
+              [
+                260,
+                26
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6039317846298218,
+              0.6039317846298218
+            ],
+            "detect_xy": [
+              [
+                346.3531188964844,
+                694.1148681640625
+              ],
+              [
+                346.5552062988281,
+                694.1180419921875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                348.4683532714844,
+                695.289794921875
+              ],
+              [
+                348.49359130859375,
+                695.2576904296875
+              ]
+            ],
+            "heatmap_max_abs": 0.0021028369665145874
+          },
+          "cam3": {
+            "source_window": [
+              [
+                260,
+                26
+              ],
+              [
+                260,
+                26
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.6893056035041809,
+              0.6893056035041809
+            ],
+            "detect_xy": [
+              [
+                1509.50048828125,
+                251.55160522460938
+              ],
+              [
+                1509.3267822265625,
+                251.55160522460938
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1514.454833984375,
+                253.0879669189453
+              ],
+              [
+                1514.3436279296875,
+                253.15773010253906
+              ]
+            ],
+            "heatmap_max_abs": 0.0026140809059143066
+          }
+        },
+        "290": {
+          "cam0": {
+            "source_window": [
+              [
+                260,
+                30
+              ],
+              [
+                260,
+                30
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.5774953961372375,
+              0.5789243578910828
+            ],
+            "detect_xy": [
+              [
+                332.7473449707031,
+                444.5941162109375
+              ],
+              [
+                332.6657409667969,
+                444.641357421875
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                323.6053161621094,
+                442.05413818359375
+              ],
+              [
+                332.6631164550781,
+                444.6405334472656
+              ]
+            ],
+            "heatmap_max_abs": 0.0019336938858032227
+          },
+          "cam1": {
+            "source_window": [
+              [
+                260,
+                30
+              ],
+              [
+                260,
+                30
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.0016699954867362976
+          },
+          "cam2": {
+            "source_window": [
+              [
+                260,
+                30
+              ],
+              [
+                260,
+                30
+              ]
+            ],
+            "detect_observed": [
+              false,
+              false
+            ],
+            "detect_score": [
+              0.0,
+              0.0
+            ],
+            "detect_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "points_observed": [
+              false,
+              false
+            ],
+            "points_xy": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "heatmap_max_abs": 0.002190709114074707
+          },
+          "cam3": {
+            "source_window": [
+              [
+                260,
+                30
+              ],
+              [
+                260,
+                30
+              ]
+            ],
+            "detect_observed": [
+              true,
+              true
+            ],
+            "detect_score": [
+              0.730289876461029,
+              0.730289876461029
+            ],
+            "detect_xy": [
+              [
+                1548.163818359375,
+                259.5791931152344
+              ],
+              [
+                1548.1861572265625,
+                259.5791931152344
+              ]
+            ],
+            "points_observed": [
+              true,
+              true
+            ],
+            "points_xy": [
+              [
+                1549.499267578125,
+                255.70059204101562
+              ],
+              [
+                1549.4959716796875,
+                255.6855926513672
+              ]
+            ],
+            "heatmap_max_abs": 0.0018512606620788574
+          }
+        }
+      }
+    }
+  },
+  "to-reuse": {
+    "quality_acceptance": true,
+    "same_input_pins": true,
+    "same_publication_pins": true,
+    "same_runtime": true,
+    "same_commit": false,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip": "video_000/clip_000",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 356,
+                "ball_detection": 194,
+                "ball_points": 189
+              },
+              "cam1": {
+                "person_detection": 356,
+                "ball_detection": 141,
+                "ball_points": 130
+              },
+              "cam2": {
+                "person_detection": 356,
+                "ball_detection": 185,
+                "ball_points": 185
+              },
+              "cam3": {
+                "person_detection": 356,
+                "ball_detection": 153,
+                "ball_points": 147
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 356,
+                "ball_detection": 194,
+                "ball_points": 189
+              },
+              "cam1": {
+                "person_detection": 356,
+                "ball_detection": 141,
+                "ball_points": 130
+              },
+              "cam2": {
+                "person_detection": 356,
+                "ball_detection": 185,
+                "ball_points": 185
+              },
+              "cam3": {
+                "person_detection": 356,
+                "ball_detection": 153,
+                "ball_points": 147
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 159,
+          "valid_candidate": 159,
+          "common_valid": 159,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "ball_mask_change_frames": [],
+        "ball_reason_changes": [],
+        "ball_no_2d_or_3d_frames": [
+          71,
+          71
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          3,
+          3
+        ],
+        "player_root": {
+          "valid_ref": 1412,
+          "valid_candidate": 1412,
+          "common_valid": 1412,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint": {
+          "valid_ref": 23978,
+          "valid_candidate": 23978,
+          "common_valid": 23978,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint_mask_change_frames": [],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 0,
+          "ball_rejection_code": 0,
+          "ball_vis": 0,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 0,
+          "player_kp_3d_rejection_code": 0,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 0,
+        "scene_over_tolerance": [],
+        "first_ball_nodes": {},
+        "first_person_nodes": {},
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [],
+        "archive_arrays_exact": true
+      },
+      {
+        "clip": "video_000/clip_027",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 235,
+                "ball_detection": 210,
+                "ball_points": 207
+              },
+              "cam1": {
+                "person_detection": 235,
+                "ball_detection": 124,
+                "ball_points": 121
+              },
+              "cam2": {
+                "person_detection": 235,
+                "ball_detection": 198,
+                "ball_points": 193
+              },
+              "cam3": {
+                "person_detection": 235,
+                "ball_detection": 138,
+                "ball_points": 136
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 235,
+                "ball_detection": 210,
+                "ball_points": 207
+              },
+              "cam1": {
+                "person_detection": 235,
+                "ball_detection": 124,
+                "ball_points": 121
+              },
+              "cam2": {
+                "person_detection": 235,
+                "ball_detection": 198,
+                "ball_points": 193
+              },
+              "cam3": {
+                "person_detection": 235,
+                "ball_detection": 138,
+                "ball_points": 136
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 128,
+          "valid_candidate": 128,
+          "common_valid": 128,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "ball_mask_change_frames": [],
+        "ball_reason_changes": [],
+        "ball_no_2d_or_3d_frames": [
+          3,
+          3
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          227,
+          227
+        ],
+        "player_root": {
+          "valid_ref": 932,
+          "valid_candidate": 932,
+          "common_valid": 932,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint": {
+          "valid_ref": 15841,
+          "valid_candidate": 15841,
+          "common_valid": 15841,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint_mask_change_frames": [],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 0,
+          "ball_rejection_code": 0,
+          "ball_vis": 0,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 0,
+          "player_kp_3d_rejection_code": 0,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 0,
+        "scene_over_tolerance": [],
+        "first_ball_nodes": {},
+        "first_person_nodes": {},
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [],
+        "archive_arrays_exact": true
+      },
+      {
+        "clip": "video_000/clip_037",
+        "scene_status": {
+          "players": [
+            4,
+            4
+          ],
+          "ball_views_detected": [
+            {
+              "cam0": {
+                "person_detection": 292,
+                "ball_detection": 161,
+                "ball_points": 139
+              },
+              "cam1": {
+                "person_detection": 292,
+                "ball_detection": 97,
+                "ball_points": 91
+              },
+              "cam2": {
+                "person_detection": 292,
+                "ball_detection": 216,
+                "ball_points": 216
+              },
+              "cam3": {
+                "person_detection": 292,
+                "ball_detection": 156,
+                "ball_points": 140
+              }
+            },
+            {
+              "cam0": {
+                "person_detection": 292,
+                "ball_detection": 161,
+                "ball_points": 139
+              },
+              "cam1": {
+                "person_detection": 292,
+                "ball_detection": 97,
+                "ball_points": 91
+              },
+              "cam2": {
+                "person_detection": 292,
+                "ball_detection": 216,
+                "ball_points": 216
+              },
+              "cam3": {
+                "person_detection": 292,
+                "ball_detection": 156,
+                "ball_points": 140
+              }
+            }
+          ],
+          "side": [
+            [
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              true,
+              true
+            ]
+          ],
+          "statuses": [
+            {
+              "status": "generated",
+              "reason": null
+            },
+            {
+              "status": "generated",
+              "reason": null
+            }
+          ]
+        },
+        "ball_3d": {
+          "valid_ref": 129,
+          "valid_candidate": 129,
+          "common_valid": 129,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "ball_mask_change_frames": [],
+        "ball_reason_changes": [],
+        "ball_no_2d_or_3d_frames": [
+          34,
+          34
+        ],
+        "ball_no_2d_or_3d_first_frame": [
+          0,
+          0
+        ],
+        "player_root": {
+          "valid_ref": 1156,
+          "valid_candidate": 1156,
+          "common_valid": 1156,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint": {
+          "valid_ref": 19720,
+          "valid_candidate": 19720,
+          "common_valid": 19720,
+          "mask_changes": 0,
+          "max_abs_component": 0.0,
+          "frames_over_tolerance": 0,
+          "max_frame": null
+        },
+        "player_joint_mask_change_frames": [],
+        "discrete_scene_entries": {
+          "ball_3d_valid": 0,
+          "ball_rejection_code": 0,
+          "ball_vis": 0,
+          "player_valid": 0,
+          "player_heading_valid": 0,
+          "player_observed": 0,
+          "player_track_ids": 0,
+          "player_rejection_code": 0,
+          "player_kp_3d_vis": 0,
+          "player_kp_3d_rejection_code": 0,
+          "player_smpl_valid": 0
+        },
+        "player_association_changed_id_entries": 0,
+        "scene_over_tolerance": [],
+        "first_ball_nodes": {},
+        "first_person_nodes": {},
+        "ball_windows_changed_any": [],
+        "compared_nodes": 47,
+        "changed_nodes": [],
+        "archive_arrays_exact": true
+      }
+    ],
+    "clip_count": 3
+  }
+}

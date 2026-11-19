@@ -54,3 +54,5 @@ warm中央値の差は+16.60秒（+0.92%）で、上記の特徴段の費用と�
 同じHEADのモデル再利用とCLIP再利用を直接比較すると、全3組・全3clipで最終scene配列がexactだった。人物IDと対応の離散結果は一致した。外観特徴には照合用のframe SHA、人物対応には命中診断の差があり、clip_000では `diagnostics.association.pairs.31.appearance` も全3組で約2.18×10⁻⁸異なり、固定float64の許容差を超えた。最終ボール出力も両条件で一致した。旧逐次との差がモデル寿命・計画順序・commit差のどれで生じるかは、同一HEADの逐次対照が無く未特定。
 
 raw結果は `outputs/tennis_scene/evaluate/video-batch-benchmark-20261119/` の各runにある。各 `attempts/*/measurement.json` の `recording` がrecorderの場所を指し、`compare-serial-*.json` と `compare-reuse-*.json` に全nodeの差を保存した。
+
+後日の逐次対照では、モデル再利用の初回出力と全node・scene配列が完全一致し、旧逐次との球の差を再現した。 [逐次対照の結果](../run-i1757-serial-fb6255a-first-1/result.md)

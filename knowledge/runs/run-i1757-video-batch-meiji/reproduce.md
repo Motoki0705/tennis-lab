@@ -54,6 +54,12 @@ bash "$queue" add "$probe && $measure" --resource all --provider codex \
 
 `status` で共有queue workerが `RUNNING` であることを確認してから `add` を実行します。job名は `bash "$queue" list` で照合でき、stdout/stderrは `.training_queue/logs/<job-id>.log` にあります。probeは `probe/terminal.json` と `probe/recording.json`、本計測は `measurement/worker.log`、各repeatの `measurement.json` とC1 recorder JSONを保存します。各repeatの `first-inference.json` は、実モデルの初回forwardが完了した証拠です。正規終了では `measurement/terminal.json` の成否をqueueのterminalと突き合わせます。CUDAエラー・ハング・時間上限では診断を保存して停止します。
 
+### 同じHEADで逐次の初回だけを測る
+
+条件3と同じ `fb6255a2853a6992e3d96287d7b989b681c2e336` の逐次対照は、ボールと人物の差を切り分けるため初回1回を測りました。測定したcheckoutをそのcommitに固定し、[当時のlauncher](../run-i1757-serial-fb6255a-first-1/serial_first_only.py) をそのworktreeの `outputs/` 配下へコピーします。launcherは測定コードのcheckoutを参照し、実行対象を `serial` の `attempts/1-first` に限定します。CPU事前確認、同じqueue jobのprobe、heartbeat、本計測の上限は上と共通です。
+
+上のコマンドの `driver` にコピー先、`condition=serial` に設定し、新しい `run_name` を使います。記録と同じlauncherのSHA-256は `907168496157ab1e3bd823658a95b97ea1762ce76ef74bade5440a3d0c0c374c` です。元jobのコマンドと出力先は結果ノートに記録しました。 [逐次対照の記録](../run-i1757-serial-fb6255a-first-1/result.md)
+
 中断・cache混在の検証は冷えた保存先での速度計測と別のqueue jobで行います。既存の `run_video_batch` の設定を変えず、使い捨てのdataset copyでstage保存後にqueueから中断し、同じcopyで再開します。進捗の `cached`・`executed`・`skipped`、モデルイベントと最終markerを照合し、再開したsceneを冷えた保存先からのsceneと比較します。CUDAエラー・ハング時はそこで停止します。
 
 ## 確認と集計
@@ -70,3 +76,32 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -B "$report" compare \
 集計はwall time、完了clips/hourとcamera-frame/s、モデルload/unload、実batch分布と充填率、RAM・peak VRAM、process I/O byte数、中間配列保存とscene export・dataset marker公開を出します。peak VRAMは各repeatの計測プロセスでC1 recorderが取得するPyTorch allocatorのピークです。`resources.cuda.<device>.allocated_peak_bytes` と `reserved_peak_bytes` をバイト単位で記録し、repeatの開始時にカウンタをリセットします。過去のdevice全体のNVMLサンプルは当時の見積り資料です。wallには初回のworker importを含み、prepareとGPU probeは計測外です。速度比較には3クリップを生成し、recorderが正常終了したrepeatを使います。
 
 比較は公開markerからsceneを読み直し、componentの採用配列・payloadとsceneの配列を比較します。[許容誤差](tolerances.json) は測定前に固定します。離散値、失敗理由、選択、ID、欠測・有効性maskは完全一致を要求します。連続値はdtypeと単位ごとに判定し、変更の最上流候補と範囲を記録します。出力差の原因と下流への影響は、差分レポートの該当node・clipから追跡します。[component overlayの操作](../../../src/tennis_scene/visualization/review/README.md) で両条件の同じclip・camera・stageを動画化し、差分フレームを添えて提示します。大きなrecorder JSON、出力配列や動画はworktreeの `outputs/` に保持します。
+
+### 保存済みの人物3Dと差分動画を確認する
+
+人物でcourt_sideを決める設定でも、ボール有効時の `camera_alignment` は両方の観測で幾何を検証します。保存された校正・人物対応・2D poseから人物だけでその検証と三角測量・身体view選択を再実行する場合は、[CPU再計算スクリプト](replay_player_only.py) を使います。カメラ幾何・三角測量・身体入力が保存時と完全一致したclipでは、保存済みの身体配置を使って `ball_detection.enabled=false` 相当のsceneを再組立てし、人物配列を公開済みsceneと照合します。
+
+```bash
+run=knowledge/runs/run-i1757-video-batch-meiji
+CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  .venv/bin/python -B "$run/replay_player_only.py" \
+  --attempt "$run_dir/attempts/1-first" --output "$run_dir/player-only-replay.json"
+
+CUDA_VISIBLE_DEVICES='' OPENCV_FFMPEG_CAPTURE_OPTIONS='threads;1' \
+  .venv/bin/python -B "$run/render_comparison.py" \
+  --comparison "$run_dir/compare-to-batched-1-first.json" --dataset "$run_dir/input" \
+  --reference-label serial@fb6255a2 --candidate-label batched@fb6255a2 \
+  --clip video_000/clip_027 --frames <差が出た0始まりのframe> \
+  --output "$run_dir/review/clip_027.mp4"
+```
+
+動画には固定入力の4カメラ、保存された人物・球の2D観測、コートXY上の3D、再構成の有効数と球の棄却理由を表示します。指定frameの前後5frameを取り出し、1/3速で再生します。数値判定の根拠は固定許容差のJSON照合です。
+
+## 実測結果
+
+| 条件 | 実行commit | 記録 |
+| --- | --- | --- |
+| 逐次 | `8c91bf074` | [初回1回・warm 2回](serial-heartbeat-2.md) |
+| モデル再利用・CLIP embedding再利用 | `795d63df` | [各条件の初回1回・warm 2回](model-reuse-comparison.md) |
+| 横断batch | `fb6255a2` | [初回1回・warm 2回、実forward shapeと時間内訳](../run-i1757-batched-heartbeat-1/result.md) |
+| 同一HEADの逐次対照 | `fb6255a2` | [初回1回、旧逐次と横断batchとの比較](../run-i1757-serial-fb6255a-first-1/result.md) |
