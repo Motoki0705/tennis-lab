@@ -56,7 +56,7 @@ raw・stderr等は追跡対象にしない。判断記録と生成READMEの追�
 | `decision` | nullable。approve/investigate/rejectと判断元の公開sequence |
 | `sources` | 標準指示のcommit/path/blob、送信した担当issueのURLと本文digest |
 | `instruction` | task/answer、親の追加指示原文の `additional_instructions` 配列 |
-| `worker` | agent、model/effortの選択値、観測値または明示的な未取得。通常はmax、[修正ターン](../parent/README.md#自動進行の修正ターン)はhigh |
+| `worker` | agent、model/effortの選択値、観測値または明示的な未取得。通常はmax、[修正ターン](../../skills/parent-session/references/review.md)はhigh |
 | `runtime` | completedというターン終了の事実。タスク成功の認定ではない |
 | `artifacts` | 固定した開始commit、報告に明記された同repoのPR/commit参照 |
 | `files / sanitization` | 公開本文のdigest、無害化の版・本文別の総置換件数・ローカルパスの種類別マスク件数 |
@@ -115,7 +115,7 @@ URLは原文と復号後の両方から取り出し、query/fragmentも復号し
 - PRがmergedであること、HEADとmerge commitがorigin/mainに含まれること、main上の保存内容を照合する。
   ここまで確認して初めて `merged / saved_to_main=true` とする。
 
-通常の [merge gate](../review/README.md#軽いgate) とops-report memoryのCI必須処理は変更しない。
+通常の [merge gate](../../skills/parent-session/references/review.md) とops-report memoryのCI必須処理は変更しない。
 保存実装、schema、公開検査、workflow、規則を変更するコードPRは通常レビューと対象HEADのPython成功が必要。
 
 ## workflowの範囲と制約
@@ -139,17 +139,8 @@ workerの終了値はrunnerの結果であり、公開CLIも保留なら0を返�
 `pending` なら同じturnの `publish-worker-log` で公開を続ける。他の作業を一律停止せず、未保存の事実を残す。
 公開エラーの終了値は2。状態ごとの原因と次の操作は下の表で照合する。
 
-```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  worker-log-status --child 124
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  publish-worker-log --child 124 --turn 2 --dry-run
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  publish-worker-log --child 124 --turn 2
-# 原因を照合・修復したblocked記録を、固定入力のまま再検査する
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  publish-worker-log --child 124 --delegation-key d-<公開キー> --turn 2 --retry
-```
+親の操作は [復旧](../../skills/parent-session/references/recovery.md)、ターンと委任の指定は `parent publish-worker-log --help` を参照。
+
 
 新しいworker/sessionを起動しない。statusは読み取り専用、dry-runはGit/HTTPの書込みもjournal更新も行わない。
 通常の公開再開は担当本人が保存済みsnapshotを照合して行う。issueのclose後も履歴を公開できるが、新しい実装を認可しない。

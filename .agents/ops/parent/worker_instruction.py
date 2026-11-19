@@ -23,6 +23,8 @@ def prepare_instruction(
     issue_body: str,
     parent_instruction: str,
     turn: dict[str, Any] | None = None,
+    *,
+    worker: str = "primary",
 ) -> PreparedInstruction:
     """Return the standard worker prompt followed by this delegation's specifics.
 
@@ -44,6 +46,11 @@ def prepare_instruction(
     text = (
         standard.decode("utf-8")
         + phase
+        + (
+            f"\n補助ワーカー {worker}。調査結果・検証結果またはcommitを統合担当に返す。Issueを閉じるPRとmergeは統合担当に任せる。\n"
+            if worker != "primary"
+            else ""
+        )
         + (
             f"\n\n親issue: #{parent}\n担当issue: #{child}\n"
             f"worktree: {worktree.resolve()}\nbranch: {branch}\n"

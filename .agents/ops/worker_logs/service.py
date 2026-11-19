@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import re
 import subprocess
 from collections.abc import Callable
@@ -10,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from parent.state import RegistryConflict
+from parent.worker_slots import record, select, workers
 
 from . import journal, schema, sources
 from .journal import PublicationError, require
@@ -18,7 +18,7 @@ from .publication import Publisher
 
 
 def capture(session: Any, child: int, issue_body: str, prepared: Any) -> None:
-    turn = session.row["tasks"][str(child)]["preflight"]["turns"][-1]
+    turn = session.worker_task(child)["preflight"]["turns"][-1]
     turn["instruction_source"]["issue_sha256"] = schema.sha(issue_body.encode("utf-8"))
     try:
         with session.unlocked() as external:
@@ -172,6 +172,7 @@ def _command(
     publish_logs: bool,
     sequence: int | None = None,
     key: str | None = None,
+    worker: str | None = None,
     dry_run: bool = False,
     retry: bool = False,
 ) -> dict[str, Any]:
@@ -203,6 +204,13 @@ def _command(
             f"{key[2:] if key else '*'}/{sequence if sequence else '*'}/journal.json"
         )
     )
+    task = record(owner, child)
+    if worker is not None:
+        name = select(owner, child, worker)
+        task = record(owner, child, name)
+        require(task.get("delegated") is True, "unknown_worker")
+        public_key = task.get("preflight", {}).get("public_key")
+        paths = [path for path in paths if path.parent.parent.name == public_key]
     results = []
     for path in paths:
         row = journal.read(path)
@@ -231,11 +239,15 @@ def _command(
                 continue
             if row["state"] == "captured" or retry and "receipt" not in row:
                 # Reconcile the original recorded run. Never launch/resume a worker.
-                task = copy.deepcopy(owner.get("tasks", {}).get(str(child), {}))
-                phase = task.get("preflight", {})
                 turn = next(
                     (
                         t
+                        for n, _, task in workers(owner.get("tasks", {}))
+                        if n == child
+                        for phase in (
+                            task.get("preflight", {}),
+                            task.get("astra_handoff", {}).get("preflight") or {},
+                        )
                         for t in phase.get("turns", [])
                         if t["snapshot"]["turn_id"] == row["source"]["turn_id"]
                     ),
@@ -275,7 +287,7 @@ def _command(
         else:
             result = journal.view(row)
             results.append(result)
-    phase = owner.get("tasks", {}).get(str(child), {}).get("preflight", {})
+    phase = task.get("preflight", {})
     legacy = [
         i + 1
         for i, turn in enumerate(phase.get("turns", []))

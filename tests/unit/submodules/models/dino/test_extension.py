@@ -267,6 +267,15 @@ def test_runtime_import_uses_selected_module_and_rejects_cached_mismatch(
     monkeypatch: pytest.MonkeyPatch,
     preloaded_functions: bool,
 ) -> None:
+    # Full CI can run a real DINO loss import earlier in this worker. The fake
+    # repository owns a fresh namespace; isolate every child, not just util and
+    # the deformable-attention function. Keep the real loader's pinning strict.
+    previous_box_ops = ModuleType('util.box_ops')
+    previous_box_ops.__file__ = str(tmp_path / 'previous-DINO/util/box_ops.py')
+    monkeypatch.setitem(sys.modules, 'util.box_ops', previous_box_ops)
+    for name in tuple(sys.modules):
+        if name == 'util' or name.startswith('util.') or name == architecture._DINO_MODELS_PACKAGE or name.startswith(architecture._DINO_MODELS_PACKAGE + '.'):
+            monkeypatch.delitem(sys.modules, name)
     functions_name = f"{architecture._DINO_MODELS_PACKAGE}.dino.ops.functions.ms_deform_attn_func"
     if preloaded_functions:
         previous = ModuleType("previous_functions")

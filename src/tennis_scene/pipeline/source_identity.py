@@ -12,9 +12,15 @@ def source_digests(source: Path) -> dict[str, str]:
     return {str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))}
 
 
-def compatible_source_digests(sources: dict[str, str]) -> dict[str, str]:
-    """Keep the pre-autocast identity for the exact FP32-compatible patch."""
-    manifest = Path(__file__).with_name("fp32_cache_compatibility.json")
+def compatible_source_digests(sources: dict[str, str], *, ball_court_side: bool = False) -> dict[str, str]:
+    """Keep the baseline identity for exact, compatible source changes."""
+    if ball_court_side:
+        sources = _compatible_patch(sources, "ball_court_side_cache_compatibility.json")
+    return _compatible_patch(sources, "fp32_cache_compatibility.json")
+
+
+def _compatible_patch(sources: dict[str, str], filename: str) -> dict[str, str]:
+    manifest = Path(__file__).with_name(filename)
     files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
     if any(sources.get(path) != versions["after"] for path, versions in files.items()):
         return sources

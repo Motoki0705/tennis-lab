@@ -156,14 +156,14 @@ conditions/expected_resultを指定し、IDはCLIが割り当てる。初回判�
 | `review_reason` | `run_id`。固定review要求の理由 |
 | `improvement` | `key` と候補の `event_id`。元親の正本コメントにある切り出し判断 |
 
-`note` と `improvement` は[親の共通reader](../parent/README.md#機械証拠の保存共通reader)から検証し、実際の媒体のcomment URLを参照する。
+`note` と `improvement` は[親の共通reader](../parent/README.md#責務と状態の正本)から検証し、実際の媒体のcomment URLを参照する。
 理由本文を公開記録へ再コピーせず、参照/fingerprintを保持する。
 親のactorキーは私的sessionに対応するランダムな公開キーで、引継ぎで過去の判断者を変えない。
 次の対応CLI（review/mergeも含む）へ返された判断IDを渡すと、後続結果が行動を介してつながる。
 
 終了時改善の `improvement-decide` は候補正本への人間判断を記録するが、終了済み元親のjournal公開権限を広げない。
 改善親側のagreeで承認を観測し、別graphの記録IDを直接つなぐ代わりに元コメントURLを参照する。
-手順・人間確認の保証範囲は [終了時改善](../parent/improvements.md)を参照する。
+手順・人間確認の保証範囲は [終了時改善](../../skills/parent-session/references/finish.md#次回改善)を参照する。
 
 ## 捕捉失敗と復旧
 

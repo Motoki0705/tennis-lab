@@ -21,12 +21,12 @@ source `tennis-parent`で`tl_name` / `tl_parent` / `tl_issue` / `tl_topic` / `tl
 
 要約は担当親が親issueの作業内容から作り、`parent register --summary`・`parent handoff --accept --summary`・
 `parent summary --text`でparent stateの親ごとの記録（`display_summary`）へ保存する。
-手順は[parent-session skill](../../skills/parent-session/SKILL.md#担当と実行根拠)。
+手順は[parent-session skill](../../skills/parent-session/references/ownership.md)。
 親ごとの記録なので、同じ会話の再開・新しいpaneでの復元・引継ぎ後も同じ値を表示する。
 表示幅は全角2・半角1で数えて24桁（全角12文字）以内。超過・空・前後の空白・制御文字は
 切り詰めず拒否し、保存済みの値を変えない。
 `register` / `handoff --accept` は要約不足を担当の書込み前に拒否する
-（[parentの事前検査](../parent/README.md#担当を引き受ける前の要約)）。
+（[parentの事前検査](../../skills/parent-session/references/ownership.md)）。
 既存の要約のない担当を同期するときもエラーにし、issueタイトルや古い表示で代替しない。
 この場合は `parent summary --text` で要約を保存すれば表示が直る。
 version 2のregistryでは索引と親ごとの記録の`session` / `status` / `generation`が

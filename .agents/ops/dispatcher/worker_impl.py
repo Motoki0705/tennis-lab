@@ -62,8 +62,8 @@ def main() -> int:
                 rejected = store.parents[args.key]["dispatch"]["jobs"][args.job]
                 if not rejected.get("cancelled_before_start"):
                     raise
-            status = 2
-        with store.locked():
+            return 2
+        with store.operation(f"dispatcher:{args.key}"), store.locked():
             dispatch = managed(store.parents[args.key])
             if dispatch is None:
                 raise ValueError("missing managed assignment")

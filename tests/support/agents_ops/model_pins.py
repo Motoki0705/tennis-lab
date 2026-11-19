@@ -16,21 +16,19 @@ def pin(name: str) -> str:
 
 
 WORKER_DEFAULT_MODEL = pin("CODEX_MODEL")
-WORKER_ALTERNATE_MODEL = pin("CODEX_ALTERNATE_MODEL")
+WORKER_ALTERNATE_MODEL = "gpt-6.2-astra"  # previously selectable
 REVIEW_FIXED_MODEL = pin("REVIEW_CODEX_MODEL")
-REVIEW_OTHER_MODEL = next(
-    model
-    for pair in pin("REVIEW_CODEX_ALLOWED_PAIRS").split(",")
-    if (model := pair.rsplit(":", 1)[0]) != REVIEW_FIXED_MODEL
-)
+REVIEW_OTHER_MODEL = "gpt-6.2-astra"
 
 OLD_SOL = "gpt-6.1-sol"
 OLD_ASTRA = "gpt-6-astra"
 
 
-def previous_config(path: Path, *, review_mode: str = "select") -> Path:
+def previous_config(
+    path: Path, *, review_mode: str = "select", worker_model: str = OLD_SOL
+) -> Path:
     previous = {
-        "CODEX_MODEL": OLD_SOL,
+        "CODEX_MODEL": worker_model,
         "CODEX_ALTERNATE_MODEL": OLD_ASTRA,
         "REVIEW_CODEX_MODEL": OLD_ASTRA,
         "REVIEW_CODEX_ALLOWED_PAIRS": f"{OLD_SOL}:xhigh,{OLD_ASTRA}:xhigh",

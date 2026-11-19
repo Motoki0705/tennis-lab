@@ -112,9 +112,9 @@ def launch(d: DispatchHarness, monkeypatch: pytest.MonkeyPatch) -> None:
     d.control.launch_reserved()
 
 
-@pytest.mark.parametrize("model", [None, WORKER_ALTERNATE_MODEL])
+@pytest.mark.parametrize("model", [None, WORKER_DEFAULT_MODEL])
 @pytest.mark.parametrize("family", [False, True])
-def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zero(
+def test_bootstrap_delegates_standalone_sol_and_does_not_trust_exit_zero(
     d: DispatchHarness,
     monkeypatch: pytest.MonkeyPatch,
     model: str | None,
@@ -193,8 +193,8 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
 @pytest.mark.parametrize(
     "cancel_fix,initial_model,resume_model",
     [
-        (False, WORKER_ALTERNATE_MODEL, None),
-        (True, WORKER_ALTERNATE_MODEL, None),
+        (False, WORKER_DEFAULT_MODEL, None),
+        (True, WORKER_DEFAULT_MODEL, None),
         (False, None, WORKER_DEFAULT_MODEL),
     ],
     ids=["False", "True", "sol_same"],
@@ -243,9 +243,7 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
                 env,
                 child=10,
                 prompt="修正。",
-                model=WORKER_ALTERNATE_MODEL
-                if initial_model is None
-                else WORKER_DEFAULT_MODEL,
+                model=WORKER_ALTERNATE_MODEL,
                 continuation="終了・差分を確認した。",
             )
         assert d.row() == reserved  # No delegation, job or slot may be reserved.
@@ -366,7 +364,7 @@ def test_cancelled_initial_reservation_keeps_model_and_restarts_only_if_unstarte
         env,
         child=10,
         prompt="実装する。",
-        model=WORKER_ALTERNATE_MODEL,
+        model=WORKER_DEFAULT_MODEL,
         branch="codex/parser",
         worktree=child_tree(d),
     )
@@ -402,8 +400,7 @@ def test_cancelled_initial_reservation_keeps_model_and_restarts_only_if_unstarte
         )
         assert job["resume_from"] is None
         assert (
-            record["contract"]["settings"]["selected"]["model"]
-            == WORKER_ALTERNATE_MODEL
+            record["contract"]["settings"]["selected"]["model"] == WORKER_DEFAULT_MODEL
         )
         assert len((d.h.root / "runtime-calls.jsonl").read_text().splitlines()) == 1
     finally:
@@ -2201,3 +2198,54 @@ def test_worker_entry_rejects_client_bound_to_another_store_instance(
         else:
             mod.stop_worker(mismatched, 10, stop_detail())
     assert len(d.h.gh.calls) == calls
+
+
+def test_two_workers_on_one_issue_keep_dispatch_jobs_separate(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mod, primary, env = workflow(d, monkeypatch)
+    helper = primary.for_worker("quality")
+
+    def start(session: Any, name: str) -> dict[str, Any]:
+        return cast(
+            dict[str, Any],
+            mod.start_worker(
+                session,
+                d.schedule.directory,
+                env,
+                child=1,
+                prompt=name,
+                model=None,
+                branch="codex/" + name,
+                worktree=child_tree(d, name),
+            ),
+        )
+
+    first = start(primary, "implementation")
+    second = start(helper, "quality")
+    try:
+        assert mod.children_pending(d.row()) == [1, 1]
+        assert mod.inspect_worker(primary, 1)["job_id"] == first["job_id"]
+        assert mod.inspect_worker(helper, 1)["job_id"] == second["job_id"]
+        launch(d, monkeypatch)
+        drain(d, first["job_id"])
+        drain(d, second["job_id"])
+        assert mod.inspect_worker(helper, 1)["termination_confirmed"]
+        continued = mod.start_worker(
+            helper,
+            d.schedule.directory,
+            env,
+            child=1,
+            prompt="compare results",
+            model=None,
+            continuation="inspect the saved results",
+        )
+        job = d.row()["dispatch"]["jobs"][continued["job_id"]]
+        assert job["resume_from"] == str(
+            Path(d.row()["dispatch"]["jobs"][second["job_id"]]["directory"]) / "runtime"
+        )
+        mod.stop_worker(helper, 1, {"reason": "quality complete"})
+        assert d.row()["dispatch"]["jobs"][continued["job_id"]]["phase"] == "ended"
+        assert mod.inspect_worker(primary, 1)["job_id"] == first["job_id"]
+    finally:
+        d.control.reconcile(stop=True)

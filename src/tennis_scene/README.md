@@ -7,7 +7,7 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 
 1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正を作る。
 2. 全画面の人物検出にpose・外観特徴を付けて追跡し、コート座標で選手を選別する。各camera/frameの検出点と観測maskを保存する。
-3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
+3. court side（`court_side`）を多視点の幾何で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。証拠はballが既定で、`court_side.evidence=player` で選手の足元観測を使える。
 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
 5. ボールの動きの外れ値を除去し、頑健な2次LOESSで平滑化。人物の同一ID観測と、各カメラの採用した実ボール観測を三角測量。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
@@ -58,7 +58,19 @@ source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認�
 `run_video_batch`は`dataset.json`に登録された同じ`video_id`の全clipを1つの
 `ExecutionPlan`へまとめます。モデルを段階ごとに共有し、各推論はclip・cameraごとの
 既存windowとbatch設定を使います。既定は通常の`pipeline`設定です。
-meiji_4camで選んだX3D/CSN＋DPT T32は`pipeline_config=pipeline_x3d_dpt`で明示します。
+構成は単一入口と同じ[設定](../tasks/court_side/README.md#プレーヤーから判定する)を
+`pipeline_overrides`で明示します。
+
+| 用途 | `court_side.evidence` | `ball_detection.enabled` | `ball_reconstruction.enabled` |
+|---|---|---|---|
+| プレーヤーのみの本番 | `player` | `false` | `false` |
+| ボール推論・再構成も含むbenchmark | `player` | `true` | `true` |
+
+ボールありでX3D/CSN＋DPT T32を使う場合は`pipeline_config=pipeline_x3d_dpt`も指定します。
+プレーヤーのみではball検出・2D点・三角測量のnodeとモデル読込を省き、sceneのballは無効maskになります。
+省いた段への個別`execution.<段>=load`は共通設定検証で拒否します。
+
+meiji_4camの例です。
 この動画はダブルスなので、`player_association.players_per_side=2`も明示します。
 人物数の既定値は各side 1人です。
 `court_kp.mode=clip`を選ぶ例です。
@@ -68,8 +80,8 @@ meiji_4camで選んだX3D/CSN＋DPT T32は`pipeline_config=pipeline_x3d_dpt`で�
 .venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
   video_id=video_000 \
-  pipeline_config=pipeline_x3d_dpt \
-  'pipeline_overrides=["court_kp.mode=clip","player_association.players_per_side=2"]'
+  pipeline_config=pipeline \
+  'pipeline_overrides=["court_kp.mode=clip","court_side.mode=clip","court_side.evidence=player","ball_detection.enabled=false","ball_reconstruction.enabled=false","player_association.players_per_side=2"]'
 ```
 
 `court_kp.mode=video_shared`では、計画を組む前に`prepare_video_court`でvideo全体の
@@ -80,8 +92,8 @@ ARTIFACT rootの`tennis_scene/court_shared/meiji_4cam`からloadする例です�
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
-  video_id=video_000 pipeline_config=pipeline_x3d_dpt \
-  "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"player_association.players_per_side=2\"]"
+  video_id=video_000 pipeline_config=pipeline \
+  "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"court_side.mode=clip\",\"court_side.evidence=player\",\"ball_detection.enabled=false\",\"ball_reconstruction.enabled=false\",\"player_association.players_per_side=2\"]"
 ```
 
 dataset/videoのscopeと各clipのmediaを共有成果物へ照合します。build用request、診断成果物の
@@ -93,6 +105,9 @@ dataset/videoのscopeと各clipのmediaを共有成果物へ照合します。bu
 `court_side.video_shared.action`と`directory`、load時の`artifact_digest`を同じ
 `pipeline_overrides`へ追加します。個別clipのmargin不足などは進捗の
 `video_court_side.clips`へ残し、共有判定との矛盾はclip固有の失敗になります。
+進捗には共有判定の証拠種別も記録します。player証拠のbuild/loadにはplayerの成果物を指定し、
+ball証拠の成果物は流用しません。全clipのplayer観測が未準備の場合は`court_side.mode=clip`で
+各clipの選別後に判定します。
 設定とpinの契約は[共有court_sideのREADME](pipeline/video_court_side/README.ja.md)を参照してください。
 
 meiji_4camでは、同じoverridesへ`people_models.runtime.dino_detector.precision=fp16`と

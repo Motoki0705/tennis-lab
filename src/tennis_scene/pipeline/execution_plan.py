@@ -39,6 +39,9 @@ class ComponentNode:
     # A guarded component must authorize adoption even when its process() is skipped.
     # Only its own output, with the complete execution identity, can be reused.
     require_component: Callable[[], None] | None = None
+    # Soft barriers across the selected component families, including cameras
+    # and clips. They order execution without adding artifact inputs or targets.
+    after_components: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.source not in ("execute", "load"):
@@ -59,6 +62,16 @@ class ComponentNode:
                 provenance.get("origin") != "import"
                 or any(identity.get(key) != json_value(value) for key, value in self.required_import_identity.items())):
             raise ValueError(f"Loaded import identity changed: {self.name}")
+
+    def validate_output(self, value: Any) -> None:
+        validator = getattr(self.component, "validate_output", None)
+        if callable(validator):
+            validator(value, self.settings)
+
+    def validate_artifact(self, descriptor: Mapping[str, Any]) -> None:
+        validator = getattr(self.component, "validate_artifact", None)
+        if callable(validator):
+            validator(descriptor, self.settings)
 
 
 @dataclass(frozen=True)
@@ -111,6 +124,21 @@ class ExecutionPlan:
             key: {port: (key[0], producer) for port, producer in node.bindings.items()}
             for key, node in self.nodes.items()
         }
+        families: dict[str, list[NodeKey]] = {}
+        for key, node in self.nodes.items():
+            families.setdefault(node.name.split('/')[0], []).append(key)
+        self.scheduling_dependencies = {
+            key: tuple(parent for family in node.after_components for parent in families.get(family, ()))
+            for key, node in self.nodes.items()
+        }
+        producers: dict[tuple[str, int], list[NodeKey]] = {}
+        for key, node in self.nodes.items():
+            producers.setdefault((node.io.output_schema, node.io.version), []).append(key)
+        self.ordering_dependencies = {
+            key: tuple(dict.fromkeys(parent for port in node.io.after_all_inputs
+                for parent in producers.get((node.io.inputs[port].schema, node.io.inputs[port].version), ())))
+            for key, node in self.nodes.items()
+        }
         self.order = self._dependency_order()
         targets = [(clip.clip_id, name) for clip in clips
                    for name in (tuple(n.name for n in clip.nodes) if clip.targets is None else clip.targets)]
@@ -142,6 +170,8 @@ class ExecutionPlan:
                 if (declared.schema, declared.version) != (produced.output_schema, produced.version):
                     raise ValueError(f"Incompatible artifact binding {key[1]}.{port}")
                 visit(dependency)
+            for dependency in (*self.scheduling_dependencies[key], *self.ordering_dependencies[key]):
+                visit(dependency)
             visiting.remove(key)
             visited.add(key)
             order.append(key)
@@ -168,8 +198,16 @@ class ExecutionPlan:
 
     def ready(self, required: frozenset[NodeKey] | None = None) -> tuple[NodeKey, ...]:
         selected = self.required if required is None else required
+        # Scheduling barriers wait for all live work, including other clips.
+        # A withdrawn clip cannot produce more references, but must not hold
+        # unrelated clips behind a feature-stage barrier. Data inputs below
+        # still require published references, never failed/blocked statuses.
+        settled = self.references.keys() | {key for key, status in self.statuses.items() if status in {"failed", "blocked"}}
+        pending_families = {self.nodes[key].name.split('/')[0] for key in selected if key not in settled}
         return tuple(key for key in self.order if key in selected and key not in self.statuses
-                     and all(parent in self.references for parent in self.dependencies[key].values()))
+                     and all(parent in self.references for parent in self.dependencies[key].values())
+                     and not any(family in pending_families for family in self.nodes[key].after_components)
+                     and all(parent in settled for parent in self.ordering_dependencies[key] if parent in selected))
 
     def clip_complete(self, clip_id: str) -> bool:
         if clip_id not in self.clips:
@@ -234,6 +272,7 @@ class ExecutionPlan:
             if descriptor["dependencies"] != json_value(dependencies):
                 raise ValueError(f"Loaded artifact dependencies changed: {key[1]}")
             node.validate_import_identity(descriptor["identity"], descriptor["provenance"])
+            node.validate_artifact(descriptor)
             if descriptor["provenance"].get("origin") == "component" and (
                     reference.execution_key != document_digest(identity) or descriptor["identity"] != identity):
                 raise ValueError(f"Loaded component identity changed: {key[1]}")

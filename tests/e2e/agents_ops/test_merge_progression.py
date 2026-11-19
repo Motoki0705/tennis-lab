@@ -271,9 +271,8 @@ def test_worker_can_return_parent_request(tmp_path: Path) -> None:
     assert not backend.merged
 
 
-@pytest.mark.parametrize("rereview", [False, True])
-def test_major_requires_explicit_continue_rereview_is_opt_in(
-    tmp_path: Path, rereview: bool
+def test_major_requires_explicit_continue_without_restarting_review(
+    tmp_path: Path,
 ) -> None:
     path, backend, clock = setup(tmp_path)
     backend.reviews = ["major", "approve"]
@@ -281,9 +280,9 @@ def test_major_requires_explicit_continue_rereview_is_opt_in(
     assert not backend.merged
     assert run(path, backend, clock)["status"] == "parent_wait"
     engine = Engine(path, backend, clock=clock, sleep=clock.sleep)
-    engine.continue_run("major repaired", rereview=rereview)
+    engine.continue_run("major repaired")
     assert engine.run()["status"] == "completed"
-    assert backend.review_count == (2 if rereview else 1)
+    assert backend.review_count == 1
     assert read(path)["decisions"][-1]["changes"]["11"]["files"] == 2
 
 

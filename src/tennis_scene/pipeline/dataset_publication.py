@@ -123,10 +123,23 @@ def validate_dataset_result(result: SceneResult, record: DatasetClipRecord) -> N
         )
 
 
-def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
-    """A marker may only adopt the admitted side component of this clip's export."""
-    if "video_court_side_digest" not in identity:
+def _required_body_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
+    # Custom SceneRunner identities retain their own declared output contract.
+    if identity.get('schema') != 'declared_component_pipeline_v1':
         return {}
+    from src.tennis_scene.pipeline.body_artifacts import require_current_body_artifacts
+
+    root = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
+    document = json.loads((root / 'scene.json').read_text())
+    reference = document['exports']['scene']['inputs']['scene_assembly']
+    artifacts: dict[str, Any] = require_current_body_artifacts(root, reference)
+    return artifacts
+
+
+def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
+    """Admit shared sides first, then require the published scene's body lineage."""
+    if "video_court_side_digest" not in identity:
+        return _required_body_components(inputs, identity)
     from src.tennis_scene.pipeline.video_court_side.component import (
         SharedCourtSideModule,
     )
@@ -154,8 +167,11 @@ def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str,
             or component.get("component_class") != f"{SharedCourtSideModule.__module__}.{SharedCourtSideModule.__qualname__}"
             or ref["execution_key"] != document_digest(component)):
         raise ValueError(f"Published court side disagrees with the shared decision or policy: {clip}")
-    PinnedSideInputs.from_store(root).verify_arrays()
-    return {"court_side": ref}
+    evidence = expected.get("evidence", "ball")
+    if evidence not in ("ball", "player"):
+        raise ValueError(f"Invalid shared court side evidence for publication ({clip})")
+    PinnedSideInputs.from_store(root, evidence=evidence).verify_arrays()
+    return {**_required_body_components(inputs, identity), "court_side": ref}
 
 
 def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mapping[str, object], *, overwrite: bool = False) -> Path | None:

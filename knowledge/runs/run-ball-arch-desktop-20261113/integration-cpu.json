@@ -1,0 +1,448 @@
+{
+  "schema": "ball_arch_main_integration_cpu.v1",
+  "date": "2026-11-19",
+  "cpu_only": true,
+  "python": "3.11.15",
+  "torch": "2.13.0+cu130",
+  "native_msda_revalidated": false,
+  "c3_status": "未完了・途中結果",
+  "c3_execution_tag": "ball-arch-c3-exec-7d7a2e4fa",
+  "c3_execution_commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+  "main_integrated": "f627e01ac0a3cf6c5cd561a882ca9fc5d4cba0d0",
+  "port_before": "0a067a14df9fc27b6e99aecfd53ec56066728713",
+  "variants_before": "5503b3a986b999849f9603cc49036880bf56a746",
+  "inputs": {
+    "scene.pt": {
+      "bytes": 24494025,
+      "sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242"
+    },
+    "dpt.pt": {
+      "bytes": 70625387,
+      "sha256": "8a10a5a856703946d36df4a9490a62f68e05522b96bde0730f648f3e7c9b053e"
+    },
+    "query.pt": {
+      "bytes": 357344527,
+      "sha256": "61f23519da693229df562b4aced022343b2418f0c524a06985b9c6ecc46ee1c2",
+      "drive_file_id": "1vwLlRH9XsZigwnBFXkMon6mCNpWwQMtV"
+    },
+    "real_rgb": {
+      "clip_id": "tracknet/game9/Clip2",
+      "frames": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "source": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+      "resize": "opencv_inter_linear_uint8",
+      "shape": [
+        1,
+        32,
+        3,
+        720,
+        1280
+      ],
+      "sha256": "f889812c6a53a35c02d5b30b760ec488e22e48a9576c6f4d25675f1f0885c21b"
+    }
+  },
+  "comparisons": {
+    "scene": {
+      "input_rgb_sha256": "f889812c6a53a35c02d5b30b760ec488e22e48a9576c6f4d25675f1f0885c21b",
+      "case": "scene",
+      "source": ".",
+      "seconds": 30.126284522004426,
+      "device": "cpu",
+      "precision": "fp32",
+      "strict_load": true,
+      "msda": null,
+      "shapes": {
+        "coords": [
+          1,
+          32,
+          2
+        ],
+        "confidence": [
+          1,
+          32
+        ],
+        "heatmaps": [
+          1,
+          32,
+          180,
+          320
+        ],
+        "candidates_coords": [
+          1,
+          32,
+          8,
+          2
+        ],
+        "candidates_scores": [
+          1,
+          32,
+          8
+        ],
+        "candidates_valid": [
+          1,
+          32,
+          8
+        ],
+        "candidates_cells": [
+          1,
+          32,
+          8,
+          2
+        ],
+        "candidates_patches": [
+          1,
+          32,
+          8,
+          5,
+          5
+        ],
+        "candidates_patch_valid": [
+          1,
+          32,
+          8,
+          5,
+          5
+        ]
+      },
+      "max_abs_error": {
+        "coords": 0.0,
+        "confidence": 0.0,
+        "heatmaps": 0.0,
+        "candidates_coords": 0.0,
+        "candidates_scores": 0.0,
+        "candidates_valid": 0.0,
+        "candidates_cells": 0.0,
+        "candidates_patches": 0.0,
+        "candidates_patch_valid": 0.0
+      }
+    },
+    "dpt_10000": {
+      "input_rgb_sha256": "f889812c6a53a35c02d5b30b760ec488e22e48a9576c6f4d25675f1f0885c21b",
+      "case": "dpt",
+      "source": ".",
+      "seconds": 0.9963779099925887,
+      "device": "cpu",
+      "precision": "fp32",
+      "strict_load": true,
+      "msda": null,
+      "shapes": {
+        "dpt": [
+          1,
+          32,
+          17,
+          33
+        ]
+      },
+      "max_abs_error": {
+        "dpt": 0.0
+      }
+    },
+    "query_d512_l6_6000": {
+      "input_rgb_sha256": "f889812c6a53a35c02d5b30b760ec488e22e48a9576c6f4d25675f1f0885c21b",
+      "case": "query",
+      "source": ".",
+      "seconds": 3.0619644499965943,
+      "device": "cpu",
+      "precision": "fp32",
+      "strict_load": true,
+      "msda": null,
+      "shapes": {
+        "query": [
+          1,
+          64,
+          2
+        ]
+      },
+      "max_abs_error": {
+        "query": 0.0
+      }
+    },
+    "C1_C2_C3_T1_T2": {
+      "input_rgb_sha256": "f889812c6a53a35c02d5b30b760ec488e22e48a9576c6f4d25675f1f0885c21b",
+      "case": "variants",
+      "source": ".",
+      "seconds": 4.940688715985743,
+      "device": "cpu",
+      "precision": "fp32",
+      "strict_load": true,
+      "msda": "official PyTorch reference explicitly substituted in verification process only",
+      "shapes": {
+        "C1": [
+          1,
+          32,
+          5,
+          7
+        ],
+        "C2": [
+          1,
+          32,
+          5,
+          7
+        ],
+        "C3": [
+          1,
+          32,
+          5,
+          7
+        ],
+        "T1": [
+          1,
+          64,
+          2
+        ],
+        "T2": [
+          1,
+          64,
+          2
+        ]
+      },
+      "max_abs_error": {
+        "C1": 0.0,
+        "C2": 0.0,
+        "C3": 0.0,
+        "T1": 0.0,
+        "T2": 0.0
+      }
+    }
+  },
+  "source_sha256": {
+    "src/tasks/ball_detection/inference/x3d_dpt.py": "f6d45891b07e09814b6eb84a6a58aa11824dd7c2d3d8e87eb116c1194aeaf0c3",
+    "src/tasks/ball_detection/model_io/mdd_heatmap.py": "a928600638c0da0e63fd2c5fca90b67b9d4d0f4dcbe79ac8f14adb0244be6b69",
+    "src/tasks/ball_detection/model_io/mdd_temporal.py": "8d35fd635f62aef8bcc00c9aa4cd06e32afd6a10956e086c1c9ccf0e782bc6ef",
+    "src/tasks/ball_detection/models/mdd/__init__.py": "ca29fc703915b303e81e2ea67e1d08d63798f95b1e57fa634e069fa77f3cf6fa",
+    "src/tasks/ball_detection/models/mdd/attention.py": "07c6f0584491cb9aee3b25dfa6ee18876bc44449001aafed0f3a3e7c9039ddec",
+    "src/tasks/ball_detection/models/mdd/blocks.py": "8206f5c732b8ccf3b87a3d6dd6fa34baa5e5ed1e52e829af7d81ec75d8dd20fc",
+    "src/tasks/ball_detection/models/mdd/cnn_encoder.py": "12bbfa61ff5b5785a8feb1e2db90474347b8fbc08796f2d3fb576ff3b0215d68",
+    "src/tasks/ball_detection/models/mdd/config.py": "971d05354046da912fda7e51e5dd039368f3c4de26ff85aaef659e74711f9c45",
+    "src/tasks/ball_detection/models/mdd/detectors.py": "a9e722d518709f0c91e50fe57b4816e13268f08b8fd47fdedff9e8adc47a1703",
+    "src/tasks/ball_detection/models/mdd/execution.py": "c34296006351f753136e4b6567f7277f14999c88a89b96dddbbf857b0ee7c63f",
+    "src/tasks/ball_detection/models/mdd/hybrid.py": "7d6674bbad1a18db8a22febd066705eceb2428773c2a21cf327983b0bb69ba02",
+    "src/tasks/ball_detection/models/mdd/mhc_query.py": "1bcd7f30c4389a39b20203f8ba6535458632931de6fe1bafa1a979ed4c26f054",
+    "src/tasks/ball_detection/models/mdd/multiscale_config.py": "8844a80d4e6b6d5c8e43125f58462c2cb4558da06013b8db837be761d3f1eb30",
+    "src/tasks/ball_detection/models/mdd/multiscale_query.py": "0ab79eb133f4499af357dfd1e675eebdcb085146b1cf8dd8e0d81f87e7b66345",
+    "src/tasks/ball_detection/models/mdd/pose.py": "70c3b1a74cbfb86e87ec6185c96d3836b812d8c1e895322952746f3f1081f66e",
+    "src/tasks/ball_detection/models/mdd/stage_config.py": "9e7c47adc8bab2314a23286d924a1e1961c0916a0f810378262bab6c04f1356b",
+    "src/tasks/ball_detection/models/mdd/token_encoder.py": "5b030abbc9aa1c45f476b2c32ad79a3c4f2c2d6213795c954ce5708a6671357a",
+    "src/tasks/ball_detection/models/mdd/variants.py": "876a910fdb64d3b5bfba41a7099e16a5663ca1db28af8d8a729397600ee6a3eb",
+    "src/tasks/ball_detection/models/mdd/x3d_csn.py": "28d2654b54a2212252f5ca5efdd60ec1544d4b246ba791f4a58c92a808af66fd",
+    "tests/benchmarks/ball_detection/efficiency.py": "6dd41fbfd10e074f99eefec2dfebb028f1a8a106121732383723fe7fde1beb11"
+  },
+  "verification_script_sha256": "f6bca4d906ff33ae9f667ac1c5bfad49e6945e7fd564cbbacd3372a38ce1e70c",
+  "test_design": {
+    "new_production_test_cases": 0,
+    "upstream_scene_cases_preserved": 4,
+    "existing_ca_recipe_regression": "replaced Colab-only dependency with two distinct saved-recipe fixtures; case count unchanged",
+    "parity_cases": [
+      "scene X3D DPT T32",
+      "saved DPT 10k",
+      "saved dim512 six-layer query 6k",
+      "C1",
+      "C2",
+      "C3",
+      "T1 CPU reference",
+      "T2 CPU reference"
+    ],
+    "native_msda": "CUDA tests skipped explicitly; production CPU/reference fallback absent"
+  },
+  "initial_test_run": {
+    "total": 1816,
+    "passed": 1805,
+    "failed": 2,
+    "skipped": 9,
+    "seconds": 396.29,
+    "failure_reason": "The implementation fingerprint changed because the worker edited typing declarations during the test run; tests correctly rejected the changed source. The final verification reruns the entire same suite with frozen source."
+  },
+  "local_evidence_root": "/home/kamimura/projects/tennis-lab/.worktree-outputs/ball-arch-desktop/ball-arch-stack-integration-20261119",
+  "pre_commit": {
+    "status": "passed",
+    "input_python_files": 78,
+    "hooks": [
+      "ruff",
+      "mypy"
+    ],
+    "scope": "Repository pre-commit file filters; knowledge scripts are excluded by those hooks. integration_cpu.py also passed an explicit ruff check with E402 ignored for its selected-source import.",
+    "log": "pre-commit-latest.log under local_evidence_root"
+  },
+  "frozen_runtime_and_E_attempts_modified": false,
+  "git_operations": "merge commits only for integration; no rebase or force push; PR bases unchanged",
+  "previous_main_integrated": "4237e492faf0ad650235a956af77d0caccb72fa6",
+  "previous_main_test_run": {
+    "tests": 1816,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 9,
+    "time": 377.083,
+    "passed": 1807,
+    "command": "CUDA_VISIBLE_DEVICES=\"\" PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest -n 4 <test_paths> -q -rs",
+    "test_paths": [
+      "tests/unit/tasks/ball_detection",
+      "tests/integration/tasks/ball_detection",
+      "tests/unit/utils/models/components/ops/msda",
+      "tests/unit/benchmarks/ball_detection",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_court.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py",
+      "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py",
+      "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py",
+      "tests/unit/tennis_scene/pipeline/components/test_ball_points.py",
+      "tests/unit/tennis_scene/pipeline/test_video_ball_imports.py",
+      "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py",
+      "tests/unit/tennis_scene/visualization/test_ball3d_tables.py",
+      "tests/integration/tennis_scene/test_ball3d_bundle.py",
+      "tests/integration/tennis_scene/test_ball3d_media.py",
+      "tests/integration/tennis_scene/test_ball_annotation_imports.py",
+      "tests/integration/tennis_scene/test_x3d_ball_component.py",
+      "tests/unit/tennis_scene/test_pipeline_configuration.py"
+    ],
+    "skipped_cases": [
+      {
+        "node": "tests.unit.tasks.ball_detection.visualization.inference.test_local_data::test_curated_checkpoint_is_described_from_its_own_config",
+        "reason": "Unified ball store is unavailable"
+      },
+      {
+        "node": "tests.unit.tasks.ball_detection.visualization.inference.test_local_data::test_cpu_window_matches_dataset_preprocessing_and_original_pixels",
+        "reason": "Unified ball store is unavailable"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_mdd_posttraining::test_shared_epoch_bf16_compile_freeze_and_unfreeze",
+        "reason": "CUDA required; invoke through shared training queue"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_hand_computed_interpolation_padding_edges_and_gradients",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_bf16_boundary_executes_official_projections_and_kernel_in_fp32",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_frame_chunk_matches_full_outputs_all_gradients_and_artifact_restore[layout0-msda]",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_frame_chunk_matches_full_outputs_all_gradients_and_artifact_restore[layout1-encoder_msda]",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_inductor_graph_break_mode_keeps_forward_and_backward_correct",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_qualitative_local_data::test_ft_e13_renders_all_three_validation_sources_on_cpu",
+        "reason": "ft-e13 or the three-source store is unavailable"
+      }
+    ],
+    "x3d_cases": 21
+  },
+  "later_main_merge": {
+    "ball_detection_source_unchanged": true,
+    "reason": "main advanced with PR #2226 while CI was running; propagate with merge commits"
+  },
+  "final_test_run": {
+    "tests": 1818,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 9,
+    "time": 408.142,
+    "passed": 1809,
+    "command": "CUDA_VISIBLE_DEVICES=\"\" PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest -n 4 <test_paths> -q -rs",
+    "test_paths": [
+      "tests/unit/tasks/ball_detection",
+      "tests/integration/tasks/ball_detection",
+      "tests/unit/utils/models/components/ops/msda",
+      "tests/unit/benchmarks/ball_detection",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_court.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py",
+      "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py",
+      "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py",
+      "tests/unit/tennis_scene/pipeline/components/test_ball_points.py",
+      "tests/unit/tennis_scene/pipeline/test_video_ball_imports.py",
+      "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py",
+      "tests/unit/tennis_scene/visualization/test_ball3d_tables.py",
+      "tests/integration/tennis_scene/test_ball3d_bundle.py",
+      "tests/integration/tennis_scene/test_ball3d_media.py",
+      "tests/integration/tennis_scene/test_ball_annotation_imports.py",
+      "tests/integration/tennis_scene/test_x3d_ball_component.py",
+      "tests/unit/tennis_scene/test_pipeline_configuration.py"
+    ],
+    "skipped_cases": [
+      {
+        "node": "tests.unit.tasks.ball_detection.visualization.inference.test_local_data::test_curated_checkpoint_is_described_from_its_own_config",
+        "reason": "Unified ball store is unavailable"
+      },
+      {
+        "node": "tests.unit.tasks.ball_detection.visualization.inference.test_local_data::test_cpu_window_matches_dataset_preprocessing_and_original_pixels",
+        "reason": "Unified ball store is unavailable"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_mdd_posttraining::test_shared_epoch_bf16_compile_freeze_and_unfreeze",
+        "reason": "CUDA required; invoke through shared training queue"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_hand_computed_interpolation_padding_edges_and_gradients",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_bf16_boundary_executes_official_projections_and_kernel_in_fp32",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_frame_chunk_matches_full_outputs_all_gradients_and_artifact_restore[layout0-msda]",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_frame_chunk_matches_full_outputs_all_gradients_and_artifact_restore[layout1-encoder_msda]",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_multiscale_query::test_inductor_graph_break_mode_keeps_forward_and_backward_correct",
+        "reason": "Requires CUDA and an explicitly built official MSDA binary"
+      },
+      {
+        "node": "tests.integration.tasks.ball_detection.test_qualitative_local_data::test_ft_e13_renders_all_three_validation_sources_on_cpu",
+        "reason": "ft-e13 or the three-source store is unavailable"
+      }
+    ],
+    "x3d_cases": 21
+  },
+  "scene_baseline_source": "f627e01ac0a3cf6c5cd561a882ca9fc5d4cba0d0"
+}

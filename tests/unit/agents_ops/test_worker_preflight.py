@@ -79,10 +79,12 @@ def test_context_tracks_external_dependency_prs(
 
     monkeypatch.setattr(github, "get", get)
     child = SimpleNamespace(body="## 依存関係\n#20 の完了後。\n")
+    tasks = {"10": {"branch": "codex/worker", "worktree": str(tmp_path)}}
     session = SimpleNamespace(
         gh=github,
         parent=1,
-        row={"tasks": {"10": {"branch": "codex/worker", "worktree": str(tmp_path)}}},
+        row={"tasks": tasks},
+        worker_task=lambda number: tasks[str(number)],
         work_items=lambda: (SimpleNamespace(body="親の要件。"), {10: child}),
     )
     first = phase.context(session, 10, authorized={"generation": 1})
@@ -147,8 +149,10 @@ def planning(
         "preflight": phase,
         "worktree": str(tmp_path),
     }
+    tasks = {"10": task}
     session = SimpleNamespace(
-        row={"tasks": {"10": task}},
+        row={"tasks": tasks},
+        worker_task=lambda number: tasks[str(number)],
         gh=SimpleNamespace(io_scope=nullcontext),
         store=SimpleNamespace(save=lambda: None),
         owner=lambda: None,

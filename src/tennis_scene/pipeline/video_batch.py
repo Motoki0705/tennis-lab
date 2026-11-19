@@ -169,6 +169,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                 video_court_side = orchestrator.prepare_video_court_side(video_court)
                 if video_court_side is not None:
                     progress.document["video_court_side"] = {
+                        "evidence": video_court_side.decision.evidence,
                         "artifact_digest": video_court_side.digest,
                         "diagnostics_digest": video_court_side.decision.diagnostics_digest,
                         "unobservable_policy": cfg.court_side_unobservable_policy,

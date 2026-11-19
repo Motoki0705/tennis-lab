@@ -1,6 +1,6 @@
 [Unit]
 Description=Close expired tennis-lab improvement proposals
-Documentation=file://%h/projects/tennis-lab/.agents/ops/parent/improvements.md
+Documentation=file://%h/projects/tennis-lab/.agents/ops/parent/README.md
 
 [Service]
 Type=oneshot

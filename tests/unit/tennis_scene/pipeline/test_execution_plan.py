@@ -90,6 +90,11 @@ def recording_store(spec: ClipExecution) -> RecordingStore:
     return spec.store
 
 
+def model(node: ComponentNode) -> Model:
+    assert isinstance(node.component, Model)
+    return node.component
+
+
 def clip(tmp_path: Path, clip_id: str = "a", offset: float = 2) -> ClipExecution:
     source = ClipSource(clip_id, (SourceVideo("cam0", tmp_path / f"{clip_id}.mp4", clip_id, 2, 30., 64, 36),))
     context = AssemblyContext(source)
@@ -101,6 +106,51 @@ def clip(tmp_path: Path, clip_id: str = "a", offset: float = 2) -> ClipExecution
         ComponentNode("separate", separate, separate.io, Assembler(), {}, context, {}, "test1"),
     )
     return ClipExecution(clip_id, nodes, RecordingStore(tmp_path / clip_id, clip_id))
+
+
+def test_scheduling_barriers_span_clips_without_changing_inputs_targets_or_cache(tmp_path: Path) -> None:
+    entries = []
+    for name in ('a', 'b'):
+        entry = clip(tmp_path, name)
+        first, second, separate = entry.nodes
+        entries.append(replace(entry, nodes=(first, second, replace(separate, after_components=('first',)))))
+    plan = ExecutionPlan(entries)
+    assert plan.target_nodes([('a', 'separate')]) == {('a', 'separate')}
+    executor = PlanExecutor(plan)
+    executor.run(targets=[('a', 'separate')])
+    assert tuple(plan.references) == (('a', 'separate'),)
+    executor.run()
+    order = tuple(plan.references)
+    assert max(order.index((name, 'first')) for name in ('a', 'b')) < order.index(('b', 'separate'))
+    without_barriers = [replace(entry, nodes=tuple(replace(node, after_components=()) for node in entry.nodes)) for entry in entries]
+    cached = ExecutionPlan(without_barriers)
+    PlanExecutor(cached).run()
+    assert set(cached.statuses.values()) == {'cached'}
+
+
+def test_scheduling_cycle_is_rejected_before_model_loading(tmp_path: Path) -> None:
+    entry = clip(tmp_path)
+    first, second, separate = entry.nodes
+    nodes = (replace(first, after_components=('separate',)), second,
+             replace(separate, after_components=('first',)))
+    with pytest.raises(ValueError, match='Cyclic component graph'):
+        ExecutionPlan([replace(entry, nodes=nodes)])
+
+
+@pytest.mark.parametrize('ports', [('unknown',), ('previous', 'previous')])
+def test_stage_barriers_require_distinct_declared_inputs(ports: tuple[str, ...]) -> None:
+    with pytest.raises(ValueError, match='distinct declared input ports'):
+        ComponentIO('reading', Request, Reading, {'previous': InputPort('reading')}, 'reading', after_all_inputs=ports)
+
+
+def test_stage_barrier_cycles_are_rejected_even_when_artifact_graph_is_acyclic(tmp_path: Path) -> None:
+    spec = clip(tmp_path)
+    first, second, separate = spec.nodes
+    second = replace(second, io=replace(second.io, output_schema='later', after_all_inputs=('previous',)))
+    separate = replace(separate, io=replace(separate.io, inputs={'previous': InputPort('later')}),
+        bindings={'previous': 'second'})
+    with pytest.raises(ValueError, match='Cyclic component graph'):
+        ExecutionPlan([replace(spec, nodes=(first, second, separate))])
 
 
 @pytest.mark.parametrize("case,expected", [
@@ -118,7 +168,7 @@ def test_each_node_is_decided_and_processed_once(tmp_path: Path, case: str, expe
     if case != "empty":
         seed = replace(spec, targets=("first",)) if case == "partial" else spec
         PlanExecutor(ExecutionPlan([seed])).run()
-    before = [node.component.calls for node in spec.nodes]
+    before = [model(node).calls for node in spec.nodes]
     if case in ("model", "preprocessing"):
         settings = {"model": {"kind": "x3d_csn_dpt" if case == "model" else "convnext"},
                     "preprocessing": {"channels": 5 if case == "preprocessing" else 2}}
@@ -136,7 +186,7 @@ def test_each_node_is_decided_and_processed_once(tmp_path: Path, case: str, expe
     executor.execute(("a", "first"))
     assert [plan.statuses[("a", name)] for name in ("first", "second", "separate")] == list(expected)
     assert recording_store(spec).lookups == {"first": 1, "second": 1, "separate": 1}
-    assert [node.component.calls - count for node, count in zip(spec.nodes, before, strict=True)] == [int(s == "executed") for s in expected]
+    assert [model(node).calls - count for node, count in zip(spec.nodes, before, strict=True)] == [int(s == "executed") for s in expected]
     assert len(plan.decisions) == 3
     assert completed == ["a"]
     expected_loads = [int(expected[0] != "executed") + int(expected[1] == "executed"),
@@ -156,7 +206,7 @@ def test_missing_load_artifact_is_required_and_decided_once(tmp_path: Path) -> N
     with pytest.raises(FileNotFoundError, match="artifact missing"):
         plan.decide(("a", "first"))
     assert recording_store(spec).lookups == {"first": 1} and not recording_store(spec).loads
-    assert all(node.component.calls == 0 for node in spec.nodes)
+    assert all(model(node).calls == 0 for node in spec.nodes)
 
 
 def test_single_clip_api_keeps_references_and_never_reexecutes_completed_targets(tmp_path: Path) -> None:
@@ -167,7 +217,7 @@ def test_single_clip_api_keeps_references_and_never_reexecutes_completed_targets
     runner.run(targets=["second"])
     assert references is runner.references
     assert references["first"] == first and set(references) == {"first", "second"}
-    assert [node.component.calls for node in spec.nodes] == [1, 1, 0]
+    assert [model(node).calls for node in spec.nodes] == [1, 1, 0]
     assert recording_store(spec).lookups == {"first": 1, "second": 1}
 
 
@@ -202,7 +252,7 @@ def test_failed_completion_is_recorded_once_and_does_not_block_other_clip(
     assert executor.completion_results["b"].error is None
     assert plan.clip_complete("a") and plan.clip_complete("b")
     assert set(plan.statuses.values()) == {"executed"}
-    assert all(node.component.calls == 1 for spec in clips for node in spec.nodes)
+    assert all(model(node).calls == 1 for spec in clips for node in spec.nodes)
 
 
 @pytest.mark.parametrize("source", ["execute", "load"])
@@ -221,7 +271,7 @@ def test_corrupt_cached_or_loaded_artifact_fails_without_recalculation(tmp_path:
     with pytest.raises(ValueError, match="not ready"):
         executor.execute(("a", "first"))
     assert recording_store(spec).lookups == {"first": 1}
-    assert [node.component.calls for node in spec.nodes] == [1, 1, 1]
+    assert [model(node).calls for node in spec.nodes] == [1, 1, 1]
     assert plan.statuses == {("a", "first"): "failed"} and not plan.references
 
 
@@ -256,17 +306,17 @@ def test_two_clips_keep_stores_and_dependencies_separate_under_ready_policy(tmp_
     PlanExecutor(reordered).run()
     assert reordered.references == plan.references
     assert set(reordered.statuses.values()) == {"cached"}
-    assert all(node.component.calls == 1 for spec in clips for node in spec.nodes)
+    assert all(model(node).calls == 1 for spec in clips for node in spec.nodes)
 
 
 @pytest.mark.parametrize("key", [("missing", "first"), ("a", "missing")])
 def test_unknown_execute_key_keeps_the_explicit_readiness_error(tmp_path: Path, key: NodeKey) -> None:
     spec = clip(tmp_path)
     executor = PlanExecutor(ExecutionPlan([spec]))
-    with pytest.raises(ValueError, match="not ready"):
+    with pytest.raises(ValueError, match="outside the execution plan"):
         executor.execute(key)
     assert not executor.plan.references
-    assert all(node.component.calls == 0 for node in spec.nodes)
+    assert all(model(node).calls == 0 for node in spec.nodes)
 
 
 def test_policy_cannot_select_unready_node(tmp_path: Path) -> None:
@@ -274,7 +324,7 @@ def test_policy_cannot_select_unready_node(tmp_path: Path) -> None:
     executor = PlanExecutor(ExecutionPlan([spec]), select_ready=lambda _: ("a", "second"))
     with pytest.raises(ValueError, match="not ready"):
         executor.run()
-    assert not recording_store(spec).lookups and all(node.component.calls == 0 for node in spec.nodes)
+    assert not recording_store(spec).lookups and all(model(node).calls == 0 for node in spec.nodes)
 
 
 @pytest.mark.parametrize("invalid,match", [
@@ -301,4 +351,4 @@ def test_invalid_plan_is_rejected_before_execution(tmp_path: Path, invalid: str,
         b = replace(b, targets=("missing",))
     with pytest.raises(ValueError, match=match):
         ExecutionPlan([a, b])
-    assert not recording_store(a).lookups and all(node.component.calls == 0 for node in a.nodes)
+    assert not recording_store(a).lookups and all(model(node).calls == 0 for node in a.nodes)

@@ -12,7 +12,7 @@ hierarchy:
 
   - name: "issue:proposal"
     color: "C4B5FD"
-    description: "未判断を含む改善候補を元親ごとに列挙する改善提案Issue。作業対象ではない（.agents/ops/parent/improvements.md）"
+    description: "未判断を含む改善候補を元親ごとに列挙する改善提案Issue。作業対象ではない（.agents/skills/parent-session/references/finish.md）"
 
 work-type:
   - name: bug

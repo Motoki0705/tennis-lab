@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# name: person-feature-artifacts-clip037
+# added: 2026-11-17T21:09:31+09:00
+# provider: codex
+# session: 01a1e957-d212-7232-b1b4-27bcf33ef597
+# issue: 1753
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+# idempotency_key_sha256: d7c7f55edfe9cf6a5fbb46b6e93d4d58e4f5cde060df5ae9bac01d0c55bf5575
+# request_sha256: 237c1ec33a914b7bb227af2d4a51a3e0567c9b6e5da8fec5a835fa2923e48cbd
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts
+export TENNIS_RUN_ID=0-8205082628769244597_2026-11-17T12-09-31-230755402Z_973866_person-feature-artifacts-clip037
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205082628769244597_2026-11-17T12-09-31-230755402Z_973866_person-feature-artifacts-clip037
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/person-feature-artifacts/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205082628769244597_2026-11-17T12-09-31-230755402Z_973866_person-feature-artifacts-clip037 --name person-feature-artifacts-clip037 --provider codex --session 01a1e957-d212-7232-b1b4-27bcf33ef597 --issue 1753 --cmd PYTHONPATH=.\ OPENBLAS_NUM_THREADS=2\ OMP_NUM_THREADS=2\ TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/toolchain/MultiScaleDeformableAttention.so\ .venv/bin/python\ knowledge/runs/run-person-feature-artifacts-20261117/compare.py\ --input-root\ /home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/input\ --output\ outputs/person_feature_acceptance/gpu
+PYTHONPATH=. OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/toolchain/MultiScaleDeformableAttention.so .venv/bin/python knowledge/runs/run-person-feature-artifacts-20261117/compare.py --input-root /home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/input --output outputs/person_feature_acceptance/gpu

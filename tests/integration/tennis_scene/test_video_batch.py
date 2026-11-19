@@ -275,6 +275,8 @@ def test_clip_failure_keeps_the_resident_model_for_other_clips(tmp_path: Path, m
     stage.before = fail
     result = execute(pipeline, dataset)
     assert [o.status for o in result.outcomes] == ["failed", "generated"]
+    assert result.plan.statuses[("video_000/clip_000", "scene_assembly")] == "blocked"
+    assert result.plan.statuses[("video_000/clip_001", "hmr2_features")] == "executed"
     assert events.count(("load", "fake_ball")) == events.count(("unload", "fake_ball")) == 1
     assert not (clips[0] / "annotations/tennis_scene/annotation.json").exists()
 
@@ -396,8 +398,8 @@ def test_single_entry_concurrent_export_cannot_mix_batch_publication(tmp_path: P
     assert writer.exitcode == 0
 
 
-@pytest.mark.parametrize("action", ["build", "load"])
-def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_path, monkeypatch, action):
+@pytest.mark.parametrize("action,evidence", [("build", "ball"), ("load", "ball"), ("build", "player"), ("load", "player")])
+def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_path, monkeypatch, action, evidence):
     import src.tennis_scene.pipeline.video_court_side as side_api
     from src.tennis_scene.pipeline.artifacts import json_value
     from src.tennis_scene.pipeline.clip_inputs import prepare_clip_source
@@ -406,9 +408,19 @@ def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_pa
     from src.tennis_scene.pipeline.storage.clip_store import ClipStore
     from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
     from src.utils.checksum import dual_sha256
+    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
+        project_fixture_player_boxes,
+        runtime,
+    )
 
     pipeline, dataset, clips, court = shared_batch_fixture(tmp_path, monkeypatch)
-    pipeline.config = replace(pipeline.config, court_side=replace(pipeline.config.court_side, min_frames=30))
+    if evidence == "player":
+        cfg = runtime(tmp_path, overrides=("court_side.evidence=player", "ball_detection.enabled=false", "ball_reconstruction.enabled=false"))
+        pipeline.config = replace(cfg, video_court=pipeline.config.video_court)
+        pipeline.components = {name: stage for name, stage in pipeline.components.items() if not name.startswith("ball_detection/")}
+        project_fixture_player_boxes(pipeline.components)
+    else:
+        pipeline.config = replace(pipeline.config, court_side=replace(pipeline.config.court_side, min_frames=30))
     pins = {}
     for i, clip in enumerate(clips):
         source = prepare_clip_source(tuple(clip / f"cam{c}.mp4" for c in range(3)),
@@ -416,8 +428,9 @@ def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_pa
         store = ClipStore(tmp_path / f"prefix-{i}", json_value(source))
         nodes = standard_definition(pipeline.config, source, code_identity=pipeline.code_identity,
                                     overrides=pipeline.components, video_court=court)
-        ComponentRunner(nodes, store).run(["court_calibration", *(f"ball_points/cam{c}" for c in range(3))])
-        pins[source.clip_id] = side_api.PinnedSideInputs.from_store(store.root)
+        observation = "player_selection" if evidence == "player" else "ball_points"
+        ComponentRunner(nodes, store).run(["court_calibration", *(f"{observation}/cam{c}" for c in range(3))])
+        pins[source.clip_id] = side_api.PinnedSideInputs.from_store(store.root, evidence=evidence)
     artifact = side_api.build_video_court_side(pins, court=court, directory=tmp_path / "side",
         thresholds=pipeline.config.court_side, max_frames=pipeline.config.sampling_max_frames,
         code_identity=pipeline.code_identity)
@@ -453,12 +466,23 @@ def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_pa
     np.testing.assert_array_equal(scene(clips[0]).court_kp, expected.court_kp)
     np.testing.assert_array_equal(scene(clips[0]).ball_3d, expected.ball_3d)
     assert all(scene(clip).metadata["court_reference"]["view_half_turns"] == [False, False, True] for clip in clips)
+    if evidence == "player":
+        assert not any(name.startswith("ball_") for _, name in result.plan.nodes)
+        assert all(scene(clip).player_kp_3d_vis.any() and not scene(clip).ball_3d_valid.any() for clip in clips)
+        assert all(not any(clip.glob("annotations/tennis_scene/components/ball_*")) for clip in clips)
     progress = json.loads(result.progress_path.read_text())
     side = progress["video_court_side"]
     assert side["artifact_digest"] == artifact.digest
+    assert side["evidence"] == evidence
     assert progress["publication_identity"]["video_court_side_digest"] == artifact.digest
-    assert all(report["status"] == "warning" and report["reason"] == "court_side_insufficient_frames"
-               for report in side["clips"].values())
+    if evidence == "ball":
+        assert all(report["status"] == "warning" and report["reason"] == "court_side_insufficient_frames"
+                   for report in side["clips"].values())
+    else:
+        assert all(report["status"] == "ok" for report in side["clips"].values())
+    reused = execute(pipeline, dataset)
+    assert all(outcome.status == "skipped" for outcome in reused.outcomes)
+    assert not reused.plan.nodes
 
 
 def test_shared_side_scope_is_rejected_before_acquisition(tmp_path, monkeypatch):

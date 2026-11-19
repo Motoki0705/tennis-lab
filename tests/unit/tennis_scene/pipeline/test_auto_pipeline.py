@@ -126,6 +126,12 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
         PersonDetectionModule,
         PersonDetectionOutput,
     )
+    from src.tennis_scene.pipeline.components.person_features import (
+        PersonAppearanceFeaturesModule,
+        PersonAppearanceFeaturesOutput,
+        PersonPoseFeaturesModule,
+        PersonPoseFeaturesOutput,
+    )
     from src.tennis_scene.pipeline.components.person_tracking import (
         PersonTrackingModule,
         PersonTrackingOutput,
@@ -154,7 +160,13 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
         boxes = np.zeros((count, frames, 4), np.float32)
         boxes[..., 2:] = 100
         fixed(f"person_detection/{camera}", PersonDetectionModule.io, PersonDetectionOutput(camera,
-            np.arange(frames + 1, dtype=np.int64) * count, boxes.transpose(1, 0, 2).reshape(-1, 4), np.ones(frames * count, np.float32)))
+            np.arange(frames + 1, dtype=np.int64) * count, boxes.transpose(1, 0, 2).reshape(-1, 4), np.ones(frames * count, np.float32), np.arange(frames * count, dtype=np.int64)))
+        detection = stages[f"person_detection/{camera}"].result
+        fixed(f"person_pose_features/{camera}", PersonPoseFeaturesModule.io, PersonPoseFeaturesOutput(camera,
+            detection.frame_offsets, detection.source_rows, np.zeros((frames * count, 17, 3), np.float32), 'a' * 64, 'b' * 64))
+        fixed(f"person_appearance_features/{camera}", PersonAppearanceFeaturesModule.io, PersonAppearanceFeaturesOutput(camera,
+            detection.frame_offsets, detection.source_rows, np.zeros((frames * count, 1280), np.float32),
+            np.zeros(frames * count, bool), "clipreid_vitb16_market1501", "a" * 64, 'b' * 64))
         fixed(f"person_tracking/{camera}", PersonTrackingModule.io, PersonTrackingOutput(camera,
             np.arange(count, dtype=np.int64), boxes, people.observed[v].T,
             tuple((i,) for i in range(count)), ()))
@@ -177,6 +189,20 @@ def patch_video_probe(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, frames: i
         path.write_bytes(b"video fixture")
     monkeypatch.setattr("src.tennis_scene.pipeline.source.probe_video_info", lambda _: VideoInfo(30., 1280, 720, frames))
     return paths
+
+
+def project_fixture_player_boxes(stages: dict[str, Any]) -> None:
+    """Put the selected box bottoms at the same moving ground point in all views."""
+    centers = ([-8., -16., 9.], [8., -16., 9.], [5., 16., 9.])
+    for i, center in enumerate(centers):
+        camera = _camera(f"cam{i}", center)
+        stage = stages[f"player_selection/{camera.camera_id}"]
+        selection = stage.result
+        frame = np.arange(selection.tracks.observed.shape[1])
+        uv, front = camera.project(np.column_stack((.03 * frame, -7. + .18 * frame, np.zeros_like(frame))))
+        assert front.all()
+        box = np.column_stack((uv[:, 0] - 10., uv[:, 1] - 50., uv[:, 0] + 10., uv[:, 1]))
+        stage.result = replace(selection, tracks=replace(selection.tracks, boxes_xyxy=box[None].astype(np.float32)))
 
 
 class TrackIdentities:
@@ -252,6 +278,43 @@ def test_no_ball_observations_stop_at_the_side_decision(tmp_path: Path, monkeypa
     assert pipeline.last_runner is not None and pipeline.last_runner.statuses["court_side"] == "failed"
     assert pipeline.last_receipt is not None and pipeline.last_receipt["error_reason"] == "court_side_insufficient_frames"
     assert pipeline.last_receipt["error_diagnostics"]["pair_frames"] == {"cam0-cam1": 0, "cam0-cam2": 0, "cam1-cam2": 0}
+
+
+@pytest.mark.parametrize("include_ball", [False, True], ids=["player-only", "with-ball"])
+def test_player_side_scene_plans_the_requested_ball_stages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, include_ball: bool,
+) -> None:
+    from src.tennis_scene.pipeline.definition import enabled_model_assets
+
+    court, people, balls = inputs()
+    stages: dict[str, Any] = {name: stage for name, stage in camera_stages(court, people, balls).items()
+                              if include_ball or not name.startswith("ball_detection/")}
+    project_fixture_player_boxes(stages)
+    stages["player_association"] = TrackIdentities(people.camera_ids)
+    enabled = "true" if include_ball else "false"
+    cfg = runtime(tmp_path, overrides=("court_side.evidence=player", f"ball_detection.enabled={enabled}",
+                                      f"ball_reconstruction.enabled={enabled}",
+                                      *(("ball_detection.checkpoint=null",) if not include_ball else ())))
+    assert ("ball" in enabled_model_assets(cfg)) is include_ball
+    pipeline = TennisSceneOrchestrator(cfg, components=stages)
+    scene = pipeline.run(patch_video_probe(tmp_path, monkeypatch), video_role=PathRole.DATA, camera_ids=people.camera_ids,
+                         store_root=tmp_path / "player-store")
+    assert scene.player_kp_3d_vis.all()
+    assert bool(scene.ball_3d_valid.any()) is include_ball and bool(scene.ball_3d.any()) is include_ball
+    assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
+    runner = pipeline.last_runner
+    assert runner is not None
+    expected_ball_nodes = {
+        "ball_triangulation", *(f"ball_detection/{c}" for c in people.camera_ids), *(f"ball_points/{c}" for c in people.camera_ids),
+    } if include_ball else set()
+    assert {name for _, name in runner.plan.nodes if name.startswith("ball_")} == expected_ball_nodes
+    assert all(runner.statuses[node] == "executed" for node in expected_ball_nodes)
+    side_nodes = {name for _, name in runner.plan.target_nodes([(runner.clip_id, "court_side")])}
+    assert side_nodes.isdisjoint(expected_ball_nodes)
+    assert "player_association" not in side_nodes and "pose_estimation/cam0" not in side_nodes
+    assert {f"player_selection/{camera}" for camera in people.camera_ids} <= side_nodes
+    side = runner.output("court_side")
+    assert side.view_half_turns == (False, False, True) and side.margin > .5
 
 
 def test_single_ball_missing_views_remain_invalid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -335,6 +398,17 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
                 tuple(RecoveredBodySegment(request.source_frames, body.recover(request), count)
                     for request, count in zip(selected.requests, selected.observed_samples, strict=True)))
                 for selected in inputs.selection.selections))
+    from src.tennis_scene.pipeline.components.hmr2_features import (
+        HMR2FeaturesModule,
+        HMR2FeaturesOutput,
+    )
+    class KnownFeatures:
+        io = HMR2FeaturesModule.io
+        def cache_identity(self):
+            return {'fixture': 'empty_features_for_known_world_motion'}
+        def process(self, inputs):
+            return HMR2FeaturesOutput(inputs.source.clip_id, ())
+    stages["hmr2_features"] = KnownFeatures()
     stages["gvhmr"] = KnownGVHMR()
     monkeypatch.setattr("src.tennis_scene.pipeline.components.body_placement.SmplGeometry", lambda config: body)
     config = replace(pipeline.config, enabled={**pipeline.config.enabled, "gvhmr": True}, processing_settings={**pipeline.config.processing_settings, "gvhmr": {"enabled": True}})

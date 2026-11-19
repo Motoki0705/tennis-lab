@@ -18,7 +18,7 @@ parent CLIの`register` / `reconcile` / `sync` / `handoff` / `release`が同期�
 PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync
 ```
 
-表示する要約は親自身が作り、parent CLIで保存する（[parent-session](../parent-session/SKILL.md#担当と実行根拠)）。
+表示する要約は親自身が作り、parent CLIで保存する（[parent-session](../parent-session/references/ownership.md)）。
 保存済みの要約がない `register` / `handoff --accept` は、担当を書き込む前に拒否される。
 `register --summary` / `handoff --accept --summary` で指定して再実行する。
 既に担当中の親の表示同期で要約不足になった場合は、`parent summary --text` で保存・同期する。

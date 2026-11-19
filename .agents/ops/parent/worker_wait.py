@@ -13,11 +13,11 @@ from typing import Any
 
 from dispatcher.runtime import Runtime
 
-from . import manual_workers
+from . import manual_workers, worker_slots
 from .policy import object_value
 from .state import Store
 
-RECOVERY = ".agents/ops/lib/README.md#状態確認停止中断からの復旧"
+RECOVERY = ".agents/skills/parent-session/references/recovery.md"
 LIVE_KEYS = ("runner_alive", "agent_alive", "agent_group_alive")
 
 
@@ -25,6 +25,7 @@ LIVE_KEYS = ("runner_alive", "agent_alive", "agent_group_alive")
 class Target:
     task: dict[str, Any]
     directory: Path
+    job: dict[str, Any] | None = None
 
     @property
     def binding(self) -> tuple[Any, ...]:
@@ -34,6 +35,7 @@ class Target:
             self.task["branch"],
             self.task.get("model"),
             self.directory,
+            self.job["id"] if self.job else None,
         )
 
     @property
@@ -45,7 +47,7 @@ class Target:
         )
 
 
-def target(store: Store, key: str, child: int) -> Target:
+def target(store: Store, key: str, child: int, worker: str | None = None) -> Target:
     # Atomic registry files are sufficient for observation. No operation,
     # registry or session locks, network calls, or state writes are needed.
     data = store.read_data()
@@ -62,7 +64,17 @@ def target(store: Store, key: str, child: int) -> Target:
     ]
     if len(rows) != 1:
         raise ValueError("manual worker parent is missing or ambiguous")
-    task = manual_workers.reserved_task(object_value(rows[0]), child)
+    row = object_value(rows[0])
+    name = worker_slots.select(row, child, worker)
+    if row.get("dispatch"):
+        from .development import worker_jobs
+
+        task = worker_slots.record(row, child, name)
+        jobs = worker_jobs(row["dispatch"], child, name)
+        if not jobs or jobs[-1]["delegation_id"] != task.get("delegation_id"):
+            raise ValueError("no job for the current worker delegation")
+        return Target(task, Path(jobs[-1]["directory"]) / "runtime", jobs[-1])
+    task = manual_workers.reserved_task(row, child, name)
     runs = [
         run
         for run in manual_workers.worker_runs(task)
@@ -109,6 +121,7 @@ def wait_worker(
     key: str,
     child: int,
     *,
+    worker: str | None = None,
     timeout: float | None = None,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
@@ -118,8 +131,10 @@ def wait_worker(
     ):
         raise ValueError("--timeout must be a finite positive number of seconds")
     deadline = None if timeout is None else clock() + timeout
-    pinned = target(store, key, child)
-    runtime = Runtime(manual_workers.RUNNER)
+    pinned = target(store, key, child, worker)
+    runtime = Runtime(
+        Path(pinned.job["runner"]) if pinned.job else manual_workers.RUNNER
+    )
     run_id = None
     proof: dict[str, Any] | None = None
     current = pinned
@@ -150,21 +165,29 @@ def wait_worker(
         return value
 
     while True:
-        current = target(store, key, child)
+        current = target(store, key, child, worker)
         if current.binding != pinned.binding:
             raise ValueError("manual worker delegation/latest run changed during wait")
         remaining = None if deadline is None else deadline - clock()
         if remaining is not None and remaining <= 0:
             return 124, response("timeout", "wait_timeout")
         try:
-            settings = manual_workers.validate_run(pinned.task, pinned.directory)
+            settings = (
+                None
+                if pinned.job
+                else manual_workers.validate_run(pinned.task, pinned.directory)
+            )
             remaining = None if deadline is None else deadline - clock()
             if remaining is not None and remaining <= 0:
                 return 124, response("timeout", "wait_timeout")
             observed = runtime.inspect(pinned.directory, timeout=remaining)
             record = observed["record"]
             validate_evidence(record)
-            if manual_workers.model_settings(pinned.task, record) != settings:
+            if pinned.job:
+                from dispatcher.supervisor import Supervisor
+
+                Supervisor._check_contract(pinned.job, record)
+            elif manual_workers.model_settings(pinned.task, record) != settings:
                 raise ValueError("runner settings changed during observation")
             if run_id is not None and record["run_id"] != run_id:
                 raise ValueError("runner run ID changed during wait")
@@ -178,7 +201,7 @@ def wait_worker(
                 "liveness_unknown", "runner_records_unavailable_or_invalid"
             )
         proof, run_id = observed, record["run_id"]
-        current = target(store, key, child)
+        current = target(store, key, child, worker)
         if current.binding != pinned.binding:
             raise ValueError("manual worker delegation/latest run changed during wait")
         if runtime.ended(proof):

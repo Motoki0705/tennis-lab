@@ -48,6 +48,7 @@ Git以外で配布される資産のcommitは「該当なし」とし、配布�
 
 | パス | 出典URL・取込元commit | ライセンス・表示 |
 | --- | --- | --- |
+| `src/utils/models/components/ops/msda/vendor` | [fundamentalvision/Deformable-DETR](https://github.com/fundamentalvision/Deformable-DETR), [origin.json](src/utils/models/components/ops/msda/vendor/origin.json) | Apache-2.0. [LICENSE](src/utils/models/components/ops/msda/vendor/LICENSE), [NOTICE](src/utils/models/components/ops/msda/vendor/NOTICE.md). |
 | `src/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/src/submodules/vendor)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | コンテナの `__init__.py` は独自コード、Apache-2.0。配下のGVHMRは次行の条件。 |
 | `src/submodules/vendor/gvhmr` | [zju3dv/GVHMR](https://github.com/zju3dv/GVHMR) の [Motoki0705/GVHMR fork](https://github.com/Motoki0705/GVHMR/tree/900e8c4471e80bb6db5cb14c404c1a0766aba5f4)、取込元 `900e8c4471e80bb6db5cb14c404c1a0766aba5f4` | GVHMR独自の非商用条件。[LICENSE全文](src/submodules/vendor/gvhmr/LICENSE)、[移植内容](src/submodules/vendor/gvhmr/README.md)。内包する第三者部分は下表も参照。 |
 | `src/tasks/person_tracking/deep_ocsort_vendor` | [GerardMaggiolino/Deep-OC-SORT](https://github.com/GerardMaggiolino/Deep-OC-SORT/tree/6bb51d027b137233f5c520b6fcc4f2ae387a6ba9)、`6bb51d027b137233f5c520b6fcc4f2ae387a6ba9` | MIT。Roger R. Labbe Jr.のKalman実装のMIT表示も保持。[LICENSE](src/tasks/person_tracking/deep_ocsort_vendor/LICENSE)・[NOTICE](src/tasks/person_tracking/deep_ocsort_vendor/NOTICE.md)。 |

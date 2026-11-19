@@ -21,7 +21,13 @@ from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
-from src.tasks.court_side.hypothesis import CourtSideConfig
+from src.tasks.court_side.hypothesis import (
+    CourtSideConfig,
+    EvidenceKind,
+    PlayerCourtSideConfig,
+    SideConfig,
+    evidence_kind,
+)
 from src.tasks.person_tracking.features import FeatureConfig
 from src.tasks.person_tracking.sequence import TrackingConfig
 from src.tasks.player_association.appearance.encoders import encoder_weights
@@ -257,8 +263,14 @@ _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", field
     "side_min_frames": ConfigField.of(int), "side_max_cost": ConfigField.of(float, int),
     "side_min_support": ConfigField.of(float, int),
 })
+_PLAYER_COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side.player", fields={
+    field.name: ConfigField.of(int) if field.name == "min_frames" else ConfigField.of(float, int)
+    for field in fields(PlayerCourtSideConfig)
+})
 _COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", semantic_checks=(_check_court_side_mode_fields,), fields={
     "mode": ConfigField.of(str, required=False),
+    "evidence": ConfigField.of(str, required=False),
+    "player": ConfigField.mapping(_PLAYER_COURT_SIDE_SCHEMA, required=False),
     "video_shared": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.court_side.video_shared", fields=_SHARED_FIELDS), required=False),
     "reprojection_px": ConfigField.of(float, int), "min_motion_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
     "max_cost": ConfigField.of(float, int),
@@ -340,6 +352,21 @@ def _court_side_acquisition(
     return config, policy
 
 
+def _court_side_thresholds(side: Mapping[str, object]) -> SideConfig:
+    evidence = side.get("evidence", "ball")
+    if evidence == "player":
+        if "player" not in side:
+            raise MissingConfigurationKeyError("Missing court_side.player for court_side.evidence=player")
+        player = _mapping(side["player"], name="court_side.player")
+        return PlayerCourtSideConfig(**cast(dict[str, Any], dict(player)))
+    if evidence != "ball":
+        raise SemanticConfigurationError("court_side.evidence must be ball or player")
+    return CourtSideConfig(reprojection_px=float(cast(float, side["reprojection_px"])),
+        min_motion_px=float(cast(float, side["min_motion_px"])), min_frames=cast(int, side["min_frames"]),
+        max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
+        min_margin=float(cast(float, side["min_margin"])))
+
+
 @dataclass(frozen=True, slots=True)
 class PipelineRuntimeConfig:
     """Automatic stage configuration; dataset callers can leave run inputs unbound."""
@@ -356,7 +383,7 @@ class PipelineRuntimeConfig:
     ball_detection: BallDetectionConfig | None
     sampling_max_frames: int
     camera_geometry: CameraGeometryConfig
-    court_side: CourtSideConfig
+    court_side: SideConfig
     player_association: AssociationConfig
     association_encoder_weights: Path | None  # None: the association config scores no appearance
     human_vis_threshold: float
@@ -386,6 +413,21 @@ class PipelineRuntimeConfig:
     video_court_unobservable_policy: str
     video_court_side: VideoArtifactConfig | None
     court_side_unobservable_policy: str
+
+    def __post_init__(self) -> None:
+        if self.omit_ball_components:
+            requested = [f"execution.{stage}=load" for stage in ("ball_detection", "ball_points", "ball_triangulation")
+                         if self.component_sources.get(stage) == "load"]
+            if requested:
+                raise SemanticConfigurationError(f"Player-only reconstruction omits the requested ball stages ({', '.join(requested)})")
+
+    @property
+    def court_side_evidence(self) -> EvidenceKind:
+        return evidence_kind(self.court_side)
+
+    @property
+    def omit_ball_components(self) -> bool:
+        return self.court_side_evidence == "player" and not self.enabled["ball_detection"]
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -464,6 +506,9 @@ class PipelineRuntimeConfig:
         tracking_weights = encoder_weights(tracking.encoder, checkpoint_root=roots.checkpoint_root,
                                            external_root=roots.external_asset_root)
         aflink_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, tracking_section['aflink_checkpoint']))
+        side = _mapping(value["court_side"], name="court_side")
+        court_side = _court_side_thresholds(side)
+        video_court_side, side_policy = _court_side_acquisition(side, video_court, resolver, cache_source)
         ball_section = _mapping(value["ball_detection"], name="ball_detection")
         ball_method = cast(str, ball_section["method"])
         if ball_method not in {"model", "gpt_annotation"}:
@@ -472,6 +517,8 @@ class PipelineRuntimeConfig:
         direct_config = None
         if ball_method == "gpt_annotation":
             import re
+            if evidence_kind(court_side) == "player":
+                raise SemanticConfigurationError("GPT annotation imports a fixed court side and cannot use court_side.evidence=player")
             if any(direct[k] is None for k in ("request", "request_sha256", "bundle", "bundle_sha256")):
                 raise SemanticConfigurationError("GPT annotation requires a pinned request and fixed geometry bundle")
             if any(re.fullmatch(r"[0-9a-f]{64}", str(direct[k])) is None for k in ("request_sha256", "bundle_sha256")):
@@ -490,23 +537,20 @@ class PipelineRuntimeConfig:
                 raise SemanticConfigurationError("GPT annotation requires ball_detection.enabled")
             ball_config = None
         else:
-            if ball_section["checkpoint"] is None:
-                raise SemanticConfigurationError("Model ball detection requires a checkpoint")
             if any(direct[k] is not None for k in ("request", "request_sha256", "bundle", "bundle_sha256")) or direct["publish_dataset"] or direct["resume"] != "workflow":
                 raise SemanticConfigurationError("Direct annotation options require ball_detection.method=gpt_annotation")
-            ball_config = build_ball_detection_config(ball_section, resolver, device=device)
+            if evidence_kind(court_side) == "player" and not ball_section["enabled"]:
+                ball_config = None
+            else:
+                if ball_section["checkpoint"] is None:
+                    raise SemanticConfigurationError("Model ball detection requires a checkpoint")
+                ball_config = build_ball_detection_config(ball_section, resolver, device=device)
         ball_smoothing = TemporalSmoothingConfig(**cast(dict[str, Any], dict(_mapping(value["ball_smoothing"], name="ball_smoothing"))))
         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
         _positive(sampling_max_frames, name="frame_sampling.max_frames")
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
         if bind_inputs and geometry.reference_camera is not None and geometry.reference_camera not in camera_ids:
             raise SemanticConfigurationError("Reference camera must be in the source camera IDs")
-        side = _mapping(value["court_side"], name="court_side")
-        video_court_side, side_policy = _court_side_acquisition(side, video_court, resolver, cache_source)
-        court_side = CourtSideConfig(reprojection_px=float(cast(float, side["reprojection_px"])),
-            min_motion_px=float(cast(float, side["min_motion_px"])), min_frames=cast(int, side["min_frames"]),
-            max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
-            min_margin=float(cast(float, side["min_margin"])))
         association_section = _mapping(value["player_association"], name="player_association")
         association = load_association_config(resolver.resolve(PathRole.PROJECT, DEFAULT_ASSOCIATION_CONFIG.relative_to(PROJECT_ROOT)),
                                               players_per_side=cast(int, association_section["players_per_side"]))
@@ -543,7 +587,10 @@ class PipelineRuntimeConfig:
             if cache_source == "load" and direct_config is not None and direct_config.resume != "publication":
                 raise SemanticConfigurationError("Use direct_annotation.resume=publication for publication-only recovery")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
-        settings["court_side"] = {k: v for k, v in side.items() if k not in {"mode", "video_shared"}}
+        if isinstance(court_side, PlayerCourtSideConfig):
+            settings["court_side"] = {"evidence": "player", "player": side["player"]}
+        else:
+            settings["court_side"] = {k: v for k, v in side.items() if k not in {"mode", "video_shared", "evidence", "player"}}
         if video_court_side is not None:
             settings["court_side"] = {**cast(dict[str, Any], settings["court_side"]), "mode": "video_shared", "unobservable_policy": side_policy}
         if video_court is not None:

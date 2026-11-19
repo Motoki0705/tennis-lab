@@ -28,7 +28,7 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
         (ops / "lib/agents.conf")
         .read_text()
         .replace(
-            f'CODEX_MODEL="{WORKER_DEFAULT_MODEL}"', 'CODEX_MODEL="configured-sol"'
+            f'\nCODEX_MODEL="{WORKER_DEFAULT_MODEL}"', '\nCODEX_MODEL="configured-sol"'
         )
         .replace(
             f'CODEX_ALTERNATE_MODEL="{WORKER_ALTERNATE_MODEL}"',
@@ -36,24 +36,14 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
         )
     )
     monkeypatch.setattr(settings, "DEFAULT_CONFIG", config)
-    assert settings.implementation_models() == ("configured-sol", "configured-astra")
+    assert settings.implementation_models() == ("configured-sol",)
     assert settings.implementation_model(None) == "configured-sol"
-    assert (
-        settings.implementation_model(None, previous="configured-astra")
-        == "configured-astra"
-    )
-    assert (
-        settings.implementation_model("configured-astra", previous="configured-astra")
-        == "configured-astra"
-    )
-    with pytest.raises(ValueError, match="cannot change"):
-        settings.implementation_model("configured-sol", previous="configured-astra")
-    for previous in (OLD_SOL, OLD_ASTRA):
-        assert settings.implementation_model(None, previous=previous) == previous
-        with pytest.raises(ValueError, match="continuation-only"):
-            settings.implementation_model(previous)
-    with pytest.raises(ValueError, match="default or configured alternate"):
-        settings.implementation_model(None, previous="unlisted-model")
+    assert settings.implementation_model(None, previous=OLD_SOL) == OLD_SOL
+    for model in (OLD_ASTRA, WORKER_ALTERNATE_MODEL):
+        with pytest.raises(ValueError, match="configured Sol"):
+            settings.implementation_model(None, previous=model)
+    with pytest.raises(ValueError, match="continuation-only"):
+        settings.implementation_model(OLD_SOL)
 
     cli = importlib.import_module("parent.cli_impl")
     root = cli.parser()
@@ -75,8 +65,10 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
         assert (
             root.parse_args(args).model is None
         )  # Resume must never acquire a parser default.
-        for model in ("configured-sol", "configured-astra"):
-            assert root.parse_args([*args, "--model", model]).model == model
+        assert (
+            root.parse_args([*args, "--model", "configured-sol"]).model
+            == "configured-sol"
+        )
         if command == "start-worker":
             with pytest.raises(SystemExit) as rejected:
                 root.parse_args([*args, "--model", OLD_ASTRA])
@@ -97,14 +89,14 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
         "task.md",
     ]
     assert (
-        dispatcher.parse_args([*args, "--model", "configured-astra"]).model
-        == "configured-astra"
+        dispatcher.parse_args([*args, "--model", "configured-sol"]).model
+        == "configured-sol"
     )
     # The actual runner resolver sees the same new pins; profile pins stay separate.
-    assert settings.resolve(config, "codex", None, "configured-astra", None, "write")[
+    assert settings.resolve(config, "codex", None, "configured-sol", None, "write")[
         "selected"
     ] == {
-        "model": "configured-astra",
+        "model": "configured-sol",
         "effort": "max",
         "service_tier": "default",
     }

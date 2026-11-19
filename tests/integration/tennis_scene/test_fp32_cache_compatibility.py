@@ -18,6 +18,10 @@ from src.tennis_scene.pipeline.components.ball_detection import BallDetectionMod
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.components.identity import PlayerAssociationModule
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
+from src.tennis_scene.pipeline.components.person_features import (
+    PersonAppearanceFeaturesModule,
+    PersonPoseFeaturesModule,
+)
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingModule
 from src.tennis_scene.pipeline.components.player_selection import PlayerSelectionModule
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
@@ -28,7 +32,7 @@ from src.tennis_scene.pipeline.definition import (
 )
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import ComponentRunner
-from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
@@ -37,7 +41,7 @@ _BASELINE = "dcd6534594f73cca12a45c2d9afaa8ac09d48bc7"
 _BASELINE_STORE = Path(__file__).with_name("fixtures") / "main_fp32_cache.tar.gz"
 _FIXTURE_HELPERS = "tests/unit/tennis_scene/pipeline/test_auto_pipeline.py"
 _CAMERAS = ("cam0", "cam1", "cam2")
-_CAMERA_STAGES = (CourtKPModule, BallDetectionModule, PersonDetectionModule, PersonTrackingModule,
+_CAMERA_STAGES = (CourtKPModule, BallDetectionModule, PersonDetectionModule, PersonPoseFeaturesModule, PersonAppearanceFeaturesModule, PersonTrackingModule,
                   PlayerSelectionModule, PoseEstimationModule)
 
 
@@ -104,10 +108,20 @@ def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
     association = fixture["TrackIdentities"](_CAMERAS)
 
     def process(component: Any, request: Any, models: Any) -> Any:
-        return results[f"{component.io.name}/{request.video.camera_id}"].result
+        value = results[f"{component.io.name}/{request.video.camera_id}"].result
+        if isinstance(component, PersonPoseFeaturesModule):
+            return replace(value, model_identity=models.identity('pose'),
+                           preprocessing_identity=document_digest(component.cache_identity()))
+        if isinstance(component, PersonAppearanceFeaturesModule):
+            return replace(value, encoder_identity=models.identity('encoder'),
+                           preprocessing_identity=document_digest(component.cache_identity()))
+        return value
 
     for stage in _CAMERA_STAGES:
-        patch.setattr(stage, "process_with_models", process)
+        if stage is PersonTrackingModule:
+            patch.setattr(stage, "process", lambda component, request: results[f"{component.io.name}/{request.video.camera_id}"].result)
+        else:
+            patch.setattr(stage, "process_with_models", process)
     patch.setattr(PlayerAssociationModule, "process_with_models", lambda _, request, models: association.process(request))
     store_root = root / "store"
     pipeline = TennisSceneOrchestrator(cfg)
@@ -123,7 +137,7 @@ def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
         pytest.fail("FP32 is expected to adopt the main artifact from disk")
 
     for stage in (*_CAMERA_STAGES, PlayerAssociationModule):
-        patch.setattr(stage, "process_with_models", no_prediction)
+        patch.setattr(stage, "process" if stage is PersonTrackingModule else "process_with_models", no_prediction)
 
     for explicit in ((), _precision("fp32")):
         cfg = fixture["runtime"](root, overrides=("device=cuda", *explicit))
@@ -138,7 +152,7 @@ def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
 
     assert pipeline.last_runner is not None
     clip = pipeline.last_runner.nodes["person_detection/cam0"].context.source
-    affected = ("person_detection/cam0", "person_tracking/cam0", "pose_estimation/cam0")
+    affected = ("person_detection/cam0", "person_pose_features/cam0")
     keys = {name: {legacy_refs[name].execution_key} for name in affected}
     for precision in ("bf16", "fp16"):
         cfg = fixture["runtime"](root, overrides=("device=cuda", *_precision(precision)))
@@ -183,8 +197,22 @@ def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_pat
     assert source_identity.compatible_source_digests(current) == current
 
 
+def test_ball_side_preserves_the_exact_pre_player_source_identity() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("ball_court_side_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    unrelated = {"tennis_scene/schema.py": "a" * 64}
+    baseline = {**unrelated, **{path: record["before"] for path, record in files.items() if record["before"] is not None}}
+    patch = {**unrelated, **{path: record["after"] for path, record in files.items()}}
+    assert document_digest(source_identity.compatible_source_digests(patch, ball_court_side=True)) == document_digest(baseline)
+    assert source_identity.compatible_source_digests(patch) == patch  # Player uses its actual implementation.
+    changed = {**patch, "tasks/court_side/hypothesis.py": "b" * 64}
+    assert source_identity.compatible_source_digests(changed, ball_court_side=True) == changed
+
+
 @pytest.mark.parametrize("name,old_version,new_version", [
-    ("person_tracking/cam0", 5, 6), ("player_selection/cam0", 2, 3),
+    ("person_tracking/cam0", 5, 7), ("player_selection/cam0", 2, 3),
 ])
 def test_pre_runtime_cache_requires_schema_regeneration(
     tmp_path: Path, name: str, old_version: int, new_version: int,
@@ -206,6 +234,12 @@ def test_pre_runtime_cache_requires_schema_regeneration(
     assert store.references()[name].version == old_version
     plan = ComponentRunner(nodes, store).plan
     plan.references.update({(source.clip_id, key): ref for key, ref in store.references().items()})
+    # Hold new feature dependencies fixed to isolate refusal of the legacy
+    # tracking output. These references are never loaded or published.
+    for dependency in plan.dependencies[(source.clip_id, name)].values():
+        producer = plan.nodes[dependency]
+        plan.references.setdefault(dependency, ArtifactRef('d' * 64, 'not-loaded.json', 'e' * 64,
+            producer.io.output_schema, producer.io.version, 'f' * 64))
     assert plan.decide((source.clip_id, name)).action == "execute"
     load_nodes = [replace(n, source="load") for n in nodes]
     load = ComponentRunner(load_nodes, store).plan

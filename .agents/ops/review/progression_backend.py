@@ -354,6 +354,7 @@ class LiveBackend:
             self.parent,
             state["owner"],
             child=worker["child"],
+            worker="primary",
             prompt=prompt,
             resume=True,
             restart_evidence=None,

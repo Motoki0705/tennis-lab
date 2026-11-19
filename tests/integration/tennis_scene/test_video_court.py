@@ -383,6 +383,7 @@ def test_invalid_build_subset_stops_before_estimation(tmp_path, monkeypatch, sel
 
 
 def test_shared_artifact_change_is_part_of_dataset_marker_identity(tmp_path, monkeypatch):
+
     pipeline, paths, _, docs, store, artifact = shared_fixture(tmp_path, monkeypatch)
     materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path)
     _, _ = make_build_request(tmp_path, paths)
