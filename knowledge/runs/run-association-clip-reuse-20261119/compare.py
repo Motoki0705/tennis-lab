@@ -13,6 +13,7 @@ from typing import Any
 import numpy as np
 import torch
 
+from src.tasks.person_tracking.sequence import CLIP_ENCODER
 from src.tasks.player_association.appearance.encoders import (
     build_encoder,
     encoder_weights,
@@ -21,6 +22,7 @@ from src.tasks.player_association.appearance.sampling import (
     DEFAULT_BATCH_SIZE,
     CropSamplingConfig,
 )
+from src.tasks.player_association.association.associate import AssociationConfig
 from src.tasks.player_association.association.config import load_association_config
 from src.tennis_scene.pipeline.artifacts import (
     document_digest,
@@ -75,6 +77,8 @@ class FrozenClip:
     inputs: SourceInputs
     artifacts: dict[str, Any]
     receipt: dict[str, Any]
+    config: AssociationConfig
+    reference: PlayerIdentitiesOutput
 
 
 def frozen_clip(root: Path, checkpoint_sha256: str) -> FrozenClip:
@@ -105,7 +109,11 @@ def frozen_clip(root: Path, checkpoint_sha256: str) -> FrozenClip:
     selected = {f'tracks_{c}': f'player_selection/{c}' for c in inputs.source.camera_ids}
     original = read('player_association', 'person_identities', 3,
                     {'calibration': 'court_calibration', 'side': 'court_side', **selected})
-    if original['identity']['settings']['assets']['encoder']['sha256'] != checkpoint_sha256:
+    settings = original['identity']['settings']
+    config = load_association_config(players_per_side=settings['config']['players_per_side'])
+    if json_value(config) != settings['config'] or json_value(CropSamplingConfig()) != settings['sampling']:
+        raise ValueError('Association settings differ from the frozen run')
+    if config.appearance is None or config.appearance.encoder != CLIP_ENCODER or settings['assets']['encoder']['sha256'] != checkpoint_sha256:
         raise ValueError('CLIP weight content differs from the frozen association')
     artifacts = {'calibration': restore_type(value(read('court_calibration', 'local_court_calibration', 1), 'court_calibration'),
                                              CourtCalibrationOutput),
@@ -121,8 +129,10 @@ def frozen_clip(root: Path, checkpoint_sha256: str) -> FrozenClip:
             # model identity, and is deliberately excluded from reuse.
             payload['tracks']['evidence']['encoder_identity'] = None
         artifacts[f'tracks_{camera}'] = restore_type(payload, PlayerSelectionOutput)
-    receipt = {'source': source_doc, 'source_sha256': source_hash, 'store': str(root), 'references': used}
-    return FrozenClip(inputs, artifacts, receipt)
+    receipt = {'source': source_doc, 'source_sha256': source_hash, 'store': str(root), 'references': used,
+               'association_config': settings['config'], 'sampling': settings['sampling']}
+    reference = restore_type(value(original, 'player_association'), PlayerIdentitiesOutput)
+    return FrozenClip(inputs, artifacts, receipt, config, reference)
 
 
 def persist(directory: Path, value: Any) -> Any:
@@ -169,12 +179,10 @@ class MeasuredEncoder:
             return self.encoder.embed(crops)
 
 
-def run(clips: list[FrozenClip], output: Path, weights: Path, checkpoint_root: Path, external_root: Path,
-        config: Any) -> dict[str, Any]:
+def run(clips: list[FrozenClip], output: Path, weights: Path, checkpoint_root: Path, external_root: Path) -> dict[str, Any]:
     torch.cuda.set_per_process_memory_fraction(10 * 1024**3 / torch.cuda.get_device_properties(DEVICE).total_memory, DEVICE)
-    encoder_name = config.appearance.encoder
-    spec = appearance_model(encoder_name, weights, DEVICE,
-                            lambda: MeasuredEncoder(build_encoder(encoder_name, checkpoint=weights, device=DEVICE,
+    spec = appearance_model(CLIP_ENCODER, weights, DEVICE,
+                            lambda: MeasuredEncoder(build_encoder(CLIP_ENCODER, checkpoint=weights, device=DEVICE,
                                 checkpoint_root=checkpoint_root, external_root=external_root)))
     producer = PersonAppearanceFeaturesModule(spec)
     declarations = {(clip.inputs.source.clip_id, stage): {'encoder': spec} for clip in clips for stage in
@@ -197,7 +205,7 @@ def run(clips: list[FrozenClip], output: Path, weights: Path, checkpoint_root: P
             for i, mode in enumerate(MODES):
                 print(f'{source.clip_id}: {mode}, comparison {i + 1}', flush=True)
                 reuse = mode == 'reuse'
-                module = PlayerAssociationModule(source.camera_ids, config, sampling=CropSamplingConfig(),
+                module = PlayerAssociationModule(source.camera_ids, clip.config, sampling=CropSamplingConfig(),
                     encoder=spec, device=DEVICE, enabled=True, reuse_clip_embeddings=reuse)
                 request = PlayerAssociationInputAssembler(reuse).assemble(AssemblyContext(source), artifacts)
                 with recording_context(clip_id=source.clip_id, mode=mode, trial=i), runtime.node((source.clip_id, str(i))) as model:
@@ -214,8 +222,10 @@ def run(clips: list[FrozenClip], output: Path, weights: Path, checkpoint_root: P
                     raise ValueError('Sampled frames or rejected diagnostics differ')
                 max_delta = max(max_delta, compare_diagnostics(baseline.diagnostics['association'], result.diagnostics['association'], 'association'))
             clip.inputs.snapshot.assert_unchanged()
+            assert baseline is not None
             measurements[source.clip_id] = {'max_diagnostic_delta': max_delta, 'sampled_frames_and_rejections_equal': True,
-                'player_ids_equal': True, 'association_decisions_and_appearance_mask_equal': True}
+                'player_ids_equal': True, 'association_decisions_and_appearance_mask_equal': True,
+                'frozen_player_ids_equal': bool(np.array_equal(baseline.player_ids, clip.reference.player_ids))}
     for clip_id, summary in measurements.items():
         events = [e for e in recorder.events if e['attributes'].get('clip_id') == clip_id]
         node_events = [e for e in events if e['stage'] == 'node' and e['attributes']['stage_id'] == 'player_association']
@@ -244,10 +254,8 @@ def main() -> None:
     parser.add_argument('--clips', nargs='+', default=['clip_037', 'clip_000', 'clip_027'])
     parser.add_argument('--check-only', action='store_true')
     args = parser.parse_args()
-    config = load_association_config(players_per_side=1)
-    assert config.appearance is not None
     checkpoint_root, external_root = Path('ckpt').resolve(), Path('third_party').resolve()
-    weights = encoder_weights(config.appearance.encoder, checkpoint_root=checkpoint_root, external_root=external_root)
+    weights = encoder_weights(CLIP_ENCODER, checkpoint_root=checkpoint_root, external_root=external_root)
     checkpoint = file_identity(weights)
     clips = [frozen_clip(args.dataset.resolve() / 'videos' / 'video_000' / 'clips' / name / 'annotations' / 'tennis_scene', checkpoint['sha256'])
              for name in args.clips]
@@ -255,7 +263,7 @@ def main() -> None:
     write_json_atomic(args.output / 'inputs.json', {'checkpoint': checkpoint, 'cosine_atol': COSINE_ATOL,
         'diagnostic_atol': DIAGNOSTIC_ATOL, 'clips': [clip.receipt for clip in clips]})
     if not args.check_only:
-        write_json_atomic(args.output / 'comparison.json', run(clips, args.output, weights, checkpoint_root, external_root, config))
+        write_json_atomic(args.output / 'comparison.json', run(clips, args.output, weights, checkpoint_root, external_root))
 
 
 if __name__ == '__main__':
