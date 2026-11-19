@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, cast
 
 from torch import Tensor
 
@@ -47,7 +47,7 @@ def build_temporal_model(
         return DeepMDDMHCQueryDetector(config, mdd_a=mdd_a, mdd_b=mdd_b)
     if type(config) is MDDTemporalQueryConfig:
         return DeepMDDQueryDetector(config, mdd_a=mdd_a, mdd_b=mdd_b)
-    return build_mdd_heatmap_detector(config, mdd_a=mdd_a, mdd_b=mdd_b).model
+    return build_mdd_heatmap_detector(cast(MDDHeatmapConfig, config), mdd_a=mdd_a, mdd_b=mdd_b).model
 
 
 def temporal_forward(model: TemporalModel, rgb: Tensor, timestamps: Tensor) -> Tensor:
@@ -76,7 +76,8 @@ def temporal_model_payload(model: TemporalModel) -> dict[str, Any]:
             input_contract=model.mdd.input_contract(),
             state_dict=model.state_dict(),
         )
-    return heatmap_model_payload(model)
+    artifact: dict[str, Any] = heatmap_model_payload(model)
+    return artifact
 
 
 def restore_temporal_model(saved: dict[str, Any]) -> TemporalModel:
