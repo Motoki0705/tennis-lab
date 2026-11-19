@@ -1,6 +1,8 @@
 # DINO fp16のGPU停止の切り分け
 
-[#1757の逐次probe](../run-i1757-video-batch-meiji/README.md)の `video_000/clip_027` の `cam0` を使う。両条件で標準の人物検出コンポーネントを使い、全235フレームを先頭から順に、DINO fp16の単一フレーム推論で処理する。動画・設定・重み・DINOソース・ネイティブ拡張は逐次probeの固定記録と照合する。
+[実行結果と考察](../../nodes/tennis_scene/000073-run-i1757-dino-gpu-health.md)と[測定値・イベントのJSON](evidence.json)を参照してください。
+
+[#1757の逐次probe](../run-i1757-video-batch-meiji/reproduce.md)の `video_000/clip_027` の `cam0` を使う。両条件で標準の人物検出コンポーネントを使い、全235フレームを先頭から順に、DINO fp16の単一フレーム推論で処理する。動画・設定・重み・DINOソース・ネイティブ拡張は逐次probeの固定記録と照合する。
 
 各条件は新規プロセスで起動する。Aでは `nvidia-smi` の照会を行わない。Aの完走時だけBを実行する。Bでは親プロセスから既存のhealth guardと同じ `nvidia-smi` を1秒間隔、10秒のタイムアウトで呼ぶ。実行開始前に1分load averageとpytestプロセス数を記録し、load averageが2未満かつpytestが0件、または待機30分が経過した時点で開始する。
 
