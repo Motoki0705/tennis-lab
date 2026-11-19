@@ -1,6 +1,7 @@
 """Encoder-only initialization has a narrower contract than full-model transfer."""
 
 import hashlib
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -9,8 +10,10 @@ import torch
 
 from src.tasks.ball_detection.checkpoints.provenance import source_identity
 from src.tasks.ball_detection.checkpoints.temporal import (
+    CHECKPOINT_SCHEMA,
     RUN_SCHEMA,
     initialize_finetuning,
+    read_resume,
 )
 from src.tasks.ball_detection.model_io.mdd_temporal import (
     build_temporal_model,
@@ -19,6 +22,16 @@ from src.tasks.ball_detection.model_io.mdd_temporal import (
 from src.tasks.ball_detection.models.mdd import MDDTemporalQueryConfig
 from src.utils.checksum import dual_sha256
 from tests.support.tasks.ball_detection.temporal import small_mhc_model, small_model
+
+
+def test_resume_rejects_changing_checkpoint_scope_without_touching_state(tmp_path: Path) -> None:
+    path = tmp_path / "checkpoint.pt"
+    recipe = dict(model=dict(activation_checkpointing=True, checkpoint_scope="encoder_msda"))
+    torch.save(dict(schema=CHECKPOINT_SCHEMA, recipe=recipe), path)
+    (tmp_path / "latest.json").write_text(json.dumps(dict(checkpoint=path.name, sha256=dual_sha256(path))))
+    with pytest.raises(ValueError, match="Resume recipe changed"):
+        read_resume(path, output=tmp_path,
+                    recipe=dict(model=dict(activation_checkpointing=True, checkpoint_scope="msda")), code={})
 
 
 def save_artifact(path: Path, config, *, phase: str = "pretrain") -> dict:

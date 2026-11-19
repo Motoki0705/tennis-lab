@@ -91,6 +91,10 @@ def restore_temporal_model(saved: dict[str, Any]) -> TemporalModel:
         return restore_heatmap_model(saved)
     kind, config_type = kinds[schema]
     raw = saved.get("model_config")
+    if schema == MULTISCALE_QUERY_SCHEMA and isinstance(raw, dict):
+        # This parameter-free execution option did not exist in original MSDA artifacts.
+        # Copy rather than mutating the caller's historical checkpoint metadata.
+        raw = {"checkpoint_scope": "encoder_msda", **raw}
     if saved.get("model_kind") != kind or not isinstance(raw, dict) or set(raw) != set(config_type.__dataclass_fields__):
         raise ValueError("Invalid explicit temporal coordinate artifact")
     config = config_type(**raw)

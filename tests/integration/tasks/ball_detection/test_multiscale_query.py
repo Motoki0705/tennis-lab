@@ -1,4 +1,5 @@
 """Real official CUDA sampling and frame-chunk gradient equivalence (no fallback)."""
+import json
 import os
 from dataclasses import replace
 
@@ -19,6 +20,20 @@ from tests.unit.tasks.ball_detection.models.mdd.test_multiscale_query import (
 
 pytestmark = pytest.mark.skipif(not torch.cuda.is_available() or not os.environ.get("TENNIS_LAB_DINO_EXTENSION"),
                                 reason="Requires CUDA and an explicitly built official MSDA binary")
+
+
+@pytest.fixture(autouse=True)
+def precise_fp32_reference():
+    # Numerical chunk equivalence must not amplify tiny FP32 upstream changes
+    # through TF32 convolution gradients. The actual BF16 recipe is qualified
+    # independently with its unchanged precision policy.
+    previous = torch.backends.cuda.matmul.allow_tf32
+    torch.backends.cuda.matmul.allow_tf32 = False
+    try:
+        with torch.backends.cudnn.flags(allow_tf32=False):
+            yield
+    finally:
+        torch.backends.cuda.matmul.allow_tf32 = previous
 
 
 def test_hand_computed_interpolation_padding_edges_and_gradients() -> None:
@@ -62,20 +77,26 @@ def test_bf16_boundary_executes_official_projections_and_kernel_in_fp32() -> Non
     assert output.dtype == torch.float32 and v.grad is not None and bool(torch.isfinite(v.grad).all())
 
 
-@pytest.mark.parametrize("layout", [("M", "C"), ("C", "M")])
-def test_frame_chunk_matches_full_outputs_all_gradients_and_artifact_restore(layout) -> None:
+@pytest.mark.parametrize("layout,scope", [(("M", "C"), "msda"), (("C", "M"), "encoder_msda")])
+def test_frame_chunk_matches_full_outputs_all_gradients_and_artifact_restore(layout, scope) -> None:
     torch.manual_seed(1859)
-    config = multiscale_config(spatial_layers=layout, msda_chunk_size=6)
+    config = multiscale_config(spatial_layers=layout, msda_chunk_size=6, dropout=.1)
     full = DeepMDDMultiScaleQueryDetector(config).cuda()
-    chunked = DeepMDDMultiScaleQueryDetector(replace(config, msda_chunk_size=1)).cuda()
+    chunked = DeepMDDMultiScaleQueryDetector(replace(config, msda_chunk_size=1, activation_checkpointing=True, checkpoint_scope=scope)).cuda()
     chunked.load_state_dict(full.state_dict(), strict=True)
     rgb = torch.randint(256, (2, 3, 3, 257, 385), dtype=torch.uint8, device="cuda")
     times = torch.tensor([[0., .03, .07], [1., 1.04, 1.09]], device="cuda")
-    a, b = full(rgb, times), chunked(rgb, times)
+    rng = torch.cuda.get_rng_state()
+    a = full(rgb, times)
+    after_forward = torch.cuda.get_rng_state()
+    torch.cuda.set_rng_state(rng)
+    b = chunked(rgb, times)
+    assert torch.equal(after_forward, torch.cuda.get_rng_state())
     torch.testing.assert_close(a, b, rtol=2e-5, atol=2e-6)
     probe = torch.tensor([[[.2, .9], [1.3, -.7], [.3, .6]]], device="cuda")
     (a*probe).sum().backward()
     (b*probe).sum().backward()
+    assert torch.equal(after_forward, torch.cuda.get_rng_state())
     for (name, p), (other, q) in zip(full.named_parameters(), chunked.named_parameters(), strict=True):
         assert name == other and p.grad is not None and q.grad is not None, name
         assert bool(torch.isfinite(p.grad).all()), name
@@ -101,20 +122,46 @@ def test_inductor_graph_break_mode_keeps_forward_and_backward_correct() -> None:
 
     torch.manual_seed(1859)
     config = multiscale_config()
-    model = DeepMDDMultiScaleQueryDetector(config).cuda()
+    model = DeepMDDMultiScaleQueryDetector(replace(config, activation_checkpointing=True)).cuda()
     eager = DeepMDDMultiScaleQueryDetector(config).cuda()
     eager.load_state_dict(model.state_dict(), strict=True)
     rgb = torch.randint(256, (1, 3, 3, 65, 97), dtype=torch.uint8, device="cuda")
     times = torch.tensor([[0., .03, .07]], device="cuda")
     compile_coordinate_model(model, mode="default", fullgraph=False)
+    compile_coordinate_model(eager, mode="default", fullgraph=False)
+    rng = torch.cuda.get_rng_state()
     with coordinate_compile_scope(model):
-        with torch.autocast("cuda", dtype=torch.bfloat16):
-            actual = model(rgb, times)
+        actual = model(rgb, times)
         actual.square().mean().backward()
-    with torch.autocast("cuda", dtype=torch.bfloat16):
+    actual_rng = torch.cuda.get_rng_state()
+    torch.cuda.set_rng_state(rng)
+    # FP32 is the numerical reference: BF16 fusion/rematerialization can move
+    # rounding boundaries even when the computation is mathematically identical.
+    with coordinate_compile_scope(eager):
         expected = eager(rgb, times)
-    expected.square().mean().backward()
-    torch.testing.assert_close(actual, expected, rtol=2e-2, atol=2e-3)
+        expected.square().mean().backward()
+    assert torch.equal(actual_rng, torch.cuda.get_rng_state())
+    torch.testing.assert_close(actual, expected, rtol=2e-5, atol=2e-6)
     report = coordinate_compilation_report(model)
     assert report["fullgraph"] is False and report["graph_breaks"]
     assert all(p.grad is not None and bool(torch.isfinite(p.grad).all()) for p in model.parameters())
+    for (name, a), (_, b) in zip(model.named_parameters(), eager.named_parameters(), strict=True):
+        assert a.grad is not None and b.grad is not None, name
+        torch.testing.assert_close(a.grad, b.grad, rtol=2e-3, atol=2e-5, msg=lambda message, name=name: f"{name}: {message}")
+    # Exercise the actual mixed-precision compiler/checkpoint combination too,
+    # retaining its numerical differences as diagnostics instead of claiming
+    # elementwise BF16 identity between differently fused graphs.
+    mixed = []
+    for candidate in (model, eager):
+        candidate.zero_grad(set_to_none=True)
+        with coordinate_compile_scope(candidate):
+            with torch.autocast("cuda", dtype=torch.bfloat16):
+                output = candidate(rgb, times)
+            output.square().mean().backward()
+        assert all(p.grad is not None and bool(torch.isfinite(p.grad).all()) for p in candidate.parameters())
+        mixed.append(output.detach())
+    torch.testing.assert_close(mixed[0], mixed[1], rtol=2e-2, atol=2e-3)
+    diagnostics = [dict(name=name, maximum_absolute=float((a.grad-b.grad).abs().max()),
+                        reference_norm=float(b.grad.norm()), relative_l2=float((a.grad-b.grad).norm()/(b.grad.norm()+1e-20)))
+                   for (name,a),(_,b) in zip(model.named_parameters(),eager.named_parameters(),strict=True)]
+    print("compiled_bf16_gradient_comparison=" + json.dumps(diagnostics))

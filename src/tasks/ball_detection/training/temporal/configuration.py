@@ -38,6 +38,8 @@ def load_model_config(path: Path, architecture: str) -> TemporalConfig:
         raise ValueError(
             "Model config must match the explicitly selected temporal architecture"
         )
+    if cls is MDDMultiScaleQueryConfig:
+        raw.setdefault("checkpoint_scope", "encoder_msda")
     if set(raw) != set(cls.__dataclass_fields__):
         raise ValueError(
             "Declare every temporal model field, including frames and memory controls"
