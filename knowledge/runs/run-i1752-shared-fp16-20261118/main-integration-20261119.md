@@ -20,7 +20,7 @@ mainで共有side取得のimport先がprepareサブモジュールになった�
 
 ## 69clipコマンド
 
-full69-command.txtの推論・queueコマンドは変更しなかった。check_full69_command.pyはこのファイルを文字列として解析し、実CLIと同じHydra設定合成を使う。GPU初期化、nn.Module構築、BaseInferenceModel.load、native inference loader、InferenceRuntimeの開始、PlanExecutor.runをguardし、storeはTemporaryDirectoryに置いた。
+この初回統合時はfull69-command.txtの推論・queueコマンドを変更しなかった。当時の内容はfull69-command-ball-evidence-20261118.txtへ保存した。後のplayer-only構成のCPU統合は別ノードrun-i1752-player-main-cpu-20261119を参照する。check_full69_command.pyはこのファイルを文字列として解析し、実CLIと同じHydra設定合成を使う。GPU初期化、nn.Module構築、BaseInferenceModel.load、native inference loader、InferenceRuntimeの開始、PlanExecutor.runをguardし、storeはTemporaryDirectoryに置いた。
 
 全69clip・4camera・46,228 source frame/cameraを検証し、共有court/sideをload、全clipの採否を照合して1つの2,622node計画を構築した。共有sideは51ok・18warning・0failed。DINO float16宣言276、追跡ViTPose float16宣言276、pose evidence再利用276であり、mainでpose再推論を宣言しない契約も確認した。DINO拡張の内容pinはコマンドの選択先に束縛されている。検証に620.957秒かかった。
 
