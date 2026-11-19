@@ -182,6 +182,7 @@ def start_worker(
     model: str | None,
     branch: str | None = None,
     worktree: Path | None = None,
+    base_ref: str | None = None,
     continuation: str | None = None,
     additional: str | None = None,
     planning: bool = False,
@@ -195,6 +196,19 @@ def start_worker(
     failure between the two claims intentionally leaves the delegation intact.
     """
     require_client(session.gh, session.store)
+    if base_ref is not None:
+        if (
+            continuation
+            or handoff_from_astra
+            or branch is not None
+            or worktree is not None
+        ):
+            raise ValueError(
+                "--from cannot be combined with an existing branch, worktree or handoff"
+            )
+        from .snapshot import worker_location
+
+        branch, worktree = worker_location(session.parent, child, session.worker)
     if continuation is None:
         implementation_model(model)
         nonempty(prompt, "initial worker instruction")
@@ -300,6 +314,7 @@ def start_worker(
                 continuation or handoff_evidence,
                 handoff_from_astra=handoff_from_astra,
                 continue_existing=continuation is not None,
+                base_ref=base_ref,
             )
             parent, items = session.work_items()
             check_task_adoptions(session.gh, parent.body)
@@ -682,7 +697,12 @@ def verify_completion(session: ParentSession) -> list[int]:
     return sorted(merged)
 
 
-def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
+def report(
+    session: ParentSession,
+    spec: dict[str, Any],
+    *,
+    verified_prs: list[int] | None = None,
+) -> dict[str, Any]:
     completed = spec.get("state") == "completed"
     if (
         set(spec)
@@ -700,7 +720,13 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
         nonempty(spec[key], key)
     # Validate public text before any result/state mutation.
     session.public(spec)
-    prs = verify_completion(session) if spec["state"] == "completed" else []
+    prs = (
+        verified_prs
+        if verified_prs is not None
+        else verify_completion(session)
+        if completed
+        else []
+    )
     completion = None
     if completed:
         from .completion import record
@@ -810,6 +836,7 @@ def worker_command(
         prompt=read_original(args.prompt_file) if args.prompt_file else None,
         model=args.model,
         branch=getattr(args, "branch", None),
+        base_ref=getattr(args, "base_ref", None),
         worktree=getattr(args, "worktree", None),
         continuation=(
             Path(args.evidence_file).read_text(encoding="utf-8")

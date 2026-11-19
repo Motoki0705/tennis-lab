@@ -707,9 +707,12 @@ def test_extract_recovers_parent_and_proposal_close(
     extract(p, ok=False)
     del p.env[key]
     # A sent extraction, including an uncertain POST, belongs to explicit recovery.
-    assert json.loads(
-        p.cli("improvement-expire", "--now", "2099-01-08T00:00:00Z").stdout
-    )["closed"] == []
+    assert (
+        json.loads(p.cli("improvement-expire", "--now", "2099-01-08T00:00:00Z").stdout)[
+            "closed"
+        ]
+        == []
+    )
     assert not p.state()["comments"].get("10")
     assert json.loads(extract(p).stdout)["issue"] == 11
     assert p.state()["issues"]["10"]["state"] == "closed" and post_count(p) == 2
@@ -1169,3 +1172,27 @@ def test_extraction_response_loss_then_revocation_repairs_existing_parent_withou
             "agree", "--improvement-approval", approval, parent="11", ok=False
         ).stderr
     )
+
+
+def test_discovery_flags_do_not_block_a_detailed_proposal(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    args = (
+        "improvement",
+        "--key",
+        "quick",
+        "--purpose",
+        "結果表示",
+        "--evidence",
+        "表示に3操作",
+        "--scope",
+        "CLI",
+    )
+    first = json.loads(p.cli(*args).stdout)
+    again = json.loads(p.cli(*args).stdout)
+    assert first["key"] == "quick" and first["comment"] == again["comment"]
+    record(p)
+    proposal = json.loads(publish(p).stdout)
+    assert proposal["candidates"] == ["I-1-result-access"]

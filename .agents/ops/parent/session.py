@@ -1255,6 +1255,7 @@ class ParentSession:
         restart: str | None,
         *,
         continue_existing: bool = False,
+        base_ref: str | None = None,
         handoff_from_astra: str | None = None,
     ) -> dict[str, Any]:
         self.agreed()
@@ -1389,6 +1390,10 @@ class ParentSession:
 
         primary = self.row["tasks"].get(str(child), {})
         with self.gh.io_scope():
+            if base_ref is not None:
+                from .snapshot import prepare_worker_tree
+
+                prepare_worker_tree(worktree, branch, base_ref, self.store.directory)
             validate_worktree(worktree, branch)
             base_commit = git("rev-parse", "HEAD", cwd=worktree).decode().strip()
             if helper:

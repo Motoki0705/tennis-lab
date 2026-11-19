@@ -4,7 +4,7 @@
 
 人間がレビューするPRは、検証結果と残る判断を付けて人間へ渡す。自動マージを任されたPRでは、`AGENT_AUTO_MERGE=1`、担当・実行根拠、対象Issue・PRの `needs-human` と停止状態を確認する。自動進行自身がこれらの制御を変更することはない。
 
-統合担当の終了と回収を確認し、PRのclosing対象・branch・HEADを元の受入条件と照合する。`--instruction-file` に原要件・変更の影響先、`--evidence-file` に対象HEADでの検証結果・未確認事項を書く。`review-request --prs … --wait` で依頼すると、最初の通知または完了まで待つ。正式reviewerはSol。複数PRをまとめる場合も各PRの起動は1回で、再送には既存runが返る。
+統合担当の終了と回収を確認し、PRのclosing対象・branch・HEADを元の受入条件と照合する。原要件・影響先を `--instruction` または `--instruction-file` で渡す。対象HEADの検証結果・未確認事項は `--evidence-file -` で標準入力から、保存済みnoteは `--evidence-ref` にSHAまたはURLで指定する。依頼と同時に成果を記録する。`review-request --prs … --wait` で依頼すると、最初の通知または完了まで待つ。正式reviewerはSol。複数PRをまとめる場合も各PRの起動は1回で、再送には既存runが返る。
 
 ## 通知を受けたら
 

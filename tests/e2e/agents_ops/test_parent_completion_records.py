@@ -61,18 +61,28 @@ def finish_spec(p: ParentEnv, candidates: list[str] | None = None) -> dict[str, 
     }
 
 
+@pytest.mark.parametrize("combined", [False, True])
 @pytest.mark.parametrize("gate_env", ["parent_self"], indirect=True)
 def test_unsplit_manual_parent_finishes_with_no_candidate_and_retries_without_reactivation(
     gate_env: GateEnv,
+    combined: bool,
 ) -> None:
     g, p = gate_env, gate_env.review.p
     requirement_body = importlib.import_module("parent.execution").requirement_body
     before = requirement_body(p.state()["issues"]["1"]["body"])
     merged = g.cli("merge")
     assert merged.returncode == 0, merged.stderr
-    p.announce_completion()
     spec = finish_for(p)
-    response = json.loads(p.cli("release", "--ended", "--spec", p.spec(spec)).stdout)
+    if combined:
+        evidence = json.loads(
+            p.cli("note", "--body-file", "-", stdin="実mergeを確認した。").stdout
+        )
+        spec.update(schema_version=2, evidence=[evidence["url"]])
+    else:
+        p.announce_completion()
+    response = json.loads(
+        p.cli("release", "--ended", "--spec", "-", stdin=json.dumps(spec)).stdout
+    )
     assert (
         response["assignment"] == "ended"
         and response["completion"]["acceptance"] == "completed"

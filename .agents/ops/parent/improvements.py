@@ -179,6 +179,7 @@ def record(
         )
     return {
         "candidate_id": source.candidate_id,
+        "key": source.key,
         "revision": row["revision"],
         "comment": comment_id,
         "recorded": True,

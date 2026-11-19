@@ -133,8 +133,8 @@ class GitHub:
         return dict(result)
 
     def files(self, number: int) -> list[Any]:
-        # We accept exactly three files. A full page (or any extra file) fails
-        # closed, so pagination cannot hide an acceptable larger diff.
+        # A frozen batch has at most 32 turns (96 files). An extra page cannot
+        # hide a valid diff: a full first page already exceeds that limit.
         result = self.request(f"repos/{self.repo}/pulls/{number}/files?per_page=100")
         require(isinstance(result, list), "github_invalid_response")
         return list(result)
@@ -303,7 +303,11 @@ class Publisher:
                 if ancestor == tree:
                     break
                 require(not ancestor.is_symlink(), "worktree_symlink")
-            target.mkdir(parents=True, exist_ok=False)
+            target.mkdir(parents=True, exist_ok=bool(row.get("members")))
+            for directory in sorted(
+                {(target / name).parent for name in files} - {target}
+            ):
+                directory.mkdir(exist_ok=False)
             for name, raw in files.items():
                 with (target / name).open("xb") as stream:
                     stream.write(raw)
@@ -334,13 +338,16 @@ class Publisher:
             "PR identity mismatch: number",
         )
         require(
-            type(value.get("changed_files")) is int and value["changed_files"] == 3,
+            type(value.get("changed_files")) is int
+            and value["changed_files"] == 3 * len(row.get("members", [None])),
             "pr_identity_changed",
             "PR identity mismatch: changed_files",
         )
         return value
 
-    def verify_main(self, row: dict[str, Any], main: str) -> None:
+    def verify_main(
+        self, row: dict[str, Any], main: str, directories: set[str] | None = None
+    ) -> None:
         result = subprocess.run(
             ["git", "merge-base", "--is-ancestor", row["base"], main],
             cwd=self.root,
@@ -359,7 +366,9 @@ class Publisher:
             f"Pinned base {row['base']} is not an ancestor of main {main}",
         )
         require(
-            not self.git("ls-tree", main, "--", row["directory"]).strip(),
+            not self.git(
+                "ls-tree", main, "--", *sorted(directories or {row["directory"]})
+            ).strip(),
             "record_already_exists",
         )
 
@@ -431,6 +440,15 @@ class Publisher:
                 )
                 guard = guard_for(row["source"], row["receipt"]["record"])
                 meta = schema.validate(files, guard)
+                directory = schema.path(meta)
+                branch = f"worker-log/{meta['delegation_key']}/{meta['turn']['sequence']:04d}"
+                directories = {directory}
+                if "members" in row:
+                    from .batches import payload
+
+                    files, directories = payload(self.path, row)
+                    directory = str(Path(directory).parent)
+                    branch = f"worker-log-batch/{meta['delegation_key']}/{meta['turn']['sequence']:04d}"
                 if dry_run:
                     return {
                         **journal.view(row),
@@ -461,22 +479,23 @@ class Publisher:
                 if "base" not in row:
                     row.update(
                         base=main,
-                        directory=schema.path(meta),
-                        branch=f"worker-log/{meta['delegation_key']}/{meta['turn']['sequence']:04d}",
+                        directory=directory,
+                        branch=branch,
                         state="pending",
                         error=None,
                     )
                     journal.atomic(self.path, row)
                 require(
-                    row["directory"] == schema.path(meta)
-                    and row["branch"]
-                    == f"worker-log/{meta['delegation_key']}/{meta['turn']['sequence']:04d}",
+                    row["directory"] == directory and row["branch"] == branch,
                     "publication_identity_changed",
                 )
                 if "head" not in row:
                     self.commit(row, files)
                 self.verify(row, files)
                 expected_body = f"<!-- worker-log:v1 key={meta['delegation_key']} turn={meta['turn']['sequence']} head={row['head']} -->\n\nRefs #{meta['parent']}, #{meta['issue']}\n\n検査済みworkerログ3ファイルの追加。専用入口が固定HEADとmainへの保存を照合する。\n"
+                if "members" in row:
+                    turns = ",".join(map(str, row["members"]))
+                    expected_body = f"<!-- worker-log:v2 key={meta['delegation_key']} turns={turns} head={row['head']} -->\n\nRefs #{meta['parent']}, #{meta['issue']}\n"
                 require(
                     row.get("pr_body", expected_body) == expected_body,
                     "publication_identity_changed",
@@ -517,7 +536,9 @@ class Publisher:
                         journal.atomic(self.path, row)
                         created = self.github.create(
                             row["branch"],
-                            f"workerログ: #{meta['issue']} turn {meta['turn']['sequence']}",
+                            f"workerログ: #{meta['issue']} turns {turns}"
+                            if "members" in row
+                            else f"workerログ: #{meta['issue']} turn {meta['turn']['sequence']}",
                             row["pr_body"],
                         )
                     schema.identity(created, row, self.github.repo)
@@ -531,7 +552,7 @@ class Publisher:
                 require(not row.get("merge_attempted"), "merge_response_uncertain")
                 # Another parent's independent additions may have advanced main.
                 main = self.main()
-                self.verify_main(row, main)
+                self.verify_main(row, main, directories)
                 require(pr.get("mergeable") is not False, "merge_conflict")
                 self.verify(row, files)
                 schema.pr_additions(

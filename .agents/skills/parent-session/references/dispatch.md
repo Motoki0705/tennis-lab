@@ -15,7 +15,7 @@ p=(.venv/bin/python -m parent --repo "$repo" --parent "$parent" --state-dir "$pa
 |---|---|
 | CI・依存・人間判断を待つ | 独立して進められる仕事を進め、残りは `workflow-report` の `waiting` に理由・再開条件・確認済みの証拠を書く。 |
 | 実行や検証が失敗し、進められない | `failed` に失敗した対象、影響、再開に必要な条件を記す。元のjob・runを保持して [復旧](recovery.md) へ進む。 |
-| 全条件を受け入れた | [完了通知とfinish](finish.md) を揃えて `workflow-report` の `completed` へ渡す。supervisorが終了を照合する。 |
+| 全条件を受け入れた | [全体受入](finish.md) のversion 2入力を `workflow-report` へ渡す。supervisorが終了を照合する。 |
 
 どの状態でも、最終文は `workflow-report` が返した4キー（`schema_version`, `state`, `reason`, `resume_condition`）のJSONをそのまま返す。
 

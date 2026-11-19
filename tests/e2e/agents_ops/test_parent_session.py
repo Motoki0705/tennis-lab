@@ -423,6 +423,7 @@ class ParentEnv:
         ok: bool | None = True,
         extra: dict[str, str] | None = None,
         summary: str | None = "テスト親の要約",
+        stdin: str | None = None,
     ) -> subprocess.CompletedProcess[str]:
         launcher = (
             [
@@ -457,6 +458,7 @@ class ParentEnv:
             ],
             cwd=self.repo,
             env={**self.env, **(extra or {})},
+            input=stdin,
             text=True,
             capture_output=True,
             timeout=90,

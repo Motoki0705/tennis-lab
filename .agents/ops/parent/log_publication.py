@@ -297,6 +297,14 @@ class Continuation:
                 self.parent,
                 state_dir=self.store.directory,
                 exclude=exclude,
+                milestone=command
+                in {
+                    "review-request",
+                    "release",
+                    "handoff",
+                    "workflow-report",
+                    "publish-worker-log",
+                },
                 owner_check=publication_owner(
                     self.store, self.repo, self.parent, self.identity, self.generation
                 ),

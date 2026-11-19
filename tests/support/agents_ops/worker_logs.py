@@ -164,6 +164,7 @@ class FakeGitHub:
                     "repo": {"full_name": self.repo},
                 },
             }
+            self.rows[n]["changed_files"] = len(self.files(n))
             if self.failure == "create_response_lost":
                 self.failure = None
                 raise journal.PublicationError(
@@ -228,6 +229,7 @@ class LogEnv:
         instruction: str = "\n実際に送った指示\r\n",
         phase: str = "planning",
         repair: dict[str, Any] | None = None,
+        legacy: bool = False,
     ) -> tuple[Path, dict[str, Any]]:
         tree = self.root / f".claude/worktrees/worker-{parent}-{child}"
         branch = f"codex/worker-{parent}-{child}"
@@ -286,6 +288,10 @@ class LogEnv:
         session.worker_task = lambda number: session.row["tasks"][str(number)]
         prompt = "standard\n" + str(tree) + "\n" + instruction
         path = sources.freeze(session, child, prompt, self.standard)
+        if legacy:
+            old = journal.read(path)
+            old.pop("publication_mode")
+            journal.atomic(path, old)
         self.sessions.append(session)
         source, receipt = record_source()
         record = receipt["record"]

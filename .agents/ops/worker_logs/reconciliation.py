@@ -212,6 +212,7 @@ def continue_workers(
     dry_run: bool = False,
     exclude: set[tuple[int, str, int]] | None = None,
     only: set[tuple[int, str, int]] | None = None,
+    milestone: bool = True,
     owner_check: Callable[[], bool] | None = None,
 ) -> list[dict[str, Any]]:
     """One visit per existing journal; never allocates a key or starts a worker."""
@@ -234,6 +235,8 @@ def continue_workers(
                 or row["state"] in {"merged", "legacy"}
             ):
                 continue
+            if row.get("publication_mode") == "delegation_batch" and not milestone:
+                continue
             retry = retryable_rejection(row)
             value = journal.view(row)
             action = (
@@ -253,7 +256,12 @@ def continue_workers(
                     if runtime.ended(proof):
                         value = service.finish(path, proof, publish_now=False)
                 if value["state"] in {"ready", "pending"} or retry:
-                    value = service.publish(path, retry=retry, owner_check=owner_check)
+                    value = service.publish(
+                        path,
+                        retry=retry,
+                        owner_check=owner_check,
+                        only_turn=only is not None,
+                    )
             results.append(
                 {
                     "parent": src["parent"],

@@ -41,15 +41,32 @@ def publish(
     *,
     dry_run: bool = False,
     retry: bool = False,
+    milestone: bool = True,
+    only_turn: bool = False,
     owner_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     try:
         if not dry_run:
             require_owner(owner_check)
         row = journal.read(path)
-        result: dict[str, Any] = Publisher(
-            Path(row["source"]["repository_root"]), path
-        ).publish(dry_run=dry_run, retry=retry)
+        result: dict[str, Any]
+        if row.get("publication_mode") == "delegation_batch":
+            if not milestone:
+                return journal.view(row)
+            from . import batches
+
+            result = batches.publish(
+                path,
+                dry_run=dry_run,
+                retry=retry,
+                owner_check=owner_check,
+                only_turn=only_turn,
+                publisher=Publisher,
+            )
+        else:
+            result = Publisher(Path(row["source"]["repository_root"]), path).publish(
+                dry_run=dry_run, retry=retry
+            )
     except (
         ValueError,
         OSError,
@@ -85,7 +102,7 @@ def finish(
 
         worker_log(path, result, entrypoint="worker_logs.receive")
         if publish_now and result["state"] in {"ready", "pending", "merged"}:
-            return publish(path, owner_check=owner_check)
+            return publish(path, owner_check=owner_check, milestone=False)
         return result
     except (
         ValueError,
@@ -280,7 +297,13 @@ def _command(
                     if result["state"] not in {"ready", "pending", "merged"}:
                         results.append(result)
                         continue
-            result = publish(path, dry_run=dry_run, retry=retry, owner_check=check)
+            result = publish(
+                path,
+                dry_run=dry_run,
+                retry=retry,
+                owner_check=check,
+                only_turn=sequence is not None,
+            )
             results.append(result)
             if result.get("error") == "log_owner_mismatch":
                 break

@@ -1560,7 +1560,9 @@ class Supervisor:
         transferred: set[str] = set()
         for key, path, owner_check in publications:
             if key not in exiting | transferred:
-                result = worker_logs.publish(path, owner_check=owner_check)
+                result = worker_logs.publish(
+                    path, owner_check=owner_check, milestone=False
+                )
                 if result.get("error") == "log_owner_mismatch":
                     transferred.add(key)
         for key, pending in exits:
