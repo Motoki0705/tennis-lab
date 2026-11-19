@@ -62,7 +62,7 @@ class BodyViewSelectionModule:
         self.max_frames, self.enabled = max_frames, enabled
         self.io = ComponentIO("body_view_selection", BodyViewSelectionInput, BodyViewSelectionOutput,
             {"alignment": InputPort("aligned_cameras"), "calibration": InputPort("local_court_calibration"),
-             "identities": IDENTITIES_PORT, **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "body_view_selection")
+             "identities": IDENTITIES_PORT, **{f"pose_{c}": InputPort("person_poses", 2) for c in camera_ids}}, "body_view_selection")
 
     def process(self, inputs: BodyViewSelectionInput) -> BodyViewSelectionOutput:
         geometry = inputs.alignment.geometry

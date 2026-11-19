@@ -1,0 +1,9 @@
+[Tue Nov 17 21:10:39 2026] misc dxg: dxgk: dxgvmb_send_sync_msg: wait_for_completion failed: fffffe00
+[Tue Nov 17 21:10:39 2026] misc dxg: dxgk: dxgkio_query_adapter_info: Ioctl failed: -512
+[Tue Nov 17 21:12:16 2026] misc dxg: dxgk: process_completion_packet: did not find packet to complete
+[Tue Nov 17 21:13:03 2026] misc dxg: dxgk: dxgvmb_send_sync_msg: wait_for_completion failed: fffffe00
+[Tue Nov 17 21:13:03 2026] misc dxg: dxgk: dxgvmb_send_sync_msg: wait_for_completion failed: fffffe00
+[Tue Nov 17 21:13:03 2026] misc dxg: dxgk: dxgkio_query_adapter_info: Ioctl failed: -512
+[Tue Nov 17 21:13:03 2026] misc dxg: dxgk: dxgkio_query_adapter_info: Ioctl failed: -512
+[Tue Nov 17 21:13:14 2026] misc dxg: dxgk: process_completion_packet: did not find packet to complete
+[Tue Nov 17 21:13:14 2026] misc dxg: dxgk: process_completion_packet: did not find packet to complete

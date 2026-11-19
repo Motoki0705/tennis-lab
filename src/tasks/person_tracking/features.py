@@ -4,6 +4,7 @@ Decoded frames may come from raw video or the refiner's JPEG store. The caller
 owns media provenance. No detector, tracker or identity selection runs here.
 """
 
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -110,9 +111,7 @@ def infer_poses(frame: int, image: NDArray[np.uint8], boxes: NDArray[np.float32]
     n = len(boxes)
     if not n:
         return np.zeros((0, 17, 3), np.float32)
-    centres = (boxes[:, :2] + boxes[:, 2:]) * .5
-    sizes = (boxes[:, 2:] - boxes[:, :2]).max(1) * config.bbox_enlarge
-    squares = torch.from_numpy(np.column_stack((centres, sizes)).astype(np.float32))
+    squares = pose_boxes(boxes, config)
     result = model.predict(Pose2DFrameSequenceRequest(
         [(frame, image)], squares, torch.full((n,), frame, dtype=torch.int64)))
     if result.keypoints.shape != (n, 17, 3):
@@ -123,6 +122,88 @@ def infer_poses(frame: int, image: NDArray[np.uint8], boxes: NDArray[np.float32]
         details = [(int(rows[i]) if rows is not None else int(i), int(j), int(k), str(poses[i, j, k])) for i, j, k in bad]
         raise ValueError(f"Nonfinite pose at frame {frame}: (detection row, joint, channel, value)={details}")
     return poses
+
+
+def pose_boxes(boxes: NDArray[np.float32], config: FeatureConfig = DEFAULT_CONFIG) -> torch.Tensor:
+    """The original full-image square geometry, shared by frame and stream passes."""
+    centres = (boxes[:, :2] + boxes[:, 2:]) * .5
+    sizes = (boxes[:, 2:] - boxes[:, :2]).max(1) * config.bbox_enlarge
+    return torch.from_numpy(np.column_stack((centres, sizes)).astype(np.float32))
+
+
+@dataclass(frozen=True)
+class AppearanceCrop:
+    """A prepared crop with its original source address; no image is retained."""
+
+    frame: int
+    row: int
+    pixels: torch.Tensor
+    prompt: torch.Tensor | None
+
+
+def iter_appearance_crops(frame: int, image: NDArray[np.uint8], rows: NDArray[np.int64],
+                          boxes: NDArray[np.float32], poses: NDArray[np.float32] | None,
+                          encoder: DetectionEncoder, config: FeatureConfig = DEFAULT_CONFIG) -> Iterator[AppearanceCrop]:
+    """Prepare rounded/clipped RGB crops, without invoking an encoder."""
+    if poses is None and not isinstance(encoder, UnpromptedEncoder):
+        raise ValueError("Pose-free appearance requires an explicitly unprompted encoder")
+    if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8 or min(image.shape[:2]) < 2:
+        raise ValueError("Feature image must be uint8 BGR (H,W,3)")
+    height, width = image.shape[:2]
+    clipped = np.rint(boxes).astype(np.float32)
+    clipped[:, [0, 2]] = np.clip(clipped[:, [0, 2]], 0, width)
+    clipped[:, [1, 3]] = np.clip(clipped[:, [1, 3]], 0, height)
+    crop_size = clipped[:, 2:] - clipped[:, :2]
+    scale = np.hypot(width, height) / np.hypot(1920, 1080)
+    valid = (crop_size[:, 0] > 0) & (crop_size[:, 1] >= config.min_appearance_height_px * scale)
+    for index in np.flatnonzero(valid):
+        prompt = None
+        if poses is not None and not isinstance(encoder, UnpromptedEncoder):
+            relative = poses[index].copy()
+            relative[..., :2] = (relative[..., :2] - clipped[index, :2]) / crop_size[index]
+            prompt = torch.from_numpy(relative)
+        yield AppearanceCrop(frame, int(rows[index]), torch.from_numpy(crop(image, boxes[index], encoder.input_size)), prompt)
+
+
+def appearance_batches(crops: Iterable[AppearanceCrop], batch_size: int) -> Iterator[list[AppearanceCrop]]:
+    """Bound crop memory while allowing a batch to span empty/adjacent frames."""
+    if type(batch_size) is not int or batch_size < 1:
+        raise ValueError("Appearance batch size must be a positive integer")
+    batch: list[AppearanceCrop] = []
+    for item in crops:
+        batch.append(item)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
+def infer_appearance(batch: Sequence[AppearanceCrop], encoder: DetectionEncoder) -> NDArray[np.float32]:
+    """Infer one prepared batch; standard CLIP never receives pose prompts."""
+    pixels = torch.stack([item.pixels for item in batch])
+    if isinstance(encoder, UnpromptedEncoder):
+        encoded = encoder.encoder.embed(pixels)
+    else:
+        if any(item.prompt is None for item in batch):
+            raise ValueError("Prompted encoder requires saved pose prompts")
+        encoded = encoder.embed(pixels, torch.stack([item.prompt for item in batch if item.prompt is not None]))
+    result = encoded.detach().cpu().numpy().astype(np.float32)
+    if result.shape != (len(batch), encoder.dimension):
+        raise ValueError("Appearance model changed the detection or embedding axis")
+    return result
+
+
+def scatter_appearance(batch: Sequence[AppearanceCrop], encoded: NDArray[np.float32],
+                       row_indices: dict[int, int], embeddings: NDArray[np.float32], valid: NDArray[np.bool_]) -> None:
+    """Write only inferred source rows; invalid crops keep zero and false."""
+    if encoded.shape != (len(batch), embeddings.shape[1]):
+        raise ValueError("Appearance batch output changed the row axis")
+    indices = [row_indices[item.row] for item in batch]
+    if len(set(indices)) != len(indices) or valid[indices].any():
+        raise ValueError("Appearance source row was inferred more than once")
+    embeddings[indices] = encoded
+    valid[indices] = True
 
 
 def encode_appearance(frame: int, image: NDArray[np.uint8], rows: NDArray[np.int64],
@@ -136,27 +217,8 @@ def encode_appearance(frame: int, image: NDArray[np.uint8], rows: NDArray[np.int
     embeddings: NDArray[np.float32] = np.zeros((n, encoder.dimension), np.float32)
     valid: NDArray[np.bool_] = np.zeros(n, bool)
     DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid, score_origin=score_origin)
-    if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8 or min(image.shape[:2]) < 2:
-        raise ValueError("Feature image must be uint8 BGR (H,W,3)")
-    height, width = image.shape[:2]
-    clipped = np.rint(boxes).astype(np.float32)
-    clipped[:, [0, 2]] = np.clip(clipped[:, [0, 2]], 0, width)
-    clipped[:, [1, 3]] = np.clip(clipped[:, [1, 3]], 0, height)
-    crop_size = clipped[:, 2:] - clipped[:, :2]
-    scale = np.hypot(width, height) / np.hypot(1920, 1080)
-    valid = (crop_size[:, 0] > 0) & (crop_size[:, 1] >= config.min_appearance_height_px * scale)
-    selected = np.flatnonzero(valid)
-    for start in range(0, len(selected), config.appearance_batch_size):
-        batch = selected[start:start + config.appearance_batch_size]
-        pixels = torch.from_numpy(np.stack([crop(image, boxes[row], encoder.input_size) for row in batch]))
-        if poses is None:
-            assert isinstance(encoder, UnpromptedEncoder)
-            encoded = encoder.encoder.embed(pixels).detach().cpu().numpy()
-        else:
-            prompts = poses[batch].copy()
-            prompts[..., :2] = (prompts[..., :2] - clipped[batch, None, :2]) / crop_size[batch, None, :]
-            encoded = encoder.embed(pixels, torch.from_numpy(prompts)).detach().cpu().numpy()
-        if encoded.shape != (len(batch), encoder.dimension):
-            raise ValueError("Appearance model changed the detection or embedding axis")
-        embeddings[batch] = encoded
+    row_indices = {int(row): index for index, row in enumerate(rows)}
+    crops = iter_appearance_crops(frame, image, rows, boxes, poses, encoder, config)
+    for batch in appearance_batches(crops, config.appearance_batch_size):
+        scatter_appearance(batch, infer_appearance(batch, encoder), row_indices, embeddings, valid)
     return DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid, score_origin=score_origin)

@@ -126,6 +126,12 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
         PersonDetectionModule,
         PersonDetectionOutput,
     )
+    from src.tennis_scene.pipeline.components.person_features import (
+        PersonAppearanceFeaturesModule,
+        PersonAppearanceFeaturesOutput,
+        PersonPoseFeaturesModule,
+        PersonPoseFeaturesOutput,
+    )
     from src.tennis_scene.pipeline.components.person_tracking import (
         PersonTrackingModule,
         PersonTrackingOutput,
@@ -154,7 +160,13 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
         boxes = np.zeros((count, frames, 4), np.float32)
         boxes[..., 2:] = 100
         fixed(f"person_detection/{camera}", PersonDetectionModule.io, PersonDetectionOutput(camera,
-            np.arange(frames + 1, dtype=np.int64) * count, boxes.transpose(1, 0, 2).reshape(-1, 4), np.ones(frames * count, np.float32)))
+            np.arange(frames + 1, dtype=np.int64) * count, boxes.transpose(1, 0, 2).reshape(-1, 4), np.ones(frames * count, np.float32), np.arange(frames * count, dtype=np.int64)))
+        detection = stages[f"person_detection/{camera}"].result
+        fixed(f"person_pose_features/{camera}", PersonPoseFeaturesModule.io, PersonPoseFeaturesOutput(camera,
+            detection.frame_offsets, detection.source_rows, np.zeros((frames * count, 17, 3), np.float32), 'a' * 64, 'b' * 64))
+        fixed(f"person_appearance_features/{camera}", PersonAppearanceFeaturesModule.io, PersonAppearanceFeaturesOutput(camera,
+            detection.frame_offsets, detection.source_rows, np.zeros((frames * count, 1280), np.float32),
+            np.zeros(frames * count, bool), "clipreid_vitb16_market1501", "a" * 64, 'b' * 64))
         fixed(f"person_tracking/{camera}", PersonTrackingModule.io, PersonTrackingOutput(camera,
             np.arange(count, dtype=np.int64), boxes, people.observed[v].T,
             tuple((i,) for i in range(count)), ()))

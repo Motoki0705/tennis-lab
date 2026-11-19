@@ -1,0 +1,14 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205081761235046819_2026-11-17T12-23-58-764953180Z_1031350_person-feature-artifacts-clip037-retry (commit=ffd2c059a13a provider=codex session=01a1e957-d212-7232-b1b4-27bcf33ef597)
+{
+  "pose_xy_max_abs_px": 0.0,
+  "pose_confidence_max_abs": 0.0,
+  "embedding_max_abs": 5.960464477539063e-08,
+  "embedding_cosine_distance_max": 2.384185791015625e-07,
+  "appearance_mask_equal": true,
+  "track_ids_equal": true,
+  "track_rows_equal": true,
+  "track_observed_equal": true,
+  "gsi_mask_equal": true,
+  "detection_rows": 3451,
+  "features_within_tolerance": true
+}
