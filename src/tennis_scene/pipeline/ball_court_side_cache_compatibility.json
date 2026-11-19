@@ -35,7 +35,7 @@
     },
     "tennis_scene/pipeline/dataset_publication.py": {
       "before": "0a8644d6b86ded0051f9ac1ff286ca75732667f79235f2e6d16f459ac596465e",
-      "after": "de371cade52cea931cbf090023aa44df874feae30c57ae3f763aea9f4912c9b1"
+      "after": "288dc6df1ebcd31bc680ea0802a37665036e07e7861877ee50c4de26684d7072"
     },
     "tennis_scene/pipeline/definition.py": {
       "before": "b52fe660c227de30e43cfc6d49d8e7f7d035441708431db3146e31c4752b24bf",

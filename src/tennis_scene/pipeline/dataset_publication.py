@@ -129,8 +129,8 @@ def _required_body_components(inputs: DatasetClipInputs, identity: Mapping[str, 
     root = inputs.clip_dir / ANNOTATION_RELATIVE_DIR
     document = json.loads((root / 'scene.json').read_text())
     reference = document['exports']['scene']['inputs']['scene_assembly']
-    required: dict[str, Any] = require_current_body_artifacts(root, reference)
-    return required
+    artifacts: dict[str, Any] = require_current_body_artifacts(root, reference)
+    return artifacts
 
 
 def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
