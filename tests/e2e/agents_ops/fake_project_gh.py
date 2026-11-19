@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import importlib
 import json
 import os
 import re
@@ -18,6 +19,25 @@ def main() -> None:
     graphql = args[:2] == ["api", "graphql"]
     rest_write = "--method" in args and args[args.index("--method") + 1] == "POST"
     payload = json.load(sys.stdin) if graphql or rest_write else None
+    if os.environ.get("PROGRESS_ASSERT_OPERATION_PARENT") and (graphql or rest_write):
+        import fcntl
+
+        digest = importlib.import_module("parent.policy").digest
+
+        directory = (
+            Path(os.environ["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+        )
+        for key in (
+            f"o/r#{os.environ['PROGRESS_ASSERT_OPERATION_PARENT']}",
+            "project:motoki0705#3",
+        ):
+            with (directory / f"operation-{digest(key)}.lock").open("a") as probe:
+                try:
+                    fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    pass
+                else:
+                    raise AssertionError(f"operation lock missing: {key}")
     with Path(os.environ["PROGRESS_GH_CALLS"]).open("a") as stream:
         stream.write(json.dumps({"args": args, "payload": payload}) + "\n")
 
@@ -29,6 +49,14 @@ def main() -> None:
         raise SystemExit(1)
 
     def respond(value: Any) -> None:
+        value = copy.deepcopy(value)
+        if (
+            payload is not None
+            and os.environ.get("PROGRESS_POST_WRITE_CHANGE")
+            and (rest_write or graphql and payload["query"].startswith("mutation"))
+        ):
+            state["post_write_pending"] = True
+            save()
         if "--include" in args:
             print("HTTP/1.1 200 OK\n")
         print(json.dumps(value))
@@ -155,6 +183,18 @@ def main() -> None:
             page = int(timeline[2])
             respond(rows[(page - 1) * 100 : page * 100])
         if pull:
+            if (
+                os.environ.get("PROGRESS_PR_RACE")
+                and pull[1] == "99"
+                and not state.get("pr_raced")
+            ):
+                old = copy.deepcopy(
+                    next(p for p in state["pulls"] if p["number"] == int(pull[1]))
+                )
+                state["pulls"][0]["state"] = "closed"
+                state["pr_raced"] = True
+                save()
+                respond(old)
             respond(next(p for p in state["pulls"] if p["number"] == int(pull[1])))
         assert endpoint.startswith("repos/o/r/pulls?state=all"), endpoint
         if os.environ.get("PROGRESS_FAIL_PULLS"):
@@ -174,6 +214,33 @@ def main() -> None:
         if os.environ.get("PROGRESS_PARTIAL_ERROR") == operation:
             respond({"data": {}, "errors": [{"message": "partial failure"}]})
         if operation == "ProgressProject":
+            if os.environ.get("PROGRESS_SETUP_SNAPSHOT_RACE"):
+                state["project_reads"] = state.get("project_reads", 0) + 1
+                if state["project_reads"] == 2:
+                    state["project"]["title"] += " changed"
+                save()
+            change = os.environ.get("PROGRESS_POST_WRITE_CHANGE")
+            if (
+                change
+                and state.pop("post_write_pending", False)
+                and not state.get("post_write_changed")
+            ):
+                if change == "project":
+                    state["project"]["title"] += " changed"
+                elif change == "issue":
+                    state["issues"]["1204"]["title"] += " changed"
+                elif change == "pr":
+                    state["pulls"][0]["state"] = "closed"
+                elif change == "field":
+                    state["fields"][-1]["id"] += "-replacement"
+                elif change == "item":
+                    state["items"][0]["id"] += "-replacement"
+                elif change == "view":
+                    state["views"][-1]["id"] += "-replacement"
+                else:
+                    raise AssertionError(change)
+                state["post_write_changed"] = True
+                save()
             assert (
                 variables["owner"].casefold()
                 == state["project"]["owner"]["login"].casefold()

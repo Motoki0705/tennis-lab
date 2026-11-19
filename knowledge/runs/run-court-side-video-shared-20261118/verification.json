@@ -1,0 +1,91 @@
+{
+  "implementation_commit": "ac77e4b7444d2ffe900a9ea858b85b16f38ca46c",
+  "default_clip_profile": {
+    "before": {
+      "clip": true,
+      "side_settings": {
+        "reprojection_px": 20.0,
+        "min_motion_px": 5.0,
+        "min_frames": 8,
+        "max_cost": 0.8,
+        "min_support": 0.2,
+        "min_margin": 0.15
+      },
+      "side_settings_sha256": "6703986cb33f3de36bb5850a58073833cdf30f1ee540175fcb1338dc4570c155",
+      "thresholds": {
+        "reprojection_px": 20.0,
+        "min_motion_px": 5.0,
+        "min_frames": 8,
+        "max_cost": 0.8,
+        "min_support": 0.2,
+        "min_margin": 0.15,
+        "height_range_m": [
+          -0.2,
+          20.0
+        ],
+        "max_abs_xy_m": 40.0,
+        "min_ray_angle_deg": 1.0
+      },
+      "sample_cap": 2048,
+      "source_identity": "2b7120177404f341b9863fa5c1c6057be93a198ff78f204ccdb387e400fc9dfc"
+    },
+    "after": {
+      "clip": true,
+      "side_settings": {
+        "reprojection_px": 20.0,
+        "min_motion_px": 5.0,
+        "min_frames": 8,
+        "max_cost": 0.8,
+        "min_support": 0.2,
+        "min_margin": 0.15
+      },
+      "side_settings_sha256": "6703986cb33f3de36bb5850a58073833cdf30f1ee540175fcb1338dc4570c155",
+      "thresholds": {
+        "reprojection_px": 20.0,
+        "min_motion_px": 5.0,
+        "min_frames": 8,
+        "max_cost": 0.8,
+        "min_support": 0.2,
+        "min_margin": 0.15,
+        "height_range_m": [
+          -0.2,
+          20.0
+        ],
+        "max_abs_xy_m": 40.0,
+        "min_ray_angle_deg": 1.0
+      },
+      "sample_cap": 2048,
+      "source_identity": "2d8dd0a9f1a45109034ce1a428bd621430837517d88d1d98432f4323d189eb68"
+    }
+  },
+  "pytest": {
+    "command": ".venv/bin/python -m pytest -q -n 2 tests/unit/tasks/court_side tests/unit/tennis_scene/pipeline tests/unit/tennis_scene/test_pipeline_configuration.py tests/unit/utils/configuration tests/integration/tennis_scene/{test_shared_clip_execution,test_video_court,test_video_court_side,test_court_side_counterfactuals}.py tests/e2e/tennis_scene/test_video_court_cli.py --durations=12",
+    "passed": 741,
+    "seconds": 240.74,
+    "new_cases": 11,
+    "new_case_seconds_max_in_suite": 3.29,
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    },
+    "new_cases_focused_seconds": 21.17,
+    "new_cases_focused_max_call_seconds": 3.5
+  },
+  "single_clip_hydra_fixture": {
+    "entry": "src.tennis_scene.scripts.run_pipeline",
+    "action": "load",
+    "cameras": 3,
+    "video_clips": 2,
+    "shared_scored_frames": 48,
+    "output_frames": 24,
+    "ball_3d_valid": 24,
+    "receipt_digest_matches": true,
+    "archive_written": true
+  },
+  "pre_commit": [
+    "ruff: passed",
+    "mypy: passed"
+  ]
+}

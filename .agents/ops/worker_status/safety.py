@@ -10,6 +10,7 @@ from typing import Any
 
 from board.errors import BoardError
 from board.safety import public
+from parent.worker_slots import workers
 
 PRIVATE_ENV_KEYS = (
     "CLAUDE_CODE_SESSION_ID",
@@ -41,7 +42,7 @@ class Guard:
         """Keep all observed owners/run references private across a handoff retry."""
         for row in parents.values():
             self.remember(row["session"].partition(":")[2])
-            for task in row["tasks"].values():
+            for _, _, task in workers(row["tasks"]):
                 self.remember(task.get("delegation_id"))
                 self.remember_path(task.get("worktree"))
                 runs = task.get("worker_runs", [])

@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205066831198893916_2026-11-17T16-32-48-801106083Z_163807_i1751-runtime-main-pair-20261118-a4",
+  "name": "i1751-runtime-main-pair-20261118-a4",
+  "command": "PYTHONHASHSEED=42 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/toolchain/MultiScaleDeformableAttention.so .venv/bin/python -u /home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/run_pair.py",
+  "provider": "codex",
+  "session": "01a1e969-a58c-7d10-be3e-4e0795fd9e18",
+  "issue": "1751",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "8ef9781463e9dcd3d5a7587c1720217e276a2eaf",
+  "branch": "codex/scene-inference-runtime",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime",
+  "captured_at": "2026-11-18T01:32:49+09:00"
+}

@@ -1,0 +1,14 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [],
+      "number": 1686,
+      "summary": "人間本人への帰属確認、未確認時の記録禁止、引用元の追跡、参照先アンカーの整合性を確認しました。既存の記録形式・コミット手順は維持され、共有memoryの変更もありません。保存コンテキストではCI全14件成功、PR本文では105テスト成功と報告されています。本レビューでのCPU実行検証は未実施です。"
+    }
+  ],
+  "summary": "指定base/headの静的レビューを完了し、blocker／majorの不具合は認めませんでした。",
+  "verdict": "approve"
+}

@@ -1,0 +1,616 @@
+{
+  "schema": "scene_dpt_comparison_summary.v1",
+  "scope": "Two completed Meiji clips. No ground truth; reprojection is consistency, not accuracy.",
+  "timing_scope": "Ball component wall time includes load, IO/resize, inference, candidates, gates and unload. Separate cam0 probe has populated torch.compile cache. No pure forward latency claim.",
+  "gpu_reservation": "shared training queue, resource=all, per-process allocator fraction=0.70",
+  "primary_four_camera": {
+    "clip_000": {
+      "i935": {
+        "commit": "4892ddc14905d09b32c6f21e0405169f291bde5c",
+        "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+        "source_marker_sha256": "783f0ccd4acb849ef89be36869661a3cf36327e1781574ded7b1ce4731fee094",
+        "status": "unavailable",
+        "num_frames": 356,
+        "fps": 59.94005994005994,
+        "camera_ids": [
+          "cam0",
+          "cam1",
+          "cam2",
+          "cam3"
+        ],
+        "ball_detection_frames": {
+          "cam0": 127,
+          "cam1": 233,
+          "cam2": 209,
+          "cam3": 141
+        },
+        "ball_points_frames": {
+          "cam0": 118,
+          "cam1": 218,
+          "cam2": 170,
+          "cam3": 138
+        },
+        "any_camera_2d_frames": 321,
+        "ball_3d_valid_frames": null,
+        "reprojection_mean_px": null,
+        "ball_probe": {
+          "camera_id": "cam0",
+          "seconds": 5.153612531001272,
+          "peak_allocated_bytes": 1467297792,
+          "peak_reserved_bytes": 2157969408,
+          "includes": "model load, decode/resize, inference, candidates, gates and unload; torch.compile cache already populated"
+        },
+        "ball_stage_seconds": {
+          "cam0": 7.955693661999248,
+          "cam1": 5.085415145003935,
+          "cam2": 4.867550045004464,
+          "cam3": 5.010548104000918
+        },
+        "torch": "2.13.0+cu130",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "failure_reason": "court_region_unavailable",
+        "raw_metrics": {
+          "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/i935/clip_000/metrics.json",
+          "size_bytes": 8891,
+          "sha256": "bae0372192542169e3fce7922fc6b061fba09b3c2b56217cea0a10e006de651a"
+        },
+        "all_camera_ball_component_seconds": 22.919206956008566,
+        "stage_status": {
+          "court_detection/cam0": "failed"
+        }
+      },
+      "x3d": {
+        "commit": "9a8263d50516c3e8acea08fa59bdf88934ab698f",
+        "checkpoint_sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+        "source_marker_sha256": "783f0ccd4acb849ef89be36869661a3cf36327e1781574ded7b1ce4731fee094",
+        "status": "unavailable",
+        "num_frames": 356,
+        "fps": 59.94005994005994,
+        "camera_ids": [
+          "cam0",
+          "cam1",
+          "cam2",
+          "cam3"
+        ],
+        "ball_detection_frames": {
+          "cam0": 194,
+          "cam1": 141,
+          "cam2": 184,
+          "cam3": 153
+        },
+        "ball_points_frames": {
+          "cam0": 189,
+          "cam1": 127,
+          "cam2": 184,
+          "cam3": 147
+        },
+        "any_camera_2d_frames": 287,
+        "ball_3d_valid_frames": null,
+        "reprojection_mean_px": null,
+        "ball_probe": {
+          "camera_id": "cam0",
+          "seconds": 3.7195068889996037,
+          "peak_allocated_bytes": 1387587584,
+          "peak_reserved_bytes": 1992294400,
+          "includes": "model load, decode/resize, inference, candidates, gates and unload; torch.compile cache already populated"
+        },
+        "ball_stage_seconds": {
+          "cam0": 12.478748549998272,
+          "cam1": 4.501337330999377,
+          "cam2": 3.922312950002379,
+          "cam3": 3.955668747003074
+        },
+        "torch": "2.13.0+cu130",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "failure_reason": "court_region_unavailable",
+        "raw_metrics": {
+          "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/x3d/clip_000/metrics.json",
+          "size_bytes": 8897,
+          "sha256": "0feed99c5d453c5be8be001ecd1349f22c0d470e58584af9222e05d02c466ca2"
+        },
+        "all_camera_ball_component_seconds": 24.8580675780031,
+        "stage_status": {
+          "court_detection/cam0": "failed"
+        }
+      }
+    },
+    "clip_018": {
+      "i935": {
+        "commit": "3d8e00fe205c2e3634815eac4b91d3b20c382b39",
+        "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+        "source_marker_sha256": "40f506e3ec4cdcb7c395db95b2d89edb52a1eda47ff3663f27577ad83f04cc83",
+        "status": "unavailable",
+        "num_frames": 386,
+        "fps": 59.94005994005994,
+        "camera_ids": [
+          "cam0",
+          "cam1",
+          "cam2",
+          "cam3"
+        ],
+        "ball_detection_frames": {
+          "cam0": 127,
+          "cam1": 251,
+          "cam2": 202,
+          "cam3": 133
+        },
+        "ball_points_frames": {
+          "cam0": 127,
+          "cam1": 228,
+          "cam2": 182,
+          "cam3": 125
+        },
+        "any_camera_2d_frames": 351,
+        "ball_3d_valid_frames": null,
+        "reprojection_mean_px": null,
+        "ball_probe": {
+          "camera_id": "cam0",
+          "seconds": 5.124655758998415,
+          "peak_allocated_bytes": 1467297792,
+          "peak_reserved_bytes": 2157969408,
+          "includes": "model load, decode/resize, inference, candidates, gates and unload; torch.compile cache already populated"
+        },
+        "ball_stage_seconds": {
+          "cam0": 5.414176034995762,
+          "cam1": 5.2666487530004815,
+          "cam2": 5.400676442004624,
+          "cam3": 5.377850580996892
+        },
+        "torch": "2.13.0+cu130",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "failure_reason": "court_region_unavailable",
+        "raw_metrics": {
+          "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/i935/clip_018/metrics.json",
+          "size_bytes": 8896,
+          "sha256": "b00f75bffa2e6292f772833265a3c1d2cd38db1f4022a7cc90c4927e403ffdad"
+        },
+        "all_camera_ball_component_seconds": 21.45935181099776,
+        "stage_status": {
+          "court_detection/cam0": "failed"
+        }
+      },
+      "x3d": {
+        "commit": "9a8263d50516c3e8acea08fa59bdf88934ab698f",
+        "checkpoint_sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+        "source_marker_sha256": "40f506e3ec4cdcb7c395db95b2d89edb52a1eda47ff3663f27577ad83f04cc83",
+        "status": "unavailable",
+        "num_frames": 386,
+        "fps": 59.94005994005994,
+        "camera_ids": [
+          "cam0",
+          "cam1",
+          "cam2",
+          "cam3"
+        ],
+        "ball_detection_frames": {
+          "cam0": 280,
+          "cam1": 201,
+          "cam2": 150,
+          "cam3": 171
+        },
+        "ball_points_frames": {
+          "cam0": 280,
+          "cam1": 200,
+          "cam2": 140,
+          "cam3": 171
+        },
+        "any_camera_2d_frames": 331,
+        "ball_3d_valid_frames": null,
+        "reprojection_mean_px": null,
+        "ball_probe": {
+          "camera_id": "cam0",
+          "seconds": 3.918872335998458,
+          "peak_allocated_bytes": 1387587584,
+          "peak_reserved_bytes": 1992294400,
+          "includes": "model load, decode/resize, inference, candidates, gates and unload; torch.compile cache already populated"
+        },
+        "ball_stage_seconds": {
+          "cam0": 4.862284173999797,
+          "cam1": 4.521289984993928,
+          "cam2": 4.4000454589986475,
+          "cam3": 4.511683749995427
+        },
+        "torch": "2.13.0+cu130",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "failure_reason": "court_region_unavailable",
+        "raw_metrics": {
+          "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-four-camera-final/x3d/clip_018/metrics.json",
+          "size_bytes": 8901,
+          "sha256": "dcf8b68a9ad5d9370525732d78a6ac9c296c4d2004bf044ef592159fae366611"
+        },
+        "all_camera_ball_component_seconds": 18.2953033679878,
+        "stage_status": {
+          "court_detection/cam0": "failed"
+        }
+      }
+    }
+  },
+  "canonical_three_camera": {
+    "clip_000": {
+      "i935": {
+        "commit": "3d8e00fe205c2e3634815eac4b91d3b20c382b39",
+        "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+        "source_marker_sha256": "783f0ccd4acb849ef89be36869661a3cf36327e1781574ded7b1ce4731fee094",
+        "status": "unavailable",
+        "num_frames": 356,
+        "fps": 59.94005994005994,
+        "camera_ids": [
+          "cam1",
+          "cam2",
+          "cam3"
+        ],
+        "ball_detection_frames": {
+          "cam1": 233,
+          "cam2": 209,
+          "cam3": 141
+        },
+        "ball_points_frames": {
+          "cam1": 218,
+          "cam2": 170,
+          "cam3": 138
+        },
+        "any_camera_2d_frames": 318,
+        "ball_3d_valid_frames": null,
+        "reprojection_mean_px": null,
+        "ball_probe": {
+          "camera_id": "cam1",
+          "seconds": 4.7424213720005355,
+          "peak_allocated_bytes": 1467297792,
+          "peak_reserved_bytes": 2157969408,
+          "includes": "model load, decode/resize, inference, candidates, gates and unload; torch.compile cache already populated"
+        },
+        "ball_stage_seconds": {
+          "cam1": 0.08827022500190651,
+          "cam2": 0.09234079100133386,
+          "cam3": 0.08196736700483598
+        },
+        "torch": "2.13.0+cu130",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "failure_reason": "court_side_ambiguous_margin",
+        "raw_metrics": {
+          "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-three-camera-final/i935/clip_000/metrics.json",
+          "size_bytes": 19345,
+          "sha256": "a14b394b1dc4320e35e01da43a37f84be4a90b2a28a1542521d3c1510bc407b1"
+        },
+        "all_camera_ball_component_seconds": 0.26257838300807634,
+        "stage_status": {
+          "court_detection/cam1": "executed",
+          "court_detection/cam2": "executed",
+          "court_detection/cam3": "executed",
+          "ball_detection/cam1": "executed",
+          "ball_points/cam1": "executed",
+          "ball_detection/cam2": "executed",
+          "ball_points/cam2": "executed",
+          "ball_detection/cam3": "executed",
+          "ball_points/cam3": "executed",
+          "court_calibration": "executed",
+          "person_detection/cam1": "executed",
+          "person_tracking/cam1": "executed",
+          "player_selection/cam1": "executed",
+          "pose_estimation/cam1": "executed",
+          "person_detection/cam2": "executed",
+          "person_tracking/cam2": "executed",
+          "player_selection/cam2": "executed",
+          "pose_estimation/cam2": "executed",
+          "person_detection/cam3": "executed",
+          "person_tracking/cam3": "executed",
+          "player_selection/cam3": "executed",
+          "pose_estimation/cam3": "executed",
+          "court_side": "failed"
+        }
+      },
+      "x3d": {
+        "commit": "9a8263d50516c3e8acea08fa59bdf88934ab698f",
+        "checkpoint_sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+        "source_marker_sha256": "783f0ccd4acb849ef89be36869661a3cf36327e1781574ded7b1ce4731fee094",
+        "status": "ok",
+        "num_frames": 356,
+        "fps": 59.94005994005994,
+        "camera_ids": [
+          "cam1",
+          "cam2",
+          "cam3"
+        ],
+        "ball_detection_frames": {
+          "cam1": 141,
+          "cam2": 184,
+          "cam3": 153
+        },
+        "ball_points_frames": {
+          "cam1": 127,
+          "cam2": 184,
+          "cam3": 147
+        },
+        "any_camera_2d_frames": 254,
+        "ball_3d_valid_frames": 123,
+        "reprojection_mean_px": 5.317018508911133,
+        "ball_probe": {
+          "camera_id": "cam1",
+          "seconds": 4.6931998650034075,
+          "peak_allocated_bytes": 1387587584,
+          "peak_reserved_bytes": 1992294400,
+          "includes": "model load, decode/resize, inference, candidates, gates and unload; torch.compile cache already populated"
+        },
+        "ball_stage_seconds": {
+          "cam1": 17.05089896300342,
+          "cam2": 5.670435521999025,
+          "cam3": 5.487949428999855
+        },
+        "torch": "2.13.0+cu130",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "failure_reason": null,
+        "raw_metrics": {
+          "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-three-camera-final/x3d/clip_000/metrics.json",
+          "size_bytes": 29289,
+          "sha256": "7a8f279e7ce64a7f62da30708b9d09de1c1beda3b21522407e2b5a6aee7389fb"
+        },
+        "all_camera_ball_component_seconds": 28.2092839140023,
+        "stage_status": {
+          "court_detection/cam1": "executed",
+          "court_detection/cam2": "executed",
+          "court_detection/cam3": "executed",
+          "ball_detection/cam1": "executed",
+          "ball_points/cam1": "executed",
+          "ball_detection/cam2": "executed",
+          "ball_points/cam2": "executed",
+          "ball_detection/cam3": "executed",
+          "ball_points/cam3": "executed",
+          "court_calibration": "executed",
+          "person_detection/cam1": "executed",
+          "person_tracking/cam1": "executed",
+          "player_selection/cam1": "executed",
+          "pose_estimation/cam1": "executed",
+          "person_detection/cam2": "executed",
+          "person_tracking/cam2": "executed",
+          "player_selection/cam2": "executed",
+          "pose_estimation/cam2": "executed",
+          "person_detection/cam3": "executed",
+          "person_tracking/cam3": "executed",
+          "player_selection/cam3": "executed",
+          "pose_estimation/cam3": "executed",
+          "court_side": "executed",
+          "player_association": "executed",
+          "camera_alignment": "executed",
+          "player_triangulation": "executed",
+          "ball_triangulation": "executed",
+          "body_view_selection": "executed",
+          "gvhmr": "executed",
+          "body_placement": "executed",
+          "scene_assembly": "executed"
+        }
+      }
+    },
+    "clip_018": {
+      "i935": {
+        "commit": "3d8e00fe205c2e3634815eac4b91d3b20c382b39",
+        "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+        "source_marker_sha256": "40f506e3ec4cdcb7c395db95b2d89edb52a1eda47ff3663f27577ad83f04cc83",
+        "status": "unavailable",
+        "num_frames": 386,
+        "fps": 59.94005994005994,
+        "camera_ids": [
+          "cam1",
+          "cam2",
+          "cam3"
+        ],
+        "ball_detection_frames": {
+          "cam1": 251,
+          "cam2": 202,
+          "cam3": 133
+        },
+        "ball_points_frames": {
+          "cam1": 228,
+          "cam2": 182,
+          "cam3": 125
+        },
+        "any_camera_2d_frames": 338,
+        "ball_3d_valid_frames": null,
+        "reprojection_mean_px": null,
+        "ball_probe": {
+          "camera_id": "cam1",
+          "seconds": 4.641234317001363,
+          "peak_allocated_bytes": 1467297792,
+          "peak_reserved_bytes": 2157969408,
+          "includes": "model load, decode/resize, inference, candidates, gates and unload; torch.compile cache already populated"
+        },
+        "ball_stage_seconds": {
+          "cam1": 5.060482435997983,
+          "cam2": 4.847585283998342,
+          "cam3": 4.838350685997284
+        },
+        "torch": "2.13.0+cu130",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "failure_reason": "court_region_unavailable",
+        "raw_metrics": {
+          "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-three-camera-final/i935/clip_018/metrics.json",
+          "size_bytes": 8965,
+          "sha256": "1598c84a428ff3a8df042e70a8895d1b27a53844a7d9622e276050865857ad6c"
+        },
+        "all_camera_ball_component_seconds": 14.746418405993609,
+        "stage_status": {
+          "court_detection/cam1": "executed",
+          "court_detection/cam2": "failed"
+        }
+      },
+      "x3d": {
+        "commit": "9a8263d50516c3e8acea08fa59bdf88934ab698f",
+        "checkpoint_sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+        "source_marker_sha256": "40f506e3ec4cdcb7c395db95b2d89edb52a1eda47ff3663f27577ad83f04cc83",
+        "status": "unavailable",
+        "num_frames": 386,
+        "fps": 59.94005994005994,
+        "camera_ids": [
+          "cam1",
+          "cam2",
+          "cam3"
+        ],
+        "ball_detection_frames": {
+          "cam1": 201,
+          "cam2": 150,
+          "cam3": 171
+        },
+        "ball_points_frames": {
+          "cam1": 200,
+          "cam2": 140,
+          "cam3": 171
+        },
+        "any_camera_2d_frames": 292,
+        "ball_3d_valid_frames": null,
+        "reprojection_mean_px": null,
+        "ball_probe": {
+          "camera_id": "cam1",
+          "seconds": 4.992414507003559,
+          "peak_allocated_bytes": 1387587584,
+          "peak_reserved_bytes": 1992294400,
+          "includes": "model load, decode/resize, inference, candidates, gates and unload; torch.compile cache already populated"
+        },
+        "ball_stage_seconds": {
+          "cam1": 5.934450366999954,
+          "cam2": 5.433782806998352,
+          "cam3": 5.5127923139953054
+        },
+        "torch": "2.13.0+cu130",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "failure_reason": "court_region_unavailable",
+        "raw_metrics": {
+          "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-three-camera-final/x3d/clip_018/metrics.json",
+          "size_bytes": 8970,
+          "sha256": "d85734e795fb82cc2687d1dc6cd506e9b9acb0911702040b469580fbb7967c8e"
+        },
+        "all_camera_ball_component_seconds": 16.88102548799361,
+        "stage_status": {
+          "court_detection/cam1": "executed",
+          "court_detection/cam2": "failed"
+        }
+      }
+    }
+  },
+  "fixed_geometry_diagnostic": {
+    "i935": {
+      "comparison_scope": "Explicit fixed X3D camera geometry for both sets of measured 2D points. i935's original court-side failure remains unchanged. Not an independent accuracy test.",
+      "canonical_pipeline_status": "unavailable",
+      "canonical_pipeline_failure": {
+        "reason": "court_side_ambiguous_margin",
+        "message": "ambiguous_margin: Runner-up is only 0.011 worse than the best [[False, True, True] cost=0.423 support=0.632; [False, False, True] cost=0.434 support=0.621; [False, False, False] cost=0.723 support=0.322; [False, True, False] cost=0.750 support=0.287]",
+        "diagnostics": {
+          "hypotheses": [
+            {
+              "view_half_turns": [
+                false,
+                true,
+                true
+              ],
+              "cost": 0.4229493548942337,
+              "support": 0.632183908045977,
+              "frames": 87
+            },
+            {
+              "view_half_turns": [
+                false,
+                false,
+                true
+              ],
+              "cost": 0.43427542531663876,
+              "support": 0.6206896551724138,
+              "frames": 87
+            },
+            {
+              "view_half_turns": [
+                false,
+                false,
+                false
+              ],
+              "cost": 0.7233781593857842,
+              "support": 0.3218390804597701,
+              "frames": 87
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                false
+              ],
+              "cost": 0.7504469941481776,
+              "support": 0.28735632183908044,
+              "frames": 87
+            }
+          ],
+          "frames": 87,
+          "pair_frames": {
+            "cam1-cam2": 63,
+            "cam1-cam3": 38,
+            "cam2-cam3": 22
+          },
+          "sampled_frames": 178
+        }
+      },
+      "geometry_source": {
+        "directory": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-three-camera-final/x3d/clip_000",
+        "source_index_sha256": "fa4a76773c82adb5968b1422aa736b13a1a06eda4a69b541e0e20540be23a27c",
+        "calibration": {
+          "artifact_id": "eed3d128835ab3f0dd122a3ec63b62eae193c506f1ab5af779f842c8afffa4a3",
+          "path": "components/court_calibration/eed3d128835ab3f0dd122a3ec63b62eae193c506f1ab5af779f842c8afffa4a3/court_calibration.json",
+          "sha256": "9ab55750de981ccae5457cf4e9143e919f077b42cc67daa3ca271d01c7df8210",
+          "schema": "local_court_calibration",
+          "version": 1,
+          "execution_key": "f906211386b89787c6abb7646500b9d0c5ed5eb88633d482828b7797227797d9"
+        },
+        "alignment": {
+          "artifact_id": "cb5f76de844b592e44ad02f4a7bc53bdab6a747debc13d4d1801790026b9eaf3",
+          "path": "components/camera_alignment/cb5f76de844b592e44ad02f4a7bc53bdab6a747debc13d4d1801790026b9eaf3/camera_alignment.json",
+          "sha256": "0a319fc4160e0d6deb7e23d0d5d965aa9858de1281e28d51d4c4f0972e33f8ef",
+          "schema": "aligned_cameras",
+          "version": 1,
+          "execution_key": "cd1a6f2d39f2c29de0a43e64f091d764aed012bf6c7f1dc014ac74f116dfd18c"
+        }
+      },
+      "ball_3d_valid_frames": 113,
+      "reprojection_inlier_count": 256,
+      "reprojection_mean_px": 5.040929317474365,
+      "reprojection_median_px": 3.946519374847412,
+      "reprojection_p95_px": 12.425186157226562,
+      "replay_seconds": 0.22327705600037007,
+      "raw_metrics": {
+        "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-fixed-geometry/i935/clip_000/metrics.json",
+        "size_bytes": 22256,
+        "sha256": "00360c9c2196fc69ee9d09bdfdb39f6730f6be57cc2920049111c5f3417bb6ac"
+      }
+    },
+    "x3d": {
+      "comparison_scope": "Explicit fixed X3D camera geometry for both sets of measured 2D points. i935's original court-side failure remains unchanged. Not an independent accuracy test.",
+      "canonical_pipeline_status": "ok",
+      "canonical_pipeline_failure": null,
+      "geometry_source": {
+        "directory": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-three-camera-final/x3d/clip_000",
+        "source_index_sha256": "fa4a76773c82adb5968b1422aa736b13a1a06eda4a69b541e0e20540be23a27c",
+        "calibration": {
+          "artifact_id": "eed3d128835ab3f0dd122a3ec63b62eae193c506f1ab5af779f842c8afffa4a3",
+          "path": "components/court_calibration/eed3d128835ab3f0dd122a3ec63b62eae193c506f1ab5af779f842c8afffa4a3/court_calibration.json",
+          "sha256": "9ab55750de981ccae5457cf4e9143e919f077b42cc67daa3ca271d01c7df8210",
+          "schema": "local_court_calibration",
+          "version": 1,
+          "execution_key": "f906211386b89787c6abb7646500b9d0c5ed5eb88633d482828b7797227797d9"
+        },
+        "alignment": {
+          "artifact_id": "cb5f76de844b592e44ad02f4a7bc53bdab6a747debc13d4d1801790026b9eaf3",
+          "path": "components/camera_alignment/cb5f76de844b592e44ad02f4a7bc53bdab6a747debc13d4d1801790026b9eaf3/camera_alignment.json",
+          "sha256": "0a319fc4160e0d6deb7e23d0d5d965aa9858de1281e28d51d4c4f0972e33f8ef",
+          "schema": "aligned_cameras",
+          "version": 1,
+          "execution_key": "cd1a6f2d39f2c29de0a43e64f091d764aed012bf6c7f1dc014ac74f116dfd18c"
+        }
+      },
+      "ball_3d_valid_frames": 123,
+      "reprojection_inlier_count": 282,
+      "reprojection_mean_px": 5.317018508911133,
+      "reprojection_median_px": 4.638332366943359,
+      "reprojection_p95_px": 10.853415489196777,
+      "replay_seconds": 0.21736201200110372,
+      "raw_metrics": {
+        "path": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-fixed-geometry/x3d/clip_000/metrics.json",
+        "size_bytes": 32060,
+        "sha256": "1db56618b73fcac582f3dd36ffff92a3ffa6983a1df1c15afd4893bb47c27c48"
+      }
+    }
+  }
+}

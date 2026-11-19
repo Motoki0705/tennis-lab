@@ -7,6 +7,6 @@ Documentation=file://%h/projects/tennis-lab/.agents/ops/cleanup/README.md
 # cleanup.py additionally holds an flock on <state-dir>/cleanup.lock.
 Type=oneshot
 WorkingDirectory=%h/projects/tennis-lab
-ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/cleanup/cleanup.py apply-auto --report-json %S/tennis-lab-agents/cleanup/report-latest.json
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/checkout_job.py --repo %h/projects/tennis-lab -- %h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/cleanup/cleanup.py apply-auto --report-json %S/tennis-lab-agents/cleanup/report-latest.json
 Nice=10
 IOSchedulingClass=idle

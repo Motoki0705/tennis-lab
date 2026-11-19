@@ -1,0 +1,14 @@
+{
+  "python": "3.11.15",
+  "numpy": "2.3.5",
+  "scipy": "1.17.1",
+  "opencv": "5.0.0",
+  "torch": "2.13.0+cu130",
+  "cpu_logical_processors": 12,
+  "evaluation_workers": 10,
+  "opencv_threads_per_worker": 1,
+  "torch_threads_per_worker": 1,
+  "OPENBLAS_NUM_THREADS": "1",
+  "model_forward": false,
+  "distance_fields": "persisted run73 arrays, no recomputation"
+}

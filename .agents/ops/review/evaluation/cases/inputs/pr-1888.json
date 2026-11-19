@@ -1,0 +1,377 @@
+{
+  "schema_version": 1,
+  "case_id": "pr-1888",
+  "cutoff": "2026-11-11T01:58:54.599449+00:00",
+  "context": {
+    "parent": {
+      "body": "## 目的・背景\n\n**「まず既存のレビュー成果を利用できるか確認し、追加のAIレビューが必要な範囲だけ、適したモデルで確認する」**流れを実装する。重大な不具合を検出する役割は維持し、同じコードの読み直し、基盤障害による成果の消失、全件Astra固定による不要な処理を減らす。\n\n背景は #1790。監査では、同一固定snapshot・前後とも指摘ゼロの追加レビュー5回、7,052,069処理トークンが削減候補として挙げられた。ただしキャッシュ入力を含む処理量であり、同量の課金・利用枠削減を保証する数字ではない。SolとAstraの重大指摘の検出力の比較も未実施である。\n\n#1796 は「結果→親の判断→実際の次の行動」をGit保存し、階層READMEで観測する機能。本issueはそこで対象外にした**レビュー動作そのものの改善**を担当し、判断・実行結果の表示は #1796 に接続する。\n\n### 起票時に確認した既存仕様\n\n- [review README](https://github.com/Motoki0705/tennis-lab/blob/main/.agents/ops/review/README.md)では、同run IDの起動後再送は既存結果を返して再起動しない。一方、親が新しいrunを要求した際の再利用・失敗結果の復旧は別途改善が必要。\n- PRごとのcoverage、親の`resolve`による指摘・追加変更の確認、base取込み・rebase後の検証付き継承は既にある。これらを無いものとして再実装したり、一律の再レビュー必須へ戻したりしない。\n- [モデル設定](https://github.com/Motoki0705/tennis-lab/blob/main/.agents/ops/lib/agents.conf)では、正式レビューはAstra/xhigh固定。実装workerのSol/max・Astra選択とは別の経路である。\n- gateは対象HEADの最新の`Python`成功、レビュー証拠と公開状態、未解決指摘、親の確認、依存等を照合する。再利用やモデル選択を、これらの省略と混同しない。\n\n確認日は2026-11-09。Issue・README・設定の確認に基づく起票であり、実ホストのprivate stateの再監査やモデル比較実験は今回行っていない。実装担当は着手時の最新コードを照合する。\n\n## 全体のスコープ\n\n### 対象\n\n- 正式な親レビューにおける、保存済み成果の照合・再利用、失敗／公開中断後の検証付き復旧、未確認範囲だけの追加確認。\n- コードレビュー内容、CI確認、runtime、形式検証、公開の状態を分け、必要な工程だけを再開できる契約。\n- 追加レビューの必要性・対象範囲を親が判断し、その対象に対するSol／Astra等の許可済みレビュー設定を選択する仕組み。\n- 手動親と自律親の共通入口、review要求・結果・coverage・resolve・merge gate・共通ランナー設定の必要箇所。\n- モデル選択の検出力・処理量の比較、段階導入、選択理由と再利用根拠の #1796 への記録。\n\n### 対象外\n\n- レビューや必須CIの一律廃止、文書パス・変更行数だけによる無条件免除、未検証の失敗結果のapprove化。\n- 実装worker、運用レポート、Issue着手判定等のモデルを一括変更すること。\n- PR push、CI完了、timer等を起点とする新しい無人レビュー起動基盤。レビュー開始の入口は既存の親による明示要求を維持する。\n- 同一の実行[local path]、利用不能時の無通知フォールバック、無制限の再試行。\n- #1796 のGit公開・README生成機構の複製、過去の判断理由の推測による補完、rawログや私的識別子の公開。\n- 起票作業に伴うコード実装、worker起動、比較用LLM実行、設定変更、PRのmerge。\n\n## 全体方針・合意事項\n\n2026-11-09、ユーザーが前の説明中の「モデル自動選択やレビュー再利用の実装は」を指定し、「次にここについてissueを作成して」と依頼したことを起票根拠とする。\n\n本issueでは、共通するレビュー入口・結果契約・gateを一つの親で統括する。今回の依頼は起票までで、子issueや担当親は未登録、実装は未着手。以下の具体方式・評価条件は設計案であり、ユーザーが特定のモデル比率や削減率を承認したとは扱わない。\n\n### 基本の処理順序\n\n1. **結果を照合する:** 既存レビュー、確認済み範囲、未解決指摘、現在のコード・要件・CIとの差を確認する。\n2. **親が必要な行動を判断する:** 再利用、保存済み結果の復旧、CI確認だけ、親の修正確認、追加AIレビュー、保留を選ぶ。\n3. **AIレビューが必要な場合だけモデルを選ぶ:** 対象の難しさ・影響・未解決事項を根拠に、許可されたレビュー設定を選択する。\n4. **実行と結果を照合する:** 選択と実効値、実際の起動回数、対象、得られた結果を確認し、既存gateへつなぐ。\n\n「安いモデルで無駄な再実行を続ける」構成にはしない。モデル自動選択とは、合意された方針内で親AIが人間に毎回選択を求めず決め、CLIがその選択を明示的に検証・実行することを基本案とする。理由のないランナー内の切替や、選択のためだけに毎回追加AIを起動する仕組みは前提にしない。\n\n## 実装する機能\n\n### A. レビュー結果の再利用と、追加確認範囲の決定\n\n単なるPR番号・HEAD・diffの一致だけで承認を流用しない。対象repo／PR／branch、head・base・merge-base・diff、確認済み範囲、受入条件、レビュー目的、未解決指摘と解消証拠、適用する方針を照合する。\n\n| 状況 | 期待する処理 |\n|---|---|\n| 対象・条件・確認範囲が同じで、利用可能なレビュー証拠がある | 元の結果を参照して再利用する。新しいAIを起動しない |\n| 同じコードのCI待ちが解消、またはログ取得だけが復旧した | CI・取得状態を更新する。必要な証拠が揃えば既存コード確認結果を利用する |\n| 指摘に対する修正、親が確認できる追加変更 | 既存の`resolve`・差分確認を使う。コード変更だけを理由に全文AIレビューを要求しない |\n| 条件を満たすbase取込み・rebase | 既存の検証付き継承を維持する |\n| 新しい要件・未確認の変更・新たな疑義がある | 親が影響と必要範囲を判断し、既存証拠で不足する部分だけ追加確認する |\n| 必須のコード・要件・証拠を取得できない | 不足を明示して対象を保留する。情報不足を問題なしにしない |\n\n- 文字列ハッシュは版・同一性の確認に使い、要件の意味の変化やレビューの十分性をハッシュだけで判断しない。担当交代、合意revision、無関係な本文編集だけで成果を破棄しない。\n- 初期の確実な再利用対象は同一対象・同一条件の確認済み証拠。異なる対象への一般的な意味的キャッシュや、自動的な承認の横展開には拡張しない。\n- 再利用元のrun・snapshot・coverage・指摘・解消記録と、今回の適用判断を保持する。再利用した処理を「新しいAIを1回起動した」と偽装しない。\n- 一部PRだけの不足で、独立した他PRの結果を捨てない。横断指摘は影響するPRごとに残す。\n- 最新runが失敗しただけで全成果を捨てることも、古いapproveだけを選んで後続の重大指摘を無視することもしない。後続の新しい指摘・対象変更・取消・矛盾を照合して適用可否を決める。\n- 再利用判定と並行して同じ対象のレビューが二重起動されないよう、既存の予約・run一回性を維持する。判定後・起動前・merge直前の対象変更も検出する。\n\n### B. CI・runtime・公開障害からの成果を失わない復旧\n\nコードレビューの内容とcoverage、CIの実行結果・ログ取得状態、runtimeの終了、JSONの形式検証、公開状態を独立に保持する。\n\n- コード確認が成立していてCIログ取得だけが失敗した場合、結果を保持し、取得またはCI照合だけを再試行する。ただし、その証拠が無ければ当該論点を判断できない場合は未確認のまま残す。\n- 対象HEADの最新の必須CIが失敗・未完了ならmergeしない。過去HEADの成功や古いCI成功を再利用しない。新たなCI失敗がコード上の問題を示す場合は、その範囲を親が再評価する。\n- 通信・公開障害でも、有効な最終結果・指摘・出典を消さない。保存済みの正規結果について、対象一致、schema、指摘とcoverage、runの対応、実行終了とcleanupを検証し、追加AI起動なしで正式結果への復旧・公開再開を可能にする。\n- 不正JSON、対象違い、矛盾する出力は無条件で修復成功にしない。参考として保持できる指摘と、正式なcoverage／承認に使える証拠を区別する。不足確認が必要ならその範囲を明示する。\n- 旧runの失敗履歴を消して成功へ書き換えず、復旧の検証・採用・公開の来歴を追加する。公開だけの再開で二重投稿や二重AI起動を起こさない。\n- gateが要求する「agent実行1回」の来歴と再利用を整合させる。再利用の操作自体はAI起動0回であり、検証済みの元runの実行・公開証拠を参照する。架空のrunや実行回数でgateを通さない。\n\n#1609 のCIログ取得修正は既存issueと重複実装せず連携する。取得不具合が直っても一時障害は発生し得るため、本機能の責務をその修正だけで完了としない。\n\n### C. 必要なレビューのモデル自動選択\n\n正式レビュー専用の許可された選択経路を設け、モデル・effort・service tier、選択元、選択理由、適用方針の版を起動前に固定する。実装workerの設定をそのまま流用せず、レビューのread-only、取得ツール、構造化出力、対象固定の契約を両モデルで維持する。\n\n選択方針の候補:\n\n- 通常の定型的な確認はSolを候補にする。未解決の数理・幾何、広範な統合設計、並行処理、権限・公開・セキュリティ境界などはAstraを直接選ぶ候補とする。\n- 行数やディレクトリ名だけで難易度を決めない。5行の文書変更でも運用規則・権限を変えることがある。\n- 人間の明示モデル指定は優先する。親が候補を変更した場合は理由を記録する。機械的な利用可否・設定整合の検査と、親の意味判断を分離する。\n- 判断材料が不足した対象を自動的にSolへ落とさない。必要情報の取得・保留、または理由付きのAstra選択として扱う。\n- Solの指摘ゼロや自己申告の自信だけを「問題なし」の保証にしない。追加確認の要否は対象と未解決事項に基づく。必要な場合は未解決範囲・既存成果を引き継いでAstraへ別runで依頼する。\n- 毎回Solの後にAstraを全文起動する二重レビューを既定にしない。Astraが必要と分かる対象は最初から選ぶ。追加起動には親の明示判断、前runとの対応、有限の試行予算を持たせる。\n- モデル利用不能、選択・実効値の不一致、継続時の設定不整合は明示エラーとする。同じrunを別モデルで黙って再実行しない。\n\nこれは採用済みの性能結論ではなく検証する方針案。未評価のまま全件Solへ変更せず、必要性・対象範囲の判断と、モデル選択の判断を別に記録する。\n\n### D. 検出力と総消費量の評価・段階導入\n\n過去の重大指摘を含む固定snapshotと、通常変更・指摘なしの例を用意し、比較条件を揃える。少なくとも #1790 にある公開境界の問題（PR #1699）と取消・継続の競合（PR #1766）を候補に含める。後から修正済みのコードではなく、問題が存在した当時の対象を固定する。\n\n- 比較する条件は、①現行Astra固定、②再利用・復旧のみ導入してAstra固定、③再利用・復旧＋モデル選択。再利用とモデル選択の効果を分離する。\n- 同じ課題・利用可能な情報・ツール・レビュー目的で比較する。モデル[local path]、変更の効果を混同しない。比較対象へ過去の正解指摘を渡さない。\n- 評価に使う正解指摘はテスト・再現・独立確認で妥当性を確かめる。Astraの過去出力を無条件で正解としない。\n- blocker/majorの検出・見逃し、誤指摘、確認不能率、形式[local path]、追加起動率、実行・待機時間を報告する。少数例だけで同等性を断定せず、必要な反復と採用可能な範囲を示す。\n- 使用量は入力・キャッシュ入力・出力を区別し、親の選択や追加確認の増分も含める。未取得は未取得とし、セッション累積値の重複計上をしない。料金・利用枠換算は根拠がある場合だけ行う。\n- 実LLMの反復比較は通常pytestへ混ぜない。ケース数・反復数・実行予算・採否基準を実行前に定める。\n- 選択機構は明示的なモード／設定で段階導入する。検証中は既存Astra方針を維持でき、問題時には既存証拠を失わず戻せるようにする。品質基準を満たさない対象ではAstraを維持する。\n\n## #1796 との接続：結果と親の判断を見える化する\n\n新しいログ基盤を別に作らず、#1796 の記録・Git公開・階層READMEを利用する。本issueは判断の入力と結果を提供する。\n\n| 結果として残すこと | 親の判断として残すこと | 実際の行動として照合すること |\n|---|---|---|\n| 元レビューの対象・coverage・未解決指摘、現在との差 | 何を再利用し、何を追加確認するか、その根拠 | 元runの採用参照、追加AI起動の有無 |\n| コード確認済み、CIログ取得だけ失敗 | コードは保持し取得だけ再試行する／証拠不足で保留する理由 | 取得再試行とAI再起動の区別 |\n| 保存済み結果の検証成功／失敗、復旧の制約 | 復旧採用／不足範囲の再確認／保留の理由 | 復旧・公開の成否、元成果の保持 |\n| 追加レビューが必要な論点・リスク | Sol／Astraを選んだ理由、または人間指定・方針による固定 | 選択・実効モデル、対象範囲、起動回数・使用量 |\n| Sol結果の指摘・未解決事項 | 継続不要／親の確認[local path] | 引き継いだ成果と追加runの結果 |\n\nREADMEを読めば「なぜAIを起動しなかったか／追加したか」「なぜそのモデルか」が分かる状態を完了条件にする。表示用ログが未公開だからといって既存の作業結果を捨てない。正式レビュー証拠の公開条件と、#1796 の閲覧用README公開状態は区別する。\n\n## 全体の完了条件\n\n- [ ] 同一対象・条件・確認済み範囲のレビューを、新しいAI起動0回で再利用できる。CI待ち・取得復旧・閲覧用ログ公開だけで全文レビューが増えない。\n  検証: #1790 のPR #1615／#1625／#1636／#1668に対応する5回の追加実行パターンをfixtureで再現し、再利用条件成立時の追加起動0回と根拠の保持を確認する。\n- [ ] コード・要件・依存・未解決指摘の変化を検知し、確認済み範囲と不足を分けられる。既存resolve・rebase継承・PRごとの独立判定を退行させない。\n  検証: 同じHEADで要件だけ変更、同じdiffでbase側の関連条件変更、無関係な本文編集、別PR更新、指摘修正、競合解消、横断指摘を比較する。後続指摘を古いapproveで隠せないことを確認する。\n- [ ] 有効な保存済み結果をruntime／公開失敗後に検証して復旧でき、不正な出力や未確認範囲を成功へ変換しない。\n  検証: PR #1696／#1769を参考に、形式矛盾・有効final＋通信障害・対象不一致・公開応答喪失・cleanup未確認を分ける。内容が変わった再検証まで削減可能と数えない。\n- [ ] 再利用・復旧を正式gateが来歴付きで受け入れ、対象HEADの最新必須CI、指摘解消、親の確認、依存、実行根拠を引き続き検査する。\n  検証: 実git・fake GitHubで、古いCI成功、未公開の正式証拠、対象差替え、再送・並行起動、後続失敗と過去approveの混在を検証する。架空のAI実行証拠で通さない。\n- [ ] 手動親・自律親が同じ経路でレビュー用モデルを選べ、選択理由・選択設定・実効設定が一致する。read-only・取得・schema・sessionの契約を維持する。\n  検証: Sol／Astra、人間指定、設定固定、通常／高リスク、利用不能、実効値不一致、別runへの引継ぎをfake runtimeで検証する。\n- [ ] 固定した比較ケースで、再利用のみの効果とモデル選択の効果を分けて報告し、重大指摘の検出・誤指摘・失敗・処理量・時間に基づき採用範囲を決めている。\n  検証: 実LLMの比較結果と再現条件、実行前に定めた採否基準、残る不確実性を示す。未達の対象はAstraを維持し、全件の品質同等を根拠なく宣言しない。\n- [ ] #1796 のGit管理ログと階層READMEから、元の結果→再利用／復旧／モデル選択の判断→実際の行動→次の結果を追える。\n  検証: 再利用、復旧、通常モデル選択、Astraへの追加確認の代表例を表示し、起動0回と新規起動・継続を区別する。\n- [ ] 代表的な正式レビューで取得・結果保存・親の確認・gateまで一連の経路を実機確認し、仕様・skill・設定・公開schema・消費側が整合している。\n  検証: 通常のレビュー[local path]、実機受入記録、段階導入と元の方針へ戻す手順を本親issueへ残す。\n\n## 子タスクのチェックリスト\n\n- [x] #1860 レビュー実行の工程を分離し、保存済み結果を検証して復旧・公開を再開できるようにする\n- [x] #1861 既存レビューの照合表示を追加し、同じPRのレビュー二重起動を防ぐ\n- [ ] #1862 正式レビューで許可されたモデルを理由付きで選択できる経路を追加する\n- [ ] #1863 モデル選択の比較評価・#1796連携・実機受入を行う\n\n## 進捗概要\n\n子の起動予約: なし。上限: 全子。\n- #1860: 完了 — 完了済み。 / 既存PRを照合して継続する: #1867 / 委任予約済み。既存worker・worktreeを照合する。\n- #1861: 完了 — 完了済み。 / 既存PRを照合して継続する: #1872 / 委任予約済み。既存worker・worktreeを照合する。\n- #1862: 継続 — 既存PRを照合して継続する: #1888 / 委任予約済み。既存worker・worktreeを照合する。\n- #1863: 継続 — 起動可能（stacked branch: PR #1888）\n\n## 依存関係・進め方\n\n1. 最新コードと既存レビュー証拠を確認し、無駄な追加起動と、必要な再検証を分けたfixtureを先に作る。\n2. 保存済み結果の保持・検証付き復旧とCI分離を整え、再利用を既存resolve／gateへ接続する。Astra固定のまま効果を確認する。\n3. レビュー専用の選択経路と理由記録を追加し、比較評価で採用可能な対象を決めて段階導入する。\n4. #1796 の記録契約に接続し、Git上のREADMEから判断を説明できる状態で実機受入を行う。\n\n関連issueとの境界:\n\n- #1790: 調査・削減候補・反証の出典。調査結果を無断で実装済みに書き換えない。\n- #1796: 結果と親判断の記録・Git公開・README表示。本issueの設計・単体実装は全完了を待たず進められるが、ログ連携の受入には同機能が必要。契約を早期共有し、相互依存の循環を作らない。\n- #1609: CIログ取得不具合。修正担当と重複を避け、異常時も成果を保持する本issueの契約と接続する。\n- #1482: PRごとのcoverage、修正確認、rebase継承、明示起動の先行契約を維持する。\n- #1693／#1694: 実装workerのモデル選択は先行成果。正式レビューへ必要な設計を利用するが、他profileへ選択権限を一律拡張しない。\n\n## 未決事項・人間の判断が必要な点\n\n具体的なCLI／schema、モデルごとのeffort、比較ケース数・試行予算、モデル選択の採否基準は実装前に具体化する。現時点で「Solで同じ重大指摘を検出できる」「一定割合の料金・利用枠を削減できる」とは確定していない。\n\n親による明示起動・既存の品質条件を維持する範囲で設計する。新しい常時自動起動、品質条件の緩和、認められた範囲を超えるモデル・権限・実験予算が必要な場合だけ、その差分を人間の判断事項として示す。今回確定した起票方針を聞き直さない。\n\n",
+      "number": 1797,
+      "title": "[レビュー効率化] 保存済みレビューの再利用・復旧と、必要なレビューのモデル自動選択を実装する"
+    },
+    "children": [
+      {
+        "body": "親issue: #1797\n\n## このタスクの目的\n\n親issueの機能C。追加のAIレビューが必要な場合に、親が対象に適したモデル（Sol・Astra等）を理由付きで選び、CLIがその選択を明示的に検証・固定・実行できるようにする。\n\n## 具体的な変更内容・対象範囲\n\n`.agents/ops/lib/`（agents.conf、agent_exec.shと設定解決、README）、`.agents/ops/parent/`（review-request、自律親の入口）、`.agents/ops/review/`、関連テスト。\n\n1. agents.confに、レビューで許可するモデルとeffortの組と、導入モード（fixed = 現行Astra固定 / select）を定義する。既定はfixed。\n2. review-requestで、モデルと選択理由を受け取り、requestとexecutionへ固定する。人間の明示指定を優先し、手動親と自律親が同じ経路を使う。\n3. 共通ランナーのreview profileは許可リスト内の選択だけを受け付け、選択値と実効値を照合する。read-only・取得ツール・構造化出力・対象固定の契約を両モデルで維持する。\n4. 利用不能・実効値の不一致・継続時の設定不整合は明示エラーにし、別モデルで黙って再実行しない。別runへの引継ぎ（Solの未解決範囲をAstraへ）は親の明示判断とし、前runとの対応を記録する。\n\n## 対象外\n\n実装worker・運用レポート等の他profileのモデル変更。既定をselectへ切り替えること（比較評価後、子4で判断する）。比較評価の実行。\n\n## 依存関係\n\n- #1860\n\n## 作業状況・停止事項\n\n未着手。\n\n## Acceptance checklist\n\n- [ ] 手動親・自律親が同じ経路でレビュー用モデルを選べ、選択理由・選択値・実効値が一致する\n  文脈: 現行は共通ランナーがreview profileでのモデル指定を拒否し、Astra/xhighに固定している。\n  下流への影響: 子4の比較評価と段階導入の前提になる。\n  検証方法・証拠: Sol／Astra、人間指定、設定固定、通常／高リスクの選択をfake runtimeで検証するテスト。\n- [ ] 利用不能・実効値の不一致・継続時の不整合を明示エラーにする\n  文脈: 無通知フォールバックは対象外。\n  下流への影響: 誤ったモデルでのレビューを正式証拠にしない。\n  検証方法・証拠: 利用不能・実効値不一致・別runへの引継ぎのテスト。\n- [ ] 既定はfixedで、現行のAstra固定の挙動が変わらない\n  文脈: 比較評価が済むまで既存方針を維持する。\n  下流への影響: 既存の親の運用を壊さない。\n  検証方法・証拠: 既定設定での既存review/gateテストが通ること。\n\n<!-- parent-task:v1 parent=1797 key=review-model-selection spec=e753b671875667e0b85369844636f8267bfa19c572bc294355de2ff3a1e1e761 -->\n\n## 成果物・関連PR\n\n担当: codex\n\nbranch: `codex/review-model-selection`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1888 (open)\n\n検証結果:\n> - PR #1888（head 8bd2f159f4db95736f80d15e9574fce4f1aa87b4、base cc5738a2c は現在のmain）。\n> - 対象HEADのCI run 42940735588: Lint、CPU lane plan、CPU 10レーン、集約Pythonの13ジョブがすべて成功。再実行は0回。\n> - workerは次を報告している（詳細はPR本文）。\n>   - 新規45ケースが成功し、既定fixedの退行確認として、既存の対象nodeを `-n 0` で実行して成功。\n>   - 故障注入2件（実効modelの照合を無効化する変更、version 3のrequirements照合を飛ばす変更）を検出。\n> - 担当親は `agents.conf`、`agent_settings.py`、`review_settings.py` の差分を目視確認した。親の設計判断はworkerへの承認回答で示しており、上の方針がそれにあたる。\n\n",
+        "number": 1862,
+        "title": "[レビュー効率化 #1797] 正式レビューで許可されたモデルを理由付きで選択できる経路を追加する"
+      }
+    ],
+    "prs": [
+      {
+        "body": "正式レビューのモデルがAstraへ暗黙に固定され、親の選択理由と実行モデルを結び付けられない問題を解消します。親がprepare時に選んだ値をrequest version 3のdigestへ含め、execution、共通runner、公開証拠まで同じ検証部品で照合します。\n\nCloses #1862\n親: #1797。実装判断: `dfde7dfbae9b4a40b6d2f79ba9b44941`。\n\n## 変更内容と受入条件の証拠\n\n- 許可する組は `gpt-6.1-sol:xhigh` と `gpt-6-astra:xhigh`。既定は従来のAstraを使うfixedのままです。fixedと異なる指定、selectで理由のない指定、人間の拘束との矛盾は起動前に拒否します。\n- 手動親とdispatcherが担当する自律親は同じ `parent review-request` 経路を使用します。選択値、理由、指定元をprepare時に固定し、#1796の判断記録には既存の指定元3分類を渡します。\n- runnerの専用選択入力はread-onlyのCodex reviewだけが受理します。取得ツール、構造化出力、固定対象を維持し、model/effortの実効値が一致しなければ失敗します。tierだけは理由付きunavailableを許します。利用不能時も起動は1回で、別モデルへ再試行しません。\n- recoverは元runとrequest digestを固定し、元runの検証済み実効値を表示します。公開再開、照合表示、gateも選択とruntime証拠を検証します。旧request 1/2を読み替えて選択理由を補作しません。requirements照合は2/3の両方で必須です。\n- 別runへの引継ぎは元request/resultのdigestと範囲を記録します。PR内のcoverageは合成せず、部分確認のnot_reviewedはgateを止めます。既存のPR排他とsupersedingの規則を使います。\n\n影響する共通部品は設定解決と実行契約です。他profileは専用入力を拒否し、実装worker、ops_report、ops_scout、issue_judgementの設定・argv・resume、およびagy・説明HTMLのpinが変わらないことをテストしています。新しいrequestを読む運用checkoutは更新が必要です。version 3の成功証拠をgateで使うには、保存runtime、events、final、schemaを保持します。\n\n## テストの増分と実測\n\nすべてローカルpytestは `-n 0`、対象ファイルまたはnodeを順に実行しました。実agentは起動していません。\n\n| 新規テスト | ケース数 | 実測 |\n|---|---:|---:|\n| 共通方針・人間指定・requirements・他profileの不変性 | 24 | 0.49秒 |\n| fake CLIでSol/Astra、fixed/select、利用不能・不一致・継続 | 11 | 2.47秒 |\n| 親CLIから公開・復旧・照合表示・gate・自律親・引継ぎ | 10 | 73.03秒 |\n\n追加は計45ケースです。親CLIのE2Eはfake GitHubと一時git repoを使い、既存のReviewSeedを再利用して各ケースの状態を分離しています。5秒を超えるケースは複数CLIと公開・復旧・gateの契約をまとめて検証します。初回seed setupは計測時3.79秒、以後の複製は0.11秒以下でした。\n\n実効model照合を無効化する故障と、version 3のrequirements照合を飛ばす故障を一時注入し、対象テストがそれぞれ失敗することを確認しました。復元後の2ケースは成功しています。\n\n既定fixedの退行確認:\n- 共通runner 83ケース、review policy 82ケース。\n- PR排他3ケース、中断23ケース、起動境界1ケース。\n- workerの設定・継続9ケース、実行根拠5ケース、親CLI3ケース。\n- 既存gateの代表12ケースは最新main取り込み後に成功（114.58秒）。fixture複製で移動したruntimeパスの証拠ハッシュは、ケース固有の改変前に再計算します。\n- 既存復旧32ケースは最新main取り込み後に成功（279.09秒）。旧runの復旧を含みます。既存照合表示の修正対象nodeも成功済み。\n- 文書リンク25ケース成功（0.24秒）。\n\npre-commit（ruff/mypy）、変更したopsのruff、追加2モジュールのmypy、diff checkは成功しています。\n\n## CIと残る範囲\n\n対象HEAD: `8bd2f159f4db95736f80d15e9574fce4f1aa87b4`。[CI #3971](https://github.com/Motoki0705/tennis-lab/actions/runs/42940735588) は成功しました。Lint、CPU lane plan、CPUテスト10分割、全CPU coverageを検査するPython集約の13ジョブがすべて成功し、再実行は0回です。PRのHEAD一致とmerge可能な状態も確認しました（未merge）。\n\n実Sol/Astraの利用可否・品質・費用の比較、selectへの切替判断、#1796との本格的な接続は #1863 に残します。比較評価とPR内coverage合成は追加していません。統合レビューとmergeは親の担当です。",
+        "changed_paths": [
+          ".agents/ops/decision_logs/parent_commands.py",
+          ".agents/ops/decision_logs/review_capture.py",
+          ".agents/ops/dispatcher/parent_bootstrap.md",
+          ".agents/ops/lib/README.md",
+          ".agents/ops/lib/agent_runtime.py",
+          ".agents/ops/lib/agent_settings.py",
+          ".agents/ops/lib/agents.conf",
+          ".agents/ops/lib/review_settings.py",
+          ".agents/ops/parent/README.md",
+          ".agents/ops/parent/cli.py",
+          ".agents/ops/parent/development_workflow.md",
+          ".agents/ops/parent/execution.py",
+          ".agents/ops/parent/review_choice.py",
+          ".agents/ops/parent/review_handoff.py",
+          ".agents/ops/parent/snapshot.py",
+          ".agents/ops/parent/state.py",
+          ".agents/ops/review/README.md",
+          ".agents/ops/review/merge_gate.py",
+          ".agents/ops/review/merge_gate_policy.py",
+          ".agents/ops/review/parent_review.py",
+          ".agents/ops/review/parent_review_policy.py",
+          ".agents/ops/review/prompt_template.md",
+          ".agents/ops/review/review_inspection.py",
+          ".agents/ops/review/review_recovery.py",
+          "tests/e2e/agents_ops/fake_agent_cli.py",
+          "tests/e2e/agents_ops/test_execution_basis.py",
+          "tests/e2e/agents_ops/test_merge_gate.py",
+          "tests/e2e/agents_ops/test_parent_session.py",
+          "tests/e2e/agents_ops/test_review_choice_handoff.py",
+          "tests/e2e/agents_ops/test_review_inspection.py",
+          "tests/e2e/agents_ops/test_review_model_selection.py",
+          "tests/e2e/agents_ops/test_review_recovery.py",
+          "tests/unit/agents_ops/test_review_settings.py"
+        ],
+        "child_issues": [
+          1862
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1888,
+        "title": "正式レビューのモデル選択をrequestと実効証拠へ固定する"
+      }
+    ],
+    "instruction": "#1862（親 #1797 の子3）の実装PR #1888 をレビューする。親の目的は、正式レビューのモデル（Sol・Astra）を、親が理由付きで選べるようにすること。CLIは、その選択をrequestへ固定し、実行モデルとの一致を検証する。既定は現行のAstra固定（fixed）のまま、挙動を変えない。\n\n親が決めた方針:\n- 許可する組は `gpt-6.1-sol:xhigh` と `gpt-6-astra:xhigh`。\n- fixedでは、固定値と一致する明示指定だけを許す。\n- recoverは元runの検証済み実効値を表示する。\n- PR内のcoverage合成はしない。\n\n重点的に確認してほしい点:\n1. 選択がrequest version 3のdigestへ固定され、execution・共通runner・公開記録・recover・resume-publication・review-inspect・merge gateで、同じ値として検証されるか。実効model・effortが選択と食い違う場合や利用不能な場合に、成功・承認として公開・採用される経路が無いか。同じrunで別モデルへ黙って切り替える経路が無いか。\n2. fixed・selectの扱いと、人間指定の拘束、指定元（settings、parent_choice、human_instruction）の区別が、手動親と自律親（dispatcherのbootstrap・workflow）で同じになっているか。fixedで異なる指定をした場合や、selectで理由が無い場合に、起動前に止まるか。\n3. 旧request（version 1・2）と旧runの読取・recover・gateに退行が無いか。選択理由を補作したり、現在の設定で読み替えたりしていないか。`parent/execution.py` のrequirements照合などで、version 3の追加によって検査を飛ばす分岐が無いか。\n4. `.agents/ops/lib`（`agent_settings.py`、`agent_runtime.py`、`agents.conf`）の変更が、review以外のprofile（実装worker、ops_report、ops_scout、issue_judgement、agy・説明HTML）の設定・argv・resumeに影響しないか。\n5. 別runへの引継ぎ（handoff）とrecoverの選択記録が、`superseding_reviews`・PR排他・`close-interrupted` と矛盾しないか。引継ぎで元runの未解決指摘を隠す経路が無いか。\n6. 静かなフォールバックや、READMEとコードの契約の食い違いが無いか。\n\nレビュー環境の制約（これだけを理由にincomplete・not_reviewedにしないこと）:\n- 隔離CPUテストは今回提供しない。テストの妥当性は静的に確認し、テストで確認した事実と静的推論を区別して書く。\n- CIの結論の正本はmerge gateが照合する。CIログ本文が取得できない場合は、jobの結論で判断してよい。\n- 実モデル（Sol・Astra）での比較評価は、このPRの範囲外（#1863）。",
+    "parent_comments": []
+  },
+  "github": {
+    "repos/Motoki0705/tennis-lab/issues/1797": {
+      "as_of": "2026-11-11T01:58:54.599449+00:00",
+      "value": {
+        "body": "## 目的・背景\n\n**「まず既存のレビュー成果を利用できるか確認し、追加のAIレビューが必要な範囲だけ、適したモデルで確認する」**流れを実装する。重大な不具合を検出する役割は維持し、同じコードの読み直し、基盤障害による成果の消失、全件Astra固定による不要な処理を減らす。\n\n背景は #1790。監査では、同一固定snapshot・前後とも指摘ゼロの追加レビュー5回、7,052,069処理トークンが削減候補として挙げられた。ただしキャッシュ入力を含む処理量であり、同量の課金・利用枠削減を保証する数字ではない。SolとAstraの重大指摘の検出力の比較も未実施である。\n\n#1796 は「結果→親の判断→実際の次の行動」をGit保存し、階層READMEで観測する機能。本issueはそこで対象外にした**レビュー動作そのものの改善**を担当し、判断・実行結果の表示は #1796 に接続する。\n\n### 起票時に確認した既存仕様\n\n- [review README](https://github.com/Motoki0705/tennis-lab/blob/main/.agents/ops/review/README.md)では、同run IDの起動後再送は既存結果を返して再起動しない。一方、親が新しいrunを要求した際の再利用・失敗結果の復旧は別途改善が必要。\n- PRごとのcoverage、親の`resolve`による指摘・追加変更の確認、base取込み・rebase後の検証付き継承は既にある。これらを無いものとして再実装したり、一律の再レビュー必須へ戻したりしない。\n- [モデル設定](https://github.com/Motoki0705/tennis-lab/blob/main/.agents/ops/lib/agents.conf)では、正式レビューはAstra/xhigh固定。実装workerのSol/max・Astra選択とは別の経路である。\n- gateは対象HEADの最新の`Python`成功、レビュー証拠と公開状態、未解決指摘、親の確認、依存等を照合する。再利用やモデル選択を、これらの省略と混同しない。\n\n確認日は2026-11-09。Issue・README・設定の確認に基づく起票であり、実ホストのprivate stateの再監査やモデル比較実験は今回行っていない。実装担当は着手時の最新コードを照合する。\n\n## 全体のスコープ\n\n### 対象\n\n- 正式な親レビューにおける、保存済み成果の照合・再利用、失敗／公開中断後の検証付き復旧、未確認範囲だけの追加確認。\n- コードレビュー内容、CI確認、runtime、形式検証、公開の状態を分け、必要な工程だけを再開できる契約。\n- 追加レビューの必要性・対象範囲を親が判断し、その対象に対するSol／Astra等の許可済みレビュー設定を選択する仕組み。\n- 手動親と自律親の共通入口、review要求・結果・coverage・resolve・merge gate・共通ランナー設定の必要箇所。\n- モデル選択の検出力・処理量の比較、段階導入、選択理由と再利用根拠の #1796 への記録。\n\n### 対象外\n\n- レビューや必須CIの一律廃止、文書パス・変更行数だけによる無条件免除、未検証の失敗結果のapprove化。\n- 実装worker、運用レポート、Issue着手判定等のモデルを一括変更すること。\n- PR push、CI完了、timer等を起点とする新しい無人レビュー起動基盤。レビュー開始の入口は既存の親による明示要求を維持する。\n- 同一の実行[local path]、利用不能時の無通知フォールバック、無制限の再試行。\n- #1796 のGit公開・README生成機構の複製、過去の判断理由の推測による補完、rawログや私的識別子の公開。\n- 起票作業に伴うコード実装、worker起動、比較用LLM実行、設定変更、PRのmerge。\n\n## 全体方針・合意事項\n\n2026-11-09、ユーザーが前の説明中の「モデル自動選択やレビュー再利用の実装は」を指定し、「次にここについてissueを作成して」と依頼したことを起票根拠とする。\n\n本issueでは、共通するレビュー入口・結果契約・gateを一つの親で統括する。今回の依頼は起票までで、子issueや担当親は未登録、実装は未着手。以下の具体方式・評価条件は設計案であり、ユーザーが特定のモデル比率や削減率を承認したとは扱わない。\n\n### 基本の処理順序\n\n1. **結果を照合する:** 既存レビュー、確認済み範囲、未解決指摘、現在のコード・要件・CIとの差を確認する。\n2. **親が必要な行動を判断する:** 再利用、保存済み結果の復旧、CI確認だけ、親の修正確認、追加AIレビュー、保留を選ぶ。\n3. **AIレビューが必要な場合だけモデルを選ぶ:** 対象の難しさ・影響・未解決事項を根拠に、許可されたレビュー設定を選択する。\n4. **実行と結果を照合する:** 選択と実効値、実際の起動回数、対象、得られた結果を確認し、既存gateへつなぐ。\n\n「安いモデルで無駄な再実行を続ける」構成にはしない。モデル自動選択とは、合意された方針内で親AIが人間に毎回選択を求めず決め、CLIがその選択を明示的に検証・実行することを基本案とする。理由のないランナー内の切替や、選択のためだけに毎回追加AIを起動する仕組みは前提にしない。\n\n## 実装する機能\n\n### A. レビュー結果の再利用と、追加確認範囲の決定\n\n単なるPR番号・HEAD・diffの一致だけで承認を流用しない。対象repo／PR／branch、head・base・merge-base・diff、確認済み範囲、受入条件、レビュー目的、未解決指摘と解消証拠、適用する方針を照合する。\n\n| 状況 | 期待する処理 |\n|---|---|\n| 対象・条件・確認範囲が同じで、利用可能なレビュー証拠がある | 元の結果を参照して再利用する。新しいAIを起動しない |\n| 同じコードのCI待ちが解消、またはログ取得だけが復旧した | CI・取得状態を更新する。必要な証拠が揃えば既存コード確認結果を利用する |\n| 指摘に対する修正、親が確認できる追加変更 | 既存の`resolve`・差分確認を使う。コード変更だけを理由に全文AIレビューを要求しない |\n| 条件を満たすbase取込み・rebase | 既存の検証付き継承を維持する |\n| 新しい要件・未確認の変更・新たな疑義がある | 親が影響と必要範囲を判断し、既存証拠で不足する部分だけ追加確認する |\n| 必須のコード・要件・証拠を取得できない | 不足を明示して対象を保留する。情報不足を問題なしにしない |\n\n- 文字列ハッシュは版・同一性の確認に使い、要件の意味の変化やレビューの十分性をハッシュだけで判断しない。担当交代、合意revision、無関係な本文編集だけで成果を破棄しない。\n- 初期の確実な再利用対象は同一対象・同一条件の確認済み証拠。異なる対象への一般的な意味的キャッシュや、自動的な承認の横展開には拡張しない。\n- 再利用元のrun・snapshot・coverage・指摘・解消記録と、今回の適用判断を保持する。再利用した処理を「新しいAIを1回起動した」と偽装しない。\n- 一部PRだけの不足で、独立した他PRの結果を捨てない。横断指摘は影響するPRごとに残す。\n- 最新runが失敗しただけで全成果を捨てることも、古いapproveだけを選んで後続の重大指摘を無視することもしない。後続の新しい指摘・対象変更・取消・矛盾を照合して適用可否を決める。\n- 再利用判定と並行して同じ対象のレビューが二重起動されないよう、既存の予約・run一回性を維持する。判定後・起動前・merge直前の対象変更も検出する。\n\n### B. CI・runtime・公開障害からの成果を失わない復旧\n\nコードレビューの内容とcoverage、CIの実行結果・ログ取得状態、runtimeの終了、JSONの形式検証、公開状態を独立に保持する。\n\n- コード確認が成立していてCIログ取得だけが失敗した場合、結果を保持し、取得またはCI照合だけを再試行する。ただし、その証拠が無ければ当該論点を判断できない場合は未確認のまま残す。\n- 対象HEADの最新の必須CIが失敗・未完了ならmergeしない。過去HEADの成功や古いCI成功を再利用しない。新たなCI失敗がコード上の問題を示す場合は、その範囲を親が再評価する。\n- 通信・公開障害でも、有効な最終結果・指摘・出典を消さない。保存済みの正規結果について、対象一致、schema、指摘とcoverage、runの対応、実行終了とcleanupを検証し、追加AI起動なしで正式結果への復旧・公開再開を可能にする。\n- 不正JSON、対象違い、矛盾する出力は無条件で修復成功にしない。参考として保持できる指摘と、正式なcoverage／承認に使える証拠を区別する。不足確認が必要ならその範囲を明示する。\n- 旧runの失敗履歴を消して成功へ書き換えず、復旧の検証・採用・公開の来歴を追加する。公開だけの再開で二重投稿や二重AI起動を起こさない。\n- gateが要求する「agent実行1回」の来歴と再利用を整合させる。再利用の操作自体はAI起動0回であり、検証済みの元runの実行・公開証拠を参照する。架空のrunや実行回数でgateを通さない。\n\n#1609 のCIログ取得修正は既存issueと重複実装せず連携する。取得不具合が直っても一時障害は発生し得るため、本機能の責務をその修正だけで完了としない。\n\n### C. 必要なレビューのモデル自動選択\n\n正式レビュー専用の許可された選択経路を設け、モデル・effort・service tier、選択元、選択理由、適用方針の版を起動前に固定する。実装workerの設定をそのまま流用せず、レビューのread-only、取得ツール、構造化出力、対象固定の契約を両モデルで維持する。\n\n選択方針の候補:\n\n- 通常の定型的な確認はSolを候補にする。未解決の数理・幾何、広範な統合設計、並行処理、権限・公開・セキュリティ境界などはAstraを直接選ぶ候補とする。\n- 行数やディレクトリ名だけで難易度を決めない。5行の文書変更でも運用規則・権限を変えることがある。\n- 人間の明示モデル指定は優先する。親が候補を変更した場合は理由を記録する。機械的な利用可否・設定整合の検査と、親の意味判断を分離する。\n- 判断材料が不足した対象を自動的にSolへ落とさない。必要情報の取得・保留、または理由付きのAstra選択として扱う。\n- Solの指摘ゼロや自己申告の自信だけを「問題なし」の保証にしない。追加確認の要否は対象と未解決事項に基づく。必要な場合は未解決範囲・既存成果を引き継いでAstraへ別runで依頼する。\n- 毎回Solの後にAstraを全文起動する二重レビューを既定にしない。Astraが必要と分かる対象は最初から選ぶ。追加起動には親の明示判断、前runとの対応、有限の試行予算を持たせる。\n- モデル利用不能、選択・実効値の不一致、継続時の設定不整合は明示エラーとする。同じrunを別モデルで黙って再実行しない。\n\nこれは採用済みの性能結論ではなく検証する方針案。未評価のまま全件Solへ変更せず、必要性・対象範囲の判断と、モデル選択の判断を別に記録する。\n\n### D. 検出力と総消費量の評価・段階導入\n\n過去の重大指摘を含む固定snapshotと、通常変更・指摘なしの例を用意し、比較条件を揃える。少なくとも #1790 にある公開境界の問題（PR #1699）と取消・継続の競合（PR #1766）を候補に含める。後から修正済みのコードではなく、問題が存在した当時の対象を固定する。\n\n- 比較する条件は、①現行Astra固定、②再利用・復旧のみ導入してAstra固定、③再利用・復旧＋モデル選択。再利用とモデル選択の効果を分離する。\n- 同じ課題・利用可能な情報・ツール・レビュー目的で比較する。モデル[local path]、変更の効果を混同しない。比較対象へ過去の正解指摘を渡さない。\n- 評価に使う正解指摘はテスト・再現・独立確認で妥当性を確かめる。Astraの過去出力を無条件で正解としない。\n- blocker/majorの検出・見逃し、誤指摘、確認不能率、形式[local path]、追加起動率、実行・待機時間を報告する。少数例だけで同等性を断定せず、必要な反復と採用可能な範囲を示す。\n- 使用量は入力・キャッシュ入力・出力を区別し、親の選択や追加確認の増分も含める。未取得は未取得とし、セッション累積値の重複計上をしない。料金・利用枠換算は根拠がある場合だけ行う。\n- 実LLMの反復比較は通常pytestへ混ぜない。ケース数・反復数・実行予算・採否基準を実行前に定める。\n- 選択機構は明示的なモード／設定で段階導入する。検証中は既存Astra方針を維持でき、問題時には既存証拠を失わず戻せるようにする。品質基準を満たさない対象ではAstraを維持する。\n\n## #1796 との接続：結果と親の判断を見える化する\n\n新しいログ基盤を別に作らず、#1796 の記録・Git公開・階層READMEを利用する。本issueは判断の入力と結果を提供する。\n\n| 結果として残すこと | 親の判断として残すこと | 実際の行動として照合すること |\n|---|---|---|\n| 元レビューの対象・coverage・未解決指摘、現在との差 | 何を再利用し、何を追加確認するか、その根拠 | 元runの採用参照、追加AI起動の有無 |\n| コード確認済み、CIログ取得だけ失敗 | コードは保持し取得だけ再試行する／証拠不足で保留する理由 | 取得再試行とAI再起動の区別 |\n| 保存済み結果の検証成功／失敗、復旧の制約 | 復旧採用／不足範囲の再確認／保留の理由 | 復旧・公開の成否、元成果の保持 |\n| 追加レビューが必要な論点・リスク | Sol／Astraを選んだ理由、または人間指定・方針による固定 | 選択・実効モデル、対象範囲、起動回数・使用量 |\n| Sol結果の指摘・未解決事項 | 継続不要／親の確認[local path] | 引き継いだ成果と追加runの結果 |\n\nREADMEを読めば「なぜAIを起動しなかったか／追加したか」「なぜそのモデルか」が分かる状態を完了条件にする。表示用ログが未公開だからといって既存の作業結果を捨てない。正式レビュー証拠の公開条件と、#1796 の閲覧用README公開状態は区別する。\n\n## 全体の完了条件\n\n- [ ] 同一対象・条件・確認済み範囲のレビューを、新しいAI起動0回で再利用できる。CI待ち・取得復旧・閲覧用ログ公開だけで全文レビューが増えない。\n  検証: #1790 のPR #1615／#1625／#1636／#1668に対応する5回の追加実行パターンをfixtureで再現し、再利用条件成立時の追加起動0回と根拠の保持を確認する。\n- [ ] コード・要件・依存・未解決指摘の変化を検知し、確認済み範囲と不足を分けられる。既存resolve・rebase継承・PRごとの独立判定を退行させない。\n  検証: 同じHEADで要件だけ変更、同じdiffでbase側の関連条件変更、無関係な本文編集、別PR更新、指摘修正、競合解消、横断指摘を比較する。後続指摘を古いapproveで隠せないことを確認する。\n- [ ] 有効な保存済み結果をruntime／公開失敗後に検証して復旧でき、不正な出力や未確認範囲を成功へ変換しない。\n  検証: PR #1696／#1769を参考に、形式矛盾・有効final＋通信障害・対象不一致・公開応答喪失・cleanup未確認を分ける。内容が変わった再検証まで削減可能と数えない。\n- [ ] 再利用・復旧を正式gateが来歴付きで受け入れ、対象HEADの最新必須CI、指摘解消、親の確認、依存、実行根拠を引き続き検査する。\n  検証: 実git・fake GitHubで、古いCI成功、未公開の正式証拠、対象差替え、再送・並行起動、後続失敗と過去approveの混在を検証する。架空のAI実行証拠で通さない。\n- [ ] 手動親・自律親が同じ経路でレビュー用モデルを選べ、選択理由・選択設定・実効設定が一致する。read-only・取得・schema・sessionの契約を維持する。\n  検証: Sol／Astra、人間指定、設定固定、通常／高リスク、利用不能、実効値不一致、別runへの引継ぎをfake runtimeで検証する。\n- [ ] 固定した比較ケースで、再利用のみの効果とモデル選択の効果を分けて報告し、重大指摘の検出・誤指摘・失敗・処理量・時間に基づき採用範囲を決めている。\n  検証: 実LLMの比較結果と再現条件、実行前に定めた採否基準、残る不確実性を示す。未達の対象はAstraを維持し、全件の品質同等を根拠なく宣言しない。\n- [ ] #1796 のGit管理ログと階層READMEから、元の結果→再利用／復旧／モデル選択の判断→実際の行動→次の結果を追える。\n  検証: 再利用、復旧、通常モデル選択、Astraへの追加確認の代表例を表示し、起動0回と新規起動・継続を区別する。\n- [ ] 代表的な正式レビューで取得・結果保存・親の確認・gateまで一連の経路を実機確認し、仕様・skill・設定・公開schema・消費側が整合している。\n  検証: 通常のレビュー[local path]、実機受入記録、段階導入と元の方針へ戻す手順を本親issueへ残す。\n\n## 子タスクのチェックリスト\n\n- [x] #1860 レビュー実行の工程を分離し、保存済み結果を検証して復旧・公開を再開できるようにする\n- [x] #1861 既存レビューの照合表示を追加し、同じPRのレビュー二重起動を防ぐ\n- [ ] #1862 正式レビューで許可されたモデルを理由付きで選択できる経路を追加する\n- [ ] #1863 モデル選択の比較評価・#1796連携・実機受入を行う\n\n## 進捗概要\n\n子の起動予約: なし。上限: 全子。\n- #1860: 完了 — 完了済み。 / 既存PRを照合して継続する: #1867 / 委任予約済み。既存worker・worktreeを照合する。\n- #1861: 完了 — 完了済み。 / 既存PRを照合して継続する: #1872 / 委任予約済み。既存worker・worktreeを照合する。\n- #1862: 継続 — 既存PRを照合して継続する: #1888 / 委任予約済み。既存worker・worktreeを照合する。\n- #1863: 継続 — 起動可能（stacked branch: PR #1888）\n\n## 依存関係・進め方\n\n1. 最新コードと既存レビュー証拠を確認し、無駄な追加起動と、必要な再検証を分けたfixtureを先に作る。\n2. 保存済み結果の保持・検証付き復旧とCI分離を整え、再利用を既存resolve／gateへ接続する。Astra固定のまま効果を確認する。\n3. レビュー専用の選択経路と理由記録を追加し、比較評価で採用可能な対象を決めて段階導入する。\n4. #1796 の記録契約に接続し、Git上のREADMEから判断を説明できる状態で実機受入を行う。\n\n関連issueとの境界:\n\n- #1790: 調査・削減候補・反証の出典。調査結果を無断で実装済みに書き換えない。\n- #1796: 結果と親判断の記録・Git公開・README表示。本issueの設計・単体実装は全完了を待たず進められるが、ログ連携の受入には同機能が必要。契約を早期共有し、相互依存の循環を作らない。\n- #1609: CIログ取得不具合。修正担当と重複を避け、異常時も成果を保持する本issueの契約と接続する。\n- #1482: PRごとのcoverage、修正確認、rebase継承、明示起動の先行契約を維持する。\n- #1693／#1694: 実装workerのモデル選択は先行成果。正式レビューへ必要な設計を利用するが、他profileへ選択権限を一律拡張しない。\n\n## 未決事項・人間の判断が必要な点\n\n具体的なCLI／schema、モデルごとのeffort、比較ケース数・試行予算、モデル選択の採否基準は実装前に具体化する。現時点で「Solで同じ重大指摘を検出できる」「一定割合の料金・利用枠を削減できる」とは確定していない。\n\n親による明示起動・既存の品質条件を維持する範囲で設計する。新しい常時自動起動、品質条件の緩和、認められた範囲を超えるモデル・権限・実験予算が必要な場合だけ、その差分を人間の判断事項として示す。今回確定した起票方針を聞き直さない。\n\n",
+        "number": 1797,
+        "title": "[レビュー効率化] 保存済みレビューの再利用・復旧と、必要なレビューのモデル自動選択を実装する"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/issues/1797/comments": {
+      "as_of": "2026-11-11T01:58:54.599449+00:00",
+      "value": []
+    },
+    "repos/Motoki0705/tennis-lab/issues/1862": {
+      "as_of": "2026-11-11T01:58:54.599449+00:00",
+      "value": {
+        "body": "親issue: #1797\n\n## このタスクの目的\n\n親issueの機能C。追加のAIレビューが必要な場合に、親が対象に適したモデル（Sol・Astra等）を理由付きで選び、CLIがその選択を明示的に検証・固定・実行できるようにする。\n\n## 具体的な変更内容・対象範囲\n\n`.agents/ops/lib/`（agents.conf、agent_exec.shと設定解決、README）、`.agents/ops/parent/`（review-request、自律親の入口）、`.agents/ops/review/`、関連テスト。\n\n1. agents.confに、レビューで許可するモデルとeffortの組と、導入モード（fixed = 現行Astra固定 / select）を定義する。既定はfixed。\n2. review-requestで、モデルと選択理由を受け取り、requestとexecutionへ固定する。人間の明示指定を優先し、手動親と自律親が同じ経路を使う。\n3. 共通ランナーのreview profileは許可リスト内の選択だけを受け付け、選択値と実効値を照合する。read-only・取得ツール・構造化出力・対象固定の契約を両モデルで維持する。\n4. 利用不能・実効値の不一致・継続時の設定不整合は明示エラーにし、別モデルで黙って再実行しない。別runへの引継ぎ（Solの未解決範囲をAstraへ）は親の明示判断とし、前runとの対応を記録する。\n\n## 対象外\n\n実装worker・運用レポート等の他profileのモデル変更。既定をselectへ切り替えること（比較評価後、子4で判断する）。比較評価の実行。\n\n## 依存関係\n\n- #1860\n\n## 作業状況・停止事項\n\n未着手。\n\n## Acceptance checklist\n\n- [ ] 手動親・自律親が同じ経路でレビュー用モデルを選べ、選択理由・選択値・実効値が一致する\n  文脈: 現行は共通ランナーがreview profileでのモデル指定を拒否し、Astra/xhighに固定している。\n  下流への影響: 子4の比較評価と段階導入の前提になる。\n  検証方法・証拠: Sol／Astra、人間指定、設定固定、通常／高リスクの選択をfake runtimeで検証するテスト。\n- [ ] 利用不能・実効値の不一致・継続時の不整合を明示エラーにする\n  文脈: 無通知フォールバックは対象外。\n  下流への影響: 誤ったモデルでのレビューを正式証拠にしない。\n  検証方法・証拠: 利用不能・実効値不一致・別runへの引継ぎのテスト。\n- [ ] 既定はfixedで、現行のAstra固定の挙動が変わらない\n  文脈: 比較評価が済むまで既存方針を維持する。\n  下流への影響: 既存の親の運用を壊さない。\n  検証方法・証拠: 既定設定での既存review/gateテストが通ること。\n\n<!-- parent-task:v1 parent=1797 key=review-model-selection spec=e753b671875667e0b85369844636f8267bfa19c572bc294355de2ff3a1e1e761 -->\n\n## 成果物・関連PR\n\n担当: codex\n\nbranch: `codex/review-model-selection`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1888 (open)\n\n検証結果:\n> - PR #1888（head 8bd2f159f4db95736f80d15e9574fce4f1aa87b4、base cc5738a2c は現在のmain）。\n> - 対象HEADのCI run 42940735588: Lint、CPU lane plan、CPU 10レーン、集約Pythonの13ジョブがすべて成功。再実行は0回。\n> - workerは次を報告している（詳細はPR本文）。\n>   - 新規45ケースが成功し、既定fixedの退行確認として、既存の対象nodeを `-n 0` で実行して成功。\n>   - 故障注入2件（実効modelの照合を無効化する変更、version 3のrequirements照合を飛ばす変更）を検出。\n> - 担当親は `agents.conf`、`agent_settings.py`、`review_settings.py` の差分を目視確認した。親の設計判断はworkerへの承認回答で示しており、上の方針がそれにあたる。\n\n",
+        "number": 1862,
+        "title": "[レビュー効率化 #1797] 正式レビューで許可されたモデルを理由付きで選択できる経路を追加する"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/pulls/1888": {
+      "as_of": "2026-11-11T01:58:54.599449+00:00",
+      "value": {
+        "body": "正式レビューのモデルがAstraへ暗黙に固定され、親の選択理由と実行モデルを結び付けられない問題を解消します。親がprepare時に選んだ値をrequest version 3のdigestへ含め、execution、共通runner、公開証拠まで同じ検証部品で照合します。\n\nCloses #1862\n親: #1797。実装判断: `dfde7dfbae9b4a40b6d2f79ba9b44941`。\n\n## 変更内容と受入条件の証拠\n\n- 許可する組は `gpt-6.1-sol:xhigh` と `gpt-6-astra:xhigh`。既定は従来のAstraを使うfixedのままです。fixedと異なる指定、selectで理由のない指定、人間の拘束との矛盾は起動前に拒否します。\n- 手動親とdispatcherが担当する自律親は同じ `parent review-request` 経路を使用します。選択値、理由、指定元をprepare時に固定し、#1796の判断記録には既存の指定元3分類を渡します。\n- runnerの専用選択入力はread-onlyのCodex reviewだけが受理します。取得ツール、構造化出力、固定対象を維持し、model/effortの実効値が一致しなければ失敗します。tierだけは理由付きunavailableを許します。利用不能時も起動は1回で、別モデルへ再試行しません。\n- recoverは元runとrequest digestを固定し、元runの検証済み実効値を表示します。公開再開、照合表示、gateも選択とruntime証拠を検証します。旧request 1/2を読み替えて選択理由を補作しません。requirements照合は2/3の両方で必須です。\n- 別runへの引継ぎは元request/resultのdigestと範囲を記録します。PR内のcoverageは合成せず、部分確認のnot_reviewedはgateを止めます。既存のPR排他とsupersedingの規則を使います。\n\n影響する共通部品は設定解決と実行契約です。他profileは専用入力を拒否し、実装worker、ops_report、ops_scout、issue_judgementの設定・argv・resume、およびagy・説明HTMLのpinが変わらないことをテストしています。新しいrequestを読む運用checkoutは更新が必要です。version 3の成功証拠をgateで使うには、保存runtime、events、final、schemaを保持します。\n\n## テストの増分と実測\n\nすべてローカルpytestは `-n 0`、対象ファイルまたはnodeを順に実行しました。実agentは起動していません。\n\n| 新規テスト | ケース数 | 実測 |\n|---|---:|---:|\n| 共通方針・人間指定・requirements・他profileの不変性 | 24 | 0.49秒 |\n| fake CLIでSol/Astra、fixed/select、利用不能・不一致・継続 | 11 | 2.47秒 |\n| 親CLIから公開・復旧・照合表示・gate・自律親・引継ぎ | 10 | 73.03秒 |\n\n追加は計45ケースです。親CLIのE2Eはfake GitHubと一時git repoを使い、既存のReviewSeedを再利用して各ケースの状態を分離しています。5秒を超えるケースは複数CLIと公開・復旧・gateの契約をまとめて検証します。初回seed setupは計測時3.79秒、以後の複製は0.11秒以下でした。\n\n実効model照合を無効化する故障と、version 3のrequirements照合を飛ばす故障を一時注入し、対象テストがそれぞれ失敗することを確認しました。復元後の2ケースは成功しています。\n\n既定fixedの退行確認:\n- 共通runner 83ケース、review policy 82ケース。\n- PR排他3ケース、中断23ケース、起動境界1ケース。\n- workerの設定・継続9ケース、実行根拠5ケース、親CLI3ケース。\n- 既存gateの代表12ケースは最新main取り込み後に成功（114.58秒）。fixture複製で移動したruntimeパスの証拠ハッシュは、ケース固有の改変前に再計算します。\n- 既存復旧32ケースは最新main取り込み後に成功（279.09秒）。旧runの復旧を含みます。既存照合表示の修正対象nodeも成功済み。\n- 文書リンク25ケース成功（0.24秒）。\n\npre-commit（ruff/mypy）、変更したopsのruff、追加2モジュールのmypy、diff checkは成功しています。\n\n## CIと残る範囲\n\n対象HEAD: `8bd2f159f4db95736f80d15e9574fce4f1aa87b4`。[CI #3971](https://github.com/Motoki0705/tennis-lab/actions/runs/42940735588) は成功しました。Lint、CPU lane plan、CPUテスト10分割、全CPU coverageを検査するPython集約の13ジョブがすべて成功し、再実行は0回です。PRのHEAD一致とmerge可能な状態も確認しました（未merge）。\n\n実Sol/Astraの利用可否・品質・費用の比較、selectへの切替判断、#1796との本格的な接続は #1863 に残します。比較評価とPR内coverage合成は追加していません。統合レビューとmergeは親の担当です。",
+        "changed_paths": [
+          ".agents/ops/decision_logs/parent_commands.py",
+          ".agents/ops/decision_logs/review_capture.py",
+          ".agents/ops/dispatcher/parent_bootstrap.md",
+          ".agents/ops/lib/README.md",
+          ".agents/ops/lib/agent_runtime.py",
+          ".agents/ops/lib/agent_settings.py",
+          ".agents/ops/lib/agents.conf",
+          ".agents/ops/lib/review_settings.py",
+          ".agents/ops/parent/README.md",
+          ".agents/ops/parent/cli.py",
+          ".agents/ops/parent/development_workflow.md",
+          ".agents/ops/parent/execution.py",
+          ".agents/ops/parent/review_choice.py",
+          ".agents/ops/parent/review_handoff.py",
+          ".agents/ops/parent/snapshot.py",
+          ".agents/ops/parent/state.py",
+          ".agents/ops/review/README.md",
+          ".agents/ops/review/merge_gate.py",
+          ".agents/ops/review/merge_gate_policy.py",
+          ".agents/ops/review/parent_review.py",
+          ".agents/ops/review/parent_review_policy.py",
+          ".agents/ops/review/prompt_template.md",
+          ".agents/ops/review/review_inspection.py",
+          ".agents/ops/review/review_recovery.py",
+          "tests/e2e/agents_ops/fake_agent_cli.py",
+          "tests/e2e/agents_ops/test_execution_basis.py",
+          "tests/e2e/agents_ops/test_merge_gate.py",
+          "tests/e2e/agents_ops/test_parent_session.py",
+          "tests/e2e/agents_ops/test_review_choice_handoff.py",
+          "tests/e2e/agents_ops/test_review_inspection.py",
+          "tests/e2e/agents_ops/test_review_model_selection.py",
+          "tests/e2e/agents_ops/test_review_recovery.py",
+          "tests/unit/agents_ops/test_review_settings.py"
+        ],
+        "child_issues": [
+          1862
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1888,
+        "title": "正式レビューのモデル選択をrequestと実効証拠へ固定する"
+      }
+    }
+  },
+  "provenance": {
+    "kind": "projection_of_saved_pre_review_context",
+    "source_context_sha256": "e5451702d62f118b39f4801d933738fe26b538b3172a0928fb08505939bcda8f",
+    "excluded_comments": [
+      {
+        "id": 6742600731,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6742612607,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6742687476,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6762943096,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6763072357,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6764735825,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6766452984,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6766454482,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6766611577,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6766623749,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6767713183,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6767715757,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6767721673,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6768125102,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6768492755,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6768823076,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6770445015,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6771815102,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6771817797,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6772040746,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6772063455,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6773516714,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6773520144,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6773524537,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6775827368,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6776860032,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6778254456,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6784722488,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6784724810,
+        "reason": "operational_record_excluded"
+      }
+    ],
+    "sanitization_replacements": 5,
+    "unavailable": [
+      "PR and child discussions were not captured; unregistered endpoints are rejected",
+      "CI payload is the captured checks summary, not reconstructed raw logs"
+    ]
+  }
+}

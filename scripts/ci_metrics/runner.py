@@ -166,7 +166,7 @@ def run(
         from .shards import read_timing_profile
 
         index, count, profile = shard
-        if not 0 <= index < count <= 32:
+        if not 0 <= index <= count <= 32:
             raise ValueError("invalid shard index/count")
         _, profile_digest = read_timing_profile(profile)
         command.extend(

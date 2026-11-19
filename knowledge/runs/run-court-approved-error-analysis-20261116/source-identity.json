@@ -1,0 +1,58 @@
+{
+  "source_commit": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+  "output_root": "outputs/tennis_scene/evaluate/court-error-analysis-20261116",
+  "source_sha256": {
+    "src/tasks/court_detection/geometry/confidence_homography.py": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+    "src/tasks/court_detection/geometry/homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+    "src/tasks/court_detection/geometry/observations.py": "96bcbcf8c8c8103804e95afa91b67d6ace9d676f5ced4f4ff3d8d4b38a08d3cb",
+    "src/tasks/court_detection/geometry/__init__.py": "732436a5b060ad3f63edf28ba267bc7645735a0ccbd5341b27233c1a7bea8001",
+    "src/tasks/court_detection/geometry/pose.py": "43e1e20cdd1d436b97b25bcd86205ad71533747c0317984f3a6889f2fff6d7ad",
+    "src/tasks/court_detection/geometry/postprocess.py": "83360fe0115b3337adfce1f8ff55315ad7cc7dfced674521d19cf0ea4914dcf5",
+    "src/tasks/court_detection/geometry/line_evidence.py": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+    "src/tasks/court_detection/geometry/quality.py": "ec15ea4582ad113b3358d02ba07bafbe322334b74a8c09ad4b047962dd0d6558",
+    "src/tasks/court_detection/geometry/hybrid_homography.py": "eb7045dbfc1b7424520060c4a39fc7c3c836436d5bee440ee7b5ec771f09c0f4",
+    "src/utils/schema/court.py": "04e63de5dde6459a847f74a1e9221c69a6ee53f3b42bf24a20fe199fa7fb75ba"
+  },
+  "raw_manifest_sha256": {
+    "outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/raw/manifest.json": "95dde24efa7b932647d95341aa7403895f0c68d2ff594836e092f45c8d2080b9",
+    "outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/val_raw/manifest.json": "dc7e6905e5b0c7179dce6d27380946da7c5575cde7c91b7b8893e360526c3626",
+    "outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/test_raw/manifest.json": "832b9651bf9ce210a39ff5736be91a5ec0589e92f14e51bbe105e31de46bc39e"
+  },
+  "retained_large_outputs": [
+    {
+      "kind": "factorial",
+      "files": 1176,
+      "bytes": 4892508,
+      "content_and_path_sha256": "e10f0669ee442bd395b04f411286e4c47dc438709b5379f1d7f58f771009e724",
+      "retained_in_outputs": true
+    },
+    {
+      "kind": "paired",
+      "files": 221,
+      "bytes": 10465309,
+      "content_and_path_sha256": "6dcaea02d1b87494ee8befaa9c1d1d7223593fdf4b2388d2df2683246ac751ae",
+      "retained_in_outputs": true
+    },
+    {
+      "kind": "observation",
+      "files": 43,
+      "bytes": 57947,
+      "content_and_path_sha256": "cce57432d30ba4d0a6247d45695dd514d0cd3da35d69ca4964974f02cff83aff",
+      "retained_in_outputs": true
+    },
+    {
+      "kind": "rgb",
+      "files": 32,
+      "bytes": 41559,
+      "content_and_path_sha256": "b5aacd2af0bd82a5f1b5cc7dc8d2959c206f9080f5039a7ff36f339f4f0ec55b",
+      "retained_in_outputs": true
+    },
+    {
+      "kind": "raw-observations",
+      "files": 1,
+      "bytes": 8614487,
+      "content_and_path_sha256": "21b2d2e34f178602205b0ac02f617c7efbb800313af10131979b040db4caf75c",
+      "retained_in_outputs": true
+    }
+  ]
+}

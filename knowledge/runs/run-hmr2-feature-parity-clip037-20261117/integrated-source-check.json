@@ -1,0 +1,40 @@
+{
+  "acceptance_commit": "5a0f48053e6a479ff345cc858002752cd4f1794f",
+  "integrated_c3_commit": "8ef9781463e9dcd3d5a7587c1720217e276a2eaf",
+  "body_sources": {
+    "src/tennis_scene/pipeline/components/hmr2_features.py": {
+      "sha256": "1ed6c7823a4c8516888f16a18f89a09bdca9f6a393e66352dc0a40d329699c4e",
+      "unchanged": true
+    },
+    "src/tennis_scene/pipeline/components/gvhmr.py": {
+      "sha256": "83542edd5fc313fd68caa5e3333790a3afb9fe57e434abf3a961b87a7fae12db",
+      "unchanged": true
+    },
+    "src/tennis_scene/pipeline/components/body_placement.py": {
+      "sha256": "5600e2fb8e3fde2f117346ef1913ca8fc440371fdce58428b24c480f98b7d8c3",
+      "unchanged": true
+    },
+    "src/tennis_scene/pipeline/components/player_reconstruction.py": {
+      "sha256": "4d86e89fa2d8e7b7aebebfb0092252a756192f133907848cb1f58886ebdae076",
+      "unchanged": true
+    },
+    "src/tennis_scene/pipeline/input_assembly/body.py": {
+      "sha256": "661ee38536a37f981c2e8629337f44e610b5f8b3806b8c67a5ae946560e8957f",
+      "unchanged": true
+    },
+    "src/tennis_scene/pipeline/body_types.py": {
+      "sha256": "494bf66d7b85e5bb558e3f867860291cdc40842d10546801301b2ca9ca2c983e",
+      "unchanged": true
+    },
+    "src/tennis_scene/pipeline/model_assets.py": {
+      "sha256": "386baa36ea19a60751a76400924a6713330a59ba377de14f2b888c6927a5dee2",
+      "unchanged": true
+    },
+    "src/tennis_scene/pipeline/inference_runtime.py": {
+      "sha256": "61c7d6b5d1b72ea015011887972eac35997548844e8fca67a234ae0dcad1cdc9",
+      "unchanged": true
+    }
+  },
+  "submodule_model_sources_unchanged": true,
+  "definition_conflict_resolution": "Keep both HMR2 assets/node and video shared court settings; only use C3 type cast style for asset dictionaries."
+}

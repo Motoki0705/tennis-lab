@@ -1,0 +1,2118 @@
+{
+  "tennis_court_detector_val": {
+    "previous_a_losses": 0,
+    "previous_a_losses_recovered": 0,
+    "remaining_statuses": {},
+    "historical_losses": 114,
+    "historical_losses_recovered": 114,
+    "historical_gains": 0,
+    "historical_gains_retained": 0,
+    "paired_previous_losses": [],
+    "new_a_losses": [],
+    "geometry_correct_counts": {
+      "legacy": 2192,
+      "fixed_support": 2192,
+      "fixed_support_rgb": 2161,
+      "new_support": 2192,
+      "new_rgb": 2188
+    },
+    "new_support_vs_previous": {
+      "geometry_lost": 0,
+      "geometry_gained": 0,
+      "acceptance_lost": 0,
+      "acceptance_gained": 0
+    },
+    "new_rgb_vs_previous": {
+      "geometry_lost": 0,
+      "geometry_gained": 0,
+      "acceptance_lost": 70,
+      "acceptance_gained": 53
+    }
+  },
+  "synthetic_court_test": {
+    "previous_a_losses": 58,
+    "previous_a_losses_recovered": 35,
+    "remaining_statuses": {
+      "ambiguous_candidates": 17,
+      "joint_optimization_failed": 4,
+      "insufficient_line_support": 2
+    },
+    "historical_losses": 45,
+    "historical_losses_recovered": 34,
+    "historical_gains": 30,
+    "historical_gains_retained": 14,
+    "paired_previous_losses": [
+      {
+        "key": "synthetic_court_test/B00_court-sample-001277",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 41.82086591818869,
+        "new_mean_error_px": 41.82139633723768,
+        "solve_stops": {
+          "fixed_support_inconsistent": 6,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001288",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 13.107866959712641,
+        "new_mean_error_px": 13.107883245081828,
+        "solve_stops": {
+          "fixed_support_inconsistent": 6,
+          "invalid_projected_geometry": 6,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001291",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 33.20447492060724,
+        "new_mean_error_px": 33.20204937740938,
+        "solve_stops": {
+          "invalid_projected_geometry": 1,
+          "fixed_support_inconsistent": 5,
+          "converged": 4
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001293",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 12.370206625834465,
+        "new_mean_error_px": 12.301139488050397,
+        "solve_stops": {
+          "invalid_projected_geometry": 16,
+          "fixed_support_inconsistent": 3,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001300",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 11.539093862933235,
+        "new_mean_error_px": 11.539037223286021,
+        "solve_stops": {
+          "invalid_projected_geometry": 7,
+          "fixed_support_inconsistent": 4,
+          "converged": 3
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001321",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 40.76127407659032,
+        "new_mean_error_px": 57.708609336337986,
+        "solve_stops": {
+          "invalid_projected_geometry": 4,
+          "fixed_support_inconsistent": 2,
+          "converged": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001322",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 22.50096420552313,
+        "new_mean_error_px": 22.544250423765074,
+        "solve_stops": {
+          "fixed_support_inconsistent": 3,
+          "converged": 5
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001363",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 10.718633187852374,
+        "new_mean_error_px": 10.472745461594673,
+        "solve_stops": {
+          "fixed_support_inconsistent": 8,
+          "invalid_projected_geometry": 4,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001532",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 12.39402591443506,
+        "new_mean_error_px": 12.424655483389115,
+        "solve_stops": {
+          "invalid_projected_geometry": 7,
+          "fixed_support_inconsistent": 5,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001537",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 63.749048751539966,
+        "new_mean_error_px": 63.66012873691117,
+        "solve_stops": {
+          "fixed_support_inconsistent": 5,
+          "converged": 3,
+          "optimizer_failed": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001577",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 65.37823561735422,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 8,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001582",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 18.71220977291252,
+        "new_mean_error_px": 18.685862432743622,
+        "solve_stops": {
+          "fixed_support_inconsistent": 7,
+          "converged": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002019",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 2.5362470907409493,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 12,
+          "invalid_projected_geometry": 5
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002022",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 11.01870641038053,
+        "new_mean_error_px": 15.971891468239495,
+        "solve_stops": {
+          "invalid_projected_geometry": 9,
+          "fixed_support_inconsistent": 2,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002032",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 3.237794093426173,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 6
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002035",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 3.560690419948466,
+        "new_mean_error_px": 3.5589669378614546,
+        "solve_stops": {
+          "fixed_support_inconsistent": 6,
+          "converged": 6
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002046",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 3.3652596614419803,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 8
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002060",
+        "recovered": false,
+        "status": "joint_optimization_failed",
+        "old_mean_error_px": 44.58011951860314,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "invalid_projected_geometry": 10,
+          "fixed_support_inconsistent": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002063",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 7.304841106709157,
+        "new_mean_error_px": 6.512213492433554,
+        "solve_stops": {
+          "fixed_support_inconsistent": 6,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002064",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 9.821327741434237,
+        "new_mean_error_px": 9.839925327490045,
+        "solve_stops": {
+          "fixed_support_inconsistent": 5,
+          "converged": 1,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002065",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 14.813060360113436,
+        "new_mean_error_px": 14.733591711927858,
+        "solve_stops": {
+          "fixed_support_inconsistent": 2,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002070",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 8.646173265238797,
+        "new_mean_error_px": 8.502860767106247,
+        "solve_stops": {
+          "fixed_support_inconsistent": 5,
+          "invalid_projected_geometry": 1,
+          "converged": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-000992",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 1.3198483402185057,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 22
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-000993",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 1.2020423238614248,
+        "new_mean_error_px": 1.2068180248706626,
+        "solve_stops": {
+          "converged": 25
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-000994",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 1.676108883442054,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 18
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-000999",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 53.14640921388145,
+        "new_mean_error_px": 53.140698870179705,
+        "solve_stops": {
+          "fixed_support_inconsistent": 7,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001000",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 27.80865512205423,
+        "new_mean_error_px": 27.899794487143783,
+        "solve_stops": {
+          "fixed_support_inconsistent": 3,
+          "converged": 3,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001002",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 8.13603156710687,
+        "new_mean_error_px": 8.131667200035182,
+        "solve_stops": {
+          "fixed_support_inconsistent": 7,
+          "converged": 1,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001014",
+        "recovered": false,
+        "status": "joint_optimization_failed",
+        "old_mean_error_px": 4.78114039100297,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "fixed_support_inconsistent": 3,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001017",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 7.6087971698717585,
+        "new_mean_error_px": 7.608802229234888,
+        "solve_stops": {
+          "fixed_support_inconsistent": 5,
+          "converged": 2,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001027",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 1.0696145912403805,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 16
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001034",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 1.6381681725562882,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 8,
+          "invalid_projected_geometry": 12
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001060",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 1.4510686660905665,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 29
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001063",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 1.710075339734368,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 21
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001155",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 2.405098069950594,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 15
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001164",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 22.125361261087548,
+        "new_mean_error_px": 22.610915633300007,
+        "solve_stops": {
+          "invalid_projected_geometry": 3,
+          "fixed_support_inconsistent": 4,
+          "converged": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001173",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 48.41390091800857,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 9
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001200",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 4.055505894169981,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 13,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001208",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 35.72690020641518,
+        "new_mean_error_px": 22.198324333715515,
+        "solve_stops": {
+          "fixed_support_inconsistent": 4,
+          "converged": 3,
+          "invalid_projected_geometry": 3
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001211",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 7.864851543432917,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 10,
+          "fixed_support_inconsistent": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001221",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 5.938117363361632,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 6,
+          "fixed_support_inconsistent": 2,
+          "invalid_projected_geometry": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001814",
+        "recovered": false,
+        "status": "insufficient_line_support",
+        "old_mean_error_px": 46.61558252341238,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "fixed_support_inconsistent": 5,
+          "invalid_projected_geometry": 2,
+          "converged": 4
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001816",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 15.351632978528603,
+        "new_mean_error_px": 15.340001234276244,
+        "solve_stops": {
+          "converged": 4,
+          "fixed_support_inconsistent": 3,
+          "invalid_projected_geometry": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001842",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 1.9240720694271818,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "converged": 19
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001853",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 23.955931571542237,
+        "new_mean_error_px": 23.95584928219969,
+        "solve_stops": {
+          "fixed_support_inconsistent": 10,
+          "converged": 1,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001855",
+        "recovered": false,
+        "status": "joint_optimization_failed",
+        "old_mean_error_px": 20.238987257243007,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "fixed_support_inconsistent": 7,
+          "invalid_projected_geometry": 5
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001860",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 58.79945331929374,
+        "new_mean_error_px": 58.79277031411026,
+        "solve_stops": {
+          "fixed_support_inconsistent": 8,
+          "converged": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001865",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 19.017655701466047,
+        "new_mean_error_px": 10.300899450595187,
+        "solve_stops": {
+          "fixed_support_inconsistent": 8,
+          "invalid_projected_geometry": 2,
+          "converged": 6
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-000711",
+        "recovered": false,
+        "status": "joint_optimization_failed",
+        "old_mean_error_px": 2.222567749106012,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "invalid_projected_geometry": 2,
+          "fixed_support_inconsistent": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001126",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 65.67308490990996,
+        "new_mean_error_px": 65.67253771587896,
+        "solve_stops": {
+          "fixed_support_inconsistent": 8,
+          "converged": 2,
+          "invalid_projected_geometry": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001132",
+        "recovered": false,
+        "status": "insufficient_line_support",
+        "old_mean_error_px": 50.97265016016231,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "fixed_support_inconsistent": 5,
+          "converged": 1
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001144",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 37.56705708071601,
+        "new_mean_error_px": 37.560118569028916,
+        "solve_stops": {
+          "fixed_support_inconsistent": 6,
+          "converged": 6
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001168",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 13.026455627383356,
+        "new_mean_error_px": 12.934255669653572,
+        "solve_stops": {
+          "fixed_support_inconsistent": 6,
+          "invalid_projected_geometry": 4,
+          "converged": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001182",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 25.711023880979536,
+        "new_mean_error_px": 25.5909116395823,
+        "solve_stops": {
+          "fixed_support_inconsistent": 6,
+          "converged": 4
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001185",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 50.15532314813181,
+        "new_mean_error_px": 50.15532324411106,
+        "solve_stops": {
+          "fixed_support_inconsistent": 6,
+          "converged": 6
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001870",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 8.429192611038207,
+        "new_mean_error_px": 8.381539586882868,
+        "solve_stops": {
+          "fixed_support_inconsistent": 2,
+          "converged": 2
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001890",
+        "recovered": false,
+        "status": "ambiguous_candidates",
+        "old_mean_error_px": 5.907493544958917,
+        "new_mean_error_px": null,
+        "solve_stops": {
+          "fixed_support_inconsistent": 3,
+          "converged": 4
+        }
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001894",
+        "recovered": true,
+        "status": "quality_rejected",
+        "old_mean_error_px": 8.051637639596583,
+        "new_mean_error_px": 8.048051930150866,
+        "solve_stops": {
+          "fixed_support_inconsistent": 5,
+          "converged": 1
+        }
+      }
+    ],
+    "new_a_losses": [
+      {
+        "key": "synthetic_court_test/B00_court-sample-001278",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 36.41868713837289,
+        "previous_a_valid": true,
+        "new_status": "insufficient_line_support"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001296",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 3.562236320020461,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001313",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 6.842720560020598,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001347",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 13.570407063802543,
+        "previous_a_valid": true,
+        "new_status": "insufficient_line_support"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001360",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 9.68210702482136,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001374",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 10.268890856134107,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001489",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 12.486059770542198,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001492",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 5.0099772664851185,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001573",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 3.060690234217945,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001577",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 65.37823561735422,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002019",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 2.5362470907409493,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002032",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 3.237794093426173,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002046",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 3.3652596614419803,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002050",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.1290070168428177,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002060",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 44.58011951860314,
+        "previous_a_valid": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-000992",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.3198483402185057,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-000994",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.676108883442054,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001014",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 4.78114039100297,
+        "previous_a_valid": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001027",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.0696145912403805,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001029",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.1958351847561892,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001034",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.6381681725562882,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001060",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.4510686660905665,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001063",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.710075339734368,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001155",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 2.405098069950594,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001173",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 48.41390091800857,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001200",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 4.055505894169981,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001211",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 7.864851543432917,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001212",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 30.369619561003553,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001219",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 11.55468524093162,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001221",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 5.938117363361632,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001806",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 11.225890154844791,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001809",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 12.349697521056571,
+        "previous_a_valid": true,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001814",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 46.61558252341238,
+        "previous_a_valid": false,
+        "new_status": "insufficient_line_support"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001842",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 1.9240720694271818,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001855",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 20.238987257243007,
+        "previous_a_valid": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-000711",
+        "legacy_correct": true,
+        "legacy_mean_gt_px": 2.222567749106012,
+        "previous_a_valid": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001132",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 50.97265016016231,
+        "previous_a_valid": false,
+        "new_status": "insufficient_line_support"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001890",
+        "legacy_correct": false,
+        "legacy_mean_gt_px": 5.907493544958917,
+        "previous_a_valid": false,
+        "new_status": "ambiguous_candidates"
+      }
+    ],
+    "geometry_correct_counts": {
+      "legacy": 282,
+      "fixed_support": 277,
+      "fixed_support_rgb": 49,
+      "new_support": 271,
+      "new_rgb": 84
+    },
+    "new_support_vs_previous": {
+      "geometry_lost": 18,
+      "geometry_gained": 42,
+      "acceptance_lost": 3,
+      "acceptance_gained": 1
+    },
+    "new_rgb_vs_previous": {
+      "geometry_lost": 40,
+      "geometry_gained": 54,
+      "acceptance_lost": 0,
+      "acceptance_gained": 28
+    }
+  },
+  "meiji3_new_a_gate_factorial": {
+    "old_gate": 164,
+    "new_gate": 132,
+    "cases": [
+      {
+        "key": "meiji_3cam/video_000/clip_000/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_000/cam1",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_000/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_001/cam0",
+        "old_gate": false,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_001/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_001/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_002/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_002/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_002/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_003/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_003/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_003/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_004/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_004/cam1",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_004/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_005/cam0",
+        "old_gate": false,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_005/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_005/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_006/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_006/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_006/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_007/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_007/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_007/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_008/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_008/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_008/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_009/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_009/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_009/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_010/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_010/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_010/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_011/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_011/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_000/clip_011/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_000/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_000/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_000/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_001/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_001/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_001/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_002/cam0",
+        "old_gate": false,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_002/cam1",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_002/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_003/cam0",
+        "old_gate": false,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_003/cam1",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_003/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_004/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_004/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_004/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_005/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_005/cam1",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_005/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_006/cam0",
+        "old_gate": false,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_006/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_006/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_007/cam0",
+        "old_gate": false,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_007/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_007/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_008/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_008/cam1",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_008/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_009/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_009/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_009/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_010/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_010/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_010/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_011/cam0",
+        "old_gate": false,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_011/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_011/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_012/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_012/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_012/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_013/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_013/cam1",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_013/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_014/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_014/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_014/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_015/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_015/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_015/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_016/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_016/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_016/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_017/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_017/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_017/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_018/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_018/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_018/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_019/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_019/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_019/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_020/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_020/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_001/clip_020/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_000/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_000/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_000/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_001/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_001/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_001/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_002/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_002/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_002/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_003/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_003/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_003/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_004/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_004/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_004/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_005/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_005/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_005/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_006/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_006/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_006/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_007/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_007/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_007/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_008/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_008/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_008/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_009/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_009/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_009/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_010/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_010/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_010/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_011/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_011/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_011/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_012/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_012/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_012/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_013/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_013/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_013/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_014/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_014/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_014/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_015/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_015/cam1",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_015/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_016/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_016/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_016/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_017/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_017/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_017/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_018/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_018/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_018/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_019/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_019/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_019/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_020/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_020/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_020/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_021/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_021/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_021/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_022/cam0",
+        "old_gate": true,
+        "new_gate": false
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_022/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_022/cam2",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_023/cam0",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_023/cam1",
+        "old_gate": true,
+        "new_gate": true
+      },
+      {
+        "key": "meiji_3cam/video_002/clip_023/cam2",
+        "old_gate": true,
+        "new_gate": true
+      }
+    ]
+  },
+  "meiji4": {
+    "cam0": {
+      "false_accepts": [
+        {
+          "key": "meiji_4cam/video_000/clip_023/cam0",
+          "region_index": 2,
+          "mean_error_px": 398.77138633373306,
+          "max_error_px": 831.2817754488515
+        }
+      ],
+      "correct_rejected_reasons": {
+        "uncertain_paint_extrapolation": 7,
+        "unstable_paint_line_influence": 46,
+        "paint_residual_too_large": 4,
+        "unconfirmed_essential_paint": 3,
+        "confirmed_paint_line_shifted": 10
+      },
+      "confirmed_lines_lost": {},
+      "confirmed_lines_shifted": {
+        "left_doubles": 7,
+        "left_singles": 4,
+        "centre_service": 1,
+        "right_doubles": 2,
+        "right_singles": 1
+      }
+    },
+    "cam1": {
+      "false_accepts": [
+        {
+          "key": "meiji_4cam/video_000/clip_004/cam1",
+          "region_index": 0,
+          "mean_error_px": 16.060290856658675,
+          "max_error_px": 28.910413588081962
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_006/cam1",
+          "region_index": 1,
+          "mean_error_px": 16.06065598342473,
+          "max_error_px": 28.354390160274757
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_010/cam1",
+          "region_index": 0,
+          "mean_error_px": 15.839483231969584,
+          "max_error_px": 28.211205534678093
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_013/cam1",
+          "region_index": 0,
+          "mean_error_px": 16.00395305737664,
+          "max_error_px": 29.026198544018257
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_014/cam1",
+          "region_index": 2,
+          "mean_error_px": 15.759244702768289,
+          "max_error_px": 28.446057606513588
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_015/cam1",
+          "region_index": 0,
+          "mean_error_px": 15.877705075320007,
+          "max_error_px": 29.595140750820534
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_016/cam1",
+          "region_index": 4,
+          "mean_error_px": 15.29458213538516,
+          "max_error_px": 28.296503521486606
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_018/cam1",
+          "region_index": 0,
+          "mean_error_px": 15.83276883925391,
+          "max_error_px": 30.147848986873115
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_019/cam1",
+          "region_index": 0,
+          "mean_error_px": 14.929861144570765,
+          "max_error_px": 28.60091885744992
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_021/cam1",
+          "region_index": 7,
+          "mean_error_px": 15.532524658090054,
+          "max_error_px": 31.246987450866737
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_022/cam1",
+          "region_index": 4,
+          "mean_error_px": 15.255288419849746,
+          "max_error_px": 30.831018666729587
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_025/cam1",
+          "region_index": 1,
+          "mean_error_px": 14.966550655638473,
+          "max_error_px": 30.236483659482825
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_036/cam1",
+          "region_index": 2,
+          "mean_error_px": 16.091498465436324,
+          "max_error_px": 33.023212306783705
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_037/cam1",
+          "region_index": 0,
+          "mean_error_px": 15.851519776447827,
+          "max_error_px": 32.152593152973544
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_038/cam1",
+          "region_index": 1,
+          "mean_error_px": 16.18658990687627,
+          "max_error_px": 33.4198771160105
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_039/cam1",
+          "region_index": 0,
+          "mean_error_px": 15.616410070130097,
+          "max_error_px": 32.0839107044152
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_040/cam1",
+          "region_index": 10,
+          "mean_error_px": 15.972135442441944,
+          "max_error_px": 32.92643019247234
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_041/cam1",
+          "region_index": 4,
+          "mean_error_px": 16.07945856856149,
+          "max_error_px": 32.91559811404416
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_042/cam1",
+          "region_index": 4,
+          "mean_error_px": 15.38877854041063,
+          "max_error_px": 31.470532968739317
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_043/cam1",
+          "region_index": 1,
+          "mean_error_px": 15.860081878263395,
+          "max_error_px": 32.628530421146394
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_044/cam1",
+          "region_index": 4,
+          "mean_error_px": 15.933183869867927,
+          "max_error_px": 32.58657082821555
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_045/cam1",
+          "region_index": 4,
+          "mean_error_px": 16.03446543614492,
+          "max_error_px": 32.6146642524835
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_046/cam1",
+          "region_index": 0,
+          "mean_error_px": 15.562838201130404,
+          "max_error_px": 31.61235496045655
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_047/cam1",
+          "region_index": 2,
+          "mean_error_px": 15.89543499874679,
+          "max_error_px": 32.26236231118686
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_048/cam1",
+          "region_index": 2,
+          "mean_error_px": 15.817654638288912,
+          "max_error_px": 32.356951115208375
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_049/cam1",
+          "region_index": 7,
+          "mean_error_px": 15.924020307055335,
+          "max_error_px": 32.45258871259345
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_051/cam1",
+          "region_index": 7,
+          "mean_error_px": 16.14169697215875,
+          "max_error_px": 32.45469730611733
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_052/cam1",
+          "region_index": 4,
+          "mean_error_px": 15.822592836190138,
+          "max_error_px": 32.13722947232654
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_055/cam1",
+          "region_index": 1,
+          "mean_error_px": 16.02449024217582,
+          "max_error_px": 32.43903472104793
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_057/cam1",
+          "region_index": 1,
+          "mean_error_px": 16.028060919845036,
+          "max_error_px": 32.52221294462728
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_059/cam1",
+          "region_index": 7,
+          "mean_error_px": 16.204049280148947,
+          "max_error_px": 33.122835434238155
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_065/cam1",
+          "region_index": 0,
+          "mean_error_px": 15.913065779141805,
+          "max_error_px": 32.151517721232096
+        },
+        {
+          "key": "meiji_4cam/video_000/clip_068/cam1",
+          "region_index": 7,
+          "mean_error_px": 16.18752175851507,
+          "max_error_px": 32.95577076938397
+        }
+      ],
+      "correct_rejected_reasons": {
+        "unconfirmed_essential_paint": 1
+      },
+      "confirmed_lines_lost": {},
+      "confirmed_lines_shifted": {}
+    },
+    "cam2": {
+      "false_accepts": [],
+      "correct_rejected_reasons": {
+        "paint_residual_too_large": 8,
+        "unstable_paint_line_influence": 19,
+        "uncertain_paint_extrapolation": 11,
+        "lost_initial_paint_lines": 5,
+        "confirmed_paint_line_shifted": 2,
+        "ambiguous_paint_correspondence": 2,
+        "unconfirmed_essential_paint": 8
+      },
+      "confirmed_lines_lost": {
+        "left_doubles": 5
+      },
+      "confirmed_lines_shifted": {
+        "left_doubles": 2
+      }
+    },
+    "cam3": {
+      "false_accepts": [],
+      "correct_rejected_reasons": {
+        "lost_initial_paint_lines": 2,
+        "unconfirmed_essential_paint": 4,
+        "uncertain_paint_extrapolation": 34,
+        "confirmed_paint_line_shifted": 3,
+        "paint_residual_too_large": 3,
+        "ambiguous_paint_correspondence": 5,
+        "unstable_paint_line_influence": 12
+      },
+      "confirmed_lines_lost": {
+        "far_baseline": 1,
+        "near_service": 1
+      },
+      "confirmed_lines_shifted": {
+        "right_doubles": 1,
+        "right_singles": 2,
+        "near_service": 1
+      }
+    }
+  }
+}

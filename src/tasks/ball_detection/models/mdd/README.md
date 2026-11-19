@@ -6,7 +6,7 @@
 |---|---|
 | `token_encoder.py` | Conv2d / Average / Pixel Unshuffle / Haarの1/16圧縮と、局所2D/3D処理による1/64 token化 |
 | `cnn_encoder.py`、`blocks.py` | 深い残差/ConvNeXt V2系/FasterNet系CNN。4解像度の特徴を返し、dense3d/factorizedの時間処理を選択 |
-| `x3d_csn.py` | expand2のpointwise→depthwise 3D→pointwise残差blockと、frame-localな空間downsample |
+| `x3d_csn.py` | pointwise expand2→depthwise 3D→project残差block、frame-local GroupNormと空間downsample |
 | `pose.py` | DeepSets / Attention Pooling / Hierarchical Transformer / Skeleton GNNによるframeごとのpose token |
 | `attention.py` | 同時刻のCross-Attentionと実時間RoPEのSelf-Attention。pose融合とquery-onlyの違いは明示する |
 | `detectors.py` | MDDPoseDetector、MDDQueryDetector、MDDDPTDetector、DeepMDDQueryDetector |
@@ -156,7 +156,8 @@ DPT・heatmap head・presence headは持たない。`model_io/mdd_temporal.py`�
 
 `encoder_variant: x3d_csn` と `temporal_mixing: depthwise3d` を組にして指定する。
 `build_mdd_encoder` がDPTとqueryのCNN構築箇所で選択し、従来のCNNの登録名・計算順は維持する。
-`MDDHeatmapConfig`でも選択でき、DPT decoderは同じ4特徴を使う。
+`MDDHeatmapConfig`でも選択でき、DPT decoderは同じ4特徴を使う。sceneで採用する学習済みT32はDPT幅128。
+sceneへの接続とcheckpointの空間metadataは [pipeline README](../../../../tennis_scene/pipeline/README.md)を参照。
 このencoderの標準幅は16/32/64/128/256/512。最初は3×3の空間stride2 stemで、
 その後の5 stageはdepthwise空間3×3 stride2→pointwiseで幅を変え、
 残差blockを1/2/3/3/2個ずつ置く（`residual_blocks: [0,1,2,3,3,2]`）。

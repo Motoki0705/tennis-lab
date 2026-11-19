@@ -93,7 +93,10 @@ GVHMRパラメータからCPUでSMPL meshを復元し、本番と同じ`trace_pl
 
 `StoreReader`で`camera_alignment`・`player_triangulation`・`gvhmr`・`body_placement`・
 `person_poses`・`person_identities`（v3のみ）を読み取り専用で読み、checksum・schema/version・
-依存の整合を検査します。camera順と時間軸を本番の`input_assembly`に合わせるため、
+依存の整合を検査します。
+`gvhmr`の`body_parameters`は履歴のv1と保存HMR2特徴に依存するv2を明示的に受け付け、
+元の版と依存をprovenanceに保持します。配置bundleと候補rankingは同じ読込を使います。
+camera順と時間軸を本番の`input_assembly`に合わせるため、
 `player_triangulation`の依存である`court_calibration`も読み取り専用で参照します。SMPL資産は`body_placement`の`identity.settings.assets`のpathと
 SHA-256を検証して束縛し、自動探索しません。配置configも保存済みの
 `identity.settings.config`を使い、source pixel scaleを本番と同じく適用します。

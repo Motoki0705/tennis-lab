@@ -1,0 +1,72 @@
+{
+  "artifacts": {
+    "commits": [
+      "7cf7a019c0350bd601240625ddccddf9ed17af39",
+      "85179665f3d08de0016b51745934bd22b5b9d73e"
+    ],
+    "prs": [
+      2026
+    ]
+  },
+  "captured_at": "2026-11-14T10:44:55.537196+00:00",
+  "decision": null,
+  "delegation_key": "d-b1b1b4660c2740d8ba3f4ab900c426a6",
+  "files": {
+    "final.md": "8a8c4882d71e998ac04c7b85b77eab28135e53c05cc44bf2f6ec9d72840c756f",
+    "instruction.md": "9c4ad5208c29a1f354e331ce99bcad4ba96c7732c8431e6755dee83166365964"
+  },
+  "finished_at": "2026-11-14T10:55:08.555045+00:00",
+  "instruction": {
+    "additional_instructions": [],
+    "kind": "task"
+  },
+  "issue": 2021,
+  "parent": 2011,
+  "repo": "Motoki0705/tennis-lab",
+  "runtime": {
+    "result": "completed",
+    "turn_end_reason": "completed"
+  },
+  "sanitization": {
+    "additional": 0,
+    "final": 0,
+    "instruction": 0,
+    "version": 1
+  },
+  "schema_version": 1,
+  "sources": {
+    "issue": {
+      "body_sha256": "8da156cc1821ffef3ab5045ce9515f2708559bf15aeb27bee46caf66a5f69edf",
+      "url": "https://github.com/Motoki0705/tennis-lab/issues/2021"
+    },
+    "standard_instruction": {
+      "blob": "8d6d4bcc4bbad9c55b3bc368ddcf5b5574580270",
+      "commit": "15c5ac34be4a6b3e92061057eb220f792b39112e",
+      "path": ".agents/ops/parent/worker_prompt.md"
+    }
+  },
+  "started_at": "2026-11-14T10:46:24.817511+00:00",
+  "turn": {
+    "kind": "resume",
+    "phase": "implementing",
+    "previous_sequence": 1,
+    "sequence": 2
+  },
+  "worker": {
+    "agent": "codex",
+    "effective": {
+      "effort": {
+        "status": "observed",
+        "value": "max"
+      },
+      "model": {
+        "status": "observed",
+        "value": "gpt-6.1-sol"
+      }
+    },
+    "selected": {
+      "effort": "max",
+      "model": "gpt-6.1-sol"
+    }
+  }
+}

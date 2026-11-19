@@ -1,0 +1,63 @@
+{
+  "schema": "court_paired_regression_v1",
+  "samples": 886,
+  "no_visible_gt": 0,
+  "units": "original source pixels; same visible GT IDs in every condition",
+  "raw_head_comparison": "identical frozen KP/LINE inputs; weights and decoding unchanged; no new dense-head accuracy claim",
+  "visible_gt_points": 7941,
+  "raw_missing_visible_gt_points": 0,
+  "solver_success": {
+    "legacy": 573,
+    "current": 558
+  },
+  "lost_geometry": 45,
+  "gained_geometry": 30,
+  "paired_cases": 528,
+  "paired_frame_mean_delta_px": -0.2511973595001171,
+  "paired_worse_by_over_1px": 37,
+  "paired_better_by_over_1px": 38,
+  "errors": {
+    "raw": {
+      "count": 7941,
+      "mean_px": 5.836656649619358,
+      "median_px": 3.3769228501864963,
+      "p90_px": 9.935549089341608,
+      "p95_px": 14.739912160077244
+    },
+    "legacy": {
+      "count": 5708,
+      "mean_px": 15.617839715211897,
+      "median_px": 3.09924295986283,
+      "p90_px": 23.346779052273515,
+      "p95_px": 71.99980059184473
+    },
+    "current": {
+      "count": 5610,
+      "mean_px": 13.998406241825391,
+      "median_px": 2.9683488424710607,
+      "p90_px": 19.699746679501057,
+      "p95_px": 59.59435498009549
+    },
+    "paired_legacy": {
+      "count": 5333,
+      "mean_px": 14.204871253079803,
+      "median_px": 2.9719178661560353,
+      "p90_px": 19.82449282649268,
+      "p95_px": 61.4388775198739
+    },
+    "paired_current": {
+      "count": 5333,
+      "mean_px": 13.943838821124068,
+      "median_px": 2.951119855364555,
+      "p90_px": 19.383496509560846,
+      "p95_px": 58.664623050170846
+    }
+  },
+  "projected_points_change": {
+    "count": 7392,
+    "mean_px": 32.00563903119105,
+    "median_px": 0.1092241473119305,
+    "p90_px": 12.389342571275002,
+    "p95_px": 55.36398615802846
+  }
+}

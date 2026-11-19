@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "6b20e79f7b51495d9c44d4ebeda6e41c",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=result.json; content_sha256=861aaaf5972625dbce11b096b596377ce0a92b5a756e8a54fad382c7c4dc5bb1; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "ea187b76ba204859ba0a9b6ad3df0fce",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.result.json: status=succeeded; verdict=approve; exception=True; previous_review_keys=['c4e0fb9c6a234d4593b80ad478cbacce', '059dd8b7c166423ebbaeb9ed0d21e368', 'bd20ca481d324835a33defec1e1cb073', 'a33f33a5f1e6427e84e60dd59913b8bf', 'ac8d4fea046946d4b5263e052f069444']; run [private identifier] として固定HEAD c9d169cをレビューしました。pr-1984-1は解消済みで、blocker／majorの指摘はありません。",
+      "verifies": []
+    },
+    "id": "eeb5ea5373204931a208ffcafccc6e7e",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "f826c5fb286b4f618ea81bffac9ff944",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "fc97ee2b97b44c2f8b711d9966919d3c"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T19:32:58.589561+00:00"
+      },
+      "recorded_at": "2026-11-14T19:32:58.589575+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 1,
+    "version": 2
+  }
+}

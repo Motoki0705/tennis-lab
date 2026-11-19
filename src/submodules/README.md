@@ -15,7 +15,7 @@ DINO person検出は `third_party/DINO` の公式git submoduleを型付きwrappe
 src/submodules/
 ├── models/            # 型付きの推論モデル（下流はここだけ見ればよい）
 │   ├── _base/         # BaseInferenceModel: load/unload/predict の共通契約
-│   ├── dino/          # DinoPersonDetector: frame -> person boxes
+│   ├── dino/          # DinoPersonDetector: frame(s) -> person boxes
 │   ├── tracker/       # 共通のtrack契約・bbox補間・足元polygonフィルタ
 │   ├── vitpose/       # ViTPosePose2D: video + boxes -> COCO-17 keypoints
 │   ├── hmr2/          # Hmr2FeatureExtractor: video + boxes -> (F, 1024) features
@@ -63,6 +63,27 @@ try:
 finally:
     detector.unload()
 ```
+
+複数画像には `detector.predict_batch(requests, *, batch_size=1)` を使います。
+`requests` は `PersonDetectionRequest` の列、戻り値は同じ順序・同じ件数の
+`list[PersonDetectionResult]` です。前処理後の `(3, H, W)` が一致する連続した入力だけを、
+最大 `batch_size` 件ずつstackします。形状が変わる箇所と上限で分割し、最後の端数も実行します。
+形状を揃えるpaddingやresize設定の変更、入力の並べ替えは行いません。
+元画像サイズが異なっていても前処理後の形状が同じなら同じbatchに入り、boxは各画像の元の
+ピクセル座標へ戻ります。confidenceの `>=` 判定とscore降順のrowは単一画像と同じです。
+`merge_duplicate_person_boxes` は引き続きpipeline側で画像ごとに適用します。
+
+```python
+requests = [PersonDetectionRequest(frame) for frame in frames_bgr]
+results = detector.predict_batch(requests, batch_size=2)
+single_image_batches = detector.predict_batch(requests, batch_size=1)
+```
+
+`batch_size` は正の整数で、既定値の1は1画像ずつのforwardを明示します。
+`predict(request)` も同じ前処理・復号を使います。空の入力列はモデルをloadせず空のlistを返し、
+無効なbatch上限・画像はエラーになります。前処理済み画像は最大1batch分（形状比較用の次の1画像を除く）
+だけ保持します。実GPUで確認したbatch値・数値差・速度・VRAMは
+[受入記録](../../knowledge/nodes/tennis_scene/000042-run-dino-batch-api-20261116.md)を参照してください。
 
 ## デモ
 

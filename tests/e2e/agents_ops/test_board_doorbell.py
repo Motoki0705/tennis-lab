@@ -172,12 +172,9 @@ class Bells:
         return env, rollout, calls
 
     def post(self, parent: int = 3) -> dict[str, Any]:
-        return cast(
-            dict[str, Any],
-            self.w.post(
-                to=[self.w.assignments[parent].name],
-                notifiers=self.modules.notifiers.configured(self.w.env()),
-            ),
+        return self.w.post(
+            to=[self.w.assignments[parent].name],
+            notifiers=self.modules.notifiers.configured(self.w.env()),
         )
 
     def dispatch(self, post: dict[str, Any]) -> list[dict[str, Any]]:
@@ -526,8 +523,11 @@ def test_codex_fake_runtime_and_durable_no_duplicate(
         "o/r",
         1,
         "question",
+        "codex:" + THREAD,
+        1,
     )
-    b.modules.notifiers.codex(b.w.env(), notification)
+    with b.w.board.delivery.ownership_fence(b.w.env()):
+        b.modules.notifiers.codex(b.w.env(), notification)
     assert len(calls.read_text().splitlines()) == 1
     assert alternative == []
 
@@ -696,6 +696,7 @@ def confirm_parent_display(bells: Bells) -> dict[str, Any]:
     pane["display_agent"] = "Parent label"
     pane["tokens"].update(
         tl_parent="#1",
+        tl_issue="#1",
         tl_topic="topic",
         tl_engine="claude",
         tl_owner=owner_token("claude:board-owner-1"),

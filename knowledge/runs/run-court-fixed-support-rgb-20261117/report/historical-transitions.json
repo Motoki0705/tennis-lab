@@ -1,0 +1,982 @@
+{
+  "tennis_court_detector_val": {
+    "historical_legacy_success": 2211,
+    "historical_previous_success": 2097,
+    "historical_gains": 0,
+    "historical_gains_retained": 0,
+    "historical_losses": 114,
+    "historical_losses_recovered": 114,
+    "paired_lost_statuses": {},
+    "paired_lost_solver_stops": {},
+    "gains": [],
+    "losses": [
+      {
+        "key": "tennis_court_detector_val/-s7X8RLJNqA_3550",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/icMukcd1X9E_2400",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/3iQCaCGROsE_500",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Ut3N6Bs9tKw_750",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Sn10AdKSCyw_1450",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/KSmhAp3k6_M_1500",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/QQHw4cLzcCw_250",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/n8k4CxVK3Xc_50",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/JNKp7sCdQlY_450",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Yo_E_azZOoc_100",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/q2_62cttzKE_1000",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/lclCAD9p_fs_150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/4brSVtMMWi4_400",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/8McGWhhnI3g_450",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/FNpUV1DFUxU_1450",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/x96EAthAIqY_1550",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/NeHvxtGxj7s_100",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/kWbQS_QAoW4_200",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/7hjEYRnDFVY_2350",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/FIemQkUaM7A_1900",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/_22eJvtP_lc_1900",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/cCPynJo8I6c_250",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/F38t1BJorwA_1400",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/n8k4CxVK3Xc_100",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/4brSVtMMWi4_950",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/TcnJe6ZP_tI_1850",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/UJHVcyTNo-k_850",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/L_yiaD74q_o_100",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/8McGWhhnI3g_350",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/M0IgVgbRhD8_2200",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/upIcj3IJ70o_750",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/tL1T1hukEHU_3800",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/wBxPeCg_o6Y_3850",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/ZTpdH6MzGC8_1500",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/ZZ5tWtceqYc_2150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/j8cNJ91iy_M_800",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/xW_ft7CuW2M_2000",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/O6xaI1QLRMI_2400",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/WwzKVi2C_kk_3250",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/X3YkUB-L9nk_1600",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/4S2Oqdemfj0_450",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/rqxU1mUEw9Y_2200",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/unhchQqmD8E_1400",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/_22eJvtP_lc_2000",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/lclCAD9p_fs_800",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/8iUbr7o5v2w_250",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/vdLe8FL8t-g_2000",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/bMMueLic82A_1900",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/h1JJqKAFthw_1150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Ch0eZ7LgseY_350",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/PIpT0JzKjRA_300",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/x9vDVPmlXZ8_1550",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/lclCAD9p_fs_1600",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/SzlcdL2kfBM_2650",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/7LLSADF9t48_2750",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/XGsWUnmQtII_950",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/S4KCoPGHRt0_900",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/q4w8x7AJU_A_150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Yo_E_azZOoc_150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Kii5XO_j5Wc_3750",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/l3Eu9pokSQs_3350",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/irRSmbQVqNU_2700",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/8McGWhhnI3g_750",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/wBxPeCg_o6Y_3200",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/NDuyShHlVTI_1150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Cbge5ffGZyk_2050",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/ud1dfBJ5EcA_250",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/9WXtuyg9xb0_150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/ifUIReZTOmI_1050",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/SzlcdL2kfBM_4100",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/DjxPGhmCrpY_500",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/6HYiLxjdZJU_100",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/24R8-zWwVUs_1000",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/gA-iHSI09Xs_2400",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/SzlcdL2kfBM_2450",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/8iUbr7o5v2w_400",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/UuYiD9JWAgI_1500",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/3uGNCyzeUGk_2850",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/ifUIReZTOmI_1000",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/CzMrh40Wit8_1150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/M0IgVgbRhD8_1950",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/lclCAD9p_fs_2050",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/CWYyHLCD8fY_2350",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/UpEohnw8-Sk_1250",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/u7AaTefG19M_1200",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/2eYLPE3_kxI_2550",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/El_4R86SlEI_1850",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/hAwOXW99Kbk_300",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/2tMw3eEH1-w_2650",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/WPlUWwAgsSk_1700",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Ir3flaThESo_1150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/2tMw3eEH1-w_2900",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/ZtlEGsl9Odo_1600",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/_22eJvtP_lc_1650",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/OcvlfHjBdwY_300",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/kWbQS_QAoW4_1200",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/rnr1EJDd6PA_350",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/r2SooYPNbGg_1050",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/lclCAD9p_fs_1850",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/R0qg6mw_jeQ_1350",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/crmaT4qYXao_2350",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/BTrRo-myrc8_1150",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/9Tpef3_abKU_50",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/L_nXP3v_DA8_600",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/0Ke1MYdxsgg_1300",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/KnCTZtAvp78_900",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/UZUF1qO10F4_3650",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/Kii5XO_j5Wc_2650",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/6_yJNU_WYag_950",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/r2SooYPNbGg_100",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/bcvYuzo_lt8_1700",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/2X6W0XXwpjU_450",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/f5E0DoReArA_2250",
+        "recovered": true,
+        "new_status": "ok"
+      },
+      {
+        "key": "tennis_court_detector_val/rBHsQe0Nnyo_900",
+        "recovered": true,
+        "new_status": "ok"
+      }
+    ]
+  },
+  "synthetic_court_test": {
+    "historical_legacy_success": 573,
+    "historical_previous_success": 558,
+    "historical_gains": 30,
+    "historical_gains_retained": 14,
+    "historical_losses": 45,
+    "historical_losses_recovered": 30,
+    "paired_lost_statuses": {
+      "joint_optimization_failed": 32,
+      "insufficient_line_support": 8,
+      "ambiguous_candidates": 18
+    },
+    "paired_lost_solver_stops": {
+      "fixed_support_inconsistent": 226,
+      "converged": 135,
+      "optimizer_failed": 1
+    },
+    "gains": [
+      {
+        "key": "synthetic_court_test/B00_court-sample-001292",
+        "retained": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001294",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001295",
+        "retained": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001299",
+        "retained": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001304",
+        "retained": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001341",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001344",
+        "retained": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001348",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001373",
+        "retained": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001481",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001535",
+        "retained": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-000736",
+        "retained": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002047",
+        "retained": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002083",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001018",
+        "retained": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001029",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001057",
+        "retained": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001059",
+        "retained": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001199",
+        "retained": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001205",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001207",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001802",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001803",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001830",
+        "retained": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001868",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001869",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001871",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001141",
+        "retained": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001906",
+        "retained": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001907",
+        "retained": false,
+        "new_status": "insufficient_line_support"
+      }
+    ],
+    "losses": [
+      {
+        "key": "synthetic_court_test/B00_court-sample-000913",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-000927",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001274",
+        "recovered": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001276",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001305",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001314",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001327",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001335",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001339",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001347",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001356",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001357",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001358",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001487",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001521",
+        "recovered": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001528",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001575",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001580",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001582",
+        "recovered": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B00_court-sample-001583",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002032",
+        "recovered": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002039",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002060",
+        "recovered": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002065",
+        "recovered": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B01_court-sample-002070",
+        "recovered": false,
+        "new_status": "insufficient_line_support"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-000999",
+        "recovered": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001014",
+        "recovered": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001034",
+        "recovered": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001063",
+        "recovered": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001174",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001175",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001176",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001177",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001203",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001208",
+        "recovered": false,
+        "new_status": "insufficient_line_support"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001211",
+        "recovered": false,
+        "new_status": "ambiguous_candidates"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001814",
+        "recovered": false,
+        "new_status": "insufficient_line_support"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001855",
+        "recovered": false,
+        "new_status": "joint_optimization_failed"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001856",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001857",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B02_court-sample-001867",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001127",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001174",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001881",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      },
+      {
+        "key": "synthetic_court_test/B03_court-sample-001889",
+        "recovered": true,
+        "new_status": "quality_rejected"
+      }
+    ]
+  }
+}

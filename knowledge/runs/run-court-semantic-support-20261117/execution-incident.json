@@ -1,0 +1,15 @@
+{
+  "type": "unintended_CUDA_unit_test",
+  "test": "tests/unit/tasks/court_detection/geometry/test_pose.py::test_cuda_tf32_does_not_reject_recovered_bfloat16_rotation",
+  "calls": 1,
+  "measured_call_seconds": 1.67,
+  "training_queue_used": false,
+  "finished": true,
+  "source_log": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/related-tests.log",
+  "cause": "First related test command did not disable CUDA. This violated the CPU-only instruction.",
+  "corrective_action": "Subsequent full verification uses CUDA_VISIBLE_DEVICES empty; CUDA test skipped.",
+  "new_Court_forward": false,
+  "new_raw_acquisition": false,
+  "acceptance_evaluation_GPU_used": false,
+  "infra_touched": false
+}

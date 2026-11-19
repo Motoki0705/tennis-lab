@@ -2,7 +2,7 @@
 
 [English](README.md) · [日本語](README.ja.md)
 
-本包提供结果、父级判断、行动和更正的共享版本1契约，保存私有快照并生成安全的公开单元。
+本包提供结果、父级判断、行动和更正的共享v1契约及v2类型化结果观察，保存私有快照并生成安全的公开单元。
 捕获适配器观察现有parent、runner和review操作，并提供按父issue批量Git发布和确定性分层README。
 记录本身不授予执行权限，也不判断成果是否通过验收。
 
@@ -20,6 +20,9 @@
 | [projection.py](projection.py) | `render()`、`validate_public()`；公开单元 `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`；保留所有原始记录引用的显示分组 |
 | [navigation.py](navigation.py) | `generate()`、`validate_links()`；确定性分层生成与链接检查 |
+| [turns.py](turns.py)、[trace_schema.py](trace_schema.py)、[trace_presentation.py](trace_presentation.py) | 公开轮次清单、严格观察契约、有上限的轮次与结束显示 |
+| [trace_capture.py](trace_capture.py)、[historical.py](historical.py) | 私有事实适配器与历史公开来源的限定显式导入 |
+| [presentation.py](presentation.py) | 将正文、旧summary中的结构值、变化和辅助观察转换为安全且有上限的显示字段 |
 | [publication_policy.py](publication_policy.py) | 独立的仅追加例外、生成字节完全一致和PR身份检查 |
 | [publication.py](publication.py)、[publication_state.py](publication_state.py) | 显式发布、私有批次和响应丢失后的核对 |
 | [capture.py](capture.py) | 私有outbox、行动快照、状态和仅捕获重放 |
@@ -85,7 +88,7 @@
 
 结果的evidence注明 `capture_source`、artifact和观察快照的fingerprint。
 私有证据仍明确标记为不可公开；fingerprint不等于全文档案。
-已公开的父级评论、review和worker日志还保留可用的固定公开证据。
+父级证据Issue（包括旧父级评论）、已公开的review和worker日志还保留可用的固定公开证据。
 outbox只保存私有投递输入，不是发布单元。
 父级响应摘要只投影可公开字段，不整份复制assignment或任意嵌套状态。
 私有来源ID在捕获前注册；完整响应与错误详情保留为私有证据。
@@ -98,12 +101,12 @@ outbox只保存私有投递输入，不是发布单元。
 | `record-worker-run` / `record-worker-ended` | 显式登记已有runner证据 / 父级显式确认终止 |
 | `record-result` | 已保存的验证与PR/证据字段；显式验证引用已捕获结果。组合命令 `review-request --prs` 使用相同方法 |
 | `note` / `decide-worker-plan` | 原始评论引用 / 保存的计划回答结果。不会自动虚构通用判断，`decide` 可引用原始理由 |
+| `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | 候选观察和明确的拆分判断引用原始评论，再连接提案发布、会话决策和批量提取的请求/结果。仅捕获原父级仍负责期间的操作 |
+| `agree` / `basis-record` / `create-child` / `workflow-report` | 现有依据、创建和验收结果。后继父级的agree通过来源评论记录观察到的人类批准，不将批准视为已执行 |
 | `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI结果和原始评论；dispatcher取消、runner停止/恢复是独立事实 |
-| `review-prepare` / `review-request` / `review-state` | 固定请求及显式指示/状态结果；只有显式接收/验证才记录父级确认 |
-| review `run` | 既有execution、output、result和发布状态，包括runtime失败时的有效输出、exception及先前review公开键。发布不改变原result；读取已消费run不是新AI评审 |
-| review `recover` / `resume-publication` / `complete-evidence` / `resolve` | 既有保存证据恢复、仅发布重试和父级显式验证。保留前一结果，不算新AI启动 |
+| `review-request` / `merge-continue` | 父级明确请求与继续指令 |
+| 自动流程 | 整体审查、runtime/获取证据与CI/修复/merge通知；observer为machine |
 | review获取tool | 包括CI获取失败的既有receipt。同一review绑定、tool和参数的重试为 `retry_fetch`；只确认查询指示不变，不猜测网络等条件 |
-| merge gate `merge` | 各PR判定、保存的merge尝试/结果及整体结果。区分dry-run合格和实际合并 |
 | worker日志接收/发布、`worker-log-status` / `publish-worker-log` | 既有journal状态、final/发布失败和main保存确认。仅发布重试为 `retry_publication`，引用前一结果 |
 
 支持的请求接受 `--decision-id` 和可选 `--plan-id`。只有一个匹配plan时自动选择；
@@ -119,6 +122,12 @@ outbox只保存私有投递输入，不是发布单元。
 没有父级绑定的runner，以及父级namespace确定前的参数解析、identity和仓库解析失败。
 不重建过去对话或任意历史run。不更改review修复确认、恢复和模型选择策略；
 捕获不会添加定期轮询、AI重启或Git发布。
+
+## 审查因果链接
+
+使用 `decide` 连接自动流程的观察结果与父级下一步操作，并将判断ID传给 `review-request` 或 `merge-continue`。可选的重试与比较metadata保留明确的因果关系。
+CLI的审查、CI、修复、merge及合并后确认记录为 `machine`，不视为父级验证。`merge-continue` 保存父级指令，只有 `--rereview` 才要求追加整体审查。
+状态、恢复与模型选择遵循[自动流程契约](../review/README.md)。capture不会自行启动任务或发布Git。[私有比较](../review/evaluation/README.zh-CN.md)保留独立的历史资料。
 
 ## 显式记录父级判断
 
@@ -144,10 +153,16 @@ conditions/expected_result字段；CLI分配ID。初始判断须在 `basis` 提�
 | `worker_plan` | `child` 和计划回答命令的 `decision_id` |
 | `model_reason` | `child`；当前保存的模型选择理由 |
 | `review_reason` | `run_id`；固定review请求的理由 |
+| `improvement` | `key` 和候选 `event_id`；原父级正本评论中的拆分判断 |
 
+`note` 和 `improvement` 通过[父级共用reader](../parent/README.md#責務と状態の正本)验证，并引用实际存储位置的评论URL。
 判断保留引用/fingerprint，不再次复制公开理由正文。
 父级actor键是私有session对应的随机公开键；交接不会改变旧判断的作者。
 把返回的判断ID传给下一条支持的CLI（包括review/merge），后续结果通过行动与之连接。
+
+`improvement-decide` 在候选正本中记录人类判断，不扩大已结束原父级journal的发布权限。
+后继父级通过agree导入批准时捕获观察结果。跨父级引用使用来源评论URL，不直接连接其他graph的记录ID。
+操作与人类确认的信任边界见 [结束时改进](../../skills/parent-session/references/finish.md#次回改善)。
 
 ## 捕获失败与恢复
 
@@ -230,11 +245,51 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N p
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --retry
 ```
 
-没有定时器、轮询或每次捕获自动发布。入口使用已配置的parent state并检查负责session，
-issue关闭后的历史发布也检查同一身份，不授予新的实现权限。
+没有定时器、轮询或每次捕获自动发布。普通入口使用已配置的parent state并检查原负责session，
+原负责人也可在担当结束后继续发布，不授予新的实现权限。
 通过 `Journal.prepare()` 准备尚未转换的捕获，将 `Journal.public_payloads()` 中所有ready且
 未发布的记录固定到该父issue的一个批次。blocked仍在状态中显示，独立安全的记录可以发布。
 先核对未完成批次，再创建下一批；批次进行中新到达的捕获，在该批merge后的下一次显式调用中处理。
+
+release、handoff和自律父级结束时，也会在worker日志与结束结果捕获后调用发布。
+固定本次捕获边界，最多处理现有批次和一个剩余批次。发布未完成不会撤销负责状态变更，
+剩余工作、负责方和恢复命令写入[结束checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint)。
+mergeable为null时，完成全部检查后仍发送固定HEAD的merge请求；false和HTTP拒绝保留为失败。
+status和dry-run不创建捕获或锁。
+
+当前负责的父级可以显式发布另一个无人负责父级的判断记录：
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT --dry-run
+# 检查预览后执行；修复blocked原因后可添加 --retry：
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT
+```
+
+预览和执行均要求调用session以 **active** 状态负责回收父级。目标必须是另一个父级，且registry中
+没有记录，或状态为 `ended`/`released`；拒绝 `active`/`handoff_pending`。不查询目标issue的open/closed
+状态，不执行register、handoff或registry更新。registry损坏或不可读时拒绝。固定开始时的操作session、
+generation与目标担当快照，在prepare、commit、push、PR创建和merge前重新核对。担当变化返回
+`log_owner_mismatch` 并保留已保存进度，不把源journal改为blocked；新的合格发布者可以继续。
+
+使用目标既有的 `parent-SOURCE_PARENT` journal、批次与retry机制。公开的 `publish` 行动记录显式请求
+和回收父级，在目标父级README链接的活动README显示发布负责人。请求不代表受理或merge成功。
+私有来历保留session与generation，每条发布事实通过 `publication_actor` 引用该请求。retry复用同一请求。
+若有固定的旧批次，先完成旧批次，再处理包含请求和剩余记录的一个批次；最多两批，不替换旧payload或PR。
+发布bookkeeping不生成新capture，此入口也不继续worker日志。dry-run不记录请求。
+自身父级的普通发布及release/handoff/supervisor路径保持原有行为。
+
+先核对已merge批次的逐条发布事实，再生成新的请求。private批次固定 `publication_actor`；
+旧批次复用已有发布事实中的担当，拒绝矛盾引用。即使请求本身已经published，确认重放也复用同一请求。
+其他父级继续未merge批次时记录其自身请求；确认已merge的发布时保留原担当。
+在实际git commit、批次保存和journal追加之前重新核对担当；PR/merge intent保存后、实际发送前也再次核对。
+中断worktree只有在更改或已stage文件与固定plan或未修改base内容一致时才能恢复。
+其他编辑保留并拒绝，不通过reset删除。
+
+`remaining_publications` 返回源父级的decision_log残项，包括registry中不存在的父级。
+父级 `status`、`decision-log-status` 和结束checkpoint的 `decision_resume_command` 在无人负责时
+显示此入口与 `RECOVERY_PARENT`，使用时替换为调用session当前负责的active父级编号。
 
 公开目录保留现有worker文件：
 
@@ -268,12 +323,92 @@ README仅从该HEAD的公开记录和现有worker文件生成，不读取私有�
 worker文件稍后到达时，与原文件夹README双向链接；启动前拒绝后的initial重试也保留
 先前公开的轮次地址。只链接指示和最终报告，不复制正文。
 
-只为已有新记录的父issue生成历史轮次导航，链接现有指示和最终报告；没有对应记录时显示
-**導入前・判断未記録**。只有旧worker日志的其他父issue仍链接原目录，不批量转换所有历史。
-公开快照无法区分引入时间、待发布和捕获缺失时，明确保留为未确认。
-失败轮次可以有README，但不能假装worker final已经发布。
-公开快照无法统计私有待发布记录或证明自己已进入main，因此每页的 **公開待ち** 提示指向
-`decision-log-status` 进行核对。merge后的发布事实本身不触发README重写。
+所有worker父issue均生成导航，包括完全没有event的输入。
+轮次键为 `(repo.casefold(), parent, issue, delegation_key, sequence)`，不以activity、phase或
+initial/resume为键。清单是经过验证的worker三个文件与event轮次的并集；分别显示公开worker
+分母、对应/未对应event、仅event和并集数量。有event不等于父级判断或捕获完整。
+没有对应时显示 **対応イベントなし**，引入时间、未捕获、捕获失败和未发布的区别仍未确认。
+[审计manifest](../../../tests/support/agents_ops/decision_log_audit.json) 选定的输入包含公开51轮、
+对应4、未对应47、仅event 2轮、并集53轮。
+
+失败轮次可以有README，但不假装final已发布。私有发布残项只有通过已公开的类型化观察才能显示；
+否则 **公開待ち** 提示指向 `decision-log-status`。公开PR标注为观察时点的状态，后到达的main文件
+经过验证后更新所在位置。刷新使用既有 `publish-decision-log --retry` 后到文件修复，不增加timer或轮询。
+
+### 轮次与担当结束的类型化观察
+
+既有v1 envelope字节不变。仅v2结果新增 `data.observation`。
+worker_turn与capture_gap使用观察version 1，termination使用观察version 2；
+既有观察version 1仍可读取，无需改写原文。必需字段和拒绝条件以
+[trace_schema.py](trace_schema.py) 为准。执行、final有无与发布分开记录；发布保留main/公开PR/
+保留/未确认、stage/error、PR URL/HEAD与核对main revision。PR文件是外部依据，不混入main输入。
+
+| 显示状态 | 必需事实 |
+| --- | --- |
+| 有依据的最终报告缺失 | 同一轮次的结束/中断与明确的final缺失 |
+| 运行中 | 已记录runtime观察，并标注快照时点 |
+| 结束未确认 | 缺少worker结束依据；awaiting_final或状态查询命令结束均不足 |
+| final存在但发布保留 | 非空final/固定receipt与独立的保留/PR观察，runtime失败也须区分 |
+
+按轮次键去重。仅结束不证明final缺失；旧缺失/非报告数量标注为结果event单位。
+独立final事实相互矛盾时要求核对，不把任意summary或literal字典提升为类型化依据。
+
+`trace_capture.capture_termination(operation, receipt, evidence=..., acceptance=...)` 是唯一的
+`worker_logs.lifecycle.record_exit()` 私有checkpoint适配器。字段为 `repo`、`parent`、`generation`、`event`
+（ended/handoff_pending/handoff_accepted）、`observed_at`、`main_revision`、`remaining`、
+`remaining_complete`、`publication_actor`、`resume_command`、`decision_resume_command`、`error`。
+producer为 `worker_logs.reconciliation.remaining_publications(repo, parent, *, state_dir)`。
+完整保留RemainingPublication的kind/parent/issue/public_key/sequence/state/stage/error/
+pr_number/pr_head/unpublished_count/batch_key，包括缺测的None。
+worker公开键有既有d-前缀；decision公开键等于batch_key或为None。
+未公开件数None显示未确认；即使清单不完整，也保留已知残项，不把不完整空清单当作零残项。
+担当接受active父issue编号或unassigned等公开字符串；显示worker与判断日志各自的恢复指令和核对错误。
+checkpoint保存在private state的 `publication-exits/` 下。
+release、handoff pending/accepted与supervisor结束在判断日志发布前调用
+[lifecycle.capture_checkpoint()](lifecycle.py)。顺序为保存担当变更→worker发布→结束捕获→判断日志发布→最终checkpoint。
+`record_exit(persist=False)` 提供发布前快照，残项可能在后续发布中解决；发布后的结果保存到最终private checkpoint。
+发布过程本身不再捕获，避免产生新batch的循环。捕获或发布失败不拒绝担当结束或交接。
+验收来自同代结构化completion评论的固定receipt，不从任意summary或runtime结束推断。
+直接链接结束评论；supervisor通过因果链接指向既有代次结束结果。
+公开担当与恢复指令也通过Guard，不把私有ID或路径作为显示名称。
+验收默认未确认，与担当结束分开；显示原始验收/结束依据、剩余发布、担当和恢复入口。
+相同观察的重放保持幂等；即使结束receipt不变，后到的明确验收依据也追加为新观察。
+历史导入时未核对的残项标为未确认，不把空数组当作发布完成。
+
+[historical_observations.json](historical_observations.json) 仅包含已同意事例的来源观察：
+#1816轮次2/3、#1796/#1864完成/结束声明、#1814冲突报告和#1862中间PR。
+`historical.records()` 读取，`historical.capture(Journal(...))` 显式且幂等地追加相同repo/父级记录。
+不发布、fetch、恢复担当或重建私有会话；常规显式发布是独立操作。
+#1814以 `capture_gap` 保留两个原始来源，轮次对应仍须核对。
+
+### 概览布局与页面上限
+
+[父issue列表](../../logs/parents/README.md)链接到父级概览。父、子、委任及轮次README显示
+数量、缺失状态、最新观察结果/行动和最多六条近期判断，不重复全部记录。
+判断同时显示输入结果、理由、复用/复查范围以及实际后续结果。
+活动名称取自已记录的操作/命令和目标，记录期间单独显示。
+不根据不透明活动键或相近时间推断名称、判断、验收或因果关系。
+最终报告缺失数量单独列出来源明确标注 `not a final-report observation` 的非报告观察；
+其他缺失原因仍然可见。未解决事项描述的是该判断记录时的状态。
+
+五列表格和辅助信息位于活动页面。最多12条记录放在活动README；更多记录链接到同级
+`activity-<public-key>-records-<sequence>/README.md`，并连接前/后页。
+每条记录只有一个规范锚点，包括没有判断的常规机器观察，上层链接到相同锚点。
+相同条件的观察可以显示既有的无损聚合数量，但不补造判断。
+
+列表在概览内最多显示六项，完整目录每页40项。生成路径使用现有README模式：root下
+`parent-index-*`、父级下 `activity-index-*`、子级下 `d-index-*`、委任下 `page-*`，
+以及轮次文件夹的后缀。它们只是导航页，不代表虚构的父issue、活动、委任或轮次；event不移动。
+按固定项目数分配页面，新增记录或worker文件后保留既有页面地址。
+worker目录包含所有拥有worker日志的父issue，包括以后增加判断记录的父issue，因此新格式引入不会缩小该目录。
+生成不读取既有README正文。
+
+每个完整UTF-8页面必须小于192 KiB，超限则拒绝生成。每条记录的详细显示预算为10 KiB，
+长正文明确标注省略，并链接完整不可变记录；不截断或改动原记录及固定envelope。
+v1 summary中的dict/list literal通过有大小限制的literal解析显示为字段，不执行代码。
+无法解析的结构提示查看原记录，不直接输出Python/JSON表示；解析得到的正文也全部转义。
+解码后的结构、HTML entity还原的正文及格式化显示值，在HTML转义或省略前通过共用public `Guard`。
+截断后的正文及带分隔符的字段名也重新检查；违规时以固定公开错误码拒绝生成，不遮蔽违规值后继续显示。
 
 ## 有限发布例外与恢复
 
@@ -301,6 +436,10 @@ GitHub旧 `base.sha` 是快照，不能据此丢弃main更新。
 使用相同固定envelope建立 `-repair-<number>` branch。记录已在main时，修复PR只能改变
 逐字节符合再生成结果的README，不会为了修复而添加/修改event。导航保存后再次运行不会创建更多PR。
 批次merge后才到达的worker文件也使用同一显式修复，即使没有待发布的新捕获记录；不会补造捕获事实。
+全部记录确认发布后的renderer更新也使用该路径。已保存的merge事实及批次全部记录的published事实
+标识历史确认，仍重新检查PR/HEAD/merge身份、Git结构、祖先关系和当前envelope。
+旧派生正文不必符合新renderer；main上的过时显示仍须显式 `--retry`，每个修复revision通过现行policy的完整检查。
+未确认的旧批次不会因renderer变化而免除完整检查。
 
 捕获journal旁的私有 `publication.json` 保存所有批次、revision、已尝试的变更和诊断，
 采用flock、fsync和原子写入。`Journal.publication()` 只追加每条记录的pending/blocked/published事实。
@@ -312,9 +451,16 @@ commit后中断会复用完全核对的commit；push、PR创建和merge响应丢
 已确认merge但逐记录journal追加中断时，先恢复该批再选择新批次。
 不自动reset dirty worktree或损坏journal；只检查和修复受影响的发布。
 确认后移除clean发布worktree，保留dirty或身份未确认的worktree，并返回 `retained_worktrees` 数量。
+恢复检查也包含被ignore规则忽略的未跟踪文件。固定plan之外的ignored文件会以
+`worktree_dirty` 阻止恢复。cleanup同样保留含有任何未跟踪文件的worktree，包括被忽略的文件。
 
-`--dry-run` 读取已准备的envelope和本地 `origin/main` 检查生成并报告数量，
-不准备新捕获、fetch、更新journal/ref、创建worktree或调用GitHub。
+`--dry-run` 使用 `Journal.preview_publication()` 与本地 `origin/main`，保留ready envelope的固定版本，
+用相同renderer/guard只读转换尚未准备的捕获，同时检查依赖。
+返回 `prepared_records`、`preview_records`、`preview_blocked`（ID及错误码）、
+`generated_readmes` 和 `preview_readmes`（路径到Markdown正文），首次发布也能检查内容。
+预览被拒绝的记录计入blocked；`--retry --dry-run` 只预览blocked复查，不固定准备结果。
+不进行不可逆准备、fetch、journal/ref更新、lock或worktree创建以及GitHub调用。
+预览仅反映本地快照，新增捕获、guard上下文或main变化可能改变之后的实际发布。
 只有当前所有捕获均确认发布，`saved_to_main` 才为true；批次merged仍可能剩余新捕获或blocked。
 exit 0的pending不表示发布成功；有error或blocked返回exit 2。
 
@@ -336,7 +482,7 @@ GitHub原生路径过滤限制仍然存在。
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_capture_observations.py \
   tests/integration/agents_ops/test_decision_capture_delivery.py \
   tests/e2e/agents_ops/test_decision_capture.py \
-  tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
+  tests/e2e/agents_ops/test_progression_cli.py -n 2 --durations=10
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_navigation.py \
   tests/e2e/agents_ops/test_decision_publication.py \
   tests/e2e/agents_ops/test_worker_log_publication.py -n 2 --durations=10
@@ -347,3 +493,11 @@ GitHub原生路径过滤限制仍然存在。
 并验证journal故障与仅捕获恢复；不需要GPU、真实代理或网络。
 发布测试使用真实临时Git和fake GitHub验证批次、并发main更新、精确再生成、拒绝及响应丢失。
 merge后的实际运行验收留给 #1817。
+
+阅读验收测试位于 [test_decision_acceptance.py](../../../tests/unit/agents_ops/test_decision_acceptance.py) 和
+[test_decision_log_acceptance.py](../../../tests/integration/agents_ops/test_decision_log_acceptance.py)。
+覆盖参考 #1790 的三种异常、缺失状态、通常委任、父级直接验证、并行分支与交接，
+以及[首次实际发布PR #1887](https://github.com/Motoki0705/tennis-lab/pull/1887)的副本和大量记录。
+仅重试获取的分支明确标为假设场景：当时的CI事件实际进入了新review。
+未记录的历史中间判断保持缺失；测量大小和验证保存在 #1817，
+实现merge后由父级确认main发布及GitHub显示。

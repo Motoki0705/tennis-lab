@@ -1,0 +1,1023 @@
+{
+  "clip_037": {
+    "fp32": {
+      "dino": {
+        "inference_seconds": 319.70448636413494,
+        "peak_allocated_bytes": 1866620416,
+        "peak_reserved_bytes": 2279604224
+      },
+      "vitpose": {
+        "inference_seconds": 467.683179768901,
+        "peak_allocated_bytes": 3326071296,
+        "peak_reserved_bytes": 4383047680
+      }
+    },
+    "vitpose_bf16": {
+      "inference_seconds": 176.4582447799985,
+      "baseline_seconds": 467.683179768901,
+      "peak_allocated_bytes": 4550483968,
+      "peak_reserved_bytes": 5022679040,
+      "dino_fp32_unmatched": 0,
+      "dino_candidate_unmatched": 0,
+      "dino_max_camera_box_abs_p95_px": 0.0,
+      "dino_max_camera_score_abs_p95": 0.0,
+      "vitpose_max_camera_selected_visible_p95_px": 0.0738508552312851,
+      "tracking_row_id_changes": 0,
+      "selected_lost": 0,
+      "selected_gained": 0,
+      "association_row_id_changes": 0,
+      "association_lost": 0,
+      "association_gained": 0,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 19720,
+          "max": 0.44139623641967773,
+          "median": 0.0002230889513157308,
+          "p95": 0.0009007887565530837,
+          "p99": 0.001986695220693946
+        },
+        "candidate_valid_joints": 19720,
+        "fp32_valid_joints": 19720,
+        "gained_valid_joints": 0,
+        "jointly_valid": 19720,
+        "jointly_valid_shift_over_5cm": 8,
+        "lost_valid_joints": 0,
+        "reasons_changed_on_matched_players": 0,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.671875,
+              "uv_px": [
+                1091.4234619140625,
+                427.2847900390625
+              ]
+            },
+            "cam1": {
+              "confidence": 0.7734375,
+              "uv_px": [
+                636.156982421875,
+                447.6076354980469
+              ]
+            },
+            "cam2": {
+              "confidence": 0.8125,
+              "uv_px": [
+                753.35693359375,
+                607.3782348632812
+              ]
+            },
+            "cam3": {
+              "confidence": 0.45703125,
+              "uv_px": [
+                1617.061767578125,
+                398.03765869140625
+              ]
+            }
+          },
+          "candidate_player_id": 2,
+          "distance_m": 0.44139623641967773,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.6692617535591125,
+              "uv_px": [
+                1091.4176025390625,
+                427.29852294921875
+              ]
+            },
+            "cam1": {
+              "confidence": 0.7715625762939453,
+              "uv_px": [
+                636.1261596679688,
+                447.5986022949219
+              ]
+            },
+            "cam2": {
+              "confidence": 0.809004545211792,
+              "uv_px": [
+                753.35791015625,
+                607.3839111328125
+              ]
+            },
+            "cam3": {
+              "confidence": 0.46754568815231323,
+              "uv_px": [
+                1561.955078125,
+                392.9894104003906
+              ]
+            }
+          },
+          "fp32_player_id": 2,
+          "frame": 152,
+          "joint": "left_ankle"
+        }
+      }
+    },
+    "vitpose_fp16": {
+      "inference_seconds": 168.39878879487514,
+      "baseline_seconds": 467.683179768901,
+      "peak_allocated_bytes": 4511031296,
+      "peak_reserved_bytes": 4901044224,
+      "dino_fp32_unmatched": 0,
+      "dino_candidate_unmatched": 0,
+      "dino_max_camera_box_abs_p95_px": 0.0,
+      "dino_max_camera_score_abs_p95": 0.0,
+      "vitpose_max_camera_selected_visible_p95_px": 0.0054862890392541885,
+      "tracking_row_id_changes": 0,
+      "selected_lost": 0,
+      "selected_gained": 0,
+      "association_row_id_changes": 0,
+      "association_lost": 0,
+      "association_gained": 0,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 19720,
+          "max": 0.03873540088534355,
+          "median": 1.8715858459472656e-05,
+          "p95": 7.529389404226094e-05,
+          "p99": 0.00017886664136312902
+        },
+        "candidate_valid_joints": 19720,
+        "fp32_valid_joints": 19720,
+        "gained_valid_joints": 0,
+        "jointly_valid": 19720,
+        "jointly_valid_shift_over_5cm": 0,
+        "lost_valid_joints": 0,
+        "reasons_changed_on_matched_players": 0,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.865234375,
+              "uv_px": [
+                830.80517578125,
+                492.45489501953125
+              ]
+            },
+            "cam1": {
+              "confidence": 0.84619140625,
+              "uv_px": [
+                844.8006591796875,
+                537.8565063476562
+              ]
+            },
+            "cam2": {
+              "confidence": 0.66015625,
+              "uv_px": [
+                1168.388916015625,
+                469.16546630859375
+              ]
+            },
+            "cam3": {
+              "confidence": 0.420166015625,
+              "uv_px": [
+                1007.1251831054688,
+                322.9789123535156
+              ]
+            }
+          },
+          "candidate_player_id": 0,
+          "distance_m": 0.03873540088534355,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.8655754327774048,
+              "uv_px": [
+                830.805908203125,
+                492.45416259765625
+              ]
+            },
+            "cam1": {
+              "confidence": 0.8462315797805786,
+              "uv_px": [
+                844.8008422851562,
+                537.8544311523438
+              ]
+            },
+            "cam2": {
+              "confidence": 0.6593577861785889,
+              "uv_px": [
+                1168.3919677734375,
+                469.1693115234375
+              ]
+            },
+            "cam3": {
+              "confidence": 0.42112234234809875,
+              "uv_px": [
+                1014.1184692382812,
+                323.828125
+              ]
+            }
+          },
+          "fp32_player_id": 0,
+          "frame": 15,
+          "joint": "right_ankle"
+        }
+      }
+    },
+    "dino_bf16": {
+      "inference_seconds": 186.5573854959439,
+      "baseline_seconds": 319.70448636413494,
+      "peak_allocated_bytes": 1767218688,
+      "peak_reserved_bytes": 2260729856,
+      "dino_fp32_unmatched": 50,
+      "dino_candidate_unmatched": 23,
+      "dino_max_camera_box_abs_p95_px": 0.12595832347869873,
+      "dino_max_camera_score_abs_p95": 0.01572134718298912,
+      "vitpose_max_camera_selected_visible_p95_px": 0.11315231025218964,
+      "tracking_row_id_changes": 15,
+      "selected_lost": 1,
+      "selected_gained": 34,
+      "association_row_id_changes": 0,
+      "association_lost": 3,
+      "association_gained": 34,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 19720,
+          "max": 0.14015701413154602,
+          "median": 0.0003422166337259114,
+          "p95": 0.0020616811234503984,
+          "p99": 0.014910981059074402
+        },
+        "candidate_valid_joints": 19720,
+        "fp32_valid_joints": 19720,
+        "gained_valid_joints": 0,
+        "jointly_valid": 19720,
+        "jointly_valid_shift_over_5cm": 45,
+        "lost_valid_joints": 0,
+        "reasons_changed_on_matched_players": 0,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.8215124607086182,
+              "uv_px": [
+                840.8787841796875,
+                456.53350830078125
+              ]
+            },
+            "cam1": {
+              "confidence": 0.8133302927017212,
+              "uv_px": [
+                846.0474243164062,
+                496.1662292480469
+              ]
+            },
+            "cam2": {
+              "confidence": 0.7259106636047363,
+              "uv_px": [
+                1159.901123046875,
+                443.75128173828125
+              ]
+            },
+            "cam3": {
+              "confidence": 0.34763097763061523,
+              "uv_px": [
+                1002.5756225585938,
+                292.4324035644531
+              ]
+            }
+          },
+          "candidate_player_id": 0,
+          "distance_m": 0.14015701413154602,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.8216046094894409,
+              "uv_px": [
+                840.875732421875,
+                456.525146484375
+              ]
+            },
+            "cam1": {
+              "confidence": 0.8096503615379333,
+              "uv_px": [
+                846.0386352539062,
+                496.14471435546875
+              ]
+            },
+            "cam2": {
+              "confidence": 0.7253456115722656,
+              "uv_px": [
+                1159.8995361328125,
+                443.7779541015625
+              ]
+            },
+            "cam3": {
+              "confidence": 0.4018276333808899,
+              "uv_px": [
+                1027.812744140625,
+                290.24951171875
+              ]
+            }
+          },
+          "fp32_player_id": 0,
+          "frame": 19,
+          "joint": "right_wrist"
+        }
+      }
+    },
+    "dino_fp16": {
+      "inference_seconds": 182.9771336821068,
+      "baseline_seconds": 319.70448636413494,
+      "peak_allocated_bytes": 1766422016,
+      "peak_reserved_bytes": 2067791872,
+      "dino_fp32_unmatched": 12,
+      "dino_candidate_unmatched": 16,
+      "dino_max_camera_box_abs_p95_px": 0.0364990234375,
+      "dino_max_camera_score_abs_p95": 0.006390366703271866,
+      "vitpose_max_camera_selected_visible_p95_px": 0.07110898196697235,
+      "tracking_row_id_changes": 46,
+      "selected_lost": 71,
+      "selected_gained": 2,
+      "association_row_id_changes": 0,
+      "association_lost": 71,
+      "association_gained": 2,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 19720,
+          "max": 0.1650264710187912,
+          "median": 0.00022630263993050903,
+          "p95": 0.005538961384445429,
+          "p99": 0.023976653814315796
+        },
+        "candidate_valid_joints": 19720,
+        "fp32_valid_joints": 19720,
+        "gained_valid_joints": 0,
+        "jointly_valid": 19720,
+        "jointly_valid_shift_over_5cm": 31,
+        "lost_valid_joints": 0,
+        "reasons_changed_on_matched_players": 0,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.3028963804244995,
+              "uv_px": [
+                770.8731079101562,
+                459.041259765625
+              ]
+            },
+            "cam1": {
+              "confidence": 0.5581800937652588,
+              "uv_px": [
+                807.1487426757812,
+                497.0672302246094
+              ]
+            },
+            "cam2": {
+              "confidence": 0.806821346282959,
+              "uv_px": [
+                1199.31201171875,
+                438.3286437988281
+              ]
+            },
+            "cam3": {
+              "confidence": 0.6059044003486633,
+              "uv_px": [
+                1014.481689453125,
+                290.307861328125
+              ]
+            }
+          },
+          "candidate_player_id": 0,
+          "distance_m": 0.1650264710187912,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.2982842028141022,
+              "uv_px": [
+                770.9652709960938,
+                458.83782958984375
+              ]
+            },
+            "cam1": {
+              "confidence": 0.5597331523895264,
+              "uv_px": [
+                807.1643676757812,
+                497.0682067871094
+              ]
+            },
+            "cam2": {
+              "confidence": 0.8069705367088318,
+              "uv_px": [
+                1199.3272705078125,
+                438.319580078125
+              ]
+            },
+            "cam3": {
+              "confidence": 0.6054695844650269,
+              "uv_px": [
+                1014.4700317382812,
+                290.31597900390625
+              ]
+            }
+          },
+          "fp32_player_id": 0,
+          "frame": 130,
+          "joint": "left_wrist"
+        }
+      }
+    },
+    "vitpose_no_flip": {
+      "inference_seconds": 236.82505007391592,
+      "baseline_seconds": 467.683179768901,
+      "peak_allocated_bytes": 3164066304,
+      "peak_reserved_bytes": 3638558720,
+      "dino_fp32_unmatched": 0,
+      "dino_candidate_unmatched": 0,
+      "dino_max_camera_box_abs_p95_px": 0.0,
+      "dino_max_camera_score_abs_p95": 0.0,
+      "vitpose_max_camera_selected_visible_p95_px": 0.8789865970611572,
+      "tracking_row_id_changes": 70,
+      "selected_lost": 0,
+      "selected_gained": 0,
+      "association_row_id_changes": 0,
+      "association_lost": 0,
+      "association_gained": 0,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 19720,
+          "max": 0.48836749792099,
+          "median": 0.00299993809312582,
+          "p95": 0.012942032888531685,
+          "p99": 0.030494004487991333
+        },
+        "candidate_valid_joints": 19720,
+        "fp32_valid_joints": 19720,
+        "gained_valid_joints": 0,
+        "jointly_valid": 19720,
+        "jointly_valid_shift_over_5cm": 113,
+        "lost_valid_joints": 0,
+        "reasons_changed_on_matched_players": 0,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.26592105627059937,
+              "uv_px": [
+                825.281494140625,
+                440.43243408203125
+              ]
+            },
+            "cam1": {
+              "confidence": 0.9138372540473938,
+              "uv_px": [
+                810.5086669921875,
+                478.6446533203125
+              ]
+            },
+            "cam2": {
+              "confidence": 0.3229556977748871,
+              "uv_px": [
+                1157.03271484375,
+                443.65814208984375
+              ]
+            },
+            "cam3": {
+              "confidence": 0.6826090812683105,
+              "uv_px": [
+                1003.284423828125,
+                292.8652038574219
+              ]
+            }
+          },
+          "candidate_player_id": 0,
+          "distance_m": 0.48836749792099,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.26411813497543335,
+              "uv_px": [
+                825.7970581054688,
+                442.900634765625
+              ]
+            },
+            "cam1": {
+              "confidence": 0.9117285013198853,
+              "uv_px": [
+                810.4451904296875,
+                478.58123779296875
+              ]
+            },
+            "cam2": {
+              "confidence": 0.2478419542312622,
+              "uv_px": [
+                1157.022705078125,
+                443.5896911621094
+              ]
+            },
+            "cam3": {
+              "confidence": 0.6592317819595337,
+              "uv_px": [
+                1003.364501953125,
+                292.8875732421875
+              ]
+            }
+          },
+          "fp32_player_id": 0,
+          "frame": 30,
+          "joint": "left_wrist"
+        }
+      }
+    }
+  },
+  "clip_000": {
+    "fp32": {
+      "dino": {
+        "inference_seconds": 386.18480390299374,
+        "peak_allocated_bytes": 1866620416,
+        "peak_reserved_bytes": 2279604224
+      },
+      "vitpose": {
+        "inference_seconds": 529.2542412169205,
+        "peak_allocated_bytes": 3278230016,
+        "peak_reserved_bytes": 4192206848
+      }
+    },
+    "vitpose_bf16": {
+      "inference_seconds": 199.1887901419832,
+      "baseline_seconds": 529.2542412169205,
+      "peak_allocated_bytes": 4491370496,
+      "peak_reserved_bytes": 4972347392,
+      "dino_fp32_unmatched": 0,
+      "dino_candidate_unmatched": 0,
+      "dino_max_camera_box_abs_p95_px": 0.0,
+      "dino_max_camera_score_abs_p95": 0.0,
+      "vitpose_max_camera_selected_visible_p95_px": 0.08904967457056046,
+      "tracking_row_id_changes": 0,
+      "selected_lost": 0,
+      "selected_gained": 0,
+      "association_row_id_changes": 0,
+      "association_lost": 0,
+      "association_gained": 0,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 23975,
+          "max": 0.6257910132408142,
+          "median": 0.0002469755127094686,
+          "p95": 0.0011219411389902234,
+          "p99": 0.002633625641465187
+        },
+        "candidate_valid_joints": 23976,
+        "fp32_valid_joints": 23978,
+        "gained_valid_joints": 1,
+        "jointly_valid": 23975,
+        "jointly_valid_shift_over_5cm": 18,
+        "lost_valid_joints": 3,
+        "reasons_changed_on_matched_players": 4,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.671875,
+              "uv_px": [
+                1034.5174560546875,
+                427.2398986816406
+              ]
+            },
+            "cam1": {
+              "confidence": 0.78125,
+              "uv_px": [
+                546.2075805664062,
+                451.2635803222656
+              ]
+            },
+            "cam2": {
+              "confidence": 0.78125,
+              "uv_px": [
+                880.2821044921875,
+                652.3406372070312
+              ]
+            },
+            "cam3": {
+              "confidence": 0.4296875,
+              "uv_px": [
+                1739.288818359375,
+                387.853515625
+              ]
+            }
+          },
+          "candidate_player_id": 3,
+          "distance_m": 0.6257910132408142,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.6665475368499756,
+              "uv_px": [
+                1034.5196533203125,
+                427.25787353515625
+              ]
+            },
+            "cam1": {
+              "confidence": 0.7759239673614502,
+              "uv_px": [
+                546.191650390625,
+                451.2689514160156
+              ]
+            },
+            "cam2": {
+              "confidence": 0.7833167910575867,
+              "uv_px": [
+                880.2769165039062,
+                652.3336181640625
+              ]
+            },
+            "cam3": {
+              "confidence": 0.43740418553352356,
+              "uv_px": [
+                1819.804443359375,
+                381.9303283691406
+              ]
+            }
+          },
+          "fp32_player_id": 3,
+          "frame": 156,
+          "joint": "right_ankle"
+        }
+      }
+    },
+    "vitpose_fp16": {
+      "inference_seconds": 188.86359090195037,
+      "baseline_seconds": 529.2542412169205,
+      "peak_allocated_bytes": 4458995712,
+      "peak_reserved_bytes": 4928307200,
+      "dino_fp32_unmatched": 0,
+      "dino_candidate_unmatched": 0,
+      "dino_max_camera_box_abs_p95_px": 0.0,
+      "dino_max_camera_score_abs_p95": 0.0,
+      "vitpose_max_camera_selected_visible_p95_px": 0.005718220956623554,
+      "tracking_row_id_changes": 0,
+      "selected_lost": 0,
+      "selected_gained": 0,
+      "association_row_id_changes": 0,
+      "association_lost": 0,
+      "association_gained": 0,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 23978,
+          "max": 0.3094959259033203,
+          "median": 2.1289666619850323e-05,
+          "p95": 8.212213288061321e-05,
+          "p99": 0.000183703305083327
+        },
+        "candidate_valid_joints": 23978,
+        "fp32_valid_joints": 23978,
+        "gained_valid_joints": 0,
+        "jointly_valid": 23978,
+        "jointly_valid_shift_over_5cm": 4,
+        "lost_valid_joints": 0,
+        "reasons_changed_on_matched_players": 0,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.75927734375,
+              "uv_px": [
+                1122.38525390625,
+                420.8561096191406
+              ]
+            },
+            "cam1": {
+              "confidence": 0.2432861328125,
+              "uv_px": [
+                866.0944213867188,
+                452.5155334472656
+              ]
+            },
+            "cam2": {
+              "confidence": 0.2998046875,
+              "uv_px": [
+                871.7276611328125,
+                469.733642578125
+              ]
+            },
+            "cam3": {
+              "confidence": 0.4287109375,
+              "uv_px": [
+                995.5260620117188,
+                313.1184387207031
+              ]
+            }
+          },
+          "candidate_player_id": 2,
+          "distance_m": 0.3094959259033203,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.75909423828125,
+              "uv_px": [
+                1122.384033203125,
+                420.85546875
+              ]
+            },
+            "cam1": {
+              "confidence": 0.24391092360019684,
+              "uv_px": [
+                866.0962524414062,
+                452.5168762207031
+              ]
+            },
+            "cam2": {
+              "confidence": 0.30009064078330994,
+              "uv_px": [
+                871.7291870117188,
+                469.737548828125
+              ]
+            },
+            "cam3": {
+              "confidence": 0.42840418219566345,
+              "uv_px": [
+                995.5252075195312,
+                313.1301574707031
+              ]
+            }
+          },
+          "fp32_player_id": 2,
+          "frame": 259,
+          "joint": "right_wrist"
+        }
+      }
+    },
+    "dino_bf16": {
+      "inference_seconds": 223.70877321794978,
+      "baseline_seconds": 386.18480390299374,
+      "peak_allocated_bytes": 1767218688,
+      "peak_reserved_bytes": 2260729856,
+      "dino_fp32_unmatched": 70,
+      "dino_candidate_unmatched": 49,
+      "dino_max_camera_box_abs_p95_px": 0.23373565077781677,
+      "dino_max_camera_score_abs_p95": 0.022285528481006622,
+      "vitpose_max_camera_selected_visible_p95_px": 0.14912265539169312,
+      "tracking_row_id_changes": 326,
+      "selected_lost": 4,
+      "selected_gained": 4,
+      "association_row_id_changes": 6,
+      "association_lost": 4,
+      "association_gained": 8,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 23970,
+          "max": 0.5846893191337585,
+          "median": 0.00042100605787709355,
+          "p95": 0.0026028102729469538,
+          "p99": 0.030483556911349297
+        },
+        "candidate_valid_joints": 23973,
+        "fp32_valid_joints": 23978,
+        "gained_valid_joints": 3,
+        "jointly_valid": 23970,
+        "jointly_valid_shift_over_5cm": 197,
+        "lost_valid_joints": 8,
+        "reasons_changed_on_matched_players": 11,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.6292269825935364,
+              "uv_px": [
+                1036.6842041015625,
+                426.47833251953125
+              ]
+            },
+            "cam1": {
+              "confidence": 0.7749106884002686,
+              "uv_px": [
+                548.81982421875,
+                451.5409240722656
+              ]
+            },
+            "cam2": {
+              "confidence": 0.792217493057251,
+              "uv_px": [
+                874.5431518554688,
+                651.982421875
+              ]
+            },
+            "cam3": {
+              "confidence": 0.4267975091934204,
+              "uv_px": [
+                1814.784912109375,
+                382.44329833984375
+              ]
+            }
+          },
+          "candidate_player_id": 3,
+          "distance_m": 0.5846893191337585,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.6297241449356079,
+              "uv_px": [
+                1036.6739501953125,
+                426.49798583984375
+              ]
+            },
+            "cam1": {
+              "confidence": 0.7770096063613892,
+              "uv_px": [
+                548.8131713867188,
+                451.5334777832031
+              ]
+            },
+            "cam2": {
+              "confidence": 0.7924937009811401,
+              "uv_px": [
+                874.5537109375,
+                651.99658203125
+              ]
+            },
+            "cam3": {
+              "confidence": 0.43208664655685425,
+              "uv_px": [
+                1739.427490234375,
+                387.3441162109375
+              ]
+            }
+          },
+          "fp32_player_id": 3,
+          "frame": 158,
+          "joint": "right_ankle"
+        }
+      }
+    },
+    "dino_fp16": {
+      "inference_seconds": 227.5015918048448,
+      "baseline_seconds": 386.18480390299374,
+      "peak_allocated_bytes": 1766422016,
+      "peak_reserved_bytes": 2067791872,
+      "dino_fp32_unmatched": 20,
+      "dino_candidate_unmatched": 21,
+      "dino_max_camera_box_abs_p95_px": 0.057398974895477295,
+      "dino_max_camera_score_abs_p95": 0.009547795169055462,
+      "vitpose_max_camera_selected_visible_p95_px": 0.08996319770812988,
+      "tracking_row_id_changes": 74,
+      "selected_lost": 1,
+      "selected_gained": 0,
+      "association_row_id_changes": 0,
+      "association_lost": 2,
+      "association_gained": 0,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 23977,
+          "max": 0.6476213335990906,
+          "median": 0.00025907010422088206,
+          "p95": 0.0013214960927143693,
+          "p99": 0.0037391234654933214
+        },
+        "candidate_valid_joints": 23978,
+        "fp32_valid_joints": 23978,
+        "gained_valid_joints": 1,
+        "jointly_valid": 23977,
+        "jointly_valid_shift_over_5cm": 30,
+        "lost_valid_joints": 1,
+        "reasons_changed_on_matched_players": 2,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.2878964841365814,
+              "uv_px": [
+                826.5062255859375,
+                449.7528076171875
+              ]
+            },
+            "cam1": {
+              "confidence": 0.8171651363372803,
+              "uv_px": [
+                819.9789428710938,
+                496.1825256347656
+              ]
+            },
+            "cam3": {
+              "confidence": 0.6575620174407959,
+              "uv_px": [
+                1016.6812744140625,
+                285.5886535644531
+              ]
+            }
+          },
+          "candidate_player_id": 0,
+          "distance_m": 0.6476213335990906,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.28806984424591064,
+              "uv_px": [
+                826.5224609375,
+                449.74688720703125
+              ]
+            },
+            "cam1": {
+              "confidence": 0.8179458379745483,
+              "uv_px": [
+                819.97314453125,
+                496.1737060546875
+              ]
+            },
+            "cam2": {
+              "confidence": 0.7338381409645081,
+              "uv_px": [
+                1172.537109375,
+                438.640380859375
+              ]
+            },
+            "cam3": {
+              "confidence": 0.6527224779129028,
+              "uv_px": [
+                1016.6984252929688,
+                285.6105041503906
+              ]
+            }
+          },
+          "fp32_player_id": 0,
+          "frame": 296,
+          "joint": "left_eye"
+        }
+      }
+    },
+    "vitpose_no_flip": {
+      "inference_seconds": 268.551914139156,
+      "baseline_seconds": 529.2542412169205,
+      "peak_allocated_bytes": 3142177280,
+      "peak_reserved_bytes": 3567255552,
+      "dino_fp32_unmatched": 0,
+      "dino_candidate_unmatched": 0,
+      "dino_max_camera_box_abs_p95_px": 0.0,
+      "dino_max_camera_score_abs_p95": 0.0,
+      "vitpose_max_camera_selected_visible_p95_px": 0.8372095823287964,
+      "tracking_row_id_changes": 106,
+      "selected_lost": 5,
+      "selected_gained": 0,
+      "association_row_id_changes": 0,
+      "association_lost": 3,
+      "association_gained": 0,
+      "triangulation": {
+        "3d_distance_m": {
+          "count": 23966,
+          "max": 0.8039748072624207,
+          "median": 0.0033424471039325,
+          "p95": 0.016343314200639725,
+          "p99": 0.053827106952667236
+        },
+        "candidate_valid_joints": 23981,
+        "fp32_valid_joints": 23978,
+        "gained_valid_joints": 15,
+        "jointly_valid": 23966,
+        "jointly_valid_shift_over_5cm": 250,
+        "lost_valid_joints": 12,
+        "reasons_changed_on_matched_players": 27,
+        "worst_observed_shift": {
+          "candidate_observations": {
+            "cam0": {
+              "confidence": 0.31405800580978394,
+              "uv_px": [
+                1134.36083984375,
+                422.1897277832031
+              ]
+            },
+            "cam1": {
+              "confidence": 0.5657092928886414,
+              "uv_px": [
+                880.7726440429688,
+                457.3837890625
+              ]
+            },
+            "cam2": {
+              "confidence": 0.2704671025276184,
+              "uv_px": [
+                875.8072509765625,
+                460.25830078125
+              ]
+            },
+            "cam3": {
+              "confidence": 0.4443623125553131,
+              "uv_px": [
+                986.6242065429688,
+                314.762451171875
+              ]
+            }
+          },
+          "candidate_player_id": 2,
+          "distance_m": 0.8039748072624207,
+          "fp32_observations": {
+            "cam0": {
+              "confidence": 0.22214275598526,
+              "uv_px": [
+                1139.6436767578125,
+                428.5684814453125
+              ]
+            },
+            "cam1": {
+              "confidence": 0.5290889739990234,
+              "uv_px": [
+                880.2745361328125,
+                457.1966247558594
+              ]
+            },
+            "cam2": {
+              "confidence": 0.26767662167549133,
+              "uv_px": [
+                876.1376953125,
+                460.5819091796875
+              ]
+            },
+            "cam3": {
+              "confidence": 0.47086620330810547,
+              "uv_px": [
+                986.9719848632812,
+                314.81781005859375
+              ]
+            }
+          },
+          "fp32_player_id": 2,
+          "frame": 263,
+          "joint": "left_wrist"
+        }
+      }
+    }
+  }
+}

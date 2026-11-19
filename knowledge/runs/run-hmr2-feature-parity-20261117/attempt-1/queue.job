@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# name: hmr2-feature-parity
+# added: 2026-11-17T21:06:20+09:00
+# provider: codex
+# session: 01a1e957-e495-7ef2-81cd-bf26c4ae465a
+# issue: 1754
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+# idempotency_key_sha256: 75e1a701302b3f88a6f7318174499dc75d0c4dd2451a219ea1df83481383ce43
+# request_sha256: 986fa8f520c22b0863d1b7b62b3a6c609867ef17212136da68e6acdc874643d7
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts
+export TENNIS_RUN_ID=0-8205082819512707576_2026-11-17T12-06-20-487292423Z_966480_hmr2-feature-parity
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205082819512707576_2026-11-17T12-06-20-487292423Z_966480_hmr2-feature-parity
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/hmr2-feature-artifacts/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8205082819512707576_2026-11-17T12-06-20-487292423Z_966480_hmr2-feature-parity --name hmr2-feature-parity --provider codex --session 01a1e957-e495-7ef2-81cd-bf26c4ae465a --issue 1754 --cmd PYTHONDONTWRITEBYTECODE=1\ PYTHONPATH=.\ OMP_NUM_THREADS=4\ OPENBLAS_NUM_THREADS=1\ MKL_NUM_THREADS=4\ .venv/bin/python\ knowledge/runs/run-hmr2-feature-parity-20261117/compare.py
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 .venv/bin/python knowledge/runs/run-hmr2-feature-parity-20261117/compare.py

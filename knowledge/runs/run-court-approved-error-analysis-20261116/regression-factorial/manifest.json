@@ -1,0 +1,8765 @@
+{
+  "source_head": "7b59c4730dfa934fb8e2323ae0553b96f737f412",
+  "meaning": {
+    "o": "boundary/duplicate observation censoring",
+    "s": "spatial point selection",
+    "v": "seed-visible lines fixed during solve"
+  },
+  "optimizer_parameters_unchanged": true,
+  "production_sources_unmodified": true,
+  "cases": [
+    {
+      "key": "tennis_court_detector_val/-s7X8RLJNqA_3550",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/0Ke1MYdxsgg_1300",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/24R8-zWwVUs_1000",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/2X6W0XXwpjU_450",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/2eYLPE3_kxI_2550",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/2tMw3eEH1-w_2650",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/2tMw3eEH1-w_2900",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/3iQCaCGROsE_500",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/3uGNCyzeUGk_2850",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/4S2Oqdemfj0_450",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/4brSVtMMWi4_400",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/4brSVtMMWi4_950",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/6HYiLxjdZJU_100",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/6_yJNU_WYag_950",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/7LLSADF9t48_2750",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/7hjEYRnDFVY_2350",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/8McGWhhnI3g_350",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/8McGWhhnI3g_450",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/8McGWhhnI3g_750",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/8iUbr7o5v2w_250",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/8iUbr7o5v2w_400",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/9Tpef3_abKU_50",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/9WXtuyg9xb0_150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/BTrRo-myrc8_1150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/CWYyHLCD8fY_2350",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Cbge5ffGZyk_2050",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Ch0eZ7LgseY_350",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/CzMrh40Wit8_1150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/DjxPGhmCrpY_500",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/El_4R86SlEI_1850",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/F38t1BJorwA_1400",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/FIemQkUaM7A_1900",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/FNpUV1DFUxU_1450",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Ir3flaThESo_1150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/JNKp7sCdQlY_450",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/KSmhAp3k6_M_1500",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Kii5XO_j5Wc_2650",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Kii5XO_j5Wc_3750",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/KnCTZtAvp78_900",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/L_nXP3v_DA8_600",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/L_yiaD74q_o_100",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/M0IgVgbRhD8_1950",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/M0IgVgbRhD8_2200",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/NDuyShHlVTI_1150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/NeHvxtGxj7s_100",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/O6xaI1QLRMI_2400",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/OcvlfHjBdwY_300",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/PIpT0JzKjRA_300",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/QQHw4cLzcCw_250",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/R0qg6mw_jeQ_1350",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/S4KCoPGHRt0_900",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Sn10AdKSCyw_1450",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/SzlcdL2kfBM_2450",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/SzlcdL2kfBM_2650",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/SzlcdL2kfBM_4100",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/TcnJe6ZP_tI_1850",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/UJHVcyTNo-k_850",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/UZUF1qO10F4_3650",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/UpEohnw8-Sk_1250",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Ut3N6Bs9tKw_750",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/UuYiD9JWAgI_1500",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/WPlUWwAgsSk_1700",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/WwzKVi2C_kk_3250",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/X3YkUB-L9nk_1600",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/XGsWUnmQtII_950",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Yo_E_azZOoc_100",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/Yo_E_azZOoc_150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/ZTpdH6MzGC8_1500",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/ZZ5tWtceqYc_2150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/ZtlEGsl9Odo_1600",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/_22eJvtP_lc_1650",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/_22eJvtP_lc_1900",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/_22eJvtP_lc_2000",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/bMMueLic82A_1900",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/bcvYuzo_lt8_1700",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/cCPynJo8I6c_250",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/crmaT4qYXao_2350",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/f5E0DoReArA_2250",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/gA-iHSI09Xs_2400",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/h1JJqKAFthw_1150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/hAwOXW99Kbk_300",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/icMukcd1X9E_2400",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/ifUIReZTOmI_1000",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/ifUIReZTOmI_1050",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/irRSmbQVqNU_2700",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/j8cNJ91iy_M_800",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/kWbQS_QAoW4_1200",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/kWbQS_QAoW4_200",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/l3Eu9pokSQs_3350",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/lclCAD9p_fs_150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/lclCAD9p_fs_1600",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/lclCAD9p_fs_1850",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/lclCAD9p_fs_2050",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/lclCAD9p_fs_800",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/n8k4CxVK3Xc_100",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/n8k4CxVK3Xc_50",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/q2_62cttzKE_1000",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/q4w8x7AJU_A_150",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/r2SooYPNbGg_100",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/r2SooYPNbGg_1050",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/rBHsQe0Nnyo_900",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/rnr1EJDd6PA_350",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/rqxU1mUEw9Y_2200",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/tL1T1hukEHU_3800",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/u7AaTefG19M_1200",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/ud1dfBJ5EcA_250",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/unhchQqmD8E_1400",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/upIcj3IJ70o_750",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/vdLe8FL8t-g_2000",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/wBxPeCg_o6Y_3200",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/wBxPeCg_o6Y_3850",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/x96EAthAIqY_1550",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/x9vDVPmlXZ8_1550",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/xW_ft7CuW2M_2000",
+      "dataset": "val",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/-0M6ixK7aIU_1100",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/3_2qe9xXnuw_1350",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/7hjEYRnDFVY_1350",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "tennis_court_detector_val/Cj0dZQuv2gM_3350",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/FNpUV1DFUxU_500",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/KqgYIG7byI4_1350",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/PuXlxKdUIes_2750",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/TDYiZ2vV39Y_850",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/WYxpTsvXvpA_200",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/ZtlEGsl9Odo_950",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/dGDMvC0RwTQ_1250",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/irRSmbQVqNU_2450",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/nAs9MGeIAtg_1900",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/sibEfNwg9GU_650",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/wMjFLZGBBho_750",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "tennis_court_detector_val/zZ8YbItXsYo_50",
+      "dataset": "val",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-000913",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "insufficient_line_support"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-000927",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001274",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001276",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001292",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001294",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001295",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001299",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001304",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001305",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001314",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001327",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "insufficient_line_support"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001335",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001339",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001341",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001344",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001347",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "insufficient_line_support"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001348",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001356",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001357",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001358",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001373",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001481",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001487",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001521",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001528",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001535",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "insufficient_line_support",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001575",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001580",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001582",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "insufficient_line_support"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001583",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-000736",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002032",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002039",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002047",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002060",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002065",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "no_jointly_supported_candidate"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002070",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "no_jointly_supported_candidate"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002083",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-000999",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001014",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "no_jointly_supported_candidate"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001018",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001029",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001034",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001057",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001059",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001063",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001174",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001175",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001176",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001177",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001199",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001203",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001205",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "joint_optimization_failed",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001207",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "insufficient_line_support",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001208",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "insufficient_line_support"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001211",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001802",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001803",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001814",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "insufficient_line_support"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001830",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001855",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "insufficient_line_support"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001856",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001857",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "insufficient_line_support"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001867",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001868",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001869",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001871",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001127",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ambiguous_candidates"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001141",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001174",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001881",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001889",
+      "dataset": "test",
+      "group": "lost",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "joint_optimization_failed"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001906",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "ambiguous_candidates",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001907",
+      "dataset": "test",
+      "group": "gained",
+      "frozen_status": {
+        "legacy": "insufficient_line_support",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-000897",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001332",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001495",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B00_court-sample-001540",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-000721",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-000757",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-000794",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-000829",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B01_court-sample-002045",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001022",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001163",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001212",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B02_court-sample-001824",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-000733",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001164",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": true,
+      "variants": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": true
+    },
+    {
+      "key": "synthetic_court_test/B03_court-sample-001910",
+      "dataset": "test",
+      "group": "unchanged_control",
+      "frozen_status": {
+        "legacy": "ok",
+        "current": "ok"
+      },
+      "observation_filter_inactive": false,
+      "variants": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "o0_equivalent_to_o1_when_inactive": false
+    }
+  ]
+}

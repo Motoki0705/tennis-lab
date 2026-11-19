@@ -2,10 +2,10 @@
 name: 機能要望
 about: 機能、改善、実装タスクを提案する
 title: "[機能] "
-labels: ["enhancement"]
+labels: ["enhancement", "issue:standalone"]
 ---
 
-<!-- 親子として管理する場合は06_parent/07_childを使い、このテンプレートの機能固有項目を追加する。書式の正本: .agents/ops/issues/README.md -->
+<!-- 単独の機能・改善用（issue:standaloneを付与）。親子として管理する場合は06_parent/07_childへ機能固有項目を追加する。起票後の親子移行は .agents/ops/issues/README.md に従う。 -->
 
 ## 概要
 

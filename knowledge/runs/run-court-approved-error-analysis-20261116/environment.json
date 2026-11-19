@@ -1,0 +1,13 @@
+{
+  "python": "3.11.15",
+  "packages": {
+    "numpy": "2.3.5",
+    "scipy": "1.17.1",
+    "opencv-python": "5.0.0.93",
+    "torch": "2.13.0",
+    "matplotlib": "3.11.1",
+    "pytest": "9.1.1"
+  },
+  "GPU_used": false,
+  "resume_CUDA_VISIBLE_DEVICES": ""
+}

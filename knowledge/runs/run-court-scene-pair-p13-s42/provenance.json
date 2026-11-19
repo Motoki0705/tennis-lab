@@ -1,0 +1,72 @@
+{
+  "schema": "court_scene_pair_condition_provenance_v1",
+  "condition": "P13",
+  "scientific_ref": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "inputs_identity": "4d7b39d613471fd9f94a64dcb36d8fbba3a939fa0517773125af394cc3c1ca33",
+  "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P13-s42/logs/version_1/checkpoints/update-00033160.ckpt",
+  "checkpoint_sha256": "470d55d2e4428f227ec3168a4bca78d7d4eff0ed300ef96b5100b1b058f6337e",
+  "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/P13-s42/evaluation.json",
+  "evaluation_sha256": "677d4bad34459ecb4da71c340e55c7caa5233dabf44d8fcd48b990553ce8ced9",
+  "global_step": 33160,
+  "config_digest": "7b87244acd74be93503c3f6849df492e3fa0c19b7817df820db4c338c2f5dd1e",
+  "data_condition_digest": "3b9e32057cbc31afdbbfbde82fd8bc20564da3397cfb88ce9b62d2e43e2d9b63",
+  "train_scene_images": {
+    "B01": 2750,
+    "B03": 2750
+  },
+  "fit_val_scene_images": {
+    "B01": 250,
+    "B03": 250
+  },
+  "data_manifest_sha256": {
+    "synthetic_court/dataset_subset": "eb5ebb99ec5d2ff565ddcb6ff4b52d23d266b951baf3050a8d6931a5987aee40",
+    "synthetic_court/validation_subset": "bd66c1861fa19132223864ed2d3f84f7634e00befb3203da6f96c1a92cc609e3",
+    "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+    "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+    "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+  },
+  "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-P13.json",
+  "original_marker_sha256": "feea573b6129a7a193b8ccbac6288d8baa50c4fa8499c8c4857a9ddceee9a5b2",
+  "evaluation_artifact_count": 37,
+  "training_source": {
+    "kind": "synthetic_court_dataset_subset",
+    "schema": "v3",
+    "court_scope": "target_court",
+    "manifest": "court_scene_diversity_6000_v1/pair-b01-b03.train.subset.json",
+    "validation_manifest": "court_scene_diversity_6000_v1/pair-b01-b03.val.subset.json"
+  },
+  "restarts": [
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P13-a7d78291c4db431bb3d1627bb8a371ff.json",
+      "sha256": "9a7c50b456bbfc35c7a777b814f16e804e6cd30d876a57f297ecf76ab60bc439",
+      "condition": "P13",
+      "probe": false,
+      "resume_update": 6632,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 6633,
+        "last_possible": 9948
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": {
+        "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P13-s42/logs/version_0/checkpoints/update-00006632.ckpt",
+        "checkpoint_sha256": "c116914c481ae1ee6889acd6ae5132bf11cd25f5a020e24a57523d9cde88970a",
+        "global_step": 6632
+      }
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P13-f51ebe842460464e86458eef0efed40c.json",
+      "sha256": "5e777cb308cf35681b354fa889f06c8238cc161d4d08ffd7b6d37446b33afb91",
+      "condition": "P13",
+      "probe": false,
+      "resume_update": 0,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 1,
+        "last_possible": 3316
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": null
+    }
+  ]
+}

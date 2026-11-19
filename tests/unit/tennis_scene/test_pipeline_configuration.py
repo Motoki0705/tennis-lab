@@ -3,12 +3,16 @@
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
 import pytest
 from hydra import compose, initialize_config_dir
 from hydra.errors import ConfigCompositionException
+from omegaconf import OmegaConf
 
 from src.tennis_scene.configuration import PipelineRuntimeConfig
-from src.utils.configuration import UnknownConfigurationKeyError
+from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.tennis_scene.pipeline.frame_sampling import sampled_frame_indices
+from src.utils.configuration import ConfigurationError, UnknownConfigurationKeyError
 from src.utils.configuration.errors import PathContractError
 
 
@@ -33,11 +37,90 @@ def test_defaults_associate_players_and_decide_sides() -> None:
     doubles = _runtime(["player_association.players_per_side=2"]).player_association
     assert doubles.players_per_side == 2 and doubles.geometry == association.geometry
     assert runtime.court_side.reprojection_px > 0 and runtime.court_side.min_margin > 0
-    assert runtime.sampling_max_frames == 1024
     assert "blcs_association" not in runtime.enabled
     assert len(runtime.camera_ids) == 3
     assert runtime.player_placement.temporal_weight == 0.05
     assert runtime.player_placement.min_joints == 5
+    assert runtime.people.runtime.dino_detector.precision == "fp32"
+    assert runtime.people.runtime.vitpose.precision == "fp32"
+    assert runtime.people.runtime.vitpose.flip_test is True
+
+
+@pytest.mark.parametrize("precision", ["bf16", "fp16"])
+def test_person_precision_accepts_explicit_cuda_autocast(precision: str) -> None:
+    runtime = _runtime([f"people_models.runtime.{model}.precision={precision}" for model in ("dino_detector", "vitpose")])
+    assert runtime.people.runtime.dino_detector.precision == precision
+    assert runtime.people.runtime.vitpose.precision == precision
+
+
+@pytest.mark.parametrize(
+    ("overrides", "error"),
+    [
+        (["people_models.runtime.dino_detector.precision=half"], "dino_detector.precision"),
+        (["people_models.runtime.vitpose.precision=32"], "vitpose.precision"),
+        (["~people_models.runtime.vitpose.precision"], "vitpose.precision"),
+        (["device=cpu", "people_models.runtime.dino_detector.precision=bf16"], "DINO requires a CUDA device"),
+        (["device=cpu", "people_models.runtime.vitpose.precision=fp16"], "ViTPose requires CUDA"),
+    ],
+)
+def test_person_precision_rejects_invalid_configuration(overrides: list[str], error: str) -> None:
+    with pytest.raises(ConfigurationError, match=error):
+        _runtime(overrides)
+
+
+def test_saved_six_threshold_court_side_config_restores_clip_mode(tmp_path: Path) -> None:
+    directory = Path(__file__).parents[3] / "src/tennis_scene/configs"
+    with initialize_config_dir(version_base="1.3", config_dir=str(directory)):
+        cfg = compose(config_name="pipeline", overrides=["court_side.min_margin=0.31"])
+    current = PipelineRuntimeConfig.from_config(cfg)
+    thresholds = {"reprojection_px": 20.0, "min_motion_px": 5.0, "min_frames": 8,
+                  "max_cost": 0.8, "min_support": 0.2, "min_margin": 0.31}
+    cfg.court_side = thresholds
+    saved = tmp_path / "composed.yaml"
+    OmegaConf.save(cfg, saved, resolve=True)
+    restored = PipelineRuntimeConfig.from_config(OmegaConf.load(saved))
+    assert restored.video_court_side is None
+    assert restored.court_side == current.court_side and restored.court_side.min_margin == 0.31
+    assert restored.processing_settings["court_side"] == current.processing_settings["court_side"] == thresholds
+
+
+@pytest.mark.parametrize("overrides,missing", [
+    (["~court_side.mode"], "mode"),
+    (["~court_side.video_shared"], "video_shared"),
+    (["~court_side.mode", "~court_side.video_shared", "~court_side.min_margin"], "min_margin"),
+])
+def test_partial_court_side_formats_are_rejected(overrides: list[str], missing: str) -> None:
+    with pytest.raises(ValueError, match=rf"court_side\.{missing}\b"):
+        _runtime(overrides)
+
+
+def test_default_sampling_covers_long_meiji_clip_and_still_refuses_truncation() -> None:
+    runtime = _runtime([], bind_inputs=False)
+    indices = sampled_frame_indices(2108, 60000 / 1001, max_frames=runtime.sampling_max_frames)
+    assert len(indices) == 1055
+    np.testing.assert_array_equal(indices[[0, 250, 251, 500, 1000, 1054]], [0, 500, 501, 999, 1998, 2106])
+    boundary = sampled_frame_indices(4096, 60., max_frames=runtime.sampling_max_frames)
+    assert len(boundary) == 2048 and boundary[-1] == 4094
+    with pytest.raises(ReconstructionUnavailable, match="maximum"):
+        sampled_frame_indices(4098, 60., max_frames=runtime.sampling_max_frames)
+
+
+def test_explicit_x3d_config_changes_model_and_cache_settings() -> None:
+    directory = Path(__file__).parents[3] / "src/tennis_scene/configs"
+    with initialize_config_dir(version_base="1.3", config_dir=str(directory)):
+        cfg = compose(config_name="pipeline_x3d_dpt")
+    runtime = PipelineRuntimeConfig.from_config(cfg)
+    assert runtime.ball_detection is not None
+    assert runtime.ball_detection.model_type == "x3d_csn_dpt"
+    assert runtime.ball_detection.score_threshold == 0.5380124449729919
+    assert runtime.ball_detection.num_frames == 32
+    assert runtime.ball_detection.precision == "bf16"
+    assert runtime.processing_settings["ball_detection"] != _runtime([]).processing_settings["ball_detection"]
+
+
+def test_missing_model_selection_fails_instead_of_guessing_checkpoint() -> None:
+    with pytest.raises(ValueError, match="model_type"):
+        _runtime(["~ball_detection.model_type"])
 
 
 def test_placement_override_is_typed_and_part_of_cache_settings() -> None:
@@ -49,6 +132,32 @@ def test_placement_override_is_typed_and_part_of_cache_settings() -> None:
         ]["temporal_weight"]
         == 0.2
     )
+
+
+def test_court_methods_and_paint_measurements_change_cache_identity() -> None:
+    baseline = _runtime([])
+    assert baseline.court_kp.postprocess.support_method == "legacy"
+    assert baseline.court_kp.region_search.acceptance_method == "legacy"
+    assert baseline.court_kp.region_search.refinement_method == "model"
+    for overrides in (
+        ["court_kp.region_search.acceptance_method=quality"],
+        ["court_kp.region_search.acceptance_method=quality", "court_kp.region_search.refinement_method=rgb_paint"],
+        ["court_kp.postprocess.support_method=candidate_subsets"],
+        ["court_kp.postprocess.support_method=fixed_subsets"],
+        ["court_kp.postprocess.max_support_candidates=4"],
+        ["court_kp.region_search.paint.radius_px=40.0"],
+        ["court_kp.region_search.min_inliers=9"],
+    ):
+        changed = _runtime(overrides)
+        assert changed.processing_settings["court_kp"] != baseline.processing_settings["court_kp"]
+    with pytest.raises(ValueError, match="requires acceptance_method=quality"):
+        _runtime(["court_kp.region_search.refinement_method=rgb_paint"])
+    with pytest.raises(ValueError, match="paint extraction version"):
+        _runtime(["court_kp.region_search.paint.version=paired_edges_v1"])
+    with pytest.raises(ValueError, match="support_method"):
+        _runtime(["court_kp.postprocess.support_method=adaptive"])
+    with pytest.raises(ValueError, match="refinement_method"):
+        _runtime(["court_kp.region_search.refinement_method=automatic"])
 
 
 @pytest.mark.parametrize(
@@ -156,6 +265,7 @@ def test_default_coco_source_and_explicit_finetuned_comparison() -> None:
 
 def test_ball_detection_is_used_without_refiner_assets() -> None:
     current = _runtime([])
+    assert current.ball_detection is not None
     assert current.ball_detection.checkpoint.name == "i935-mixed-ft-s42-epoch09.ckpt"
     assert current.ball_detection.overlap_aggregation == "nearest_window_centre_then_earlier_start"
     assert "ball_refiner_2d" not in current.component_sources

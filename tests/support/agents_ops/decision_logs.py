@@ -22,6 +22,20 @@ CONDITION = "f0bff9febfa5411f880dc5cde6271292"
 AT = "2026-11-10T08:00:00+00:00"
 
 
+def navigation_snapshot(directory: Path, repo: str = "o/r", parent: int = 1) -> str:
+    """Use the existing publication projection and README generator, offline."""
+    navigation = importlib.import_module("decision_logs.navigation")
+    preview = journal.Journal(directory, repo, parent).preview_publication()
+    assert not preview["blocked"], preview
+    files = {
+        navigation.event_path(payload["record"]): schema.json_bytes(payload)
+        for payload in preview["payloads"]
+    }
+    generated = navigation.generate(files)
+    navigation.validate_links({**files, **generated}, generated)
+    return "\n".join(raw.decode() for raw in generated.values())
+
+
 def missing(reason: str = "not_captured") -> dict[str, Any]:
     return {"status": "unavailable", "reason": reason}
 

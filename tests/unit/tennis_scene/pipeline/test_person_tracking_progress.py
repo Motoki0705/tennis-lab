@@ -19,7 +19,11 @@ from src.tasks.person_tracking.sequence import TrackingConfig
 from src.tennis_scene.pipeline.components import person_tracking as module
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import SourceVideo
-from tests.unit.tennis_scene.pipeline.config_factories import make_people_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    fake_encoder_spec,
+    make_people_config,
+    materialize_model_weights,
+)
 
 
 class _TrackingHarness:
@@ -98,7 +102,6 @@ class _TrackingHarness:
         monkeypatch.setattr(module, 'ViTPosePose2D', pose_factory)
         monkeypatch.setattr(module, 'AFLink', Link)
         monkeypatch.setattr(module, 'OpenCVVideoFrameReader', read)
-        monkeypatch.setattr(module, 'release_inference_memory', lambda device: None)
         monkeypatch.setattr(module, 'monotonic', lambda: self.clock)
         monkeypatch.setattr(vitpose, 'iter_frame_person_crops', crops)
         monkeypatch.setattr(vitpose, 'keypoints_from_heatmaps', decode)
@@ -106,9 +109,9 @@ class _TrackingHarness:
         self.encoder = Encoder
 
     def run(self, *, show_progress: bool = True) -> module.PersonTrackingOutput:
-        tracker = module.PersonTrackingModule(TrackingConfig(), people=self.people, encoder=self.encoder,
+        tracker = module.PersonTrackingModule(TrackingConfig(), people=self.people, encoder=fake_encoder_spec(self.encoder),
             aflink_checkpoint=self.tmp_path / 'af.pth', show_progress=show_progress)
-        return tracker.process(module.PersonTrackingInput(self.video, self.detections))
+        return materialize_model_weights(tracker).process(module.PersonTrackingInput(self.video, self.detections))
 
 
 def test_redirected_progress_counts_consumed_frames_and_preserves_results(
@@ -127,6 +130,7 @@ def test_redirected_progress_counts_consumed_frames_and_preserves_results(
     assert '\r' not in output and 'ViTPose:' not in output
     assert [event[1] for event in events if event[0] == 'track'] == list(range(12))
     assert [event[1] for event in events if event[0] == 'pose_request'] == [0, 1, 3, 4, 5, 7, 8, 9, 10, 11]
+    assert harness.detections.source_rows is not None
     assert [event[2] for event in events if event[0] == 'track'] == [
         harness.detections.source_rows[harness.detections.frame_offsets[i]:harness.detections.frame_offsets[i + 1]].tolist()
         for i in range(12)

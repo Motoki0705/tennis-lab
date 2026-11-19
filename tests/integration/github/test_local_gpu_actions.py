@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
+import os
 import re
+import shlex
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, cast
 
+import pytest
 import yaml
 
 from src.utils.training_queue import RETENTION_NS
@@ -74,8 +79,15 @@ def test_cuda_workflow_runs_serial_marker_tests_under_shared_lock() -> None:
     assert "-p scripts.ci_metrics.require_execution" in text
     assert "export TENNIS_RUN_B00_RENDERED_ALIGNMENT_GPU_TEST=1" in text
     assert "export PLAYER_DETECTION_GPU_TEST=1" in text
-    assert workflow[True]["workflow_dispatch"]["inputs"]["target"]["options"] == ["cuda", "local-data"]
-    local = next(step for step in workflow["jobs"]["cuda-tests"]["steps"] if step["name"] == "Run explicit local-data CPU acceptance")
+    assert workflow[True]["workflow_dispatch"]["inputs"]["target"]["options"] == [
+        "cuda",
+        "local-data",
+    ]
+    local = next(
+        step
+        for step in workflow["jobs"]["cuda-tests"]["steps"]
+        if step["name"] == "Run explicit local-data CPU acceptance"
+    )
     assert local["if"] == "inputs.target == 'local-data'"
     assert local["env"]["CUDA_VISIBLE_DEVICES"] == ""
     assert "local_data and not cuda" in local["run"]
@@ -106,6 +118,7 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
         SCRIPTS / "install_self_hosted_runner.sh",
         SCRIPTS / "install_queue_bundle.sh",
         SCRIPTS / "wsl_keepalive.sh",
+        SCRIPTS / "mount_assets.sh",
     ]
     for script in bash_scripts:
         subprocess.run(["bash", "-n", str(script)], check=True)
@@ -117,7 +130,11 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert "InaccessiblePaths=$inaccessible_paths" in installer
     assert "InaccessiblePaths=/mnt\n" not in installer
     assert 'mountpoint --quiet "$asset_dir"' in installer
-    assert "mount --options remount,bind,ro" in installer
+    assets = (SCRIPTS / "mount_assets.sh").read_text()
+    assert "mount --options remount,bind,ro" in assets
+    assert '"$SCRIPT_DIR/asset_sources.py"' in installer
+    assert '"$TOOL_ROOT/bin/asset_paths.conf"' in installer
+    assert "Requires=tennis-data-mount.service" in installer
     assert "TRAINING_QUEUE_LOCK_FILE=" in installer
     for suffix in (".gate", ".slot-0", ".slot-1"):
         assert f'"${{GPU_LOCK_FILE}}{suffix}"' in installer
@@ -145,6 +162,93 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert 'queue_args+=(--issue "$TRAINING_ISSUE")' in enqueue
     assert '--resource "$TRAINING_RESOURCE"' in enqueue
     assert "- Logical GPU resource: \`$TRAINING_RESOURCE\`" in enqueue
+
+
+def test_runner_asset_sources_stay_on_configured_mirror_after_d_switch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    Config = importlib.import_module("storage_tier.layout").Config
+
+    from scripts.github_actions.asset_sources import asset_sources
+
+    repo, mount = tmp_path / "D/repo", tmp_path / "configured E"
+    repo.mkdir(parents=True)
+    config_file = tmp_path / "storage.toml"
+    config_file.write_text(
+        f"mirror_mount = {json.dumps(str(mount))}\ndataset_containers=[]\ndataset_units=[]\n"
+    )
+    mount.mkdir()
+    config = Config.load(repo, config_file)
+    for name in ("data", "ckpt"):
+        (config.mirror / name).mkdir(parents=True)
+        (repo / name).symlink_to(config.mirror / name, target_is_directory=True)
+    before = asset_sources(config)
+    for name in ("data", "ckpt"):
+        (repo / name).unlink()
+        (repo / name).mkdir()
+    (repo / "data/d-only").write_bytes(b"not yet mirrored")
+    after = asset_sources(config)
+    assert before == after
+    assert after["SOURCE_DATA"] == str(config.mirror / "data")
+    assert after["SOURCE_CKPT"] == str(config.mirror / "ckpt")
+    assert not (Path(after["SOURCE_DATA"]) / "d-only").exists()
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [None, "root", "device", "writable", "renumbered", "source-root", "unmounted"],
+)
+def test_assets_runtime_checks_filesystem_root_instead_of_source_path(
+    tmp_path: Path,
+    invalid: str | None,
+) -> None:
+    runtime = tmp_path / "mount_assets.sh"
+    shutil.copyfile(SCRIPTS / "mount_assets.sh", runtime)
+    values = {
+        "TARGET_ROOT": str(tmp_path / "assets"),
+        "MIRROR_MOUNT": "/mnt/authoritative",
+    }
+    for name in ("DATA", "CKPT"):
+        values.update(
+            {
+                f"SOURCE_{name}": f"/mnt/authoritative/repo/{name.lower()}",
+            }
+        )
+    (tmp_path / "asset_paths.conf").write_text(
+        "".join(f"{k}={shlex.quote(v)}\n" for k, v in values.items())
+    )
+    binary = tmp_path / "bin"
+    binary.mkdir()
+    (binary / "mountpoint").write_text(
+        "#!/bin/sh\n"
+        + (
+            '[ "$2" != "/mnt/authoritative" ]\n'
+            if invalid == "unmounted"
+            else "exit 0\n"
+        )
+    )
+    (binary / "mountpoint").chmod(0o755)
+    finder = binary / "findmnt"
+    finder.write_text(
+        "#!/usr/bin/env python3\nimport json,sys\nname=sys.argv[-1].rsplit('/',1)[-1]\n"
+        + f"invalid={invalid!r}\n"
+        + "source=sys.argv[-1].startswith('/mnt/authoritative/')\n"
+        + "root='/volume' if invalid=='source-root' else ''\ndevice='8:99' if invalid=='renumbered' else '8:48'\n"
+        + "value={'fsroot':root or '/','target':'/mnt/authoritative','maj:min':device} if source else {'fsroot':'/wrong' if invalid=='root' else root+'/repo/'+name,'maj:min':'8:64' if invalid=='device' else device,'options':'rw' if invalid=='writable' else 'ro,noatime'}\n"
+        + "print(json.dumps({'filesystems':[value]}))\n"
+    )
+    finder.chmod(0o755)
+    result = subprocess.run(
+        ["bash", str(runtime), "start"],
+        env={**os.environ, "PATH": f"{binary}:{os.environ['PATH']}"},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == (
+        1 if invalid in {"root", "device", "writable", "unmounted"} else 0
+    ), result.stderr
 
 
 def test_installed_queue_runs_outside_repository_with_system_python_only(

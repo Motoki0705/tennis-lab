@@ -1,0 +1,9 @@
+{
+  "schema": "court_scene_pair_execution_record_check_v1",
+  "request_status_log_original_bytes_equal": true,
+  "captured_patch_original_bytes_equal": true,
+  "generated_colab_repro_original_bytes_equal": true,
+  "control_staging_and_idempotent_recheck_passed": true,
+  "mismatched_target_refused_without_overwrite": true,
+  "runtime_or_queue_started": false
+}

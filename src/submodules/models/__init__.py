@@ -9,6 +9,7 @@ Each model exposes ``load()`` / ``unload()`` / ``predict(request) -> result``:
 """
 
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.models.dino.architecture import dino_source_assets
 from src.submodules.models.dino.extension import validate_dino_extension
 from src.submodules.models.dino.person_detector import (
     DinoPersonDetector,
@@ -60,6 +61,7 @@ __all__ = [
     "TrackRequest",
     "TrackResult",
     "ViTPosePose2D",
+    "dino_source_assets",
     "filter_detections_by_footpoint",
     "select_and_complete_tracks",
     "validate_dino_extension",

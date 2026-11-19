@@ -1,0 +1,5 @@
+{
+  "initial_integrity_check": "KeyError: FN when Counter omitted a zero-count class",
+  "correction": "read absent confusion classes as zero; no evaluation values or classification definitions changed",
+  "final_integrity_check": "passed"
+}

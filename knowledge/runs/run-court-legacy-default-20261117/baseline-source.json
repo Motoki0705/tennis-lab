@@ -1,0 +1,21 @@
+{
+  "git_commit": "569ecad37a7c8e120cc812463dd8d9ef24e8ae98",
+  "files": {
+    "knowledge/runs/run-court-acceptance-implementation-20261116/legacy_geometry/confidence_homography.py": {
+      "original_path": "src/tasks/court_detection/geometry/confidence_homography.py",
+      "sha256": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a"
+    },
+    "knowledge/runs/run-court-acceptance-implementation-20261116/legacy_geometry/hybrid_homography.py": {
+      "original_path": "src/tasks/court_detection/geometry/hybrid_homography.py",
+      "sha256": "a90367127de453378ec1126d0276712e2bebd26dace1348b6ef2271e5d712b4c"
+    },
+    "knowledge/runs/run-court-acceptance-implementation-20261116/legacy_geometry/line_evidence.py": {
+      "original_path": "src/tasks/court_detection/geometry/line_evidence.py",
+      "sha256": "a4a9fa809191b776ea4d85919f05f8aa97fd6540d5a4b9dd26f97da0ed37f353"
+    },
+    "knowledge/runs/run-court-legacy-default-20261117/legacy_regions.py": {
+      "original_path": "src/tasks/court_detection/inference/regions.py",
+      "sha256": "0fdef1ce8a6054514caf1fa5161c6bd011c83a103a16e1a4495408f5722a06be"
+    }
+  }
+}

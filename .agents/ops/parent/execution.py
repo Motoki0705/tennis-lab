@@ -10,6 +10,8 @@ from .judgement_comments import owned_comment
 from .policy import digest, nonempty, number, object_value, phase, section_span
 
 if TYPE_CHECKING:
+    from issues import Issue
+
     from .session import ParentSession
 
 
@@ -85,6 +87,20 @@ def human_basis(event: Mapping[str, Any]) -> dict[str, Any]:
                 "requirements_sha256": sha256(event["requirements_sha256"]),
             }
         )
+    if event.get("improvement_approval") is not None:
+        inputs = digest(
+            {
+                "agreement_inputs": inputs,
+                "improvement_approval": event["improvement_approval"],
+            }
+        )
+    if "acceptance_snapshot" in event:
+        inputs = digest(
+            {
+                "agreement_inputs": inputs,
+                "acceptance_snapshot": event["acceptance_snapshot"],
+            }
+        )
     return validate_basis(
         {
             "schema_version": 1,
@@ -154,18 +170,9 @@ def comment_snapshot(comment: Mapping[str, Any]) -> dict[str, Any]:
 def instruction_comments(
     session: ParentSession, comments: Sequence[Mapping[str, Any]]
 ) -> list[dict[str, Any]]:
-    result = []
-    for comment in comments:
-        item = comment_snapshot(comment)
-        if owned_comment(comment, session.login, session.gh.repo, session.parent):
-            continue
-        first = item["body"].splitlines()[0] if item["body"] else ""
-        if item["login"] == session.login and first.startswith(
-            ("<!-- parent-session:v1 ", "<!-- parent-review:v1 ")
-        ):
-            continue
-        result.append(item)
-    return result
+    from .history import instruction_comments as read_instructions
+
+    return read_instructions(session.gh.repo, session.parent, session.login, comments)
 
 
 def ignored_comment_map(
@@ -195,7 +202,7 @@ def execution_input(
     raw = session.gh.issue(session.parent)
     if "ops-report" in {label["name"] for label in raw["labels"]}:
         raise ValueError("ops-report containers cannot receive an execution basis")
-    raw_comments = session.gh.comments(session.parent)
+    raw_comments = session.gh.parent_comments(session.parent, session.login)
     # Older dispatcher records pinned the display's digest in ignored_comments.
     # Revalidate its complete current format before allowing a display update.
     for comment in raw_comments:
@@ -216,6 +223,9 @@ def execution_input(
             )
     if set(ignored) - observed:
         raise ValueError("ignored comment missing from the current discussion")
+    from .improvements import input_state
+
+    improvement = input_state(session.gh, session.parent, session.login, session.store)
     return {
         "schema_version": 1,
         "repo": session.gh.repo.casefold(),
@@ -224,6 +234,7 @@ def execution_input(
             "title": raw["title"],
             "body_sha256": digest(requirement_body(raw.get("body") or "")),
             "needs_human": "needs-human" in {label["name"] for label in raw["labels"]},
+            **({"improvement": improvement} if improvement is not None else {}),
         },
         "comments": sorted(comments, key=lambda c: c["id"]),
         "context": dict(context or {}),
@@ -240,7 +251,12 @@ def validate_event(event: Mapping[str, Any]) -> None:
         "inputs",
         "ignored_comments",
     }
-    if not required <= set(event) or set(event) - required - {"parent", "body"}:
+    if not required <= set(event) or set(event) - required - {
+        "parent",
+        "body",
+        "improvement_approval",
+        "acceptance_snapshot",
+    }:
         raise ValueError("malformed execution basis event")
     basis = validate_basis(event.get("basis"))
     if basis["kind"] != "autonomous_decision" or event.get("basis_sha256") != digest(
@@ -263,13 +279,28 @@ def validate_event(event: Mapping[str, Any]) -> None:
         raise ValueError("execution observations missing")
 
 
-def _current_basis(session: ParentSession) -> dict[str, Any]:
+def _current_basis(
+    session: ParentSession,
+    *,
+    history: list[dict[str, Any]] | None = None,
+    parent: Issue | None = None,
+) -> dict[str, Any]:
     # A recorded agreement/decision is evidence of authority. Prose edits and
     # handoffs are observations for the parent, not revocations of that evidence.
+    from .improvements import require as require_improvement
+
+    binding = require_improvement(
+        session, body=parent.body if parent is not None else None, history=history
+    )
+    if binding is not None:
+        # Improvement approval is an independent fresh observation. It may
+        # observe a newer revocation or needs-human label; never carry the
+        # earlier planning inputs across that boundary for authorization.
+        history, parent = None, None
     current = next(
         (
             e
-            for e in reversed(session.history())
+            for e in reversed(session.history() if history is None else history)
             if e["event"] in {"agreed", "execution_basis", "basis_revoked"}
         ),
         None,
@@ -278,12 +309,19 @@ def _current_basis(session: ParentSession) -> dict[str, Any]:
         raise ExecutionBasisStale(
             "親issueの要件合意記録または有効な実行根拠がありません。"
         )
+    if binding is not None and current.get("improvement_approval") != binding:
+        raise ExecutionBasisStale(
+            "current basis is not bound to the current human improvement approval"
+        )
     if current["event"] == "agreed":
         return human_basis(current)
     validate_event(current)
-    if "needs-human" in {
-        label["name"] for label in session.gh.issue(session.parent)["labels"]
-    }:
+    labels = (
+        parent.labels
+        if parent is not None
+        else {label["name"] for label in session.gh.issue(session.parent)["labels"]}
+    )
+    if "needs-human" in labels:
         raise ExecutionBasisStale("explicit human decision is pending")
     return object_value(current["basis"])
 
@@ -295,18 +333,11 @@ def current_basis(session: ParentSession) -> dict[str, Any]:
 
 def observed_authorization(session: ParentSession) -> dict[str, Any]:
     """Validate the saved owner/basis without granting the viewer ownership."""
-    return observed_review_authorization(session)
-
-
-def observed_review_authorization(
-    session: ParentSession, request: Mapping[str, Any] | None = None
-) -> dict[str, Any]:
-    """Read saved authority, including the old review's representation of it."""
     row = session.row
     if not row:
         raise ValueError("worker freshness requires a saved parent owner")
     basis = _current_basis(session)
-    return _basis_authorization(basis, row["generation"], request)
+    return _basis_authorization(basis, row["generation"])
 
 
 def validate_candidate(
@@ -344,23 +375,7 @@ def validate_candidate(
     }
 
 
-def _basis_authorization(
-    basis: Mapping[str, Any], generation: int, request: Mapping[str, Any] | None
-) -> dict[str, Any]:
-    if request is not None and request["schema_version"] == 1:
-        if basis["kind"] != "human_agreement":
-            raise ValueError("legacy review requires a human agreement")
-        agreement = {
-            key: basis[key]
-            for key in (
-                "purpose",
-                "scope",
-                "behavior",
-                "acceptance",
-                "human_confirmation",
-            )
-        }
-        return {"generation": generation, "agreement_sha256": digest(agreement)}
+def _basis_authorization(basis: Mapping[str, Any], generation: int) -> dict[str, Any]:
     return validate_authorization(
         {
             "generation": generation,
@@ -371,10 +386,15 @@ def _basis_authorization(
 
 
 def authorization(
-    session: ParentSession, request: Mapping[str, Any] | None = None
+    session: ParentSession,
+    *,
+    history: list[dict[str, Any]] | None = None,
+    parent: Issue | None = None,
 ) -> dict[str, Any]:
+    session.owner()
     return _basis_authorization(
-        current_basis(session), session.owner()["generation"], request
+        _current_basis(session, history=history, parent=parent),
+        session.row["generation"],
     )
 
 
@@ -389,6 +409,18 @@ def record_autonomous(session: ParentSession, value: dict[str, Any]) -> dict[str
             "human checking/agreement/revocation cannot be overridden autonomously"
         )
     basis = validate_basis(value["basis"])
+    from . import improvements
+
+    binding = improvements.require(session)
+    if binding is not None:
+        permitted, _ = improvements.agreement(session, binding["decision_id"])
+        if any(
+            basis[k] != permitted[k]
+            for k in ("purpose", "scope", "behavior", "acceptance")
+        ):
+            raise ValueError(
+                "autonomous basis differs from the human-approved improvement scope"
+            )
     row = session.row
     generation = row.get("generation", 0) + (row.get("status") != "active")
     event = {
@@ -396,7 +428,13 @@ def record_autonomous(session: ParentSession, value: dict[str, Any]) -> dict[str
         **value,
         "basis_sha256": digest(basis),
         "generation": generation,
+        **({"improvement_approval": binding} if binding is not None else {}),
     }
+    from .completion import snapshot as acceptance_snapshot
+
+    event["acceptance_snapshot"] = acceptance_snapshot(
+        session.gh.issue(session.parent).get("body") or ""
+    )
     previous = next(
         (e for e in reversed(history) if e["event"] == "execution_basis"), {}
     )
@@ -439,74 +477,6 @@ def record_autonomous(session: ParentSession, value: dict[str, Any]) -> dict[str
     }
 
 
-def require_requirement_targets(
-    request: Mapping[str, Any], targets: set[int], *, exact: bool = False
-) -> None:
-    if request["schema_version"] != 2:
-        return
-    expected = {str(n) for n in targets | {request["parent_issue"]}}
-    actual = set(object_value(request["requirements"]))
-    if expected - actual or (exact and actual != expected):
-        raise ValueError(
-            "review closing targets differ from frozen requirements: "
-            f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}; "
-            "prepare a new run with reason"
-        )
-
-
-def require_request_authorization(
-    session: ParentSession,
-    request: Mapping[str, Any],
-    *,
-    required_issues: set[int] | None = None,
-) -> dict[str, Any]:
-    auth = authorization(session, request)
-    require_review_inputs(session, request, auth, required_issues=required_issues)
-    return auth
-
-
-def require_review_inputs(
-    session: ParentSession,
-    request: Mapping[str, Any],
-    auth: Mapping[str, Any],
-    *,
-    required_issues: set[int] | None = None,
-) -> None:
-    # Preserve the actual target binding. The parent assesses changes in the
-    # meaning of requirements; hashes remain immutable historical observations.
-    if (
-        request["repo"].casefold() != session.gh.repo.casefold()
-        or request["parent_issue"] != session.parent
-    ):
-        raise ValueError("review belongs to another repository/parent")
-    require_requirement_targets(request, required_issues or set())
-
-
-def require_run_authorization(
-    session: ParentSession,
-    request: Mapping[str, Any],
-    *,
-    required_issues: set[int] | None = None,
-) -> dict[str, Any]:
-    auth = require_request_authorization(
-        session, request, required_issues=required_issues
-    )
-    require_review_history(session, request, auth)
-    return auth
-
-
-def require_review_history(
-    session: ParentSession, request: Mapping[str, Any], auth: Mapping[str, Any]
-) -> None:
-    for event in session.history():
-        if (
-            event.get("event") == "review"
-            and event.get("review_run_id") == request["review_run_id"]
-            and event.get("request_sha256") != digest(request)
-        ):
-            raise ValueError("review history refers to a different request")
-
-
 def task_errors(
     task: Mapping[str, Any], auth: Mapping[str, Any], body: str
 ) -> tuple[str, ...]:
@@ -541,7 +511,9 @@ def input_changes(session: ParentSession) -> dict[str, Any]:
         expected = latest["inputs"]["issue"]["body_sha256"]
         before = {c["id"]: c["sha256"] for c in latest["inputs"]["comments"]}
         before.update({c["id"]: c["sha256"] for c in latest["ignored_comments"]})
-        current = instruction_comments(session, session.gh.comments(session.parent))
+        current = instruction_comments(
+            session, session.gh.parent_comments(session.parent, session.login)
+        )
         after = {c["id"]: digest(c) for c in current}
         changes = {
             n: "added" if n not in before else "deleted" if n not in after else "edited"

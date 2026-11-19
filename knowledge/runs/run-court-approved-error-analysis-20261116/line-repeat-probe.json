@@ -1,0 +1,307 @@
+{
+  "case": "outputs/tennis_scene/evaluate/court-acceptance-implementation-20261116/test_raw/synthetic_court_test/B00_court-sample-001348/raw_00.npz",
+  "opencv": "5.0.0",
+  "threads": 1,
+  "records": [
+    {
+      "repeat": 0,
+      "hashes": {
+        "distance": "329557569f9fe15d86ae2118059d50494760d565a43ca5379691dab3fd53456c",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "3dd73d119b6c473b1b70a60f8b0690e15860331144de014d19e34ede7115a7e6",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "44df6eeb813c9c2b542f9af0abec0eea8094b7dc5eb1152a0642174e66e834c8",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 0.0,
+      "same_points": true
+    },
+    {
+      "repeat": 1,
+      "hashes": {
+        "distance": "329557569f9fe15d86ae2118059d50494760d565a43ca5379691dab3fd53456c",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "30177b96abe970cfc262bf06be75b3a9f25065d84da74081970fbf2a3a10e010",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "44df6eeb813c9c2b542f9af0abec0eea8094b7dc5eb1152a0642174e66e834c8",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 0.0,
+      "same_points": true
+    },
+    {
+      "repeat": 2,
+      "hashes": {
+        "distance": "d4cc53f48d79df9ff7b8efd4a796dad70aefcfd2cee1faf4412fab7b725fc38b",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "3dd73d119b6c473b1b70a60f8b0690e15860331144de014d19e34ede7115a7e6",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "f0e1741bc3c66875129accc47134d3223b83cb29aa1a4314634ec6c9750edc23",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 6.103515625e-05,
+      "same_points": true
+    },
+    {
+      "repeat": 3,
+      "hashes": {
+        "distance": "329557569f9fe15d86ae2118059d50494760d565a43ca5379691dab3fd53456c",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "30177b96abe970cfc262bf06be75b3a9f25065d84da74081970fbf2a3a10e010",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "44df6eeb813c9c2b542f9af0abec0eea8094b7dc5eb1152a0642174e66e834c8",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 0.0,
+      "same_points": true
+    },
+    {
+      "repeat": 4,
+      "hashes": {
+        "distance": "d4cc53f48d79df9ff7b8efd4a796dad70aefcfd2cee1faf4412fab7b725fc38b",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "3dd73d119b6c473b1b70a60f8b0690e15860331144de014d19e34ede7115a7e6",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "f0e1741bc3c66875129accc47134d3223b83cb29aa1a4314634ec6c9750edc23",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 6.103515625e-05,
+      "same_points": true
+    },
+    {
+      "repeat": 5,
+      "hashes": {
+        "distance": "329557569f9fe15d86ae2118059d50494760d565a43ca5379691dab3fd53456c",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "30177b96abe970cfc262bf06be75b3a9f25065d84da74081970fbf2a3a10e010",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "44df6eeb813c9c2b542f9af0abec0eea8094b7dc5eb1152a0642174e66e834c8",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 0.0,
+      "same_points": true
+    },
+    {
+      "repeat": 6,
+      "hashes": {
+        "distance": "329557569f9fe15d86ae2118059d50494760d565a43ca5379691dab3fd53456c",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "3dd73d119b6c473b1b70a60f8b0690e15860331144de014d19e34ede7115a7e6",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "44df6eeb813c9c2b542f9af0abec0eea8094b7dc5eb1152a0642174e66e834c8",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 0.0,
+      "same_points": true
+    },
+    {
+      "repeat": 7,
+      "hashes": {
+        "distance": "d4cc53f48d79df9ff7b8efd4a796dad70aefcfd2cee1faf4412fab7b725fc38b",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "3dd73d119b6c473b1b70a60f8b0690e15860331144de014d19e34ede7115a7e6",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "f0e1741bc3c66875129accc47134d3223b83cb29aa1a4314634ec6c9750edc23",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 6.103515625e-05,
+      "same_points": true
+    },
+    {
+      "repeat": 8,
+      "hashes": {
+        "distance": "329557569f9fe15d86ae2118059d50494760d565a43ca5379691dab3fd53456c",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "3dd73d119b6c473b1b70a60f8b0690e15860331144de014d19e34ede7115a7e6",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "44df6eeb813c9c2b542f9af0abec0eea8094b7dc5eb1152a0642174e66e834c8",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 0.0,
+      "same_points": true
+    },
+    {
+      "repeat": 9,
+      "hashes": {
+        "distance": "d4cc53f48d79df9ff7b8efd4a796dad70aefcfd2cee1faf4412fab7b725fc38b",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "30177b96abe970cfc262bf06be75b3a9f25065d84da74081970fbf2a3a10e010",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "f0e1741bc3c66875129accc47134d3223b83cb29aa1a4314634ec6c9750edc23",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 6.103515625e-05,
+      "same_points": true
+    },
+    {
+      "repeat": 10,
+      "hashes": {
+        "distance": "329557569f9fe15d86ae2118059d50494760d565a43ca5379691dab3fd53456c",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "3dd73d119b6c473b1b70a60f8b0690e15860331144de014d19e34ede7115a7e6",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "44df6eeb813c9c2b542f9af0abec0eea8094b7dc5eb1152a0642174e66e834c8",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 0.0,
+      "same_points": true
+    },
+    {
+      "repeat": 11,
+      "hashes": {
+        "distance": "d4cc53f48d79df9ff7b8efd4a796dad70aefcfd2cee1faf4412fab7b725fc38b",
+        "points": "63087f478a1eab5878517cf2fe520a8441dbca7a4a3b7c7e86cabbb8c7c5f1ad",
+        "tangents": "d503e88d48de76976ea88e44bf714c0bd5325a51e74a48b5933a485d7fca811f",
+        "weights": "e4ff020bd3150cc51b0f8c811189fa98f3115df071aa6110fe61d45b99364e22",
+        "coherence": "f7163cf126129cac9e3d7df76481c94d06e5f112af6d5440df69610cb0b4d0d1"
+      },
+      "distance_transform_calls": [
+        {
+          "input": "76ae6ca71076f00735e99ba2b683f7cb0dd6d170c08d57cf11959f19bce8e3c3",
+          "output": "30177b96abe970cfc262bf06be75b3a9f25065d84da74081970fbf2a3a10e010",
+          "nonzero": 15472
+        },
+        {
+          "input": "f8d1cce0f680ebf81d19fb6bebbec90717b8fe49607439e9200cf63d8340d0e9",
+          "output": "f0e1741bc3c66875129accc47134d3223b83cb29aa1a4314634ec6c9750edc23",
+          "nonzero": 515165
+        }
+      ],
+      "point_count": 768,
+      "distance_max_delta": 6.103515625e-05,
+      "same_points": true
+    }
+  ]
+}

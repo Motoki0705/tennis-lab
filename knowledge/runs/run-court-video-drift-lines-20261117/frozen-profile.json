@@ -1,0 +1,43 @@
+{
+  "schema": "frozen_drift_profile_v1",
+  "frozen_at": "2026-11-17T09:28:27.985847+00:00",
+  "settings": {
+    "version": "signed_line_similarity_v1",
+    "min_lines": 4,
+    "min_transverse": 1,
+    "min_longitudinal": 2,
+    "min_direction_degrees": 12.0,
+    "max_line_residual_px": 3.0,
+    "line_anchor_sigma_px": 1.0,
+    "max_projection_std_px": 5.0,
+    "ambiguity_displacement_px": 3.0,
+    "search_radius_px": 48.0,
+    "max_condition": 10000.0
+  },
+  "numeric_sources": {
+    "src/tasks/court_detection/geometry/__init__.py": "732436a5b060ad3f63edf28ba267bc7645735a0ccbd5341b27233c1a7bea8001",
+    "src/tasks/court_detection/geometry/confidence_homography.py": "e6051811387008d49d5a4bda3ba387c5ddc7beed5be2275aa912091837784d8a",
+    "src/tasks/court_detection/geometry/homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+    "src/tasks/court_detection/geometry/hybrid_homography.py": "3504859c4f0984f09057873a500cc2f5a85c614e6c69fdbaaf58062924f8fe55",
+    "src/tasks/court_detection/geometry/line_evidence.py": "549ec73dbb3825666370126c507af8e1cff1ad9555743ef507925762a05f0271",
+    "src/tasks/court_detection/geometry/observations.py": "ea704e5dc944154f3560e08f4f14db4ea0f45db9917da3e198c178e2b1245e17",
+    "src/tasks/court_detection/geometry/paint_correspondence.py": "3ab20414b1a43d0f03794603b5e17b61c3b3b55b6c98462754df27c063d6c81b",
+    "src/tasks/court_detection/geometry/paint_observations.py": "295041f2fa9e6a604bb0cd030af8023e0216a3e5ecb6557e53e6cf5445af33e3",
+    "src/tasks/court_detection/geometry/paint_refinement.py": "7a04ce8ad7dad1748bcf7069af56c0247f84bd48020ca36b1893d3762ff8c793",
+    "src/tasks/court_detection/geometry/pose.py": "43e1e20cdd1d436b97b25bcd86205ad71533747c0317984f3a6889f2fff6d7ad",
+    "src/tasks/court_detection/geometry/postprocess.py": "83360fe0115b3337adfce1f8ff55315ad7cc7dfced674521d19cf0ea4914dcf5",
+    "src/tasks/court_detection/geometry/quality.py": "ec15ea4582ad113b3358d02ba07bafbe322334b74a8c09ad4b047962dd0d6558",
+    "src/tasks/court_detection/geometry/video_drift/__init__.py": "2615d60e519cc758f49d2ada42174e3b0f0d20403454e3d736a9d28ce5c0315b",
+    "src/tasks/court_detection/geometry/video_drift/motion.py": "37d1b2a14d0ee72e2d4f07188869e41199fd9747d9e9c142c87c2a7406573fdf",
+    "src/tasks/court_detection/geometry/video_shared/__init__.py": "33375011f63d3f8b1f13a2f672b6b19362735a6f87f2745fb8af4b042ef2b73f",
+    "src/tasks/court_detection/geometry/video_shared/candidates.py": "3bca3c90d0b245c8f1beeda1a32e7739ee9a5e5d96fe8049ffc071c43093d6f0",
+    "src/tasks/court_detection/geometry/video_shared/consensus.py": "df0b5e7ffcdff29f4c5319f944546e6f0fae84759851d6b1c4659cd7a79c3b0b",
+    "src/tasks/court_detection/geometry/video_shared/drift.py": "ffd404e6f2a3e12e849b7ef90f18ccb4512cc92a54907fe977f86f53d881dc11",
+    "src/tasks/court_detection/geometry/video_shared/endpoints.py": "591495e845adedc16600b8641d9ad6a3ad0022a4e6db692ef5b6d1aecd3a982e",
+    "src/tasks/court_detection/geometry/video_shared/fit.py": "948126c1769cbb3337848c2e568d8fb5cbc477f3d84e96c44e57765f6ff1e851",
+    "src/tasks/court_detection/geometry/video_shared/observations.py": "a0276294e775c719d613a4a81b6a7f413ea6b569328bd158ec7062fc30aa950e"
+  },
+  "development_summary_sha256": "1c81a1e9a73cc846181a0b7758f9761fd7a7ad9df5601e4acadbb4ef0c2ba2c4",
+  "frame_protocol_sha256": "fed3b5b04168866ccd3b1a084e18d158fbe78ebeda4fe4e40939184c74c0f009",
+  "decision": "56/56 development expectations; 48 motion cases observable, 8 missing-direction negatives unobservable; 0 moving safe. Fixed 4 physical lines, >=1 transverse and >=2 longitudinal, 12 degree direction separation, 1px anchor sigma floor, 5px maximum visible projection std; no temporal pooling. No real diagnostic frame has been read."
+}

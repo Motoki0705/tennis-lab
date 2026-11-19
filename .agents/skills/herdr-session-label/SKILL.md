@@ -1,6 +1,6 @@
 ---
 name: herdr-session-label
-description: HerdrのAgent一覧へ、自分の名前・担当する親issueの番号・役割・短い題名を同期する。親担当の開始・再開・引継ぎ・終了、表示の修復に使う。担当の割当や他セッションの一括変更は行わない。
+description: HerdrのAgent一覧へ、自分の名前と担当する親issueの要約を同期する。親担当の開始・再開・引継ぎ・終了、表示の修復に使う。担当の割当や他セッションの一括変更は行わない。
 ---
 
 # Herdrに担当を表示する
@@ -16,9 +16,14 @@ parent CLIの`register` / `reconcile` / `sync` / `handoff` / `release`が同期�
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync
-# 親タイトルの識別名では長い・分かりづらいときだけ、短い題名を指定する
-PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync --parent 1353 --topic セッション表示
 ```
+
+表示する要約は親自身が作り、parent CLIで保存する（[parent-session](../parent-session/references/ownership.md)）。
+保存済みの要約がない `register` / `handoff --accept` は、担当を書き込む前に拒否される。
+`register --summary` / `handoff --accept --summary` で指定して再実行する。
+既に担当中の親の表示同期で要約不足になった場合は、`parent summary --text` で保存・同期する。
+接続失敗などで `parent_action_applied: true` と表示エラーが返った場合は、
+`display_sync.repair` に従い、原因を解消してから表示だけを再試行する。
 
 自分の実行環境のセッション識別子とHerdr paneを使う。他セッションのIDを設定して実行しない。
 通常はHerdr環境変数が必要。欠落する実行基盤では、READMEの明示bind手順で

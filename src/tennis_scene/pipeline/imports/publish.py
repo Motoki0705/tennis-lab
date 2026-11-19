@@ -36,6 +36,7 @@ def bind_import(nodes: Sequence[ComponentNode], name: str, store: ClipStore) -> 
     if name not in by_name:
         raise ValueError(f"Unknown import target: {name}")
     node = by_name[name]
+    node.require_importable()
     if node.source != "load":
         raise ValueError(f"{name} must be declared load-only (execution.{name.split('/')[0]}=load) to receive an import")
     references: dict[str, ArtifactRef] = {}

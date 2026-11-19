@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "28a99617771f43d9b66d2bfc292d36bd",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review_tools.github_comment; artifact=retrieval received receipt; content_sha256=cb0acecacf3e402ea6e025cc8d4d82badcee3cf9ce15864c6cd5c5f890e79f33; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "failure",
+      "summary": "review_tools.github_comment: failure; error=UNSUPPORTED_GH_VERSION",
+      "verifies": []
+    },
+    "id": "414de8c1bae747b6bd4949021a36ae04",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "6e0a1161bd474678838b0e2bcdffb78b",
+      "delegation": null,
+      "issue": null,
+      "parent": 1964,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "0dd368e7df594492ae7f6291d5a47457"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T02:05:50.086191+00:00"
+      },
+      "recorded_at": "2026-11-15T02:05:50.086204+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-video-shared
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [75 items]
+
+........................................................................ [ 96%]
+...                                                                      [100%]
+============================= slowest 10 durations =============================
+3.82s call     tests/integration/tennis_scene/test_video_court.py::test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint[True]
+3.73s call     tests/integration/tennis_scene/test_video_court.py::test_single_entry_and_multi_clip_plan_use_identical_shared_court_without_checkpoint[False]
+2.29s call     tests/integration/tennis_scene/test_video_court.py::test_separate_drift_changes_consumers_and_marker_without_mutating_shared_h
+2.26s call     tests/integration/tennis_scene/test_video_court.py::test_camera_content_change_invalidates_its_court_and_descendants_only
+2.17s call     tests/integration/tennis_scene/test_video_court.py::test_policy_change_invalidates_court_descendants_but_reuses_independent_roots
+1.44s call     tests/integration/tennis_scene/test_video_court.py::test_warn_policy_uses_h_and_keeps_unobservable_frames_in_receipt_and_gallery
+1.42s call     tests/integration/tennis_scene/test_video_court.py::test_corrupt_or_wrong_parent_drift_never_reverts_to_embedded_reports
+1.41s call     tests/integration/tennis_scene/test_video_court.py::test_warning_keeps_shared_geometry_and_is_visible_in_receipt_and_overlay
+1.28s call     tests/integration/tennis_scene/test_video_court.py::test_corruption_is_rejected_even_with_complete_clip_cache_and_records_failure
+0.94s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_methods_and_paint_measurements_change_cache_identity
+============================= 75 passed in 17.72s ==============================

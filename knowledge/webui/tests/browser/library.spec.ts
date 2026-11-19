@@ -13,7 +13,7 @@ const totalNodes = readdirSync(nodeRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .reduce((total, entry) => total + nodeCount(entry.name), 0);
 
-test("browse, compare, follow research, and read PDF", async ({
+test("browse, compare, follow research, and open the primary paper source", async ({
   page,
   request,
 }) => {
@@ -46,13 +46,15 @@ test("browse, compare, follow research, and read PDF", async ({
     .getByRole("button", { name: /World-Grounded/ })
     .click();
   await expect(page.locator(".paper-detail")).toBeVisible();
-  const pdf = await request.get("/api/papers/paper-2024-gvhmr");
-  expect(pdf.status()).toBe(200);
-  expect(pdf.headers()["content-type"]).toBe("application/pdf");
-  expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
-  expect((await request.get("/api/papers/paper-2024-missing")).status()).toBe(
-    404,
-  );
+  const primarySource = page.locator(".paper-detail").getByRole("link", { name: "一次資料を開く" });
+  await expect(primarySource).toHaveAttribute("href", "https://arxiv.org/abs/2409.06662v1");
+  await expect(primarySource).toHaveAttribute("target", "_blank");
+  await expect(page.locator(".paper-detail")).toContainText("Gravity-View");
+  await expect(page.locator(".paper-detail")).toContainText("採録理由");
+  await expect(page.locator(".paper-detail")).toContainText("固定split");
+  await expect(page.locator(".paper-detail a[href^='/api/papers/']")).toHaveCount(0);
+  expect((await request.get("/api/papers/paper-2024-gvhmr")).status()).toBe(404);
+  await page.screenshot({ path: "/tmp/knowledge-papers-document-only.png", fullPage: true });
   await page.getByRole("button", { name: "研究サマリー", exact: true }).click();
   await page
     .locator(".summary-document a[href^='/?node=']")

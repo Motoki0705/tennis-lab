@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -19,14 +19,17 @@ from src.tasks.court_detection.inference.contracts import (
 from src.tasks.court_detection.inference.regions import (
     CourtRegionSearchConfig,
     Region,
+    assess_region_prediction,
     predict_court_region,
     select_court_region,
 )
-from src.tennis_scene.pipeline.components.base import (
-    BasePipelineModule,
-    release_inference_memory,
-)
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
+from src.tennis_scene.pipeline.court_assets import CourtAssetCatalog
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    ModelBorrower,
+    ModelSpec,
+)
 from src.utils.configuration import PathResolver
 from src.utils.geometry.keypoints import normalize_grid_keypoints
 from src.utils.video import read_video_frame
@@ -66,6 +69,7 @@ class CourtKPConfig:
     postprocess: CourtKPPostprocessConfig
     region_search: CourtRegionSearchConfig
     resolver: PathResolver
+    asset_catalog: CourtAssetCatalog = field(default_factory=CourtAssetCatalog, init=False, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         validate_hybrid_inference_config(self.postprocess)
@@ -103,7 +107,7 @@ class CourtKPResult:
         return len(errors) == 0, errors
 
 
-class CourtKPModule(BasePipelineModule):
+class CourtKPModule(InferenceComponent[CourtDetectionInput, CourtKPResult]):
     """Detect camera-local KP14 on frame 0 of one static camera.
 
     Only frame 0 is inferred; ``court_calibration`` broadcasts the static
@@ -114,11 +118,25 @@ class CourtKPModule(BasePipelineModule):
 
     def __init__(self, config: CourtKPConfig) -> None:
         self.config = config
-        self._predictor: CourtPredictor | None = None
+        self._checkpoint_identity: dict[str, Any] | None = None
 
-    def load(self) -> None:
-        if self._predictor is not None:
-            return
+    def model_specs(self) -> dict[str, ModelSpec[CourtPredictor]]:
+        self._checkpoint_identity = self.config.asset_catalog.checkpoint_identity(self.config.checkpoint, self.config.resolver)
+        return {"court": self._model_spec(self.config.asset_catalog.paths(self.config.checkpoint, self.config.resolver))}
+
+    def _model_spec(self, weights: dict[str, Path]) -> ModelSpec[CourtPredictor]:
+        return ModelSpec("court", weights, "checkpoint_target_bundle",
+            self.config.device, "float32", {"subpixel_refine": self.config.subpixel_refine,
+                "postprocess": self.config.postprocess, "region_search": self.config.region_search}, self._load_predictor)
+
+    def asset_identities(self) -> dict[str, Any]:
+        return self.config.asset_catalog.identities(self.config.checkpoint, self.config.resolver)
+
+    def model_identity(self) -> dict[str, Any]:
+        spec = self._model_spec({})
+        return {"architecture": spec.architecture, "device": spec.device, "dtype": spec.dtype, "settings": dict(spec.settings)}
+
+    def _load_predictor(self) -> CourtPredictor:
         LOGGER.info("Loading Court KP model from %s", self.config.checkpoint)
         from src.tasks.court_detection.inference.predictor import CourtPredictor
 
@@ -130,33 +148,23 @@ class CourtKPModule(BasePipelineModule):
             hybrid_config=self.config.postprocess,
         )
         _require_camera_view_schema(predictor.adapter.spec.target_bundle.targets["kp"].schema)
-        self._predictor = predictor
+        return predictor
 
-    def unload(self) -> None:
-        self._predictor = None
-        release_inference_memory(self.config.device)
-
-    @property
-    def is_loaded(self) -> bool:
-        return self._predictor is not None
-
-    def process(self, inputs: CourtDetectionInput) -> CourtKPResult:
+    def process_with_models(self, inputs: CourtDetectionInput, models: ModelBorrower) -> CourtKPResult:
         video = inputs.video
-        try:
-            self.load()
-            packet = read_video_frame(video.path, 0)
-            if tuple(packet.original_size) != (video.width, video.height):
-                raise ValueError(f"Court frame size {packet.original_size} disagrees with source {(video.width, video.height)}")
-            rgb = cast("NDArray[np.uint8]", cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB))
-            prediction = self.predict_image(rgb)
-            assert self._predictor is not None
-            checkpoint = self._predictor.checkpoint_identity
-        finally:
-            self.unload()
+        predictor: CourtPredictor = models.borrow("court")
+        packet = read_video_frame(video.path, 0)
+        if tuple(packet.original_size) != (video.width, video.height):
+            raise ValueError(f"Court frame size {packet.original_size} disagrees with source {(video.width, video.height)}")
+        rgb = cast("NDArray[np.uint8]", cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB))
+        prediction = self.predict_image(rgb, predictor)
+        if self._checkpoint_identity is None:
+            raise RuntimeError("Court assets must be bound before inference")
+        checkpoint = self._checkpoint_identity
         keypoints = normalize_grid_keypoints(prediction.points_px, video.width, video.height)
         result = CourtKPResult(
             keypoints[None, None].astype(np.float32), prediction.valid[None, None].astype(np.float32), np.array([0], np.int32),
-            {"schema": "court_kp_hybrid_v1", "checkpoint": checkpoint,
+            {"schema": "court_kp_quality_v2", "checkpoint": checkpoint,
              "postprocess": asdict(self.config.postprocess), "region_search": asdict(self.config.region_search),
              "output_keypoint_contract": KEYPOINT_CONTRACT,
              "cameras": [{"camera_id": video.camera_id, "video_path": str(video.path), "region_selection": prediction.region_selection,
@@ -168,44 +176,40 @@ class CourtKPModule(BasePipelineModule):
             raise ValueError(f"Invalid CourtKP result: {errors}")
         return result
 
-    def predict_image(self, rgb: NDArray[np.uint8]) -> CourtImagePrediction:
+    def predict_image(self, rgb: NDArray[np.uint8], predictor: CourtPredictor) -> CourtImagePrediction:
         """Run the same camera-local geometry on an explicit RGB image.
 
-        Keeps the predictor loaded for a caller processing several images;
-        callers must unload in a finally block. No video/source identity is
-        invented for JPEG stores. Region/model errors propagate unchanged.
+        The caller owns the predictor. No video/source identity is invented for
+        JPEG stores. Region/model errors propagate unchanged.
         """
         if rgb.dtype != np.uint8 or rgb.ndim != 3 or rgb.shape[-1] != 3 or min(rgb.shape[:2]) <= 1:
             raise ValueError("Court image must be uint8 RGB (H,W,3)")
-        self.load()
-        region, selection = self._select_region(rgb)
-        points, valid, diagnostic = self._predict_frame_geometry(rgb, region=region)
+        region, selection = self._select_region(rgb, predictor)
+        points, valid, diagnostic = self._predict_frame_geometry(rgb, predictor, region=region)
         return CourtImagePrediction(points, valid, diagnostic, selection)
 
-    def _select_region(self, rgb: NDArray[np.uint8]) -> tuple[Region | None, dict[str, Any] | None]:
+    def _select_region(self, rgb: NDArray[np.uint8], predictor: CourtPredictor) -> tuple[Region | None, dict[str, Any] | None]:
         if not self.config.region_search.enabled:
             return None, None
-        if self._predictor is None:
-            raise RuntimeError("Court predictor is not loaded")
-        selection = select_court_region(self._predictor, rgb, self.config.region_search)
+        selection = select_court_region(predictor, rgb, self.config.region_search)
         return selection.region, {"frame_index": 0, "region_xyxy": list(selection.region),
             "candidates": list(selection.candidates), "original_size_hw": list(rgb.shape[:2])}
 
     def _predict_frame_geometry(
         self,
         frame_rgb: NDArray[np.uint8],
+        predictor: CourtPredictor,
         *,
         region: Region | None = None,
     ) -> tuple[NDArray[np.float32], NDArray[np.bool_], dict[str, Any]]:
-        if self._predictor is None:
-            raise RuntimeError("Court predictor is not loaded")
         if region is None:
-            prediction = self._predictor.predict(frame_rgb, postprocess="hybrid", heads=("kp", "line"))
-            points, visible = prediction.downstream_keypoints()
-            diagnostic = prediction.geometry_diagnostics()
+            prediction = predictor.predict(frame_rgb, postprocess="hybrid", heads=("kp", "line"))
+            full = assess_region_prediction(prediction, frame_rgb, (0, 0, frame_rgb.shape[1], frame_rgb.shape[0]), self.config.region_search)
+            points, visible = full.downstream_keypoints()
+            diagnostic = full.geometry_diagnostics()
             schema = prediction.keypoint_schema
         else:
-            region_prediction = predict_court_region(self._predictor, frame_rgb, region)
+            region_prediction = predict_court_region(predictor, frame_rgb, region, quality_config=self.config.region_search)
             points, visible = region_prediction.downstream_keypoints()
             diagnostic = region_prediction.geometry_diagnostics()
             schema = region_prediction.cropped.keypoint_schema

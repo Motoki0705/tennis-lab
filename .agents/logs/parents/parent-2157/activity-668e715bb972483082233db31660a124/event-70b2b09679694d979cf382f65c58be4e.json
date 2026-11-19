@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "648cadcb6496478e83bfaf020a64f08e",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.create-child; artifact=command response; content_sha256=2b28711d854f87afc708a956414becdf4094da40629f017e9d020fce95b5f4a0; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "d5bc1e8abe36413b98867b9ececef625",
+      "repeat": null,
+      "status": "failure",
+      "summary": "parent.create-child: post-start failure; ExecutionBasisStale; details in private evidence",
+      "verifies": []
+    },
+    "id": "70b2b09679694d979cf382f65c58be4e",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "668e715bb972483082233db31660a124",
+      "delegation": null,
+      "issue": null,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-16T00:25:15.655866+00:00"
+      },
+      "recorded_at": "2026-11-16T00:25:15.655880+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

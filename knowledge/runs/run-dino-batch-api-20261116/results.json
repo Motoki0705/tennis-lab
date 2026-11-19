@@ -1,0 +1,1006 @@
+{
+  "protocol": {
+    "dtype": "float32",
+    "confidence": 0.3,
+    "short_side": 800,
+    "max_long_side": 1333,
+    "batch_sizes": [
+      1,
+      2,
+      4
+    ],
+    "score_atol": 0.0001,
+    "box_atol_original_pixels": 0.1,
+    "rtol": 0,
+    "discrete": "threshold selection, sorted rows, duplicate kept/dropped source rows exact",
+    "warmups_per_batch_size": 1,
+    "timed_repeats": 3,
+    "timed_scope": "predict_batch: CPU preprocessing + H2D + GPU forward + decode + D2H, no video decode/load/warmup/capture/save",
+    "allocated_fraction_cap": 0.72,
+    "resource": "all",
+    "frames": 8,
+    "source": "complete clip_000, 4 cameras, frames 0 and 120",
+    "source_git_base": "e561377ce",
+    "scalar_reference": "unmodified person_detector.py at source_git_base"
+  },
+  "protocol_sha256": "d52db98f819187cb43e1344988810dc99db4f5e3bf5fb46b13eed833c054e3fe",
+  "inputs_sha256": "81787c3e9546b0585c5ac43bccb4ef399c633c6fc45e306f048903a4dff10564",
+  "load_seconds": 31.157817505998537,
+  "checkpoint_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+  "extension": "$TENNIS_LAB_DINO_EXTENSION",
+  "extension_sha256": "d2975afef3748c53f7d9c8d6c2693fccff0492a821cc38f15ffe7d350368d201",
+  "scalar_reference_sha256": "7de6b5eb2b239ff875042bce90a02929abf176a9707950b69a291bf65e1787f4",
+  "commit": "f738a1918f966c6a9bc679f3a8e0432843f9ee62",
+  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "dino_commit": "d84a491d41898b3befd8294d1cf2614661fc0953",
+  "torch": "2.13.0+cu130",
+  "cuda": "13.0",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "vram_bytes": 17102864384,
+  "allow_tf32_matmul": false,
+  "allow_tf32_cudnn": true,
+  "matmul_precision": "highest",
+  "queue_run": "0-8205244284021426274_2026-11-15T15-15-15-978573725Z_209883_dino-batch-api-20261116",
+  "comparisons": {
+    "1": {
+      "passed": true,
+      "raw_threshold_mask_same": true,
+      "score_max_abs_diff": 0.0,
+      "box_max_abs_diff_original_pixels": 0.0,
+      "frames": [
+        {
+          "input": "cam0_000",
+          "detections": 10,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 0.0,
+          "box_max_abs_diff_original_pixels": 0.0,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam0_120",
+          "detections": 11,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 0.0,
+          "box_max_abs_diff_original_pixels": 0.0,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam1_000",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 0.0,
+          "box_max_abs_diff_original_pixels": 0.0,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam1_120",
+          "detections": 7,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 0.0,
+          "box_max_abs_diff_original_pixels": 0.0,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam2_000",
+          "detections": 5,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 0.0,
+          "box_max_abs_diff_original_pixels": 0.0,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam2_120",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 0.0,
+          "box_max_abs_diff_original_pixels": 0.0,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam3_000",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 0.0,
+          "box_max_abs_diff_original_pixels": 0.0,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam3_120",
+          "detections": 7,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 0.0,
+          "box_max_abs_diff_original_pixels": 0.0,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        }
+      ]
+    },
+    "2": {
+      "passed": true,
+      "raw_threshold_mask_same": true,
+      "score_max_abs_diff": 1.7881393432617188e-06,
+      "box_max_abs_diff_original_pixels": 0.000244140625,
+      "frames": [
+        {
+          "input": "cam0_000",
+          "detections": 10,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 1.1324882507324219e-06,
+          "box_max_abs_diff_original_pixels": 0.00018310546875,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam0_120",
+          "detections": 11,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 5.364418029785156e-07,
+          "box_max_abs_diff_original_pixels": 0.000244140625,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam1_000",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 7.152557373046875e-07,
+          "box_max_abs_diff_original_pixels": 9.1552734375e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam1_120",
+          "detections": 7,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 5.066394805908203e-07,
+          "box_max_abs_diff_original_pixels": 6.103515625e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam2_000",
+          "detections": 5,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 5.960464477539062e-07,
+          "box_max_abs_diff_original_pixels": 3.0517578125e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam2_120",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 3.5762786865234375e-07,
+          "box_max_abs_diff_original_pixels": 6.103515625e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam3_000",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 6.556510925292969e-07,
+          "box_max_abs_diff_original_pixels": 1.52587890625e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam3_120",
+          "detections": 7,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 1.7881393432617188e-06,
+          "box_max_abs_diff_original_pixels": 3.0517578125e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        }
+      ]
+    },
+    "4": {
+      "passed": true,
+      "raw_threshold_mask_same": true,
+      "score_max_abs_diff": 1.1920928955078125e-06,
+      "box_max_abs_diff_original_pixels": 0.000244140625,
+      "frames": [
+        {
+          "input": "cam0_000",
+          "detections": 10,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 9.834766387939453e-07,
+          "box_max_abs_diff_original_pixels": 0.00018310546875,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam0_120",
+          "detections": 11,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 5.364418029785156e-07,
+          "box_max_abs_diff_original_pixels": 0.000244140625,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam1_000",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 7.152557373046875e-07,
+          "box_max_abs_diff_original_pixels": 9.1552734375e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam1_120",
+          "detections": 7,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 1.7881393432617188e-07,
+          "box_max_abs_diff_original_pixels": 6.103515625e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam2_000",
+          "detections": 5,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 4.76837158203125e-07,
+          "box_max_abs_diff_original_pixels": 6.103515625e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam2_120",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 2.980232238769531e-07,
+          "box_max_abs_diff_original_pixels": 0.000152587890625,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam3_000",
+          "detections": 6,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 5.364418029785156e-07,
+          "box_max_abs_diff_original_pixels": 1.52587890625e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        },
+        {
+          "input": "cam3_120",
+          "detections": 7,
+          "same_shape": true,
+          "query_order_same": true,
+          "score_max_abs_diff": 1.1920928955078125e-06,
+          "box_max_abs_diff_original_pixels": 6.103515625e-05,
+          "merge": {
+            "False": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            },
+            "True": {
+              "same": true,
+              "kept_rows": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "dropped_rows": []
+            }
+          },
+          "passed": true
+        }
+      ]
+    }
+  },
+  "timing": {
+    "1": {
+      "seconds": [
+        2.7348047609993955,
+        2.646173553999688,
+        2.6768068020028295
+      ],
+      "median_seconds": 2.6768068020028295,
+      "frames_per_second": 2.9886355616005877,
+      "peak_allocated_bytes": 1866030592,
+      "peak_reserved_bytes": 2281701376
+    },
+    "2": {
+      "seconds": [
+        2.561576234002132,
+        2.5435945589997573,
+        2.543829119000293
+      ],
+      "median_seconds": 2.543829119000293,
+      "frames_per_second": 3.1448653292969397,
+      "peak_allocated_bytes": 2777832448,
+      "peak_reserved_bytes": 3477078016
+    },
+    "4": {
+      "seconds": [
+        2.525773585002753,
+        2.4867171619989676,
+        2.4941279729973758
+      ],
+      "median_seconds": 2.4941279729973758,
+      "frames_per_second": 3.207533890246143,
+      "peak_allocated_bytes": 4609745408,
+      "peak_reserved_bytes": 5924454400
+    }
+  },
+  "passed": true
+}

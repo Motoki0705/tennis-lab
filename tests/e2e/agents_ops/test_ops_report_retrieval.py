@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = ROOT / ".agents/ops/ops-report"
 sys.path.insert(0, str(PACKAGE))
 retrieval: Any = importlib.import_module("opsreport.retrieval")
-server: Any = importlib.import_module("opsreport.mcp_server")
+server: Any = importlib.import_module("opsreport.mcp_server_impl")
 
 FAKE_GH = r"""
 import json, os, sys, time

@@ -1,0 +1,6 @@
+{
+  "settings_match_qualified_main": true,
+  "same_values_accepted": true,
+  "injected_mask_position_shape_dtype_mismatches_rejected": true,
+  "preflight_default_max_frames": 1024
+}

@@ -1,0 +1,121 @@
+"""Capture unchanged inference stages for fixed diagnostic cases, no reference."""
+
+import dataclasses
+import hashlib
+import json
+import pathlib
+import time
+
+import cv2
+import numpy as np
+from omegaconf import OmegaConf
+
+from src.tasks.court_detection.geometry.homography import COURT_HOMOGRAPHY_EDGES
+from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig, predict_court_region
+from src.tennis_scene.configuration import PROJECT_ROOT, _roots
+from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule, CourtKPPostprocessConfig
+from src.utils.configuration import PathRole
+from src.utils.video import read_video_frame
+
+OUT = pathlib.Path(__file__).resolve().parent / 'stages'
+SOURCE = pathlib.Path('/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji4cam-court-review-20261116')
+DATA = pathlib.Path('data/tennis_multiview/processed/meiji_4cam/dataset')
+CASES = [(0,0),(13,0),(1,1),(9,2),(0,3),(1,3),(13,3),(33,3),(35,3),(68,3)]
+
+
+def clean(value):
+    if isinstance(value, np.ndarray):
+        return clean(value.tolist())
+    if isinstance(value, (tuple, list)):
+        return [clean(v) for v in value]
+    if isinstance(value, dict):
+        return {k: clean(v) for k, v in value.items()}
+    if isinstance(value, float) and not np.isfinite(value):
+        return None
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def pack_hypothesis(h):
+    if h is None:
+        return None
+    return clean(dataclasses.asdict(h))
+
+
+def main():
+    OUT.mkdir(exist_ok=True)
+    config = OmegaConf.load(PROJECT_ROOT / 'src/tennis_scene/configs/pipeline.yaml')
+    paths = OmegaConf.load(PROJECT_ROOT / 'src/tennis_scene/configs/paths/default.yaml')
+    _, resolver = _roots(OmegaConf.to_container(paths, resolve=True))
+    court = OmegaConf.to_container(config.court_kp, resolve=True)
+    module = CourtKPModule(CourtKPConfig(
+        checkpoint=resolver.resolve(PathRole.CHECKPOINT, court['checkpoint']), device='cuda',
+        subpixel_refine=court['subpixel_refine'], postprocess=CourtKPPostprocessConfig(**court['postprocess']),
+        region_search=CourtRegionSearchConfig(**court['region_search']), resolver=resolver))
+    summary = json.loads((SOURCE / 'summary.json').read_text())
+    records = []
+    module.load()
+    try:
+        for clip, cam in CASES:
+            row = next(r for r in summary if r['clip_id'] == f'video_000/clip_{clip:03d}' and r['camera'] == f'cam{cam}')
+            best = max(row['candidates'], key=lambda c: (c['accepted'], c['inliers'], c['inlier_score']))
+            regions = [('review_best', tuple(best['region_xyxy']))]
+            if (clip, cam) == (0,3):
+                regions.append(('full_frame', (0,0,1920,1080)))
+            video = DATA / f'videos/video_000/clips/clip_{clip:03d}/media/cam{cam}.mp4'
+            rgb = cv2.cvtColor(read_video_frame(video, 0).frame, cv2.COLOR_BGR2RGB)
+            for label, region in regions:
+                start = time.monotonic()
+                prediction = predict_court_region(module._predictor, rgb, region)
+                geometry = prediction.cropped.homography
+                raw = prediction.cropped.raw_heads['kp']
+                raw_xy = raw.keypoints[:,0].numpy()
+                h,w = prediction.cropped.original_size_hw
+                boundary_distance = np.minimum.reduce([raw_xy[:,0],raw_xy[:,1],w-1-raw_xy[:,0],h-1-raw_xy[:,1]])
+                points, valid = prediction.downstream_keypoints()
+                full_raw = raw_xy + np.asarray(region[:2])
+                inliers = (np.linalg.norm(points-full_raw,axis=1) <= .005*np.hypot(1920,1080)) & raw.valid[:,0].numpy()
+                key = f'clip_{clip:03d}_cam{cam}_{label}'
+                record = {'key':key, 'old_row': {k:v for k,v in row.items() if k!='candidates'},
+                    'old_best':best, 'region':region, 'diagnostics':prediction.geometry_diagnostics(),
+                    'crop_boundary_distance_px':boundary_distance,
+                    'rerun_region_inliers':np.flatnonzero(inliers).tolist(),
+                    'kp_only':clean(dataclasses.asdict(geometry.kp_only)),
+                    'line_selection':pack_hypothesis(geometry.line_selection),
+                    'seeds':[pack_hypothesis(s) for s in geometry.seeds],
+                    'best':pack_hypothesis(geometry.best),
+                    'alternative_score_gap':geometry.alternative_score_gap,
+                    'refined_count':geometry.refined_count, 'seconds':time.monotonic()-start,
+                    'rgb_sha256':hashlib.sha256(rgb.tobytes()).hexdigest()}
+                record = clean(record)
+                (OUT / f'{key}.json').write_text(json.dumps(record,indent=2,allow_nan=False))
+                np.savez_compressed(OUT / f'{key}.npz', kp_logits=raw.heatmaps.numpy(),
+                    line_probability=prediction.cropped.raw_heads['line'].probability.numpy(), raw_xy=raw_xy,
+                    raw_scores=raw.scores[:,0].numpy(), raw_valid=raw.valid[:,0].numpy(), rgb=rgb)
+                img = cv2.cvtColor(rgb,cv2.COLOR_RGB2BGR)
+                if geometry.matrix is not None:
+                    for a,b in COURT_HOMOGRAPHY_EDGES:
+                        p,q = points[a],points[b]
+                        cv2.line(img,tuple(np.rint(p).astype(int)),tuple(np.rint(q).astype(int)),(0,200,255),3,cv2.LINE_AA)
+                for i,p in enumerate(full_raw):
+                    if np.isfinite(p).all():
+                        color = (0,255,0) if geometry.selected[i] else (255,0,255)
+                        pt=tuple(np.rint(p).astype(int))
+                        cv2.circle(img,pt,8,color,2)
+                        cv2.putText(img,str(i),pt,cv2.FONT_HERSHEY_SIMPLEX,.8,color,2,cv2.LINE_AA)
+                cv2.rectangle(img,region[:2],(region[2]-1,region[3]-1),(255,255,0),2)
+                cv2.rectangle(img,(0,0),(1920,52),(0,0,0),-1)
+                cv2.putText(img,f'{key}: {geometry.status} / green KP=fit / magenta=excluded',
+                    (10,36),cv2.FONT_HERSHEY_SIMPLEX,.9,(255,255,255),2,cv2.LINE_AA)
+                cv2.imwrite(str(OUT/f'{key}.jpg'),img,[cv2.IMWRITE_JPEG_QUALITY,95])
+                records.append(record)
+                print(key, geometry.status, 'fit',np.flatnonzero(geometry.selected).tolist(),
+                    'inliers',np.flatnonzero(inliers).tolist(),flush=True)
+    finally:
+        module.unload()
+    (OUT/'summary.json').write_text(json.dumps({'config':court,'records':records},indent=2,allow_nan=False))
+
+
+if __name__ == '__main__':
+    main()
