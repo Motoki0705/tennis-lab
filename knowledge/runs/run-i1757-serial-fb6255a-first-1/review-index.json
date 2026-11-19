@@ -1,0 +1,120 @@
+[
+  {
+    "file": "review/old-serial-to-control-clip_000.mp4",
+    "clip": "video_000/clip_000",
+    "reference": "serial@8c91bf0",
+    "candidate": "serial@fb6255a2",
+    "selected_frames": [
+      95,
+      96,
+      211
+    ],
+    "sha256": "6344caa3d85661da2e5bc54f367c2fabc6b5d95c83e1805bc84c33e3a83d41e0",
+    "codec_name": "h264",
+    "width": 1440,
+    "height": 552,
+    "nb_frames": "23"
+  },
+  {
+    "file": "review/old-serial-to-control-clip_027.mp4",
+    "clip": "video_000/clip_027",
+    "reference": "serial@8c91bf0",
+    "candidate": "serial@fb6255a2",
+    "selected_frames": [
+      8,
+      71,
+      133,
+      147,
+      148,
+      149,
+      204,
+      232
+    ],
+    "sha256": "eec2a41bfaaf5d62081046cb9c2e272fd1aceacbce65c1789c6d02fc290b7003",
+    "codec_name": "h264",
+    "width": 1440,
+    "height": 552,
+    "nb_frames": "65"
+  },
+  {
+    "file": "review/old-serial-to-control-clip_037.mp4",
+    "clip": "video_000/clip_037",
+    "reference": "serial@8c91bf0",
+    "candidate": "serial@fb6255a2",
+    "selected_frames": [
+      193,
+      194,
+      195,
+      286
+    ],
+    "sha256": "ee058f3c3db7f2ca26da156419cc7e2fd9457ad396abc04ec5bd28ad98e7d623",
+    "codec_name": "h264",
+    "width": 1440,
+    "height": 552,
+    "nb_frames": "24"
+  },
+  {
+    "file": "review/to-batched-clip_000.mp4",
+    "clip": "video_000/clip_000",
+    "reference": "serial@fb6255a2",
+    "candidate": "batched@fb6255a2",
+    "selected_frames": [
+      29,
+      80,
+      124,
+      211,
+      261,
+      283,
+      299,
+      306,
+      308,
+      316
+    ],
+    "sha256": "02f7c574a775d90453fda3b280cfb3a5ce43bcfa54f2a5f06a484fc0a2c0c969",
+    "codec_name": "h264",
+    "width": 1440,
+    "height": 552,
+    "nb_frames": "94"
+  },
+  {
+    "file": "review/to-batched-clip_027.mp4",
+    "clip": "video_000/clip_027",
+    "reference": "serial@fb6255a2",
+    "candidate": "batched@fb6255a2",
+    "selected_frames": [
+      8,
+      28,
+      40,
+      71,
+      133,
+      147,
+      148,
+      149,
+      227,
+      232
+    ],
+    "sha256": "cc50820903876560a4cb96f910dcf61b014aa05968643c75bd4d6210850d60e1",
+    "codec_name": "h264",
+    "width": 1440,
+    "height": 552,
+    "nb_frames": "81"
+  },
+  {
+    "file": "review/to-batched-clip_037.mp4",
+    "clip": "video_000/clip_037",
+    "reference": "serial@fb6255a2",
+    "candidate": "batched@fb6255a2",
+    "selected_frames": [
+      0,
+      14,
+      140,
+      286,
+      290
+    ],
+    "sha256": "276f1c74d1841d0dbe0016bd29b5e2747c1dee1ea5387f1d24c9d977ce0454c2",
+    "codec_name": "h264",
+    "width": 1440,
+    "height": 552,
+    "nb_frames": "39"
+  }
+]

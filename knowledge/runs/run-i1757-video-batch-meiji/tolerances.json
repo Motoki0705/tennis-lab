@@ -1,0 +1,22 @@
+{
+  "rule": "abs(candidate - reference) <= atol + rtol * abs(reference)",
+  "discrete": "Exact type, shape and values for IDs, masks, row/frame indices, validity, admissions, reasons and other non-floating values",
+  "nonfinite": "NaN only matches NaN at the same location, and infinity only matches infinity with the same sign",
+  "resource_metrics": {
+    "peak_vram": "Report resources.cuda.<device>.allocated_peak_bytes and reserved_peak_bytes for each repeat. These are the benchmark worker's PyTorch allocator peaks, in bytes, reset at recorder entry. The tolerances below apply to saved outputs; historical device-wide NVML peaks use a different measurement scope."
+  },
+  "units": {
+    "px": {"float16": [0.0625, 0], "float32": [0.01, 0], "float64": [0.0001, 0]},
+    "normalized_image": {"float16": [0.0009765625, 0], "float32": [0.000005, 0], "float64": [0.00000005, 0]},
+    "m": {"float16": [0.001, 0], "float32": [0.001, 0], "float64": [0.00001, 0]},
+    "rad": {"float16": [0.001, 0], "float32": [0.0001, 0], "float64": [0.000001, 0]},
+    "unitless": {"float16": [0.0009765625, 0.0009765625], "float32": [0.00001, 0.00001], "float64": [0.00000001, 0.00000001]},
+    "fps": {"float16": [0, 0], "float32": [0, 0], "float64": [0, 0]}
+  },
+  "rationale": {
+    "float16": "One ULP near magnitude 1 for normalized values. Geometry budgets stay absolute.",
+    "float32": "Final pixel/normalized geometry limits are smaller than 0.011 pixels on the selected videos. Court geometry is checked to 1 mm and rotations to 0.0001 rad. Masks and other decisions must still agree exactly.",
+    "float64": "CPU estimation and diagnostics use tighter limits for the same numerical route.",
+    "unitless": "Model scores, feature coordinates in model space, camera parameters of mixed units and other dimensionless fields. Use array dtype for arrays and float64 for JSON numbers; inspect any structural or threshold difference even if nearby values meet the continuous tolerance."
+  }
+}

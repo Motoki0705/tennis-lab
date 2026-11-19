@@ -1,0 +1,3185 @@
+{
+  "run": "embedding-reuse-heartbeat-1",
+  "condition": "embedding_reuse",
+  "measured_commit": "795d63df1682d0d86f769d584dfbfa263419ad0d",
+  "output_dir": "outputs/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1",
+  "queue_job": "0-8204917572671425689_2026-11-19T10-00-27-328574310Z_1772178_i1757-embedding-reuse-heartbeat-1",
+  "queue_state": "done",
+  "measurement_state": "complete",
+  "host": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "device_total_bytes": 17074749440,
+    "device_free_bytes": 15894315008,
+    "cuda_runtime": "13.0",
+    "ram_total_bytes": 42061246464,
+    "ram_available_bytes": 38128287744,
+    "disk_free_bytes": 295321284608
+  },
+  "pins": {
+    "input_sha256": "f3fb114da99fdcd5fc1316c64f288b613022576323c4ff59a34330a4d3f15f7c",
+    "tolerances_sha256": "a91ec42cbb118266c31eef180c27fad0b9370691fb904af5f7d1de540c9298bd",
+    "conditions_sha256": "a59399e43b221c7fab750b02c4af25cf56832cab5541539d26f123500e2c8730",
+    "native_dino": {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib/MultiScaleDeformableAttention.so",
+      "sha256": "68580f2e5b0454dba630ba3d37e55e383d5babd86b15cda92d4e7c104f5797b7"
+    }
+  },
+  "measurements": [
+    {
+      "variant": "embedding_reuse",
+      "regime": "first",
+      "started_at": "2026-11-19T11:42:52.581060+00:00",
+      "finished_at": "2026-11-19T12:14:40.601219+00:00",
+      "wall_seconds": 1908.0199077090074,
+      "outcomes": {
+        "video_000/clip_000": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/1-first/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_000",
+          "error": null,
+          "status": "generated"
+        },
+        "video_000/clip_027": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/1-first/dataset/videos/video_000/clips/clip_027/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_027",
+          "error": null,
+          "status": "generated"
+        },
+        "video_000/clip_037": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/1-first/dataset/videos/video_000/clips/clip_037/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_037",
+          "error": null,
+          "status": "generated"
+        }
+      },
+      "worker_startup_seconds": 13.948231310001574,
+      "io": {
+        "read_chars": 51449917741,
+        "write_chars": 2236618216,
+        "read_bytes": 138291498,
+        "write_bytes": 2246701056
+      },
+      "torch": "2.13.0+cu130",
+      "cuda": "13.0",
+      "threads": 1,
+      "end_to_end_wall_seconds": 1921.968139019009,
+      "recorder_wall_seconds": 1905.169306107,
+      "completed_clips_per_hour": 5.619239872265741,
+      "completed_camera_frames_per_second": 1.8376995582261664,
+      "recorder_status": "complete",
+      "all_generated": true,
+      "stage_wall_seconds": {
+        "artifact_load": 12.594062057,
+        "decode": 22.450060744,
+        "inference": 1205.906329307,
+        "measurement": 86.479024021,
+        "model_load": 75.966700831,
+        "model_unload": 7.05812199,
+        "postprocess": 256.968494486,
+        "preprocess": 174.79502352,
+        "publication": 19.75173982,
+        "save": 10.616186592,
+        "transfer": 12.142615049,
+        "unattributed": 20.44094769
+      },
+      "batches": [
+        {
+          "model": "AFLink",
+          "stage": "person_tracking",
+          "batches": 6,
+          "items": 6,
+          "items_histogram": {
+            "1": 6
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "Ball",
+          "stage": "ball_detection",
+          "batches": 216,
+          "items": 216,
+          "items_histogram": {
+            "1": 216
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "CLIP-ReID",
+          "stage": "person_appearance_features",
+          "batches": 429,
+          "items": 27067,
+          "items_histogram": {
+            "64": 417,
+            "5": 1,
+            "62": 1,
+            "18": 1,
+            "25": 1,
+            "10": 1,
+            "30": 1,
+            "26": 1,
+            "59": 2,
+            "63": 1,
+            "13": 1,
+            "9": 1
+          },
+          "configured_cap": 64,
+          "fill_fraction": 0.9858318764568764
+        },
+        {
+          "model": "DINO",
+          "stage": "person_detection",
+          "batches": 3532,
+          "items": 3532,
+          "items_histogram": {
+            "1": 3532
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "GVHMR",
+          "stage": "gvhmr",
+          "batches": 12,
+          "items": 12,
+          "items_histogram": {
+            "1": 12
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "GVHMR-network",
+          "stage": "gvhmr",
+          "batches": 12,
+          "items": 12,
+          "items_histogram": {
+            "1": 12
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "HMR2",
+          "stage": "hmr2_features",
+          "batches": 120,
+          "items": 1756,
+          "items_histogram": {
+            "16": 108,
+            "1": 8,
+            "5": 4
+          },
+          "configured_cap": 16,
+          "fill_fraction": 0.9145833333333333
+        },
+        {
+          "model": "SMPL-COCO17",
+          "stage": "body_placement",
+          "batches": 120,
+          "items": 3500,
+          "items_histogram": {
+            "32": 108,
+            "1": 8,
+            "9": 4
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "SMPL-vertices",
+          "stage": "body_placement",
+          "batches": 120,
+          "items": 3500,
+          "items_histogram": {
+            "32": 108,
+            "1": 8,
+            "9": 4
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "ViTPose",
+          "stage": "person_pose_features",
+          "batches": 1696,
+          "items": 27067,
+          "items_histogram": {
+            "16": 1684,
+            "5": 1,
+            "14": 2,
+            "2": 1,
+            "9": 2,
+            "10": 2,
+            "11": 2,
+            "15": 1,
+            "13": 1
+          },
+          "configured_cap": 16,
+          "fill_fraction": 0.9974572523584906
+        }
+      ],
+      "resources": {
+        "ram_rss_sampled_peak_bytes": 9204314112,
+        "temporary_disk_peak_bytes": 120311319,
+        "ram_process_lifetime_peak_bytes": 9203658752,
+        "cuda": {
+          "cuda:0": {
+            "allocated_peak_bytes": 4184557568,
+            "reserved_peak_bytes": 4460642304
+          }
+        }
+      },
+      "intermediate_array_save_seconds": 10.612152337000001,
+      "scene_export_seconds": 14.128937574000002,
+      "dataset_marker_publication_seconds": 3.8844527030000005,
+      "recorder_sha256": "2622283e0d6ea2ad3c3eda34bb7b2d9a0c10cb268a6893a1956ea6ea5be859db",
+      "repeat": "1-first",
+      "recording": "attempts/1-first/progress/4a59f82d6dc14abc8809efbdf1211aa0/recording.json",
+      "models": [
+        {
+          "model": "ball",
+          "device": "cuda",
+          "dtype": "bfloat16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "dino",
+          "device": "cuda",
+          "dtype": "float16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "vitpose",
+          "device": "cuda",
+          "dtype": "float16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "appearance",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "AFLink",
+          "device": "cpu",
+          "dtype": "float32",
+          "load_count": 12,
+          "unload_count": 0,
+          "failed_count": 0
+        },
+        {
+          "model": "hmr2",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "gvhmr",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "body_geometry",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        }
+      ],
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "scene": {
+            "archive": "attempts/1-first/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/exports/7f6e9bf2688be3f2a547831da33e48e6e8e62da79f0944e225ed3490146da260/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 356,
+            "ball_valid_frames": 159
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.17341812982712787,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 356,
+              "ball_detection": 194,
+              "ball_points": 189
+            },
+            "cam1": {
+              "person_detection": 356,
+              "ball_detection": 141,
+              "ball_points": 130
+            },
+            "cam2": {
+              "person_detection": 356,
+              "ball_detection": 185,
+              "ball_points": 185
+            },
+            "cam3": {
+              "person_detection": 356,
+              "ball_detection": 153,
+              "ball_points": 147
+            }
+          }
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "scene": {
+            "archive": "attempts/1-first/dataset/videos/video_000/clips/clip_027/annotations/tennis_scene/exports/2b3afcbd87aae922e2f827e89a8342573e1c97202ff16d331fb12c3c0d32285d/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 235,
+            "ball_valid_frames": 128
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.22422588369809465,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 235,
+              "ball_detection": 210,
+              "ball_points": 207
+            },
+            "cam1": {
+              "person_detection": 235,
+              "ball_detection": 124,
+              "ball_points": 121
+            },
+            "cam2": {
+              "person_detection": 235,
+              "ball_detection": 198,
+              "ball_points": 193
+            },
+            "cam3": {
+              "person_detection": 235,
+              "ball_detection": 138,
+              "ball_points": 136
+            }
+          }
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "scene": {
+            "archive": "attempts/1-first/dataset/videos/video_000/clips/clip_037/annotations/tennis_scene/exports/dc1367b79e3c617f557613b38b4ced46ad73f56bcafead6bc5e4c1905f94d504/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 292,
+            "ball_valid_frames": 129
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.3150889679174889,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 292,
+              "ball_detection": 161,
+              "ball_points": 139
+            },
+            "cam1": {
+              "person_detection": 292,
+              "ball_detection": 97,
+              "ball_points": 91
+            },
+            "cam2": {
+              "person_detection": 292,
+              "ball_detection": 216,
+              "ball_points": 216
+            },
+            "cam3": {
+              "person_detection": 292,
+              "ball_detection": 156,
+              "ball_points": 140
+            }
+          }
+        }
+      ],
+      "node_span_seconds": {
+        "court_detection": 22.986722572000005,
+        "court_calibration": 0.211470971,
+        "ball_detection": 84.12785959599998,
+        "ball_points": 10.445995568,
+        "person_detection": 744.249001746,
+        "person_pose_features": 553.499230633,
+        "person_appearance_features": 107.90165583100001,
+        "person_tracking": 17.266542369,
+        "player_selection": 3.026545001,
+        "pose_estimation": 0.654205406,
+        "court_side": 0.691929996,
+        "player_association": 17.672141616,
+        "camera_alignment": 0.342183216,
+        "player_triangulation": 109.26650763600001,
+        "ball_triangulation": 0.9938548110000001,
+        "body_view_selection": 0.188021241,
+        "hmr2_features": 105.639809404,
+        "gvhmr": 14.861951483,
+        "body_placement": 18.240856540000003,
+        "scene_assembly": 3.491683417
+      },
+      "inclusive_c9_parts_seconds": {
+        "person_appearance_features/ClipStore.load": 0.039462064,
+        "person_appearance_features/input_assembly": 0.000208043,
+        "person_appearance_features/component": 106.895848721,
+        "person_appearance_features/clip_inference": 70.58519743300002,
+        "player_association/ClipStore.load": 1.281104938,
+        "player_association/input_assembly": 0.000153611,
+        "player_association/component": 15.635896181
+      },
+      "c9_clip_forward_counts": {
+        "person_appearance_features/clip_inference": 429
+      },
+      "clip_embedding_counts": {
+        "video_000/clip_000": {
+          "reused": 272,
+          "recomputed": 0,
+          "selected": 272
+        },
+        "video_000/clip_027": {
+          "reused": 288,
+          "recomputed": 0,
+          "selected": 288
+        },
+        "video_000/clip_037": {
+          "reused": 256,
+          "recomputed": 0,
+          "selected": 256
+        }
+      },
+      "recorder_errors": []
+    },
+    {
+      "variant": "embedding_reuse",
+      "regime": "warm",
+      "started_at": "2026-11-19T12:14:40.710096+00:00",
+      "finished_at": "2026-11-19T12:45:04.102772+00:00",
+      "wall_seconds": 1823.3925161799998,
+      "outcomes": {
+        "video_000/clip_000": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/2-warm/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_000",
+          "error": null,
+          "status": "generated"
+        },
+        "video_000/clip_027": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/2-warm/dataset/videos/video_000/clips/clip_027/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_027",
+          "error": null,
+          "status": "generated"
+        },
+        "video_000/clip_037": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/2-warm/dataset/videos/video_000/clips/clip_037/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_037",
+          "error": null,
+          "status": "generated"
+        }
+      },
+      "worker_startup_seconds": 0,
+      "io": {
+        "read_chars": 41507561682,
+        "write_chars": 2190082742,
+        "read_bytes": 948797440,
+        "write_bytes": 2199724032
+      },
+      "torch": "2.13.0+cu130",
+      "cuda": "13.0",
+      "threads": 1,
+      "end_to_end_wall_seconds": 1823.3925161799998,
+      "recorder_wall_seconds": 1820.746546029,
+      "completed_clips_per_hour": 5.923025297167479,
+      "completed_camera_frames_per_second": 1.937048643481068,
+      "recorder_status": "complete",
+      "all_generated": true,
+      "stage_wall_seconds": {
+        "artifact_load": 12.652137368,
+        "decode": 26.913747746,
+        "inference": 1159.486987319,
+        "measurement": 42.63316406,
+        "model_load": 80.747912899,
+        "model_unload": 6.849242135,
+        "postprocess": 250.794910276,
+        "preprocess": 174.061295703,
+        "publication": 20.631405549,
+        "save": 13.540146514,
+        "transfer": 11.255037832,
+        "unattributed": 21.180558628
+      },
+      "batches": [
+        {
+          "model": "AFLink",
+          "stage": "person_tracking",
+          "batches": 6,
+          "items": 6,
+          "items_histogram": {
+            "1": 6
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "Ball",
+          "stage": "ball_detection",
+          "batches": 216,
+          "items": 216,
+          "items_histogram": {
+            "1": 216
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "CLIP-ReID",
+          "stage": "person_appearance_features",
+          "batches": 429,
+          "items": 27067,
+          "items_histogram": {
+            "64": 417,
+            "5": 1,
+            "62": 1,
+            "18": 1,
+            "25": 1,
+            "10": 1,
+            "30": 1,
+            "26": 1,
+            "59": 2,
+            "63": 1,
+            "13": 1,
+            "9": 1
+          },
+          "configured_cap": 64,
+          "fill_fraction": 0.9858318764568764
+        },
+        {
+          "model": "DINO",
+          "stage": "person_detection",
+          "batches": 3532,
+          "items": 3532,
+          "items_histogram": {
+            "1": 3532
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "GVHMR",
+          "stage": "gvhmr",
+          "batches": 12,
+          "items": 12,
+          "items_histogram": {
+            "1": 12
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "GVHMR-network",
+          "stage": "gvhmr",
+          "batches": 12,
+          "items": 12,
+          "items_histogram": {
+            "1": 12
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "HMR2",
+          "stage": "hmr2_features",
+          "batches": 120,
+          "items": 1756,
+          "items_histogram": {
+            "16": 108,
+            "1": 8,
+            "5": 4
+          },
+          "configured_cap": 16,
+          "fill_fraction": 0.9145833333333333
+        },
+        {
+          "model": "SMPL-COCO17",
+          "stage": "body_placement",
+          "batches": 120,
+          "items": 3500,
+          "items_histogram": {
+            "32": 108,
+            "1": 8,
+            "9": 4
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "SMPL-vertices",
+          "stage": "body_placement",
+          "batches": 120,
+          "items": 3500,
+          "items_histogram": {
+            "32": 108,
+            "1": 8,
+            "9": 4
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "ViTPose",
+          "stage": "person_pose_features",
+          "batches": 1696,
+          "items": 27067,
+          "items_histogram": {
+            "16": 1684,
+            "5": 1,
+            "14": 2,
+            "2": 1,
+            "9": 2,
+            "10": 2,
+            "11": 2,
+            "15": 1,
+            "13": 1
+          },
+          "configured_cap": 16,
+          "fill_fraction": 0.9974572523584906
+        }
+      ],
+      "resources": {
+        "ram_rss_sampled_peak_bytes": 9472086016,
+        "temporary_disk_peak_bytes": 120311315,
+        "ram_process_lifetime_peak_bytes": 9471438848,
+        "cuda": {
+          "cuda:0": {
+            "allocated_peak_bytes": 4184557568,
+            "reserved_peak_bytes": 4460642304
+          }
+        }
+      },
+      "intermediate_array_save_seconds": 13.53634799,
+      "scene_export_seconds": 14.979342273,
+      "dataset_marker_publication_seconds": 3.8668474710000007,
+      "recorder_sha256": "8ab701cf0603b243dc5d7cfeabdd17bea41d2c03ffb1e39521d521303938caaa",
+      "repeat": "2-warm",
+      "recording": "attempts/2-warm/progress/43e30d756b69432b831863c0490c5e32/recording.json",
+      "models": [
+        {
+          "model": "ball",
+          "device": "cuda",
+          "dtype": "bfloat16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "dino",
+          "device": "cuda",
+          "dtype": "float16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "vitpose",
+          "device": "cuda",
+          "dtype": "float16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "appearance",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "AFLink",
+          "device": "cpu",
+          "dtype": "float32",
+          "load_count": 12,
+          "unload_count": 0,
+          "failed_count": 0
+        },
+        {
+          "model": "hmr2",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "gvhmr",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "body_geometry",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        }
+      ],
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "scene": {
+            "archive": "attempts/2-warm/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/exports/70f004a068b55432b9236de2fb5722a36e7a37437fe8680e6747b6cc52d1a8e7/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 356,
+            "ball_valid_frames": 159
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.17341812982712787,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 356,
+              "ball_detection": 194,
+              "ball_points": 189
+            },
+            "cam1": {
+              "person_detection": 356,
+              "ball_detection": 141,
+              "ball_points": 130
+            },
+            "cam2": {
+              "person_detection": 356,
+              "ball_detection": 185,
+              "ball_points": 185
+            },
+            "cam3": {
+              "person_detection": 356,
+              "ball_detection": 153,
+              "ball_points": 147
+            }
+          }
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "scene": {
+            "archive": "attempts/2-warm/dataset/videos/video_000/clips/clip_027/annotations/tennis_scene/exports/5dc9cc004e39e5b8727bd34b2991eb57720cadfa571fb98549d6dec3fae724df/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 235,
+            "ball_valid_frames": 128
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.22422588369809465,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 235,
+              "ball_detection": 210,
+              "ball_points": 207
+            },
+            "cam1": {
+              "person_detection": 235,
+              "ball_detection": 124,
+              "ball_points": 121
+            },
+            "cam2": {
+              "person_detection": 235,
+              "ball_detection": 198,
+              "ball_points": 193
+            },
+            "cam3": {
+              "person_detection": 235,
+              "ball_detection": 138,
+              "ball_points": 136
+            }
+          }
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "scene": {
+            "archive": "attempts/2-warm/dataset/videos/video_000/clips/clip_037/annotations/tennis_scene/exports/f92548881b1df6880d92546bbd1f029c540ce2839a2c82c9432168660273c700/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 292,
+            "ball_valid_frames": 129
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.3150889679174889,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 292,
+              "ball_detection": 161,
+              "ball_points": 139
+            },
+            "cam1": {
+              "person_detection": 292,
+              "ball_detection": 97,
+              "ball_points": 91
+            },
+            "cam2": {
+              "person_detection": 292,
+              "ball_detection": 216,
+              "ball_points": 216
+            },
+            "cam3": {
+              "person_detection": 292,
+              "ball_detection": 156,
+              "ball_points": 140
+            }
+          }
+        }
+      ],
+      "node_span_seconds": {
+        "court_detection": 23.156445536,
+        "court_calibration": 0.221929861,
+        "ball_detection": 60.43867927000001,
+        "ball_points": 10.553918187,
+        "person_detection": 726.4770609650002,
+        "person_pose_features": 553.8139006920002,
+        "person_appearance_features": 107.16055577300001,
+        "person_tracking": 17.140744673000004,
+        "player_selection": 3.0326703910000004,
+        "pose_estimation": 0.641064973,
+        "court_side": 0.6935363470000001,
+        "player_association": 17.401495368,
+        "camera_alignment": 0.330312349,
+        "player_triangulation": 106.62757999800002,
+        "ball_triangulation": 0.9638388390000001,
+        "body_view_selection": 0.18369158800000002,
+        "hmr2_features": 108.634227468,
+        "gvhmr": 13.380164965,
+        "body_placement": 17.89872601,
+        "scene_assembly": 4.012000702
+      },
+      "inclusive_c9_parts_seconds": {
+        "person_appearance_features/ClipStore.load": 0.037950151,
+        "person_appearance_features/input_assembly": 0.00018898600000000006,
+        "person_appearance_features/component": 106.16074168900003,
+        "person_appearance_features/clip_inference": 70.45853331099995,
+        "player_association/ClipStore.load": 1.278526213,
+        "player_association/input_assembly": 0.00013462400000000002,
+        "player_association/component": 15.423356519999999
+      },
+      "c9_clip_forward_counts": {
+        "person_appearance_features/clip_inference": 429
+      },
+      "clip_embedding_counts": {
+        "video_000/clip_000": {
+          "reused": 272,
+          "recomputed": 0,
+          "selected": 272
+        },
+        "video_000/clip_027": {
+          "reused": 288,
+          "recomputed": 0,
+          "selected": 288
+        },
+        "video_000/clip_037": {
+          "reused": 256,
+          "recomputed": 0,
+          "selected": 256
+        }
+      },
+      "recorder_errors": []
+    },
+    {
+      "variant": "embedding_reuse",
+      "regime": "warm",
+      "started_at": "2026-11-19T12:45:04.593430+00:00",
+      "finished_at": "2026-11-19T13:15:19.915319+00:00",
+      "wall_seconds": 1815.32166731701,
+      "outcomes": {
+        "video_000/clip_000": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/3-warm/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_000",
+          "error": null,
+          "status": "generated"
+        },
+        "video_000/clip_027": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/3-warm/dataset/videos/video_000/clips/clip_027/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_027",
+          "error": null,
+          "status": "generated"
+        },
+        "video_000/clip_037": {
+          "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-benchmark/tennis_scene/evaluate/video-batch-benchmark-20261119/embedding-reuse-heartbeat-1/attempts/3-warm/dataset/videos/video_000/clips/clip_037/annotations/tennis_scene/annotation.json",
+          "clip_id": "video_000/clip_037",
+          "error": null,
+          "status": "generated"
+        }
+      },
+      "worker_startup_seconds": 0,
+      "io": {
+        "read_chars": 41507558085,
+        "write_chars": 2190082006,
+        "read_bytes": 1024630784,
+        "write_bytes": 2199728128
+      },
+      "torch": "2.13.0+cu130",
+      "cuda": "13.0",
+      "threads": 1,
+      "end_to_end_wall_seconds": 1815.32166731701,
+      "recorder_wall_seconds": 1812.747390768,
+      "completed_clips_per_hour": 5.9493588350994955,
+      "completed_camera_frames_per_second": 1.9456606857010572,
+      "recorder_status": "complete",
+      "all_generated": true,
+      "stage_wall_seconds": {
+        "artifact_load": 13.147614293,
+        "decode": 23.81301911,
+        "inference": 1160.509985392,
+        "measurement": 42.917086631,
+        "model_load": 69.958122656,
+        "model_unload": 6.870690015,
+        "postprocess": 255.227148202,
+        "preprocess": 170.833339491,
+        "publication": 20.662792448,
+        "save": 16.467793437,
+        "transfer": 11.26968517,
+        "unattributed": 21.070113923
+      },
+      "batches": [
+        {
+          "model": "AFLink",
+          "stage": "person_tracking",
+          "batches": 6,
+          "items": 6,
+          "items_histogram": {
+            "1": 6
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "Ball",
+          "stage": "ball_detection",
+          "batches": 216,
+          "items": 216,
+          "items_histogram": {
+            "1": 216
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "CLIP-ReID",
+          "stage": "person_appearance_features",
+          "batches": 429,
+          "items": 27067,
+          "items_histogram": {
+            "64": 417,
+            "5": 1,
+            "62": 1,
+            "18": 1,
+            "25": 1,
+            "10": 1,
+            "30": 1,
+            "26": 1,
+            "59": 2,
+            "63": 1,
+            "13": 1,
+            "9": 1
+          },
+          "configured_cap": 64,
+          "fill_fraction": 0.9858318764568764
+        },
+        {
+          "model": "DINO",
+          "stage": "person_detection",
+          "batches": 3532,
+          "items": 3532,
+          "items_histogram": {
+            "1": 3532
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "GVHMR",
+          "stage": "gvhmr",
+          "batches": 12,
+          "items": 12,
+          "items_histogram": {
+            "1": 12
+          },
+          "configured_cap": 1,
+          "fill_fraction": 1.0
+        },
+        {
+          "model": "GVHMR-network",
+          "stage": "gvhmr",
+          "batches": 12,
+          "items": 12,
+          "items_histogram": {
+            "1": 12
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "HMR2",
+          "stage": "hmr2_features",
+          "batches": 120,
+          "items": 1756,
+          "items_histogram": {
+            "16": 108,
+            "1": 8,
+            "5": 4
+          },
+          "configured_cap": 16,
+          "fill_fraction": 0.9145833333333333
+        },
+        {
+          "model": "SMPL-COCO17",
+          "stage": "body_placement",
+          "batches": 120,
+          "items": 3500,
+          "items_histogram": {
+            "32": 108,
+            "1": 8,
+            "9": 4
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "SMPL-vertices",
+          "stage": "body_placement",
+          "batches": 120,
+          "items": 3500,
+          "items_histogram": {
+            "32": 108,
+            "1": 8,
+            "9": 4
+          },
+          "configured_cap": null,
+          "fill_fraction": null
+        },
+        {
+          "model": "ViTPose",
+          "stage": "person_pose_features",
+          "batches": 1696,
+          "items": 27067,
+          "items_histogram": {
+            "16": 1684,
+            "5": 1,
+            "14": 2,
+            "2": 1,
+            "9": 2,
+            "10": 2,
+            "11": 2,
+            "15": 1,
+            "13": 1
+          },
+          "configured_cap": 16,
+          "fill_fraction": 0.9974572523584906
+        }
+      ],
+      "resources": {
+        "ram_rss_sampled_peak_bytes": 9484075008,
+        "temporary_disk_peak_bytes": 120311315,
+        "ram_process_lifetime_peak_bytes": 9483579392,
+        "cuda": {
+          "cuda:0": {
+            "allocated_peak_bytes": 4184557568,
+            "reserved_peak_bytes": 4460642304
+          }
+        }
+      },
+      "intermediate_array_save_seconds": 16.463479267000007,
+      "scene_export_seconds": 14.978414499000001,
+      "dataset_marker_publication_seconds": 3.9761637620000005,
+      "recorder_sha256": "8c39cee9c18019fcecbc02c355d1e197d29fd34dbba039c9869e6a8f228f4000",
+      "repeat": "3-warm",
+      "recording": "attempts/3-warm/progress/3396f86f6de147f2b9648d60ad42f1fe/recording.json",
+      "models": [
+        {
+          "model": "ball",
+          "device": "cuda",
+          "dtype": "bfloat16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "dino",
+          "device": "cuda",
+          "dtype": "float16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "vitpose",
+          "device": "cuda",
+          "dtype": "float16",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "appearance",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "AFLink",
+          "device": "cpu",
+          "dtype": "float32",
+          "load_count": 12,
+          "unload_count": 0,
+          "failed_count": 0
+        },
+        {
+          "model": "hmr2",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "gvhmr",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        },
+        {
+          "model": "body_geometry",
+          "device": "cuda",
+          "dtype": "float32",
+          "load_count": 1,
+          "unload_count": 1,
+          "failed_count": 0
+        }
+      ],
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "scene": {
+            "archive": "attempts/3-warm/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/exports/cf847b27330cd3ddc4c0afe53a134c9b892106b719518486dab57d54eaef8eeb/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 356,
+            "ball_valid_frames": 159
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.17341812982712787,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 356,
+              "ball_detection": 194,
+              "ball_points": 189
+            },
+            "cam1": {
+              "person_detection": 356,
+              "ball_detection": 141,
+              "ball_points": 130
+            },
+            "cam2": {
+              "person_detection": 356,
+              "ball_detection": 185,
+              "ball_points": 185
+            },
+            "cam3": {
+              "person_detection": 356,
+              "ball_detection": 153,
+              "ball_points": 147
+            }
+          }
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "scene": {
+            "archive": "attempts/3-warm/dataset/videos/video_000/clips/clip_027/annotations/tennis_scene/exports/c12471d0420f565b2d170196221b9d3fe2f34acd4f93a5250ee2656d5345ceec/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 235,
+            "ball_valid_frames": 128
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.22422588369809465,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 235,
+              "ball_detection": 210,
+              "ball_points": 207
+            },
+            "cam1": {
+              "person_detection": 235,
+              "ball_detection": 124,
+              "ball_points": 121
+            },
+            "cam2": {
+              "person_detection": 235,
+              "ball_detection": 198,
+              "ball_points": 193
+            },
+            "cam3": {
+              "person_detection": 235,
+              "ball_detection": 138,
+              "ball_points": 136
+            }
+          }
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "scene": {
+            "archive": "attempts/3-warm/dataset/videos/video_000/clips/clip_037/annotations/tennis_scene/exports/ec226fbba6b8f5aba7007abeac109ac2324f5d423b6cb9fcfd33836fcfab226e/scene.npz",
+            "reload": "validated",
+            "players": 4,
+            "num_frames": 292,
+            "ball_valid_frames": 129
+          },
+          "court_side": {
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ],
+            "margin": 0.3150889679174889,
+            "matches_ball_reference": true
+          },
+          "camera_stages": {
+            "cam0": {
+              "person_detection": 292,
+              "ball_detection": 161,
+              "ball_points": 139
+            },
+            "cam1": {
+              "person_detection": 292,
+              "ball_detection": 97,
+              "ball_points": 91
+            },
+            "cam2": {
+              "person_detection": 292,
+              "ball_detection": 216,
+              "ball_points": 216
+            },
+            "cam3": {
+              "person_detection": 292,
+              "ball_detection": 156,
+              "ball_points": 140
+            }
+          }
+        }
+      ],
+      "node_span_seconds": {
+        "court_detection": 22.915101943,
+        "court_calibration": 0.21006370500000002,
+        "ball_detection": 55.88312375400001,
+        "ball_points": 11.100126063000003,
+        "person_detection": 726.9827223080001,
+        "person_pose_features": 548.940966869,
+        "person_appearance_features": 107.04385730000001,
+        "person_tracking": 17.905008510000002,
+        "player_selection": 3.1955207020000005,
+        "pose_estimation": 0.6408684370000002,
+        "court_side": 0.653230803,
+        "player_association": 17.645017618,
+        "camera_alignment": 0.333780028,
+        "player_triangulation": 108.935819382,
+        "ball_triangulation": 0.9735393980000001,
+        "body_view_selection": 0.186249713,
+        "hmr2_features": 106.018409309,
+        "gvhmr": 13.268995498,
+        "body_placement": 17.601111222,
+        "scene_assembly": 4.379980450000001
+      },
+      "inclusive_c9_parts_seconds": {
+        "person_appearance_features/ClipStore.load": 0.03747989200000001,
+        "person_appearance_features/input_assembly": 0.00017943199999999999,
+        "person_appearance_features/component": 105.98140054599999,
+        "person_appearance_features/clip_inference": 70.45206475899998,
+        "player_association/ClipStore.load": 1.2810233590000002,
+        "player_association/input_assembly": 0.00014382200000000002,
+        "player_association/component": 15.648830032000003
+      },
+      "c9_clip_forward_counts": {
+        "person_appearance_features/clip_inference": 429
+      },
+      "clip_embedding_counts": {
+        "video_000/clip_000": {
+          "reused": 272,
+          "recomputed": 0,
+          "selected": 272
+        },
+        "video_000/clip_027": {
+          "reused": 288,
+          "recomputed": 0,
+          "selected": 288
+        },
+        "video_000/clip_037": {
+          "reused": 256,
+          "recomputed": 0,
+          "selected": 256
+        }
+      },
+      "recorder_errors": []
+    }
+  ],
+  "warm_statistics": {
+    "n": 2,
+    "median_seconds": 1819.357091748505,
+    "min_seconds": 1815.32166731701,
+    "max_seconds": 1823.3925161799998,
+    "sample_stdev_seconds": 5.706951960951828
+  },
+  "comparisons": [
+    {
+      "report": "compare-reuse-1-first.json",
+      "quality_acceptance": false,
+      "same_input_pins": true,
+      "same_publication_pins": false,
+      "same_runtime": true,
+      "same_commit": true,
+      "selected_camera_frames": 3532,
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 159,
+            "valid_candidate": 159,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": [
+            {
+              "path": "diagnostics.association.pairs.31.appearance",
+              "diff": {
+                "exact": false,
+                "close": false,
+                "reference": -0.06846277982065138,
+                "candidate": -0.06846275803380826
+              }
+            }
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 128,
+            "valid_candidate": 128,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": []
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 129,
+            "valid_candidate": 129,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": []
+        }
+      ]
+    },
+    {
+      "report": "compare-reuse-2-warm.json",
+      "quality_acceptance": false,
+      "same_input_pins": true,
+      "same_publication_pins": false,
+      "same_runtime": true,
+      "same_commit": true,
+      "selected_camera_frames": 3532,
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 159,
+            "valid_candidate": 159,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": [
+            {
+              "path": "diagnostics.association.pairs.31.appearance",
+              "diff": {
+                "exact": false,
+                "close": false,
+                "reference": -0.06846277982065138,
+                "candidate": -0.06846275803380826
+              }
+            }
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 128,
+            "valid_candidate": 128,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": []
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 129,
+            "valid_candidate": 129,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": []
+        }
+      ]
+    },
+    {
+      "report": "compare-reuse-3-warm.json",
+      "quality_acceptance": false,
+      "same_input_pins": true,
+      "same_publication_pins": false,
+      "same_runtime": true,
+      "same_commit": true,
+      "selected_camera_frames": 3532,
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 159,
+            "valid_candidate": 159,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": [
+            {
+              "path": "diagnostics.association.pairs.31.appearance",
+              "diff": {
+                "exact": false,
+                "close": false,
+                "reference": -0.06846277982065138,
+                "candidate": -0.06846275803380826
+              }
+            }
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 128,
+            "valid_candidate": 128,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": []
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false
+          },
+          "archive_arrays": {
+            "exact": true,
+            "close": true,
+            "changes": {}
+          },
+          "ball_3d_common": {
+            "valid_reference": 129,
+            "valid_candidate": 129,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.0
+          },
+          "association_fields_outside_tolerance": []
+        }
+      ]
+    },
+    {
+      "report": "compare-serial-1-first.json",
+      "quality_acceptance": false,
+      "same_input_pins": true,
+      "same_publication_pins": false,
+      "same_runtime": true,
+      "same_commit": false,
+      "selected_camera_frames": 3532,
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  356,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 477,
+                "violations": 261,
+                "max_abs_finite": 0.49743032455444336,
+                "first_violation_flat_indexes": [
+                  1,
+                  57,
+                  59,
+                  62,
+                  216,
+                  217,
+                  220,
+                  223
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  356
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 2,
+                "violations": 2,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  95,
+                  96
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  356,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1297,
+                "violations": 1199,
+                "max_abs_finite": 0.48346152901649475,
+                "first_violation_flat_indexes": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  8,
+                  9
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  356
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 4,
+                "violations": 4,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  451,
+                  452,
+                  490,
+                  1308
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 159,
+            "valid_candidate": 159,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.49743032455444336
+          },
+          "association_fields_outside_tolerance": [
+            {
+              "path": "diagnostics.association.pairs.31.appearance",
+              "diff": {
+                "exact": false,
+                "close": false,
+                "reference": -0.06846277982065138,
+                "candidate": -0.06846275803380826
+              }
+            }
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  235,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 384,
+                "violations": 268,
+                "max_abs_finite": 11.436444282531738,
+                "first_violation_flat_indexes": [
+                  24,
+                  25,
+                  26,
+                  27,
+                  28,
+                  30,
+                  31,
+                  33
+                ]
+              },
+              "ball_3d_valid": {
+                "shape": [
+                  235
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 6,
+                "violations": 6,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  8,
+                  71,
+                  147,
+                  148,
+                  149,
+                  204
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  235
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 7,
+                "violations": 7,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  8,
+                  71,
+                  147,
+                  148,
+                  149,
+                  204,
+                  232
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  235,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1315,
+                "violations": 1235,
+                "max_abs_finite": 0.943755567073822,
+                "first_violation_flat_indexes": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  235
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 5,
+                "violations": 5,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  232,
+                  233,
+                  618,
+                  775,
+                  905
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 122,
+            "valid_candidate": 128,
+            "changed_valid_frame_indexes": [
+              8,
+              71,
+              147,
+              148,
+              149,
+              204
+            ],
+            "common_valid_component_max_abs_m": 0.06635701656341553
+          },
+          "association_fields_outside_tolerance": []
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  292,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 393,
+                "violations": 269,
+                "max_abs_finite": 16.67490005493164,
+                "first_violation_flat_indexes": [
+                  114,
+                  116,
+                  117,
+                  120,
+                  177,
+                  180,
+                  183,
+                  184
+                ]
+              },
+              "ball_3d_valid": {
+                "shape": [
+                  292
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 3,
+                "violations": 3,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  193,
+                  194,
+                  286
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  292
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 3,
+                "violations": 3,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  193,
+                  194,
+                  286
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  292,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1167,
+                "violations": 1105,
+                "max_abs_finite": 0.4200318455696106,
+                "first_violation_flat_indexes": [
+                  76,
+                  77,
+                  80,
+                  115,
+                  116,
+                  117,
+                  118,
+                  119
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  292
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 1,
+                "violations": 1,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  286
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 130,
+            "valid_candidate": 129,
+            "changed_valid_frame_indexes": [
+              193,
+              194,
+              286
+            ],
+            "common_valid_component_max_abs_m": 0.7100238800048828
+          },
+          "association_fields_outside_tolerance": []
+        }
+      ]
+    },
+    {
+      "report": "compare-serial-2-warm.json",
+      "quality_acceptance": false,
+      "same_input_pins": true,
+      "same_publication_pins": false,
+      "same_runtime": true,
+      "same_commit": false,
+      "selected_camera_frames": 3532,
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  356,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 477,
+                "violations": 261,
+                "max_abs_finite": 0.49743032455444336,
+                "first_violation_flat_indexes": [
+                  1,
+                  57,
+                  59,
+                  62,
+                  216,
+                  217,
+                  220,
+                  223
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  356
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 2,
+                "violations": 2,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  95,
+                  96
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  356,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1297,
+                "violations": 1199,
+                "max_abs_finite": 0.48346152901649475,
+                "first_violation_flat_indexes": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  8,
+                  9
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  356
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 4,
+                "violations": 4,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  451,
+                  452,
+                  490,
+                  1308
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 159,
+            "valid_candidate": 159,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.49743032455444336
+          },
+          "association_fields_outside_tolerance": [
+            {
+              "path": "diagnostics.association.pairs.31.appearance",
+              "diff": {
+                "exact": false,
+                "close": false,
+                "reference": -0.06846277982065138,
+                "candidate": -0.06846275803380826
+              }
+            }
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  235,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 384,
+                "violations": 268,
+                "max_abs_finite": 11.436444282531738,
+                "first_violation_flat_indexes": [
+                  24,
+                  25,
+                  26,
+                  27,
+                  28,
+                  30,
+                  31,
+                  33
+                ]
+              },
+              "ball_3d_valid": {
+                "shape": [
+                  235
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 6,
+                "violations": 6,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  8,
+                  71,
+                  147,
+                  148,
+                  149,
+                  204
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  235
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 7,
+                "violations": 7,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  8,
+                  71,
+                  147,
+                  148,
+                  149,
+                  204,
+                  232
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  235,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1315,
+                "violations": 1235,
+                "max_abs_finite": 0.943755567073822,
+                "first_violation_flat_indexes": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  235
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 5,
+                "violations": 5,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  232,
+                  233,
+                  618,
+                  775,
+                  905
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 122,
+            "valid_candidate": 128,
+            "changed_valid_frame_indexes": [
+              8,
+              71,
+              147,
+              148,
+              149,
+              204
+            ],
+            "common_valid_component_max_abs_m": 0.06635701656341553
+          },
+          "association_fields_outside_tolerance": []
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  292,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 393,
+                "violations": 269,
+                "max_abs_finite": 16.67490005493164,
+                "first_violation_flat_indexes": [
+                  114,
+                  116,
+                  117,
+                  120,
+                  177,
+                  180,
+                  183,
+                  184
+                ]
+              },
+              "ball_3d_valid": {
+                "shape": [
+                  292
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 3,
+                "violations": 3,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  193,
+                  194,
+                  286
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  292
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 3,
+                "violations": 3,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  193,
+                  194,
+                  286
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  292,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1167,
+                "violations": 1105,
+                "max_abs_finite": 0.4200318455696106,
+                "first_violation_flat_indexes": [
+                  76,
+                  77,
+                  80,
+                  115,
+                  116,
+                  117,
+                  118,
+                  119
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  292
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 1,
+                "violations": 1,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  286
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 130,
+            "valid_candidate": 129,
+            "changed_valid_frame_indexes": [
+              193,
+              194,
+              286
+            ],
+            "common_valid_component_max_abs_m": 0.7100238800048828
+          },
+          "association_fields_outside_tolerance": []
+        }
+      ]
+    },
+    {
+      "report": "compare-serial-3-warm.json",
+      "quality_acceptance": false,
+      "same_input_pins": true,
+      "same_publication_pins": false,
+      "same_runtime": true,
+      "same_commit": false,
+      "selected_camera_frames": 3532,
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  356,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 477,
+                "violations": 261,
+                "max_abs_finite": 0.49743032455444336,
+                "first_violation_flat_indexes": [
+                  1,
+                  57,
+                  59,
+                  62,
+                  216,
+                  217,
+                  220,
+                  223
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  356
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 2,
+                "violations": 2,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  95,
+                  96
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  356,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1297,
+                "violations": 1199,
+                "max_abs_finite": 0.48346152901649475,
+                "first_violation_flat_indexes": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  8,
+                  9
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  356
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 4,
+                "violations": 4,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  451,
+                  452,
+                  490,
+                  1308
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 159,
+            "valid_candidate": 159,
+            "changed_valid_frame_indexes": [],
+            "common_valid_component_max_abs_m": 0.49743032455444336
+          },
+          "association_fields_outside_tolerance": [
+            {
+              "path": "diagnostics.association.pairs.31.appearance",
+              "diff": {
+                "exact": false,
+                "close": false,
+                "reference": -0.06846277982065138,
+                "candidate": -0.06846275803380826
+              }
+            }
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  235,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 384,
+                "violations": 268,
+                "max_abs_finite": 11.436444282531738,
+                "first_violation_flat_indexes": [
+                  24,
+                  25,
+                  26,
+                  27,
+                  28,
+                  30,
+                  31,
+                  33
+                ]
+              },
+              "ball_3d_valid": {
+                "shape": [
+                  235
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 6,
+                "violations": 6,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  8,
+                  71,
+                  147,
+                  148,
+                  149,
+                  204
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  235
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 7,
+                "violations": 7,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  8,
+                  71,
+                  147,
+                  148,
+                  149,
+                  204,
+                  232
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  235,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1315,
+                "violations": 1235,
+                "max_abs_finite": 0.943755567073822,
+                "first_violation_flat_indexes": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  235
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 5,
+                "violations": 5,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  232,
+                  233,
+                  618,
+                  775,
+                  905
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 122,
+            "valid_candidate": 128,
+            "changed_valid_frame_indexes": [
+              8,
+              71,
+              147,
+              148,
+              149,
+              204
+            ],
+            "common_valid_component_max_abs_m": 0.06635701656341553
+          },
+          "association_fields_outside_tolerance": []
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "compared_nodes": 47,
+          "outcomes_match": true,
+          "quality_agrees": false,
+          "both_scenes_validated": true,
+          "player_side_matches_reference": true,
+          "first_changed_nodes": [
+            "ball_detection/cam0",
+            "ball_detection/cam1",
+            "ball_detection/cam2",
+            "ball_detection/cam3",
+            "person_appearance_features/cam0",
+            "person_appearance_features/cam1",
+            "person_appearance_features/cam2",
+            "person_appearance_features/cam3",
+            "player_association"
+          ],
+          "changed_nodes": {
+            "ball_detection/cam0": false,
+            "ball_detection/cam1": false,
+            "ball_detection/cam2": false,
+            "ball_detection/cam3": false,
+            "ball_points/cam0": false,
+            "ball_points/cam1": false,
+            "ball_points/cam2": false,
+            "ball_points/cam3": false,
+            "ball_triangulation": false,
+            "camera_alignment": false,
+            "person_appearance_features/cam0": false,
+            "person_appearance_features/cam1": false,
+            "person_appearance_features/cam2": false,
+            "person_appearance_features/cam3": false,
+            "player_association": false,
+            "scene_assembly": false
+          },
+          "archive_arrays": {
+            "exact": false,
+            "close": false,
+            "changes": {
+              "ball_3d": {
+                "shape": [
+                  292,
+                  3
+                ],
+                "dtype": "float32",
+                "unit": "m",
+                "exact": false,
+                "close": false,
+                "changed": 393,
+                "violations": 269,
+                "max_abs_finite": 16.67490005493164,
+                "first_violation_flat_indexes": [
+                  114,
+                  116,
+                  117,
+                  120,
+                  177,
+                  180,
+                  183,
+                  184
+                ]
+              },
+              "ball_3d_valid": {
+                "shape": [
+                  292
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 3,
+                "violations": 3,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  193,
+                  194,
+                  286
+                ]
+              },
+              "ball_rejection_code": {
+                "shape": [
+                  292
+                ],
+                "dtype": "uint8",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 3,
+                "violations": 3,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  193,
+                  194,
+                  286
+                ]
+              },
+              "ball_uv": {
+                "shape": [
+                  4,
+                  292,
+                  2
+                ],
+                "dtype": "float32",
+                "unit": "normalized_image",
+                "exact": false,
+                "close": false,
+                "changed": 1167,
+                "violations": 1105,
+                "max_abs_finite": 0.4200318455696106,
+                "first_violation_flat_indexes": [
+                  76,
+                  77,
+                  80,
+                  115,
+                  116,
+                  117,
+                  118,
+                  119
+                ]
+              },
+              "ball_vis": {
+                "shape": [
+                  4,
+                  292
+                ],
+                "dtype": "bool",
+                "unit": "unitless",
+                "exact": false,
+                "close": false,
+                "changed": 1,
+                "violations": 1,
+                "max_abs_finite": null,
+                "first_violation_flat_indexes": [
+                  286
+                ]
+              }
+            }
+          },
+          "ball_3d_common": {
+            "valid_reference": 130,
+            "valid_candidate": 129,
+            "changed_valid_frame_indexes": [
+              193,
+              194,
+              286
+            ],
+            "common_valid_component_max_abs_m": 0.7100238800048828
+          },
+          "association_fields_outside_tolerance": []
+        }
+      ]
+    }
+  ]
+}

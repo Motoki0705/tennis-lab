@@ -1,0 +1,7016 @@
+{
+  "compare-reuse-heartbeat-1-1-first.json": {
+    "quality_acceptance": false,
+    "same_input_pins": true,
+    "same_publication_pins": true,
+    "same_runtime": true,
+    "same_commit": false,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip_id": "video_000/clip_000",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            356
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 1,
+          "violations": 1,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            6002
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 477,
+              "violations": 317,
+              "max_abs_finite": 0.4975271224975586,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                57,
+                59,
+                63,
+                216,
+                217
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                356,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1297,
+              "violations": 1207,
+              "max_abs_finite": 0.0035708844661712646,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                5,
+                8,
+                9,
+                10
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                356,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 166692,
+              "violations": 76731,
+              "max_abs_finite": 0.9986327886581421,
+              "first_violation_flat_indexes": [
+                75,
+                79,
+                83,
+                85,
+                87,
+                88,
+                89,
+                91
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                356,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 56632,
+              "violations": 56632,
+              "max_abs_finite": 0.5791015625,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                38,
+                39,
+                40,
+                41,
+                42
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71733,
+              "violations": 2789,
+              "max_abs_finite": 0.7805270552635193,
+              "first_violation_flat_indexes": [
+                313,
+                2731,
+                2986,
+                3598,
+                4285,
+                4288,
+                4312,
+                4363
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71881,
+              "violations": 1383,
+              "max_abs_finite": 12.782215118408203,
+              "first_violation_flat_indexes": [
+                2731,
+                2986,
+                3625,
+                4006,
+                4312,
+                4363,
+                4591,
+                4597
+              ]
+            },
+            "player_kp_3d_rejection_code": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_kp_3d_vis": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 4235,
+              "violations": 46,
+              "max_abs_finite": 0.0025043487548828125,
+              "first_violation_flat_indexes": [
+                1279,
+                1282,
+                1285,
+                1288,
+                1291,
+                1294,
+                1297,
+                1300
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1412,
+              "violations": 1114,
+              "max_abs_finite": 0.007953710854053497,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.004462197422981262,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                356,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 88702,
+              "violations": 65522,
+              "max_abs_finite": 0.048523664474487305,
+              "first_violation_flat_indexes": [
+                126,
+                128,
+                132,
+                133,
+                135,
+                136,
+                137,
+                138
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 4224,
+              "violations": 1780,
+              "max_abs_finite": 0.005360394716262817,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                356,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 29102336,
+              "violations": 1067019,
+              "max_abs_finite": 0.021790355443954468,
+              "first_violation_flat_indexes": [
+                709720,
+                709723,
+                709741,
+                709798,
+                710002,
+                710029,
+                710032,
+                710035
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_027",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            235
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 14,
+          "violations": 14,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            4252,
+            4253,
+            4254,
+            4255,
+            4256,
+            4257,
+            4258,
+            4259
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 384,
+              "violations": 260,
+              "max_abs_finite": 10.675911903381348,
+              "first_violation_flat_indexes": [
+                1,
+                24,
+                25,
+                26,
+                27,
+                28,
+                30,
+                31
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 5,
+              "violations": 5,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                8,
+                71,
+                147,
+                148,
+                149
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                235
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                8,
+                71,
+                147,
+                148,
+                149,
+                232
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                235,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1316,
+              "violations": 1224,
+              "max_abs_finite": 0.943755567073822,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                8
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 5,
+              "violations": 5,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                232,
+                233,
+                618,
+                775,
+                905
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                235,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 122227,
+              "violations": 56703,
+              "max_abs_finite": 0.5785732269287109,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                72,
+                73,
+                75,
+                85,
+                87,
+                89
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                235,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 41918,
+              "violations": 41918,
+              "max_abs_finite": 0.9375,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                38,
+                41,
+                44,
+                45,
+                46,
+                51
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47517,
+              "violations": 2213,
+              "max_abs_finite": 0.1649334728717804,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1705,
+                1720,
+                1771,
+                1916,
+                1993
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47467,
+              "violations": 1433,
+              "max_abs_finite": 0.16473913192749023,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1719,
+                1720,
+                1770,
+                1916,
+                1992
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 2794,
+              "violations": 82,
+              "max_abs_finite": 0.023472189903259277,
+              "first_violation_flat_indexes": [
+                760,
+                762,
+                763,
+                764,
+                765,
+                766,
+                767,
+                768
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 932,
+              "violations": 816,
+              "max_abs_finite": 0.007467746734619141,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.013041138648986816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                235,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 58716,
+              "violations": 43205,
+              "max_abs_finite": 0.027163930237293243,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 2796,
+              "violations": 1138,
+              "max_abs_finite": 0.0027604252099990845,
+              "first_violation_flat_indexes": [
+                6,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17,
+                18
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                235,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 19263891,
+              "violations": 422642,
+              "max_abs_finite": 0.013256222009658813,
+              "first_violation_flat_indexes": [
+                42089,
+                42092,
+                42497,
+                42575,
+                42581,
+                42584,
+                57666,
+                57675
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_037",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": null,
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 387,
+              "violations": 251,
+              "max_abs_finite": 16.67490005493164,
+              "first_violation_flat_indexes": [
+                114,
+                116,
+                117,
+                119,
+                120,
+                121,
+                172,
+                174
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                292
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                292,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1170,
+              "violations": 1079,
+              "max_abs_finite": 0.4200318455696106,
+              "first_violation_flat_indexes": [
+                76,
+                77,
+                78,
+                79,
+                80,
+                114,
+                115,
+                116
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                292,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 150209,
+              "violations": 66256,
+              "max_abs_finite": 0.5850500464439392,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                73,
+                75,
+                77,
+                87,
+                89,
+                95
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                292,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 49739,
+              "violations": 49739,
+              "max_abs_finite": 0.1512451171875,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                37,
+                38,
+                41,
+                42,
+                45
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 58951,
+              "violations": 1270,
+              "max_abs_finite": 0.541129469871521,
+              "first_violation_flat_indexes": [
+                103,
+                106,
+                109,
+                111,
+                112,
+                117,
+                118,
+                120
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 59087,
+              "violations": 481,
+              "max_abs_finite": 0.4271841049194336,
+              "first_violation_flat_indexes": [
+                543,
+                544,
+                545,
+                636,
+                637,
+                642,
+                643,
+                648
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 3461,
+              "violations": 33,
+              "max_abs_finite": 0.0024805068969726562,
+              "first_violation_flat_indexes": [
+                7,
+                28,
+                31,
+                33,
+                34,
+                36,
+                37,
+                39
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1156,
+              "violations": 932,
+              "max_abs_finite": 0.02704477310180664,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 38,
+              "max_abs_finite": 0.009463317692279816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                292,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 72828,
+              "violations": 49648,
+              "max_abs_finite": 0.053227207623422146,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 3468,
+              "violations": 1462,
+              "max_abs_finite": 0.007601633667945862,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                292,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 23893646,
+              "violations": 853524,
+              "max_abs_finite": 0.021253887563943863,
+              "first_violation_flat_indexes": [
+                41342,
+                41345,
+                41348,
+                41351,
+                41354,
+                41357,
+                41360,
+                41363
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "compare-reuse-heartbeat-1-2-warm.json": {
+    "quality_acceptance": false,
+    "same_input_pins": true,
+    "same_publication_pins": true,
+    "same_runtime": true,
+    "same_commit": false,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip_id": "video_000/clip_000",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            356
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 1,
+          "violations": 1,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            6002
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 477,
+              "violations": 317,
+              "max_abs_finite": 0.4975271224975586,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                57,
+                59,
+                63,
+                216,
+                217
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                356,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1297,
+              "violations": 1207,
+              "max_abs_finite": 0.0035708844661712646,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                5,
+                8,
+                9,
+                10
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                356,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 166692,
+              "violations": 76731,
+              "max_abs_finite": 0.9986327886581421,
+              "first_violation_flat_indexes": [
+                75,
+                79,
+                83,
+                85,
+                87,
+                88,
+                89,
+                91
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                356,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 56632,
+              "violations": 56632,
+              "max_abs_finite": 0.5791015625,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                38,
+                39,
+                40,
+                41,
+                42
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71733,
+              "violations": 2789,
+              "max_abs_finite": 0.7805270552635193,
+              "first_violation_flat_indexes": [
+                313,
+                2731,
+                2986,
+                3598,
+                4285,
+                4288,
+                4312,
+                4363
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71881,
+              "violations": 1383,
+              "max_abs_finite": 12.782215118408203,
+              "first_violation_flat_indexes": [
+                2731,
+                2986,
+                3625,
+                4006,
+                4312,
+                4363,
+                4591,
+                4597
+              ]
+            },
+            "player_kp_3d_rejection_code": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_kp_3d_vis": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 4235,
+              "violations": 46,
+              "max_abs_finite": 0.0025043487548828125,
+              "first_violation_flat_indexes": [
+                1279,
+                1282,
+                1285,
+                1288,
+                1291,
+                1294,
+                1297,
+                1300
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1412,
+              "violations": 1114,
+              "max_abs_finite": 0.007953710854053497,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.004462197422981262,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                356,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 88702,
+              "violations": 65522,
+              "max_abs_finite": 0.048523664474487305,
+              "first_violation_flat_indexes": [
+                126,
+                128,
+                132,
+                133,
+                135,
+                136,
+                137,
+                138
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 4224,
+              "violations": 1780,
+              "max_abs_finite": 0.005360394716262817,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                356,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 29102336,
+              "violations": 1067019,
+              "max_abs_finite": 0.021790355443954468,
+              "first_violation_flat_indexes": [
+                709720,
+                709723,
+                709741,
+                709798,
+                710002,
+                710029,
+                710032,
+                710035
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_027",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            235
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 14,
+          "violations": 14,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            4252,
+            4253,
+            4254,
+            4255,
+            4256,
+            4257,
+            4258,
+            4259
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 384,
+              "violations": 260,
+              "max_abs_finite": 10.675911903381348,
+              "first_violation_flat_indexes": [
+                1,
+                24,
+                25,
+                26,
+                27,
+                28,
+                30,
+                31
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 5,
+              "violations": 5,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                8,
+                71,
+                147,
+                148,
+                149
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                235
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                8,
+                71,
+                147,
+                148,
+                149,
+                232
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                235,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1316,
+              "violations": 1224,
+              "max_abs_finite": 0.943755567073822,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                8
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 5,
+              "violations": 5,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                232,
+                233,
+                618,
+                775,
+                905
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                235,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 122227,
+              "violations": 56703,
+              "max_abs_finite": 0.5785732269287109,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                72,
+                73,
+                75,
+                85,
+                87,
+                89
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                235,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 41918,
+              "violations": 41918,
+              "max_abs_finite": 0.9375,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                38,
+                41,
+                44,
+                45,
+                46,
+                51
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47517,
+              "violations": 2213,
+              "max_abs_finite": 0.1649334728717804,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1705,
+                1720,
+                1771,
+                1916,
+                1993
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47467,
+              "violations": 1433,
+              "max_abs_finite": 0.16473913192749023,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1719,
+                1720,
+                1770,
+                1916,
+                1992
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 2794,
+              "violations": 82,
+              "max_abs_finite": 0.023472189903259277,
+              "first_violation_flat_indexes": [
+                760,
+                762,
+                763,
+                764,
+                765,
+                766,
+                767,
+                768
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 932,
+              "violations": 816,
+              "max_abs_finite": 0.007467746734619141,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.013041138648986816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                235,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 58716,
+              "violations": 43205,
+              "max_abs_finite": 0.027163930237293243,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 2796,
+              "violations": 1138,
+              "max_abs_finite": 0.0027604252099990845,
+              "first_violation_flat_indexes": [
+                6,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17,
+                18
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                235,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 19263891,
+              "violations": 422642,
+              "max_abs_finite": 0.013256222009658813,
+              "first_violation_flat_indexes": [
+                42089,
+                42092,
+                42497,
+                42575,
+                42581,
+                42584,
+                57666,
+                57675
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_037",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": null,
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 387,
+              "violations": 251,
+              "max_abs_finite": 16.67490005493164,
+              "first_violation_flat_indexes": [
+                114,
+                116,
+                117,
+                119,
+                120,
+                121,
+                172,
+                174
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                292
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                292,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1170,
+              "violations": 1079,
+              "max_abs_finite": 0.4200318455696106,
+              "first_violation_flat_indexes": [
+                76,
+                77,
+                78,
+                79,
+                80,
+                114,
+                115,
+                116
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                292,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 150209,
+              "violations": 66256,
+              "max_abs_finite": 0.5850500464439392,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                73,
+                75,
+                77,
+                87,
+                89,
+                95
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                292,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 49739,
+              "violations": 49739,
+              "max_abs_finite": 0.1512451171875,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                37,
+                38,
+                41,
+                42,
+                45
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 58951,
+              "violations": 1270,
+              "max_abs_finite": 0.541129469871521,
+              "first_violation_flat_indexes": [
+                103,
+                106,
+                109,
+                111,
+                112,
+                117,
+                118,
+                120
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 59087,
+              "violations": 481,
+              "max_abs_finite": 0.4271841049194336,
+              "first_violation_flat_indexes": [
+                543,
+                544,
+                545,
+                636,
+                637,
+                642,
+                643,
+                648
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 3461,
+              "violations": 33,
+              "max_abs_finite": 0.0024805068969726562,
+              "first_violation_flat_indexes": [
+                7,
+                28,
+                31,
+                33,
+                34,
+                36,
+                37,
+                39
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1156,
+              "violations": 932,
+              "max_abs_finite": 0.02704477310180664,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 38,
+              "max_abs_finite": 0.009463317692279816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                292,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 72828,
+              "violations": 49648,
+              "max_abs_finite": 0.053227207623422146,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 3468,
+              "violations": 1462,
+              "max_abs_finite": 0.007601633667945862,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                292,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 23893646,
+              "violations": 853524,
+              "max_abs_finite": 0.021253887563943863,
+              "first_violation_flat_indexes": [
+                41342,
+                41345,
+                41348,
+                41351,
+                41354,
+                41357,
+                41360,
+                41363
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "compare-reuse-heartbeat-1-3-warm.json": {
+    "quality_acceptance": false,
+    "same_input_pins": true,
+    "same_publication_pins": true,
+    "same_runtime": true,
+    "same_commit": false,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip_id": "video_000/clip_000",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            356
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 1,
+          "violations": 1,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            6002
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 477,
+              "violations": 317,
+              "max_abs_finite": 0.4975271224975586,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                57,
+                59,
+                63,
+                216,
+                217
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                356,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1297,
+              "violations": 1207,
+              "max_abs_finite": 0.0035708844661712646,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                5,
+                8,
+                9,
+                10
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                356,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 166692,
+              "violations": 76731,
+              "max_abs_finite": 0.9986327886581421,
+              "first_violation_flat_indexes": [
+                75,
+                79,
+                83,
+                85,
+                87,
+                88,
+                89,
+                91
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                356,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 56632,
+              "violations": 56632,
+              "max_abs_finite": 0.5791015625,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                38,
+                39,
+                40,
+                41,
+                42
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71733,
+              "violations": 2789,
+              "max_abs_finite": 0.7805270552635193,
+              "first_violation_flat_indexes": [
+                313,
+                2731,
+                2986,
+                3598,
+                4285,
+                4288,
+                4312,
+                4363
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71881,
+              "violations": 1383,
+              "max_abs_finite": 12.782215118408203,
+              "first_violation_flat_indexes": [
+                2731,
+                2986,
+                3625,
+                4006,
+                4312,
+                4363,
+                4591,
+                4597
+              ]
+            },
+            "player_kp_3d_rejection_code": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_kp_3d_vis": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 4235,
+              "violations": 46,
+              "max_abs_finite": 0.0025043487548828125,
+              "first_violation_flat_indexes": [
+                1279,
+                1282,
+                1285,
+                1288,
+                1291,
+                1294,
+                1297,
+                1300
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1412,
+              "violations": 1114,
+              "max_abs_finite": 0.007953710854053497,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.004462197422981262,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                356,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 88702,
+              "violations": 65522,
+              "max_abs_finite": 0.048523664474487305,
+              "first_violation_flat_indexes": [
+                126,
+                128,
+                132,
+                133,
+                135,
+                136,
+                137,
+                138
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 4224,
+              "violations": 1780,
+              "max_abs_finite": 0.005360394716262817,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                356,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 29102336,
+              "violations": 1067019,
+              "max_abs_finite": 0.021790355443954468,
+              "first_violation_flat_indexes": [
+                709720,
+                709723,
+                709741,
+                709798,
+                710002,
+                710029,
+                710032,
+                710035
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_027",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            235
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 14,
+          "violations": 14,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            4252,
+            4253,
+            4254,
+            4255,
+            4256,
+            4257,
+            4258,
+            4259
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 384,
+              "violations": 260,
+              "max_abs_finite": 10.675911903381348,
+              "first_violation_flat_indexes": [
+                1,
+                24,
+                25,
+                26,
+                27,
+                28,
+                30,
+                31
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 5,
+              "violations": 5,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                8,
+                71,
+                147,
+                148,
+                149
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                235
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                8,
+                71,
+                147,
+                148,
+                149,
+                232
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                235,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1316,
+              "violations": 1224,
+              "max_abs_finite": 0.943755567073822,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                8
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 5,
+              "violations": 5,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                232,
+                233,
+                618,
+                775,
+                905
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                235,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 122227,
+              "violations": 56703,
+              "max_abs_finite": 0.5785732269287109,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                72,
+                73,
+                75,
+                85,
+                87,
+                89
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                235,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 41918,
+              "violations": 41918,
+              "max_abs_finite": 0.9375,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                38,
+                41,
+                44,
+                45,
+                46,
+                51
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47517,
+              "violations": 2213,
+              "max_abs_finite": 0.1649334728717804,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1705,
+                1720,
+                1771,
+                1916,
+                1993
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47467,
+              "violations": 1433,
+              "max_abs_finite": 0.16473913192749023,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1719,
+                1720,
+                1770,
+                1916,
+                1992
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 2794,
+              "violations": 82,
+              "max_abs_finite": 0.023472189903259277,
+              "first_violation_flat_indexes": [
+                760,
+                762,
+                763,
+                764,
+                765,
+                766,
+                767,
+                768
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 932,
+              "violations": 816,
+              "max_abs_finite": 0.007467746734619141,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.013041138648986816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                235,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 58716,
+              "violations": 43205,
+              "max_abs_finite": 0.027163930237293243,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 2796,
+              "violations": 1138,
+              "max_abs_finite": 0.0027604252099990845,
+              "first_violation_flat_indexes": [
+                6,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17,
+                18
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                235,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 19263891,
+              "violations": 422642,
+              "max_abs_finite": 0.013256222009658813,
+              "first_violation_flat_indexes": [
+                42089,
+                42092,
+                42497,
+                42575,
+                42581,
+                42584,
+                57666,
+                57675
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_037",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": null,
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 387,
+              "violations": 251,
+              "max_abs_finite": 16.67490005493164,
+              "first_violation_flat_indexes": [
+                114,
+                116,
+                117,
+                119,
+                120,
+                121,
+                172,
+                174
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                292
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                292,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1170,
+              "violations": 1079,
+              "max_abs_finite": 0.4200318455696106,
+              "first_violation_flat_indexes": [
+                76,
+                77,
+                78,
+                79,
+                80,
+                114,
+                115,
+                116
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                286
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                292,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 150209,
+              "violations": 66256,
+              "max_abs_finite": 0.5850500464439392,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                73,
+                75,
+                77,
+                87,
+                89,
+                95
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                292,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 49739,
+              "violations": 49739,
+              "max_abs_finite": 0.1512451171875,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                37,
+                38,
+                41,
+                42,
+                45
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 58951,
+              "violations": 1270,
+              "max_abs_finite": 0.541129469871521,
+              "first_violation_flat_indexes": [
+                103,
+                106,
+                109,
+                111,
+                112,
+                117,
+                118,
+                120
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 59087,
+              "violations": 481,
+              "max_abs_finite": 0.4271841049194336,
+              "first_violation_flat_indexes": [
+                543,
+                544,
+                545,
+                636,
+                637,
+                642,
+                643,
+                648
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 3461,
+              "violations": 33,
+              "max_abs_finite": 0.0024805068969726562,
+              "first_violation_flat_indexes": [
+                7,
+                28,
+                31,
+                33,
+                34,
+                36,
+                37,
+                39
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1156,
+              "violations": 932,
+              "max_abs_finite": 0.02704477310180664,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 38,
+              "max_abs_finite": 0.009463317692279816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                292,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 72828,
+              "violations": 49648,
+              "max_abs_finite": 0.053227207623422146,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 3468,
+              "violations": 1462,
+              "max_abs_finite": 0.007601633667945862,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                292,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 23893646,
+              "violations": 853524,
+              "max_abs_finite": 0.021253887563943863,
+              "first_violation_flat_indexes": [
+                41342,
+                41345,
+                41348,
+                41351,
+                41354,
+                41357,
+                41360,
+                41363
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "compare-serial-heartbeat-2-1-first.json": {
+    "quality_acceptance": false,
+    "same_input_pins": true,
+    "same_publication_pins": false,
+    "same_runtime": true,
+    "same_commit": false,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip_id": "video_000/clip_000",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            356
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 1,
+          "violations": 1,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            6002
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 477,
+              "violations": 232,
+              "max_abs_finite": 0.11844611167907715,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                63,
+                216,
+                217,
+                219,
+                220
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                356
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                95,
+                96
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                356,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1283,
+              "violations": 1072,
+              "max_abs_finite": 0.48346367478370667,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                8,
+                9
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 4,
+              "violations": 4,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                451,
+                452,
+                490,
+                1308
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                356,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 166692,
+              "violations": 76731,
+              "max_abs_finite": 0.9986327886581421,
+              "first_violation_flat_indexes": [
+                75,
+                79,
+                83,
+                85,
+                87,
+                88,
+                89,
+                91
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                356,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 56632,
+              "violations": 56632,
+              "max_abs_finite": 0.5791015625,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                38,
+                39,
+                40,
+                41,
+                42
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71733,
+              "violations": 2789,
+              "max_abs_finite": 0.7805270552635193,
+              "first_violation_flat_indexes": [
+                313,
+                2731,
+                2986,
+                3598,
+                4285,
+                4288,
+                4312,
+                4363
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71881,
+              "violations": 1383,
+              "max_abs_finite": 12.782215118408203,
+              "first_violation_flat_indexes": [
+                2731,
+                2986,
+                3625,
+                4006,
+                4312,
+                4363,
+                4591,
+                4597
+              ]
+            },
+            "player_kp_3d_rejection_code": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_kp_3d_vis": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 4235,
+              "violations": 46,
+              "max_abs_finite": 0.0025043487548828125,
+              "first_violation_flat_indexes": [
+                1279,
+                1282,
+                1285,
+                1288,
+                1291,
+                1294,
+                1297,
+                1300
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1412,
+              "violations": 1114,
+              "max_abs_finite": 0.007953710854053497,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.004462197422981262,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                356,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 88702,
+              "violations": 65522,
+              "max_abs_finite": 0.048523664474487305,
+              "first_violation_flat_indexes": [
+                126,
+                128,
+                132,
+                133,
+                135,
+                136,
+                137,
+                138
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 4224,
+              "violations": 1780,
+              "max_abs_finite": 0.005360394716262817,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                356,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 29102336,
+              "violations": 1067019,
+              "max_abs_finite": 0.021790355443954468,
+              "first_violation_flat_indexes": [
+                709720,
+                709723,
+                709741,
+                709798,
+                710002,
+                710029,
+                710032,
+                710035
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_027",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            235
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 14,
+          "violations": 14,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            4252,
+            4253,
+            4254,
+            4255,
+            4256,
+            4257,
+            4258,
+            4259
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 369,
+              "violations": 57,
+              "max_abs_finite": 11.436119079589844,
+              "first_violation_flat_indexes": [
+                190,
+                193,
+                196,
+                250,
+                253,
+                286,
+                289,
+                292
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                204
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                235
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                204
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                235,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1300,
+              "violations": 993,
+              "max_abs_finite": 0.0028706789016723633,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                235,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 122227,
+              "violations": 56703,
+              "max_abs_finite": 0.5785732269287109,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                72,
+                73,
+                75,
+                85,
+                87,
+                89
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                235,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 41918,
+              "violations": 41918,
+              "max_abs_finite": 0.9375,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                38,
+                41,
+                44,
+                45,
+                46,
+                51
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47517,
+              "violations": 2213,
+              "max_abs_finite": 0.1649334728717804,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1705,
+                1720,
+                1771,
+                1916,
+                1993
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47467,
+              "violations": 1433,
+              "max_abs_finite": 0.16473913192749023,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1719,
+                1720,
+                1770,
+                1916,
+                1992
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 2794,
+              "violations": 82,
+              "max_abs_finite": 0.023472189903259277,
+              "first_violation_flat_indexes": [
+                760,
+                762,
+                763,
+                764,
+                765,
+                766,
+                767,
+                768
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 932,
+              "violations": 816,
+              "max_abs_finite": 0.007467746734619141,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.013041138648986816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                235,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 58716,
+              "violations": 43205,
+              "max_abs_finite": 0.027163930237293243,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 2796,
+              "violations": 1138,
+              "max_abs_finite": 0.0027604252099990845,
+              "first_violation_flat_indexes": [
+                6,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17,
+                18
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                235,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 19263891,
+              "violations": 422642,
+              "max_abs_finite": 0.013256222009658813,
+              "first_violation_flat_indexes": [
+                42089,
+                42092,
+                42497,
+                42575,
+                42581,
+                42584,
+                57666,
+                57675
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_037",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": null,
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 389,
+              "violations": 193,
+              "max_abs_finite": 3.632164716720581,
+              "first_violation_flat_indexes": [
+                114,
+                117,
+                119,
+                120,
+                174,
+                175,
+                177,
+                178
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                193,
+                194
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                292
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                193,
+                194
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                292,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1148,
+              "violations": 858,
+              "max_abs_finite": 0.013867288827896118,
+              "first_violation_flat_indexes": [
+                78,
+                79,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                292,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 150209,
+              "violations": 66256,
+              "max_abs_finite": 0.5850500464439392,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                73,
+                75,
+                77,
+                87,
+                89,
+                95
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                292,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 49739,
+              "violations": 49739,
+              "max_abs_finite": 0.1512451171875,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                37,
+                38,
+                41,
+                42,
+                45
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 58951,
+              "violations": 1270,
+              "max_abs_finite": 0.541129469871521,
+              "first_violation_flat_indexes": [
+                103,
+                106,
+                109,
+                111,
+                112,
+                117,
+                118,
+                120
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 59087,
+              "violations": 481,
+              "max_abs_finite": 0.4271841049194336,
+              "first_violation_flat_indexes": [
+                543,
+                544,
+                545,
+                636,
+                637,
+                642,
+                643,
+                648
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 3461,
+              "violations": 33,
+              "max_abs_finite": 0.0024805068969726562,
+              "first_violation_flat_indexes": [
+                7,
+                28,
+                31,
+                33,
+                34,
+                36,
+                37,
+                39
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1156,
+              "violations": 932,
+              "max_abs_finite": 0.02704477310180664,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 38,
+              "max_abs_finite": 0.009463317692279816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                292,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 72828,
+              "violations": 49648,
+              "max_abs_finite": 0.053227207623422146,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 3468,
+              "violations": 1462,
+              "max_abs_finite": 0.007601633667945862,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                292,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 23893646,
+              "violations": 853524,
+              "max_abs_finite": 0.021253887563943863,
+              "first_violation_flat_indexes": [
+                41342,
+                41345,
+                41348,
+                41351,
+                41354,
+                41357,
+                41360,
+                41363
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "compare-serial-heartbeat-2-2-warm.json": {
+    "quality_acceptance": false,
+    "same_input_pins": true,
+    "same_publication_pins": false,
+    "same_runtime": true,
+    "same_commit": false,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip_id": "video_000/clip_000",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            356
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 1,
+          "violations": 1,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            6002
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 477,
+              "violations": 232,
+              "max_abs_finite": 0.11844611167907715,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                63,
+                216,
+                217,
+                219,
+                220
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                356
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                95,
+                96
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                356,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1283,
+              "violations": 1072,
+              "max_abs_finite": 0.48346367478370667,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                8,
+                9
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 4,
+              "violations": 4,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                451,
+                452,
+                490,
+                1308
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                356,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 166692,
+              "violations": 76731,
+              "max_abs_finite": 0.9986327886581421,
+              "first_violation_flat_indexes": [
+                75,
+                79,
+                83,
+                85,
+                87,
+                88,
+                89,
+                91
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                356,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 56632,
+              "violations": 56632,
+              "max_abs_finite": 0.5791015625,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                38,
+                39,
+                40,
+                41,
+                42
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71733,
+              "violations": 2789,
+              "max_abs_finite": 0.7805270552635193,
+              "first_violation_flat_indexes": [
+                313,
+                2731,
+                2986,
+                3598,
+                4285,
+                4288,
+                4312,
+                4363
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71881,
+              "violations": 1383,
+              "max_abs_finite": 12.782215118408203,
+              "first_violation_flat_indexes": [
+                2731,
+                2986,
+                3625,
+                4006,
+                4312,
+                4363,
+                4591,
+                4597
+              ]
+            },
+            "player_kp_3d_rejection_code": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_kp_3d_vis": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 4235,
+              "violations": 46,
+              "max_abs_finite": 0.0025043487548828125,
+              "first_violation_flat_indexes": [
+                1279,
+                1282,
+                1285,
+                1288,
+                1291,
+                1294,
+                1297,
+                1300
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1412,
+              "violations": 1114,
+              "max_abs_finite": 0.007953710854053497,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.004462197422981262,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                356,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 88702,
+              "violations": 65522,
+              "max_abs_finite": 0.048523664474487305,
+              "first_violation_flat_indexes": [
+                126,
+                128,
+                132,
+                133,
+                135,
+                136,
+                137,
+                138
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 4224,
+              "violations": 1780,
+              "max_abs_finite": 0.005360394716262817,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                356,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 29102336,
+              "violations": 1067019,
+              "max_abs_finite": 0.021790355443954468,
+              "first_violation_flat_indexes": [
+                709720,
+                709723,
+                709741,
+                709798,
+                710002,
+                710029,
+                710032,
+                710035
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_027",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            235
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 14,
+          "violations": 14,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            4252,
+            4253,
+            4254,
+            4255,
+            4256,
+            4257,
+            4258,
+            4259
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 369,
+              "violations": 57,
+              "max_abs_finite": 11.436119079589844,
+              "first_violation_flat_indexes": [
+                190,
+                193,
+                196,
+                250,
+                253,
+                286,
+                289,
+                292
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                204
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                235
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                204
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                235,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1300,
+              "violations": 993,
+              "max_abs_finite": 0.0028706789016723633,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                235,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 122227,
+              "violations": 56703,
+              "max_abs_finite": 0.5785732269287109,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                72,
+                73,
+                75,
+                85,
+                87,
+                89
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                235,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 41918,
+              "violations": 41918,
+              "max_abs_finite": 0.9375,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                38,
+                41,
+                44,
+                45,
+                46,
+                51
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47517,
+              "violations": 2213,
+              "max_abs_finite": 0.1649334728717804,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1705,
+                1720,
+                1771,
+                1916,
+                1993
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47467,
+              "violations": 1433,
+              "max_abs_finite": 0.16473913192749023,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1719,
+                1720,
+                1770,
+                1916,
+                1992
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 2794,
+              "violations": 82,
+              "max_abs_finite": 0.023472189903259277,
+              "first_violation_flat_indexes": [
+                760,
+                762,
+                763,
+                764,
+                765,
+                766,
+                767,
+                768
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 932,
+              "violations": 816,
+              "max_abs_finite": 0.007467746734619141,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.013041138648986816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                235,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 58716,
+              "violations": 43205,
+              "max_abs_finite": 0.027163930237293243,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 2796,
+              "violations": 1138,
+              "max_abs_finite": 0.0027604252099990845,
+              "first_violation_flat_indexes": [
+                6,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17,
+                18
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                235,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 19263891,
+              "violations": 422642,
+              "max_abs_finite": 0.013256222009658813,
+              "first_violation_flat_indexes": [
+                42089,
+                42092,
+                42497,
+                42575,
+                42581,
+                42584,
+                57666,
+                57675
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_037",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": null,
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 389,
+              "violations": 193,
+              "max_abs_finite": 3.632164716720581,
+              "first_violation_flat_indexes": [
+                114,
+                117,
+                119,
+                120,
+                174,
+                175,
+                177,
+                178
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                193,
+                194
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                292
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                193,
+                194
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                292,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1148,
+              "violations": 858,
+              "max_abs_finite": 0.013867288827896118,
+              "first_violation_flat_indexes": [
+                78,
+                79,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                292,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 150209,
+              "violations": 66256,
+              "max_abs_finite": 0.5850500464439392,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                73,
+                75,
+                77,
+                87,
+                89,
+                95
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                292,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 49739,
+              "violations": 49739,
+              "max_abs_finite": 0.1512451171875,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                37,
+                38,
+                41,
+                42,
+                45
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 58951,
+              "violations": 1270,
+              "max_abs_finite": 0.541129469871521,
+              "first_violation_flat_indexes": [
+                103,
+                106,
+                109,
+                111,
+                112,
+                117,
+                118,
+                120
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 59087,
+              "violations": 481,
+              "max_abs_finite": 0.4271841049194336,
+              "first_violation_flat_indexes": [
+                543,
+                544,
+                545,
+                636,
+                637,
+                642,
+                643,
+                648
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 3461,
+              "violations": 33,
+              "max_abs_finite": 0.0024805068969726562,
+              "first_violation_flat_indexes": [
+                7,
+                28,
+                31,
+                33,
+                34,
+                36,
+                37,
+                39
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1156,
+              "violations": 932,
+              "max_abs_finite": 0.02704477310180664,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 38,
+              "max_abs_finite": 0.009463317692279816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                292,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 72828,
+              "violations": 49648,
+              "max_abs_finite": 0.053227207623422146,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 3468,
+              "violations": 1462,
+              "max_abs_finite": 0.007601633667945862,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                292,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 23893646,
+              "violations": 853524,
+              "max_abs_finite": 0.021253887563943863,
+              "first_violation_flat_indexes": [
+                41342,
+                41345,
+                41348,
+                41351,
+                41354,
+                41357,
+                41360,
+                41363
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "compare-serial-heartbeat-2-3-warm.json": {
+    "quality_acceptance": false,
+    "same_input_pins": true,
+    "same_publication_pins": false,
+    "same_runtime": true,
+    "same_commit": false,
+    "selected_camera_frames": 3532,
+    "clips": [
+      {
+        "clip_id": "video_000/clip_000",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            356
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 1,
+          "violations": 1,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            6002
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 477,
+              "violations": 232,
+              "max_abs_finite": 0.11844611167907715,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                63,
+                216,
+                217,
+                219,
+                220
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                356
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                95,
+                96
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                356,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1283,
+              "violations": 1072,
+              "max_abs_finite": 0.48346367478370667,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                8,
+                9
+              ]
+            },
+            "ball_vis": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 4,
+              "violations": 4,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                451,
+                452,
+                490,
+                1308
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                356,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 166692,
+              "violations": 76731,
+              "max_abs_finite": 0.9986327886581421,
+              "first_violation_flat_indexes": [
+                75,
+                79,
+                83,
+                85,
+                87,
+                88,
+                89,
+                91
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                356,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 56632,
+              "violations": 56632,
+              "max_abs_finite": 0.5791015625,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                38,
+                39,
+                40,
+                41,
+                42
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71733,
+              "violations": 2789,
+              "max_abs_finite": 0.7805270552635193,
+              "first_violation_flat_indexes": [
+                313,
+                2731,
+                2986,
+                3598,
+                4285,
+                4288,
+                4312,
+                4363
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                356,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 71881,
+              "violations": 1383,
+              "max_abs_finite": 12.782215118408203,
+              "first_violation_flat_indexes": [
+                2731,
+                2986,
+                3625,
+                4006,
+                4312,
+                4363,
+                4591,
+                4597
+              ]
+            },
+            "player_kp_3d_rejection_code": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_kp_3d_vis": {
+              "shape": [
+                4,
+                356,
+                17
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 6,
+              "violations": 6,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                16550,
+                22968,
+                23242,
+                23361,
+                23394,
+                23532
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 4235,
+              "violations": 46,
+              "max_abs_finite": 0.0025043487548828125,
+              "first_violation_flat_indexes": [
+                1279,
+                1282,
+                1285,
+                1288,
+                1291,
+                1294,
+                1297,
+                1300
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                356
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1412,
+              "violations": 1114,
+              "max_abs_finite": 0.007953710854053497,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.004462197422981262,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                356,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 88702,
+              "violations": 65522,
+              "max_abs_finite": 0.048523664474487305,
+              "first_violation_flat_indexes": [
+                126,
+                128,
+                132,
+                133,
+                135,
+                136,
+                137,
+                138
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                356,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 4224,
+              "violations": 1780,
+              "max_abs_finite": 0.005360394716262817,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                356,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 29102336,
+              "violations": 1067019,
+              "max_abs_finite": 0.021790355443954468,
+              "first_violation_flat_indexes": [
+                709720,
+                709723,
+                709741,
+                709798,
+                710002,
+                710029,
+                710032,
+                710035
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_027",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": {
+          "shape": [
+            4,
+            5,
+            235
+          ],
+          "dtype": "int64",
+          "unit": "unitless",
+          "exact": false,
+          "close": false,
+          "changed": 14,
+          "violations": 14,
+          "max_abs_finite": null,
+          "first_violation_flat_indexes": [
+            4252,
+            4253,
+            4254,
+            4255,
+            4256,
+            4257,
+            4258,
+            4259
+          ]
+        },
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 369,
+              "violations": 57,
+              "max_abs_finite": 11.436119079589844,
+              "first_violation_flat_indexes": [
+                190,
+                193,
+                196,
+                250,
+                253,
+                286,
+                289,
+                292
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                235
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                204
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                235
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 1,
+              "violations": 1,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                204
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                235,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1300,
+              "violations": 993,
+              "max_abs_finite": 0.0028706789016723633,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                235,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 122227,
+              "violations": 56703,
+              "max_abs_finite": 0.5785732269287109,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                72,
+                73,
+                75,
+                85,
+                87,
+                89
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                235,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 41918,
+              "violations": 41918,
+              "max_abs_finite": 0.9375,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                38,
+                41,
+                44,
+                45,
+                46,
+                51
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47517,
+              "violations": 2213,
+              "max_abs_finite": 0.1649334728717804,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1705,
+                1720,
+                1771,
+                1916,
+                1993
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                235,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 47467,
+              "violations": 1433,
+              "max_abs_finite": 0.16473913192749023,
+              "first_violation_flat_indexes": [
+                1635,
+                1636,
+                1637,
+                1719,
+                1720,
+                1770,
+                1916,
+                1992
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 2794,
+              "violations": 82,
+              "max_abs_finite": 0.023472189903259277,
+              "first_violation_flat_indexes": [
+                760,
+                762,
+                763,
+                764,
+                765,
+                766,
+                767,
+                768
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                235
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 932,
+              "violations": 816,
+              "max_abs_finite": 0.007467746734619141,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 40,
+              "max_abs_finite": 0.013041138648986816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                235,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 58716,
+              "violations": 43205,
+              "max_abs_finite": 0.027163930237293243,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                235,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 2796,
+              "violations": 1138,
+              "max_abs_finite": 0.0027604252099990845,
+              "first_violation_flat_indexes": [
+                6,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17,
+                18
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                235,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 19263891,
+              "violations": 422642,
+              "max_abs_finite": 0.013256222009658813,
+              "first_violation_flat_indexes": [
+                42089,
+                42092,
+                42497,
+                42575,
+                42581,
+                42584,
+                57666,
+                57675
+              ]
+            }
+          }
+        }
+      },
+      {
+        "clip_id": "video_000/clip_037",
+        "quality_agrees": false,
+        "both_scenes_validated": true,
+        "player_side_matches_reference": true,
+        "compared_nodes": 47,
+        "outcomes": [
+          {
+            "status": "generated",
+            "reason": null
+          },
+          {
+            "status": "generated",
+            "reason": null
+          }
+        ],
+        "first_changed_nodes": [
+          "ball_detection/cam0",
+          "ball_detection/cam1",
+          "ball_detection/cam2",
+          "ball_detection/cam3",
+          "person_detection/cam0",
+          "person_detection/cam1",
+          "person_detection/cam2",
+          "person_detection/cam3"
+        ],
+        "discrete_association_array": null,
+        "archive_arrays": {
+          "exact": false,
+          "close": false,
+          "changes": {
+            "ball_3d": {
+              "shape": [
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 389,
+              "violations": 193,
+              "max_abs_finite": 3.632164716720581,
+              "first_violation_flat_indexes": [
+                114,
+                117,
+                119,
+                120,
+                174,
+                175,
+                177,
+                178
+              ]
+            },
+            "ball_3d_valid": {
+              "shape": [
+                292
+              ],
+              "dtype": "bool",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                193,
+                194
+              ]
+            },
+            "ball_rejection_code": {
+              "shape": [
+                292
+              ],
+              "dtype": "uint8",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 2,
+              "violations": 2,
+              "max_abs_finite": null,
+              "first_violation_flat_indexes": [
+                193,
+                194
+              ]
+            },
+            "ball_uv": {
+              "shape": [
+                4,
+                292,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 1148,
+              "violations": 858,
+              "max_abs_finite": 0.013867288827896118,
+              "first_violation_flat_indexes": [
+                78,
+                79,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119
+              ]
+            },
+            "human_kp_2d": {
+              "shape": [
+                4,
+                4,
+                292,
+                17,
+                2
+              ],
+              "dtype": "float32",
+              "unit": "normalized_image",
+              "exact": false,
+              "close": false,
+              "changed": 150209,
+              "violations": 66256,
+              "max_abs_finite": 0.5850500464439392,
+              "first_violation_flat_indexes": [
+                69,
+                71,
+                73,
+                75,
+                77,
+                87,
+                89,
+                95
+              ]
+            },
+            "human_kp_vis": {
+              "shape": [
+                4,
+                4,
+                292,
+                17
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 49739,
+              "violations": 49739,
+              "max_abs_finite": 0.1512451171875,
+              "first_violation_flat_indexes": [
+                34,
+                35,
+                36,
+                37,
+                38,
+                41,
+                42,
+                45
+              ]
+            },
+            "player_canonical_pose": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 58951,
+              "violations": 1270,
+              "max_abs_finite": 0.541129469871521,
+              "first_violation_flat_indexes": [
+                103,
+                106,
+                109,
+                111,
+                112,
+                117,
+                118,
+                120
+              ]
+            },
+            "player_kp_3d": {
+              "shape": [
+                4,
+                292,
+                17,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 59087,
+              "violations": 481,
+              "max_abs_finite": 0.4271841049194336,
+              "first_violation_flat_indexes": [
+                543,
+                544,
+                545,
+                636,
+                637,
+                642,
+                643,
+                648
+              ]
+            },
+            "player_position": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 3461,
+              "violations": 33,
+              "max_abs_finite": 0.0024805068969726562,
+              "first_violation_flat_indexes": [
+                7,
+                28,
+                31,
+                33,
+                34,
+                36,
+                37,
+                39
+              ]
+            },
+            "player_yaw": {
+              "shape": [
+                4,
+                292
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 1156,
+              "violations": 932,
+              "max_abs_finite": 0.02704477310180664,
+              "first_violation_flat_indexes": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ]
+            },
+            "smpl_betas": {
+              "shape": [
+                4,
+                10
+              ],
+              "dtype": "float32",
+              "unit": "unitless",
+              "exact": false,
+              "close": false,
+              "changed": 40,
+              "violations": 38,
+              "max_abs_finite": 0.009463317692279816,
+              "first_violation_flat_indexes": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
+            },
+            "smpl_body_pose": {
+              "shape": [
+                4,
+                292,
+                63
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 72828,
+              "violations": 49648,
+              "max_abs_finite": 0.053227207623422146,
+              "first_violation_flat_indexes": [
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133
+              ]
+            },
+            "smpl_global_orient": {
+              "shape": [
+                4,
+                292,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "rad",
+              "exact": false,
+              "close": false,
+              "changed": 3468,
+              "violations": 1462,
+              "max_abs_finite": 0.007601633667945862,
+              "first_violation_flat_indexes": [
+                6,
+                8,
+                9,
+                11,
+                12,
+                14,
+                15,
+                17
+              ]
+            },
+            "smpl_vertices_local": {
+              "shape": [
+                4,
+                292,
+                6890,
+                3
+              ],
+              "dtype": "float32",
+              "unit": "m",
+              "exact": false,
+              "close": false,
+              "changed": 23893646,
+              "violations": 853524,
+              "max_abs_finite": 0.021253887563943863,
+              "first_violation_flat_indexes": [
+                41342,
+                41345,
+                41348,
+                41351,
+                41354,
+                41357,
+                41360,
+                41363
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

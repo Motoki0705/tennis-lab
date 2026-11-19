@@ -178,6 +178,10 @@ hook失敗時も後始末を実行し、エラーは呼出し側へ返す。
 C1のrecorder統合時はその`model_event`を渡し、管理下のモデルで下位の`model_action`/`model_release`と
 二重計数しないよう、runtime境界を記録の所有者にする。
 
+逐次と一括の比較では、同じレシピとdataset publisherで空のstoreから実行する。
+[実GPU計測手順](../../../knowledge/runs/run-i1757-video-batch-meiji/reproduce.md)に、
+モデル寿命・batch分布・保存と公開の計測境界、条件別の実測結果をまとめている。
+公開後の固定許容差による差分照合、人物のみの幾何のCPU再計算、差分動画の再現も同じ手順から行う。
 
 ## 処理単位
 
