@@ -8,6 +8,7 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date
+from hashlib import sha256
 from pathlib import Path
 
 import yaml
@@ -51,10 +52,21 @@ class Operation:
     slug: str
     reason: str
     fields: dict[str, object]
+    expected_sha256: str | None
 
     @property
     def path(self) -> str:
         return f"{MEMORY_DIR}/{self.layer}/{self.slug}.md"
+
+
+def publication_reason(reason: object) -> str:
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError("reason must be a non-empty string")
+    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ud800-\udfff]", reason):
+        raise ValueError("reason contains invalid characters")
+    if kinds := private_data_kinds(reason):
+        raise ValueError(f"reason contains {', '.join(kinds)}")
+    return reason.strip()
 
 
 def _operation(spec: Mapping[str, object], today: date) -> Operation:
@@ -66,18 +78,23 @@ def _operation(spec: Mapping[str, object], today: date) -> Operation:
         raise ValueError("layer must be workflow, decision, environment or gotcha")
     if not isinstance(slug, str) or not is_entry_filename(f"{slug}.md"):
         raise ValueError("slug must be kebab-case and cannot be index")
-    fields = {
-        k: v for k, v in spec.items() if k not in {"op", "layer", "slug", "reason"}
-    }
+    expected_sha256 = None
+    if "expected_sha256" in spec:
+        if op == "add":
+            raise ValueError("expected_sha256 is available for updates and deletions")
+        digest = spec["expected_sha256"]
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError(
+                "expected_sha256 must be 64 lowercase hexadecimal characters"
+            )
+        expected_sha256 = digest
+    metadata = {"op", "layer", "slug", "reason", "expected_sha256"}
+    fields = {k: v for k, v in spec.items() if k not in metadata}
     if fields.keys() - (set() if op == "delete" else _CONTENT_FIELDS):
         raise ValueError(f"unknown {op} fields")
-    reason = spec.get("reason", "共有memoryに観察を追加する。" if op == "add" else None)
-    if not isinstance(reason, str) or not reason.strip():
-        raise ValueError("reason must be a non-empty string")
-    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ud800-\udfff]", reason):
-        raise ValueError("reason contains invalid characters")
-    if kinds := private_data_kinds(reason):
-        raise ValueError(f"reason contains {', '.join(kinds)}")
+    reason = publication_reason(
+        spec.get("reason", "共有memoryに観察を追加する。" if op == "add" else None)
+    )
     if op == "add":
         if missing := _CONTENT_FIELDS - fields.keys() - set(_DATES):
             raise ValueError(f"missing add fields: {', '.join(sorted(missing))}")
@@ -93,7 +110,7 @@ def _operation(spec: Mapping[str, object], today: date) -> Operation:
         if not isinstance(body, str) or re.search(r"[\0\ud800-\udfff]", body):
             raise ValueError("body must be valid Markdown text")
         fields["body"] = _body_text(body)
-    return Operation(op, layer, slug, reason.strip(), deepcopy(fields))
+    return Operation(op, layer, slug, reason, deepcopy(fields), expected_sha256)
 
 
 def parse_operations(specs: object, today: date) -> tuple[Operation, ...]:
@@ -126,18 +143,27 @@ def _edit_entry(tree: Tree, operation: Operation) -> bytes | None:
         raise ValueError("expected a regular entry file")
     if operation.op == "add" and kind is not None:
         raise ValueError("entry already exists")
-    if operation.op != "add" and kind is None:
-        raise ValueError("entry does not exist")
-    if operation.op == "delete":
-        return None
-
     fields = operation.fields.copy()
     body = fields.pop("body", None)
     data: dict[str, object]
     if operation.op == "add":
         data, previous_body = {}, ""
     else:
-        data, previous_body = read_frontmatter(tree.read_bytes(path).decode("utf-8"))
+        expected = operation.expected_sha256
+        if kind is None:
+            if expected is not None:
+                raise ValueError(
+                    "entry changed since it was inspected; reassess before publishing"
+                )
+            raise ValueError("entry does not exist")
+        original = tree.read_bytes(path)
+        if expected is not None and sha256(original).hexdigest() != expected:
+            raise ValueError(
+                "entry changed since it was inspected; reassess before publishing"
+            )
+        if operation.op == "delete":
+            return None
+        data, previous_body = read_frontmatter(original.decode("utf-8"))
         before = {key: data.get(key) for key in fields}
         for key in before.keys() & set(_DATES):
             if isinstance(value := before[key], str) and value == str(fields[key]):

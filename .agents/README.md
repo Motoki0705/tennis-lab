@@ -95,5 +95,5 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - ルールは仮説である。合わなくなったら、運用レポートの提案として改訂する。
 - `AGENTS.md` と `.agents/**` を含む変更も通常のレビュー・merge条件で扱う。
 - 公開ログの限定例外は形式別に検査する。[各ターンのworkerログ3ファイル](ops/worker_logs/README.md#専用prと限定merge例外)と[判断記録・生成README](ops/decision_logs/README.ja.md#限定公開例外と復旧)を参照する。保存実装・検査・workflowを変えるコードPRは通常条件で扱う。
-- 共有memoryの4層と `SUMMARY.md` は、専用CLIが機械検査とマージを行い、`ci.yml` の対象から除外する。専用CLI・検査・workflowの実装変更には通常のPR条件を適用する。[共有memoryの限定公開例外](ops/shared_memory/README.md#限定公開例外)
+- 共有memoryの4層と `SUMMARY.md` は、専用CLIが機械検査とマージを行い、対象パスだけの差分をフルCIから除外する。専用CLI・検査・workflowの実装変更には通常のPR条件を適用する。[共有memoryの限定公開例外](ops/shared_memory/README.md#限定公開例外)
 - 規則を追加する前に、memoryの観察で済まないか、既存の規則を消せないかを先に検討する。

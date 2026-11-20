@@ -9,8 +9,14 @@ from pathlib import Path
 from uuid import uuid4
 
 from .git import Git, GitTree, diff_changes
-from .github import GitHub, GitHubHTTPError, Pull
-from .operations import Operation, parse_operations, plan_operations, validation_error
+from .github import GitHub, Pull, RefUpdateRejected
+from .operations import (
+    Operation,
+    parse_operations,
+    plan_operations,
+    publication_reason,
+    validation_error,
+)
 from .validate import validate
 
 MAX_RETRIES = 3
@@ -37,6 +43,7 @@ class Publication:
     merge_sha: str | None = None
     retries: int = 0
     branch_cleanup_error: str | None = None
+    index_repair_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -58,54 +65,48 @@ def _prepare(
     previous_base: str | None,
     retry_reason: str,
 ) -> _Prepared:
-    with git.scratch() as work:
-        base = work.fetch_main(remote)
-        if previous_base is not None:
-            if base == previous_base:
-                raise ValueError(f"{retry_reason}; remote main has not advanced")
-            work.require_advance(previous_base, base)
-        before = GitTree(work, base)
-        edits = plan_operations(before, operations, today=today)
-        expected = {
-            path: "removed"
-            if content is None
-            else ("modified" if before.kind(path, follow_links=False) else "added")
-            for path, content in edits.items()
-        }
-        head = work.build_commit(base, edits)
-        if work.run("rev-list", "--parents", "-n", "1", head).decode().split() != [
-            head,
-            base,
-        ]:
-            raise ValueError(
-                "memory commit must have the fetched main as its only parent"
-            )
-        diff = (
-            "diff",
-            "--raw",
-            "--abbrev=40",
-            "--no-ext-diff",
-            "--ignore-submodules=none",
-        )
-        raw = work.run(*diff, "--no-renames", "-z", base, head, "--")
-        changes = diff_changes(raw)
-        if changes != expected:
-            raise ValueError("committed diff differs from the requested operations")
-        # --no-renames establishes both paths and modes. Also reject a detected rename.
-        if work.run(*diff, "--find-renames", "-l0", "-z", base, head, "--") != raw:
-            raise ValueError("rename detected in committed diff")
-        after = GitTree(work, head)
-        for path, content in edits.items():
-            if content is not None and after.read_bytes(path) != content:
-                raise ValueError(
-                    f"{path}: committed bytes differ from the validated edit"
-                )
-        if problems := validate(after, today=today):
-            raise validation_error(problems)
-        return _Prepared(base, head, changes)
+    base = git.fetch_main(remote)
+    if previous_base is not None:
+        if base == previous_base:
+            raise ValueError(f"{retry_reason}; remote main has not advanced")
+        if not git.is_ancestor(previous_base, base):
+            raise ValueError("remote main was rewritten during publication")
+    before = GitTree(git, base)
+    edits = plan_operations(before, operations, today=today)
+    if not edits:
+        raise ValueError("generated documents are already up to date (no-op)")
+    expected = {
+        path: "removed"
+        if content is None
+        else ("modified" if before.kind(path, follow_links=False) else "added")
+        for path, content in edits.items()
+    }
+    head = git.build_commit(base, edits)
+    if git.run("rev-list", "--parents", "-n", "1", head).decode().split() != [
+        head,
+        base,
+    ]:
+        raise ValueError("memory commit must have the fetched main as its only parent")
+    diff = ("diff", "--raw", "--abbrev=40", "--no-ext-diff", "--ignore-submodules=none")
+    raw = git.run(*diff, "--no-renames", "-z", base, head, "--")
+    changes = diff_changes(raw)
+    if changes != expected:
+        raise ValueError("committed diff differs from the requested operations")
+    # --no-renames establishes both paths and modes. Also reject a detected rename.
+    if git.run(*diff, "--find-renames", "-l0", "-z", base, head, "--") != raw:
+        raise ValueError("rename detected in committed diff")
+    after = GitTree(git, head)
+    for path, content in edits.items():
+        if content is not None and after.read_bytes(path) != content:
+            raise ValueError(f"{path}: committed bytes differ from the validated edit")
+    if problems := validate(after, today=today):
+        raise validation_error(problems)
+    return _Prepared(base, head, changes)
 
 
-def _body(operations: Sequence[Operation], files: dict[str, str]) -> str:
+def _body(
+    operations: Sequence[Operation], files: dict[str, str], repair_reason: str | None
+) -> str:
     labels = {"added": "追加", "modified": "更新", "removed": "削除"}
     actions = {"add": "追加", "update": "更新", "delete": "削除"}
     lines = ["## 変更ファイル", ""]
@@ -116,6 +117,9 @@ def _body(operations: Sequence[Operation], files: dict[str, str]) -> str:
     for operation in operations:
         lines.extend(("", f"**{actions[operation.op]} `{operation.path}`**", ""))
         lines.extend(f"    {line}" for line in operation.reason.splitlines())
+    if repair_reason is not None:
+        lines.extend(("", "**生成文書を再生成**", ""))
+        lines.extend(f"    {line}" for line in repair_reason.splitlines())
     lines.extend(
         (
             "",
@@ -128,9 +132,9 @@ def _body(operations: Sequence[Operation], files: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
-def _merge_checked(
+def _advance_checked(
     github: GitHub, number: int, branch: str, body: str, candidate: _Prepared
-) -> tuple[Pull, str]:
+) -> None:
     def verify_state() -> Pull:
         pull = github.pull(number, branch, candidate.head, body)
         if github.main() != candidate.base:
@@ -143,12 +147,10 @@ def _merge_checked(
 
     verify_state()
     github.verify_files(number, candidate.files)
-    pr = verify_state()
+    pull = verify_state()
     try:
-        return pr, github.merge(number, candidate.head)
-    except GitHubHTTPError as exc:
-        if exc.status not in (405, 409):
-            raise
+        github.advance_main(pull.repository_id, branch, candidate.base, candidate.head)
+    except RefUpdateRejected as exc:
         raise _Retry(str(exc)) from None
 
 
@@ -162,7 +164,37 @@ def publish_operations(
 ) -> Publication:
     """Validate, publish and merge a batch, raising on refused or uncertain steps."""
     today = today or date.today()
-    checked = parse_operations(operations, today)
+    return _publish(repo, parse_operations(operations, today), today, remote, dry_run)
+
+
+def publish_index_repair(
+    repo: Path,
+    *,
+    reason: str,
+    remote: str = "origin",
+    dry_run: bool = False,
+    today: date | None = None,
+) -> Publication:
+    """Publish only regenerated documents when the latest main has a repair diff."""
+    return _publish(
+        repo,
+        (),
+        today or date.today(),
+        remote,
+        dry_run,
+        repair_reason=publication_reason(reason),
+    )
+
+
+def _publish(
+    repo: Path,
+    checked: Sequence[Operation],
+    today: date,
+    remote: str,
+    dry_run: bool,
+    *,
+    repair_reason: str | None = None,
+) -> Publication:
     summaries = tuple(
         OperationSummary(o.op, o.layer, o.slug, o.reason) for o in checked
     )
@@ -193,7 +225,12 @@ def publish_operations(
                 retry_reason,
             )
             result = Publication(
-                dry_run, candidate.base, candidate.head, candidate.files, summaries
+                dry_run,
+                candidate.base,
+                candidate.head,
+                candidate.files,
+                summaries,
+                index_repair_reason=repair_reason,
             )
             if dry_run:
                 return result
@@ -207,15 +244,13 @@ def publish_operations(
                 candidate.head,
                 expected=previous.head if previous else "",
             )
-            body = _body(checked, candidate.files)
+            body = _body(checked, candidate.files, repair_reason)
             if number is None:
                 number = github.create(branch, body)
             elif body != old_body:
                 github.update_body(number, body)
             try:
-                pull, merge_sha = _merge_checked(
-                    github, number, branch, body, candidate
-                )
+                _advance_checked(github, number, branch, body, candidate)
             except _Retry as exc:
                 if retries == MAX_RETRIES:
                     raise ValueError(
@@ -225,6 +260,17 @@ def publish_operations(
                 retries += 1
             else:
                 break
+        try:
+            verify_remote()
+            if git.remote_main(remote) != candidate.head and not git.is_ancestor(
+                candidate.head, git.fetch_main(remote)
+            ):
+                raise ValueError("the published head is not reachable from remote main")
+            pull = github.pull(number, branch, candidate.head, body, merged=True)
+        except (OSError, ValueError) as exc:
+            raise ValueError(
+                f"main update acknowledged but merge confirmation failed: {exc}"
+            ) from None
     except (OSError, ValueError) as exc:
         if not push_attempted:
             raise
@@ -241,7 +287,7 @@ def publish_operations(
         result,
         pr=number,
         url=pull.url,
-        merge_sha=merge_sha,
+        merge_sha=candidate.head,
         retries=retries,
         branch_cleanup_error=cleanup_error,
     )

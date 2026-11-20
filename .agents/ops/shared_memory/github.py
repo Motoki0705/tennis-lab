@@ -6,16 +6,15 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass
+from uuid import uuid4
 
 from .git import is_sha
+from .layout import is_shared_path
 from .operations import load_json
-from .schema import is_shared_path
 
 
-class GitHubHTTPError(ValueError):
-    def __init__(self, context: str, status: int) -> None:
-        self.status = status
-        super().__init__(f"{context}: HTTP {status}")
+class RefUpdateRejected(ValueError):
+    """The server definitely refused the transaction, with neither ref changed."""
 
 
 def _object(value: object, field: str) -> dict[str, object]:
@@ -24,10 +23,28 @@ def _object(value: object, field: str) -> dict[str, object]:
     return value
 
 
+def _ref_update_rejected(value: object) -> bool:
+    if not isinstance(value, dict) or value.get("data") != {"updateRefs": None}:
+        return False
+    errors = value.get("errors")
+    return (
+        isinstance(errors, list)
+        and bool(errors)
+        and all(
+            isinstance(error, dict)
+            and error.get("path") == ["updateRefs"]
+            and error.get("type") in ("STALE_DATA", "UNPROCESSABLE")
+            and isinstance(error.get("message"), str)
+            for error in errors
+        )
+    )
+
+
 @dataclass(frozen=True)
 class Pull:
     changed_files: int
     url: str
+    repository_id: str
 
 
 class GitHub:
@@ -72,10 +89,11 @@ class GitHub:
         if not match or not separator:
             raise ValueError(f"{context}: missing HTTP status or body separator")
         status = int(match[1])
-        if status != (201 if method == "POST" else 200):
-            if method == "PUT" and status in (405, 409):
+        graphql = endpoint == "graphql"
+        if status != (201 if method == "POST" and not graphql else 200):
+            if graphql and status in (405, 409):
                 try:
-                    refusal = _object(load_json(body), "merge refusal")
+                    refusal = _object(load_json(body), "ref update refusal")
                 except (ValueError, RecursionError):
                     raise ValueError(
                         f"{context}: ambiguous HTTP {status} response"
@@ -84,13 +102,17 @@ class GitHub:
                     refusal.get("message"), str
                 ):
                     raise ValueError(f"{context}: ambiguous HTTP {status} response")
-            raise GitHubHTTPError(context, status)
-        if response.returncode:
-            raise ValueError(f"{context}: gh failed after HTTP {status}")
+                raise RefUpdateRejected(f"{context}: HTTP {status}")
+            raise ValueError(f"{context}: HTTP {status}")
         try:
-            return load_json(body)
+            value = load_json(body)
         except (ValueError, RecursionError):
             raise ValueError(f"{context}: invalid JSON response") from None
+        if graphql and response.returncode in (0, 1) and _ref_update_rejected(value):
+            raise RefUpdateRejected("GitHub refused the atomic ref update")
+        if response.returncode:
+            raise ValueError(f"{context}: gh failed after HTTP {status}")
+        return value
 
     def create(self, branch: str, body: str) -> int:
         response = _object(
@@ -121,7 +143,9 @@ class GitHub:
         if type(response.get("number")) is not int or response["number"] != number:
             raise ValueError("GitHub returned the wrong pull request after body update")
 
-    def pull(self, number: int, branch: str, sha: str, body: str) -> Pull:
+    def pull(
+        self, number: int, branch: str, sha: str, body: str, *, merged: bool = False
+    ) -> Pull:
         response = _object(
             self.request("GET", f"{self.pulls}/{number}"), "pull request"
         )
@@ -131,8 +155,8 @@ class GitHub:
         if (
             type(response.get("number")) is not int
             or response["number"] != number
-            or response.get("state") != "open"
-            or response.get("merged") is not False
+            or response.get("state") != ("closed" if merged else "open")
+            or response.get("merged") is not merged
             or response.get("draft") is not False
             or response.get("body") != body
             or base.get("ref") != "main"
@@ -145,11 +169,20 @@ class GitHub:
             != f"https://github.com/{self.repo}/pull/{number}".casefold()
         ):
             raise ValueError("GitHub pull request identity or state changed")
-        for ref in (base, head):
-            name = _object(ref.get("repo"), "branch repository").get("full_name")
+        base_repo = _object(base.get("repo"), "base repository")
+        head_repo = _object(head.get("repo"), "head repository")
+        for repo in (base_repo, head_repo):
+            name = repo.get("full_name")
             if not isinstance(name, str) or name.casefold() != self.repo.casefold():
                 raise ValueError("GitHub pull request uses an unexpected repository")
-        return Pull(count, url)
+        repository_id = base_repo.get("node_id")
+        if (
+            not isinstance(repository_id, str)
+            or not repository_id
+            or repository_id != head_repo.get("node_id")
+        ):
+            raise ValueError("GitHub pull request repository node IDs do not agree")
+        return Pull(count, url, repository_id)
 
     def main(self) -> str:
         # A PR's base.sha can stay pinned to an older commit after main advances.
@@ -192,20 +225,42 @@ class GitHub:
                         "GitHub pull request files differ from committed diff"
                     )
 
-    def merge(self, number: int, head: str) -> str:
+    def advance_main(
+        self, repository_id: str, branch: str, base: str, head: str
+    ) -> None:
+        """Check both server refs in the same transaction as the fast-forward."""
+        mutation_id = uuid4().hex
         response = _object(
             self.request(
-                "PUT",
-                f"{self.pulls}/{number}/merge",
-                {"merge_method": "merge", "sha": head},
+                "POST",
+                "graphql",
+                {
+                    "query": "mutation($input: UpdateRefsInput!) { updateRefs(input: $input) { clientMutationId } }",
+                    "variables": {
+                        "input": {
+                            "repositoryId": repository_id,
+                            "clientMutationId": mutation_id,
+                            "refUpdates": [
+                                {
+                                    "name": "refs/heads/main",
+                                    "beforeOid": base,
+                                    "afterOid": head,
+                                    "force": False,
+                                },
+                                {
+                                    "name": f"refs/heads/{branch}",
+                                    "beforeOid": head,
+                                    "afterOid": head,
+                                    "force": False,
+                                },
+                            ],
+                        }
+                    },
+                },
             ),
-            "merge result",
+            "ref update result",
         )
-        sha = response.get("sha")
-        if (
-            response.get("merged") is not True
-            or not isinstance(sha, str)
-            or not is_sha(sha)
-        ):
-            raise ValueError("GitHub response did not confirm a merge SHA")
-        return sha
+        if "errors" in response or response.get("data") != {
+            "updateRefs": {"clientMutationId": mutation_id}
+        }:
+            raise ValueError("GitHub response did not confirm the atomic ref update")

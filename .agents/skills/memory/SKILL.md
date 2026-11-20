@@ -76,7 +76,7 @@ Claude・Codexなど、このrepoで働くすべてのエージェントが読�
 ## 利用・変更時の自己修復（JIT）
 
 1. エントリを使うときは `evidence` と `citations` を開いて、観察と根拠を照合する。コード・README・規則を変更するときは、対象パスを `rg` で共有4層のエントリから探し、アンカーや記述への影響を確認する。
-2. 矛盾や参照切れを見つけたら、今も成り立つ観察は `shared_memory update` で本文・根拠・引用を修正し、確認した日を `last_verified` に記録する。反証、廃止、仕様への昇格で役目を終えた観察は `shared_memory delete` で削除する。どちらも `reason` に判断の根拠を残す。
+2. 矛盾や参照切れを見つけたら、今も成り立つ観察は `shared_memory update` で本文・根拠・引用を修正し、確認した日を `last_verified` に記録する。反証、廃止、仕様への昇格で役目を終えた観察は `shared_memory delete` で削除する。どちらも理由と、読んだ版の生バイトの SHA-256 を `expected_sha256` に渡す。対象が変わっていた場合は最新版から判断し直す。[CLIの形式](../../ops/shared_memory/README.md#コマンド)
 3. 新しい引用先は公開時点の `main` に存在するものを選ぶ。まだマージされていない変更で引用先が消える場合は、先に `main` にある有効な引用先へ差し替えるか、不要になった観察を削除する。必要に応じて `--dry-run` で照合する。実際の公開は [専用CLI](../../ops/shared_memory/README.md#コマンド) から行う。
 
 ## 圧縮
@@ -92,7 +92,7 @@ memoryは毎日読まれるので、大きくなるほど高くつく。`SUMMARY
 
 期限・壊れた引用・上限の使用量は `PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory audit` で確認する。検証期限の定義は [schema.py](../../ops/shared_memory/schema.py) を参照する。人間の判断は、その後の指示と矛盾しないかを確かめる。
 
-AutoDream は経過日数と `main`・共有memoryの更新件数を組み合わせたトリガーや、手動実行、点検で見つかった問題を契機として、全4層を同じ条件で整理する。Orient → Gather Signal → Consolidate → Prune & Index の順で状況と根拠を確認し、重複や矛盾を整理した操作を専用CLI経由で反映する（#2326で実装中）。
+AutoDream は経過日数と `main`・共有memoryの更新件数を組み合わせたトリガーや、手動実行、点検で見つかった問題を契機として、全4層を同じ条件で整理する。Orient → Gather Signal → Consolidate → Prune & Index の順で状況と根拠を確認し、重複や矛盾を整理した操作を専用CLI経由で反映する（#2326で実装中）。生成文書だけがずれていた場合は `shared_memory repair-index --reason <理由>` で公開する。
 
 ## 運用レポート専用memory
 

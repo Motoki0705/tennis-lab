@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
+    paths-ignore: &ci_paths_ignore
       - '.agents/logs/parents/**/instruction.md'
       - '.agents/logs/parents/**/final.md'
       - '.agents/logs/parents/**/meta.json'
@@ -15,27 +15,14 @@ on:
       - '.agents/logs/parents/parent-*/child-*/d-*/README.md'
       - '.agents/logs/parents/parent-*/child-*/d-*/*-*/README.md'
       - '.agents/memory/SUMMARY.md'
-      - '.agents/memory/workflow/*.md'
-      - '.agents/memory/decision/*.md'
-      - '.agents/memory/environment/*.md'
-      - '.agents/memory/gotcha/*.md'
+      # Actions character classes cover alphanumeric characters. The scope job
+      # applies the complete kebab-case rule to the event's Git diff.
+      - '.agents/memory/workflow/[a-z0-9]+.md'
+      - '.agents/memory/decision/[a-z0-9]+.md'
+      - '.agents/memory/environment/[a-z0-9]+.md'
+      - '.agents/memory/gotcha/[a-z0-9]+.md'
   pull_request:
-    paths-ignore:
-      - '.agents/logs/parents/**/instruction.md'
-      - '.agents/logs/parents/**/final.md'
-      - '.agents/logs/parents/**/meta.json'
-      - '.agents/logs/parents/parent-*/activity-*/event-*.json'
-      - '.agents/logs/parents/README.md'
-      - '.agents/logs/parents/parent-*/README.md'
-      - '.agents/logs/parents/parent-*/activity-*/README.md'
-      - '.agents/logs/parents/parent-*/child-*/README.md'
-      - '.agents/logs/parents/parent-*/child-*/d-*/README.md'
-      - '.agents/logs/parents/parent-*/child-*/d-*/*-*/README.md'
-      - '.agents/memory/SUMMARY.md'
-      - '.agents/memory/workflow/*.md'
-      - '.agents/memory/decision/*.md'
-      - '.agents/memory/environment/*.md'
-      - '.agents/memory/gotcha/*.md'
+    paths-ignore: *ci_paths_ignore
   workflow_dispatch:
     inputs:
       shards:
@@ -64,8 +51,29 @@ permissions:
   actions: read
 
 jobs:
+  scope:
+    name: Check shared memory paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      shared_memory_only: ${{ steps.paths.outputs.shared_memory_only }}
+    steps:
+      - name: Checkout the event and its parents
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          submodules: false
+          persist-credentials: false
+      - name: Check the event's Git diff
+        id: paths
+        env:
+          PYTHONPATH: .agents/ops
+        run: python3 -m shared_memory.ci_scope
+
   plan:
     name: CPU lane plan
+    needs: [scope]
+    if: ${{ !cancelled() && needs.scope.outputs.shared_memory_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -102,6 +110,8 @@ jobs:
 
   lint:
     name: Lint
+    needs: [scope]
+    if: ${{ !cancelled() && needs.scope.outputs.shared_memory_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -343,8 +353,8 @@ jobs:
 
   python:
     name: Python
-    if: always()
-    needs: [plan, lint, tests, system-deps]
+    if: ${{ always() && needs.scope.outputs.shared_memory_only != 'true' }}
+    needs: [scope, plan, lint, tests, system-deps]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

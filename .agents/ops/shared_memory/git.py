@@ -5,13 +5,10 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-from collections.abc import Iterator
-from contextlib import contextmanager
-from pathlib import Path
-from tempfile import TemporaryDirectory
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
-from .schema import is_shared_path
+from .layout import is_shared_path
 from .tree import Edits, FileKind, resolve_links
 
 _LOCAL_GIT_ENV = {
@@ -98,57 +95,82 @@ class Git:
             raise GitError(args, result.returncode)
         return result.stdout
 
-    @contextmanager
-    def scratch(self) -> Iterator[Git]:
-        with TemporaryDirectory(prefix="shared-memory-") as directory:
-            checkout = Path(directory) / "checkout"
-            registered = False
-            try:
-                self.run("worktree", "add", "--detach", "--no-checkout", str(checkout))
-                registered = True
-                yield Git(checkout)
-            finally:
-                # Remove only our registration, including a partially created checkout.
-                if registered or (checkout / ".git").exists():
-                    self.run("worktree", "remove", "--force", str(checkout))
+    def remote_main(self, remote: str) -> str:
+        ref = "refs/heads/main"
+        result = self.run("ls-remote", "--refs", "--exit-code", "--", remote, ref)
+        sha, separator, found = result.partition(b"\t")
+        if separator != b"\t" or found != ref.encode() + b"\n":
+            raise ValueError("remote did not return exactly one main ref")
+        return _sha(sha)
 
     def fetch_main(self, remote: str) -> str:
+        sha = self.remote_main(remote)
         self.run(
             "fetch",
             "--no-tags",
             "--no-prune",
             "--no-prune-tags",
             "--no-recurse-submodules",
+            "--no-write-fetch-head",
             "--refmap=",
             "--",
             remote,
-            "refs/heads/main",
+            sha,
         )
-        return _sha(self.run("rev-parse", "--verify", "FETCH_HEAD^{commit}"))
+        if self.run("cat-file", "-t", sha).strip() != b"commit":
+            raise ValueError("remote main did not identify a commit")
+        return sha
 
-    def require_advance(self, previous: str, current: str) -> None:
+    def is_ancestor(self, previous: str, current: str) -> bool:
         try:
             self.run("merge-base", "--is-ancestor", previous, current)
         except GitError as exc:
             if exc.status != 1:
                 raise
-            raise ValueError("remote main was rewritten during publication") from None
+            return False
+        return True
 
     def build_commit(self, base: str, edits: Edits) -> str:
-        self.run("read-tree", base)
-        records = []
-        # Hash the validated bytes directly, independent of clean/smudge filters.
+        """Build new trees bottom-up without changing any checkout, index or ref."""
+        updates: dict[str, dict[bytes, bytes | None]] = {}
         for path, content in sorted(edits.items()):
-            mode, sha = ("0", "0" * 40)
+            directory, _, name = path.rpartition("/")
+            metadata = None
             if content is not None:
-                mode = "100644"
                 sha = _sha(self.run("hash-object", "-w", "--stdin", input=content))
-            records.append(f"{mode} {sha}\t{path}\0".encode())
-        self.run("update-index", "-z", "--index-info", input=b"".join(records))
-        tree = _sha(self.run("write-tree"))
+                metadata = f"100644 blob {sha}".encode()
+            updates.setdefault(directory, {})[name.encode()] = metadata
+            while directory:
+                directory = directory.rpartition("/")[0]
+                updates.setdefault(directory, {})
+
+        directories = sorted(
+            updates, key=lambda path: len(PurePosixPath(path).parts), reverse=True
+        )
+        for directory in directories:
+            if directory:
+                tree = self._write_tree(f"{base}:{directory}", updates[directory])
+                parent, _, name = directory.rpartition("/")
+                updates[parent][name.encode()] = f"040000 tree {tree}".encode()
+        tree = self._write_tree(base, updates[""])
         return _sha(
             self.run("commit-tree", tree, "-p", base, "-m", "共有memoryを更新する")
         )
+
+    def _write_tree(self, source: str, edits: dict[bytes, bytes | None]) -> str:
+        records = {}
+        for row in self.run("ls-tree", "-z", source).split(b"\0")[:-1]:
+            old_metadata, name = row.split(b"\t", 1)
+            records[name] = old_metadata
+        for name, metadata in edits.items():
+            if metadata is None:
+                del records[name]
+            else:
+                records[name] = metadata
+        raw = b"".join(
+            metadata + b"\t" + name + b"\0" for name, metadata in records.items()
+        )
+        return _sha(self.run("mktree", "-z", input=raw))
 
     def push(self, remote: str, branch: str, sha: str, *, expected: str) -> None:
         ref = f"refs/heads/{branch}"

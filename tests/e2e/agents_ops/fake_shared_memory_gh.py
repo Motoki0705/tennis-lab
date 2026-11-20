@@ -1,4 +1,4 @@
-"""Minimal GitHub REST double backed by the test's actual bare Git repository."""
+"""GitHub REST and GraphQL double backed by the test's bare Git repository."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 
-def git(*args: str) -> str:
+def git(*args: str, input: str | None = None) -> str:
     return subprocess.check_output(
         [
             os.environ["MEMORY_TEST_GIT"],
@@ -22,6 +22,8 @@ def git(*args: str) -> str:
             f"--git-dir={os.environ['MEMORY_TEST_ORIGIN']}",
             *args,
         ],
+        input=input,
+        stderr=subprocess.PIPE,
         text=True,
     ).strip()
 
@@ -32,18 +34,81 @@ def respond(value: object, status: int = 200) -> int:
     return int(status >= 400)
 
 
-def merge(base: str, head: str) -> str:
-    tree = git("merge-tree", "--write-tree", base, head)
-    sha = git("commit-tree", tree, "-p", base, "-p", head, "-m", "Merge memory PR")
-    git("update-ref", "refs/heads/main", sha, base)
-    return sha
+def advance_main(
+    payload: dict[str, Any], state: Path, pr: dict[str, Any], case: dict[str, Any]
+) -> int:
+    assert "updateRefs(input: $input)" in payload["query"]
+    mutation = payload["variables"]["input"]
+    assert mutation["repositoryId"] == "R_test-memory"
+    main, topic = mutation["refUpdates"]
+    branch = f"refs/heads/{pr['head']}"
+    base, head = main["beforeOid"], main["afterOid"]
+    assert main == {
+        "name": "refs/heads/main",
+        "beforeOid": base,
+        "afterOid": head,
+        "force": False,
+    }
+    assert topic == {
+        "name": branch,
+        "beforeOid": head,
+        "afterOid": head,
+        "force": False,
+    }
+    assert git("rev-list", "--parents", "-n", "1", head).split() == [head, base]
+    attempt = pr["merge_calls"]
+    pr["merge_calls"] += 1
+    state.write_text(json.dumps(pr))
+    current = git("rev-parse", "main")
+    conflicts = case.get("conflicts", [])
+    if attempt == 0 and (next_base := case.get("advance_to")):
+        git("update-ref", "refs/heads/main", next_base, current)
+    elif attempt < len(conflicts) and case.get("advance_empty"):
+        tree = git("rev-parse", f"{current}^{{tree}}")
+        next_base = git("commit-tree", tree, "-p", current, "-m", "Parallel update")
+        git("update-ref", "refs/heads/main", next_base, current)
+    if attempt == 0 and (next_head := case.get("change_head_to")):
+        git("update-ref", branch, next_head, head)
+    if attempt < len(conflicts):
+        if case.get("broken_conflict_body"):
+            print(f"HTTP/2.0 {conflicts[attempt]}\n\nIncomplete API response")
+            return 1
+        return respond({"message": "ref update refused"}, conflicts[attempt])
+
+    try:
+        git(
+            "update-ref",
+            "--stdin",
+            input=f"verify {branch} {head}\nupdate refs/heads/main {head} {base}\n",
+        )
+    except subprocess.CalledProcessError:
+        respond(
+            {
+                "data": {"updateRefs": None},
+                "errors": [
+                    {
+                        "path": ["updateRefs"],
+                        "type": "UNPROCESSABLE",
+                        "message": "ref compare failed",
+                    }
+                ],
+            }
+        )
+        return 1
+    pr["landed_base"] = base
+    state.write_text(json.dumps(pr))
+    if case.get("response_lost_after_merge"):
+        return respond({"message": "service failure"}, 503)
+    return respond(
+        {"data": {"updateRefs": {"clientMutationId": mutation["clientMutationId"]}}}
+    )
 
 
 def main(args: list[str]) -> int:
     assert args[1] == "api" and "--include" in args
     assert args[args.index("--hostname") + 1] == "github.com"
     method = args[args.index("--method") + 1]
-    endpoint = next(arg for arg in args if arg.startswith("repos/"))
+    endpoint = next(arg for arg in args if arg == "graphql" or arg.startswith("repos/"))
     data: dict[str, Any] = json.load(sys.stdin) if "--input" in args else {}
     with Path(os.environ["MEMORY_TEST_API_LOG"]).open("a") as trace:
         print(
@@ -78,11 +143,14 @@ def main(args: list[str]) -> int:
         return respond({"number": 17}, 201)
 
     pr = json.loads(state.read_text())
+    if method == "POST" and endpoint == "graphql":
+        return advance_main(data, state, pr, case)
     route += "/17"
     branch = f"refs/heads/{pr['head']}"
     base, head = git("rev-parse", "main", branch).splitlines()
+    diff_base = pr.get("landed_base", base)
     fields = git(
-        "diff", "--name-status", "--no-renames", "-z", f"{base}...{head}"
+        "diff", "--name-status", "--no-renames", "-z", f"{diff_base}...{head}"
     ).split("\0")
     labels = {"A": "added", "M": "modified", "D": "removed"}
     files = [
@@ -98,12 +166,13 @@ def main(args: list[str]) -> int:
         if pr["reads"] == 1 and (next_base := case.get("advance_on_read")):
             git("update-ref", "refs/heads/main", next_base, base)
         state.write_text(json.dumps(pr))
-        repo = {"full_name": "test-owner/tennis-memory"}
+        repo = {"full_name": "test-owner/tennis-memory", "node_id": "R_test-memory"}
+        merged = "landed_base" in pr and not case.get("unconfirmed_merge", False)
         record: dict[str, Any] = {
             "number": 17,
             "body": pr["body"],
-            "state": "open",
-            "merged": False,
+            "state": "closed" if merged else "open",
+            "merged": merged,
             "draft": False,
             "html_url": "https://github.com/test-owner/tennis-memory/pull/17",
             "head": {"ref": pr["head"], "sha": head, "repo": repo.copy()},
@@ -118,6 +187,8 @@ def main(args: list[str]) -> int:
                 record[key] = value
         if case.get("head_after_files") and pr["reads"] == 2:
             record["head"]["sha"] = "0" * 40
+        if merged and case.get("change_branch_after_merge"):
+            git("update-ref", branch, pr["landed_base"], head)
         return respond(record)
     if method == "GET" and endpoint.startswith(route + "/files?"):
         query = parse_qs(urlsplit(endpoint).query)
@@ -128,31 +199,6 @@ def main(args: list[str]) -> int:
         if case.get("duplicate_file"):
             files[0] = files[-1]
         return respond(files[(page - 1) * 100 : page * 100])
-    if method == "PUT" and endpoint == route + "/merge":
-        assert data == {"merge_method": "merge", "sha": head}
-        attempt = pr["merge_calls"]
-        pr["merge_calls"] += 1
-        state.write_text(json.dumps(pr))
-        conflicts = case.get("conflicts", [])
-        if attempt < len(conflicts):
-            if next_base := case.get("advance_to"):
-                git("update-ref", "refs/heads/main", next_base, base)
-            elif case.get("advance_empty"):
-                tree = git("rev-parse", f"{base}^{{tree}}")
-                next_base = git(
-                    "commit-tree", tree, "-p", base, "-m", "Parallel update"
-                )
-                git("update-ref", "refs/heads/main", next_base, base)
-            if case.get("broken_conflict_body"):
-                print(f"HTTP/2.0 {conflicts[attempt]}\n\nIncomplete API response")
-                return 1
-            return respond({"message": "merge refused"}, conflicts[attempt])
-        merged = merge(base, head)
-        if case.get("response_lost_after_merge"):
-            return respond({"message": "service failure"}, 503)
-        if case.get("change_branch_after_merge"):
-            git("update-ref", branch, merged, head)
-        return respond({"merged": True, "sha": merged})
     raise AssertionError((method, endpoint))
 
 

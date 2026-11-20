@@ -5,10 +5,14 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import select
 import shutil
+import signal
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import date
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -138,6 +142,13 @@ class Repository:
             json.loads(line) for line in (self.tmp / "api-log").read_text().splitlines()
         ]
 
+    def transactions(self) -> list[list[dict[str, Any]]]:
+        return [
+            row["data"]["variables"]["input"]["refUpdates"]
+            for row in self.api_calls()
+            if row["path"] == "graphql"
+        ]
+
     def git_calls(self, name: str) -> list[str]:
         return [
             line
@@ -159,7 +170,9 @@ class Repository:
             (self.source / ".git/FETCH_HEAD").read_bytes(),
         )
 
-    def parallel_commit(self, kind: str, *, ref: str = "parallel") -> str:
+    def parallel_commit(
+        self, kind: str, *, ref: str = "parallel", target: str = CURRENT
+    ) -> str:
         other = self.tmp / "other"
         self.git("clone", str(self.origin), str(other))
         if kind == "new-entry":
@@ -171,6 +184,15 @@ class Repository:
             _write_entry(
                 other, CURRENT, title="Current observation", summary="New summary."
             )
+            _sync(other)
+        elif kind == "refreshed-entry":
+            path = other / target
+            before = path.read_text()
+            refreshed = before.replace(
+                "last_verified: '2026-01-01'", f"last_verified: {date.today()}"
+            )
+            assert refreshed != before
+            path.write_text(refreshed + "\nReverified against the latest behavior.\n")
             _sync(other)
         else:
             assert kind == "removed-anchor"
@@ -236,6 +258,11 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Repository:
         'case " $* " in\n'
         '  *" remote get-url --push "*) printf "%s\\n" "${MEMORY_TEST_PUSH_URL:-git@github.com:test-owner/tennis-memory.git}"; exit 0;;\n'
         '  *" remote get-url "*) printf "%s\\n" "git@github.com:test-owner/tennis-memory.git"; exit 0;;\n'
+        '  *" mktree "*) if [[ -n "${MEMORY_TEST_SIGNAL_READY:-}" ]]; then\n'
+        '    printf "%s\\n" "$$" > "$MEMORY_TEST_SIGNAL_READY"\n'
+        '    read -r unused < "$MEMORY_TEST_SIGNAL_BLOCK"\n'
+        "    exit 97\n"
+        "  fi;;\n"
         '  *" fetch "*|*" push "*) printf "%s\\n" "$*" >> "$MEMORY_TEST_GIT_LOG";;\n'
         "esac\n"
         'exec "$MEMORY_TEST_GIT" "$@"\n'
@@ -292,7 +319,15 @@ def test_cli_publishes_one_verified_commit(repo: Repository, command: str) -> No
         )
     elif command == "delete-flags":
         result = repo.cli(
-            "delete", "--layer", "decision", "--slug", "old", "--reason", "廃止を確認"
+            "delete",
+            "--layer",
+            "decision",
+            "--slug",
+            "old",
+            "--reason",
+            "廃止を確認",
+            "--expected-sha256",
+            sha256((repo.source / OLD).read_bytes()).hexdigest(),
         )
     else:
         spec = {"add": addition, "update": revision, "delete-spec": delete()}[
@@ -309,11 +344,7 @@ def test_cli_publishes_one_verified_commit(repo: Repository, command: str) -> No
     )
     assert report["pr"] == 17 and report["url"].endswith("/pull/17")
     assert report["branch_cleanup_error"] is None
-    assert repo.bare("rev-list", "--parents", "-n", "1", "main").split() == [
-        merged,
-        base,
-        head,
-    ]
+    assert repo.bare("rev-parse", "main") == merged == head
     assert repo.bare("rev-list", "--parents", "-n", "1", head).split() == [head, base]
     assert repo.bare("for-each-ref", "refs/heads/shared-memory") == ""
     assert (
@@ -357,7 +388,8 @@ def test_cli_publishes_one_verified_commit(repo: Repository, command: str) -> No
         ("GET", f"{PR_ENDPOINT}/files?per_page=100"),
         ("GET", PR_ENDPOINT),
         ("GET", MAIN_ENDPOINT),
-        ("PUT", f"{PR_ENDPOINT}/merge"),
+        ("POST", "graphql"),
+        ("GET", PR_ENDPOINT),
     ]
     assert calls[0]["data"]["draft"] is False
     assert calls[0]["data"]["head"].startswith("shared-memory/")
@@ -365,7 +397,22 @@ def test_cli_publishes_one_verified_commit(repo: Repository, command: str) -> No
     assert "機械検査" in pr_body
     assert all(path in pr_body for path in expected)
     assert all(op["reason"] in pr_body for op in report["operations"])
-    assert calls[-1]["data"] == {"merge_method": "merge", "sha": head}
+    assert repo.transactions() == [
+        [
+            {
+                "name": "refs/heads/main",
+                "beforeOid": base,
+                "afterOid": head,
+                "force": False,
+            },
+            {
+                "name": f"refs/heads/{calls[0]['data']['head']}",
+                "beforeOid": head,
+                "afterOid": head,
+                "force": False,
+            },
+        ]
+    ]
 
 
 def test_dry_run_uses_latest_main_and_leaves_the_caller_index_and_fetch_head(
@@ -412,18 +459,23 @@ def test_python_api_returns_the_same_validated_edits_without_writing(
     repo.assert_no_publication()
 
 
-@pytest.mark.parametrize("status", [405, 409])
+@pytest.mark.parametrize(
+    "status", [405, 409, None], ids=["405", "409", "ref-transaction"]
+)
 def test_merge_refusal_reapplies_to_the_advanced_main_with_exact_lease(
-    repo: Repository, monkeypatch: pytest.MonkeyPatch, status: int
+    repo: Repository, monkeypatch: pytest.MonkeyPatch, status: int | None
 ) -> None:
     latest = repo.parallel_commit("new-entry")
     monkeypatch.setenv(
-        "MEMORY_TEST_CASE", json.dumps({"conflicts": [status], "advance_to": latest})
+        "MEMORY_TEST_CASE",
+        json.dumps({"conflicts": [status] if status else [], "advance_to": latest}),
     )
     report = _report(repo.batch([add()]))
     assert report["retries"] == 1 and report["base"] == latest
-    creates = [row for row in repo.api_calls() if row["method"] == "POST"]
-    merges = [row["data"]["sha"] for row in repo.api_calls() if row["method"] == "PUT"]
+    creates = [
+        row for row in repo.api_calls() if row["path"] == PR_ENDPOINT.rsplit("/", 1)[0]
+    ]
+    merges = [transaction[0]["afterOid"] for transaction in repo.transactions()]
     assert (
         len(creates) == 1
         and len(merges) == 2
@@ -450,7 +502,7 @@ def test_main_advance_detected_by_get_refreshes_the_pr_body_and_diff(
     )
     assert report["retries"] == 1 and report["files"] == {CURRENT: "modified"}
     calls = repo.api_calls()
-    assert [row["method"] for row in calls].count("PUT") == 1
+    assert len(repo.transactions()) == 1
     assert SUMMARY in calls[0]["data"]["body"]
     patch = next(row for row in calls if row["method"] == "PATCH")
     assert f"`{SUMMARY}`" not in patch["data"]["body"]
@@ -468,6 +520,12 @@ def test_main_advance_detected_by_get_refreshes_the_pr_body_and_diff(
             4,
         ),
         ({"response_lost_after_merge": True}, "HTTP 503", 1, 1),
+        (
+            {"unconfirmed_merge": True},
+            "main update acknowledged but merge confirmation failed",
+            1,
+            1,
+        ),
         (
             {"conflicts": [409], "advance_empty": True, "broken_conflict_body": True},
             "ambiguous HTTP 409 response",
@@ -488,20 +546,22 @@ def test_merge_failure_stops_without_cleanup_or_extra_mutations(
     result = repo.batch([add()])
     assert result.returncode == 1 and not result.stdout
     assert "PR #17" in result.stderr and error in result.stderr
-    assert sum(row["method"] == "PUT" for row in repo.api_calls()) == attempts
-    assert sum(row["method"] == "POST" for row in repo.api_calls()) == 1
+    assert len(repo.transactions()) == attempts
+    assert (
+        sum(row["path"] == PR_ENDPOINT.rsplit("/", 1)[0] for row in repo.api_calls())
+        == 1
+    )
     assert len(repo.git_calls("fetch")) == fetches
     assert len(repo.git_calls("push")) == attempts
     assert repo.bare("for-each-ref", "refs/heads/shared-memory")
 
 
-def test_retry_rejects_citation_broken_on_new_main_without_force_push(
+def test_atomic_transaction_rejects_last_moment_main_change_and_rechecks_citations(
     repo: Repository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    base = repo.bare("rev-parse", "main")
     latest = repo.parallel_commit("removed-anchor")
-    monkeypatch.setenv(
-        "MEMORY_TEST_CASE", json.dumps({"conflicts": [405], "advance_to": latest})
-    )
+    monkeypatch.setenv("MEMORY_TEST_CASE", json.dumps({"advance_to": latest}))
     result = repo.batch([add()])
     assert (
         result.returncode == 1
@@ -509,8 +569,146 @@ def test_retry_rejects_citation_broken_on_new_main_without_force_push(
         and "PR #17" in result.stderr
     )
     assert len(repo.git_calls("fetch")) == 2 and len(repo.git_calls("push")) == 1
-    assert sum(row["method"] == "PUT" for row in repo.api_calls()) == 1
+    (transaction,) = repo.transactions()
+    assert transaction[0]["beforeOid"] == base
     assert repo.bare("rev-parse", "main") == latest
+    assert repo.bare("ls-tree", "main", "--", f"{MEMORY}/workflow/new.md") == ""
+
+
+def test_atomic_transaction_rejects_head_change_after_last_pr_read(
+    repo: Repository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = repo.bare("rev-parse", "main")
+    switched = repo.parallel_commit("new-entry")
+    monkeypatch.setenv("MEMORY_TEST_CASE", json.dumps({"change_head_to": switched}))
+    result = repo.batch([add()])
+    assert result.returncode == 1 and "remote main has not advanced" in result.stderr
+    (transaction,) = repo.transactions()
+    assert transaction[1]["beforeOid"] == transaction[0]["afterOid"] != switched
+    assert repo.bare("rev-parse", "main") == base
+    assert repo.bare("rev-parse", transaction[1]["name"]) == switched
+    assert len(repo.git_calls("push")) == 1
+
+
+@pytest.mark.parametrize("op", ["update", "delete"])
+@pytest.mark.parametrize("when", ["initial", "retry"])
+def test_entry_version_guard_refuses_a_plan_for_an_entry_reverified_on_main(
+    repo: Repository, monkeypatch: pytest.MonkeyPatch, op: str, when: str
+) -> None:
+    path = CURRENT if op == "update" else OLD
+    expected = sha256((repo.source / path).read_bytes()).hexdigest()
+    spec = (
+        update(
+            expected_sha256=expected,
+            body="Original plan would replace the observation.",
+        )
+        if op == "update"
+        else delete(expected_sha256=expected)
+    )
+    if when == "initial":
+        latest = repo.parallel_commit("refreshed-entry", ref="main", target=path)
+    else:
+        latest = repo.parallel_commit("refreshed-entry", target=path)
+        monkeypatch.setenv("MEMORY_TEST_CASE", json.dumps({"advance_to": latest}))
+
+    result = repo.batch([spec])
+    assert result.returncode == 1 and not result.stdout
+    assert f"{path}: entry changed since it was inspected; reassess" in result.stderr
+    assert repo.bare("rev-parse", "main") == latest
+    assert "Reverified against the latest behavior." in repo.bare(
+        "show", f"main:{path}"
+    )
+    if when == "initial":
+        repo.assert_no_publication()
+    else:
+        assert len(repo.git_calls("fetch")) == 2
+        assert len(repo.git_calls("push")) == len(repo.transactions()) == 1
+
+
+def test_index_repair_publishes_only_drifted_generated_documents(
+    repo: Repository,
+) -> None:
+    index = f"{MEMORY}/workflow/index.md"
+    expected = {path: repo.bare("show", f"main:{path}") for path in (SUMMARY, index)}
+    for path in expected:
+        (repo.source / path).write_text("Outdated generated content.\n")
+    repo.git("add", "--", *expected)
+    repo.git("commit", "-qm", "Drift in generated files")
+    repo.git("push", "origin", "HEAD:main")
+    snapshot = repo.snapshot()
+
+    plan = publish.publish_index_repair(
+        repo.source, reason="索引のずれを修復", dry_run=True
+    )
+    assert plan.files == {SUMMARY: "modified", index: "modified"}
+    repo.assert_no_publication()
+    report = _report(repo.cli("repair-index", "--reason", "索引のずれを修復"))
+    assert report["files"] == plan.files and report["operations"] == []
+    assert report["index_repair_reason"] == "索引のずれを修復"
+    assert "索引のずれを修復" in repo.api_calls()[0]["data"]["body"]
+    assert repo.snapshot() == snapshot
+    for path, contents in expected.items():
+        assert repo.bare("show", f"main:{path}") == contents
+
+
+def test_index_repair_rejects_noop_before_publication(repo: Repository) -> None:
+    result = repo.cli("repair-index", "--reason", "索引のずれを修復")
+    assert result.returncode == 1 and not result.stdout
+    assert "generated documents are already up to date (no-op)" in result.stderr
+    repo.assert_no_publication()
+
+
+def test_sigterm_during_git_preparation_leaves_no_temporary_paths_or_registration(
+    repo: Repository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    temporary = repo.tmp / "temp"
+    temporary.mkdir()
+    ready, block = repo.tmp / "ready", repo.tmp / "block"
+    os.mkfifo(ready)
+    os.mkfifo(block)
+    monkeypatch.setenv("TMPDIR", str(temporary))
+    monkeypatch.setenv("MEMORY_TEST_SIGNAL_READY", str(ready))
+    monkeypatch.setenv("MEMORY_TEST_SIGNAL_BLOCK", str(block))
+    snapshot = repo.snapshot()
+    refs = repo.git("for-each-ref")
+    fd = os.open(ready, os.O_RDWR | os.O_NONBLOCK)
+    try:
+        with subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "shared_memory",
+                "batch",
+                "--spec",
+                "-",
+                "--repo",
+                str(repo.source),
+            ],
+            cwd=repo.tmp,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        ) as cli:
+            assert cli.stdin is not None
+            try:
+                cli.stdin.write(json.dumps([add()]).encode())
+                cli.stdin.close()
+                assert select.select([fd], [], [], 5)[0], (
+                    "git mktree did not reach the signal checkpoint"
+                )
+                git_pid = int(os.read(fd, 32).strip())
+                cli.terminate()
+                assert cli.wait(timeout=5) == 128 + signal.SIGTERM
+                with pytest.raises(ProcessLookupError):
+                    os.kill(git_pid, 0)
+            finally:
+                if cli.poll() is None:
+                    cli.kill()
+    finally:
+        os.close(fd)
+    assert repo.snapshot() == snapshot and repo.git("for-each-ref") == refs
+    assert list(temporary.iterdir()) == []
+    repo.assert_no_publication()
 
 
 def test_cleanup_uses_lease_and_keeps_confirmed_merge_on_failure(
@@ -525,7 +723,7 @@ def test_cleanup_uses_lease_and_keeps_confirmed_merge_on_failure(
     )
     assert (
         repo.bare("for-each-ref", "--format=%(objectname)", "refs/heads/shared-memory")
-        == report["merge_sha"]
+        == report["base"]
     )
 
 
@@ -561,7 +759,7 @@ def test_github_mismatch_stops_before_merge(
     assert result.returncode == 1 and not result.stdout
     assert error in result.stderr and "PR #17" in result.stderr
     assert len(repo.git_calls("push")) == 1
-    assert all(row["method"] != "PUT" for row in repo.api_calls())
+    assert repo.transactions() == []
 
 
 @pytest.mark.parametrize(
@@ -601,6 +799,11 @@ def test_github_mismatch_stops_before_merge(
         ([update("absent", title="Other")], "entry does not exist"),
         ([delete(slug="absent")], "entry does not exist"),
         ([delete(reason="  ")], "reason must be a non-empty string"),
+        ([delete(expected_sha256="abc")], "expected_sha256 must be"),
+        (
+            [add(expected_sha256="a" * 64)],
+            "expected_sha256 is available for updates and deletions",
+        ),
         ([add(), delete("workflow", "new")], "duplicate operation"),
         ([add(), update(summary="Current summary.")], "update has no changes"),
         ([add(citations=[{"path": OLD}]), delete()], "target file does not exist"),
@@ -631,9 +834,7 @@ def test_summary_size_failure_is_caught_after_generation(
     repo.assert_no_publication()
 
 
-@pytest.mark.parametrize(
-    "path", [".github/workflows/ci.yml", f"{MEMORY}/workflow/extra.md"]
-)
+@pytest.mark.parametrize("path", ["reference.md", f"{MEMORY}/workflow/extra.md"])
 def test_actual_commit_diff_must_match_the_validated_files(
     repo: Repository, monkeypatch: pytest.MonkeyPatch, path: str
 ) -> None:

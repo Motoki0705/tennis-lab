@@ -8,12 +8,32 @@ from dataclasses import dataclass
 from datetime import date
 from html import unescape
 from ipaddress import ip_address
-from typing import Final
 from urllib.parse import unquote, urlsplit
 
 import yaml
 
-SHARED_LAYERS = ("workflow", "decision", "environment", "gotcha")
+from .layout import (
+    DEDICATED_AREA as DEDICATED_AREA,
+)
+from .layout import (
+    INDEX_NAME as INDEX_NAME,
+)
+from .layout import (
+    MEMORY_DIR as MEMORY_DIR,
+)
+from .layout import (
+    SHARED_LAYERS as SHARED_LAYERS,
+)
+from .layout import (
+    SUMMARY_PATH as SUMMARY_PATH,
+)
+from .layout import (
+    is_entry_filename as is_entry_filename,
+)
+from .layout import (
+    is_shared_path as is_shared_path,
+)
+
 LAYER_DESCRIPTIONS = {
     "workflow": "作業のコツ",
     "decision": "ユーザーの判断",
@@ -28,11 +48,6 @@ ENTRY_MAX_LINES = 40
 SUMMARY_ITEM_MAX_CHARS = 160
 STALE_DAYS = 90
 
-MEMORY_DIR: Final = ".agents/memory"
-SUMMARY_PATH = f"{MEMORY_DIR}/SUMMARY.md"
-INDEX_NAME = "index.md"
-DEDICATED_AREA = "ops-report"
-
 ENTRY_FIELDS = (
     "title",
     "summary",
@@ -44,7 +59,6 @@ ENTRY_FIELDS = (
     "citations",
 )
 REQUIRED_KEYS = frozenset(ENTRY_FIELDS)
-_FILENAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md")
 _ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)^---[ \t]*\r?$", re.MULTILINE | re.DOTALL)
 _URL_AUTHORITY = re.compile(
@@ -191,19 +205,6 @@ def _citation(value: object, field: str) -> Citation:
         path,
         _string(value["symbol"], f"{field}.symbol") if "symbol" in value else None,
         _string(value["note"], f"{field}.note") if "note" in value else None,
-    )
-
-
-def is_entry_filename(filename: str) -> bool:
-    return filename != INDEX_NAME and _FILENAME.fullmatch(filename) is not None
-
-
-def is_shared_path(path: str) -> bool:
-    if path == SUMMARY_PATH:
-        return True
-    directory, _, filename = path.rpartition("/")
-    return directory in {f"{MEMORY_DIR}/{layer}" for layer in SHARED_LAYERS} and (
-        filename == INDEX_NAME or is_entry_filename(filename)
     )
 
 
