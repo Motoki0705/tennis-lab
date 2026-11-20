@@ -10,11 +10,11 @@ citations:
   - path: ".agents/ops/storage_tier/layout.py"
     symbol: "def prepare_worktree"
   - path: ".agents/ops/storage_tier/README.md"
-    symbol: "worktrees-and-service"
+    symbol: "#worktrees-and-service"
   - path: ".agents/skills/training-queue/scripts/training_queue.sh"
     symbol: "_json_str \"$PWD\""
   - path: "AGENTS.md"
-    symbol: "学習の実行"
+    symbol: "#学習の実行"
 ---
 
 共有 `.venv` を使って `python -m src....` を実行すると、カレントディレクトリの `src/` を import する。2026-11-20の確認では、共有 `.venv` に対してrepo外から `src` を検索すると見つからず、作業worktreeからの `src.__file__` はそのworktreeを指した。

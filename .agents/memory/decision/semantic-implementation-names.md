@@ -8,7 +8,7 @@ last_verified: 2026-11-20
 evidence: "#1087 / #1094 と現行の knowledge/README.md のrun ID規約を照合する。"
 citations:
   - path: "knowledge/README.md"
-    symbol: "id連番ファイル名"
+    symbol: "#id連番ファイル名"
     note: "追跡に使うrun IDの規約"
 ---
 

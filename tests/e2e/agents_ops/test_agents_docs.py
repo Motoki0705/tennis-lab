@@ -329,6 +329,21 @@ def test_shared_memory_matches_the_generated_contract() -> None:
     )
 
 
+def test_dino_polling_observation_describes_the_measured_stop() -> None:
+    path = MEMORY_DIR / "environment/wsl2-nvidia-smi-polling-stalls-gpu.md"
+    meta = _frontmatter(path)
+    title, summary = meta["title"], meta["summary"]
+    assert isinstance(title, str) and isinstance(summary, str)
+    assert all(
+        term in summary for term in ("タイムアウト", "監視", "0.17秒前", "heartbeat")
+    )
+    assert all(term not in title + summary for term in ("画面", "フリーズ", "固ま"))
+    body = path.read_text(encoding="utf-8").split("---\n", 2)[2]
+    assert "235/235" in body and "53フレーム目" in body
+    assert "0.17秒前" in body and "過去のGPU停止の原因は未特定" in body
+    assert f"- {summary}\n" in MEMORY_SUMMARY.read_text(encoding="utf-8")
+
+
 def test_shared_memory_is_fresh() -> None:
     report = memory_checks.audit(ROOT)
     assert not report.stale, "\n".join(

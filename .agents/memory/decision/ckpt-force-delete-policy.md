@@ -10,7 +10,7 @@ citations:
   - path: ".agents/skills/training-queue/scripts/prune_ckpts.py"
     symbol: "--repro-dir"
   - path: "knowledge/README.md"
-    symbol: "削除した成果物の記録"
+    symbol: "#削除した成果物の記録"
 ---
 
 ディスクを空けることを優先するユーザー判断である。ckpt は次の順で分類して消す。

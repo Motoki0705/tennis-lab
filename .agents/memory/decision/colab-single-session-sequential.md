@@ -8,7 +8,7 @@ last_verified: 2026-11-20
 evidence: "ユーザー指示を後続の実行条件と照合し、VM消失時の再開方法は tennis-colab の runtime.md で確認する。"
 citations:
   - path: ".agents/skills/tennis-colab/references/runtime.md"
-    symbol: "障害からの再開"
+    symbol: "#障害からの再開"
     note: "VM消失後に使える復旧経路"
 ---
 

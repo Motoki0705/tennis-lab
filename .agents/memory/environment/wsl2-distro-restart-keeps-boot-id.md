@@ -11,7 +11,7 @@ citations:
     symbol: "boot_id"
     note: "プロセスの記録に使われる値"
   - path: ".agents/ops/lib/README.md"
-    symbol: "状態確認停止中断からの復旧"
+    symbol: "#状態確認停止中断からの復旧"
 ---
 
 WSL2でVMのkernelが動き続けたままdistroが再起動すると、`/proc/sys/kernel/random/boot_id` は同じで、`/proc/uptime` の起点も維持される。distroのPID名前空間は作り直され、PID 1（`/sbin/init`）は再起動の時刻から始まる。共通ランナーの記録は同じ boot_id を指すので、回収はPID 1の開始時刻とプロセス一覧から確認する。

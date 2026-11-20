@@ -6,7 +6,10 @@ import re
 from collections.abc import Hashable
 from dataclasses import dataclass
 from datetime import date
+from html import unescape
+from ipaddress import ip_address
 from typing import Final
+from urllib.parse import unquote, urlsplit
 
 import yaml
 
@@ -45,15 +48,22 @@ REQUIRED_KEYS = frozenset(
 _FILENAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md")
 _ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)^---[ \t]*\r?$", re.MULTILINE | re.DOTALL)
+_URL_AUTHORITY = re.compile(
+    r"(?<![\w:/])(?:[a-z][a-z0-9+.-]*:)?//[^/\s<>\"'`?#()]+", re.IGNORECASE
+)
 _PRIVATE_DATA = {
     "email address": re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"),
     "token or API key": re.compile(
         r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}"
         r"|sk-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{20,})"
     ),
+    "credential assignment": re.compile(
+        r"""\b(?:token|password|secret|api[_-]?key)["']?[ \t]*[:=][ \t]*\S""",
+        re.IGNORECASE,
+    ),
     "private key": re.compile(r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----"),
     "machine-specific path": re.compile(
-        r"(?<![\w./-])/(?:home|root|Users|mnt/[A-Za-z]/Users)/"
+        r"\bfile:[/\\]|(?<![\w./-])/(?:home|root|Users|mnt/[A-Za-z]/Users)/"
         r"|\b[A-Za-z]:[\\/]Users[\\/]",
         re.IGNORECASE,
     ),
@@ -89,11 +99,37 @@ class CitationError(ValueError):
     """Invalid structure or field in a citation."""
 
 
+def _has_local_url(text: str) -> bool:
+    for match in _URL_AUTHORITY.finditer(text):
+        try:
+            host = (urlsplit(match[0]).hostname or "").rstrip(".")
+        except ValueError:
+            continue
+        if host in {"localhost", "localhost.localdomain"} or host.endswith(
+            (".localhost", ".local", ".internal")
+        ):
+            return True
+        try:
+            address = ip_address(host)
+        except ValueError:
+            continue
+        if not address.is_global:
+            return True
+    return False
+
+
 def private_data_kinds(text: str) -> tuple[str, ...]:
     """Return categories only so diagnostics never copy the matched values."""
-    return tuple(
-        kind for kind, pattern in _PRIVATE_DATA.items() if pattern.search(text)
-    )
+    decoded = unquote(unescape(text))
+    views = (text,) if decoded == text else (text, decoded)
+    kinds = [
+        kind
+        for kind, pattern in _PRIVATE_DATA.items()
+        if any(pattern.search(view) for view in views)
+    ]
+    if any(_has_local_url(view) for view in views):
+        kinds.append("local URL")
+    return tuple(kinds)
 
 
 def iso_date(value: object, field: str) -> date:

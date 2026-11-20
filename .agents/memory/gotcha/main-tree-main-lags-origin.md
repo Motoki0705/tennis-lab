@@ -10,9 +10,9 @@ citations:
   - path: ".agents/ops/git_sync/systemd/tennis-lab-git-sync.timer"
     symbol: "OnCalendar"
   - path: ".agents/ops/git_sync/README.md"
-    symbol: "更新の契約"
+    symbol: "#更新の契約"
   - path: ".agents/ops/git_sync/README.md"
-    symbol: "運用jobとの排他"
+    symbol: "#運用jobとの排他"
 ---
 
 メインtreeの `main` は `tennis-lab-git-sync.timer` が30分ごとにfast-forwardする。実行間隔のほか、共有checkout lockを運用jobが保持していたり、追跡ファイルの変更や進行中のGit操作があったりすると更新が遅れる。2026-11-20の確認ではtimerが稼働中でもメインtreeは22コミット遅れていた。

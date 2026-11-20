@@ -8,7 +8,7 @@ last_verified: 2026-11-20
 evidence: "メインtreeで `git submodule status --recursive third_party/nht` を実行し、行頭が `+` なら記録された pointer と checkout がずれている"
 citations:
   - path: ".agents/ops/git_sync/README.md"
-    symbol: "更新の契約"
+    symbol: "#更新の契約"
   - path: ".spin/cmds.py"
     symbol: "NHT_ROOT_RELATIVE"
 ---

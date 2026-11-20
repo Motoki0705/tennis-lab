@@ -29,6 +29,8 @@ from .schema import (
 )
 from .tree import Checkout, FileMap, MappedTree, Tree
 
+_DEDICATED_PATH = f"{MEMORY_DIR}/{DEDICATED_AREA}"
+
 
 @dataclass(frozen=True)
 class Problem:
@@ -99,7 +101,7 @@ class _Inspection:
                 Problem(f"{MEMORY_DIR}/{name}", "layout", "unexpected memory path")
             )
         if DEDICATED_AREA in children:
-            self._directory(f"{MEMORY_DIR}/{DEDICATED_AREA}")
+            self._directory(_DEDICATED_PATH)
 
         stored: dict[str, bytes] = {}
         if (content := self._read(SUMMARY_PATH)) is not None:
@@ -155,7 +157,18 @@ class _Inspection:
         except ValueError as exc:
             self.problems.append(Problem(path, "entry_schema", str(exc)))
         else:
+            self._check_summary_scope(path, entry.summary)
             self.entries.append(entry)
+
+    def _check_summary_scope(self, path: str, text: str) -> None:
+        if DEDICATED_AREA in text.casefold():
+            self.problems.append(
+                Problem(
+                    path,
+                    "dedicated_reference",
+                    "summary mentions dedicated ops-report memory",
+                )
+            )
 
     def _generated(self, stored: dict[str, bytes], *, sync: bool) -> None:
         for path, document in render_documents(self.entries).items():
@@ -178,20 +191,27 @@ class _Inspection:
             self.markdown[path] = text
             lines = text.splitlines()
             if path == SUMMARY_PATH:
+                self._check_summary_scope(path, text)
                 self._measure(path, "lines", len(lines), SUMMARY_MAX_LINES)
             else:
                 count = sum(line.startswith("- [") for line in lines)
                 self._measure(path, "entries", count, INDEX_MAX_ENTRIES)
 
-    def _target(self, path: str, *, file: bool = False) -> None:
+    def _target(self, path: str, *, file: bool = False) -> str:
+        missing = "target file does not exist" if file else "target does not exist"
+        try:
+            resolved = self.tree.resolve(path)
+        except (FileNotFoundError, NotADirectoryError):
+            raise ValueError(missing) from None
+        if resolved == _DEDICATED_PATH or resolved.startswith(f"{_DEDICATED_PATH}/"):
+            raise ValueError("target is in dedicated ops-report memory")
         # In sync mode, generated documents already represent the proposed tree.
-        if path in self.markdown:
-            return
-        kind = self.tree.kind(path)
+        if resolved in self.markdown:
+            return resolved
+        kind = self.tree.kind(resolved)
         if kind != "file" and (file or kind != "directory"):
-            raise ValueError(
-                "target file does not exist" if file else "target does not exist"
-            )
+            raise ValueError(missing)
+        return resolved
 
     def _target_text(self, path: str) -> str:
         if path in self.markdown:
@@ -215,19 +235,19 @@ class _Inspection:
 
         for entry in self.entries:
             for position, citation in enumerate(entry.citations):
-                path = posixpath.normpath(citation.path)
                 try:
-                    self._target(path, file=True)
+                    path = self._target(citation.path, file=True)
                     symbol = citation.symbol
-                    if (
-                        symbol is not None
-                        and symbol not in self._target_text(path)
-                        and not (
-                            path.endswith(".md")
-                            and has_anchor(path, symbol.removeprefix("#"))
-                        )
-                    ):
-                        raise ValueError("symbol or Markdown anchor was not found")
+                    if symbol is None:
+                        continue
+                    if symbol.startswith("#"):
+                        if not path.lower().endswith(".md"):
+                            raise ValueError("anchor symbols require a Markdown file")
+                        anchor = unquote(symbol[1:])
+                        if not anchor or not has_anchor(path, anchor):
+                            raise ValueError("Markdown anchor was not found")
+                    elif symbol not in self._target_text(path):
+                        raise ValueError("symbol was not found")
                 except (OSError, ValueError) as exc:
                     issue = (
                         str(exc)
@@ -247,23 +267,17 @@ class _Inspection:
                     if parts.scheme or parts.netloc:
                         continue
                     relative = unquote(parts.path)
-                    path = (
-                        posixpath.normpath(
-                            posixpath.join(posixpath.dirname(owner), relative)
-                        )
+                    path = self._target(
+                        posixpath.join(posixpath.dirname(owner), relative)
                         if relative
                         else owner
                     )
-                    if (
-                        path.startswith(("/", "../"))
-                        or path == ".."
-                        or "\\" in path
-                        or "\0" in path
-                    ):
-                        raise ValueError("path resolves outside the repository")
-                    self._target(path)
                     anchor = unquote(parts.fragment)
-                    if anchor and path.endswith(".md") and not has_anchor(path, anchor):
+                    if (
+                        anchor
+                        and path.lower().endswith(".md")
+                        and not has_anchor(path, anchor)
+                    ):
                         raise ValueError("Markdown anchor was not found")
                 except (OSError, ValueError) as exc:
                     issue = (

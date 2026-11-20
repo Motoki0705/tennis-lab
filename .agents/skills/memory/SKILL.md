@@ -82,7 +82,7 @@ last_verified: 2026-10-15
 evidence: "今も成り立つかを確かめる方法（コマンド、ファイル、行）"
 citations:
   - path: ".agents/ops/storage_tier/README.md"
-    symbol: "worktrees-and-service"
+    symbol: "#worktrees-and-service"
 ---
 
 観察（何が起きるか、ユーザーが何を望むか）。
@@ -90,7 +90,7 @@ citations:
 **使い方:** 次にどう行動するか。
 ```
 
-`citations` の `path` はrepo相対パス、`symbol` は省略可能な本文の文字列またはMarkdownの見出しアンカー、`note` は省略可能な補足。対応するrepo内の参照が無い観察には `citations: []` を使う。
+`citations` の `path` はrepo相対パス。 `symbol` は省略でき、本文の文字列、または `#worktrees-and-service` のような `#` 付きのMarkdownアンカーを指定する。 `note` は省略可能な補足。対応するrepo内の参照が無い観察には `citations: []` を使う。
 
 エントリを追加・更新・削除したら、repo rootから次のコマンドで [SUMMARY.md](../../memory/SUMMARY.md) と各層の `index.md` を再生成して検査する。
 

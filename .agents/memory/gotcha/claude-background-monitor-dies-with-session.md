@@ -8,7 +8,7 @@ last_verified: 2026-11-01
 evidence: "会話を再開すると、前のプロセスで起動したColab監視ループはプロセス一覧に無く、そのtask出力とscratchpadの内容も消えていた。監視の終了通知は届かなかった"
 citations:
   - path: ".agents/skills/parent-session/references/workers.md"
-    symbol: "colabの長時間ジョブ"
+    symbol: "#colabの長時間ジョブ"
     note: "監視引き継ぎの手順"
 ---
 

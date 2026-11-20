@@ -8,7 +8,7 @@ last_verified: 2026-11-20
 evidence: "#1087の補足と、AGENTS.md・.agents/README.md・現在のPR受入条件を照合する。"
 citations:
   - path: ".agents/skills/parent-session/references/review.md"
-    symbol: "依頼する前に"
+    symbol: "#依頼する前に"
     note: "元の受入条件とPRの照合"
 ---
 

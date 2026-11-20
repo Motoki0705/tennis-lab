@@ -8,7 +8,7 @@ last_verified: 2026-11-20
 evidence: "#1109 本文、commit 08ea733650aeb374f10871043313bc031a3b36a2 の ablation 構成と knowledge/README.md の保存基準を照合する。"
 citations:
   - path: "knowledge/README.md"
-    symbol: "run成果物の保存基準"
+    symbol: "#run成果物の保存基準"
   - path: "src/tasks/blcs/ablation/README.md"
     symbol: "ablation"
     note: "再利用する比較部品の配置例"

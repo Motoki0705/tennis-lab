@@ -10,7 +10,7 @@ citations:
   - path: ".agents/skills/tennis-colab/scripts/colab_core.py"
     symbol: "Session is absent from Colab registry"
   - path: ".agents/skills/tennis-colab/references/runtime.md"
-    symbol: "障害からの再開"
+    symbol: "#障害からの再開"
 ---
 
 2026-10-31には、入力（pool・実画像dataset・重み、計約4.5GB）を取得済みのVMを、コード修正のmergeまで約1.4時間待たせたところ回収され、入力の再取得が必要になった。VMは作成から約7時間だった。`colab.py exec` はSSH切断で失敗し、`reconnect` で割当が消えたと確認した。

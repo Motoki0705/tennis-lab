@@ -12,7 +12,7 @@ citations:
   - path: ".agents/ops/lib/agent_output.py"
     symbol: "--json-schema requires jsonschema"
   - path: ".agents/ops/git_sync/README.md"
-    symbol: "更新の契約"
+    symbol: "#更新の契約"
 ---
 
 全worktreeが symlink で共有するメインtreeの `.venv` は、PRで依存が追加されても誰かが入れるまで古いまま残る。2026-10-30 には宣言済みの `jsonschema` が無く、agents_ops テストの一部が ImportError になり、統合Codexレビュー（`agent_exec --json-schema`）が起動直後に失敗して run を1回消費した。

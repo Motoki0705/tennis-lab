@@ -20,7 +20,7 @@
 
 - WSL2のVMが動いたままdistroが再起動する場合がある。旧プロセスの回収はPID 1の開始時刻とプロセス一覧で確認する。
 - WSL2のRAM不足で学習や親のbackground workerがtracebackなしで止まった。WSL内の上限と同時に動くプロセスを調べる。
-- WSL2のDINO推論では短い間隔のnvidia-smi照会で推論と画面が固まった。計測中はプロセス内のCUDA統計を使う。
+- DINO計測で1秒ごとのnvidia-smi照会がタイムアウトし、監視がworkerを停止した。停止判定の0.17秒前にもDINOのheartbeatが更新されていた。過去のGPU停止の原因は未特定。
 - WSL2のPLCS multiview学習では16GB GPUのVRAM上限付近でWindowsホストが短周期に固まった。ピークVRAMに余裕を残す。
 
 ## [gotcha](gotcha/index.md) — 落とし穴

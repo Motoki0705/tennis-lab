@@ -178,7 +178,7 @@ def test_file_map_resolves_code_symbols_and_rendered_markdown_anchors() -> None:
     citations = [
         {"path": "code.py", "symbol": "verify_contract"},
         {"path": "guide.md", "symbol": "#手順の-確認-1"},
-        {"path": "guide.md", "symbol": "old-path"},
+        {"path": "guide.md", "symbol": "#old-path"},
     ]
     body = (
         "[guide][g]\n\n[g]: ../../../guide.md#手順の-確認\n\n"
@@ -193,7 +193,7 @@ def test_broken_citations_and_relative_links_report_the_owning_entry() -> None:
     citations = [
         {"path": "gone.py"},
         {"path": "code.py", "symbol": "verify_other"},
-        {"path": "guide.md", "symbol": "hidden-heading"},
+        {"path": "guide.md", "symbol": "#hidden-heading"},
         {"path": ".agents/memory"},
     ]
     body = (
@@ -205,8 +205,8 @@ def test_broken_citations_and_relative_links_report_the_owning_entry() -> None:
     report = checks.audit(files, today=TODAY)
     assert [(issue.path, issue.message) for issue in report.broken_citations] == [
         (ENTRY, "citations[0]: target file does not exist"),
-        (ENTRY, "citations[1]: symbol or Markdown anchor was not found"),
-        (ENTRY, "citations[2]: symbol or Markdown anchor was not found"),
+        (ENTRY, "citations[1]: symbol was not found"),
+        (ENTRY, "citations[2]: Markdown anchor was not found"),
         (ENTRY, "citations[3]: target file does not exist"),
     ]
     assert [issue.message for issue in report.problems if issue.code == "link"] == [
@@ -214,6 +214,48 @@ def test_broken_citations_and_relative_links_report_the_owning_entry() -> None:
         "missing.md: target does not exist",
         "../../../../outside.md: path resolves outside the repository",
     ]
+
+
+@pytest.mark.parametrize(
+    ("target", "text", "symbol", "message"),
+    [
+        pytest.param(
+            "guide.md",
+            "[Old heading](#removed-heading)\n\n```md\n#removed-heading\n```\n",
+            "#removed-heading",
+            "Markdown anchor was not found",
+            id="removed-heading-remains-in-links-and-code",
+        ),
+        pytest.param(
+            "code.py",
+            "#removed-heading\n",
+            "#removed-heading",
+            "anchor symbols require a Markdown file",
+            id="anchor-on-code-file",
+        ),
+        pytest.param(
+            "guide.md",
+            "## Real Heading\n",
+            "real-heading",
+            "symbol was not found",
+            id="plain-symbol-is-a-text-search",
+        ),
+    ],
+)
+def test_citations_distinguish_text_from_anchor_selectors(
+    target: str, text: str, symbol: str, message: str
+) -> None:
+    files = _tree(
+        {ENTRY: _document(_entry(citations=[{"path": target, "symbol": symbol}]))}
+    )
+    files[target] = text
+    for problems in (
+        checks.validate(files, today=TODAY),
+        checks.plan_sync(files, today=TODAY)[1],
+    ):
+        assert [(issue.path, issue.code, issue.message) for issue in problems] == [
+            (ENTRY, "citation", f"citations[0]: {message}")
+        ]
 
 
 def test_checkout_checks_symlinks_for_citations_and_relative_links(
@@ -241,6 +283,99 @@ def test_checkout_checks_symlinks_for_citations_and_relative_links(
     assert any(
         issue.code == "link" and issue.path == ENTRY for issue in report.problems
     )
+
+
+def test_checkout_checks_relative_link_components_before_parent_segments(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "checkout"
+    outside = tmp_path / "other"
+    outside.mkdir()
+    link = "../../../.venv/bin/python/../../../AGENTS.md"
+    files = _tree({ENTRY: _document(_entry(), f"[Guide]({link})\n")})
+    files["AGENTS.md"] = "# Agent guidelines\n"
+    _write_tree(root, files)
+    (root / ".venv/bin").mkdir(parents=True)
+    (root / ".venv/bin/python").symlink_to(outside, target_is_directory=True)
+    for problems in (
+        checks.validate(root, today=TODAY),
+        checks.plan_sync(root, today=TODAY)[1],
+    ):
+        assert [(issue.path, issue.code, issue.message) for issue in problems] == [
+            (ENTRY, "link", f"{link}: path resolves outside the repository")
+        ]
+
+
+def test_checkout_validates_the_anchor_on_the_resolved_internal_path(
+    tmp_path: Path,
+) -> None:
+    body = "[Refer to the guide](../../../alias/../guide.md#actual-destination)\n"
+    files = _tree({ENTRY: _document(_entry(), body)})
+    files["docs/guide.md"] = "# Actual Destination\n"
+    _write_tree(tmp_path, files)
+    (tmp_path / "docs/nested").mkdir()
+    (tmp_path / "alias").symlink_to("docs/nested", target_is_directory=True)
+    assert checks.validate(tmp_path, today=TODAY) == []
+
+
+def test_shared_entries_and_summary_reject_dedicated_memory_references() -> None:
+    dedicated = f"{MEMORY}/ops-report/index.md"
+    files = _tree(
+        {
+            ENTRY: _document(
+                _entry(
+                    summary="[Digest](ops-report/index.md#digest)",
+                    citations=[{"path": dedicated, "symbol": "#digest"}],
+                ),
+                "[Digest](../ops-report/index.md#digest)\n",
+            )
+        }
+    )
+    files[dedicated] = "# Digest\n"
+    for problems in (
+        checks.validate(files, today=TODAY),
+        checks.plan_sync(files, today=TODAY)[1],
+    ):
+        assert {(issue.path, issue.code) for issue in problems} == {
+            (ENTRY, "dedicated_reference"),
+            (ENTRY, "citation"),
+            (ENTRY, "link"),
+            (SUMMARY, "dedicated_reference"),
+            (SUMMARY, "link"),
+        }
+
+
+def test_dedicated_memory_references_through_a_checkout_alias_are_rejected(
+    tmp_path: Path,
+) -> None:
+    files = _tree(
+        {
+            ENTRY: _document(
+                _entry(citations=[{"path": "digest-alias/record.md"}]),
+                "[Digest](../../../digest-alias/record.md)\n",
+            )
+        }
+    )
+    _write_tree(tmp_path, files)
+    (tmp_path / "digest-alias").symlink_to(
+        f"{MEMORY}/ops-report", target_is_directory=True
+    )
+    for problems in (
+        checks.validate(tmp_path, today=TODAY),
+        checks.plan_sync(tmp_path, today=TODAY)[1],
+    ):
+        assert {(issue.path, issue.code) for issue in problems} == {
+            (ENTRY, "link"),
+            (ENTRY, "citation"),
+        }
+
+
+def test_validate_reports_dedicated_memory_mentioned_in_a_stored_summary() -> None:
+    files = _tree({ENTRY: _document(_entry())})
+    files[SUMMARY] = "# Shared memory\n\nSee also ops-report.\n"
+    assert (SUMMARY, "dedicated_reference") in {
+        (issue.path, issue.code) for issue in checks.validate(files, today=TODAY)
+    }
 
 
 def test_layout_rejects_legacy_stray_and_nested_paths() -> None:
@@ -280,6 +415,41 @@ def test_private_data_in_body_is_detected_without_echoing_it(
         ("private_data", f"contains {kind}")
     ]
     assert value not in repr(problems)
+
+
+@pytest.mark.parametrize(
+    ("text", "kind"),
+    [
+        pytest.param("[Local](http://localhost:9000/ui)", "local URL", id="localhost"),
+        pytest.param("[Local](http://127.0.0.1/ui)", "local URL", id="ipv4-loopback"),
+        pytest.param("[Local](http://[::1]:9000/ui)", "local URL", id="ipv6-loopback"),
+        pytest.param("[Local](//service.internal/ui)", "local URL", id="private-host"),
+        pytest.param("[Local](http://%6cocalhost/ui)", "local URL", id="encoded-host"),
+        pytest.param(
+            "[Local](file:///home/fixture/settings.txt)",
+            "machine-specific path",
+            id="file-url",
+        ),
+        pytest.param("token = fixture-value", "credential assignment", id="token"),
+        pytest.param("api_key: fixture-value", "credential assignment", id="api-key"),
+        pytest.param("secret=fixture-value", "credential assignment", id="secret"),
+        pytest.param(
+            '"password": "fixture-value"', "credential assignment", id="password"
+        ),
+    ],
+)
+def test_shared_memory_rejects_local_urls_and_credential_assignments(
+    text: str, kind: str
+) -> None:
+    files = _tree({ENTRY: _document(_entry(), f"{text}\n")})
+    for problems in (
+        checks.validate(files, today=TODAY),
+        checks.plan_sync(files, today=TODAY)[1],
+    ):
+        assert [(issue.code, issue.message) for issue in problems] == [
+            ("private_data", f"contains {kind}")
+        ]
+        assert text not in repr(problems)
 
 
 def test_renderer_is_order_independent_uses_filenames_and_includes_each_layer() -> None:

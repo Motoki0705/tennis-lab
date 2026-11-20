@@ -8,7 +8,7 @@ last_verified: 2026-11-20
 evidence: "共有venvから importlib.util.find_spec('tests') の origin を確認し、git ls-files tests/__init__.py と tests README を参照する。"
 citations:
   - path: "tests/README.md"
-    symbol: "fixture-の共有と分離"
+    symbol: "#fixture-の共有と分離"
 ---
 
 `tests/` には `__init__.py` がない。2026-11-20の共有venvでは `import tests` がsite-packagesの同名パッケージを指し、`tests.unit` で `ModuleNotFoundError` になった。

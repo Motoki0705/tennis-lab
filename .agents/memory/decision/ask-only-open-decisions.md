@@ -8,7 +8,7 @@ last_verified: 2026-11-20
 evidence: "同じセッション・issue・PRの既回答と現在の判断を照合する。モデルや注釈の品質確認は annotation-workflow の例を参照する。"
 citations:
   - path: ".agents/skills/annotation-workflow/SKILL.md"
-    symbol: "依頼を条件へ分解する"
+    symbol: "#依頼を条件へ分解する"
     note: "注釈運用での実践"
   - path: ".agents/skills/annotation-workflow/SKILL.md"
     symbol: "品質の確認は動画で見せる"

@@ -8,7 +8,7 @@ last_verified: 2026-11-20
 evidence: ".agents/ops/board/README.md の「投稿CLI」節（`all` の展開対象）と、一斉指示を送った親の会話記録"
 citations:
   - path: ".agents/ops/board/README.md"
-    symbol: "投稿cli"
+    symbol: "#投稿cli"
     note: "一斉投稿の対象"
 ---
 
