@@ -62,7 +62,8 @@
               "fp16": 26,
               "fp8": 48
             }
-          }
+          },
+          "inspector_sha256": "9145c850538df975db7b811fcd069cbafaf7ae7b27824d3ff627b6ace5202c6b"
         },
         "precision_manifest_sha256": "5ccd42f9bd24da6385a9c75d5dd71cbb27d009d8f40697a32f21cce728431f5b",
         "engine_path": "clipreid_vitb16_market1501.plan",
@@ -5393,7 +5394,8 @@
             "onnx_operations_by_precision": {
               "fp16": 196
             }
-          }
+          },
+          "inspector_sha256": "bb5700c04257dc24f02fa59c4c643e1eba6fbea9229cec16abfafdcc869f92ba"
         },
         "precision_manifest_sha256": "420c51858151423220f90e7f83bfb8591f987a7b4887de7b820a1df0aa60830f",
         "engine_path": "vitpose_h.plan",
@@ -6728,7 +6730,7 @@
         }
       },
       "3a": {
-        "status": "profile_incomplete",
+        "status": "complete",
         "output": "outputs/i2303/round4/vitpose_h/3a",
         "identity": {
           "model": "vitpose_h",
@@ -7349,7 +7351,7 @@
         },
         "features_sha256": "d5f30c92296c258b82a2cc9137a9b58c290de9859259ef7cf0e9cc8ac2444e43",
         "measurement_queue_job": "0-8204838163145463422_2026-11-20T08-03-56-854536577Z_3129954_i2303-vitpose-3a-r4",
-        "profile_queue_job": "0-8204838163145463422_2026-11-20T08-03-56-854536577Z_3129954_i2303-vitpose-3a-r4",
+        "profile_queue_job": "0-8204828400464429831_2026-11-20T10-46-39-535570168Z_4184786_i2303-vitpose-3a-ncu-r5",
         "profiles": {
           "nsys": {
             "status": "measured",
@@ -7410,12 +7412,21 @@
             }
           },
           "ncu": {
-            "status": "unavailable",
-            "reason": "Nsight Compute kernel replay reached its 1800-second timeout.",
-            "timeout_seconds": 1800,
-            "csv_kernels_before_timeout": 228
+            "status": "measured",
+            "profiled_kernels": 300,
+            "dram_read_bytes": 1368989184,
+            "dram_write_bytes": 0,
+            "tensor_active_pct_time_weighted": 29.528888517174142,
+            "stall_pct_time_weighted": {
+              "long_scoreboard": 2.8278553732294776,
+              "short_scoreboard": 1.288577224666248,
+              "lg_throttle": 0.29536027521759256,
+              "mio_throttle": 0.56607378165848
+            },
+            "timeout_seconds": 3600
           }
-        }
+        },
+        "profile_output": "outputs/i2303/round5/vitpose_h/3a-ncu"
       }
     }
   }

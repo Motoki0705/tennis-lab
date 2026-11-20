@@ -1,11 +1,11 @@
 # 単体推論の比較プロトコル
 
-対象は #2278 の Phase 1。条件0を同じチェックポイント・入力・デコード設定で作り直し、条件1、2、3a、3bと比較する。計測表には run、実装・重み・入力の識別子、GPU/driver、ツール版、実行条件を紐づける。ONNX変換、unsupported op、範囲外shape、エンジン実行の失敗は明示して停止する。ONNX Runtimeの役割はPTQの統計収集に限る。
+対象は #2278 の Phase 1。条件0を同じチェックポイント・入力・デコード設定で作り直し、条件1、2、3a、3bと比較する。計測表には run、実装・重み・入力の識別子、GPU/driver、ツール版、実行条件を紐づける。ONNX変換、unsupported op、範囲外shape、エンジン実行の失敗は明示して停止する。速度の計測はPyTorchとTensorRTで行う。ONNX RuntimeはPTQの統計収集と精度劣化の診断に使う。
 
 | 条件 | 計算 |
 |---|---|
-| 0 | eager PyTorch FP32。CLIPはmatmulとcuDNN convolutionのTF32を無効にする |
-| 1 | eager PyTorch FP16。CLIPは重みと入力をFP16に明示cast。ViTPose/DINOで既存autocastを使う場合は、残る演算dtypeを記す |
+| 0 | eager PyTorch FP32。CLIP-ReID・ViTPose-H・HMR2はmatmulとcuDNN convolutionのTF32を無効にする |
+| 1 | eager PyTorch FP16。CLIPは重みと入力をFP16に明示cast。ViTPose-H・HMR2はFP16 autocastを使い、主要演算の出力dtypeを照合する。DINOでautocastを使う場合も演算dtypeを記す |
 | 2 | TensorRTのstrongly typed FP16グラフ。FP32のreductionなどが必要ならその範囲を明示 |
 | 3a・3b | FP32のONNXを固定キャリブレーション入力でModelOpt PTQ。INT8・FP8 E4M3のQ/DQを挿入し、TensorRTでビルド。Q/DQ外はFP16を基本とし、IO・計算 dtype と実行layerを記録 |
 
@@ -62,7 +62,7 @@ CLIPは `OpenCVVideoFrameReader` でBGRを始端からdecodeする。選択済�
 ## 速度とVRAM
 
 - 共有training queue `--resource all`。条件ごとに新規プロセスでロードし、変換・校正・ビルドは別プロセスで終えてから測る。PyTorchのロード時VRAMピークを含め、最初のCUDA context初期化後にallocator統計をリセットする。エンジンビルド時のメモリは別扱い。
-- 各条件で30回warm-up。固定入力順を同じように巡回し、後続300回を100回ずつ3ブロックにする。ホストからの転送を完了してから `perf_counter_ns` を開始し、推論をenqueueしてCUDA同期が戻った時点を終端にする。H2D、D2H、decode、前・後処理、ロード、プロファイラを除外する。GPUのkernel時間の合計は別欄。
+- 各条件で30回warm-up。固定入力順を同じように巡回し、後続300回を100回ずつ3ブロックにする。ホストからの転送を完了してから `perf_counter_ns` を開始し、推論をenqueueしてCUDA同期が戻った時点を終端にする。H2D、D2H、decode、前・後処理、ロード、プロファイラを除外する。ViTPose-Hのflip testは推論の一部としてcrop反転・連結からヒートマップの反転復元・平均までを含める。GPUのkernel時間の合計は別欄。
 - TensorRTの速度計測では実行contextの `nvtx_verbosity` を `NONE` に設定し、読戻し値を `measurement.json` に記録する。ビルドの `DETAILED` はinspector用で、詳細layer NVTXの生成コストが同期込みのlatencyに入るため実行時に無効化する。 [NVIDIAの実行context仕様](https://docs.nvidia.com/deeplearning/tensorrt/latest/_static/python-api/infer/Core/ExecutionContext.html)
 - 時刻の中央値・P95は線形補間の標本分位点。IQR（P75−P25）とMAD（中央値からの絶対偏差の中央値）およびブロック別値を残す。throughputは `全推論件数 / 同期済み時刻の総和`。CLIPはimages/s、GVHMRはsequences/sとframes/sをshape別に記録する。
 - `torch.cuda.max_memory_allocated`／`max_memory_reserved` はPyTorch allocatorの高水準。TensorRTの内部確保はNVML側で観測する。NVMLはデバイスのused bytesをCUDA context前、ロード後、warm-up後、3ブロックの各同期後、精度取得後にサンプルする。最大値とcontext前との差を記録する。Windows側の消費も含むサンプル最大であり、瞬間的な上限の捕捉やプロセス別の厳密差分は保証しない。時刻計測中の連続照会は避ける。

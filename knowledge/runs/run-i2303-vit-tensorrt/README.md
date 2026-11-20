@@ -1,6 +1,6 @@
 # ViTPose-H・HMR2 の TensorRT 比較
 
-#2303 の再現手順。速度、メモリ、GPUカウンタ、精度の定義は [比較プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md) を参照。作業はリポジトリの worktree root から実行する。
+#2303 の再現手順。作業はリポジトリの worktree root から実行する。 [比較プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md)・[計測結果と考察](../../nodes/tennis_scene/000077-run-i2303-vit-tensorrt.md)
 
 ## 実行環境と固定入力
 
@@ -57,11 +57,11 @@ env "PYTHONPATH=$PYTHONPATH" OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 \
 
 CLIP-ReID の追測は `benchmark.py --adapter "$bundle/vit_models.py" --model clipreid_vitb16_market1501` を使い、#2297 の `inputs` と基準FP32の `0` を参照する。
 
-32 crop の校正比較では、デフォルト対象の max で cosine P05 が 0.526、MatMul/Gemm のみで 0.850、重み付き線形層のみの max で 0.849、entropy で 0.856 だった。旧グラフで活性化181辺だけをFP16へ戻すと 0.515 から 0.99974 に回復し、定数49辺だけを戻したときは 0.486 だった。LayerNorm入力だけを戻すと 0.749、LayerNorm・QuickGELUの積・残差Addの入力をまとめて戻すと 0.848 だった。重み付き線形層のうち、MLP出力投影だけを量子化した条件の0.860に対し、attention出力投影だけの条件は0.99971だった。3aには同じ12 cropで最も高い値を得た attention出力投影を使う。範囲の選定に使った12 cropは全236 cropでの比較にも含まれる。[校正・層別比較](int8-diagnosis.json)
+## 実測の照合とGPUカウンタの追測
 
-[条件別の計測結果](metrics.json) と [HMR2の次元別絶対差](hmr2-feature-errors.json) を参照。ViTPose-HのINT8は有効4,012関節のうち1件、FP8は6件でFP32との座標差が5 pxを超えた。それぞれの固定crop、関節、ヒートマップの最大値の位置を `accuracy.xy_gt_5_px` に記録した。
+`metrics.json` の `output` に元の計測、`profile_output` があればそこにNsight Computeの追測がある。queueログは `validation.json` のjob IDに対応する共有queueの `logs/<job名>.log` に残る。 [全条件の計測値](metrics.json)・[入力・ログの照合](validation.json)・[校正・層別比較](int8-diagnosis.json)
 
-実行精度検査、入力照合、プロファイラの失敗と追測は [validation.json](validation.json) に記録した。INT8のGPUカウンタだけを追測する場合は `--profiles ncu --profile-from RESULT_DIR --ncu-timeout SECONDS` を指定する。HMR2の追測は `$out/round3/hmr2/3a` と1800秒、ViTPose-Hの追測は `$out/round4/vitpose_h/3a` と3600秒を使う。参照元planと同じ代表入力で再実行し、取得カーネル数を参照元のNsight Systemsと照合する。
+INT8のGPUカウンタだけを追測する場合は `--profiles ncu --profile-from RESULT_DIR --ncu-timeout SECONDS` を指定する。HMR2の追測は `$out/round3/hmr2/3a` と1800秒、ViTPose-Hの追測は `$out/round4/vitpose_h/3a` と3600秒を使う。参照元planと同じ代表入力で再実行し、取得カーネル数を参照元のNsight Systemsと照合する。
 
 ## CPU検証
 

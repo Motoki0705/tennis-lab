@@ -231,5 +231,25 @@
       "nsys_gpu_kernels": 341,
       "ncu_profiled_kernels": 341
     }
+  },
+  "fifth_attempts": {
+    "vitpose_h/3a-ncu": {
+      "queue_job": "0-8204828400464429831_2026-11-20T10-46-39-535570168Z_4184786_i2303-vitpose-3a-ncu-r5.job",
+      "state": "done",
+      "status": "complete",
+      "measurement_reused_from": "outputs/i2303/round4/vitpose_h/3a",
+      "profile_output": "outputs/i2303/round5/vitpose_h/3a-ncu",
+      "plan_sha256": "10bb5ccbdb498909aa46006ec6bdec4eb1fd7f9f9e3eafa35d515a738387c4c7",
+      "precision_manifest_sha256": "7a7c99da9c457c231f997be3d02d0ff82ca04ea27ff255297fb799627162f27b",
+      "features_sha256": "d5f30c92296c258b82a2cc9137a9b58c290de9859259ef7cf0e9cc8ac2444e43",
+      "ncu_csv_sha256": "a4d095cf18e5511136a8331feadf908e176887a9568873568c9d943793536083",
+      "nsys_gpu_kernels": 300,
+      "ncu_profiled_kernels": 300
+    }
+  },
+  "inspector_recheck_after_rebase": {
+    "conditions": 8,
+    "matching_conversion_and_runtime_receipts": 8,
+    "main_base": "b392f45ee"
   }
 }
