@@ -65,6 +65,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/worker_status/](ops/worker_status/README.md) | 親registry・共通ランナー記録から子の実行状況・根拠・鮮度・秘匿済み要約を返す読み取り専用Python API/JSON CLI。GitHub取得は明示指定時のみ |
 | [ops/worker_logs/](ops/worker_logs/README.md) | workerの具体指示・最終報告・来歴を無害化し、委任の節目にログ専用PRへまとめて追記する。公開検査・追加専用merge・CI除外の限定例外と復旧の正本 |
 | [ops/decision_logs/](ops/decision_logs/README.ja.md) | 結果・判断・行動の非公開捕捉と復旧、親ごとのGit公開、階層READMEの決定的生成。新形式の限定例外と公開復旧の正本 |
+| [ops/shared_memory/](ops/shared_memory/README.md) | 共有memory 4層の公開CLI、索引の決定的生成、機械検査とマージ、定期保守との接続 |
 | [ops/board/](ops/board/README.md) | 親issueに結び付く名前・名簿・投稿と状態・呼び鈴を管理する掲示板CLI |
 | [ops/herdr_labels/](ops/herdr_labels/README.md) | 親担当をHerdrの表示へ同期する。会話からの設定・修復は [herdr-session-label](skills/herdr-session-label/SKILL.md) |
 
@@ -94,4 +95,5 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - ルールは仮説である。合わなくなったら、運用レポートの提案として改訂する。
 - `AGENTS.md` と `.agents/**` を含む変更も通常のレビュー・merge条件で扱う。
 - 公開ログの限定例外は形式別に検査する。[各ターンのworkerログ3ファイル](ops/worker_logs/README.md#専用prと限定merge例外)と[判断記録・生成README](ops/decision_logs/README.ja.md#限定公開例外と復旧)を参照する。保存実装・検査・workflowを変えるコードPRは通常条件で扱う。
+- 共有memoryの4層と `SUMMARY.md` は、専用CLIが機械検査とマージを行い、`ci.yml` の対象から除外する。専用CLI・検査・workflowの実装変更には通常のPR条件を適用する。[共有memoryの限定公開例外](ops/shared_memory/README.md#限定公開例外)
 - 規則を追加する前に、memoryの観察で済まないか、既存の規則を消せないかを先に検討する。

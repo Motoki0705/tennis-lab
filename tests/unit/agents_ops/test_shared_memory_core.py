@@ -18,7 +18,7 @@ sys.path.insert(0, str(OPS))
 schema = importlib.import_module("shared_memory.schema")
 render = importlib.import_module("shared_memory.render")
 checks = importlib.import_module("shared_memory.validate")
-cli = importlib.import_module("shared_memory.cli")
+cli = importlib.import_module("shared_memory.cli_impl")
 
 TODAY = date(2026, 11, 20)
 MEMORY = ".agents/memory"

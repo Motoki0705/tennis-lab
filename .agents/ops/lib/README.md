@@ -98,7 +98,7 @@ set済みなら起動せず、実行中のsetはprocess groupを停止・回収�
 
 ### 対話CLIの保護
 
-長時間動き得る次の15入口は、stdlibによるpath設定と `checkout_lock.run_cli()` の呼出だけを行う。
+次の対話CLI入口は、stdlibによるpath設定と `checkout_lock.run_cli()` の呼出だけを行う。
 `run_cli()` は共有lockを取った後に本体moduleをimportし、メインcheckoutのコードを終了まで保護する。
 Pythonは入口全体をlock取得前にcompileするため、入口へ実処理・project importを置かない。
 **起動方法は従来どおりで、launcherの追加は不要**。
@@ -115,6 +115,7 @@ Gitメタデータの読取とlock操作に留めるための判断である。
 | `python -m explain_html` | `explain_html.cli_impl` | start/serveを含む全体。背景serveも自身で取得 |
 | `python -m ci_watch` | `ci_watch.cli` | GitHubのページ取得・複数対象の収集が終わるまで |
 | `python -m project_progress` | `project_progress.cli_impl` | 同上 |
+| `python -m shared_memory` / `python -m shared_memory.cli` | `shared_memory.cli_impl` | 共有memoryの検査・公開・マージが終わるまで |
 | `python -m issue_supplement` | `issue_supplement.cli` | 生成・検証・取得serverを含む全体 |
 | `python -m review.evaluation` | `lib.ops_review.evaluation.cli_impl` | 比較・検証の全体 |
 | `python -m lib.review_tools.mcp_server` | `lib.review_tools.mcp_server_impl` | stdio取得serverの終了まで |
