@@ -1,10 +1,17 @@
 ---
 title: "判断を仰ぐときは、既に答えが出ている事項を聞き直さず、各選択肢を説明付きで示す"
+summary: "判断を仰ぐのは未決の事項だけにし、各選択肢に具体的な説明を添える。モデルや注釈の品質は動画で確認してもらう。"
 applies_to: all
 source: "2026-09-29 のユーザー指摘（同じ質問の繰り返し、説明不足）"
 created: 2026-09-29
-last_verified: 2026-09-29
-evidence: "人間に判断を求める前に、同じセッション・issue・PRでの過去の回答と decision/ のエントリを確かめる"
+last_verified: 2026-11-20
+evidence: "同じセッション・issue・PRの既回答と現在の判断を照合する。モデルや注釈の品質確認は annotation-workflow の例を参照する。"
+citations:
+  - path: ".agents/skills/annotation-workflow/SKILL.md"
+    symbol: "依頼を条件へ分解する"
+    note: "注釈運用での実践"
+  - path: ".agents/skills/annotation-workflow/SKILL.md"
+    symbol: "品質の確認は動画で見せる"
 ---
 
 ユーザーは、同じことを何度も聞かれること、説明が足りない選択肢を出されることを嫌う。以前の回答から決まる事項は質問に含めず、回答の意図に沿って次の質問を組み立てる。「説明してください」と言われたら、再質問の前に、それが何か・選択肢がなぜ違うか・具体例を説明する。

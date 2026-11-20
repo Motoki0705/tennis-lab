@@ -29,7 +29,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | `.agents/README.md`（このファイル） | AI運用の原則、置き場所の地図、GitHub運用、研究ループの概要 | 各自動運用の実装詳細 |
 | [.agents/skills/](skills/) | 繰り返し使う作業手順（`SKILL.md` + scripts） | 一度きりの経緯 |
 | [parent-board skill](skills/parent-board/SKILL.md) | 担当中の親同士の連絡、投稿する場面、受信時の判断と応答 | CLIの引数・状態・配送仕様（board README） |
-| [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない再利用できる観察。共有5層と、全体調査が必要時に読む独立した [ops-report専用領域](memory/ops-report/SUMMARY.md)（境界はmemory skill） | コードやREADMEで確認できる事実、作業の進捗 |
+| [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない再利用できる観察。共有4層と、全体調査が必要時に読む独立した [ops-report専用領域](memory/ops-report/SUMMARY.md)（境界はmemory skill） | コードやREADMEで確認できる事実、作業の進捗 |
 | [.agents/ops/](#自動運用) | 自動運用（systemd --user timer、headless agent）と共通の決定的ツール | 対話作業の手順 |
 | [knowledge/](../knowledge/README.md) | 実験結果・考察・関連論文（1 run = 1ノード） | 運用ルール |
 | 各ディレクトリの `README.md` | モジュールの仕様・使い方・設計判断 | 横断的な運用ルール |

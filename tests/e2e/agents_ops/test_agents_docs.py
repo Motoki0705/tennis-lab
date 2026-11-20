@@ -12,23 +12,27 @@ import importlib
 import json
 import re
 import shlex
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / ".agents/ops"))
+memory_schema = importlib.import_module("shared_memory.schema")
+memory_checks = importlib.import_module("shared_memory.validate")
+
 AGENTS_MD = ROOT / "AGENTS.md"
 AGENTS_README = ROOT / ".agents/README.md"
-MEMORY_DIR = ROOT / ".agents/memory"
-MEMORY_SUMMARY = MEMORY_DIR / "SUMMARY.md"
+MEMORY_DIR = ROOT / memory_schema.MEMORY_DIR
+MEMORY_SUMMARY = ROOT / memory_schema.SUMMARY_PATH
 MEMORY_SKILL = ROOT / ".agents/skills/memory/SKILL.md"
 DSH_SKILL = ROOT / ".agents/skills/deepseek-harness/SKILL.md"
 BOARD_SKILL = ROOT / ".agents/skills/parent-board/SKILL.md"
-LAYERS = ("workflow", "decision", "environment", "gotcha", "review")
-DEDICATED = "ops-report"
-AREAS = (*LAYERS, DEDICATED)
-LAYER_INDEX = "index.md"
+LAYERS = memory_schema.SHARED_LAYERS
+DEDICATED_DIR = MEMORY_DIR / memory_schema.DEDICATED_AREA
+LAYER_INDEX = memory_schema.INDEX_NAME
 
 DOCS = [
     AGENTS_MD,
@@ -55,15 +59,13 @@ DOCS = [
     ROOT / ".agents/skills/explain-html/SKILL.md",
     ROOT / ".agents/skills/explain-html/references/authoring.md",
     ROOT / ".agents/skills/explain-html/references/claim-review.md",
-    MEMORY_SUMMARY,
-    *(MEMORY_DIR / layer / LAYER_INDEX for layer in LAYERS),
-    MEMORY_DIR / DEDICATED / "SUMMARY.md",
-    MEMORY_DIR / DEDICATED / LAYER_INDEX,
+    DEDICATED_DIR / "SUMMARY.md",
+    DEDICATED_DIR / LAYER_INDEX,
     ROOT / ".github/copilot-instructions.md",
     *sorted((ROOT / ".github/agents").glob("*.md")),
 ]
 
-REQUIRED_KEYS = (
+DEDICATED_KEYS = (
     "title",
     "applies_to",
     "source",
@@ -71,13 +73,10 @@ REQUIRED_KEYS = (
     "last_verified",
     "evidence",
 )
-APPLIES_TO = {"all", "claude", "codex"}
-
-# Size caps keep the always-read files cheap. The values are hypotheses: revise
-# them from operation (the memory skill points here as their single source).
-SUMMARY_MAX_LINES = 40
-INDEX_MAX_ENTRIES = 30
-ENTRY_MAX_LINES = 40
+DEDICATED_APPLIES_TO = {"all", "claude", "codex"}
+DEDICATED_SUMMARY_MAX_LINES = 40
+DEDICATED_INDEX_MAX_ENTRIES = 30
+DEDICATED_ENTRY_MAX_LINES = 40
 
 # A link may point at a sibling issue's file that is not merged yet, but only when
 # the same line says so explicitly ("#1057で実装中").
@@ -91,20 +90,12 @@ SECRET_PATTERNS = (
 )
 
 
-def _layer_entries(layer: str) -> list[Path]:
+def _dedicated_entries() -> list[Path]:
     return sorted(
-        p
-        for p in (MEMORY_DIR / layer).glob("*.md")
-        if p.name != LAYER_INDEX and (layer != DEDICATED or p.name != "SUMMARY.md")
+        path
+        for path in DEDICATED_DIR.glob("*.md")
+        if path.name not in {LAYER_INDEX, "SUMMARY.md"}
     )
-
-
-def _memory_entries() -> list[Path]:
-    return [entry for layer in AREAS for entry in _layer_entries(layer)]
-
-
-def _entry_id(path: Path) -> str:
-    return str(path.relative_to(MEMORY_DIR))
 
 
 def _lines_outside_fences(text: str) -> list[str]:
@@ -331,25 +322,32 @@ def test_parent_session_skill_is_discoverable_from_agents() -> None:
     assert parent_skill.is_file()
 
 
-def test_memory_dir_holds_only_summary_layers_and_dedicated_area() -> None:
-    stray = sorted(
-        p.name
-        for p in MEMORY_DIR.iterdir()
-        if not (p == MEMORY_SUMMARY or (p.is_dir() and p.name in AREAS))
+def test_shared_memory_matches_the_generated_contract() -> None:
+    problems = memory_checks.validate(ROOT)
+    assert not problems, "\n".join(
+        f"{problem.path}: [{problem.code}] {problem.message}" for problem in problems
     )
-    assert not stray, (
-        f"put memory entries in a layer directory, not at the top: {stray}"
-    )
-    for layer in AREAS:
-        nested = [
-            p.name for p in (MEMORY_DIR / layer).iterdir() if not p.name.endswith(".md")
-        ]
-        assert not nested, f"{layer}/ must hold only Markdown files: {nested}"
 
 
-@pytest.mark.parametrize("layer", AREAS)
-def test_layer_index_matches_entry_files(layer: str) -> None:
-    index = MEMORY_DIR / layer / LAYER_INDEX
+def test_shared_memory_is_fresh() -> None:
+    report = memory_checks.audit(ROOT)
+    assert not report.stale, "\n".join(
+        f"{entry.path}: {entry.age_days} days since {entry.last_verified}"
+        for entry in report.stale
+    )
+
+
+def test_dedicated_memory_dir_holds_only_markdown_files() -> None:
+    stray = [
+        path.name
+        for path in DEDICATED_DIR.iterdir()
+        if path.suffix != ".md" or not path.is_file()
+    ]
+    assert not stray, f"{DEDICATED_DIR.name}/ must hold only Markdown files: {stray}"
+
+
+def test_dedicated_memory_index_matches_entry_files() -> None:
+    index = DEDICATED_DIR / LAYER_INDEX
     indexed = [
         (text, target, line)
         for text, target, line in _links(index)
@@ -357,84 +355,84 @@ def test_layer_index_matches_entry_files(layer: str) -> None:
     ]
     indexed_files = [target for _, target, _ in indexed]
     assert len(indexed_files) == len(set(indexed_files)), (
-        f"{layer}/index.md lists an entry twice"
+        "ops-report/index.md lists an entry twice"
     )
-    assert set(indexed_files) == {p.name for p in _layer_entries(layer)}, (
-        f"{layer}/index.md and entry files differ"
+    assert set(indexed_files) == {path.name for path in _dedicated_entries()}, (
+        "ops-report/index.md and entry files differ"
     )
-    assert len(indexed) <= INDEX_MAX_ENTRIES, (
-        f"{layer}/ has {len(indexed)} entries; compress it"
+    assert len(indexed) <= DEDICATED_INDEX_MAX_ENTRIES, (
+        f"ops-report/ has {len(indexed)} entries; compress it"
     )
     for text, target, line in indexed:
-        meta = _frontmatter(MEMORY_DIR / layer / target)
+        meta = _frontmatter(DEDICATED_DIR / target)
         assert text == meta["title"], (
-            f"{layer}/index.md link text for {target} must equal its title"
+            f"ops-report/index.md link text for {target} must equal its title"
         )
         scope = meta["applies_to"]
         assert line.endswith(f" ({scope})") == (scope != "all"), (
-            f"{layer}/index.md line for {target} must end with ' ({scope})' only when not 'all'"
+            f"ops-report/index.md line for {target} must end with ' ({scope})' only when not 'all'"
         )
 
 
 def test_memory_is_not_empty() -> None:
-    assert any(_layer_entries(layer) for layer in LAYERS), (
-        "shared memory has no entries"
+    assert any(
+        path.name != LAYER_INDEX
+        for layer in LAYERS
+        for path in (MEMORY_DIR / layer).glob("*.md")
+    ), "shared memory has no entries"
+
+
+def test_dedicated_memory_summary_stays_small() -> None:
+    summary = DEDICATED_DIR / "SUMMARY.md"
+    lines = len(summary.read_text(encoding="utf-8").splitlines())
+    assert lines <= DEDICATED_SUMMARY_MAX_LINES, (
+        f"{summary}: {lines} lines; compress it"
     )
-
-
-def test_memory_summary_stays_small() -> None:
-    for summary in (MEMORY_SUMMARY, MEMORY_DIR / DEDICATED / "SUMMARY.md"):
-        lines = len(summary.read_text(encoding="utf-8").splitlines())
-        assert lines <= SUMMARY_MAX_LINES, f"{summary}: {lines} lines; compress it"
 
 
 def test_dedicated_memory_is_not_in_the_always_loaded_summary() -> None:
     assert "ops-report" not in MEMORY_SUMMARY.read_text(encoding="utf-8")
-    summary = MEMORY_DIR / DEDICATED / "SUMMARY.md"
+    summary = DEDICATED_DIR / "SUMMARY.md"
     assert LAYER_INDEX in {target for _, target, _ in _links(summary)}
 
 
-@pytest.mark.parametrize("entry", _memory_entries(), ids=_entry_id)
-def test_memory_entry_frontmatter(entry: Path) -> None:
-    meta = _frontmatter(entry)
-    missing = [key for key in REQUIRED_KEYS if not meta.get(key)]
-    assert not missing, f"{entry.name}: missing frontmatter keys {missing}"
-    assert "type" not in meta, (
-        f"{entry.name}: the layer directory is the type; drop the 'type' key"
-    )
-    lines = len(entry.read_text(encoding="utf-8").splitlines())
-    assert lines <= ENTRY_MAX_LINES, (
-        f"{entry.name}: {lines} lines; split or compress it"
-    )
-    assert meta["applies_to"] in APPLIES_TO, (
-        f"{entry.name}: unknown applies_to {meta['applies_to']!r}"
-    )
-    created = _as_date(meta["created"], "created", entry.name)
-    verified = _as_date(meta["last_verified"], "last_verified", entry.name)
-    assert created <= verified <= dt.date.today(), (
-        f"{entry.name}: need created <= last_verified <= today"
-    )
-    assert re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*\.md", entry.name), (
-        f"{entry.name}: use kebab-case"
-    )
-
-
-@pytest.mark.parametrize(
-    "entry",
-    [
-        MEMORY_SUMMARY,
-        MEMORY_DIR / DEDICATED / "SUMMARY.md",
-        *(MEMORY_DIR / layer / LAYER_INDEX for layer in AREAS),
-        *_memory_entries(),
-    ],
-    ids=_entry_id,
-)
-def test_memory_entry_has_no_personal_data(entry: Path) -> None:
-    text = entry.read_text(encoding="utf-8")
-    for pattern in SECRET_PATTERNS:
-        assert not pattern.search(text), (
-            f"{entry.name}: looks like personal data or a secret ({pattern.pattern})"
+def test_dedicated_memory_entry_frontmatter() -> None:
+    for entry in _dedicated_entries():
+        meta = _frontmatter(entry)
+        missing = [key for key in DEDICATED_KEYS if not meta.get(key)]
+        assert not missing, f"{entry.name}: missing frontmatter keys {missing}"
+        assert "type" not in meta, (
+            f"{entry.name}: the layer directory is the type; drop the 'type' key"
         )
-    assert "/home/" not in text, (
-        f"{entry.name}: do not write machine-specific home paths"
-    )
+        lines = len(entry.read_text(encoding="utf-8").splitlines())
+        assert lines <= DEDICATED_ENTRY_MAX_LINES, (
+            f"{entry.name}: {lines} lines; split or compress it"
+        )
+        assert meta["applies_to"] in DEDICATED_APPLIES_TO, (
+            f"{entry.name}: unknown applies_to {meta['applies_to']!r}"
+        )
+        created = _as_date(meta["created"], "created", entry.name)
+        verified = _as_date(meta["last_verified"], "last_verified", entry.name)
+        assert created <= verified <= dt.date.today(), (
+            f"{entry.name}: need created <= last_verified <= today"
+        )
+        assert re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*\.md", entry.name), (
+            f"{entry.name}: use kebab-case"
+        )
+
+
+def test_dedicated_memory_has_no_personal_data() -> None:
+    entries = [
+        DEDICATED_DIR / "SUMMARY.md",
+        DEDICATED_DIR / LAYER_INDEX,
+        *_dedicated_entries(),
+    ]
+    for entry in entries:
+        text = entry.read_text(encoding="utf-8")
+        for pattern in SECRET_PATTERNS:
+            assert not pattern.search(text), (
+                f"{entry.name}: looks like personal data or a secret ({pattern.pattern})"
+            )
+        assert "/home/" not in text, (
+            f"{entry.name}: do not write machine-specific home paths"
+        )
