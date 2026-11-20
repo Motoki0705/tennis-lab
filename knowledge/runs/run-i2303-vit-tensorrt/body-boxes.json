@@ -1,0 +1,895 @@
+{
+  "clips": [
+    {
+      "artifact_sha256": "1ec0c4f065fbebb5eb64fbaa91f8f40de6747b94b4328aa9a646ad1bc7e3f5d0",
+      "clip": "video_000/clip_000",
+      "rows": [
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            815.3465576171875,
+            461.24591064453125,
+            119.97213745117188
+          ],
+          "camera": "cam0",
+          "frame": 32,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            790.1594848632812,
+            570.3939819335938,
+            267.11163330078125
+          ],
+          "camera": "cam0",
+          "frame": 32,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1070.307373046875,
+            434.2132568359375,
+            102.70309448242188
+          ],
+          "camera": "cam0",
+          "frame": 32,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            817.8726806640625,
+            460.50616455078125,
+            120.07540893554688
+          ],
+          "camera": "cam0",
+          "frame": 112,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            802.2277221679688,
+            577.2000732421875,
+            232.031005859375
+          ],
+          "camera": "cam0",
+          "frame": 112,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1073.408203125,
+            434.77984619140625,
+            100.65560913085938
+          ],
+          "camera": "cam0",
+          "frame": 112,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            814.08837890625,
+            461.3111572265625,
+            119.58853149414062
+          ],
+          "camera": "cam0",
+          "frame": 178,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            869.4696044921875,
+            588.9412841796875,
+            308.3975524902344
+          ],
+          "camera": "cam0",
+          "frame": 178,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1085.612548828125,
+            437.3929138183594,
+            94.41775512695312
+          ],
+          "camera": "cam0",
+          "frame": 178,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            819.7046508789062,
+            462.7904052734375,
+            113.82894897460938
+          ],
+          "camera": "cam0",
+          "frame": 260,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            808.1411743164062,
+            565.1183471679688,
+            195.26968383789062
+          ],
+          "camera": "cam0",
+          "frame": 260,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1145.69189453125,
+            432.9993896484375,
+            91.5584487915039
+          ],
+          "camera": "cam0",
+          "frame": 260,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            820.8648681640625,
+            470.78033447265625,
+            92.7476806640625
+          ],
+          "camera": "cam0",
+          "frame": 328,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            421.17132568359375,
+            544.140625,
+            206.484619140625
+          ],
+          "camera": "cam0",
+          "frame": 328,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1121.759765625,
+            431.95147705078125,
+            89.43922424316406
+          ],
+          "camera": "cam0",
+          "frame": 328,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            782.552001953125,
+            599.8321533203125,
+            248.35462951660156
+          ],
+          "camera": "cam2",
+          "frame": 32,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            835.73828125,
+            585.0208740234375,
+            262.2773132324219
+          ],
+          "camera": "cam2",
+          "frame": 112,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            830.7481689453125,
+            593.2679443359375,
+            207.8174591064453
+          ],
+          "camera": "cam2",
+          "frame": 178,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            661.495849609375,
+            633.8385009765625,
+            285.77960205078125
+          ],
+          "camera": "cam2",
+          "frame": 260,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            720.49658203125,
+            623.7217407226562,
+            226.65953063964844
+          ],
+          "camera": "cam2",
+          "frame": 328,
+          "person": 3,
+          "segment": 0
+        }
+      ]
+    },
+    {
+      "artifact_sha256": "0f6d59e50f2ed3652bb032b747c5f9565bd347ab90a6a2256cb8ec11bf9aa1dd",
+      "clip": "video_000/clip_037",
+      "rows": [
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            732.83251953125,
+            575.2874755859375,
+            247.22792053222656
+          ],
+          "camera": "cam0",
+          "frame": 22,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            729.4808349609375,
+            576.5139770507812,
+            238.75650024414062
+          ],
+          "camera": "cam0",
+          "frame": 52,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            714.7083129882812,
+            579.1943359375,
+            236.6921844482422
+          ],
+          "camera": "cam0",
+          "frame": 146,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            688.3856811523438,
+            563.6898193359375,
+            214.03045654296875
+          ],
+          "camera": "cam0",
+          "frame": 172,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            907.4058837890625,
+            481.0316162109375,
+            159.0417938232422
+          ],
+          "camera": "cam0",
+          "frame": 270,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1170.50732421875,
+            444.4608154296875,
+            89.88980865478516
+          ],
+          "camera": "cam2",
+          "frame": 22,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            647.8304443359375,
+            587.599365234375,
+            243.8870086669922
+          ],
+          "camera": "cam2",
+          "frame": 22,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            249.55612182617188,
+            576.540283203125,
+            184.52105712890625
+          ],
+          "camera": "cam2",
+          "frame": 22,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1168.15478515625,
+            444.68182373046875,
+            90.56180572509766
+          ],
+          "camera": "cam2",
+          "frame": 52,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            656.2344360351562,
+            581.5881958007812,
+            259.640625
+          ],
+          "camera": "cam2",
+          "frame": 52,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            250.09310913085938,
+            576.080322265625,
+            185.33123779296875
+          ],
+          "camera": "cam2",
+          "frame": 52,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1202.246826171875,
+            441.7901611328125,
+            87.30458068847656
+          ],
+          "camera": "cam2",
+          "frame": 146,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            750.791748046875,
+            560.4566650390625,
+            190.49403381347656
+          ],
+          "camera": "cam2",
+          "frame": 146,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            235.94351196289062,
+            575.21484375,
+            195.0711212158203
+          ],
+          "camera": "cam2",
+          "frame": 146,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1207.852294921875,
+            443.8707275390625,
+            81.67350006103516
+          ],
+          "camera": "cam2",
+          "frame": 172,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            844.46484375,
+            535.431640625,
+            176.7631072998047
+          ],
+          "camera": "cam2",
+          "frame": 172,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            265.1204833984375,
+            572.2376708984375,
+            174.7431182861328
+          ],
+          "camera": "cam2",
+          "frame": 172,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1194.7763671875,
+            444.4490051269531,
+            83.86978149414062
+          ],
+          "camera": "cam2",
+          "frame": 270,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            946.3938598632812,
+            500.1590881347656,
+            123.92542266845703
+          ],
+          "camera": "cam2",
+          "frame": 270,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            366.47149658203125,
+            598.6378173828125,
+            166.20535278320312
+          ],
+          "camera": "cam2",
+          "frame": 270,
+          "person": 3,
+          "segment": 0
+        }
+      ]
+    },
+    {
+      "artifact_sha256": "d271ef9ab77487df43cd5d3308248a3150e21141bff54d35cc036a29cb79062e",
+      "clip": "video_000/clip_027",
+      "rows": [
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            799.0017700195312,
+            573.984130859375,
+            324.9960021972656
+          ],
+          "camera": "cam0",
+          "frame": 8,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            788.2064208984375,
+            587.2318115234375,
+            254.13092041015625
+          ],
+          "camera": "cam0",
+          "frame": 52,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            790.1031494140625,
+            559.73779296875,
+            314.01708984375
+          ],
+          "camera": "cam0",
+          "frame": 66,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            758.2171020507812,
+            590.0224609375,
+            244.91148376464844
+          ],
+          "camera": "cam0",
+          "frame": 110,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            719.9276733398438,
+            607.6296997070312,
+            254.2596435546875
+          ],
+          "camera": "cam0",
+          "frame": 124,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            635.967041015625,
+            646.5653686523438,
+            255.50347900390625
+          ],
+          "camera": "cam0",
+          "frame": 168,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            641.3408813476562,
+            640.3173828125,
+            286.9544982910156
+          ],
+          "camera": "cam0",
+          "frame": 182,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            776.810791015625,
+            616.7355346679688,
+            312.1287841796875
+          ],
+          "camera": "cam0",
+          "frame": 226,
+          "person": 0,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            809.8751831054688,
+            448.58392333984375,
+            94.09771728515625
+          ],
+          "camera": "cam1",
+          "frame": 8,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            823.062255859375,
+            449.9525146484375,
+            97.52007293701172
+          ],
+          "camera": "cam1",
+          "frame": 52,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            825.817138671875,
+            450.9812927246094,
+            96.39675903320312
+          ],
+          "camera": "cam1",
+          "frame": 66,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            836.0226440429688,
+            454.59375,
+            99.62464904785156
+          ],
+          "camera": "cam1",
+          "frame": 110,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            840.3653564453125,
+            455.6219787597656,
+            94.88642883300781
+          ],
+          "camera": "cam1",
+          "frame": 124,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            853.626953125,
+            460.87109375,
+            106.42115783691406
+          ],
+          "camera": "cam1",
+          "frame": 168,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            857.1945190429688,
+            462.2957763671875,
+            106.92206573486328
+          ],
+          "camera": "cam1",
+          "frame": 182,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            861.6366577148438,
+            461.309326171875,
+            110.08711242675781
+          ],
+          "camera": "cam1",
+          "frame": 226,
+          "person": 3,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1173.7860107421875,
+            453.8369445800781,
+            100.08354949951172
+          ],
+          "camera": "cam2",
+          "frame": 8,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            916.8121948242188,
+            544.927734375,
+            210.4832305908203
+          ],
+          "camera": "cam2",
+          "frame": 8,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1172.796142578125,
+            453.5028076171875,
+            100.66523742675781
+          ],
+          "camera": "cam2",
+          "frame": 52,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            904.3492431640625,
+            550.7639770507812,
+            209.18222045898438
+          ],
+          "camera": "cam2",
+          "frame": 52,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1173.2083740234375,
+            453.6082763671875,
+            100.55402374267578
+          ],
+          "camera": "cam2",
+          "frame": 66,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            903.9727783203125,
+            547.8948364257812,
+            200.98597717285156
+          ],
+          "camera": "cam2",
+          "frame": 66,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1173.75048828125,
+            454.9324035644531,
+            97.04743957519531
+          ],
+          "camera": "cam2",
+          "frame": 110,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            878.5772705078125,
+            541.4117431640625,
+            169.45599365234375
+          ],
+          "camera": "cam2",
+          "frame": 110,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1179.216552734375,
+            457.50469970703125,
+            91.75682830810547
+          ],
+          "camera": "cam2",
+          "frame": 124,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            866.4010009765625,
+            549.35791015625,
+            150.32142639160156
+          ],
+          "camera": "cam2",
+          "frame": 124,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1184.507080078125,
+            457.3966064453125,
+            94.83984375
+          ],
+          "camera": "cam2",
+          "frame": 168,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            854.621337890625,
+            529.9522094726562,
+            156.87579345703125
+          ],
+          "camera": "cam2",
+          "frame": 168,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1178.95947265625,
+            455.85235595703125,
+            95.87596893310547
+          ],
+          "camera": "cam2",
+          "frame": 182,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            862.0044555664062,
+            532.5604248046875,
+            169.39376831054688
+          ],
+          "camera": "cam2",
+          "frame": 182,
+          "person": 2,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            1160.907958984375,
+            451.63177490234375,
+            95.84213256835938
+          ],
+          "camera": "cam2",
+          "frame": 226,
+          "person": 1,
+          "segment": 0
+        },
+        {
+          "any_positive_joint": true,
+          "boxes_xys": [
+            821.2279052734375,
+            553.8331298828125,
+            209.70755004882812
+          ],
+          "camera": "cam2",
+          "frame": 226,
+          "person": 2,
+          "segment": 0
+        }
+      ]
+    }
+  ],
+  "split": {
+    "calibration": [
+      "video_000/clip_027"
+    ],
+    "eval": [
+      "video_000/clip_000",
+      "video_000/clip_037"
+    ]
+  }
+}
