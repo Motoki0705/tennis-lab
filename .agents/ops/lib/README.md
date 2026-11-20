@@ -43,6 +43,7 @@ repo rootを子へ渡し、入口の `require_checkout_job()` が実FDのinode�
 | `cleanup/cleanup.py` のscan/apply-auto/delete | 有限launcher。直接file実行は拒否 |
 | `worktree_cleanup` のscan/cleanup（dry-run含む） | 有限launcher。直接module実行は拒否 |
 | `storage_tier` の全subcommand（dry-run含む） | 有限launcher。直接module実行は拒否 |
+| `shared_memory/autodream_job.py run`（dry-run含む） | 有限launcher。直接file実行は拒否。[AutoDream](../shared_memory/README.md#autodream) |
 | `dispatcher run` / `dispatcher.judgement` | 有限launcher。直接の判定起動は拒否 |
 | `dispatcher supervise` | `--supervisor` 専用launcher。直接CLIや有限launcherからは拒否 |
 | `board web` | `--board-web-port PORT` 専用launcher。直接CLIからは拒否 |
@@ -507,10 +508,11 @@ timer・systemd操作やagent起動は含まない。
 
 - プロファイルなし: 完全な役割既定値 → タスクの `--model` / `--effort` の順。
   overrideがあっても不足・不正な既定設定を許容しない。
-- `--profile review` / `ops_report` / `ops_scout` / `issue_judgement`: プロファイルの固定値を使う。
+- `--profile review` / `ops_report` / `ops_scout` / `issue_judgement` / `memory_autodream` はプロファイルの固定値を使う。
   `--model` / `--effort` / `--role` との併用を拒否する。
   reviewだけは下記の専用選択入力を受け付ける。他profileの設定・引数・継続契約は変えない。
   `ops_report` はClaude親、`ops_scout` はCodex調査子、`issue_judgement` はCodex着手判定に対応する。
+  `memory_autodream` は一時展開した `main` を読み取り専用で参照して統合計画を返す。
 - configは隣の `agents.conf`。明示設定は `--config-file FILE`。内容はリテラルな
   `NAME=value` とコメントだけで、shellとして評価しない。環境変数の同名pinは読まない。
   CLI自身のmodel/effort/service tier設定より明示引数を優先し、実効値も別途照合する。

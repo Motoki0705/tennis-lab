@@ -187,6 +187,13 @@ def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
     assert "profile=review" in result.stderr
 
 
+def test_memory_autodream_profile_refuses_write_mode(tmp_path: Path) -> None:
+    result = _codex_args(tmp_path, "--profile", "memory_autodream", "--mode", "write")
+    assert result.returncode == 2
+    assert "memory_autodream requires read-only mode" in result.stderr
+    assert not (tmp_path / "args.txt").exists()
+
+
 def test_audit_parent_uses_claude_with_read_only_tools(
     tmp_path: Path,
 ) -> None:

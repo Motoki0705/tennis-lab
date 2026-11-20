@@ -85,6 +85,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             "cleanup",
             "board",
             "parent",
+            "shared_memory",
             "git_sync",
             "worktree_cleanup",
             "storage_tier",
@@ -231,6 +232,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "triage",
         "cleanup",
         "proposal-expiry",
+        "memory-autodream",
         "git-sync",
         "worktree-cleanup",
         "storage-tier",
@@ -518,6 +520,7 @@ def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) ->
         "triage",
         "cleanup",
         "proposal-expiry",
+        "memory-autodream",
         "git-sync",
         "worktree-cleanup",
         "storage-tier",
@@ -532,6 +535,7 @@ def test_run_starts_only_oneshot_without_enabling_timer(
         "triage": "tennis-lab-ops-triage",
         "cleanup": "tennis-lab-cleanup",
         "proposal-expiry": "tennis-lab-improvement-expire",
+        "memory-autodream": "tennis-lab-memory-autodream",
         "git-sync": "tennis-lab-git-sync",
         "worktree-cleanup": "tennis-lab-worktree-cleanup",
         "storage-tier": "tennis-lab-storage-tier",
@@ -608,6 +612,42 @@ def test_targeted_install_expands_agents_without_maintenance(
     assert result.returncode == 0, result.stderr
     config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
     assert {path.name for path in config.iterdir()} == AGENT_UNITS
+
+
+def test_memory_autodream_install_schedule_and_state(control: ControlEnv) -> None:
+    target = "memory-autodream"
+    stem = "tennis-lab-memory-autodream"
+    assert control.run("install", target).returncode == 0
+    config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
+    assert {path.name for path in config.iterdir()} == {
+        stem + ".timer",
+        stem + ".service",
+    }
+    timer = (config / (stem + ".timer")).read_text()
+    assert "OnCalendar=*-*-* 05:00:00 Asia/Tokyo" in timer
+    assert "Persistent=true" in timer
+    service = (config / (stem + ".service")).read_text()
+    assert "KillMode=control-group" in service
+    assert "TimeoutStopSec=60" in service
+    checked(control, "on", target)
+    assert control.read()["units"][stem + ".timer"]["UnitFileState"] == "enabled"
+    assert checked(control, "status", target)["targets"][0]["last_run"] is None
+    state = (
+        Path(control.environment["XDG_STATE_HOME"])
+        / "tennis-lab-agents/shared-memory/autodream_state.json"
+    )
+    state.parent.mkdir(parents=True)
+    record = {"schema_version": 1, "last_outcome": "skipped_trigger"}
+    state.write_text(json.dumps(record))
+    report = checked(control, "status", target)["targets"][0]
+    assert report["last_run"] == record
+    exec_start = next(
+        unit["exec_start"]
+        for unit in report["units"]
+        if unit["unit"] == stem + ".service"
+    )
+    assert "checkout_job.py --repo" in exec_start
+    assert exec_start.endswith("/shared_memory/autodream_job.py run")
 
 
 @pytest.mark.parametrize(

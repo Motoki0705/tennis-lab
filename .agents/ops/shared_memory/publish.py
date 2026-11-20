@@ -64,6 +64,8 @@ def _prepare(
     today: date,
     previous_base: str | None,
     retry_reason: str,
+    *,
+    require_fresh: bool,
 ) -> _Prepared:
     base = git.fetch_main(remote)
     if previous_base is not None:
@@ -99,7 +101,7 @@ def _prepare(
     for path, content in edits.items():
         if content is not None and after.read_bytes(path) != content:
             raise ValueError(f"{path}: committed bytes differ from the validated edit")
-    if problems := validate(after, today=today):
+    if problems := validate(after, today=today, require_fresh=require_fresh):
         raise validation_error(problems)
     return _Prepared(base, head, changes)
 
@@ -161,10 +163,18 @@ def publish_operations(
     remote: str = "origin",
     dry_run: bool = False,
     today: date | None = None,
+    require_fresh: bool = False,
 ) -> Publication:
     """Validate, publish and merge a batch, raising on refused or uncertain steps."""
     today = today or date.today()
-    return _publish(repo, parse_operations(operations, today), today, remote, dry_run)
+    return _publish(
+        repo,
+        parse_operations(operations, today),
+        today,
+        remote,
+        dry_run,
+        require_fresh=require_fresh,
+    )
 
 
 def publish_index_repair(
@@ -174,6 +184,7 @@ def publish_index_repair(
     remote: str = "origin",
     dry_run: bool = False,
     today: date | None = None,
+    require_fresh: bool = False,
 ) -> Publication:
     """Publish only regenerated documents when the latest main has a repair diff."""
     return _publish(
@@ -183,6 +194,7 @@ def publish_index_repair(
         remote,
         dry_run,
         repair_reason=publication_reason(reason),
+        require_fresh=require_fresh,
     )
 
 
@@ -193,6 +205,7 @@ def _publish(
     remote: str,
     dry_run: bool,
     *,
+    require_fresh: bool,
     repair_reason: str | None = None,
 ) -> Publication:
     summaries = tuple(
@@ -223,6 +236,7 @@ def _publish(
                 today,
                 previous.base if previous else None,
                 retry_reason,
+                require_fresh=require_fresh,
             )
             result = Publication(
                 dry_run,

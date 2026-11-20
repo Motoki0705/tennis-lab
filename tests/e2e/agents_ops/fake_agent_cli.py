@@ -187,6 +187,8 @@ def main() -> None:
             return
     structured = "--json-schema" in args or "--output-schema" in args
     payload = {"message": prompt.strip()}
+    if payload_file := os.environ.get("FAKE_STRUCTURED_OUTPUT_FILE"):
+        payload = json.loads(Path(payload_file).read_text(encoding="utf-8"))
     if scenario == "schema_mismatch":
         payload = {"message": 123}
     final = json.dumps(payload) if structured else prompt

@@ -80,6 +80,47 @@ PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory audit
 
 `shared_memory.operations.apply_operations(source, operations, *, today=None)` は checkout の `Path` または `Tree` に対して、`batch` と同形式の操作配列を検査する。返り値はリポジトリ相対パスから書き込む `bytes` または削除を表す `None` への対応で、変更が必要な生成文書も含む。入力ツリーへの書き込みは発生しない。
 
-`shared_memory.publish.publish_operations(repo, operations, *, remote="origin", dry_run=False, today=None)` は、最新 `main` の fetch から公開までを実行し、JSON 出力と同じ項目を持つ `Publication` を返す。`today` を指定した場合は、日付既定値と検査に同じ日を使う。入力・検査・公開の拒否や曖昧な応答では例外を送出する。AutoDream の Prune & Index はこの API に操作配列を渡す（#2326で実装中）。
+`shared_memory.publish.publish_operations(repo, operations, *, remote="origin", dry_run=False, today=None, require_fresh=False)` は、最新 `main` の fetch から公開までを実行し、JSON 出力と同じ項目を持つ `Publication` を返す。`today` を指定した場合は、日付既定値と検査に同じ日を使う。入力・検査・公開の拒否や曖昧な応答では例外を送出する。
 
-`shared_memory.publish.publish_index_repair(repo, *, reason, remote="origin", dry_run=False, today=None)` は、エントリ操作が無い場合に生成文書だけを検査・公開する。生成差分が無ければ無変更としてエラーを返す。
+`shared_memory.publish.publish_index_repair(repo, *, reason, remote="origin", dry_run=False, today=None, require_fresh=False)` は、エントリ操作が無い場合に生成文書だけを検査・公開する。生成差分が無ければ無変更としてエラーを返す。AutoDream は両 API の `require_fresh` を使い、載せ直し時も候補に期限切れのエントリがあれば公開を拒否する。
+
+## AutoDream
+
+### 発火条件
+
+前回統合完了から **168時間以上**経過したうえで、前回確認した `main` 以降の件数が **main のコミット10件以上**または **共有memory更新3件以上**に達すると起動する。コミットは `main` の first-parent 上で1件ずつ数える。共有memory更新は、同じ区間で `SUMMARY.md` または共有4層直下の Markdown に first parent から差分のあるコミットを数える。初回は経過時間の条件を満たした扱いとし、first-parent 全履歴に件数条件を適用する。
+
+引用の破損、上限超過、最終確認から90日を超えたエントリ、生成文書のバイト差分は直ちに発火する。手動の `--force` も発火する。条件未達なら計測値と `skipped_trigger` を記録して終了する。
+
+### 実行の流れ
+
+1. **Orient** は最新の remote `main` の SHA を固定し、共有4層のエントリの生バイトと SHA-256、生成文書を取得する。
+2. **Gather Signal** は `audit` と `plan_sync` で問題を点検する。上限の80%以上に達した文書、題名・要約の一致による重複候補、履歴上で変更・削除された引用先、規則や skill への昇格候補を示す。
+3. **Consolidate** は固定したリポジトリの一時展開を読み取り専用の `memory_autodream` runner に渡す。`workflow`・`decision`・`environment`・`gotcha` を同条件で扱い、根拠のある修正・削除・重複統合・相対日時の絶対日付化を JSON 計画にする。計画に含まれる各更新・削除に観測時の SHA-256 を付け、適用後の形式・引用・鮮度などを機械検査する。一時展開の範囲は専用の `ops-report` memory を除いた Git 管理ファイル。
+4. **Prune & Index** は検査済みの一括操作を上記の公開 API に渡し、`SUMMARY.md` と4層の索引を再生成して即時マージする。生成文書だけにずれがあれば修復 API を使う。変更も未修復の問題もなければ `noop` を記録する。
+
+### 手動実行と状態
+
+メインcheckoutから [有限jobのlauncher](../lib/README.md#既存cliと新規jobの接続) 経由で実行する。
+
+```bash
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/shared_memory/autodream_job.py run --force --dry-run
+```
+
+`--dry-run` はトリガー、シグナル、発火時の計画と公開前検査を JSON で返す。PR とマージは発生せず、統合の基準を進めない。件数や間隔は `--min-main-commits`、`--min-memory-commits`、`--min-days` で変更できる。
+
+状態と排他 lock は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/shared-memory/` に置く。試験時は `--state-dir` で差し替えられる。`autodream_state.json` に最終起動、結果、トリガーの計測、直近の確定した PR とマージの SHA、失敗詳細を記録する。成功時の `last_completed_at` は統合または無変更の確認時刻、`last_consolidated_sha` は計画が観測した `main` の SHA。載せ直し中に増えた履歴は次回の計測に含まれる。
+
+runner・検証・公開の失敗は `failed` と詳細を記録して非ゼロで終了する。runner の詳細は状態ディレクトリの `agent-runs/` に残る。排他競合や状態の読込エラーは標準エラー出力に理由を出し、既存状態を保持する。launcher を経由しない起動は終了コード `75` で拒否する。
+
+### systemd への導入
+
+merge 後に人間がメインcheckoutで導入・有効化する。日次 timer は毎日05:00 Asia/Tokyoに点検する。`run` で単発実行でき、`status` の `last_run` から状態 JSON を確認できる。
+
+```bash
+spin ops install memory-autodream
+spin ops on memory-autodream
+spin ops status memory-autodream
+spin ops run memory-autodream
+```

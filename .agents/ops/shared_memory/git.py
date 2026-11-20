@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
-from .layout import is_shared_path
+from .layout import DEDICATED_PATH, is_shared_path
 from .tree import Edits, FileKind, resolve_links
 
 _LOCAL_GIT_ENV = {
@@ -247,6 +247,8 @@ class GitTree:
             metadata, name = row.split(b"\t", 1)
             mode, _, oid = metadata.split()
             path = os.fsdecode(name)
+            if path.startswith(f"{DEDICATED_PATH}/"):
+                continue
             self.nodes[path] = (_KINDS[mode], _sha(oid))
             parent, _, filename = path.rpartition("/")
             self.directories.setdefault(parent or ".", []).append(filename)

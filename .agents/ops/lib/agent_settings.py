@@ -167,7 +167,7 @@ def resolve(
                 raise ValueError("implementation effort must be max")
     threads = None
     if (
-        profile in {"ops_report", "ops_scout", "issue_judgement"}
+        profile in {"ops_report", "ops_scout", "issue_judgement", "memory_autodream"}
         and mode != "read-only"
     ):
         raise ValueError(f"{profile} requires read-only mode")
@@ -357,7 +357,20 @@ def command(
                     cmd += ["-c", f"mcp_servers.{name}.{key}=" + json.dumps(value)]
     if settings["profile"] == "review":
         cmd += ["-c", "web_search=" + json.dumps(settings["web_search"])]
-    if settings["profile"] in {"review", "ops_scout", "issue_judgement"}:
+    if settings["profile"] == "memory_autodream":
+        cmd += [
+            "--skip-git-repo-check",
+            "-c",
+            'approval_policy="never"',
+            "-c",
+            'web_search="disabled"',
+        ]
+    if settings["profile"] in {
+        "review",
+        "ops_scout",
+        "issue_judgement",
+        "memory_autodream",
+    }:
         cmd += ["--disable", "multi_agent"]
     if session:
         cmd += [session]

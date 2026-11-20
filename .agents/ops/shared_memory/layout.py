@@ -10,6 +10,7 @@ MEMORY_DIR: Final = ".agents/memory"
 SUMMARY_PATH = f"{MEMORY_DIR}/SUMMARY.md"
 INDEX_NAME = "index.md"
 DEDICATED_AREA = "ops-report"
+DEDICATED_PATH = f"{MEMORY_DIR}/{DEDICATED_AREA}"
 _LAYER_DIRS = frozenset(f"{MEMORY_DIR}/{layer}" for layer in SHARED_LAYERS)
 _FILENAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md")
 
