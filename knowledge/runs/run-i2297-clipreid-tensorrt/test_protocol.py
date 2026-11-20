@@ -336,6 +336,28 @@ def test_ncu_rejects_a_shifted_row_even_with_numeric_metric_cells(tmp_path):
         read_ncu(report)
 
 
+def test_ncu_suffix_requires_full_ordered_nsys_launch_coverage(tmp_path):
+    prefix, suffix = (tmp_path / name for name in ("prefix.csv", "suffix.csv"))
+    for path, grid, duration, dram, tensor in (
+        (prefix, "(32, 1, 1)", 100, 1024, 20),
+        (suffix, "(8, 2, 1)", 300, 2048, 60),
+    ):
+        with path.open("w", newline="") as stream:
+            writer = csv.writer(stream)
+            writer.writerow(["ID", "Grid Size", "Block Size", *NCU_METRICS])
+            writer.writerow(
+                [0, grid, "(128, 1, 1)", duration, dram, 0, tensor, 0, 0, 0, 0]
+            )
+    reference = [(32, 1, 1, 128, 1, 1), (8, 2, 1, 128, 1, 1)]
+    result = profiles.stitch_ncu(prefix, suffix, reference, tmp_path / "joined.csv")
+    assert result["profiled_kernels"] == 2
+    assert (result["prefix_kernels"], result["suffix_kernels"]) == (1, 1)
+    assert result["dram_read_bytes"] == 3072
+    assert result["tensor_active_pct_time_weighted"] == 50
+    with pytest.raises(ValueError, match="ordered nsys range"):
+        profiles.stitch_ncu(prefix, suffix, reference[::-1], tmp_path / "mismatch.csv")
+
+
 @pytest.mark.parametrize("mode", ("kernel", "application"))
 def test_ncu_uses_the_requested_replay_and_requires_strict_application_matching(
     mode, tmp_path, monkeypatch

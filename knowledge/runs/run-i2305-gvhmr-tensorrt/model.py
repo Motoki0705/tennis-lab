@@ -1,11 +1,14 @@
 """SIGA24 denoiser bindings and its variable-length attention contract."""
 
 from contextlib import contextmanager
+from unittest.mock import patch
 
+import numpy as np
 import torch
 from torch import nn
 
 from src.submodules.configuration import SmplAssetPaths
+from src.submodules.vendor.gvhmr.network import relative_transformer
 from src.submodules.vendor.gvhmr.network.relative_transformer import NetworkEncoderRoPE
 from src.submodules.vendor.gvhmr.utils.net_utils import length_to_mask
 
@@ -29,17 +32,33 @@ OUTPUT_WIDTHS = {
 }
 
 
-def input_shapes(frames):
+def input_shapes(frames, batch_size=1):
     return {
-        key: (1,) if key == "length" else (1, frames, *tail)
+        key: (batch_size,) if key == "length" else (batch_size, frames, *tail)
         for key, tail in INPUT_WIDTHS.items()
     }
 
 
-def output_shapes(frames):
+def output_shapes(frames, batch_size=1):
     return {
-        key: (1,) if key == "length_out" else (1, frames, *tail)
+        key: (batch_size,) if key == "length_out" else (batch_size, frames, *tail)
         for key, tail in OUTPUT_WIDTHS.items()
+    }
+
+
+def pack_sequences(sequences):
+    """Combine whole, equal-length person sequences along the person axis."""
+    frames = int(sequences[0]["length"][0])
+    shapes = input_shapes(frames)
+    if any(
+        arrays["length"].tolist() != [frames]
+        or any(arrays[name].shape != shape for name, shape in shapes.items())
+        for arrays in sequences
+    ):
+        raise ValueError("All GVHMR sequences must have the same complete frame length")
+    return {
+        name: np.concatenate([arrays[name] for arrays in sequences], axis=0)
+        for name in shapes
     }
 
 
@@ -104,7 +123,7 @@ class DenoiserIO(nn.Module):
 
 
 @contextmanager
-def dynamic_attention(wrapper):
+def dynamic_attention(wrapper, *, dynamic_batch=False):
     """Keep vendor layers and replace the export's length-dependent Python loop."""
     network = wrapper.network
     window = network.max_len
@@ -125,8 +144,23 @@ def dynamic_attention(wrapper):
         for block in network.blocks
     )
     try:
-        yield
+        if dynamic_batch:
+            # The vendor helper traces len(lengths) as the sample's batch size.
+            with (
+                patch.object(
+                    relative_transformer, "length_to_mask", dynamic_length_mask
+                ),
+                patch(f"{__name__}.length_to_mask", dynamic_length_mask),
+            ):
+                yield
+        else:
+            yield
     finally:
         for handle in handles:
             handle.remove()
         network.max_len = window
+
+
+def dynamic_length_mask(lengths, max_len):
+    positions = torch.arange(max_len, device=lengths.device)
+    return positions[None, :] < lengths[:, None]
