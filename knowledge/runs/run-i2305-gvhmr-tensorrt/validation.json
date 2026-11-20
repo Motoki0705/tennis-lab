@@ -416,5 +416,1020 @@
       }
     }
   },
-  "fourth_attempt_inspection_change": "The saved inspector reports show two Bool masks between K and V. Check all three Q/K/V dtypes. INT8 residual fusions expose an FP16 residual input and an INT8 activation input. Require the observed fused tactic signature, both INT8 tactic operands and a matching ONNX Q/DQ pair."
+  "fourth_attempt_inspection_change": "The saved inspector reports show two Bool masks between K and V. Check all three Q/K/V dtypes. INT8 residual fusions expose an FP16 residual input and an INT8 activation input. Require the observed fused tactic signature, both INT8 tactic operands and a matching ONNX Q/DQ pair.",
+  "successful_tensor_rt_conversions_and_boundaries": {
+    "2": {
+      "queue": {
+        "job": "i2305-gvhmr-build-and-measure-2-r5",
+        "queue_run_id": "0-8204837885245029317_2026-11-20T08-08-34-754970682Z_3163088_i2305-gvhmr-build-and-measure-2-r5",
+        "terminal_state": "done",
+        "commit": "1567df1c13e9e805b85f979d11e079c8f5dddc4f",
+        "run_json": ".training_queue/repro/0-8204837885245029317_2026-11-20T08-08-34-754970682Z_3163088_i2305-gvhmr-build-and-measure-2-r5/run.json",
+        "queue_log": ".training_queue/logs/0-8204837885245029317_2026-11-20T08-08-34-754970682Z_3163088_i2305-gvhmr-build-and-measure-2-r5.log",
+        "queue_log_sha256": "4301ea954873ba8486e74cfb4a52f1d8cbf092ca7d6bfa6965950d2073b69a8c",
+        "started_at": "2026-11-20T19:41:50+09:00",
+        "finished_at": "2026-11-20T19:55:11.886641+09:00"
+      },
+      "conversion": {
+        "condition": "2",
+        "dynamic_profile": {
+          "batch": 1,
+          "length_counts": {
+            "eval": {
+              "177": 4,
+              "145": 4
+            },
+            "calibration": {
+              "117": 4
+            }
+          },
+          "profile_lengths": {
+            "min": 117,
+            "opt": 145,
+            "max": 177
+          },
+          "inputs": {
+            "length": [
+              [
+                1
+              ],
+              [
+                1
+              ],
+              [
+                1
+              ]
+            ],
+            "obs": [
+              [
+                1,
+                117,
+                17,
+                3
+              ],
+              [
+                1,
+                145,
+                17,
+                3
+              ],
+              [
+                1,
+                177,
+                17,
+                3
+              ]
+            ],
+            "f_cliffcam": [
+              [
+                1,
+                117,
+                3
+              ],
+              [
+                1,
+                145,
+                3
+              ],
+              [
+                1,
+                177,
+                3
+              ]
+            ],
+            "f_cam_angvel": [
+              [
+                1,
+                117,
+                6
+              ],
+              [
+                1,
+                145,
+                6
+              ],
+              [
+                1,
+                177,
+                6
+              ]
+            ],
+            "f_imgseq": [
+              [
+                1,
+                117,
+                1024
+              ],
+              [
+                1,
+                145,
+                1024
+              ],
+              [
+                1,
+                177,
+                1024
+              ]
+            ]
+          },
+          "outside_lengths": [
+            116,
+            178
+          ],
+          "representatives": {
+            "177": "clip_000-p0-cam0-s0",
+            "145": "clip_037-p0-cam2-s0"
+          }
+        },
+        "tensors_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "graph_sha256": "12273a5f52633d4048d275f950b28c13cd69b2174828a0ec1e89fad19aa04d02",
+        "engine_sha256": "2474b55380f92b3b9f71d2f0304f3072c01593d5fbfe9da6028f9a8a76993185",
+        "compute_precision": {
+          "min": {
+            "engine_layers_by_precision": {
+              "fp16": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 110
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                117,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                117,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                117,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                117,
+                1024
+              ]
+            }
+          },
+          "opt": {
+            "engine_layers_by_precision": {
+              "fp16": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 110
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                145,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                145,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                145,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                145,
+                1024
+              ]
+            }
+          },
+          "max": {
+            "engine_layers_by_precision": {
+              "fp16": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 110
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                177,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                177,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                177,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                177,
+                1024
+              ]
+            }
+          }
+        },
+        "quantization": null,
+        "native_mask_adapter_parity": [
+          117,
+          145,
+          177
+        ]
+      },
+      "conversion_receipt": {
+        "path": "outputs/trt-gvhmr/build-2-r5/conversion.json",
+        "sha256": "876c0ce5f6a57131f1d7bfecee6fc09bdef8758982b87153e29de7a6a4b3a907"
+      },
+      "inspectors": {
+        "min": {
+          "path": "outputs/trt-gvhmr/build-2-r5/gvhmr.min.layers.json",
+          "sha256": "dfcd8f655d2e3486bea0f1d0a3cf7505a947ac968022675418bfee9841a4fb8e"
+        },
+        "opt": {
+          "path": "outputs/trt-gvhmr/build-2-r5/gvhmr.opt.layers.json",
+          "sha256": "dfcd8f655d2e3486bea0f1d0a3cf7505a947ac968022675418bfee9841a4fb8e"
+        },
+        "max": {
+          "path": "outputs/trt-gvhmr/build-2-r5/gvhmr.max.layers.json",
+          "sha256": "dfcd8f655d2e3486bea0f1d0a3cf7505a947ac968022675418bfee9841a4fb8e"
+        }
+      },
+      "boundary_receipt": {
+        "path": "outputs/trt-gvhmr/boundary-2-r5/boundaries.json",
+        "sha256": "9fa7aa7c30ff39df8e9e74c59994454c0187851df61f22a92d94391805533e71"
+      },
+      "boundaries": {
+        "117": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-2-r5/L117.log",
+            "sha256": "67dab22b307f7fad50e1a0411206ad85478465183e81b1a511911e8eabc7c1d9"
+          },
+          "excerpt": "Engine executed L=117; all 117 frames valid"
+        },
+        "145": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-2-r5/L145.log",
+            "sha256": "c563a611cf231831c44f8aa9ffe091ce752f126bc49e11ca5980705c882ceddd"
+          },
+          "excerpt": "Engine executed L=145; all 145 frames valid"
+        },
+        "177": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-2-r5/L177.log",
+            "sha256": "ead2779814a96530ba04b83c4e4ca03494d293b7a6c3bf17ca7e1cd23bce4210"
+          },
+          "excerpt": "Engine executed L=177; all 177 frames valid"
+        },
+        "116": {
+          "exit_code": 1,
+          "in_profile": false,
+          "rejected_by_trt": true,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-2-r5/L116.log",
+            "sha256": "d0b25388555b4fa283327bfd1a99f8150f5036b9db09bc57d736f93727411a0d"
+          },
+          "excerpt": "ValueError: TensorRT rejected input shape obs=(1, 116, 17, 3)"
+        },
+        "178": {
+          "exit_code": 1,
+          "in_profile": false,
+          "rejected_by_trt": true,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-2-r5/L178.log",
+            "sha256": "8d38e982ce041fff304209af7a9f8fe156e561c20abaaa82d7a71dbd1fb7b621"
+          },
+          "excerpt": "ValueError: TensorRT rejected input shape obs=(1, 178, 17, 3)"
+        }
+      }
+    },
+    "3a": {
+      "queue": {
+        "job": "i2305-gvhmr-build-and-measure-3a-r5",
+        "queue_run_id": "0-8204837884971504911_2026-11-20T08-08-35-028495088Z_3163165_i2305-gvhmr-build-and-measure-3a-r5",
+        "terminal_state": "done",
+        "commit": "1567df1c13e9e805b85f979d11e079c8f5dddc4f",
+        "run_json": ".training_queue/repro/0-8204837884971504911_2026-11-20T08-08-35-028495088Z_3163165_i2305-gvhmr-build-and-measure-3a-r5/run.json",
+        "queue_log": ".training_queue/logs/0-8204837884971504911_2026-11-20T08-08-35-028495088Z_3163165_i2305-gvhmr-build-and-measure-3a-r5.log",
+        "queue_log_sha256": "a6fb6a223d2e3a163ae820dfff61b2f00a74b6b840a8b7743221fc701b286d41",
+        "started_at": "2026-11-20T19:55:12+09:00",
+        "finished_at": "2026-11-20T20:11:28.921325+09:00"
+      },
+      "conversion": {
+        "condition": "3a",
+        "dynamic_profile": {
+          "batch": 1,
+          "length_counts": {
+            "eval": {
+              "177": 4,
+              "145": 4
+            },
+            "calibration": {
+              "117": 4
+            }
+          },
+          "profile_lengths": {
+            "min": 117,
+            "opt": 145,
+            "max": 177
+          },
+          "inputs": {
+            "length": [
+              [
+                1
+              ],
+              [
+                1
+              ],
+              [
+                1
+              ]
+            ],
+            "obs": [
+              [
+                1,
+                117,
+                17,
+                3
+              ],
+              [
+                1,
+                145,
+                17,
+                3
+              ],
+              [
+                1,
+                177,
+                17,
+                3
+              ]
+            ],
+            "f_cliffcam": [
+              [
+                1,
+                117,
+                3
+              ],
+              [
+                1,
+                145,
+                3
+              ],
+              [
+                1,
+                177,
+                3
+              ]
+            ],
+            "f_cam_angvel": [
+              [
+                1,
+                117,
+                6
+              ],
+              [
+                1,
+                145,
+                6
+              ],
+              [
+                1,
+                177,
+                6
+              ]
+            ],
+            "f_imgseq": [
+              [
+                1,
+                117,
+                1024
+              ],
+              [
+                1,
+                145,
+                1024
+              ],
+              [
+                1,
+                177,
+                1024
+              ]
+            ]
+          },
+          "outside_lengths": [
+            116,
+            178
+          ],
+          "representatives": {
+            "177": "clip_000-p0-cam0-s0",
+            "145": "clip_037-p0-cam2-s0"
+          }
+        },
+        "tensors_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "graph_sha256": "adaf4aedddd3765afe69155964b6fa0cac8e45d09142027004a89139bbd7c6d8",
+        "engine_sha256": "b2c520d748de82c88f85e04cf2b41b497a3b8e5e3c3e81f724be1a7d430130e3",
+        "compute_precision": {
+          "min": {
+            "engine_layers_by_precision": {
+              "fp16": 12,
+              "int8": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 14,
+              "int8": 96
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                117,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                117,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                117,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                117,
+                1024
+              ]
+            }
+          },
+          "opt": {
+            "engine_layers_by_precision": {
+              "fp16": 12,
+              "int8": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 14,
+              "int8": 96
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                145,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                145,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                145,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                145,
+                1024
+              ]
+            }
+          },
+          "max": {
+            "engine_layers_by_precision": {
+              "fp16": 12,
+              "int8": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 14,
+              "int8": 96
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                177,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                177,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                177,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                177,
+                1024
+              ]
+            }
+          }
+        },
+        "quantization": {
+          "mode": "int8",
+          "sequences": 4,
+          "calibration_input_shapes": "length:1,obs:1x117x17x3,f_cliffcam:1x117x3,f_cam_angvel:1x117x6,f_imgseq:1x117x1024",
+          "frames": 468,
+          "Q": 168,
+          "DQ": 168,
+          "protocol": "2297",
+          "calibration_method": "max",
+          "calibration_eps": [
+            "cpu"
+          ],
+          "high_precision_dtype": "fp16",
+          "verified_quantize_zero_point_type": "INT8"
+        },
+        "native_mask_adapter_parity": [
+          117,
+          145,
+          177
+        ]
+      },
+      "conversion_receipt": {
+        "path": "outputs/trt-gvhmr/build-3a-r5/conversion.json",
+        "sha256": "188421a3d5bd114bc92655fa8b678b151043ffcc893bfbe51def3508933d7733"
+      },
+      "inspectors": {
+        "min": {
+          "path": "outputs/trt-gvhmr/build-3a-r5/gvhmr.min.layers.json",
+          "sha256": "b3fd41a5ebe6e60a2aae18801274d8d343303583ca74f346d07f2719497b412f"
+        },
+        "opt": {
+          "path": "outputs/trt-gvhmr/build-3a-r5/gvhmr.opt.layers.json",
+          "sha256": "b3fd41a5ebe6e60a2aae18801274d8d343303583ca74f346d07f2719497b412f"
+        },
+        "max": {
+          "path": "outputs/trt-gvhmr/build-3a-r5/gvhmr.max.layers.json",
+          "sha256": "b3fd41a5ebe6e60a2aae18801274d8d343303583ca74f346d07f2719497b412f"
+        }
+      },
+      "boundary_receipt": {
+        "path": "outputs/trt-gvhmr/boundary-3a-r5/boundaries.json",
+        "sha256": "9fa7aa7c30ff39df8e9e74c59994454c0187851df61f22a92d94391805533e71"
+      },
+      "boundaries": {
+        "117": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3a-r5/L117.log",
+            "sha256": "ef83d5e1ebb7c22d89039e771c498a07cd3736031fbdc19fc5ae97fe9e393e68"
+          },
+          "excerpt": "Engine executed L=117; all 117 frames valid"
+        },
+        "145": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3a-r5/L145.log",
+            "sha256": "8e4050c92ce5aea368da5606a498f0108c19bf2e09ebefdc47bd0d5a3668ae83"
+          },
+          "excerpt": "Engine executed L=145; all 145 frames valid"
+        },
+        "177": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3a-r5/L177.log",
+            "sha256": "7e493f7fb377d1a8febf4952b8a92b7769bd6f0463c94cd706f40ec077f1fd73"
+          },
+          "excerpt": "Engine executed L=177; all 177 frames valid"
+        },
+        "116": {
+          "exit_code": 1,
+          "in_profile": false,
+          "rejected_by_trt": true,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3a-r5/L116.log",
+            "sha256": "b3e80d1c5798c49d6fb5c6467b1003a2699b86b4b34be25a13ad354c5b49b87c"
+          },
+          "excerpt": "ValueError: TensorRT rejected input shape obs=(1, 116, 17, 3)"
+        },
+        "178": {
+          "exit_code": 1,
+          "in_profile": false,
+          "rejected_by_trt": true,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3a-r5/L178.log",
+            "sha256": "0b43b33b0c5899493252e5811bbb8105a653a158a65eff72c99f359a2d86706b"
+          },
+          "excerpt": "ValueError: TensorRT rejected input shape obs=(1, 178, 17, 3)"
+        }
+      }
+    },
+    "3b": {
+      "queue": {
+        "job": "i2305-gvhmr-build-and-measure-3b-r5",
+        "queue_run_id": "0-8204837884702239052_2026-11-20T08-08-35-297760947Z_3163227_i2305-gvhmr-build-and-measure-3b-r5",
+        "terminal_state": "done",
+        "commit": "1567df1c13e9e805b85f979d11e079c8f5dddc4f",
+        "run_json": ".training_queue/repro/0-8204837884702239052_2026-11-20T08-08-35-297760947Z_3163227_i2305-gvhmr-build-and-measure-3b-r5/run.json",
+        "queue_log": ".training_queue/logs/0-8204837884702239052_2026-11-20T08-08-35-297760947Z_3163227_i2305-gvhmr-build-and-measure-3b-r5.log",
+        "queue_log_sha256": "e06d1546b09b640f0b8195b7803039cd67cf79f78635a840026683ef13d06ed6",
+        "started_at": "2026-11-20T20:11:29+09:00",
+        "finished_at": "2026-11-20T20:18:14.642604+09:00"
+      },
+      "conversion": {
+        "condition": "3b",
+        "dynamic_profile": {
+          "batch": 1,
+          "length_counts": {
+            "eval": {
+              "177": 4,
+              "145": 4
+            },
+            "calibration": {
+              "117": 4
+            }
+          },
+          "profile_lengths": {
+            "min": 117,
+            "opt": 145,
+            "max": 177
+          },
+          "inputs": {
+            "length": [
+              [
+                1
+              ],
+              [
+                1
+              ],
+              [
+                1
+              ]
+            ],
+            "obs": [
+              [
+                1,
+                117,
+                17,
+                3
+              ],
+              [
+                1,
+                145,
+                17,
+                3
+              ],
+              [
+                1,
+                177,
+                17,
+                3
+              ]
+            ],
+            "f_cliffcam": [
+              [
+                1,
+                117,
+                3
+              ],
+              [
+                1,
+                145,
+                3
+              ],
+              [
+                1,
+                177,
+                3
+              ]
+            ],
+            "f_cam_angvel": [
+              [
+                1,
+                117,
+                6
+              ],
+              [
+                1,
+                145,
+                6
+              ],
+              [
+                1,
+                177,
+                6
+              ]
+            ],
+            "f_imgseq": [
+              [
+                1,
+                117,
+                1024
+              ],
+              [
+                1,
+                145,
+                1024
+              ],
+              [
+                1,
+                177,
+                1024
+              ]
+            ]
+          },
+          "outside_lengths": [
+            116,
+            178
+          ],
+          "representatives": {
+            "177": "clip_000-p0-cam0-s0",
+            "145": "clip_037-p0-cam2-s0"
+          }
+        },
+        "tensors_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "graph_sha256": "38f2c8c67fc2f1d4de81558e6fbe159bf1529a8f33e5f8c4a53ff3590e180101",
+        "engine_sha256": "42c0414901ea6e1b2b61301f0c9ae1ad1e17fe7692e8060d8945b8f7a532b498",
+        "compute_precision": {
+          "min": {
+            "engine_layers_by_precision": {
+              "fp16": 12,
+              "fp8": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 14,
+              "fp8": 96
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                117,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                117,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                117,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                117,
+                1024
+              ]
+            }
+          },
+          "opt": {
+            "engine_layers_by_precision": {
+              "fp16": 12,
+              "fp8": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 14,
+              "fp8": 96
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                145,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                145,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                145,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                145,
+                1024
+              ]
+            }
+          },
+          "max": {
+            "engine_layers_by_precision": {
+              "fp16": 12,
+              "fp8": 72
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 14,
+              "fp8": 96
+            },
+            "bound_input_shapes": {
+              "length": [
+                1
+              ],
+              "obs": [
+                1,
+                177,
+                17,
+                3
+              ],
+              "f_cliffcam": [
+                1,
+                177,
+                3
+              ],
+              "f_cam_angvel": [
+                1,
+                177,
+                6
+              ],
+              "f_imgseq": [
+                1,
+                177,
+                1024
+              ]
+            }
+          }
+        },
+        "quantization": {
+          "mode": "fp8",
+          "sequences": 4,
+          "calibration_input_shapes": "length:1,obs:1x117x17x3,f_cliffcam:1x117x3,f_cam_angvel:1x117x6,f_imgseq:1x117x1024",
+          "frames": 468,
+          "Q": 168,
+          "DQ": 168,
+          "protocol": "2297",
+          "calibration_method": "max",
+          "calibration_eps": [
+            "cpu"
+          ],
+          "high_precision_dtype": "fp16",
+          "verified_quantize_zero_point_type": "FLOAT8E4M3FN"
+        },
+        "native_mask_adapter_parity": [
+          117,
+          145,
+          177
+        ]
+      },
+      "conversion_receipt": {
+        "path": "outputs/trt-gvhmr/build-3b-r5/conversion.json",
+        "sha256": "79c521e7a9bf70668c80c12eb0e2dbc3ae55081bff93728ad9fdeacad07b7e5a"
+      },
+      "inspectors": {
+        "min": {
+          "path": "outputs/trt-gvhmr/build-3b-r5/gvhmr.min.layers.json",
+          "sha256": "aca8cde8658b63b85aed859d6cb168f8a0e2b5c47cd56cc0b73ebc7f385b08ef"
+        },
+        "opt": {
+          "path": "outputs/trt-gvhmr/build-3b-r5/gvhmr.opt.layers.json",
+          "sha256": "aca8cde8658b63b85aed859d6cb168f8a0e2b5c47cd56cc0b73ebc7f385b08ef"
+        },
+        "max": {
+          "path": "outputs/trt-gvhmr/build-3b-r5/gvhmr.max.layers.json",
+          "sha256": "aca8cde8658b63b85aed859d6cb168f8a0e2b5c47cd56cc0b73ebc7f385b08ef"
+        }
+      },
+      "boundary_receipt": {
+        "path": "outputs/trt-gvhmr/boundary-3b-r5/boundaries.json",
+        "sha256": "9fa7aa7c30ff39df8e9e74c59994454c0187851df61f22a92d94391805533e71"
+      },
+      "boundaries": {
+        "117": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3b-r5/L117.log",
+            "sha256": "d952c191a4e413df49c14272976fc00341094054f1404f77e2fe4a9b2745cf7f"
+          },
+          "excerpt": "Engine executed L=117; all 117 frames valid"
+        },
+        "145": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3b-r5/L145.log",
+            "sha256": "5d8c157363eae4fcefbc88d93f2e1837448ffaf2663de3178bbdd58b01fc4d4e"
+          },
+          "excerpt": "Engine executed L=145; all 145 frames valid"
+        },
+        "177": {
+          "exit_code": 0,
+          "in_profile": true,
+          "rejected_by_trt": false,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3b-r5/L177.log",
+            "sha256": "227013cb5fa64c0df3558ba1338876a78ccbec15cdec6956411da4f87324b4a1"
+          },
+          "excerpt": "Engine executed L=177; all 177 frames valid"
+        },
+        "116": {
+          "exit_code": 1,
+          "in_profile": false,
+          "rejected_by_trt": true,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3b-r5/L116.log",
+            "sha256": "4ecddeffd8babcdedcd3ab8f6a57469eea46c7f9abc7ddfd16d0ed4630dded47"
+          },
+          "excerpt": "ValueError: TensorRT rejected input shape obs=(1, 116, 17, 3)"
+        },
+        "178": {
+          "exit_code": 1,
+          "in_profile": false,
+          "rejected_by_trt": true,
+          "evidence_valid": true,
+          "log": {
+            "path": "outputs/trt-gvhmr/boundary-3b-r5/L178.log",
+            "sha256": "969fded2aafa3d7cb9491d93263bce4f67d00d4624ed5e13ef8a0a1b9af19fcb"
+          },
+          "excerpt": "ValueError: TensorRT rejected input shape obs=(1, 178, 17, 3)"
+        }
+      }
+    }
+  },
+  "measurement_crosscheck": {
+    "cases_with_full_metrics": 10,
+    "conditions": 5,
+    "eval_lengths": [
+      145,
+      177
+    ],
+    "eval_sequences_per_condition": 8,
+    "eval_frame_outputs_per_condition": 1288,
+    "latency_warmup": 30,
+    "latency_repeats_per_bucket": 300,
+    "ncu_nsys_kernel_counts_match_for_all_cases": true,
+    "length_mask_match_for_all_cases": true,
+    "torch_fp32_native_decode_exact_for_all_eval_sequences": true
+  },
+  "queue_timing": {
+    "jobs": 24,
+    "first_registration": "2026-11-20T02:49:17.362808+00:00",
+    "last_completion": "2026-11-20T11:18:14.642604+00:00",
+    "registration_to_final_completion_seconds": 30537.3,
+    "sum_seconds_from_repro_capture_to_job_completion": 5555.3
+  }
 }

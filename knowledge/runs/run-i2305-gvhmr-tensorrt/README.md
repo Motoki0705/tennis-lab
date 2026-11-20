@@ -2,6 +2,8 @@
 
 #2305 / #2278 Phase 1-D。共通の[単体推論プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md)で、GVHMRの時系列denoiserをPyTorch FP32・FP16とTensorRT FP16・INT8・FP8で比較する。
 
+5条件×2区分の比較、GPU内部指標、精度をrunノードにまとめた。元の測定とログの場所は各集計に記録した。 [runノード](../../nodes/tennis_scene/000076-run-i2305-gvhmr-tensorrt.md)・[metrics.json](metrics.json)・[validation.json](validation.json)
+
 ## 固定入力
 
 先行の #1757 の `serial-fb6255a-first-1/attempts/1-first` に保存された同一実行の3クリップを使った。DINOとViTPoseはFP16、HMR2とGVHMRはFP32で実行されたstore。各clipの `body_view_selection` と `hmr2_features` を既存のartifact codecで開き、GVHMR入力規約でperson・camera・source動画・各frameを照合した。全4方向の動画digestは #2297 のmedia pinと一致した。評価・PTQのクリップ、動画、同一cameraの収録元frame区間の交差は0件だった。
