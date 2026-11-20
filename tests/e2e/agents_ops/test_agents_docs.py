@@ -39,6 +39,7 @@ DOCS = [
     BOARD_SKILL,
     DSH_SKILL.with_name("task-template.md"),
     ROOT / ".agents/ops/parent/README.md",
+    ROOT / ".agents/ops/parent/worker_prompt.md",
     ROOT / ".agents/ops/worker_logs/README.md",
     ROOT / ".agents/ops/decision_logs/README.md",
     ROOT / ".agents/ops/decision_logs/README.ja.md",
@@ -172,6 +173,36 @@ def test_relative_links_resolve(doc: Path) -> None:
         if anchor and resolved.suffix == ".md" and anchor not in _anchors(resolved):
             broken.append(f"{target} (missing anchor)")
     assert not broken, f"{doc.relative_to(ROOT)}: broken links: {broken}"
+
+
+def test_worker_wait_is_reachable_from_the_operational_entry_points() -> None:
+    workers = ROOT / ".agents/skills/parent-session/references/workers.md"
+    assert {"開発ルール", "学習の実行"} <= _anchors(AGENTS_MD)
+    for doc in (AGENTS_MD, AGENTS_README):
+        assert any(
+            (doc.parent / target.partition("#")[0]).resolve() == workers
+            and target.endswith("#ciローカルqueueの待機")
+            for _, target, _ in _links(doc)
+        )
+    gotcha = "queue-worker-reaped-with-agent-exec-child.md"
+    assert not (MEMORY_DIR / "gotcha" / gotcha).exists()
+    assert gotcha not in (MEMORY_DIR / "gotcha/index.md").read_text(encoding="utf-8")
+
+
+def test_local_queue_policy_has_one_operational_source_and_preserves_colab() -> None:
+    legacy = "workers-do-not-wait-on-queue-jobs.md"
+    assert not (MEMORY_DIR / "decision" / legacy).exists()
+    assert legacy not in {
+        target for _, target, _ in _links(MEMORY_DIR / "decision/index.md")
+    }
+    assert "親が完了イベントで再開" not in MEMORY_SUMMARY.read_text(encoding="utf-8")
+    workers = ROOT / ".agents/skills/parent-session/references/workers.md"
+    assert {"ciローカルqueueの待機", "colabの長時間ジョブ"} <= _anchors(workers)
+    assert (
+        ".agents/skills/parent-session/references/workers.md#colabの長時間ジョブ"
+        in {target for _, target, _ in _links(AGENTS_MD)}
+    )
+    assert "../../tennis-colab/SKILL.md" in {target for _, target, _ in _links(workers)}
 
 
 def test_parent_cli_help_examples_match_the_parser(

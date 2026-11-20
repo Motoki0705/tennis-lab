@@ -303,7 +303,7 @@ def parser() -> argparse.ArgumentParser:
     run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
     wait = commands.add_parser(
-        "wait-worker", help="指定ワーカーの最新runの終了と回収を待つ"
+        "wait-worker", help="指定ワーカーの終了・回収と手動委任の後続処理を待つ"
     )
     wait.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     wait.add_argument(

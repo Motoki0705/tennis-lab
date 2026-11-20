@@ -12,7 +12,7 @@ import sys
 import time
 import uuid
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -323,6 +323,8 @@ def continue_progression(
 ) -> None:
     from lib.ops_review.progression_backend import LiveBackend
     from lib.ops_review.progression_workers import refresh
+    from lib.ops_review.review_locks import lease_targets
+    from parent.review_handoff import require_followup_ended
 
     with controller_lock(path):
         state = read(path)
@@ -330,6 +332,11 @@ def continue_progression(
         with store.consistent_snapshot():
             session = ParentSession(backend.gh, store, backend.parent, identity)
             current = authorization(session)
+            # A partial continuation still starts the controller for the
+            # entire progression, whose leases cover every registered PR.
+            for target in lease_targets(state):
+                for child in target["issues"]:
+                    require_followup_ended(session.row, child)
             saved = state["request"]["authorization"]
             if current != {**saved, "generation": current["generation"]}:
                 raise ValueError("progression execution authority changed")
@@ -401,17 +408,21 @@ def main() -> int:
     parser.add_argument("--state", type=Path, required=True)
     args = parser.parse_args()
     from lib.ops_review.progression_backend import LiveBackend
+    from lib.ops_review.review_locks import PRLeaseConflict, targets
 
     path = args.state.resolve()
     store = Store(path.parents[2])
     try:
-        with controller_lock(path):
+        with controller_lock(path), ExitStack() as leases:
             state = read(path)
-            backend = LiveBackend(state, store)
-            from lib.ops_review.review_locks import targets
-
-            with targets(store.directory, state):
-                result = Engine(path, backend).run()
+            engine = Engine(path, LiveBackend(state, store))
+            try:
+                leases.enter_context(targets(store.directory, state))
+            except PRLeaseConflict as exc:
+                engine.block_start(exc.number, str(exc))
+                result = engine.state
+            else:
+                result = engine.run()
             print(json.dumps(view(path), ensure_ascii=False))
             return 0 if result["status"] == "completed" else 1
     except (ValueError, OSError) as exc:

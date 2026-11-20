@@ -23,6 +23,7 @@ from lib.checkout_lock import (
 from parent.github import GitHub
 from parent.policy import nonempty
 from parent.state import state_directory
+from worker_logs.sources import read_original
 
 from .agent import RUNNER
 from .runtime import gate, load
@@ -163,7 +164,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
             args.parent,
             args.child,
             args.delegation_id,
-            args.prompt_file.read_text(encoding="utf-8"),
+            read_original(args.prompt_file),
             dict(os.environ),
             args.model,
             worker=args.worker,

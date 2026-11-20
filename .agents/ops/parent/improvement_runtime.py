@@ -14,7 +14,7 @@ from decision_logs.capture import runtime_environment
 from dispatcher.runtime import Runtime, alive, process_identity
 from issues.improvement import human_state
 
-from parent import worker_slots
+from parent import worker_followup, worker_slots
 
 from .execution import authorization
 from .improvements import get, lock_key, require
@@ -102,6 +102,21 @@ def execute_manual(
                 attempt.update(launch_state="starting", launch_claim=repair_claim)
                 store.save()
                 require_repair_labels(session, child, attempt["request"]["pr"])
+            followup = worker_followup.current(task)
+            if followup and followup["run_dir"] == str(directory):
+                if followup["state"] != "running":
+                    raise ValueError(
+                        "worker follow-up no longer authorizes this launch"
+                    )
+                wait = followup["wait"]
+                if followup["monitor_started"] and wait and wait["kind"] == "ci":
+                    from .policy import object_value
+                    from .worker_wait_sources import require_ci_target
+
+                    with session.gh.fresh_reads():
+                        pr = session.gh.get(f"repos/{gh.repo}/pulls/{wait['pr']}")
+                    require_ci_target(object_value(pr), gh.repo, task["branch"], wait)
+                    require_repair_labels(session, child, wait["pr"])
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,

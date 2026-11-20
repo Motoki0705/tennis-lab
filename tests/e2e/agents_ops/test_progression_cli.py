@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import fcntl
 import importlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, cast
@@ -151,6 +153,108 @@ def test_public_major_continue_and_history_display(parent_env: ParentEnv) -> Non
     assert len(calls.read_text().splitlines()) == 1
     inspected = json.loads(p.cli("review-inspect", "--prs", "100").stdout)
     assert inspected["prs"][0]["history"][0]["changes"]["100"]["files"] == 0
+
+
+@pytest.mark.parametrize("lease_order", ["already_waiting", "after_admission"])
+def test_partial_continue_reports_a_sibling_pr_lease_conflict(
+    parent_env: ParentEnv, lease_order: str
+) -> None:
+    p = parent_env
+    numbers, fake, calls = prepared(p, count=2)
+    first, peer = numbers
+    remote = p.state()
+    for pr in remote["prs"]:
+        pr["draft"] = True
+    p.save(remote)
+    requested = request(p, numbers, fake)
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    state_file = directory / "progressions" / requested["review_run_id"] / "state.json"
+    paused = json.loads(p.cli("wait-merge", "--after", "1", "--timeout", "10").stdout)
+    with state_file.with_suffix(".lock").open("a") as controller:
+        fcntl.flock(controller, fcntl.LOCK_EX)  # join the controller
+    assert {pr["stage"] for pr in paused["prs"]} == {"parent_wait"}
+    args = (
+        "merge-continue",
+        "--prs",
+        str(first),
+        "--wait",
+        "--instruction-file",
+        p.note("先に一方を続ける。"),
+    )
+    if lease_order == "already_waiting":
+        registry = importlib.import_module("parent.state").Store(directory)
+        with registry.locked():
+            row = registry.parents["o/r#1"]
+            task = row["tasks"]["11"]
+            task.update(
+                delegation_id="b" * 32,
+                manual_followup={
+                    "delegation_id": "b" * 32,
+                    "state": "waiting",
+                    "wait": {"kind": "ci", "pr": peer},
+                    "owner": row["session"],
+                    "generation": row["generation"],
+                },
+            )
+            registry.save()
+        lease = importlib.import_module("lib.ops_review.review_locks").pr_lease
+        with lease(directory, "o/r", peer):
+            result = p.cli(*args, ok=False)
+        assert "#11: worker follow-up is active" in result.stderr
+        assert json.loads(state_file.read_text())["decisions"] == []
+    else:
+        # The ordinary CLI admits the continuation. Interpose only at launch
+        # so the sibling's lease is acquired after saving "running".
+        entry = """
+import subprocess
+import sys
+from pathlib import Path
+from lib.ops_review import merge_gate_impl as gate, review_locks
+from parent.cli_impl import main
+
+def start(path):
+    assert gate.read(path)["status"] == "running"
+    with review_locks.pr_lease(path.parents[2], "o/r", int(sys.argv[1])):
+        subprocess.run(
+            [sys.executable, str(Path(gate.__file__).with_name("merge_gate.py")), "--state", str(path)],
+            capture_output=True, check=False, timeout=5,
+        )
+
+gate.start = start
+sys.exit(main(sys.argv[2:]))
+"""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                entry,
+                str(peer),
+                "--repo",
+                "o/r",
+                "--parent",
+                "1",
+                *args,
+            ],
+            cwd=p.repo,
+            env=p.env,
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+        observed = json.loads(result.stdout)
+        assert observed["status"] == "parent_wait"
+        event = observed["events"][-1]
+        assert event["id"] == paused["events"][-1]["id"] + 1
+        assert event["kind"] == "parent_wait" and event["pr"] == peer
+        assert "active progression" in event["reason"]
+        assert observed["prs"][0]["stage"] == "parent_wait"
+        assert observed["prs"][1] == paused["prs"][1]
+        # Once the lease is released, the same partial continuation can run.
+        retried = json.loads(p.cli(*args).stdout)
+        assert retried["events"][-1]["pr"] == first
+    assert len(calls.read_text().splitlines()) == 1
+    assert not any(call[:2] == ["pr", "merge"] for call in p.calls())
 
 
 @pytest.mark.parametrize("control", ["auto", "human"])

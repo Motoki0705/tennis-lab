@@ -8,6 +8,7 @@ import hashlib
 import importlib
 import json
 import os
+import socket
 import sys
 from pathlib import Path
 
@@ -21,6 +22,15 @@ def main() -> int:
     directory = Path(opt("--run-dir"))
     if args[0] == "status":
         record = json.loads((directory / "result.json").read_text())
+        if address := os.environ.get("MANUAL_STATUS_SOCKET"):
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as gate:
+                try:
+                    gate.connect(address)
+                except (ConnectionRefusedError, FileNotFoundError):
+                    pass
+                else:
+                    gate.sendall(directory.name.encode())
+                    assert gate.recv(1) == b"C"
         print(
             json.dumps(
                 {
@@ -97,8 +107,6 @@ def main() -> int:
         print(str(directory), file=sys.stderr)  # Must stay private at the boundary.
         return 2
     if repair is not None and os.environ.get("MANUAL_REPAIR_SOCKET"):
-        import socket
-
         with socket.socket(socket.AF_UNIX) as connection:
             connection.connect(os.environ["MANUAL_REPAIR_SOCKET"])
             connection.sendall(b"started")
@@ -180,12 +188,19 @@ def main() -> int:
         "制約・未確認事項",
         "親に決めてほしい点",
     )
-    (directory / "final.md").write_text(
-        os.environ.get(
-            "MANUAL_PLANNING_FINAL", "\n\n".join(f"## {h}\n\nなし" for h in headings)
-        ),
-        encoding="utf-8",
+    final = os.environ.get(
+        "MANUAL_PLANNING_FINAL", "\n\n".join(f"## {h}\n\nなし" for h in headings)
     )
+    if sequence := os.environ.get("MANUAL_FINAL_SEQUENCE"):
+        final = json.loads(sequence)[len(task["worker_runs"]) - 1]
+    elif repair is None and final.strip():
+        final += '\n\nPARENT_RESULT {"schema_version":1,"state":"done","wait":null}\n'
+    (directory / "final.md").write_text(final, encoding="utf-8")
+    if previous is None and (pr := os.environ.get("MANUAL_PR_AFTER_START")):
+        github = Path(os.environ["PARENT_GH_STATE"])
+        state = json.loads(github.read_text())
+        state["prs"].append(json.loads(pr))
+        store.write_json(github, state)
     print(json.dumps(summary))
     return code
 

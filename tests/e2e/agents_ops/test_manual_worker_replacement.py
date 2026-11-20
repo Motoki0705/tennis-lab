@@ -410,6 +410,7 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
         FAKE_ARGS=str(p.root / "codex-args.txt"),
         FAKE_CWD=str(p.root / "codex-cwd.txt"),
         FAKE_INVOCATIONS=str(p.root / "codex-calls.jsonl"),
+        FAKE_WORKER_RESULT="1",
     )
 
     def real(*options: str, ok: bool = True, session_id: str = "old-session") -> Any:
@@ -568,6 +569,7 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
         str(evidence),
         session_id="replacement-session",
     )
+    assert "PARENT_RESULT" in (latest(p) / "prompt.md").read_text()
     saved = task(p)
     assert saved["worker_runs"][:-1] == before["worker_runs"]
     assert saved["preflight"]["turns"][:-1] == before["preflight"]["turns"]

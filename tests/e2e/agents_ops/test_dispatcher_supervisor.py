@@ -707,6 +707,8 @@ def test_worker_rechecks_child_stop_and_authorization_after_reservation(
     row["tasks"]["10"] = d.child_task(10, "d1")
     d.update(row)
     child_id = d.control.start_child(1, 10, "d1", "task", env)
+    child_job = d.row()["dispatch"]["jobs"][child_id]
+    assert "PARENT_RESULT" in (Path(child_job["directory"]) / "prompt.md").read_text()
     if change in {"stopped", "basis"}:
         with d.control.store.locked():
             session = d.control._session("o/r#1", d.control.store.parents["o/r#1"])

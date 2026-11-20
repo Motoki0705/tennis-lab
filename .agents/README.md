@@ -77,6 +77,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **親子issueの書式**: タイトル・ラベル・本文・正式なsub-issue関係・進捗更新と段階移行は [親子issue規約](ops/issues/README.md) に従う。手動起票・親からの分割・レポートtriageで同じ規約を使う。
 - **親セッションの担当**: 担当登録の規則は [AGENTS.md](../AGENTS.md#開発ルール)、手順は [parent-session](skills/parent-session/SKILL.md) を参照する。担当指定と要件合意を区別する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
 - **自律割当された親**: dispatcherのbootstrapで予約と実行根拠を受理し、[開発workflow](skills/parent-session/references/dispatch.md) で実装子から実merge/closeまで照合する。自律根拠を人間合意に読み替えない。委任先の既定とdshの明示指定は [AGENTS.md](../AGENTS.md#開発ルール) に従う。
+- **ワーカーのCI・ローカルqueue**: 結果の受け渡しと手動委任の自動再開は [parent-session](skills/parent-session/references/workers.md#ciローカルqueueの待機) に従う。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
 - **merge**: pushごとにCIを実行し、コミットに `[skip ci]` を付けない。親がレビュー依頼を1回出し、大局レビュー、現headのPython CI、軽いgate、merge後確認をCLIが自動進行する。親がmajorの対応を確認したらマージを続行する。人間の有効化判断後の `AGENT_AUTO_MERGE=1` とneeds-humanの制御を維持する。状態・修正上限・停止/復旧の正本は [自動進行](ops/review/README.md)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
 

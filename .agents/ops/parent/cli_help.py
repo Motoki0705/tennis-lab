@@ -46,7 +46,7 @@ EXAMPLES = {
     "start-worker": "start-worker --child 1217 --worker quality --from BASE_SHA --prompt-file compare.md\n自律親用。返されたjob_idで予約を識別し、inspect-workerで終了と成果物を照合する。",
     "continue-worker": "continue-worker --child 1217 --worker primary --prompt-file fix.md\n自律親用。同じbranch・sessionの終了を照合してから修正を渡す。",
     "inspect-worker": "inspect-worker --child 1217 --worker quality\n実行状態とfinal_fileを確認する。",
-    "wait-worker": "wait-worker --child 1217 --worker quality --timeout 900\n終了値0は終了・回収済み。runner_summaryで実行結果、final_fileで成果を確認する。124は時間満了で再待機可。2は理由を読み、inspect-workerで元runの状態を照合する。",
+    "wait-worker": "wait-worker --child 1217 --worker quality --timeout 900\n終了値0は終了・回収済み。手動委任は監視・自動再開の終了まで待つ。runner_summary、final_file、followupで結果を確認する。124は時間満了で再待機可。2は理由を読み、inspect-workerで元runの状態を照合する。",
     "configure-delegation": "configure-delegation --max-parallel-children 2 --reason-file capacity.md\n枠は担当ごとに数える。親全体の上限を数値またはallで指定し、変更理由を書く。",
     "decide-worker-plan": "decide-worker-plan --child 1217 --worker quality --action investigate --answer-file next.md\n直近の調査報告に対する判断を書く。approve / investigate / reject と具体的な回答を保存し、次の同sessionの継続時に渡す。",
     "record-worker-ended": "record-worker-ended --child 1217 --worker quality --delegation-id DELEGATION_ID --evidence-file ended.md\nstatusで対象IDを取得し、runnerと子孫の終了・回収を照合した根拠を書く。",

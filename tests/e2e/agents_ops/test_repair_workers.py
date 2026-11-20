@@ -102,6 +102,10 @@ def test_same_repair_reservation_before_during_and_after_launch(
     assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2
     assert "repair_attempts" not in p.cli("status").stdout
     current = latest(p)
+    repair_prompt = (current / "prompt.md").read_text()
+    assert "PARENT_RESULT" in repair_prompt
+    assert "## 自動進行の修正ターン" in repair_prompt
+    assert "followup" not in result
     original = json.loads((first / "result.json").read_text())
     repaired = json.loads((current / "result.json").read_text())
     assert original["runtime"]["session_id"] == repaired["runtime"]["session_id"]

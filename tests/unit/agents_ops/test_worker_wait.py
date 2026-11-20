@@ -193,6 +193,54 @@ def test_terminal_record_waits_until_runner_itself_exits(evidence: Evidence) -> 
 
 
 @pytest.mark.parametrize(
+    ("saved", "reason", "code", "wait_state"),
+    [
+        ("done", None, 0, "ended"),
+        ("needs_parent", "automatic_resume_limit", 0, "ended"),
+        ("error", "queue publication failed", 2, "followup_error"),
+        ("waiting", None, 2, "liveness_unknown"),
+    ],
+)
+def test_controller_exit_rechecks_durable_followup(
+    evidence: Evidence,
+    monkeypatch: pytest.MonkeyPatch,
+    saved: str,
+    reason: str | None,
+    code: int,
+    wait_state: str,
+) -> None:
+    evidence.terminal()
+    task = evidence.row["tasks"]["10"]
+    followup = {
+        "id": "chain",
+        "delegation_id": task["delegation_id"],
+        "run_dir": str(evidence.directory),
+        "state": "waiting",
+        "wait": {"kind": "queue", "job_ids": ["100_1_fit.job"]},
+        "resumptions": [],
+        "reason": None,
+    }
+    task["manual_followup"] = followup
+    evidence.save()
+
+    def exit_during_pid_probe(observed: dict[str, Any]) -> bool:
+        assert observed["state"] == "waiting"
+        followup.update(state=saved, reason=reason)
+        evidence.save()
+        return False
+
+    monkeypatch.setattr(evidence.module.worker_followup, "live", exit_during_pid_probe)
+    clock = Clock()
+    status, value = evidence.wait(clock)
+    assert (status, value["wait_state"]) == (code, wait_state)
+    assert value["followup"]["state"] == saved
+    assert value["followup"]["reason"] == reason
+    if saved == "waiting":
+        assert value["error"] == "followup_controller_unconfirmed"
+    assert clock.sleeps == []
+
+
+@pytest.mark.parametrize(
     "failure",
     ["missing", "corrupt", "contract", "incomplete_end", "missing_end_reason"],
 )

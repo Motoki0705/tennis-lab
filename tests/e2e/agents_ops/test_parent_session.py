@@ -169,6 +169,15 @@ if path == "repos/o/r/actions/runs":
     prs = [p for p in state["prs"] if head in {p["head"]["sha"], p.get("merge_commit_sha")}]
     rows = [{"id": p["number"], "check_suite_id": p["number"], "head_sha": head, "event": "push" if p.get("merged") else "pull_request", "run_attempt": 1} for p in prs]
     response({"total_count": len(rows), "workflow_runs": rows})
+ci_jobs = re.fullmatch(r"repos/o/r/actions/runs/(\d+)/attempts/1/jobs", path)
+if ci_jobs:
+    rows = state.get("failed_ci_jobs", {}).get(ci_jobs[1], [])
+    response({"total_count": len(rows), "jobs": paged(rows)})
+ci_log = re.fullmatch(r"repos/o/r/actions/jobs/(\d+)/logs", path)
+if ci_log and ci_log[1] in state.get("fake_ci_log_ids", []):
+    assert "--include" in args
+    print("HTTP/1.1 302 Found\nLocation: https://ci.invalid/fake-log\n")
+    sys.exit(0)
 pull_comments = re.fullmatch(r"repos/o/r/pulls/(\d+)/(comments|reviews)", path)
 if pull_comments:
     assert method == "GET"
