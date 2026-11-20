@@ -1,0 +1,256 @@
+{
+  "msda-probe": {
+    "queue_job": "0-8204857063231044263_2026-11-20T02-48-56-768955736Z_3752851_i2304-msda-probe",
+    "exit_code": 1,
+    "end_state": "failed",
+    "failure_stage": "engine_inspection",
+    "grid": "RuntimeError: Expected grid sampling layers, got ['custom_layer', 'gemm', 'kgen', 'signal', 'kgen', 'wait', 'kgen', 'signal', 'wait', 'kgen', 'signal', 'wait', 'kgen', 'signal', 'wait', 'wait', 'wait', 'kgen', 'kgen', 'custom_layer']",
+    "plugin": "RuntimeError: Expected plugin sampling layers, got ['custom_layer', 'gemm', 'custom_layer', 'custom_layer']",
+    "partial_projection_fp16_pytorch_sampling_fp32": {
+      "status": "measured",
+      "timing": {
+        "median_ms": 0.1256525,
+        "p95_ms": 0.2859287,
+        "iqr_ms": 0.09544299999999999,
+        "mad_ms": 0.029445500000000006,
+        "images_per_second": 6360.064898102219
+      },
+      "inspection": {
+        "layer_types": [
+          "gemm"
+        ],
+        "sampling_layers": []
+      },
+      "absolute_error": {
+        "p05": 5.0514936447143555e-06,
+        "median": 5.457736551761627e-05,
+        "p95": 0.00017151310748886317,
+        "max": 0.0005441531538963318
+      },
+      "relative_l2": 0.0006729507585987449
+    },
+    "parsed_and_serialized_in_memory": [
+      "grid",
+      "plugin"
+    ],
+    "inspection_layer_types": {
+      "ONNX GridSample": "kgen",
+      "ONNX TRT plugin": "custom_layer"
+    }
+  },
+  "dino-build-grid-2": {
+    "queue_job": "0-8204856695097579999_2026-11-20T02-55-04-902420000Z_3812135_i2304-dino-build-grid-2",
+    "exit_code": 1,
+    "end_state": "failed",
+    "failure_stage": "onnx_parse",
+    "operator": "/model/transformer/Add",
+    "error": "ElementWiseOperation SUM must have same input types. But they are of types Float and Half.",
+    "input_cast": {
+      "name": "/model/backbone/Cast",
+      "target": "FLOAT",
+      "converted_annotation": "FLOAT16"
+    }
+  },
+  "dino-ncu-0": {
+    "queue_job": "0-8204856917276879769_2026-11-20T02-51-22-723120230Z_3772602_i2304-dino-ncu-0",
+    "exit_code": 3,
+    "end_state": "failed",
+    "failure_stage": "profiling_timeout",
+    "ncu_kernel_rows": 1100,
+    "nsys_kernel_count": 1862,
+    "timeout_s": 900
+  },
+  "dino-ncu-1": {
+    "queue_job": "0-8204856917014555045_2026-11-20T02-51-22-985444954Z_3772672_i2304-dino-ncu-1",
+    "exit_code": 3,
+    "end_state": "failed",
+    "failure_stage": "profiling_timeout",
+    "ncu_kernel_rows": 1052,
+    "nsys_kernel_count": 2370,
+    "timeout_s": 900
+  },
+  "dino-reject-shape": {
+    "queue_job": "0-8204856498016655078_2026-11-20T02-58-21-983344921Z_3841309_i2304-dino-reject-shape",
+    "exit_code": 1,
+    "end_state": "failed",
+    "expected_failure": true,
+    "error": "ValueError: Out-of-profile DINO bucket: 749x1333",
+    "output_directory_created": false
+  },
+  "dino-prepare-build-grid-2-v2": {
+    "queue_job": "0-8204852947367455552_2026-11-20T03-57-32-632544447Z_635449_i2304-dino-prepare-build-grid-2-v2",
+    "exit_code": 1,
+    "end_state": "failed",
+    "failure_stage": "onnx_check_before_build",
+    "error": "Nodes in a graph must be topologically sorted; input 'graph_input_cast_0' of /model/backbone/backbone.0/patch_embed/Pad is not output of any previous nodes.",
+    "repair_verified": "Existing external-data graph passed ONNX full_check after sorting its node dependencies."
+  },
+  "dino-grid-2-v3": {
+    "queue_job": "0-8204846271083633345_2026-11-20T05-48-48-916366654Z_1825093_i2304-dino-grid-2-v3",
+    "end_state": "failed",
+    "exit_code": 1,
+    "failure_stage": "engine_precision_inspection",
+    "layer": "_gemm_mha_v2_myl0_28",
+    "error": "Compute layer _gemm_mha_v2_myl0_28 expected fp16 operands, got inputs ['Half', 'Half', 'Half', 'Half', 'Half']",
+    "repair_verification": "Existing inspector JSON was rechecked on CPU. Required FP16 operations, shifted-window attention masks and sampling operation coverage matched. No inference result from this attempt.",
+    "verified_inspector": {
+      "engine_layers_by_precision": {
+        "fp16": 263
+      },
+      "masked_attention_layers": 12,
+      "constant_operand_operations": [
+        "/model/transformer/decoder/layers.0/self_attn/MatMul_2"
+      ],
+      "onnx_operations_by_precision": {
+        "fp16": 316
+      },
+      "sampling_layers_by_type": {
+        "kgen": 18
+      },
+      "sampling_operand_formats": {
+        "Bool": 15,
+        "Half": 84,
+        "Float": 12
+      }
+    },
+    "graph_sampling_fp16_operands_and_output": 48
+  },
+  "dino-grid-3a-v3": {
+    "queue_job": "0-8204846270819165507_2026-11-20T05-48-49-180834492Z_1825168_i2304-dino-grid-3a-v3",
+    "end_state": "failed",
+    "exit_code": 1,
+    "failure_stage": "modelopt_custom_op_scan",
+    "error": "createInferBuilder: Error Code 6: API Usage Error (CUDA initialization failure with error: 100). TypeError: pybind11::init(): factory function returned nullptr",
+    "settings": "CUDA_VISIBLE_DEVICES was empty for this job. ModelOpt's preprocessing creates a TensorRT Builder before ORT calibration."
+  },
+  "dino-grid-3b-v3": {
+    "queue_job": "0-8204846270552243893_2026-11-20T05-48-49-447756106Z_1825238_i2304-dino-grid-3b-v3",
+    "end_state": "failed",
+    "exit_code": 1,
+    "failure_stage": "onnx_source_digest",
+    "error": "ValueError: ONNX artifact digest changed: outputs/trt-dino/export-grid/export.onnx",
+    "reason": "ModelOpt 3a shape inference rewrote the shared source before creating its Builder.",
+    "observed_sha256": "343934f1eaae8e6bbffd535f1a9d22108d0de24dabcd6b2c1903bcc5da27dabc",
+    "expected_sha256": "6cd2eb1ac76ff8f10171ca31521d02221aed2445e1d8bbaec8f618d16c9826ec"
+  },
+  "dino-plugin-2-v4": {
+    "queue_job": "0-8204841827569138645_2026-11-20T07-02-52-430861354Z_2757247_i2304-dino-plugin-2-v4",
+    "end_state": "failed",
+    "exit_code": 1,
+    "failure_stage": "onnx_export",
+    "error": "TypeError: cannot unpack non-iterable NoneType object (occurred when translating PluginCore)",
+    "reason": "The full model symbolic input value.type().sizes() returned None.",
+    "repair": "Pass output shape and dtype as literals captured during the fixed-shape trace."
+  },
+  "dino-grid-3a-v4": {
+    "queue_job": "0-8204841826981086319_2026-11-20T07-02-53-018913680Z_2757391_i2304-dino-grid-3a-v4",
+    "end_state": "failed",
+    "exit_code": 1,
+    "failure_stage": "qdq_operand_check_after_calibration",
+    "calibration_frames": 64,
+    "calibration_provider": "CPUExecutionProvider",
+    "required_int8_operations": 292,
+    "error": "int8 missing Q/DQ on both operands of 18 operations",
+    "missing_low_precision_operations": 18,
+    "quantize_linear": 516,
+    "dequantize_linear": 516,
+    "reason": "All 18 missed operations had a shared constant B operand exposed through Identity."
+  },
+  "dino-grid-3b-v4": {
+    "queue_job": "0-8204841826706861780_2026-11-20T07-02-53-293138219Z_2757458_i2304-dino-grid-3b-v4",
+    "end_state": "failed",
+    "exit_code": 1,
+    "failure_stage": "qdq_operand_check_after_calibration",
+    "calibration_frames": 64,
+    "calibration_provider": "CPUExecutionProvider",
+    "required_fp8_operations": 299,
+    "error": "fp8 missing Q/DQ on both operands of 42 operations",
+    "missing_low_precision_operations": 42,
+    "quantize_linear": 483,
+    "dequantize_linear": 483,
+    "reason": "18 Identity aliases hid shared constant weights. ModelOpt also excluded two attention MatMuls in each of 12 shifted Swin windows."
+  },
+  "dino-grid-3a-v5": {
+    "queue_job": "0-8204832990272178706_2026-11-20T09-30-09-727821293Z_3677159_i2304-dino-grid-3a-v5",
+    "end_state": "failed",
+    "exit_code": 1,
+    "failure_stage": "engine_precision_inspection",
+    "error": "Compute layer __myl_FcCastAddAdd_myl0_14 expected int8 operands, got inputs ['Half', 'Int8']",
+    "reason": "The original inspector check expected the activation at index 0, where the fused INT8 GEMM with residual Add exposes its FP16 residual input.",
+    "calibration_frames": 64,
+    "quantize_linear": 548,
+    "dequantize_linear": 548,
+    "verified_inspector": {
+      "engine_layers_by_precision": {
+        "int8": 257,
+        "fp16": 18
+      },
+      "masked_attention_layers": 12,
+      "constant_operand_operations": [
+        "/model/transformer/decoder/layers.0/self_attn/MatMul_2"
+      ],
+      "int8_fused_residual_layers": 29,
+      "int8_small_k_layers": 13,
+      "onnx_operations_by_precision": {
+        "int8": 292,
+        "fp16": 24
+      }
+    }
+  },
+  "dino-grid-3a-v6": {
+    "queue_job": "0-8204822146448313429_2026-11-20T12-30-53-551686570Z_638131_i2304-dino-grid-3a-v6",
+    "end_state": "failed",
+    "exit_code": 3,
+    "failure_stage": "ncu_kernel_replay",
+    "error": "Kernel replay timed out after 2700 s after connection, without a raw kernel table.",
+    "plan_sha256": "8143039d2cf90c24cff4bd146931468f601c6b60708665e2cc16889115e7386b",
+    "nsys_kernel_count": 585,
+    "nsys_distinct_kernel_streams": 1,
+    "measurement_complete": true,
+    "raw_kernel_rows_at_timeout": 0,
+    "result_written_at": "2026-11-20T22:54:35+09:00",
+    "late_csv_mtime": "2026-11-21T00:32:18+09:00",
+    "late_csv_kernel_rows": 585,
+    "late_csv_used": false
+  },
+  "dino-grid-3a-ncu-v7": {
+    "queue_job": "0-8204816680926065162_2026-11-20T14-01-59-073934837Z_1137002_i2304-dino-grid-3a-ncu-v7",
+    "end_state": "failed",
+    "exit_code": 3,
+    "failure_stage": "ncu_kernel_replay",
+    "plan_sha256": "8143039d2cf90c24cff4bd146931468f601c6b60708665e2cc16889115e7386b",
+    "tensor_set_sha256": "481cf905f03d63ce93d9ca34df8b38093ef661be7776b355daefd9b6f58da96e",
+    "nsys_kernel_count": 585,
+    "kernel_replay": {
+      "artifact_dir": "ncu-grid-3a-v7-kernel",
+      "status": "unavailable",
+      "timeout_s": 720,
+      "raw_kernel_rows": 0,
+      "last_profiler_stage": "Connected to process",
+      "error": "Kernel replay timed out after 720 s without a raw kernel table."
+    },
+    "application_replay_diagnostic": {
+      "artifact_dir": "ncu-grid-3a-v7-application",
+      "match": "all",
+      "mode": "strict",
+      "used_for_official_comparison": false,
+      "log_excerpt": "Creating report from application replay data: 0%.....................100%",
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 585,
+        "dram_read_bytes": 3248646912,
+        "dram_write_bytes": 3695641088,
+        "tensor_active_pct_time_weighted": 19.22558848469764,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 48.34945780420469,
+          "short_scoreboard": 5.379008077731364,
+          "lg_throttle": 0.6371846246473568,
+          "mio_throttle": 2.7533397438485796
+        },
+        "replay_mode": "application",
+        "timeout_s": 720
+      }
+    },
+    "exit_reason": "The wrapper preserves exit code 3 after an incomplete protocol kernel replay even when the application replay diagnostic succeeds."
+  }
+}

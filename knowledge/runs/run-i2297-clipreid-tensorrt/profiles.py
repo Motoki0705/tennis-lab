@@ -104,7 +104,7 @@ def read_ncu(path):
     }
 
 
-def capture(tool, executable, command, output, *, ncu_timeout=900):
+def capture(tool, executable, command, output, *, ncu_timeout=900, ncu_replay="kernel"):
     log = output / f"{tool}.log"
     report = output / ("nsys.sqlite" if tool == "nsys" else "ncu.csv")
     try:
@@ -145,6 +145,11 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
                 )
                 metrics = read_nsys(report)
             else:
+                replay = (
+                    ["--app-replay-match", "all", "--app-replay-mode", "strict"]
+                    if ncu_replay == "application"
+                    else []
+                )
                 subprocess.run(
                     [
                         executable,
@@ -154,7 +159,8 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
                         "--nvtx-include",
                         f"{PROFILE_RANGE}/",
                         "--replay-mode",
-                        "kernel",
+                        ncu_replay,
+                        *replay,
                         "--cache-control",
                         "none",
                         "--clock-control",

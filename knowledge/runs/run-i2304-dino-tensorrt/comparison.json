@@ -1,0 +1,172 @@
+{
+  "queue_job": "0-8204852947671030588_2026-11-20T03-57-32-328969411Z_635372_i2304-msda-probe-v2",
+  "geometry": [
+    [
+      25,
+      42
+    ],
+    [
+      13,
+      21
+    ],
+    [
+      7,
+      11
+    ],
+    [
+      4,
+      6
+    ]
+  ],
+  "queries": 900,
+  "tokens": 1424,
+  "seed": 2304,
+  "heads": 8,
+  "channels_per_head": 32,
+  "points": 4,
+  "methods": {
+    "grid": {
+      "status": "measured",
+      "timing": {
+        "median_ms": 0.49630050000000003,
+        "p95_ms": 0.5851843,
+        "iqr_ms": 0.11148950000000002,
+        "mad_ms": 0.05764850000000002,
+        "images_per_second": 2046.9729946742073
+      },
+      "inspection": {
+        "engine_layers_by_precision": {
+          "fp16": 1
+        },
+        "onnx_operations_by_precision": {
+          "fp16": 1
+        },
+        "sampling_layers": [
+          {
+            "name": "__myl_SlicReshTranReshGridCastResh_myl0_4",
+            "type": "kgen",
+            "operations": [
+              "/GridSample_3"
+            ],
+            "inputs": [
+              "Half",
+              "Half"
+            ]
+          },
+          {
+            "name": "__myl_SlicReshTranReshGridCastResh_myl0_6",
+            "type": "kgen",
+            "operations": [
+              "/GridSample_2"
+            ],
+            "inputs": [
+              "Half",
+              "Half"
+            ]
+          },
+          {
+            "name": "__myl_SlicReshTranReshGridCastResh_myl0_9",
+            "type": "kgen",
+            "operations": [
+              "/GridSample_1"
+            ],
+            "inputs": [
+              "Half",
+              "Half"
+            ]
+          },
+          {
+            "name": "__myl_SlicReshTranReshGridCast_myl0_12",
+            "type": "kgen",
+            "operations": [
+              "/GridSample"
+            ],
+            "inputs": [
+              "Half",
+              "Half"
+            ]
+          }
+        ]
+      },
+      "absolute_error": {
+        "p05": 3.678137363749556e-05,
+        "median": 0.0004129074513912201,
+        "p95": 0.0014708958333358169,
+        "max": 0.0075664520263671875
+      },
+      "relative_l2": 0.005613199435174465
+    },
+    "plugin": {
+      "status": "measured",
+      "timing": {
+        "median_ms": 0.090786,
+        "p95_ms": 0.14353805,
+        "iqr_ms": 0.016926999999999998,
+        "mad_ms": 0.006086500000000009,
+        "images_per_second": 9950.9874066274
+      },
+      "inspection": {
+        "engine_layers_by_precision": {
+          "fp16": 1
+        },
+        "onnx_operations_by_precision": {
+          "fp16": 1
+        },
+        "sampling_layers": [
+          {
+            "name": "/MultiscaleDeformableAttnPlugin_TRT_myl0_2",
+            "type": "custom_layer",
+            "operations": [
+              "/MultiscaleDeformableAttnPlugin_TRT"
+            ],
+            "inputs": [
+              "Half",
+              "Half",
+              "Half"
+            ]
+          }
+        ]
+      },
+      "absolute_error": {
+        "p05": 4.592500772560015e-05,
+        "median": 0.0005324628436937928,
+        "p95": 0.0020986306481063366,
+        "max": 0.011228561401367188
+      },
+      "relative_l2": 0.007901870645582676
+    },
+    "partial": {
+      "status": "measured",
+      "timing": {
+        "median_ms": 0.2007525,
+        "p95_ms": 0.35563484999999995,
+        "iqr_ms": 0.0952085,
+        "mad_ms": 0.04636199999999999,
+        "images_per_second": 4245.786725386463
+      },
+      "inspection": {
+        "engine_layers_by_precision": {
+          "fp16": 1
+        },
+        "onnx_operations_by_precision": {
+          "fp16": 1
+        },
+        "sampling_layers": []
+      },
+      "absolute_error": {
+        "p05": 5.0514936447143555e-06,
+        "median": 5.457736551761627e-05,
+        "p95": 0.00017151310748886317,
+        "max": 0.0005441531538963318
+      },
+      "relative_l2": 0.0006729507585987449
+    }
+  },
+  "fp32_torch_reference": {
+    "median_ms": 0.130801,
+    "p95_ms": 0.26931374999999996,
+    "iqr_ms": 0.0377415,
+    "mad_ms": 0.014922999999999999,
+    "images_per_second": 6501.428103697258
+  }
+}
