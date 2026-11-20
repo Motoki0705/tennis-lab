@@ -1,0 +1,102 @@
+{
+  "tensor_lock_shared_and_dedicated_match": true,
+  "small_gpu_matmul": {
+    "nsys": {
+      "status": "measured",
+      "gpu_kernels": 1,
+      "sum_kernel_duration_ns": 8831,
+      "kernel_names": {
+        "Kernel2": 1
+      }
+    },
+    "ncu": {
+      "status": "unavailable",
+      "reason": "==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM"
+    },
+    "queue_job": "0-8204867217750262733_2026-11-19T23-59-42-249737266Z_3439666_i2297-profilers-qualified"
+  },
+  "nsys_2025_3_2_diagnosis": "Installed CUDA driver version (13.5) is not supported by this build of Nsight Systems; its capture had CUDA API events and no GPU kernel activity table.",
+  "invalid_condition": {
+    "exit_code": 2,
+    "created_run": false,
+    "error": "benchmark.py: error: argument --condition: invalid choice: 'bf16' (choose from '0', '1', '2', '3a', '3b')"
+  },
+  "invalid_onnx": {
+    "exit_code": 1,
+    "created_engine": false,
+    "queue_job": "0-8204867055127376890_2026-11-20T00-02-24-872623109Z_3442779_i2297-tensorrt-invalid-onnx",
+    "error": "(deserializeOnnxModel): MODEL_DESERIALIZE_FAILED: Assertion failed: model->ParseFromCodedStream(&codedInput): Failed to parse the ONNX model."
+  },
+  "trt_fp16_first_attempt": {
+    "exit_code": 1,
+    "queue_job": "0-8204867018039276156_2026-11-20T00-03-01-960723843Z_3447614_i2297-clipreid-2",
+    "error": "RuntimeError: No engine layer exposes fp16 tensors. See outputs/trt-phase1a/2/clipreid.layers.json",
+    "inspector_dtype": "Half",
+    "inspector_half_tensor_appearances": 311,
+    "retry_job": "0-8204866850404061685_2026-11-20T00-05-49-595938314Z_3468051_i2297-clipreid-2-retry"
+  },
+  "trt_fp16_profile_reuse": {
+    "exit_code": 0,
+    "same_engine": true,
+    "gpu_kernels": 114,
+    "queue_job": "0-8204866538101366440_2026-11-20T00-11-01-898633559Z_3504414_i2297-clipreid-2-profile-reuse"
+  },
+  "onnx_cpu_diagnostic": {
+    "provider": "CPUExecutionProvider",
+    "sample_indices": [
+      0,
+      20,
+      40,
+      60,
+      80,
+      100,
+      120,
+      140,
+      160,
+      180,
+      200,
+      220
+    ],
+    "graphs": {
+      "3a/export.onnx": {
+        "input_type": "<class 'numpy.float32'>",
+        "cosine_vs_pytorch_fp32": {
+          "min": 0.9999999999985445,
+          "median": 0.9999999999991009,
+          "max": 0.999999999999392
+        },
+        "cosine_vs_tensorrt_condition": {
+          "min": 0.491575811423268,
+          "median": 0.5340073900959144,
+          "max": 0.6054096066241867
+        }
+      },
+      "3a/quantized.onnx": {
+        "input_type": "<class 'numpy.float32'>",
+        "cosine_vs_pytorch_fp32": {
+          "min": 0.5076965130563783,
+          "median": 0.5596284016304736,
+          "max": 0.6039776467526685
+        },
+        "cosine_vs_tensorrt_condition": {
+          "min": 0.6416876558434405,
+          "median": 0.6641202881096594,
+          "max": 0.756364298088796
+        }
+      },
+      "3b/quantized.onnx": {
+        "input_type": "<class 'numpy.float32'>",
+        "cosine_vs_pytorch_fp32": {
+          "min": 0.9877226818588676,
+          "median": 0.9936767254172603,
+          "max": 0.9956795397534237
+        },
+        "cosine_vs_tensorrt_condition": {
+          "min": 0.9869828040038909,
+          "median": 0.9946620431435176,
+          "max": 0.9953462309897779
+        }
+      }
+    }
+  }
+}

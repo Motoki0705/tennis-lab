@@ -1,0 +1,64 @@
+{
+  "crops_per_camera": {
+    "video_000/clip_000/cam0": 31,
+    "video_000/clip_000/cam1": 32,
+    "video_000/clip_000/cam2": 24,
+    "video_000/clip_000/cam3": 24,
+    "video_000/clip_027/cam0": 64,
+    "video_000/clip_027/cam1": 64,
+    "video_000/clip_027/cam2": 66,
+    "video_000/clip_027/cam3": 60,
+    "video_000/clip_037/cam0": 32,
+    "video_000/clip_037/cam1": 31,
+    "video_000/clip_037/cam2": 30,
+    "video_000/clip_037/cam3": 32
+  },
+  "cross_split_shared_media": 0,
+  "cross_split_shared_raw_frame_intervals": 0,
+  "eval_players": {
+    "video_000/clip_000": {
+      "0": 28,
+      "1": 22,
+      "2": 32,
+      "3": 29
+    },
+    "video_000/clip_037": {
+      "0": 32,
+      "1": 30,
+      "2": 31,
+      "3": 32
+    }
+  },
+  "pins_sha256": "0afd0fb666d383bd6cfda6dd4d0095d69086307b985443dcc2870e06a41927ee",
+  "split": {
+    "calibration": [
+      "video_000/clip_027"
+    ],
+    "eval": [
+      "video_000/clip_000",
+      "video_000/clip_037"
+    ]
+  },
+  "tensors": {
+    "calibration": {
+      "dtype": "float32",
+      "sha256": "4947122e94f4bbf7688204a0ade13254abe7fdc1cfcb76ec3363d2003812f11b",
+      "shape": [
+        254,
+        3,
+        256,
+        128
+      ]
+    },
+    "eval": {
+      "dtype": "float32",
+      "sha256": "72159fce404524202032e19e893515b8919852d33efdb54bbea49339163213af",
+      "shape": [
+        236,
+        3,
+        256,
+        128
+      ]
+    }
+  }
+}
