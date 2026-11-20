@@ -141,10 +141,10 @@ def probe(output):
         graph = output / f"{mode}.onnx"
         matrix_graph(graph, dtype)
         plan = graph.with_suffix(".plan")
-        layers = build_engine(graph, plan, required_precision=mode)
+        evidence = build_engine(graph, plan, required_precision=mode)
         result["probes"][mode] = {
             "output": execute_plan(plan),
-            "precision_layers": layers,
+            "compute_precision": evidence,
         }
     text = json.dumps(result, indent=2) + "\n"
     (output / "environment.json").write_text(text)

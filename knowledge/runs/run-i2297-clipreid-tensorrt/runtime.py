@@ -14,7 +14,15 @@ from clipreid import (
     OUTPUT_NAME,
     VisualFeatures,
 )
-from convert import CONDITIONS, PLAN, require_queue
+from convert import (
+    CONDITIONS,
+    PLAN,
+    TRT_PRECISIONS,
+    clipreid_precision_requirements,
+    inspect_engine,
+    require_queue,
+    verify_compute_precision,
+)
 from profiles import PROFILE_RANGE
 
 WARMUP = 30
@@ -46,6 +54,8 @@ class TensorRTRunner:
             raise RuntimeError("Could not create TensorRT execution context")
         if omit_layer_nvtx:
             self.context.nvtx_verbosity = trt.ProfilingVerbosity.NONE
+            if self.context.nvtx_verbosity != trt.ProfilingVerbosity.NONE:
+                raise RuntimeError("Could not disable TensorRT layer NVTX ranges")
         expected = {
             INPUT_NAME: trt.TensorIOMode.INPUT,
             OUTPUT_NAME: trt.TensorIOMode.OUTPUT,
@@ -220,13 +230,25 @@ def run(args):
             raise RuntimeError("The pinned CLIP run requires one CC 12.0 CUDA GPU")
         torch.cuda.init()
         torch.cuda.reset_peak_memory_stats()
-        runner = (
-            TorchRunner(args.condition, args.checkpoint)
-            if args.condition in {"0", "1"}
-            else TensorRTRunner(
-                args.output / PLAN, omit_layer_nvtx=args.omit_trt_layer_nvtx
+        trt_settings = {}
+        if args.condition in TRT_PRECISIONS:
+            runner = TensorRTRunner(
+                args.plan or args.output / PLAN,
+                omit_layer_nvtx=memory is not None or args.omit_trt_layer_nvtx,
             )
-        )
+            if memory is not None:
+                trt_settings = {
+                    "trt_nvtx_verbosity": runner.context.nvtx_verbosity.name,
+                    "trt_compute_precision": verify_compute_precision(
+                        inspect_engine(runner.engine),
+                        TRT_PRECISIONS[args.condition],
+                        expected_operations=clipreid_precision_requirements(
+                            args.condition
+                        ),
+                    ),
+                }
+        else:
+            runner = TorchRunner(args.condition, args.checkpoint)
         torch.cuda.synchronize()
         if memory is not None:
             memory.sample("after_setup")
@@ -237,7 +259,7 @@ def run(args):
         result, features = measure(runner, data, memory)
         np.save(args.output / "features.npy", features, allow_pickle=False)
         (args.output / "measurement.json").write_text(
-            json.dumps(result, indent=2, allow_nan=False) + "\n"
+            json.dumps({**result, **trt_settings}, indent=2, allow_nan=False) + "\n"
         )
     finally:
         if memory is not None:
@@ -250,6 +272,7 @@ def main():
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--eval", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--plan", type=Path)
     parser.add_argument("--profile-index", type=int)
     parser.add_argument("--omit-trt-layer-nvtx", action="store_true")
     args = parser.parse_args()

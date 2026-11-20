@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from convert import CONDITIONS, PLAN, require_queue
+from convert import CONDITIONS, PLAN, TRT_PRECISIONS, require_queue
 from inputs import (
     CHECKPOINT,
     CHECKPOINT_SHA256,
@@ -136,21 +136,34 @@ def run_case(args):
         return receipt
 
     output = args.output
+    source = args.profile_from or args.measure_from
+    previous = verify_reference(source, args.condition) if source else None
+    nsys_reference = {}
     if args.profile_from:
-        measured = args.profile_from
-        copied = verify_reference(measured, args.condition)
-        if (
-            args.condition in {"2", "3a", "3b"}
-            and sha256_file(measured / PLAN) != copied["engine_sha256"]
-        ):
-            raise ValueError("Existing TensorRT engine does not match its receipt")
-        result = {**copied, "profile_from": str(measured)}
+        result = {**previous, "profile_from": str(source)}
+        if args.profiles == "ncu":
+            nsys_reference = previous["profiles"].get("nsys", {})
+            if nsys_reference.get("status") != "measured":
+                raise ValueError(
+                    "ncu follow-up requires a measured nsys result in --profile-from"
+                )
+            result["nsys_comparison"] = {"gpu_kernels": nsys_reference["gpu_kernels"]}
     else:
-        measured = output
         result = {"identity": identity}
         if args.condition != "0":
             verify_reference(args.reference, "0")
-        if args.condition in {"2", "3a", "3b"}:
+
+    if args.condition in TRT_PRECISIONS:
+        if previous is not None:
+            plan = source / previous.get("engine_path", PLAN)
+            if sha256_file(plan) != previous["engine_sha256"]:
+                raise ValueError("Existing TensorRT engine does not match its receipt")
+            result["engine_sha256"] = previous["engine_sha256"]
+            result["conversion"] = previous["conversion"]
+            if args.measure_from:
+                result["measurement_from"] = str(source)
+        else:
+            plan = output / PLAN
             run_stage(
                 [
                     sys.executable,
@@ -168,8 +181,9 @@ def run_case(args):
                 output / "convert.log",
                 timeout=50 * 60,
             )
-            result["engine_sha256"] = sha256_file(output / PLAN)
+            result["engine_sha256"] = sha256_file(plan)
             result["conversion"] = json.loads((output / "conversion.json").read_text())
+        result["engine_path"] = os.path.relpath(plan, output)
 
     command = [
         sys.executable,
@@ -182,8 +196,10 @@ def run_case(args):
         "--eval",
         str(args.inputs / "eval.npy"),
         "--output",
-        str(measured),
+        str(output),
     ]
+    if args.condition in TRT_PRECISIONS:
+        command += ["--plan", str(plan)]
     if not args.profile_from:
         run_stage(command, output / "measure.log", timeout=180)
         result["measurement"] = json.loads((output / "measurement.json").read_text())
@@ -203,20 +219,23 @@ def run_case(args):
     for tool, executable in {"nsys": str(args.nsys), "ncu": str(args.ncu)}.items():
         if args.profiles in {"all", tool}:
             profile_command = [*command, "--profile-index", str(profile_index)]
-            if tool == "ncu" and args.condition in {"2", "3a", "3b"}:
+            if tool == "ncu" and args.condition in TRT_PRECISIONS:
                 # ncu 2025.3.1 raw CSV misquotes TensorRT's JSON NVTX payloads.
                 profile_command.append("--omit-trt-layer-nvtx")
             result["profiles"][tool] = capture(
                 tool, executable, profile_command, output
             )
             write_json(output / "result.json", result)
-    nsys = result["profiles"].get("nsys", {})
+    nsys = result["profiles"].get("nsys", nsys_reference)
     ncu = result["profiles"].get("ncu", {})
     if nsys.get("status") == ncu.get("status") == "measured" and (
         nsys["gpu_kernels"] != ncu["profiled_kernels"]
     ):
         ncu["status"] = "coverage_mismatch"
-        ncu["reason"] = "The two profiles cover different numbers of kernels."
+        ncu["reason"] = (
+            f"Nsight Compute covered {ncu['profiled_kernels']} kernels, "
+            f"Nsight Systems covered {nsys['gpu_kernels']}."
+        )
         write_json(output / "result.json", result)
     return result
 
@@ -236,16 +255,24 @@ def main():
     )
     parser.add_argument("--nsys", type=Path, default=NSYS)
     parser.add_argument("--ncu", type=Path, default=Path("/usr/local/cuda/bin/ncu"))
-    parser.add_argument(
+    reuse = parser.add_mutually_exclusive_group()
+    reuse.add_argument(
         "--profile-from",
         type=Path,
         help="reuse measurements and engine from an existing result",
+    )
+    reuse.add_argument(
+        "--measure-from",
+        type=Path,
+        help="repeat timing with the existing TensorRT engine from a result",
     )
     args = parser.parse_args()
     if args.reference is None and args.condition != "0" and not args.profile_from:
         parser.error("--reference is required for a comparison with FP32")
     if args.profile_from and args.profiles == "none":
         parser.error("--profile-from requires selecting a profiler")
+    if args.measure_from and args.condition not in TRT_PRECISIONS:
+        parser.error("--measure-from requires a TensorRT condition")
     require_queue()
     args.output.mkdir(parents=True, exist_ok=False)
     try:

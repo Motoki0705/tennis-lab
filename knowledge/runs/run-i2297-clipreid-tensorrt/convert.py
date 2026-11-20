@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import re
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,26 @@ import numpy as np
 WORKSPACE_BYTES = 512 * 1024**2
 PLAN = "clipreid.plan"
 CONDITIONS = ("0", "1", "2", "3a", "3b")
+TRT_PRECISIONS = {"2": "fp16", "3a": "int8", "3b": "fp8"}
+
+OPERAND_CODE = {"fp16": "f16", "int8": "i8", "fp8": "e4m3"}
+TENSOR_DTYPE = {"fp16": r"FP16|Float16|Half", "int8": "Int8", "fp8": "FP8"}
+COMPUTE_TYPES = {
+    "gemm",
+    "matmul",
+    "correlation",
+    "conv",
+    "convolution",
+    "matrixmultiply",
+    "fullyconnected",
+}
+ONNX_LAYER = re.compile(r"\[ONNX Layer: ([^\]]+)\]")
+# TensorRT 10.14 xmma tactics list the operand codes before accumulation/epilogue.
+TACTIC_OPERANDS = re.compile(
+    r"_(?:gemm|gemvx)_(?:interleaved_|indexed_|wo_smem_)*"
+    r"(f16|i8|e4m3|f32|tf32|bf16)(?:f16|i8|e4m3|f32|tf32|bf16|i32)?_"
+    r"(f16|i8|e4m3|f32|tf32|bf16)(?:f16|i8|e4m3|f32|tf32|bf16|i32)?_"
+)
 
 
 def require_queue():
@@ -18,21 +39,95 @@ def require_queue():
         raise RuntimeError("Run GPU workloads through the shared training queue.")
 
 
-def precision_layers(details, precision):
-    spelling = {"fp16": r"FP16|Float16|Half", "int8": "Int8", "fp8": "FP8"}[precision]
-    pattern = re.compile(rf"\b(?:{spelling})\b", re.IGNORECASE)
-    return [
-        layer["Name"]
-        for layer in details["Layers"]
-        if any(
-            pattern.search(tensor.get("Format/Datatype", ""))
-            for key in ("Inputs", "Outputs")
-            for tensor in layer.get(key, [])
+def clipreid_precision_requirements(condition):
+    """Pin the compute ops in the CLIP ViT-B/16 export, including fused attention."""
+    precision = TRT_PRECISIONS[condition]
+    return {
+        f"/visual/transformer/resblocks/resblocks.{block}/{name}": precision
+        for block in range(12)
+        for name in (
+            "attn/MatMul",
+            "attn/MatMul_1",
+            "attn/MatMul_2",
+            "attn/Gemm",
+            "mlp/c_fc/MatMul",
+            "mlp/c_proj/MatMul",
         )
-    ]
+    } | {
+        "/visual/conv1/Conv": "int8" if condition == "3a" else "fp16",
+        "/visual/MatMul": "fp16",
+    }
 
 
-def build_engine(onnx_file, plan, *, required_precision):
+def inspect_engine(engine):
+    import tensorrt as trt
+
+    inspector = engine.create_engine_inspector()
+    return json.loads(inspector.get_engine_information(trt.LayerInformationFormat.JSON))
+
+
+def verify_compute_precision(details, required_precision, *, expected_operations=None):
+    """Require operand evidence for each compute layer and cover the pinned ONNX ops."""
+    precisions = Counter()
+    seen = set()
+    for layer in details["Layers"]:
+        kind = layer["LayerType"].lower()
+        tactic = layer.get("TacticName", "")
+        operands = TACTIC_OPERANDS.search(tactic)
+        fused_attention = kind == "kgen" and tactic.startswith("_gemm_mha_v2_")
+        if kind not in COMPUTE_TYPES and not operands and not fused_attention:
+            continue
+
+        name = layer["Name"]
+        operations = set(ONNX_LAYER.findall(layer.get("Metadata", "")))
+        if expected_operations is None:
+            precision = required_precision
+        else:
+            operations &= expected_operations.keys()
+            targets = {expected_operations[op] for op in operations}
+            if len(targets) != 1:
+                raise RuntimeError(
+                    f"Compute layer {name} has no unique precision requirement"
+                )
+            (precision,) = targets
+
+        inputs = [tensor["Format/Datatype"] for tensor in layer.get("Inputs", [])]
+        pattern = re.compile(rf"\b(?:{TENSOR_DTYPE[precision]})\b", re.IGNORECASE)
+        if fused_attention:
+            matches = len(inputs) == 3 and all(
+                pattern.search(dtype) for dtype in inputs
+            )
+        else:
+            code = OPERAND_CODE[precision]
+            matches = (
+                operands is not None
+                and operands.groups() == (code, code)
+                and bool(inputs and pattern.search(inputs[0]))
+            )
+        if not matches:
+            raise RuntimeError(
+                f"Compute layer {name} expected {precision} operands, "
+                f"got inputs {inputs} and tactic {tactic!r}"
+            )
+        precisions[precision] += 1
+        seen.update(operations)
+
+    if not precisions[required_precision]:
+        raise RuntimeError(f"No compute layers verified at {required_precision}")
+    evidence = {"engine_layers_by_precision": dict(precisions)}
+    if expected_operations is not None:
+        missing = expected_operations.keys() - seen
+        if missing:
+            raise RuntimeError(
+                f"Missing compute evidence for ONNX operations: {sorted(missing)}"
+            )
+        evidence["onnx_operations_by_precision"] = dict(
+            Counter(expected_operations.values())
+        )
+    return evidence
+
+
+def build_engine(onnx_file, plan, *, required_precision, expected_operations=None):
     import tensorrt as trt
     import torch
 
@@ -60,20 +155,15 @@ def build_engine(onnx_file, plan, *, required_precision):
     engine = runtime.deserialize_cuda_engine(engine_bytes)
     if engine is None:
         raise RuntimeError("TensorRT could not deserialize the built engine")
-    inspector = engine.create_engine_inspector()
-    details = json.loads(
-        inspector.get_engine_information(trt.LayerInformationFormat.JSON)
-    )
+    details = inspect_engine(engine)
     output = plan.with_suffix(".layers.json")
     output.write_text(json.dumps(details, indent=2) + "\n")
-    layers = precision_layers(details, required_precision)
-    if not layers:
-        raise RuntimeError(
-            f"No engine layer exposes {required_precision} tensors. See {output}"
-        )
+    evidence = verify_compute_precision(
+        details, required_precision, expected_operations=expected_operations
+    )
     with plan.open("xb") as stream:
         stream.write(memoryview(engine_bytes))
-    return layers
+    return evidence
 
 
 def convert(condition, checkpoint, calibration, output):
@@ -98,7 +188,7 @@ def convert(condition, checkpoint, calibration, output):
         )
     onnx.checker.check_model(str(graph))
     del model
-    mode = {"2": "fp16", "3a": "int8", "3b": "fp8"}[condition]
+    mode = TRT_PRECISIONS[condition]
     quantization = None
     if condition in {"3a", "3b"}:
         from modelopt.onnx.quantization.quantize import quantize
@@ -139,14 +229,19 @@ def convert(condition, checkpoint, calibration, output):
             "Q": quantize_nodes,
             "DQ": dequantize_nodes,
         }
-    layers = build_engine(graph, output / PLAN, required_precision=mode)
-    print(f"Engine exposes {mode} tensors in {len(layers)} layers", flush=True)
+    evidence = build_engine(
+        graph,
+        output / PLAN,
+        required_precision=mode,
+        expected_operations=clipreid_precision_requirements(condition),
+    )
+    print(f"Engine compute precision: {evidence}", flush=True)
     (output / "conversion.json").write_text(
         json.dumps(
             {
                 "condition": condition,
                 "workspace_bytes": WORKSPACE_BYTES,
-                "required_precision_layers": layers,
+                "compute_precision": evidence,
                 "quantization": quantization,
             },
             indent=2,

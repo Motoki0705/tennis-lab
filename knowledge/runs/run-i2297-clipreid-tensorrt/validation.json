@@ -238,5 +238,107 @@
         "raw_csv_sha256": "e0f136b75854949c9c4b7ba49dbaf29ee650344dbfcbc0386e60f9637947816e"
       }
     }
+  },
+  "formal_review": {
+    "reviewed_head": "e78be9632b7e6a449bec1b46f866588ca7a6f443",
+    "trt_timing_nvtx_none": {
+      "2": {
+        "queue_job": "0-8204860815683590951_2026-11-20T01-46-24-316409048Z_3646189_i2297-review-nvtx-none-2",
+        "source_run": "2-retry",
+        "result": "review-nvtx-none/2/result.json",
+        "result_sha256": "96f7fc8ecc8e945ff31d9e46698cf3b266446ea0d672380f35397e8fac8fa1dd",
+        "engine_sha256": "f0d6bc297176a5f252a2ebca1560a86816a12329d7c753ac3ff22c4ae79d0bb4",
+        "identical_feature_sha256": "6a227db5f5d9d4db6e7d9fcfe3639e99b4abe917d95ff6fb732376213193eb52",
+        "archived_inspector_sha256": "3600693b7978990708e329573cde53845f306383a409bdd2e1fd20fe69932b24"
+      },
+      "3a": {
+        "queue_job": "0-8204860815437290466_2026-11-20T01-46-24-562709533Z_3646228_i2297-review-nvtx-none-3a",
+        "source_run": "3a",
+        "result": "review-nvtx-none/3a/result.json",
+        "result_sha256": "a591c1e4269365de731e1dafb687e9eff5dea448e938a823f4f34bcdf82a215e",
+        "engine_sha256": "326aca570d4d3449928d941d397ae37851b68e3440b9e519973436a1b6f5de11",
+        "identical_feature_sha256": "2c27d14a84c16d0f03e453db33d78686eaa903bb8a70356f81470c9f6207874d",
+        "archived_inspector_sha256": "dfffb6d2812818d5274ec16fef025eb46c292c5507306c15f3124097e1ce9782"
+      },
+      "3b": {
+        "queue_job": "0-8204860815188866640_2026-11-20T01-46-24-811133359Z_3646268_i2297-review-nvtx-none-3b",
+        "source_run": "3b",
+        "result": "review-nvtx-none/3b/result.json",
+        "result_sha256": "f60c879cb79e673cff1049e9d9044273bbae27a458e044d76381843aa7d40ced",
+        "engine_sha256": "06c0cc26534071ea74e30a81c749a8f88c3776565f2030a215b09423b459903a",
+        "identical_feature_sha256": "ee5816ced493cb77fc791446386c8b98ae1eb0d1d3ce27e3b70e41af8ce7f081",
+        "archived_inspector_sha256": "339eca4ff6cd727de28ae871fe40df27f7149fda7ac643f477b1e2ccd0615456"
+      }
+    },
+    "ncu_profile_from": {
+      "condition": "2",
+      "queue_job": "0-8204860814930881924_2026-11-20T01-46-25-069118075Z_3646319_i2297-review-ncu-crosscheck-2",
+      "receipt": "review-ncu-crosscheck-2/result.json",
+      "ncu_csv": "review-ncu-crosscheck-2/ncu.csv",
+      "ncu_csv_sha256": "74ae5d153bead2f329719422cc4ae76079ad3ac9e7bc9ddc472a59de8534ca63",
+      "nsys_source": "2-retry/result.json",
+      "nsys_kernels": 114,
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 114,
+        "dram_read_bytes": 161099008,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 31.400335754558842,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 9.309810280896025,
+          "short_scoreboard": 3.6483641489307668,
+          "lg_throttle": 0.4221996749123788,
+          "mio_throttle": 1.5475877482602736
+        }
+      },
+      "exit_code": 0
+    },
+    "qdq_environment_probe": {
+      "queue_job": "0-8204860814662302695_2026-11-20T01-46-25-337697304Z_3646163_i2297-review-qdq-probe",
+      "exit_code": 0,
+      "compute_capability": [
+        12,
+        0
+      ],
+      "tensorrt": "10.14.1.48.post1",
+      "probes": {
+        "int8": {
+          "output": 64.0,
+          "compute_precision": {
+            "engine_layers_by_precision": {
+              "int8": 1
+            }
+          }
+        },
+        "fp8": {
+          "output": 64.0,
+          "compute_precision": {
+            "engine_layers_by_precision": {
+              "fp8": 1
+            }
+          }
+        }
+      }
+    },
+    "cpu_regressions": [
+      {
+        "test": "test_engine_inspection_rejects_fp32_gemm_with_low_precision_cast",
+        "mutated_behavior": "accepted low-precision cast output as proof",
+        "failure": "DID NOT RAISE RuntimeError",
+        "failed_cases": 3
+      },
+      {
+        "test": "test_ncu_followup_fails_when_reused_nsys_kernel_count_differs",
+        "mutated_behavior": "ignored the saved nsys result",
+        "failure": "returned 0 with 1 ncu kernel versus 114 nsys kernels",
+        "failed_cases": 1
+      },
+      {
+        "test": "test_dino_matching_counts_same_score_box_replacements_as_missing_and_extra",
+        "mutated_behavior": "accepted matches at IoU below 0.50",
+        "failure": "counted 0 missing boxes instead of 2",
+        "failed_cases": 1
+      }
+    ]
   }
 }
