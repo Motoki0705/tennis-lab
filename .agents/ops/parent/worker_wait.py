@@ -145,6 +145,12 @@ def wait_worker(
     proof: dict[str, Any] | None = None
     current = pinned
 
+    def read_bound() -> Target:
+        observed = target(store, key, child, worker)
+        if observed.binding != pinned.binding:
+            raise ValueError("manual worker delegation/latest run changed during wait")
+        return observed
+
     def response(state: str, error: str | None = None) -> dict[str, Any]:
         record = proof["record"] if proof is not None else {}
         final = pinned.directory / "final.md"
@@ -173,9 +179,7 @@ def wait_worker(
         return value
 
     while True:
-        current = target(store, key, child, worker)
-        if current.binding != pinned.binding:
-            raise ValueError("manual worker delegation/latest run changed during wait")
+        current = read_bound()
         if current.directory != pinned.directory:
             pinned, run_id, proof = current, None, None
         remaining = None if deadline is None else deadline - clock()
@@ -184,6 +188,12 @@ def wait_worker(
         followup = current.followup
         if followup and not (pinned.directory / "result.json").exists():
             if followup["state"] != "running" or not worker_followup.live(followup):
+                latest = read_bound()
+                if (
+                    latest.followup != followup
+                    or (pinned.directory / "result.json").exists()
+                ):
+                    continue
                 return 2, response("liveness_unknown", "followup_runtime_unconfirmed")
             sleep(1.0 if remaining is None else min(1.0, remaining))
             continue
@@ -219,9 +229,7 @@ def wait_worker(
                     "liveness_unknown", "runner_records_unavailable_or_invalid"
                 )
             proof, run_id = observed, record["run_id"]
-        current = target(store, key, child, worker)
-        if current.binding != pinned.binding:
-            raise ValueError("manual worker delegation/latest run changed during wait")
+        current = read_bound()
         if current.directory != pinned.directory:
             continue
         if runtime.ended(proof):
@@ -231,6 +239,10 @@ def wait_worker(
                     return 2, response("followup_error", followup["reason"])
                 return 0, response("ended")
             if not worker_followup.live(followup):
+                # The controller writes its terminal state before exiting.
+                # A negative liveness result may therefore race its final save.
+                if read_bound().followup != followup:
+                    continue
                 return 2, response(
                     "liveness_unknown", "followup_controller_unconfirmed"
                 )

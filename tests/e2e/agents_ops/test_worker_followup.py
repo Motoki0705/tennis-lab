@@ -9,8 +9,12 @@ fixed sleeps in the tests. Measure setup and cases with --durations=0.
 
 from __future__ import annotations
 
+import fcntl
 import importlib
 import json
+import os
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -19,6 +23,7 @@ from typing import Any, cast
 
 import pytest
 
+from tests.e2e.agents_ops.test_human_agreement import delegation_args
 from tests.e2e.agents_ops.test_manual_worker_runs import (
     latest,
     manual,
@@ -27,30 +32,43 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
     task,
 )
 from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_wait_worker import command as wait_command
 from tests.e2e.agents_ops.test_wait_worker import connected, listening
 
 HEAD = "a" * 40
 DONE = 'PARENT_RESULT {"schema_version":1,"state":"done","wait":null}'
+SOURCE = Path(__file__).resolve().parents[3]
 FAKE_SERVICE = r"""
-import json, os, socket, subprocess, sys, tempfile
+import json, os, shlex, socket, subprocess, sys, tempfile
 from pathlib import Path
 args = sys.argv[1:]
 assert all(flag in args for flag in ("--user", "--collect", "--service-type=notify"))
 command = args[args.index("--") + 1:]
 assert command[1:3] == ["-m", "parent.worker_monitor"]
 root = Path(os.environ["FAKE_SERVICE_ROOT"])
-with (root / "service-starts.jsonl").open("a") as f:
-    f.write(json.dumps(command) + "\n")
 env = dict(os.environ)
+working = Path.cwd()
+pre, post = [], []
 for flag in args:
     if flag.startswith("--setenv=") and "=" in flag.removeprefix("--setenv="):
         name, _, value = flag.removeprefix("--setenv=").partition("=")
-        if name == "PYTHONPATH" and env.get(name):
-            value += os.pathsep + env[name]
         env[name] = value
+    elif flag.startswith("--property=WorkingDirectory=-"):
+        working = Path(flag.removeprefix("--property=WorkingDirectory=-"))
+    elif flag.startswith("--property=Exec"):
+        name, _, value = flag.removeprefix("--property=").partition("=")
+        assert value.startswith(":")
+        (pre if name == "ExecStartPre" else post).append(
+            [arg.replace("%%", "%") for arg in shlex.split(value.removeprefix(":"))]
+        )
+for argv in pre:
+    subprocess.run(argv, cwd=working if working.exists() else None, check=True)
+env["PYTHONPATH"] += os.pathsep + os.environ["FAKE_SERVICE_HTTP_BOOTSTRAP"]
+env["FAKE_SERVICE_CLEANUP"] = json.dumps(post)
+with (root / "service-starts.jsonl").open("a") as f:
+    f.write(json.dumps({"command": command, "cwd": str(working), "pythonpath": env["PYTHONPATH"]}) + "\n")
 with tempfile.TemporaryDirectory(prefix="followup-notify-") as short:
     address = str(Path(short) / "notify.sock")
     env["NOTIFY_SOCKET"] = address
@@ -59,12 +77,13 @@ with tempfile.TemporaryDirectory(prefix="followup-notify-") as short:
         ready.settimeout(10)
         process = subprocess.Popen(
             [command[0], str(root / "fake-service-entry.py"), *command[3:]],
-            env=env, start_new_session=True, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+            cwd=working, env=env, start_new_session=True,
+            stdin=subprocess.DEVNULL, stdout=log, stderr=log,
         )
         assert ready.recv(1024) == b"READY=1"
 """
 FAKE_SERVICE_ENTRY = r"""
-import os, socket, sys
+import json, os, socket, subprocess, sys
 from pathlib import Path
 from issues.transport import HTTPClient, HTTPResponse
 from parent import manual_workers, worker_monitor
@@ -76,8 +95,10 @@ def download_log(self, url):
     return HTTPResponse(200, {}, "compile start\nERROR: regression in fixture step")
 HTTPClient.download_log = download_log
 original = worker_monitor.queue_result
-def queue_result(root, job):
-    result = original(root, job)
+def queue_result(root, job, **kwargs):
+    if os.environ.get("FAKE_QUEUE_ELAPSED") and kwargs["missing_completion_since"]:
+        kwargs["now"] += 60
+    result = original(root, job, **kwargs)
     if result is None and (address := os.environ.pop("FAKE_QUEUE_PENDING", None)):
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
             channel.connect(address)
@@ -85,19 +106,60 @@ def queue_result(root, job):
             assert channel.recv(1) == b"C"
     return result
 worker_monitor.queue_result = queue_result
-sys.exit(worker_monitor.main())
+original_run = manual_workers.run_worker
+def run_worker(*args, **kwargs):
+    try:
+        return original_run(*args, **kwargs)
+    except ValueError as exc:
+        if "implementation reservation limit reached" in str(exc):
+            if address := os.environ.pop("FAKE_CAPACITY_RETRY", None):
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
+                    channel.connect(address)
+                    channel.sendall(b"full")
+                    assert channel.recv(1) == b"C"
+        raise
+manual_workers.run_worker = run_worker
+try:
+    sys.exit(worker_monitor.main())
+finally:
+    for command in json.loads(os.environ["FAKE_SERVICE_CLEANUP"]):
+        subprocess.run(command, check=True)
+    if address := os.environ.get("FAKE_SERVICE_STOPPED"):
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
+            channel.connect(address)
+            channel.sendall(b"removed")
 """
 
 
 @pytest.fixture
 def service(reserved: ParentEnv) -> ParentEnv:
     p = reserved
+    shutil.copytree(
+        SOURCE / ".agents/ops",
+        p.repo / ".agents/ops",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    for name in (
+        "src/__init__.py",
+        "src/utils/__init__.py",
+        "src/utils/training_queue.py",
+    ):
+        destination = p.repo / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(SOURCE / name, destination)
+    run_git(p.repo, "add", ".agents/ops", "src")
+    run_git(p.repo, "commit", "-m", "install operational code on fixture main")
+    p.env["PYTHONPATH"] = os.pathsep.join(map(str, (p.repo / ".agents/ops", p.repo)))
     path = p.root / "bin/systemd-run"
     path.write_text(f"#!{sys.executable}\n" + FAKE_SERVICE)
     path.chmod(0o755)
     (p.root / "fake-service-entry.py").write_text(FAKE_SERVICE_ENTRY)
     p.env.update(
-        FAKE_SERVICE_ROOT=str(p.root), TRAINING_QUEUE_DIR=str(p.root / "queue")
+        FAKE_SERVICE_ROOT=str(p.root),
+        FAKE_SERVICE_HTTP_BOOTSTRAP=str(
+            SOURCE / "tests/support/agents_ops/http_bootstrap"
+        ),
+        TRAINING_QUEUE_DIR=str(p.root / "queue"),
     )
     return p
 
@@ -127,9 +189,23 @@ def runner_calls(p: ParentEnv) -> list[list[str]]:
     ]
 
 
+def service_start(p: ParentEnv) -> dict[str, Any]:
+    (row,) = (p.root / "service-starts.jsonl").read_text().splitlines()
+    return cast(dict[str, Any], json.loads(row))
+
+
+def worker_calls(p: ParentEnv, child_task: dict[str, Any]) -> list[list[str]]:
+    return [
+        call
+        for call in runner_calls(p)
+        if call[call.index("--task-id") + 1] == child_task["delegation_id"]
+    ]
+
+
 def assert_same_worker(p: ParentEnv, count: int) -> None:
-    runs = task(p)["worker_runs"]
-    calls = runner_calls(p)
+    child_task = task(p)
+    runs = child_task["worker_runs"]
+    calls = worker_calls(p, child_task)
     assert len(runs) == len(calls) == count
     sessions = set()
     for i, (run_entry, args) in enumerate(zip(runs, calls, strict=True)):
@@ -292,8 +368,14 @@ def test_queue_waits_for_every_job_and_duplicate_controller_cannot_resume(
             with connected(server) as gate:
                 assert gate.recv(1024).decode() == second
                 assert len(runner_calls(p)) == 1
-                command = json.loads((p.root / "service-starts.jsonl").read_text())
-                subprocess.run(command, cwd=p.repo, env=p.env, check=True, timeout=5)
+                started = service_start(p)
+                subprocess.run(
+                    started["command"],
+                    cwd=started["cwd"],
+                    env={**p.env, "PYTHONPATH": started["pythonpath"]},
+                    check=True,
+                    timeout=5,
+                )
                 assert len(runner_calls(p)) == 1
                 status_path = Path(short) / "wait-status.sock"
                 with listening(status_path) as status:
@@ -380,3 +462,172 @@ def test_queue_rejects_unknown_job_instead_of_waiting_forever(
     assert "unknown training-queue job_id" in result["reason"]
     assert result["auto_resumes"] == 0
     assert_same_worker(p, 1)
+
+
+def test_queue_missing_completion_is_returned_by_wait_worker(
+    service: ParentEnv,
+) -> None:
+    p = service
+    job = "100_1_unpublished.job"
+    root = Path(p.env["TRAINING_QUEUE_DIR"])
+    (root / "failed").mkdir(parents=True)
+    (root / "failed" / job).touch()
+    p.env["FAKE_QUEUE_ELAPSED"] = "1"
+    launch(p, waiting("queue", job_ids=[job]))
+    result = joined(p, ok=False)["followup"]
+    assert result["state"] == "error"
+    assert result["reason"] == f"missing training-queue completion record for {job}"
+    assert_same_worker(p, 1)
+
+
+def test_auto_resume_retries_after_another_worker_releases_the_only_slot(
+    service: ParentEnv,
+) -> None:
+    p = service
+    p.cli(
+        "configure-delegation",
+        "--max-parallel-children",
+        "1",
+        "--reason-file",
+        p.note(),
+    )
+    job = "100_1_slot.job"
+    set_job(p, job, "running")
+    with tempfile.TemporaryDirectory(prefix="queue-capacity-") as short:
+        pending, busy, retry = (
+            Path(short) / name for name in ("pending.sock", "busy.sock", "retry.sock")
+        )
+        p.env.update(FAKE_QUEUE_PENDING=str(pending), FAKE_CAPACITY_RETRY=str(retry))
+        with listening(pending) as pending_server, listening(retry) as retry_server:
+            launch(p, waiting("queue", job_ids=[job]), DONE)
+            with connected(pending_server) as queue:
+                assert queue.recv(1024).decode() == job
+                p.child("other")
+                p.cli(*delegation_args(p.worktree("other"), child=11))
+                runner = p.root / "busy-runner"
+                runner.write_text(
+                    f"#!{sys.executable}\n"
+                    "import os, socket, sys\n"
+                    "if sys.argv[1] != 'status':\n"
+                    "    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as gate:\n"
+                    "        gate.connect(os.environ['OTHER_RUNNER_SOCKET'])\n"
+                    "        gate.sendall(b'started')\n"
+                    "        assert gate.recv(1) == b'C'\n"
+                    f"runner = {str(p.root / 'fake-runner')!r}\n"
+                    "os.execv(runner, [runner, *sys.argv[1:]])\n"
+                )
+                runner.chmod(0o700)
+                with (
+                    listening(busy) as busy_server,
+                    subprocess.Popen(
+                        wait_command(
+                            runner,
+                            "run-worker",
+                            "--child",
+                            "11",
+                            "--prompt-file",
+                            p.note(),
+                        ),
+                        cwd=p.repo,
+                        env={
+                            **p.env,
+                            "OTHER_RUNNER_SOCKET": str(busy),
+                            "MANUAL_STATE_DIR": str(state_dir(p)),
+                            "MANUAL_RUNNER_CALLS": str(p.root / "runner-calls.jsonl"),
+                        },
+                        text=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        start_new_session=True,
+                    ) as other,
+                ):
+                    try:
+                        with connected(busy_server) as worker:
+                            assert worker.recv(1024) == b"started"
+                            set_job(p, job, "done")
+                            queue.sendall(b"C")
+                            with connected(retry_server) as full:
+                                assert full.recv(1024) == b"full"
+                                saved = task(p)["manual_followup"]
+                                assert saved["state"] == "resuming"
+                                assert saved["observation"]["jobs"][0]["job_id"] == job
+                                assert not saved["resumptions"]
+                                assert_same_worker(p, 1)
+                                worker.sendall(b"C")
+                                out, err = other.communicate(timeout=10)
+                                assert other.returncode == 0, out + err
+                                full.sendall(b"C")
+                    finally:
+                        if other.poll() is None:
+                            os.killpg(other.pid, signal.SIGTERM)
+    result = joined(p)["followup"]
+    assert result["state"] == "done" and result["auto_resumes"] == 1
+    assert_same_worker(p, 2)
+
+
+def test_auto_resume_records_admission_refusal_for_parent(
+    service: ParentEnv,
+) -> None:
+    p = service
+    job = "100_1_admission.job"
+    set_job(p, job, "running")
+    with tempfile.TemporaryDirectory(prefix="queue-admission-") as short:
+        pending = Path(short) / "pending.sock"
+        p.env["FAKE_QUEUE_PENDING"] = str(pending)
+        with listening(pending) as server:
+            launch(p, waiting("queue", job_ids=[job]))
+            with connected(server) as gate:
+                assert gate.recv(1024).decode() == job
+                remote = p.state()
+                remote["prs"] = [p.pr(123, 10, branch="codex/another")]
+                p.save(remote)
+                set_job(p, job, "done")
+                gate.sendall(b"C")
+    result = joined(p)["followup"]
+    assert result["state"] == "needs_parent"
+    assert "continuation requires a unique open or merged PR" in result["reason"]
+    assert result["auto_resumes"] == 0
+    assert result["observation"]["jobs"][0]["job_id"] == job
+    assert_same_worker(p, 1)
+
+
+def test_queue_monitor_pins_main_code_without_holding_checkout_lock(
+    service: ParentEnv,
+) -> None:
+    p = service
+    job = "100_1_pin.job"
+    set_job(p, job, "running")
+    head = run_git(p.repo, "rev-parse", "HEAD")
+    relative = ".agents/ops/parent/worker_prompt.md"
+    marker = "更新後のmainだけにある追加指示。"
+    with tempfile.TemporaryDirectory(prefix="queue-pin-") as short:
+        pending, stopped = Path(short) / "pending.sock", Path(short) / "stopped.sock"
+        p.env.update(FAKE_QUEUE_PENDING=str(pending), FAKE_SERVICE_STOPPED=str(stopped))
+        with listening(pending) as server, listening(stopped) as cleanup:
+            launch(p, waiting("queue", job_ids=[job]), DONE)
+            with connected(server) as gate:
+                assert gate.recv(1024).decode() == job
+                checkout = Path(service_start(p)["cwd"])
+                assert run_git(checkout, "rev-parse", "HEAD") == head
+                assert (checkout / relative).read_bytes() == (
+                    p.repo / relative
+                ).read_bytes()
+                with (p.repo / ".git/ops-code.lock").open("a") as updater:
+                    fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    with (p.repo / relative).open("a", encoding="utf-8") as source:
+                        source.write(f"\n{marker}\n")
+                    run_git(p.repo, "add", relative)
+                    run_git(p.repo, "commit", "-m", "update monitor source on main")
+                assert run_git(p.repo, "rev-parse", "HEAD") != head
+                assert run_git(checkout, "rev-parse", "HEAD") == head
+                set_job(p, job, "done")
+                gate.sendall(b"C")
+            assert joined(p)["followup"]["state"] == "done"
+            assert_same_worker(p, 2)
+            assert marker not in (latest(p) / "prompt.md").read_text()
+            with connected(cleanup) as notice:
+                assert notice.recv(1024) == b"removed"
+            assert not checkout.exists()
+            assert str(checkout) not in run_git(
+                p.repo, "worktree", "list", "--porcelain"
+            )

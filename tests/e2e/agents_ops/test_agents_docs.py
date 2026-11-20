@@ -189,6 +189,22 @@ def test_worker_wait_is_reachable_from_the_operational_entry_points() -> None:
     assert gotcha not in (MEMORY_DIR / "gotcha/index.md").read_text(encoding="utf-8")
 
 
+def test_local_queue_policy_has_one_operational_source_and_preserves_colab() -> None:
+    legacy = "workers-do-not-wait-on-queue-jobs.md"
+    assert not (MEMORY_DIR / "decision" / legacy).exists()
+    assert legacy not in {
+        target for _, target, _ in _links(MEMORY_DIR / "decision/index.md")
+    }
+    assert "親が完了イベントで再開" not in MEMORY_SUMMARY.read_text(encoding="utf-8")
+    workers = ROOT / ".agents/skills/parent-session/references/workers.md"
+    assert {"ciローカルqueueの待機", "colabの長時間ジョブ"} <= _anchors(workers)
+    assert (
+        ".agents/skills/parent-session/references/workers.md#colabの長時間ジョブ"
+        in {target for _, target, _ in _links(AGENTS_MD)}
+    )
+    assert "../../tennis-colab/SKILL.md" in {target for _, target, _ in _links(workers)}
+
+
 def test_parent_cli_help_examples_match_the_parser(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

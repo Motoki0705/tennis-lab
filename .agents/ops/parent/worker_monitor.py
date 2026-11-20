@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -14,16 +16,16 @@ from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from dispatcher.runtime import process_identity
+from lib.checkout_lock import common_directory
 from lib.ops_review.progression import CI_TIMEOUT, RateWait
 from lib.ops_review.progression_backend import LiveBackend
 from lib.ops_review.review_locks import pr_lease
 
 from . import worker_followup, worker_slots
 from .github import GitHub
-from .policy import digest
 from .snapshot import git
 from .state import Store
 from .worker_wait_sources import ci_result, queue_result
@@ -36,12 +38,87 @@ FORWARDED_ENV = (
     "XDG_CONFIG_HOME",
     "XDG_STATE_HOME",
 )
+MONITOR_SOURCE_PATHS = (
+    ".agents/ops",
+    "src/__init__.py",
+    "src/utils/__init__.py",
+    "src/utils/training_queue.py",
+)
+
+
+def _exec_property(setting: str, *argv: str | Path) -> str:
+    # systemd parses Exec* properties itself. Quote each argument, disable
+    # shell-style environment substitution, and escape unit specifiers.
+    quoted = " ".join(
+        json.dumps(str(arg), ensure_ascii=False).replace("%", "%%") for arg in argv
+    )
+    return f"--property={setting}=:{quoted}"
 
 
 def start(
     store: Store, repo: str, parent: int, child: int, worker: str, chain: str
 ) -> None:
-    ops = Path(__file__).resolve().parents[1]
+    if not re.fullmatch(r"[0-9a-f]{32}", chain):
+        raise ValueError("invalid worker follow-up ID")
+    source = Path(__file__).resolve().parents[3]
+    head = git("rev-parse", "--verify", "HEAD^{commit}", cwd=source).decode().strip()
+    if git("status", "--porcelain", "--", *MONITOR_SOURCE_PATHS, cwd=source).strip():
+        raise ValueError("commit the worker monitor source before starting a follow-up")
+    common = common_directory(source)
+    directory = store.directory.resolve()
+    pins = directory / "worker-monitor-checkouts"
+    pins.mkdir(mode=0o700, parents=True, exist_ok=True)
+    checkout = pins / chain
+    if checkout.exists():
+        raise ValueError("worker follow-up checkout already exists")
+    git_bin, ln = shutil.which("git"), shutil.which("ln")
+    if git_bin is None or ln is None:
+        raise ValueError("worker follow-up requires git and ln")
+    # The service owns the pin from setup to cleanup. A linked worktree shares
+    # the registry's Git common lock for short transactions and loads its own
+    # code throughout the wait, including when it starts the next runner.
+    setup = [
+        _exec_property(
+            "ExecStartPre",
+            git_bin,
+            f"--git-dir={common}",
+            "worktree",
+            "add",
+            "--detach",
+            "--no-checkout",
+            checkout,
+            head,
+        ),
+        _exec_property(
+            "ExecStartPre",
+            git_bin,
+            "-C",
+            checkout,
+            "restore",
+            "--source=HEAD",
+            "--worktree",
+            "--",
+            *MONITOR_SOURCE_PATHS,
+        ),
+        _exec_property(
+            "ExecStartPre",
+            ln,
+            "--symbolic",
+            "--",
+            Path(sys.prefix).resolve(),
+            checkout / ".venv",
+        ),
+        _exec_property(
+            "ExecStopPost",
+            git_bin,
+            f"--git-dir={common}",
+            "worktree",
+            "remove",
+            "--force",
+            checkout,
+        ),
+    ]
+    ops = checkout / ".agents/ops"
     # A transient service is forked by the user manager. setsid alone would
     # still leave a descendant of an agent runner subject to subreaper cleanup.
     options = [f"--setenv={name}" for name in FORWARDED_ENV if name in os.environ]
@@ -59,14 +136,16 @@ def start(
             "--service-type=notify",
             "--property=TimeoutStartSec=30s",
             "--property=UMask=0077",
-            f"--working-directory={Path.cwd()}",
-            f"--setenv=PYTHONPATH={ops}{os.pathsep}{ops.parents[1]}",
+            # ExecStartPre creates this directory before the monitor imports.
+            f"--property=WorkingDirectory=-{checkout}",
+            f"--setenv=PYTHONPATH={ops}{os.pathsep}{checkout}",
+            *setup,
             *options,
             "--",
             sys.executable,
             "-m",
             "parent.worker_monitor",
-            str(store.directory),
+            str(directory),
             repo,
             str(parent),
             str(child),
@@ -183,9 +262,19 @@ class Monitor:
                 / ".training_queue"
             )
             lease = nullcontext()
+            missing_completion_since: dict[str, float] = {}
 
             def observe_queue() -> dict[str, Any] | None:
-                results = [queue_result(root, job) for job in request["job_ids"]]
+                now = time.monotonic()
+                results = [
+                    queue_result(
+                        root,
+                        job,
+                        now=now,
+                        missing_completion_since=missing_completion_since,
+                    )
+                    for job in request["job_ids"]
+                ]
                 if any(result is None for result in results):
                     return None
                 return {"kind": "queue", "jobs": results}
@@ -236,22 +325,23 @@ class Monitor:
             ):
                 record["state"] = "done"
             else:
-                event = digest(
-                    ["ci", request["pr"], request["head"]]
-                    if request["kind"] == "ci"
-                    else ["queue", sorted(request["job_ids"])]
-                )
+                event = worker_followup.event_key(request)
                 if event in record["resumptions"]:
                     record.update(state="needs_parent", reason="event_already_consumed")
                 elif len(record["resumptions"]) >= worker_followup.RESUME_LIMIT:
                     record.update(state="needs_parent", reason="automatic_resume_limit")
                 else:
-                    record["resumptions"].append(event)
                     record["state"] = "resuming"
             self.store.save()
             return record if record["state"] == "resuming" else None
 
-    def fail(self, reason: str, *, unclaimed_only: bool = False) -> bool:
+    def fail(
+        self,
+        reason: str,
+        *,
+        state: Literal["error", "needs_parent"] = "error",
+        unclaimed_only: bool = False,
+    ) -> bool:
         with self.store.operation(self.key), self.store.locked():
             target = self.bound(self.store.parents)
             if target is None:
@@ -259,38 +349,50 @@ class Monitor:
             _, record = target
             if unclaimed_only and record["monitor_started"]:
                 return False
-            record.update(state="error", reason=reason)
+            record.update(state=state, reason=reason)
             self.store.save()
             return True
 
-    def run(self) -> None:
-        from .manual_workers import run_worker
+    def resume(self, record: dict[str, Any], result: dict[str, Any]) -> bool:
+        from .manual_workers import WorkerCapacityUnavailable, run_worker
 
+        path = Path(record["run_dir"]) / "followup.md"
+        with path.open("x", encoding="utf-8") as output:
+            output.write(resume_prompt(record["wait"], result))
+        gh = GitHub(self.repo, store=self.store)
+        while True:
+            try:
+                status, response = run_worker(
+                    gh,
+                    self.store,
+                    self.parent,
+                    record["owner"],
+                    child=self.child,
+                    prompt=path,
+                    resume=True,
+                    restart_evidence=None,
+                    planning=record["phase"] == "planning",
+                    worker=self.worker,
+                    automatic=self.chain,
+                )
+            except WorkerCapacityUnavailable:
+                time.sleep(POLL_SECONDS)
+                continue
+            except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                self.fail(f"automatic_resume_refused: {exc}", state="needs_parent")
+                return False
+            if status:
+                self.fail(str(response.get("launch_state", "worker_runtime_failed")))
+                return False
+            return True
+
+    def run(self) -> None:
         while target := self.pending():
             result = self.observe(*target)
             if result is None:
                 return
             record = self.accept(result, target[1])
-            if record is None:
-                return
-            path = Path(record["run_dir"]) / "followup.md"
-            with path.open("x", encoding="utf-8") as output:
-                output.write(resume_prompt(record["wait"], result))
-            status, response = run_worker(
-                GitHub(self.repo, store=self.store),
-                self.store,
-                self.parent,
-                record["owner"],
-                child=self.child,
-                prompt=path,
-                resume=True,
-                restart_evidence=None,
-                planning=record["phase"] == "planning",
-                worker=self.worker,
-                automatic=self.chain,
-            )
-            if status:
-                self.fail(str(response.get("launch_state", "worker_runtime_failed")))
+            if record is None or not self.resume(record, result):
                 return
 
 

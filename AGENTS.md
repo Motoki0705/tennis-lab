@@ -62,4 +62,4 @@
 - **ローカルGPU（既定）**: 必ず [.agents/skills/training-queue/SKILL.md](.agents/skills/training-queue/SKILL.md) を読み、training queue 経由で実行する。GPUに対して複数の学習プロセスを直接・同時に起動しない。worktreeで作業していても、queue state はworktree内に作らず、元のrepo rootの `.training_queue/` を共有する（必要なら `TRAINING_QUEUE_DIR` をrepo rootの `.training_queue/` に明示する）。
 - **Colab（ユーザーが指定した場合のみ）**: [.agents/skills/tennis-colab/SKILL.md](.agents/skills/tennis-colab/SKILL.md) を読み、ローカルでの開発とGit経由の反映、Colabでの実行・調査・修正・差分回収を行う。Driveの操作と管理方針は [.agents/skills/tennis-drive/SKILL.md](.agents/skills/tennis-drive/SKILL.md) とそのreferencesを正本とする。
 - **ローカルの学習・評価・計測とPRのCI**: 投入・push後の受け渡しは [parent-session](.agents/skills/parent-session/references/workers.md#ciローカルqueueの待機) に従う。
-- **Colabの長時間ジョブ**: 起動と異常終了・VM消失後の再開は [parent-session skill](.agents/skills/parent-session/SKILL.md) の手順で共通ランナー経由のCodex子（既定のmodel・effort）へ委任する。子は起動から親が指定した安定条件（最初の周期checkpointのDrive保存など）までを見届けて終了する。子の終了後、親は完了・異常終了・プロセスやVM終了をイベントで監視する。
+- **Colabの長時間ジョブ**: 起動・安定確認・完了の受け渡しは [parent-session](.agents/skills/parent-session/references/workers.md#colabの長時間ジョブ) に従う。

@@ -15,6 +15,8 @@
 | CI失敗・競合 | CLIは登録された作成ワーカーの同じsessionを修正ターンのhighで再開し、push後は新HEADのCIへ戻る。自動修正はPR単位でCI・gate合算3回。作成ワーカーがない場合や上限に達した場合は、親が失敗箇所と残作業を判断する。 |
 | `parent_wait` | `merge-status --run-id RUN` のイベントと理由を読む。停止・権限不足は解除条件を確認し、起動やマージの応答喪失は [保存状態から復旧](recovery.md) する。 |
 
+`merge-continue --prs` で一部のPRを再開するときも、controllerは同じレビューrunに含まれる全PRのリースを取る。手動ワーカーの監視と競合したら、表示されたPRの `wait-worker` の結果を照合してから続行する。起動後の競合は `parent_wait` の通知に対象PRと理由が残る。
+
 approveまたはmajor処理後、現HEADのCI・依存・マージ条件が揃えば、そのHEADを指定してマージする。マージ後は**merge commit**のmain CIと対象Issueの `closed/completed` を確認する。この後確認と、親全体の [受入](finish.md) は別の記録になる。
 
 回数・時間・コストを調べるときは `merge-status.review_usage` を読む。各回の起動、延べ実行時間、入力・キャッシュ済み入力・出力と、PRごとのマージ観測までの経過時間を区別する。

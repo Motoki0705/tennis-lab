@@ -32,6 +32,7 @@ from worker_logs.sources import read_original
 from . import worker_followup, worker_preflight, worker_slots
 from .execution import authorization
 from .github import GitHub
+from .launch import DEFAULT_LAUNCH_POLICY, active_reservations, launch_policy
 from .policy import closing_issues, digest, nonempty, object_value
 from .session import ParentSession
 from .snapshot import git, validate_worktree
@@ -49,6 +50,10 @@ SUMMARY_KEYS = {
 }
 RUN_KEYS = {"delegation_id", "run_dir", "kind", "recorded_at"}
 MODEL_KEYS = {"model", "model_reason"}
+
+
+class WorkerCapacityUnavailable(ValueError):
+    """A later admission can succeed when another reservation ends."""
 
 
 def current_task(session: ParentSession, child: int) -> dict[str, Any]:
@@ -480,6 +485,19 @@ def prepare_run(
             raise ValueError(
                 "automatic resume cannot deliver a pending parent decision"
             )
+        if task.get("stopped") or session.row["tasks"][str(child)].get("stopped"):
+            raise ValueError("worker follow-up was stopped")
+        if not task.get("worker_ended"):
+            raise ValueError("automatic resume requires saved worker-end evidence")
+        # The parent operation lock serializes admission and the slot claim.
+        # Check local capacity before doing GitHub preflight for a busy parent.
+        policy = launch_policy(session.row.get("launch_policy", DEFAULT_LAUNCH_POLICY))
+        limit = policy["max_parallel_children"]
+        if (
+            limit is not None
+            and len(active_reservations(session.row["tasks"])) >= limit
+        ):
+            raise WorkerCapacityUnavailable("implementation reservation limit reached")
     if repair is not None:
         validate_repair_request(repair)
         if (
@@ -539,7 +557,7 @@ def prepare_run(
             "ended delegation requires an explicit resume with restart evidence"
         )
     plan = session.launch_plan(restart_child=child)
-    if ended:
+    if ended and automatic is None:
         limit = plan["policy"]["max_parallel_children"]
         if limit is not None and len(plan["active_reservations"]) >= limit:
             raise ValueError("implementation reservation limit reached")
@@ -557,6 +575,8 @@ def prepare_run(
             )
             or continuation
             and r["code"] in {"existing_pr", "completed", "parent_closed"}
+            or automatic is not None
+            and r["code"] == "parallel_limit"
         )
     ]
     if reasons:
@@ -804,7 +824,8 @@ def run_worker(
             session.row, child, worker, creating=base_ref is not None
         )
         session.worker = worker
-        session.agreed()
+        if automatic is None:
+            session.agreed()
         if base_ref is not None:
             from .snapshot import worker_location
 
@@ -1008,8 +1029,12 @@ def run_worker(
             followup = worker_followup.current(current)
             if followup is not None:
                 followup.update(
-                    state="error",
-                    reason="rejected_before_start",
+                    state="needs_parent" if automatic is not None else "error",
+                    reason=(
+                        "rejected_before_start: " + proc.stderr.decode(errors="replace")
+                        if automatic is not None
+                        else "rejected_before_start"
+                    ),
                     run_dir=str(run_directory(store, runs[-2]))
                     if len(runs) > 1
                     else None,

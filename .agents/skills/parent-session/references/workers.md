@@ -44,8 +44,12 @@ setsid "${p[@]}" run-worker --child 1217 --worker quality --from "$base" --promp
 - 悪い例「pushしたら、このターンでPython成功を確認してドラフトを解除する」
 - 計測の例「条件AとBを共有queueに投入し、両方のjob IDを宣言して終了。結果を受け取ったターンで集計して記録する」
 
-手動委任では `run-worker` が宣言を検査する。監視はユーザーのsystemd transient serviceで実行する。GitHubとCodexのCLI認証は、そのユーザーの設定を使う。CIは宣言したPR・HEADのPythonの結果を使う。失敗したときと、成功後の後続作業があるときは同じsessionを再開する。queueは宣言した全jobの終端を待ち、終了状態・ログ・取得できた出力先をまとめて一度だけ渡す。再開は担当ごとに3回まで。上限や人間の判断が返ったら、理由と成果を照合する。
+手動委任では `run-worker` が宣言を検査する。監視はユーザーのsystemd transient serviceで実行する。GitHubとCodexのCLI認証は、そのユーザーの設定を使う。CIは宣言したPR・HEADのPythonの結果を使う。失敗したときと、成功後の後続作業があるときは同じsessionを再開する。queueは宣言した全jobの終端を待ち、終了状態・ログ・取得できた出力先をまとめて一度だけ渡す。再開が必要で枠が埋まっているときは、CLIが結果を保存し、空き枠を取得して再開する。再開は担当ごとに3回まで。上限や人間の判断が返ったら、理由と成果を照合する。
 
 共有queueの `worker: RUNNING` は親側が委任前に確認する。停止中なら親側の独立したサービスで `training_queue.sh serve` を起動する。委任した子はworktreeから `add` を行い、queue workerを起動しない。子の共通ランナーは終了時に子孫を回収するため、子から起動したqueue workerと実行中jobも停止する。終了値143では、子の終了とqueue workerの停止が同時刻か確認する。専用のqueueを使うなら、親CLIの `TRAINING_QUEUE_DIR` を起動前に指定して子と共有する。
 
 自律親にも同じ宣言が届く。子の終了イベントで `inspect-worker` と `final_file` を照合し、外部の結果を得た後に `continue-worker` で継続する。[自律親](dispatch.md) の待機手順を使う。自動CI・gate修正は専用JSONを受ける [レビュー進行](review.md) がCIを監視する。
+
+## Colabの長時間ジョブ
+
+起動と異常終了・VM消失後の再開は、共通ランナー経由でCodex子（既定のmodel・effort）へ委任する。親は委任時に安定条件を指定する。子は最初の周期checkpointのDrive保存など、指定された条件を確認して終了する。その後は親が完了・異常終了・プロセスやVMの終了をイベントで監視する。環境準備と復旧は [tennis-colab](../../tennis-colab/SKILL.md) に従う。

@@ -180,6 +180,19 @@ class Engine:
             self.state["status"] = "parent_wait"
         self.emit("parent_wait", pr=target["number"], reason=reason)
 
+    def block_start(self, pr: int, reason: str) -> None:
+        if self.state["status"] == "completed":
+            return
+        # No step ran. Preserve each active stage for an explicit continuation
+        # and leave already-paused peers and completed targets as they were.
+        for target in self.state["targets"].values():
+            if target["stage"] not in {"parent_wait", "completed"}:
+                target.update(
+                    resume_stage=target["stage"], stage="parent_wait", reason=reason
+                )
+        self.state["status"] = "parent_wait"
+        self.emit("parent_wait", pr=pr, reason=reason)
+
     def continue_run(
         self,
         evidence: str,

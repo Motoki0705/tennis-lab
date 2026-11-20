@@ -11,6 +11,8 @@ from .policy import object_value
 if TYPE_CHECKING:
     from lib.ops_review.progression_backend import LiveBackend
 
+QUEUE_COMPLETION_GRACE = 60.0
+
 
 def require_ci_target(
     pr: dict[str, Any], repo: str, branch: str, request: dict[str, Any]
@@ -74,19 +76,29 @@ def _log_excerpt(log: str | None) -> str | None:
     return "\n".join(line[-400:] for line in (errors or lines)[-12:])
 
 
-def queue_result(queue: Path, job: str) -> dict[str, Any] | None:
+def queue_result(
+    queue: Path, job: str, *, now: float, missing_completion_since: dict[str, float]
+) -> dict[str, Any] | None:
     from src.utils.training_queue import TERMINAL, read_completion, regular
 
+    # A stopped worker can requeue a job before it starts. Recheck jobs/ if
+    # both active paths were absent: the rename may have crossed those reads.
+    queued = regular(queue / "jobs" / job)
+    running = regular(queue / "running" / job)
+    active = queued or running or regular(queue / "jobs" / job)
     # Shell first moves the job, then publishes the record after verified
-    # teardown. Only the record authorizes consumption of the result.
-    paths = ("jobs", "running", *TERMINAL)
-    present = [state for state in paths if regular(queue / state / job)]
+    # teardown. A terminal file alone starts a bounded publication grace.
+    terminal = [state for state in TERMINAL if regular(queue / state / job)]
     record = read_completion(queue, job)
     if record is None:
-        if not present:
+        if terminal:
+            since = missing_completion_since.setdefault(job, now)
+            if now - since >= QUEUE_COMPLETION_GRACE:
+                raise ValueError(f"missing training-queue completion record for {job}")
+        elif not active:
             raise ValueError(f"unknown training-queue job_id: {job}")
         return None
-    terminal = [state for state in present if state in TERMINAL]
+    missing_completion_since.pop(job, None)
     if terminal and terminal != [record["state"]]:
         raise ValueError(f"training-queue terminal state disagrees for {job}")
     if (

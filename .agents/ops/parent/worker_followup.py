@@ -9,9 +9,16 @@ from typing import Any, cast
 from dispatcher.runtime import alive, process_identity
 
 from . import worker_result
+from .policy import digest
 
 ACTIVE = ("running", "waiting", "resuming")
 RESUME_LIMIT = 3
+
+
+def event_key(wait: dict[str, Any]) -> str:
+    if wait["kind"] == "ci":
+        return digest(["ci", wait["pr"], wait["head"]])
+    return digest(["queue", sorted(wait["job_ids"])])
 
 
 def current(task: dict[str, Any]) -> dict[str, Any] | None:
@@ -70,6 +77,10 @@ def reserve(
         }
         task["manual_followup"] = record
     assert record is not None
+    if automatic is not None:
+        # Consume the observed event only when this transaction claims a slot
+        # and saves the new turn. A full parent can leave it pending.
+        record["resumptions"].append(event_key(record["wait"]))
     record.update(
         state="running",
         run_dir=str(directory),
