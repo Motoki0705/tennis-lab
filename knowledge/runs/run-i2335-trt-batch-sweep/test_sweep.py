@@ -43,3 +43,19 @@ def test_conversion_failure_is_nonzero_without_running_a_replacement_case(
     assert stages["build-2"]["exit_code"] == 9
     assert stages["build-2"]["verified"] is False
     assert "TensorRT ONNX parse failed" in (root / stages["build-2"]["log"]).read_text()
+
+
+def test_gvhmr_retry_passes_zero_builder_optimization_level(tmp_path):
+    command = sweep.build_command(
+        "gvhmr",
+        "2",
+        tmp_path / "inputs",
+        tmp_path / "engine-2",
+        fixed_length=177,
+        builder_optimization_level=0,
+    )
+    assert command[command.index("--fixed-length") + 1] == "177"
+    assert command[command.index("--builder-optimization-level") + 1] == "0"
+    assert command[
+        command.index("--batch-profile") + 1 : command.index("--batch-profile") + 3
+    ] == ["4", "4"]

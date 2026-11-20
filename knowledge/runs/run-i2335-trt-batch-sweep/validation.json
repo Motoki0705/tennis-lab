@@ -62,5 +62,50 @@
       "c1-b4-l145": {"ncu_kernels": 712, "original_nsys_kernels": 712, "retry_nsys_kernels": 712},
       "c1-b4-l177": {"ncu_kernels": 745, "original_nsys_kernels": 745, "retry_nsys_kernels": 745}
     }
+  },
+  "retry_3": {
+    "clipreid_fp8": {
+      "queue_job": "0-8204799080902372682_2026-11-20T18-55-19-097627317Z_2919771_i2335-r3-clip-fp8-timing.job",
+      "output": "outputs/trt-batch-i2335/retry-3/clipreid",
+      "timing_accuracy_nsys_cases": 5,
+      "conversion_receipt": "engine-3b/conversion.json",
+      "shape_inputs_restored": 48,
+      "batch_min_opt_max": [1, 16, 32],
+      "onnx_precision_each_endpoint": {"fp16": 26, "fp8": 48},
+      "rejected_batch_exit_codes": {"0": 1, "33": 1}
+    },
+    "completed_clipreid_ncu": {
+      "c1-b16": {"prefix_kernels": 119, "suffix_kernels": 70, "nsys_kernels": 189},
+      "c2-b16": {"prefix_kernels": 66, "suffix_kernels": 48, "nsys_kernels": 114},
+      "c3b-b16": {"ncu_kernels": 115, "nsys_kernels": 115}
+    },
+    "gvhmr_fixed_length_builds": {
+      "145": {
+        "queue_job": "0-8204799080648304534_2026-11-20T18-55-19-351695465Z_2919820_i2335-r3-gvhmr-fixed-timing-l145.job",
+        "output": "outputs/trt-batch-i2335/retry-3/gvhmr-l145",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "batch_min_opt_max": [1, 4, 4]
+      },
+      "177": {
+        "queue_job": "0-8204799080397544024_2026-11-20T18-55-19-602455975Z_2919857_i2335-r3-gvhmr-fixed-timing-l177.job",
+        "output": "outputs/trt-batch-i2335/retry-3/gvhmr-l177",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "batch_min_opt_max": [1, 4, 4]
+      }
+    },
+    "gvhmr_failure": "既定のビルダー設定で固定長でもbuild_serialized_networkのSIGSEGVを再現。planと測定記録は生成されず、後段のncuは測定記録を開く前に失敗",
+    "cumulative_queue_minutes": {"clipreid": 157.78, "gvhmr": 115.34}
+  },
+  "retry_4_plan": {
+    "model": "gvhmr",
+    "condition": "2",
+    "fixed_lengths": [145, 177],
+    "batch_min_opt_max": [1, 4, 4],
+    "builder_optimization_level": 0,
+    "reason": "同じ入力・系列長・バッチ範囲とFP16で、タクティクス探索の設定だけを変えてビルダー内の停止を切り分ける"
   }
 }

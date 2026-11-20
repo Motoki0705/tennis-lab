@@ -410,6 +410,7 @@ def build_checked_plan(
     min_free_gib=6,
     allow_tf32=True,
     profile_shapes=None,
+    builder_optimization_level=None,
 ):
     import tensorrt as trt
     import torch
@@ -421,11 +422,22 @@ def build_checked_plan(
         raise RuntimeError(
             f"Less than {min_free_gib} GiB free before TensorRT engine build"
         )
-    logger = trt.Logger(trt.Logger.WARNING)
+    verbosity = (
+        trt.Logger.VERBOSE
+        if builder_optimization_level is not None
+        else trt.Logger.WARNING
+    )
+    logger = trt.Logger(verbosity)
     if init_plugins and not trt.init_libnvinfer_plugins(logger, ""):
         raise RuntimeError("Could not initialize TensorRT plugins")
     builder = trt.Builder(logger)
     config = builder.create_builder_config()
+    if builder_optimization_level is not None:
+        config.builder_optimization_level = builder_optimization_level
+        if config.builder_optimization_level != builder_optimization_level:
+            raise RuntimeError(
+                "TensorRT did not apply the requested builder optimization level"
+            )
     config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, WORKSPACE_BYTES)
     config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
     if not allow_tf32:
@@ -446,7 +458,10 @@ def build_checked_plan(
         if config.add_optimization_profile(profile) != 0:
             raise RuntimeError("TensorRT did not accept the first optimization profile")
         config.clear_flag(trt.BuilderFlag.TF32)
-        print(f"Building TensorRT with profile {profile_shapes}", flush=True)
+        print(
+            f"Building TensorRT at optimization level {config.builder_optimization_level} with profile {profile_shapes}",
+            flush=True,
+        )
     engine_bytes = builder.build_serialized_network(network, config)
     if engine_bytes is None:
         raise RuntimeError(f"TensorRT build failed for {onnx_file}")
@@ -509,6 +524,7 @@ def build_engine(
     expected_operations=None,
     profile_shapes=None,
     constant_operations=(),
+    builder_optimization_level=None,
 ):
     return build_checked_plan(
         onnx_file,
@@ -520,6 +536,7 @@ def build_engine(
             constant_operations=constant_operations,
         ),
         profile_shapes=profile_shapes,
+        builder_optimization_level=builder_optimization_level,
     )
 
 

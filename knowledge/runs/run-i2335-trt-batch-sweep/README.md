@@ -7,11 +7,11 @@
 | モデル | 固定入力と束ね方 | TensorRT min / opt / max | ncu代表バッチ |
 |---|---|---|---|
 | CLIP-ReID | #2297の236 cropをmanifest順に連続して束ねる。B=1, 4, 8, 16, 32 | B=1 / 16 / 32 | B=16。#2297の代表cropを含む先頭側の完全バッチ |
-| GVHMR | #2305の同じ長さの4人物系列をmanifest順に束ねる。clip_037のL=145とclip_000のL=177を別々に測る。B=1, 2, 4 | L=145と177でそれぞれB=1 / 4 / 4 | B=4。各評価クリップの全4人物を束ねた上限バッチ |
+| GVHMR | #2305の同じ長さの4人物系列をmanifest順に束ねる。clip_037のL=145とclip_000のL=177を別々に測る。B=1, 2, 4 | L=145と177でそれぞれB=1 / 4 / 4を試行 | B=4。各評価クリップの全4人物を束ねた上限バッチ |
 
 CLIP-ReIDのB=1と4は全バッチが指定サイズ。B=8の最後の1バッチは4件、B=16と32では12件。端数をそのまま推論し、全236件を順序どおり精度照合に使う。速度とthroughputは完全バッチを循環して計測し、端数も固定shapeの区分として30 warm-upと300反復で別に計測する。VRAMは完全バッチと端数を処理する同じプロセスのピークを記録する。nsysは各指定Bの完全バッチを使う。
 
-GVHMRは同じ長さの4本をBで等分する。全フレームを保持したまま連結する。秒当たりの処理量は人物系列数とフレーム数を長さ区分ごとに記録する。BとLの両軸が可変の単一profileはビルドでSIGSEGVを再現したため、系列長ごとにBの可変profileをビルドする。精度評価は出力を人物ごとに戻し、条件共通のFP32復号とCOCO-17再構成を適用する。 [ビルドの記録](validation.json)
+GVHMRは同じ長さの4本をBで等分する。全フレームを保持したまま連結する。秒当たりの処理量は人物系列数とフレーム数を長さ区分ごとに記録する。TensorRTの既定ビルダー設定では、BとLの両軸が可変の単一profileと、系列長を固定してBのみ可変にしたprofileの両方でSIGSEGVを再現した。次の試行は固定長のまま `--builder-optimization-level 0` を明示し、タクティクス探索の影響を切り分ける。精度評価は出力を人物ごとに戻し、条件共通のFP32復号とCOCO-17再構成を適用する。 [ビルドの記録](validation.json)・[TensorRTのビルダー最適化設定](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/performance/builder-performance.html#builder-optimization-level)
 
 各TensorRT条件はモデル・系列長ごとに単一profileのplanをロードする。min・opt・maxの実行を先に確認し、B=0と最大B+1がTensorRTから拒否されることをログに保存する。GVHMRは各planの範囲から外れるLも検査する。ビルド時の3端点と計測時の実shapeで主要演算のprecisionを照合する。ncuのkernel数は同じplan・入力で取得したnsysの件数と照合する。B=1のncu比較には#2297・#2303・#2305の記録を使う。TensorRTの比較は、profileの違いによるカーネルやタクティクスの差も含む。
 
@@ -45,7 +45,8 @@ enqueue clipreid-timing clipreid "$clip_inputs" 45m "$out/clipreid"
 enqueue gvhmr-torch gvhmr "$gvhmr_inputs" 40m "$out/gvhmr" --condition 0 --condition 1
 for frames in 145 177; do
     enqueue "gvhmr-timing-l$frames" gvhmr "$gvhmr_inputs" 20m "$out/gvhmr-l$frames" \
-        --condition 2 --fixed-length "$frames" --reference-root "$out/gvhmr"
+        --condition 2 --fixed-length "$frames" --builder-optimization-level 0 \
+        --reference-root "$out/gvhmr"
 done
 # ncuの登録例。各条件のB=16またはB=4の計測先を指定する。
 enqueue clipreid-ncu-0 clipreid "$clip_inputs" 68m "$out/c0-b16-ncu" \

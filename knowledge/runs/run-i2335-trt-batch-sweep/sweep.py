@@ -43,7 +43,15 @@ def case_id(condition, batch, length):
     return name if length is None else f"{name}-l{length}"
 
 
-def build_command(model, condition, inputs, conversion, *, fixed_length=None):
+def build_command(
+    model,
+    condition,
+    inputs,
+    conversion,
+    *,
+    fixed_length=None,
+    builder_optimization_level=None,
+):
     if model == "clipreid":
         ptq = (
             [
@@ -84,6 +92,11 @@ def build_command(model, condition, inputs, conversion, *, fixed_length=None):
         GVHMR_OPT,
         max(GVHMR_BATCHES),
         *(["--fixed-length", fixed_length] if fixed_length is not None else []),
+        *(
+            ["--builder-optimization-level", builder_optimization_level]
+            if builder_optimization_level is not None
+            else []
+        ),
     )
 
 
@@ -226,6 +239,7 @@ def run_sweep(
     selected=(),
     fixed_length=None,
     reference_root=None,
+    builder_optimization_level=None,
 ):
     reuse = {path.name: path for path in reused}
     allow_reuse = (
@@ -290,7 +304,12 @@ def run_sweep(
             if not run_stage(
                 f"build-{condition}",
                 build_command(
-                    model, condition, inputs, conversion, fixed_length=fixed_length
+                    model,
+                    condition,
+                    inputs,
+                    conversion,
+                    fixed_length=fixed_length,
+                    builder_optimization_level=builder_optimization_level,
                 ),
             ):
                 continue
@@ -386,6 +405,7 @@ def main():
     parser.add_argument("--reuse-case", type=Path, action="append", default=[])
     parser.add_argument("--condition", choices=CONDITIONS, action="append", default=[])
     parser.add_argument("--fixed-length", choices=GVHMR_LENGTHS, type=int)
+    parser.add_argument("--builder-optimization-level", choices=range(6), type=int)
     parser.add_argument("--reference-root", type=Path)
     parser.add_argument("--profile-from", type=Path)
     parser.add_argument("--ncu-timeout", type=int, default=900)
@@ -405,6 +425,8 @@ def main():
         parser.error("--ncu-prefix requires CLIP --profile-from")
     if args.model != "gvhmr" and args.fixed_length is not None:
         parser.error("--fixed-length requires GVHMR")
+    if args.builder_optimization_level is not None and args.fixed_length is None:
+        parser.error("--builder-optimization-level requires --fixed-length")
     if args.model == "gvhmr" and set(args.condition) & CLIP_RECIPES.keys():
         parser.error("GVHMR uses conditions 0, 1 and 2")
     require_queue()
@@ -427,6 +449,7 @@ def main():
         [case.resolve(strict=True) for case in args.reuse_case],
         selected=args.condition,
         fixed_length=args.fixed_length,
+        builder_optimization_level=args.builder_optimization_level,
         reference_root=args.reference_root.resolve(strict=True)
         if args.reference_root
         else None,

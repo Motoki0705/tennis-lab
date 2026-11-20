@@ -283,6 +283,7 @@ def convert(args):
         required_precision=mode,
         expected_operations=expected,
         profile_shapes=profile["inputs"],
+        builder_optimization_level=args.builder_optimization_level,
     )
     result = {
         "condition": args.condition,
@@ -298,6 +299,8 @@ def convert(args):
         result["expected_precision_sha256"] = sha256_file(
             args.output / "expected-precision.json"
         )
+    if args.builder_optimization_level is not None:
+        result["builder_optimization_level"] = args.builder_optimization_level
     write_json(args.output / "conversion.json", result)
     print(f"GVHMR conversion passed: {evidence}", flush=True)
 
@@ -310,11 +313,14 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--batch-profile", type=int, nargs=2, metavar=("OPT", "MAX"))
     parser.add_argument("--fixed-length", type=int)
+    parser.add_argument("--builder-optimization-level", type=int, choices=range(6))
     args = parser.parse_args()
     if args.batch_profile is not None and args.condition != "2":
         parser.error("Dynamic GVHMR batch export requires condition 2")
     if args.fixed_length is not None and args.batch_profile is None:
         parser.error("--fixed-length requires --batch-profile")
+    if args.builder_optimization_level is not None and args.fixed_length is None:
+        parser.error("--builder-optimization-level requires a fixed sequence length")
     require_queue()
     convert(args)
 

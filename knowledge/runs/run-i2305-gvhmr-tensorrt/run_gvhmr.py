@@ -293,6 +293,10 @@ def run(args):
                 "fp16",
                 expected_operations=expected,
             )
+            if "builder_optimization_level" in conversion:
+                trt_settings["trt_builder_optimization_level"] = conversion[
+                    "builder_optimization_level"
+                ]
         torch.cuda.synchronize()
         if memory is not None:
             memory.sample("after_setup")

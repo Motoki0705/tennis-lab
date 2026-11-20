@@ -172,19 +172,18 @@ def clip_cases(root, addresses, tensors, prior_vit):
 
 
 def gvhmr_cases(root):
-    retry2, retry3 = root / "retry-2", root / "retry-3"
+    retry2, retry3, retry4 = (root / f"retry-{attempt}" for attempt in (2, 3, 4))
     cases = {}
     lock = sha256_file(GVHMR / "tensor-lock.json")
     for length in GVHMR_LENGTHS:
+        retry = retry4 if (retry4 / f"gvhmr-l{length}/sweep.json").is_file() else retry3
         baseline = retry2 / "gvhmr" / case_id("0", 1, length)
         fp32_ref = sha256_file(baseline / "decoded-outputs.npz")
         for condition in ("0", "1", "2"):
             for batch in GVHMR_BATCHES:
                 name = case_id(condition, batch, length)
                 directory = (
-                    retry3 / f"gvhmr-l{length}"
-                    if condition == "2"
-                    else retry2 / "gvhmr"
+                    retry / f"gvhmr-l{length}" if condition == "2" else retry2 / "gvhmr"
                 )
                 case = directory / name
                 path = case / "measurement.json"
@@ -258,8 +257,8 @@ def gvhmr_cases(root):
                             )
                         measurement_hash = sha256_file(old_case / "measurement.json")
                     else:
-                        retry = retry3 if condition == "2" else retry2
-                        replay = retry / "ncu/gvhmr" / name / "profiles.json"
+                        profile_root = retry if condition == "2" else retry2
+                        replay = profile_root / "ncu/gvhmr" / name / "profiles.json"
                         measurement_hash = sha256_file(path)
                     if replay.is_file():
                         ncu = read(replay)
