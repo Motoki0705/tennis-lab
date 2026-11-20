@@ -23,6 +23,7 @@ config:
   gvhmr_trt_min_opt_max_per_length: [1, 4, 4]
 metrics:
   timing_accuracy_nsys_cases: 37
+  historical_timing_accuracy_nsys_cases: 2
   planned_cases: 43
   ncu_with_matching_nsys: 9
   clipreid_b16:
@@ -41,6 +42,7 @@ artifacts:
   run_dir: knowledge/runs/run-i2335-trt-batch-sweep
   metrics: knowledge/runs/run-i2335-trt-batch-sweep/metrics.json
   validation: knowledge/runs/run-i2335-trt-batch-sweep/validation.json
+  legacy_gvhmr_qdq: knowledge/runs/run-i2335-trt-batch-sweep/legacy-gvhmr-qdq.json
 parents:
 - run-i2297-clipreid-tensorrt
 - run-i2303-vit-tensorrt
@@ -88,7 +90,7 @@ B=16のFP8は2,958 crop/sで、同じBのTensorRT FP16の2,358 crop/sより25.4%
 
 ## GVHMR
 
-フレーム数が同じ4人物系列を束ね、145と177を独立に測った。関節差は同じPyTorch FP32 B=1に対するCOCO-17のP95。全12ケースで長さとmaskが一致した。
+フレーム数が同じ4人物系列を束ね、145と177を独立に測った。関節差は同じPyTorch FP32 B=1に対するCOCO-17のP95。計測したPyTorchの全12ケースで長さとmaskが一致した。条件2のB=1は #2305 のB=1固定・L=117/145/177可変のplanで測った既存値。入力lock、人物の並び、復号済みFP32参照のSHA-256を今回と照合した。 [#2305の計測](../../runs/run-i2305-gvhmr-tensorrt/metrics.json)
 
 | L | 条件 | B | 中央値 / P95 (ms) | 系列/s | frames/s | allocator / NVML増分 (MiB) | nsys kernel | カメラ / 重力整列関節差 (mm) |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
@@ -98,33 +100,41 @@ B=16のFP8は2,958 crop/sで、同じBのTensorRT FP16の2,358 crop/sより25.4%
 | 145 | 1 | 1 | 15.28 / 22.54 | 62.2 | 9,015 | 119.4 / 297.1 | 701 | 8.654 / 24.050 |
 | 145 | 1 | 2 | 14.88 / 40.45 | 103.6 | 15,016 | 121.9 / 301.1 | 712 | 8.503 / 21.422 |
 | 145 | 1 | 4 | 15.80 / 23.29 | 221.7 | 32,151 | 126.7 / 303.1 | 712 | 8.523 / 23.961 |
+| 145 | 2 | 1 | 2.51 / 3.17 | 393.6 | 57,068 | 0.3 / 263.1 | 135 | 8.614 / 23.499 |
 | 177 | 0 | 1 | 16.70 / 38.93 | 44.8 | 7,936 | 206.5 / 393.1 | 867 | 0.000 / 0.000 |
 | 177 | 0 | 2 | 15.28 / 23.01 | 123.9 | 21,926 | 212.5 / 397.1 | 745 | 0.006 / 0.534 |
 | 177 | 0 | 4 | 16.37 / 23.58 | 232.8 | 41,213 | 224.4 / 407.1 | 745 | 0.016 / 1.594 |
 | 177 | 1 | 1 | 15.10 / 19.30 | 63.4 | 11,227 | 119.9 / 299.1 | 732 | 8.550 / 20.127 |
 | 177 | 1 | 2 | 15.06 / 22.17 | 126.6 | 22,401 | 123.0 / 303.1 | 744 | 8.451 / 16.474 |
 | 177 | 1 | 4 | 15.85 / 25.54 | 216.1 | 38,256 | 128.9 / 307.1 | 745 | 8.637 / 17.756 |
+| 177 | 2 | 1 | 2.50 / 2.98 | 394.2 | 69,780 | 0.4 / 263.1 | 135 | 8.721 / 18.325 |
 
 PyTorch FP32のバッチ間のカメラ座標関節差はP95最大0.017 mmだった。PyTorch FP16の関節差はカメラ座標で8.45–8.65 mm、重力整列座標で16.47–24.05 mmとなり、座標系によって暫定10 mm基準をまたいだ。 [精度の内訳](../../runs/run-i2335-trt-batch-sweep/metrics.json)
 
-TensorRT FP16はBとLの両軸を可変にしたprofile、Lを145か177に固定してBのみ可変にしたprofileとも `build_serialized_network` 内でSIGSEGVとなった。固定長の2件では子プロセスが−11、queueジョブが1で終了した。B=1/2/4の6ケースとncu 2件、実機での範囲外拒否と層精度が未確認。固定長・可変Bでビルダー最適化レベル0を指定し、タクティクス探索の設定を変えて確認する。 [失敗ログと試行条件](../../runs/run-i2335-trt-batch-sweep/validation.json)
+TensorRT FP16はBとLの両軸を可変にしたprofileと、Lを固定してBのみ可変にしたprofileで `build_serialized_network` 内にSIGSEGVを再現した。固定長・可変Bでビルダー最適化レベル0にしても、L=145と177で子プロセスが−11、queueジョブが1で終了した。verboseログに最後に出たTiming Runnerは両方とも `{ForeignNode[/network/Unsqueeze_7.../network/ScatterND]} (Myelin[0x80000023])`。固定B=2・4と固定L=145・177の4形状を独立したエンジンとして試す。掃引用planのB>1での計測、ncu、層精度と拒否検査が未確認。 [失敗ログと試行条件](../../runs/run-i2335-trt-batch-sweep/validation.json)
+
+### #2305で使ったPTQグラフのQ/DQ範囲
+
+条件3a（INT8）と3b（FP8）のONNXを当時の変換証跡とSHA-256で照合し、両評価長が同じエンジンを使ったことを確認した。CPUで `onnx.checker` とmainの `verify_qdq_scope` を適用した。両条件とも指定した96積すべての2オペランドにDQがあり、指定外への直接接続はShapeの24ノード・24入力だった。Shapeは入力の次元を参照する。Add、LayerNormalization、対象外のMatMul・Gemm、graph outputへの直接接続は各0件。現行のscope検査は両グラフを拒否した。 [演算種別ごとの件数と元グラフのSHA-256](../../runs/run-i2335-trt-batch-sweep/legacy-gvhmr-qdq.json)
 
 ## GPU内部指標
 
-DRAM R/WとTensor Core activeは先行のB=1 → 今回の代表Bの順で示す。stallは代表Bでのlong scoreboard、short scoreboard、LG throttle、MIO throttleをGPU kernel時間で加重した割合。B=1は #2297・#2303・#2305 の計測値。TensorRTのB=1専用planと掃引用planの比較にはタクティクスの差も含む。カーネル数は全9件でncuとnsysが一致した。
+DRAM R/W、Tensor Core active、stallは先行のB=1 → 今回の代表Bの順で示す。stallはlong scoreboard、short scoreboard、LG throttle、MIO throttleをGPU kernel時間で加重した割合。B=1は #2297・#2303・#2305 の計測値。TensorRTのB=1専用planと掃引用planの比較にはタクティクスの差も含む。内部指標を採用した代表Bの全9件でncuとnsysのカーネル数が一致した。
 
-| モデル | 条件 | 代表B | kernel | DRAM read (MB) B1 / 代表B | DRAM write (MB) B1 / 代表B | Tensor Core active (%) B1 / 代表B | 代表Bのstall (%) |
+| モデル | 条件 | 代表B | 代表Bのkernel | DRAM read (MB) | DRAM write (MB) | Tensor Core active (%) | stall (%) |
 |---|---|---:|---:|---:|---:|---:|---:|
-| CLIP-ReID | 0 | 16 | 201 | 483.8 / 3197.4 | 0.0 / 420.9 | 1.4 / 2.6 | 23.6 / 5.6 / 0.6 / 11.2 |
-| CLIP-ReID | 1 | 16 | 189 | 191.2 / 1552.5 | 0.0 / 14.9 | 19.2 / 28.8 | 27.2 / 2.2 / 0.5 / 1.4 |
-| CLIP-ReID | 2 | 16 | 114 | 161.1 / 976.1 | 0.0 / 4.2 | 29.9 / 51.0 | 22.5 / 2.3 / 0.9 / 1.6 |
-| CLIP-ReID | 3a | 16 | 127 | 155.4 / 973.6 | 0.0 / 11.9 | 28.9 / 48.7 | 24.4 / 2.7 / 0.9 / 1.6 |
-| CLIP-ReID | 3b | 16 | 115 | 76.0 / 725.1 | 0.0 / 9.1 | 17.1 / 31.1 | 13.4 / 3.5 / 0.8 / 1.3 |
-| GVHMR L=145 | 0 | 4 | 713 | 275.5 / 802.3 | 0.0 / 0.0 | 0.0 / 0.0 | 6.5 / 9.2 / 2.2 / 7.2 |
-| GVHMR L=145 | 1 | 4 | 712 | 106.7 / 388.0 | 0.0 / 0.0 | 7.3 / 12.6 | 13.6 / 4.3 / 1.9 / 2.2 |
-| GVHMR L=177 | 0 | 4 | 745 | 345.2 / 955.4 | 0.0 / 0.1 | 0.0 / 0.0 | 7.3 / 6.2 / 3.9 / 7.6 |
-| GVHMR L=177 | 1 | 4 | 745 | 150.7 / 493.2 | 0.0 / 0.0 | 6.4 / 13.2 | 13.9 / 4.2 / 1.9 / 2.3 |
+| CLIP-ReID | 0 | 16 | 201 | 483.8 → 3197.4 | 0.0 → 420.9 | 1.4 → 2.6 | 4.6 / 7.9 / 2.4 / 31.2 → 23.6 / 5.6 / 0.6 / 11.2 |
+| CLIP-ReID | 1 | 16 | 189 | 191.2 → 1552.5 | 0.0 → 14.9 | 19.2 → 28.8 | 11.8 / 3.9 / 1.4 / 1.6 → 27.2 / 2.2 / 0.5 / 1.4 |
+| CLIP-ReID | 2 | 16 | 114 | 161.1 → 976.1 | 0.0 → 4.2 | 29.9 → 51.0 | 9.5 / 3.7 / 0.4 / 1.6 → 22.5 / 2.3 / 0.9 / 1.6 |
+| CLIP-ReID | 3a | 16 | 127 | 155.4 → 973.6 | 0.0 → 11.9 | 28.9 → 48.7 | 9.1 / 4.1 / 0.4 / 1.6 → 24.4 / 2.7 / 0.9 / 1.6 |
+| CLIP-ReID | 3b | 16 | 115 | 76.0 → 725.1 | 0.0 → 9.1 | 17.1 → 31.1 | 16.6 / 7.2 / 0.9 / 1.9 → 13.4 / 3.5 / 0.8 / 1.3 |
+| GVHMR L=145 | 0 | 4 | 713 | 275.5 → 802.3 | 0.0 → 0.0 | 0.0 → 0.0 | 8.8 / 8.5 / 2.4 / 21.5 → 6.5 / 9.2 / 2.2 / 7.2 |
+| GVHMR L=145 | 1 | 4 | 712 | 106.7 → 388.0 | 0.0 → 0.0 | 7.3 → 12.6 | 18.6 / 8.6 / 0.6 / 3.4 → 13.6 / 4.3 / 1.9 / 2.2 |
+| GVHMR L=145 | 2 | 4 | — | 71.3 → — | 0.0 → — | 20.2 → — | 14.2 / 5.1 / 0.6 / 1.8 → — |
+| GVHMR L=177 | 0 | 4 | 745 | 345.2 → 955.4 | 0.0 → 0.1 | 0.0 → 0.0 | 7.1 / 7.3 / 1.0 / 22.5 → 7.3 / 6.2 / 3.9 / 7.6 |
+| GVHMR L=177 | 1 | 4 | 745 | 150.7 → 493.2 | 0.0 → 0.0 | 6.4 → 13.2 | 20.2 / 8.0 / 0.7 / 1.6 → 13.9 / 4.2 / 1.9 / 2.3 |
+| GVHMR L=177 | 2 | 4 | — | 71.6 → — | 0.0 → — | 19.3 → — | 14.2 / 5.5 / 0.6 / 1.6 → — |
 
-CLIP-ReIDのB=16でDRAM readはFP16の61.0 MB/cropからFP8で45.3 MB/crop、long scoreboardは22.5%から13.4%になった。Tensor Core activeは同じ比較で51.0%から31.1%になった。観測値はkernel時間で加重した比率で、DRAM帯域飽和の有無はこの計測からは判定できない。PyTorch FP16とTensorRT FP16のncuは、時間切れ前のprefixと追測したsuffixを順番・grid・blockで照合し、それぞれ119+70件、66+48件を集計した。 [B=1の値と計測区間の記録](../../runs/run-i2335-trt-batch-sweep/metrics.json)・[再現手順](../../runs/run-i2335-trt-batch-sweep/README.md)
+CLIP-ReIDのB=16でDRAM readはFP16の61.0 MB/cropからFP8で45.3 MB/crop、long scoreboardは22.5%から13.4%になった。Tensor Core activeは同じ比較で51.0%から31.1%になった。観測値はkernel時間で加重した比率で、DRAM帯域飽和の有無はこの計測からは判定できない。PyTorch FP16とTensorRT FP16のB=16は `retry-2` のncuが時間切れで、nsysの189件と114件のうち119件と66件で止まった。途中CSVだけの値は採用せず、追測した70件と48件を足し、順番・grid・blockの全件照合後に集計した。GVHMRのncu未取得2件はTensorRT FP16のB=4、L=145と177。変換が止まったためmeasurement.jsonがなく両方ともncu起動前に終了し、カーネル数の比較に至らなかった。 [B=1の値と計測区間](../../runs/run-i2335-trt-batch-sweep/metrics.json)・[終了ログの記録](../../runs/run-i2335-trt-batch-sweep/validation.json)
 
 標準パイプラインでの採用判断は、GVHMRのTensorRT再試行と、CLIP-ReIDのE2Eを含めて行う。

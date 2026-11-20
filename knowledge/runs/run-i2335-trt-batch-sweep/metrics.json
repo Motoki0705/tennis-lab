@@ -3954,37 +3954,198 @@
       }
     },
     "c2-b1-l145": {
-      "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-3/gvhmr-l145/sweep.json",
-      "failure": {
-        "exit_code": -11,
-        "verified": false,
-        "expected_rejection": null,
-        "wall_seconds": 56.81661229400197,
-        "log": "logs/build-2.log",
-        "name": "build-2"
+      "status": "historical",
+      "artifact": "knowledge/runs/run-i2305-gvhmr-tensorrt/metrics.json",
+      "case_key": [
+        "conditions",
+        "2",
+        "145"
+      ],
+      "measurement": {
+        "condition": "2",
+        "length": 145,
+        "segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_037-p0-cam2-s0",
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": "2474b55380f92b3b9f71d2f0304f3072c01593d5fbfe9da6028f9a8a76993185",
+        "raw_outputs_sha256": "e93ee01514d26802192e1feb4c39c53c4d447101fcde6a23b49bc6fd32aa2dd4",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float16",
+          "f_cliffcam": "torch.float16",
+          "f_cam_angvel": "torch.float16",
+          "f_imgseq": "torch.float16"
+        },
+        "output_dtypes": {
+          "pred_x": "float16",
+          "pred_cam": "float16",
+          "static_conf_logits": "float16",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": "NONE",
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": "10.14.1.48.post1",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204837885245029317_2026-11-20T08-08-34-754970682Z_3163088_i2305-gvhmr-build-and-measure-2-r5",
+        "median_ms": 2.5085094999999997,
+        "p95_ms": 3.1701066500000006,
+        "iqr_ms": 0.42100625,
+        "mad_ms": 0.21230149999999992,
+        "sequences_per_second": 393.5702186737924,
+        "frames_per_second": 57067.6817076999,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 2.441383,
+            "p95_ms": 3.0226650999999993,
+            "iqr_ms": 0.41099225000000006,
+            "mad_ms": 0.20744700000000016,
+            "sequences_per_second": 401.05147837019683,
+            "frames_per_second": 58152.46436367854
+          },
+          {
+            "median_ms": 2.5371284999999997,
+            "p95_ms": 3.17010665,
+            "iqr_ms": 0.41454150000000034,
+            "mad_ms": 0.2046275000000004,
+            "sequences_per_second": 394.504623187844,
+            "frames_per_second": 57203.17036223738
+          },
+          {
+            "median_ms": 2.526974,
+            "p95_ms": 3.0531250499999993,
+            "iqr_ms": 0.3637360000000003,
+            "mad_ms": 0.18948350000000014,
+            "sequences_per_second": 385.46668185199826,
+            "frames_per_second": 55892.668868539746
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 549556224,
+        "nvml_device_peak_minus_idle_bytes": 275877888,
+        "torch_peak_allocated_bytes": 363520,
+        "torch_peak_reserved_bytes": 2097152,
+        "batch_size": 1
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 580,
+        "expected_frames": 580,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.025195163276088582,
+            "p95": 0.08652358157455262,
+            "max": 2.2037042566953424
+          },
+          "global_orient_deg": {
+            "median": 0.027169337112166965,
+            "p95": 0.06509946224767969,
+            "max": 0.17384795538059322
+          },
+          "betas_abs": {
+            "median": 0.0006120055913925171,
+            "p95": 0.001614826917648336,
+            "max": 0.0019186735153198242
+          },
+          "transl_component_abs_mm": {
+            "median": 0.565946102142334,
+            "p95": 5.450010299682615,
+            "max": 13.612747192382812
+          },
+          "transl_l2_mm": {
+            "median": 2.6572567192481937,
+            "p95": 8.490301426012934,
+            "max": 13.931669505996284
+          },
+          "coco17_l2_mm": {
+            "median": 2.6935681565495857,
+            "p95": 8.613731173674344,
+            "max": 17.401046849821633
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.025195163276088582,
+            "p95": 0.08652358157455262,
+            "max": 2.2037042566953424
+          },
+          "global_orient_deg": {
+            "median": 0.13634280797541048,
+            "p95": 0.4232152926712051,
+            "max": 0.5284589229531114
+          },
+          "betas_abs": {
+            "median": 0.0006120055913925171,
+            "p95": 0.001614826917648336,
+            "max": 0.0019186735153198242
+          },
+          "transl_component_abs_mm": {
+            "median": 0.3503337502479553,
+            "p95": 22.004052996635437,
+            "max": 43.379366397857666
+          },
+          "transl_l2_mm": {
+            "median": 2.048237291299438,
+            "p95": 23.242902134685377,
+            "max": 43.393313487203784
+          },
+          "coco17_l2_mm": {
+            "median": 2.5060908467237457,
+            "p95": 23.498568178305668,
+            "max": 43.710338894786595
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "f5e5562988135bb6c0c49a9f35b08840a5e72c6b5441a4e38dfe3aa7b04fe92f",
+        "fp32_reference_sha256": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 135,
+        "sum_kernel_duration_ns": 699774
       }
     },
     "c2-b2-l145": {
       "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-3/gvhmr-l145/sweep.json",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-4/gvhmr-l145/sweep.json",
       "failure": {
         "exit_code": -11,
         "verified": false,
         "expected_rejection": null,
-        "wall_seconds": 56.81661229400197,
+        "wall_seconds": 50.7510053460137,
         "log": "logs/build-2.log",
         "name": "build-2"
       }
     },
     "c2-b4-l145": {
       "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-3/gvhmr-l145/sweep.json",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-4/gvhmr-l145/sweep.json",
       "failure": {
         "exit_code": -11,
         "verified": false,
         "expected_rejection": null,
-        "wall_seconds": 56.81661229400197,
+        "wall_seconds": 50.7510053460137,
         "log": "logs/build-2.log",
         "name": "build-2"
       }
@@ -5067,37 +5228,198 @@
       }
     },
     "c2-b1-l177": {
-      "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-3/gvhmr-l177/sweep.json",
-      "failure": {
-        "exit_code": -11,
-        "verified": false,
-        "expected_rejection": null,
-        "wall_seconds": 57.91801536199637,
-        "log": "logs/build-2.log",
-        "name": "build-2"
+      "status": "historical",
+      "artifact": "knowledge/runs/run-i2305-gvhmr-tensorrt/metrics.json",
+      "case_key": [
+        "conditions",
+        "2",
+        "177"
+      ],
+      "measurement": {
+        "condition": "2",
+        "length": 177,
+        "segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_000-p0-cam0-s0",
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": "2474b55380f92b3b9f71d2f0304f3072c01593d5fbfe9da6028f9a8a76993185",
+        "raw_outputs_sha256": "30b3e810c0425af292e1ac93afb1a72ec0283e3ab63d484a31ce53493b506056",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float16",
+          "f_cliffcam": "torch.float16",
+          "f_cam_angvel": "torch.float16",
+          "f_imgseq": "torch.float16"
+        },
+        "output_dtypes": {
+          "pred_x": "float16",
+          "pred_cam": "float16",
+          "static_conf_logits": "float16",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": "NONE",
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": "10.14.1.48.post1",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204837885245029317_2026-11-20T08-08-34-754970682Z_3163088_i2305-gvhmr-build-and-measure-2-r5",
+        "median_ms": 2.497987,
+        "p95_ms": 2.9788914500000003,
+        "iqr_ms": 0.4085930000000002,
+        "mad_ms": 0.20496249999999994,
+        "sequences_per_second": 394.2349908178271,
+        "frames_per_second": 69779.5933747554,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 2.4450775,
+            "p95_ms": 2.9316125,
+            "iqr_ms": 0.42796449999999986,
+            "mad_ms": 0.19616499999999992,
+            "sequences_per_second": 402.63789019033965,
+            "frames_per_second": 71266.90656369012
+          },
+          {
+            "median_ms": 2.5272665,
+            "p95_ms": 3.0223292999999996,
+            "iqr_ms": 0.34067824999999985,
+            "mad_ms": 0.17448449999999993,
+            "sequences_per_second": 387.77093021709237,
+            "frames_per_second": 68635.45464842535
+          },
+          {
+            "median_ms": 2.549575,
+            "p95_ms": 2.9739544999999996,
+            "iqr_ms": 0.41976375,
+            "mad_ms": 0.19715200000000022,
+            "sequences_per_second": 392.58619654919795,
+            "frames_per_second": 69487.75678920804
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 549556224,
+        "nvml_device_peak_minus_idle_bytes": 275877888,
+        "torch_peak_allocated_bytes": 444416,
+        "torch_peak_reserved_bytes": 2097152,
+        "batch_size": 1
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 708,
+        "expected_frames": 708,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.026145013286752623,
+            "p95": 0.08495247471915776,
+            "max": 2.018012809631251
+          },
+          "global_orient_deg": {
+            "median": 0.0260572329104002,
+            "p95": 0.06929212339618145,
+            "max": 0.1382115684586846
+          },
+          "betas_abs": {
+            "median": 0.0005025565624237061,
+            "p95": 0.001844432950019791,
+            "max": 0.002740144729614258
+          },
+          "transl_component_abs_mm": {
+            "median": 0.4413127899169922,
+            "p95": 5.8051109313964835,
+            "max": 14.38140869140625
+          },
+          "transl_l2_mm": {
+            "median": 2.405727290845623,
+            "p95": 8.682323981599058,
+            "max": 14.580401195852547
+          },
+          "coco17_l2_mm": {
+            "median": 2.3987473410933013,
+            "p95": 8.720695523477339,
+            "max": 14.948117763323602
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.026145013286752623,
+            "p95": 0.08495247471915776,
+            "max": 2.018012809631251
+          },
+          "global_orient_deg": {
+            "median": 0.06538446360935979,
+            "p95": 0.18055498979426587,
+            "max": 0.269991920919734
+          },
+          "betas_abs": {
+            "median": 0.0005025565624237061,
+            "p95": 0.001844432950019791,
+            "max": 0.002740144729614258
+          },
+          "transl_component_abs_mm": {
+            "median": 0.4757046699523926,
+            "p95": 3.138624131679534,
+            "max": 19.87743377685547
+          },
+          "transl_l2_mm": {
+            "median": 1.5145023264019475,
+            "p95": 18.553375484121233,
+            "max": 20.211754695503394
+          },
+          "coco17_l2_mm": {
+            "median": 1.5789088323897988,
+            "p95": 18.324526971486186,
+            "max": 21.234805759374662
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "767c100d53f0880dbffa6f5089ebdc1abc24f9db9c7b19d5d3427d3f3e08c61f",
+        "fp32_reference_sha256": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 135,
+        "sum_kernel_duration_ns": 764263
       }
     },
     "c2-b2-l177": {
       "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-3/gvhmr-l177/sweep.json",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-4/gvhmr-l177/sweep.json",
       "failure": {
         "exit_code": -11,
         "verified": false,
         "expected_rejection": null,
-        "wall_seconds": 57.91801536199637,
+        "wall_seconds": 42.593934268981684,
         "log": "logs/build-2.log",
         "name": "build-2"
       }
     },
     "c2-b4-l177": {
       "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-3/gvhmr-l177/sweep.json",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-4/gvhmr-l177/sweep.json",
       "failure": {
         "exit_code": -11,
         "verified": false,
         "expected_rejection": null,
-        "wall_seconds": 57.91801536199637,
+        "wall_seconds": 42.593934268981684,
         "log": "logs/build-2.log",
         "name": "build-2"
       }

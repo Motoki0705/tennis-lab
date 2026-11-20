@@ -171,10 +171,46 @@ def clip_cases(root, addresses, tensors, prior_vit):
     return cases
 
 
-def gvhmr_cases(root):
+def historical_gvhmr_batch1(entry, conversion, baseline, fp32_ref):
+    measured, accuracy = entry["measurement"], entry["accuracy"]
+    reference = read(baseline / "measurement.json")
+    if (
+        entry["status"] != "measured"
+        or measured["condition"] != "2"
+        or conversion["dynamic_profile"]["batch"] != 1
+        or measured["engine_sha256"] != conversion["engine_sha256"]
+        or accuracy["fp32_reference_sha256"] != fp32_ref
+        or any(
+            measured[key] != reference[key]
+            for key in ("length", "segments", "tensor_lock_sha256")
+        )
+        or entry["profiles"]["nsys"]["status"] != "measured"
+    ):
+        raise ValueError(f"The #2305 B=1 TensorRT case does not match {baseline}")
+    return {
+        "status": "historical",
+        "artifact": str(Path("knowledge/runs") / GVHMR.name / "metrics.json"),
+        "case_key": ["conditions", "2", str(measured["length"])],
+        "measurement": {**measurement_summary(measured), "batch_size": 1},
+        "accuracy": {
+            key: value for key, value in accuracy.items() if key != "segments"
+        },
+        "nsys": {
+            key: value
+            for key, value in entry["profiles"]["nsys"].items()
+            if key != "kernel_names"
+        },
+    }
+
+
+def gvhmr_cases(root, prior_batch1):
     retry2, retry3, retry4 = (root / f"retry-{attempt}" for attempt in (2, 3, 4))
     cases = {}
     lock = sha256_file(GVHMR / "tensor-lock.json")
+    prior_validation = read(GVHMR / "validation.json")
+    conversion = prior_validation["successful_tensor_rt_conversions_and_boundaries"][
+        "2"
+    ]["conversion"]
     for length in GVHMR_LENGTHS:
         retry = retry4 if (retry4 / f"gvhmr-l{length}/sweep.json").is_file() else retry3
         baseline = retry2 / "gvhmr" / case_id("0", 1, length)
@@ -182,6 +218,11 @@ def gvhmr_cases(root):
         for condition in ("0", "1", "2"):
             for batch in GVHMR_BATCHES:
                 name = case_id(condition, batch, length)
+                if condition == "2" and batch == 1:
+                    cases[name] = historical_gvhmr_batch1(
+                        prior_batch1[str(length)], conversion, baseline, fp32_ref
+                    )
+                    continue
                 directory = (
                     retry / f"gvhmr-l{length}" if condition == "2" else retry2 / "gvhmr"
                 )
@@ -281,7 +322,7 @@ def collect(root):
     return {
         "schema_version": 1,
         "clipreid": clip_cases(root, addresses, lock["tensors"], prior_vit),
-        "gvhmr": gvhmr_cases(root),
+        "gvhmr": gvhmr_cases(root, prior_gvhmr["2"]),
         "historical_batch1_ncu": {
             "clipreid": {
                 condition: (

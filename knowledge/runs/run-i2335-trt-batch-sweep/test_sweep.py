@@ -1,6 +1,7 @@
 """A failed TensorRT build leaves the explicit PyTorch measurements intact."""
 
 import json
+import signal
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -59,3 +60,45 @@ def test_gvhmr_retry_passes_zero_builder_optimization_level(tmp_path):
     assert command[
         command.index("--batch-profile") + 1 : command.index("--batch-profile") + 3
     ] == ["4", "4"]
+
+
+def test_fixed_gvhmr_build_records_failed_shape_and_exits(tmp_path, monkeypatch):
+    root = tmp_path / "run"
+    monkeypatch.setenv("TENNIS_RUN_ID", "cpu-static-build")
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        sweep.sys,
+        "argv",
+        [
+            "sweep.py",
+            "--model",
+            "gvhmr",
+            "--inputs",
+            str(tmp_path),
+            "--output",
+            str(root),
+            "--fixed-length",
+            "177",
+            "--build-fixed-batch",
+            "2",
+        ],
+    )
+    commands = []
+
+    def run(command, *, stdout, stderr, check):
+        commands.append(command)
+        print("Fatal Python error: Segmentation fault", file=stdout)
+        return SimpleNamespace(returncode=-signal.SIGSEGV)
+
+    monkeypatch.setattr(sweep.subprocess, "run", run)
+    assert sweep.main() == 1
+    (command,) = commands
+    assert Path(command[4]).name == "build_gvhmr_static.py"
+    assert "--batch-profile" not in command
+    assert command[-4:] == ["--length", "177", "--batch-size", "2"]
+    report = json.loads((root / "sweep.json").read_text())
+    assert report["fixed_shape"] == {"length": 177, "batch_size": 2}
+    (stage,) = report["stages"].values()
+    assert stage["exit_code"] == -signal.SIGSEGV
+    assert stage["verified"] is False
+    assert "Segmentation fault" in (root / stage["log"]).read_text()

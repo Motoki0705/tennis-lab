@@ -7,13 +7,13 @@
 | モデル | 固定入力と束ね方 | TensorRT min / opt / max | ncu代表バッチ |
 |---|---|---|---|
 | CLIP-ReID | #2297の236 cropをmanifest順に連続して束ねる。B=1, 4, 8, 16, 32 | B=1 / 16 / 32 | B=16。#2297の代表cropを含む先頭側の完全バッチ |
-| GVHMR | #2305の同じ長さの4人物系列をmanifest順に束ねる。clip_037のL=145とclip_000のL=177を別々に測る。B=1, 2, 4 | L=145と177でそれぞれB=1 / 4 / 4を試行 | B=4。各評価クリップの全4人物を束ねた上限バッチ |
+| GVHMR | #2305の同じ長さの4人物系列をmanifest順に束ねる。clip_037のL=145とclip_000のL=177を別々に測る。B=1, 2, 4 | L=145と177でそれぞれB=1 / 4 / 4を試行。B=2・4とLを固定したビルドも試行 | B=4。各評価クリップの全4人物を束ねた上限バッチ |
 
 CLIP-ReIDのB=1と4は全バッチが指定サイズ。B=8の最後の1バッチは4件、B=16と32では12件。端数をそのまま推論し、全236件を順序どおり精度照合に使う。速度とthroughputは完全バッチを循環して計測し、端数も固定shapeの区分として30 warm-upと300反復で別に計測する。VRAMは完全バッチと端数を処理する同じプロセスのピークを記録する。nsysは各指定Bの完全バッチを使う。
 
-GVHMRは同じ長さの4本をBで等分する。全フレームを保持したまま連結する。秒当たりの処理量は人物系列数とフレーム数を長さ区分ごとに記録する。TensorRTの既定ビルダー設定では、BとLの両軸が可変の単一profileと、系列長を固定してBのみ可変にしたprofileの両方でSIGSEGVを再現した。次の試行は固定長のまま `--builder-optimization-level 0` を明示し、タクティクス探索の影響を切り分ける。精度評価は出力を人物ごとに戻し、条件共通のFP32復号とCOCO-17再構成を適用する。 [ビルドの記録](validation.json)・[TensorRTのビルダー最適化設定](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/performance/builder-performance.html#builder-optimization-level)
+GVHMRは同じ長さの4本をBで等分する。全フレームを保持したまま連結する。秒当たりの処理量は人物系列数とフレーム数を長さ区分ごとに記録する。精度評価は出力を人物ごとに戻し、条件共通のFP32復号とCOCO-17再構成を適用する。B=1固定のTensorRTは #2305 と今回で固定入力とFP32参照が一致したため、計測を再利用する。系列長を固定してBのみ可変にしたビルドは既定の最適化設定とレベル0の両方でSIGSEGVとなった。BとLを固定したビルドでは、すべての入力軸をONNXと照合して既定の最適化レベルとverboseログでビルドする。 [ビルドの記録](validation.json)・[TensorRTのビルダー最適化設定](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/performance/builder-performance.html#builder-optimization-level)
 
-各TensorRT条件はモデル・系列長ごとに単一profileのplanをロードする。min・opt・maxの実行を先に確認し、B=0と最大B+1がTensorRTから拒否されることをログに保存する。GVHMRは各planの範囲から外れるLも検査する。ビルド時の3端点と計測時の実shapeで主要演算のprecisionを照合する。ncuのkernel数は同じplan・入力で取得したnsysの件数と照合する。B=1のncu比較には#2297・#2303・#2305の記録を使う。TensorRTの比較は、profileの違いによるカーネルやタクティクスの差も含む。
+可変バッチのTensorRT条件はモデル・系列長ごとに単一profileのplanをロードする。min・opt・maxの実行を先に確認し、B=0と最大B+1がTensorRTから拒否されることをログに保存する。GVHMRの可変profileでは範囲から外れるLも検査する。ビルド時の3端点と計測時の実shapeで主要演算のprecisionを照合する。ncuのkernel数は同じplan・入力で取得したnsysの件数と照合する。B=1のncu比較には#2297・#2303・#2305の記録を使う。TensorRTの比較は、profileの違いによるカーネルやタクティクスの差も含む。
 
 ## 再現
 
@@ -47,6 +47,10 @@ for frames in 145 177; do
     enqueue "gvhmr-timing-l$frames" gvhmr "$gvhmr_inputs" 20m "$out/gvhmr-l$frames" \
         --condition 2 --fixed-length "$frames" --builder-optimization-level 0 \
         --reference-root "$out/gvhmr"
+    for people in 2 4; do
+        enqueue "gvhmr-static-b$people-l$frames" gvhmr "$gvhmr_inputs" 15m \
+            "$out/gvhmr-b$people-l$frames" --fixed-length "$frames" --build-fixed-batch "$people"
+    done
 done
 # ncuの登録例。各条件のB=16またはB=4の計測先を指定する。
 enqueue clipreid-ncu-0 clipreid "$clip_inputs" 68m "$out/c0-b16-ncu" \
@@ -64,6 +68,14 @@ vit=knowledge/runs/run-i2303-vit-tensorrt
 CUDA_VISIBLE_DEVICES="" PYTHONPATH="$PWD:$PWD/$common:$PWD/$gvhmr:$PWD/$vit" \
     .venv/bin/python -B "$bundle/aggregate.py" \
     --source outputs/trt-batch-i2335 --output "$bundle/metrics.json"
+```
+
+旧PTQのQ/DQ接続は、#2305の元の `outputs/trt-gvhmr` を指定してCPUで照合できる。保存された変換証跡とグラフのSHA-256が先行runの記録と一致することを確認してから検査する。 [旧PTQの検査結果](legacy-gvhmr-qdq.json)
+
+```bash
+CUDA_VISIBLE_DEVICES="" PYTHONPATH="$PWD:$PWD/$common:$PWD/$gvhmr" \
+    "$trt_exp_env/bin/python" -B "$bundle/audit_gvhmr_qdq.py" \
+    --artifact-root "$prior_gvhmr_outputs" --output "$bundle/legacy-gvhmr-qdq.json"
 ```
 
 ## CPU検証

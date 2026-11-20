@@ -100,12 +100,69 @@
     "gvhmr_failure": "既定のビルダー設定で固定長でもbuild_serialized_networkのSIGSEGVを再現。planと測定記録は生成されず、後段のncuは測定記録を開く前に失敗",
     "cumulative_queue_minutes": {"clipreid": 157.78, "gvhmr": 115.34}
   },
-  "retry_4_plan": {
+  "retry_4": {
+    "batch_min_opt_max": [1, 4, 4],
+    "builder_optimization_level": 0,
+    "gvhmr_fixed_length_builds": {
+      "145": {
+        "queue_job": "0-8204797946636145129_2026-11-20T19-14-13-363854870Z_3037453_i2335-r4-gvhmr-builder0-l145.job",
+        "output": "outputs/trt-batch-i2335/retry-4/gvhmr-l145",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "9ec537dd62e656fba782686f9c7d40bd17684b2b55cc58428ab1c8dfd9439bc2",
+        "plan_published": false
+      },
+      "177": {
+        "queue_job": "0-8204797946383013931_2026-11-20T19-14-13-616986068Z_3037497_i2335-r4-gvhmr-builder0-l177.job",
+        "output": "outputs/trt-batch-i2335/retry-4/gvhmr-l177",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "fd975be59dc799b38557c68dd99a87fa89f59fdf81b54ff1c9e93157672b24a4",
+        "plan_published": false
+      }
+    },
+    "last_verbose_timing_runner": "{ForeignNode[/network/Unsqueeze_7.../network/ScatterND]} (Myelin[0x80000023])",
+    "stage_at_signal": "build_serialized_network",
+    "cumulative_gvhmr_queue_minutes": 116.92
+  },
+  "representative_ncu_unavailable": {
+    "c2-b4-l145": {
+      "queue_job": "0-8204799079374224902_2026-11-20T18-55-20-625775097Z_2920221_i2335-r3-gvhmr-fixed-ncu-l145.job",
+      "queue_log_sha256": "5ecc43bbe938521a5a404c0b98be9b177f4cec1423b7e13fff956efd211a78b2",
+      "queue_exit_code": 1,
+      "nsys_kernels": null,
+      "ncu_kernels": null,
+      "failure": "TensorRTビルド失敗でmeasurement.jsonがなく、読込時にFileNotFoundError。ncu起動前に終了"
+    },
+    "c2-b4-l177": {
+      "queue_job": "0-8204799079111382642_2026-11-20T18-55-20-888617357Z_2920285_i2335-r3-gvhmr-fixed-ncu-l177.job",
+      "queue_log_sha256": "21c6ac2f5eef17fac05f6aaed42a12e50ad5a49edd5834a2cf65c90c9d924762",
+      "queue_exit_code": 1,
+      "nsys_kernels": null,
+      "ncu_kernels": null,
+      "failure": "TensorRTビルド失敗でmeasurement.jsonがなく、読込時にFileNotFoundError。ncu起動前に終了"
+    }
+  },
+  "historical_gvhmr_trt_fp16_batch1": {
+    "source_issue": 2305,
+    "source_case": "knowledge/runs/run-i2305-gvhmr-tensorrt/metrics.json:conditions.2",
+    "fixed_batch": 1,
+    "length_min_opt_max": [117, 145, 177],
+    "engine_sha256": "2474b55380f92b3b9f71d2f0304f3072c01593d5fbfe9da6028f9a8a76993185",
+    "fp32_decoded_reference_sha256": {
+      "145": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+      "177": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1"
+    }
+  },
+  "retry_5_plan": {
     "model": "gvhmr",
     "condition": "2",
     "fixed_lengths": [145, 177],
-    "batch_min_opt_max": [1, 4, 4],
-    "builder_optimization_level": 0,
-    "reason": "同じ入力・系列長・バッチ範囲とFP16で、タクティクス探索の設定だけを変えてビルダー内の停止を切り分ける"
+    "fixed_batches": [2, 4],
+    "optimization_profile_added": false,
+    "builder_optimization_level": "default",
+    "trt_log_verbosity": "VERBOSE"
   }
 }

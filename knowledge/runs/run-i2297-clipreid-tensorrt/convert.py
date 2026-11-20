@@ -411,6 +411,7 @@ def build_checked_plan(
     allow_tf32=True,
     profile_shapes=None,
     builder_optimization_level=None,
+    verbose=False,
 ):
     import tensorrt as trt
     import torch
@@ -424,7 +425,7 @@ def build_checked_plan(
         )
     verbosity = (
         trt.Logger.VERBOSE
-        if builder_optimization_level is not None
+        if verbose or builder_optimization_level is not None
         else trt.Logger.WARNING
     )
     logger = trt.Logger(verbosity)
@@ -460,6 +461,11 @@ def build_checked_plan(
         config.clear_flag(trt.BuilderFlag.TF32)
         print(
             f"Building TensorRT at optimization level {config.builder_optimization_level} with profile {profile_shapes}",
+            flush=True,
+        )
+    elif verbose:
+        print(
+            f"Building TensorRT at optimization level {config.builder_optimization_level} with static bindings",
             flush=True,
         )
     engine_bytes = builder.build_serialized_network(network, config)

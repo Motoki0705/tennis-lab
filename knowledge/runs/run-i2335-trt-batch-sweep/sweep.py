@@ -19,6 +19,7 @@ RUNS = Path(__file__).resolve().parents[1]
 CLIP = RUNS / "run-i2297-clipreid-tensorrt"
 GVHMR = RUNS / "run-i2305-gvhmr-tensorrt"
 VIT = RUNS / "run-i2303-vit-tensorrt" / "vit_models.py"
+GVHMR_STATIC_BUILDER = Path(__file__).with_name("build_gvhmr_static.py")
 CLIP_BATCHES = (1, 4, 8, 16, 32)
 CLIP_OPT = 16
 GVHMR_BATCHES = (1, 2, 4)
@@ -230,6 +231,59 @@ def reused_clip_measurement(path, batch, tensors):
     return {"exit_code": 0, "verified": True, "reused_measurement": str(path)}
 
 
+def run_stage(root, report, name, command, *, rejected_shape=None):
+    log = root / "logs" / f"{name}.log"
+    start = time.monotonic()
+    with log.open("x") as stream:
+        print(subprocess.list2cmdline(command), file=stream, flush=True)
+        completed = subprocess.run(
+            command, stdout=stream, stderr=subprocess.STDOUT, check=False
+        )
+    rejection = (
+        f"TensorRT rejected input shape {rejected_shape}" if rejected_shape else None
+    )
+    passed = (
+        completed.returncode > 0 and rejection in log.read_text(errors="replace")
+        if rejection
+        else completed.returncode == 0
+    )
+    report["stages"][name] = {
+        "exit_code": completed.returncode,
+        "verified": passed,
+        "expected_rejection": rejection,
+        "wall_seconds": time.monotonic() - start,
+        "log": str(log.relative_to(root)),
+    }
+    write_json(root / "sweep.json", report)
+    print(
+        f"{report['model']} {name}: exit {completed.returncode}, verified={passed}",
+        flush=True,
+    )
+    return passed
+
+
+def run_fixed_gvhmr_build(inputs, root, length, batch):
+    (root / "logs").mkdir(parents=True)
+    report = {
+        "model": "gvhmr",
+        "queue_job": os.environ["TENNIS_RUN_ID"],
+        "fixed_shape": {"length": length, "batch_size": batch},
+        "stages": {},
+    }
+    command = python(
+        GVHMR_STATIC_BUILDER,
+        "--inputs",
+        inputs,
+        "--output",
+        root / "engine-2",
+        "--length",
+        length,
+        "--batch-size",
+        batch,
+    )
+    return 0 if run_stage(root, report, "build-2", command) else 1
+
+
 def run_sweep(
     model,
     inputs,
@@ -253,38 +307,6 @@ def run_sweep(
     (root / "logs").mkdir(parents=True)
     report = {"model": model, "queue_job": os.environ["TENNIS_RUN_ID"], "stages": {}}
 
-    def run_stage(name, command, *, rejected_shape=None):
-        log = root / "logs" / f"{name}.log"
-        start = time.monotonic()
-        with log.open("x") as stream:
-            print(subprocess.list2cmdline(command), file=stream, flush=True)
-            completed = subprocess.run(
-                command, stdout=stream, stderr=subprocess.STDOUT, check=False
-            )
-        rejection = (
-            f"TensorRT rejected input shape {rejected_shape}"
-            if rejected_shape
-            else None
-        )
-        passed = (
-            completed.returncode > 0 and rejection in log.read_text(errors="replace")
-            if rejection
-            else completed.returncode == 0
-        )
-        report["stages"][name] = {
-            "exit_code": completed.returncode,
-            "verified": passed,
-            "expected_rejection": rejection,
-            "wall_seconds": time.monotonic() - start,
-            "log": str(log.relative_to(root)),
-        }
-        write_json(root / "sweep.json", report)
-        print(
-            f"{model} {name}: exit {completed.returncode}, verified={passed}",
-            flush=True,
-        )
-        return passed
-
     batches, lengths = (
         (CLIP_BATCHES, (None,))
         if model == "clipreid"
@@ -302,6 +324,8 @@ def run_sweep(
         if condition in TRT_PRECISIONS:
             conversion = root / f"engine-{condition}"
             if not run_stage(
+                root,
+                report,
                 f"build-{condition}",
                 build_command(
                     model,
@@ -344,6 +368,8 @@ def run_sweep(
             runnable = True
             for batch, length, rejection in probes:
                 passed = run_stage(
+                    root,
+                    report,
                     f"probe-{case_id(condition, batch, length)}",
                     probe_command(model, condition, batch, length, inputs, conversion),
                     rejected_shape=rejection,
@@ -380,6 +406,8 @@ def run_sweep(
                     write_json(root / "sweep.json", report)
                     continue
                 run_stage(
+                    root,
+                    report,
                     name,
                     case_command(
                         model,
@@ -405,6 +433,7 @@ def main():
     parser.add_argument("--reuse-case", type=Path, action="append", default=[])
     parser.add_argument("--condition", choices=CONDITIONS, action="append", default=[])
     parser.add_argument("--fixed-length", choices=GVHMR_LENGTHS, type=int)
+    parser.add_argument("--build-fixed-batch", choices=GVHMR_BATCHES[1:], type=int)
     parser.add_argument("--builder-optimization-level", choices=range(6), type=int)
     parser.add_argument("--reference-root", type=Path)
     parser.add_argument("--profile-from", type=Path)
@@ -427,11 +456,25 @@ def main():
         parser.error("--fixed-length requires GVHMR")
     if args.builder_optimization_level is not None and args.fixed_length is None:
         parser.error("--builder-optimization-level requires --fixed-length")
+    if args.build_fixed_batch is not None and (
+        args.fixed_length is None
+        or args.condition
+        or args.reuse_case
+        or args.reference_root
+        or args.builder_optimization_level is not None
+    ):
+        parser.error(
+            "--build-fixed-batch requires only the GVHMR fixed length and batch"
+        )
     if args.model == "gvhmr" and set(args.condition) & CLIP_RECIPES.keys():
         parser.error("GVHMR uses conditions 0, 1 and 2")
     require_queue()
     inputs, root = args.inputs.resolve(strict=True), args.output.resolve()
     (Path(os.environ["TENNIS_REPRO_DIR"]) / "output_dir.txt").write_text(f"{root}\n")
+    if args.build_fixed_batch is not None:
+        return run_fixed_gvhmr_build(
+            inputs, root, args.fixed_length, args.build_fixed_batch
+        )
     if args.profile_from is not None:
         # Preserve the case path used by the sweep, including its plan-relative links.
         return run_profile(
