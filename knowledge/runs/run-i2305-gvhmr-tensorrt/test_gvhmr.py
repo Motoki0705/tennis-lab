@@ -7,14 +7,74 @@ import experiment
 import numpy as np
 import pytest
 import torch
-from accuracy_gvhmr import rotation_degrees
+from accuracy_gvhmr import checked_measurement, rotation_degrees
 from convert_gvhmr import OPSET, calibration_inputs, export_index_put
 from inputs import sha256_file
-from locked_inputs import HERE, load_segments, tensor_addresses
-from model import DenoiserIO, attention_mask, dynamic_attention, input_shapes
+from locked_inputs import HERE, load_segments, sweep_profile, tensor_addresses
+from model import (
+    DenoiserIO,
+    attention_mask,
+    dynamic_attention,
+    input_shapes,
+    pack_sequences,
+)
+from run_gvhmr import seq_stats
 from torch.onnx._internal.torchscript_exporter.jit_utils import GraphContext
 
 from src.submodules.vendor.gvhmr.network.relative_transformer import NetworkEncoderRoPE
+
+
+def test_gvhmr_batch_profile_keeps_the_two_evaluation_lengths():
+    profile = sweep_profile(4, 4)
+    assert profile["profile_batches"] == {"min": 1, "opt": 4, "max": 4}
+    assert profile["inputs"]["length"] == [[1], [4], [4]]
+    assert profile["inputs"]["obs"] == [
+        [1, 145, 17, 3],
+        [4, 145, 17, 3],
+        [4, 177, 17, 3],
+    ]
+
+
+def test_gvhmr_person_batches_preserve_frames_and_refuse_mixed_lengths():
+    def person(frames, marker):
+        arrays = {
+            name: np.full(shape, marker, dtype=np.float32)
+            for name, shape in input_shapes(frames).items()
+        }
+        arrays["length"] = np.array([frames], dtype=np.int64)
+        return arrays
+
+    people = [person(145, index) for index in range(4)]
+    batch = pack_sequences(people)
+    assert batch["length"].tolist() == [145] * 4
+    np.testing.assert_array_equal(
+        batch["obs"], np.repeat(np.arange(4), 145 * 17 * 3).reshape(4, 145, 17, 3)
+    )
+    with pytest.raises(ValueError, match="same complete frame length"):
+        pack_sequences([people[0], person(177, 1)])
+    result = seq_stats([2.0, 6.0], frames=145, batch_size=4)
+    assert result["sequences_per_second"] == 1000
+    assert result["frames_per_second"] == 145_000
+
+
+def test_gvhmr_reference_cannot_be_replaced_with_batched_fp32(tmp_path):
+    rows = [{"id": "person0"}, {"id": "person1"}]
+    (tmp_path / "measurement.json").write_text(
+        json.dumps(
+            {
+                "condition": "0",
+                "batch_size": 2,
+                "length": 145,
+                "segments": [row["id"] for row in rows],
+                "tensor_lock_sha256": sha256_file(HERE / "tensor-lock.json"),
+            }
+        )
+    )
+    assert (
+        checked_measurement(tmp_path, "0", 145, rows, batch_size=2)["batch_size"] == 2
+    )
+    with pytest.raises(ValueError, match="input identity"):
+        checked_measurement(tmp_path, "0", 145, rows)
 
 
 @pytest.mark.parametrize(

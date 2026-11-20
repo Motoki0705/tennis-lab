@@ -254,10 +254,23 @@ def build_engine(
     return evidence[""] if profile_shapes is None else evidence
 
 
-def convert(condition, checkpoint, calibration, output):
+def convert(condition, checkpoint, calibration, output, *, batch_profile=None):
     import onnx
     import torch
+    from batching import batch_profile_points, require_dynamic_axis
     from clipreid import BATCH_SHAPE, INPUT_NAME, OUTPUT_NAME, VisualFeatures
+    from inputs import CHECKPOINT_SHA256, sha256_file
+
+    profile_shapes = None
+    dynamic_axes = None
+    sample_shape = BATCH_SHAPE
+    if batch_profile is not None:
+        if condition != "2":
+            raise ValueError("Dynamic CLIP batch export requires condition 2")
+        sizes = batch_profile_points(*batch_profile)
+        profile_shapes = {INPUT_NAME: [(size, *BATCH_SHAPE[1:]) for size in sizes]}
+        dynamic_axes = {name: {0: "batch"} for name in (INPUT_NAME, OUTPUT_NAME)}
+        sample_shape = profile_shapes[INPUT_NAME][1]
 
     torch.set_num_threads(4)
     dtype = torch.float16 if condition == "2" else torch.float32
@@ -266,15 +279,20 @@ def convert(condition, checkpoint, calibration, output):
     with torch.no_grad():
         torch.onnx.export(
             model,
-            (torch.zeros(BATCH_SHAPE, dtype=dtype),),
+            (torch.zeros(sample_shape, dtype=dtype),),
             str(graph),
             input_names=[INPUT_NAME],
             output_names=[OUTPUT_NAME],
+            dynamic_axes=dynamic_axes,
             opset_version=19,
             dynamo=False,
             external_data=False,
         )
     onnx.checker.check_model(str(graph))
+    if dynamic_axes is not None:
+        exported = onnx.load(graph).graph
+        for value in (*exported.input, *exported.output):
+            require_dynamic_axis(value, 0, "batch")
     del model
     mode = TRT_PRECISIONS[condition]
     quantization = None
@@ -322,8 +340,19 @@ def convert(condition, checkpoint, calibration, output):
         output / PLAN,
         required_precision=mode,
         expected_operations=clipreid_precision_requirements(condition),
+        profile_shapes=profile_shapes,
     )
     print(f"Engine compute precision: {evidence}", flush=True)
+    batch_metadata = (
+        {
+            "input_profile": profile_shapes,
+            "checkpoint_sha256": CHECKPOINT_SHA256,
+            "graph_sha256": sha256_file(graph),
+            "engine_sha256": sha256_file(output / PLAN),
+        }
+        if profile_shapes is not None
+        else {}
+    )
     (output / "conversion.json").write_text(
         json.dumps(
             {
@@ -331,6 +360,7 @@ def convert(condition, checkpoint, calibration, output):
                 "workspace_bytes": WORKSPACE_BYTES,
                 "compute_precision": evidence,
                 "quantization": quantization,
+                **batch_metadata,
             },
             indent=2,
         )
@@ -344,9 +374,16 @@ def main():
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--calibration", type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--batch-profile", type=int, nargs=2, metavar=("OPT", "MAX"))
     args = parser.parse_args()
     require_queue()
-    convert(args.condition, args.checkpoint, args.calibration, args.output)
+    convert(
+        args.condition,
+        args.checkpoint,
+        args.calibration,
+        args.output,
+        batch_profile=args.batch_profile,
+    )
 
 
 if __name__ == "__main__":

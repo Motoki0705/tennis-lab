@@ -5,10 +5,36 @@ import json
 from pathlib import Path
 
 import numpy as np
+from batching import batch_profile_points
 from inputs import sha256_file
 from model import CHECKPOINT, INPUT_WIDTHS, input_shapes
 
 HERE = Path(__file__).resolve().parent
+
+
+def sweep_profile(optimum, maximum):
+    profile = json.loads((HERE / "shape-profile.json").read_text())
+    del profile["batch"]
+    batches = batch_profile_points(optimum, maximum)
+    counts = profile["length_counts"]["eval"]
+    if maximum > min(counts.values()):
+        raise ValueError("GVHMR batch maximum exceeds an evaluation length bucket")
+    shortest, longest = sorted(map(int, counts))
+    lengths = (shortest, shortest, longest)
+    bindings = [
+        input_shapes(length, size)
+        for size, length in zip(batches, lengths, strict=True)
+    ]
+    labels = ("min", "opt", "max")
+    return {
+        **profile,
+        "profile_batches": dict(zip(labels, batches, strict=True)),
+        "profile_lengths": dict(zip(labels, lengths, strict=True)),
+        "inputs": {
+            name: [list(bound[name]) for bound in bindings] for name in INPUT_WIDTHS
+        },
+        "outside_lengths": [shortest - 1, longest + 1],
+    }
 
 
 def tensor_addresses(arrays):

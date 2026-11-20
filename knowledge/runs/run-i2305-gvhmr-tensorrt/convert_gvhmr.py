@@ -8,10 +8,11 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from batching import require_dynamic_axis
 from benchmark import write_json
 from convert import TRT_PRECISIONS, build_engine, require_queue
 from inputs import sha256_file
-from locked_inputs import HERE, checked_segments
+from locked_inputs import HERE, checked_segments, sweep_profile
 from model import (
     INPUT_WIDTHS,
     OUTPUT_WIDTHS,
@@ -19,6 +20,7 @@ from model import (
     dynamic_attention,
     input_shapes,
     load_network,
+    pack_sequences,
 )
 from torch.onnx import symbolic_helper, symbolic_opset9, symbolic_opset11
 
@@ -68,7 +70,7 @@ def network_args(arrays, dtype):
     )
 
 
-def export_network(model, samples, output, dtype, opt):
+def export_network(model, samples, output, dtype, opt, *, dynamic_batch=False):
     import onnx
 
     dynamic_axes = {
@@ -76,6 +78,9 @@ def export_network(model, samples, output, dtype, opt):
         for name in (*INPUT_WIDTHS, *OUTPUT_WIDTHS)
         if name not in {"length", "length_out"}
     }
+    if dynamic_batch:
+        for name in (*INPUT_WIDTHS, *OUTPUT_WIDTHS):
+            dynamic_axes.setdefault(name, {})[0] = "batch"
     lowerings = {
         "aten::einsum": export_attention_matmul,
         "aten::index_put": export_index_put,
@@ -111,11 +116,10 @@ def export_network(model, samples, output, dtype, opt):
     onnx.checker.check_model(str(output))
     model = onnx.load(output)
     for value in (*model.graph.input, *model.graph.output):
-        if (
-            value.name not in {"length", "length_out"}
-            and value.type.tensor_type.shape.dim[1].dim_param != "frames"
-        ):
-            raise ValueError(f"Export lost the shared sequence axis for {value.name}")
+        if value.name not in {"length", "length_out"}:
+            require_dynamic_axis(value, 1, "frames")
+        if dynamic_batch:
+            require_dynamic_axis(value, 0, "batch")
     return major_operations(model, output)
 
 
@@ -210,7 +214,12 @@ def convert(args):
     torch.set_num_threads(4)
     args.output.mkdir(parents=True)
     segments, checkpoint = checked_segments(args.inputs, args.checkpoints)
-    profile = json.loads((HERE / "shape-profile.json").read_text())
+    dynamic_batch = args.batch_profile is not None
+    profile = (
+        sweep_profile(*args.batch_profile)
+        if dynamic_batch
+        else json.loads((HERE / "shape-profile.json").read_text())
+    )
     settings = json.loads((HERE / "ptq.json").read_text())
     representatives = {}
     calibration = []
@@ -218,6 +227,18 @@ def convert(args):
         representatives.setdefault(row["length"], arrays)
         if row["split"] == "calibration":
             calibration.append(arrays)
+    if dynamic_batch:
+        batch_size = profile["profile_batches"]["opt"]
+        representatives = {
+            length: pack_sequences(
+                [
+                    arrays
+                    for row, arrays in segments
+                    if row["split"] == "eval" and row["length"] == length
+                ][:batch_size]
+            )
+            for length in sorted(set(profile["profile_lengths"].values()))
+        }
     if (
         representatives.keys() != set(profile["profile_lengths"].values())
         or not calibration
@@ -228,7 +249,12 @@ def convert(args):
     dtype = torch.float16 if args.condition == "2" else torch.float32
     network = load_network(checkpoint).to(dtype=dtype)
     operations = export_network(
-        network, representatives, graph, dtype, profile["profile_lengths"]["opt"]
+        network,
+        representatives,
+        graph,
+        dtype,
+        profile["profile_lengths"]["opt"],
+        dynamic_batch=dynamic_batch,
     )
     del network
     expected = {
@@ -259,6 +285,10 @@ def convert(args):
         "quantization": quantization,
         "native_mask_adapter_parity": sorted(representatives),
     }
+    if dynamic_batch:
+        result["expected_precision_sha256"] = sha256_file(
+            args.output / "expected-precision.json"
+        )
     write_json(args.output / "conversion.json", result)
     print(f"GVHMR conversion passed: {evidence}", flush=True)
 
@@ -269,7 +299,10 @@ def main():
     parser.add_argument("--inputs", required=True, type=Path)
     parser.add_argument("--checkpoints", default=Path("ckpt"), type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--batch-profile", type=int, nargs=2, metavar=("OPT", "MAX"))
     args = parser.parse_args()
+    if args.batch_profile is not None and args.condition != "2":
+        parser.error("Dynamic GVHMR batch export requires condition 2")
     require_queue()
     convert(args)
 

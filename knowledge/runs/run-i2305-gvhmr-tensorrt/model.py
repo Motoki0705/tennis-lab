@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 
+import numpy as np
 import torch
 from torch import nn
 
@@ -29,17 +30,33 @@ OUTPUT_WIDTHS = {
 }
 
 
-def input_shapes(frames):
+def input_shapes(frames, batch_size=1):
     return {
-        key: (1,) if key == "length" else (1, frames, *tail)
+        key: (batch_size,) if key == "length" else (batch_size, frames, *tail)
         for key, tail in INPUT_WIDTHS.items()
     }
 
 
-def output_shapes(frames):
+def output_shapes(frames, batch_size=1):
     return {
-        key: (1,) if key == "length_out" else (1, frames, *tail)
+        key: (batch_size,) if key == "length_out" else (batch_size, frames, *tail)
         for key, tail in OUTPUT_WIDTHS.items()
+    }
+
+
+def pack_sequences(sequences):
+    """Combine whole, equal-length person sequences along the person axis."""
+    frames = int(sequences[0]["length"][0])
+    shapes = input_shapes(frames)
+    if any(
+        arrays["length"].tolist() != [frames]
+        or any(arrays[name].shape != shape for name, shape in shapes.items())
+        for arrays in sequences
+    ):
+        raise ValueError("All GVHMR sequences must have the same complete frame length")
+    return {
+        name: np.concatenate([arrays[name] for arrays in sequences], axis=0)
+        for name in shapes
     }
 
 

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from batching import batch_slices
 from convert import CONDITIONS, PLAN, TRT_PRECISIONS, require_queue
 from inputs import (
     CHECKPOINT,
@@ -115,20 +116,28 @@ def run_case(args):
     if sha256_file(args.checkpoint) != CHECKPOINT_SHA256:
         raise ValueError("Unexpected CLIP-ReID checkpoint contents")
     profile_index = addresses.index(PROFILE_ADDRESS)
+    groups = batch_slices(len(addresses), args.batch_size)
+    group = groups[profile_index // args.batch_size]
+    if group.stop - group.start != args.batch_size:
+        raise ValueError("The representative crop must belong to a full batch")
     identity = {
         "model": args.model,
         "condition": args.condition,
         "checkpoint_sha256": CHECKPOINT_SHA256,
         "tensors": lock["tensors"],
         "profile_address": list(PROFILE_ADDRESS),
+        "batch_size": args.batch_size,
+        "profile_batch_addresses": [list(address) for address in addresses[group]],
     }
     comparable_keys = ("model", "checkpoint_sha256", "tensors", "profile_address")
 
-    def verify_reference(path, expected_condition):
+    def verify_reference(path, expected_condition, batch_size):
         receipt = json.loads((path / "result.json").read_text())
         before = receipt["identity"]
-        if before["condition"] != expected_condition or any(
-            before[key] != identity[key] for key in comparable_keys
+        if (
+            before["condition"] != expected_condition
+            or before.get("batch_size", 1) != batch_size
+            or any(before[key] != identity[key] for key in comparable_keys)
         ):
             raise ValueError(f"Reference identity mismatch: {path}")
         if sha256_file(path / "features.npy") != receipt["features_sha256"]:
@@ -137,7 +146,9 @@ def run_case(args):
 
     output = args.output
     source = args.profile_from or args.measure_from
-    previous = verify_reference(source, args.condition) if source else None
+    previous = (
+        verify_reference(source, args.condition, args.batch_size) if source else None
+    )
     nsys_reference = {}
     if args.profile_from:
         result = {**previous, "profile_from": str(source)}
@@ -150,8 +161,9 @@ def run_case(args):
             result["nsys_comparison"] = {"gpu_kernels": nsys_reference["gpu_kernels"]}
     else:
         result = {"identity": identity}
-        if args.condition != "0":
-            verify_reference(args.reference, "0")
+        if args.reference:
+            reference = verify_reference(args.reference, "0", 1)
+            result["fp32_reference_features_sha256"] = reference["features_sha256"]
 
     if args.condition in TRT_PRECISIONS:
         if previous is not None:
@@ -162,6 +174,21 @@ def run_case(args):
             result["conversion"] = previous["conversion"]
             if args.measure_from:
                 result["measurement_from"] = str(source)
+        elif args.conversion:
+            plan = args.conversion / PLAN
+            receipt = json.loads((args.conversion / "conversion.json").read_text())
+            if (
+                receipt["condition"] != args.condition
+                or receipt["checkpoint_sha256"] != CHECKPOINT_SHA256
+                or receipt["engine_sha256"] != sha256_file(plan)
+                or set(receipt["compute_precision"]) != {"min", "opt", "max"}
+                or not receipt["input_profile"]
+            ):
+                raise ValueError(
+                    "CLIP conversion receipt differs from the requested dynamic engine"
+                )
+            result["conversion"] = receipt
+            result["engine_sha256"] = receipt["engine_sha256"]
         else:
             plan = output / PLAN
             run_stage(
@@ -197,17 +224,25 @@ def run_case(args):
         str(args.inputs / "eval.npy"),
         "--output",
         str(output),
+        "--batch-size",
+        str(args.batch_size),
     ]
     if args.condition in TRT_PRECISIONS:
         command += ["--plan", str(plan)]
+        if result["conversion"].get("input_profile") is not None:
+            command.append("--dynamic-batch")
     if not args.profile_from:
-        run_stage(command, output / "measure.log", timeout=180)
+        run_stage(
+            command, output / "measure.log", timeout=900 if args.batch_size > 1 else 180
+        )
         result["measurement"] = json.loads((output / "measurement.json").read_text())
+        if result["measurement"]["batch_shape"][0] != args.batch_size:
+            raise ValueError("Measured CLIP batch size differs from the request")
         actual = np.load(output / "features.npy", allow_pickle=False)
         baseline = (
-            actual
-            if args.condition == "0"
-            else np.load(args.reference / "features.npy", allow_pickle=False)
+            np.load(args.reference / "features.npy", allow_pickle=False)
+            if args.reference
+            else actual
         )
         result["accuracy"] = accuracy(actual, baseline, addresses)
         result["features_sha256"] = sha256_file(output / "features.npy")
@@ -247,8 +282,11 @@ def main():
     parser.add_argument("--inputs", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, default=CHECKPOINT)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument(
-        "--reference", type=Path, help="condition 0 output for accuracy comparison"
+        "--reference",
+        type=Path,
+        help="condition 0, batch 1 output for accuracy comparison",
     )
     parser.add_argument(
         "--profiles", choices=("all", "none", "nsys", "ncu"), default="all"
@@ -256,6 +294,7 @@ def main():
     parser.add_argument("--nsys", type=Path, default=NSYS)
     parser.add_argument("--ncu", type=Path, default=Path("/usr/local/cuda/bin/ncu"))
     reuse = parser.add_mutually_exclusive_group()
+    reuse.add_argument("--conversion", type=Path, help="reuse a dynamic FP16 engine")
     reuse.add_argument(
         "--profile-from",
         type=Path,
@@ -267,8 +306,23 @@ def main():
         help="repeat timing with the existing TensorRT engine from a result",
     )
     args = parser.parse_args()
-    if args.reference is None and args.condition != "0" and not args.profile_from:
-        parser.error("--reference is required for a comparison with FP32")
+    if args.batch_size < 1:
+        parser.error("--batch-size must be positive")
+    if args.batch_size != 1 and args.condition not in {"0", "1", "2"}:
+        parser.error("Batch sweeps support conditions 0, 1 and 2")
+    if not (args.reference or args.profile_from) and (
+        args.condition,
+        args.batch_size,
+    ) != ("0", 1):
+        parser.error("--reference is required for a comparison with FP32 batch 1")
+    if args.conversion and args.condition != "2":
+        parser.error("--conversion requires condition 2")
+    if (
+        args.condition == "2"
+        and args.batch_size != 1
+        and not (args.conversion or args.profile_from or args.measure_from)
+    ):
+        parser.error("Batched TensorRT measurement requires an existing dynamic engine")
     if args.profile_from and args.profiles == "none":
         parser.error("--profile-from requires selecting a profiler")
     if args.measure_from and args.condition not in TRT_PRECISIONS:
