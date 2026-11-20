@@ -298,8 +298,9 @@ def test_ncu_followup_fails_when_reused_nsys_kernel_count_differs(
         },
     )
 
-    def capture_one_kernel(tool, executable, command, directory):
+    def capture_one_kernel(tool, executable, command, directory, *, ncu_timeout):
         assert tool == "ncu"
+        assert ncu_timeout == 1800
         assert command[command.index("--plan") + 1] == str(source / PLAN)
         return {"status": "measured", "profiled_kernels": 1}
 
@@ -325,6 +326,8 @@ def test_ncu_followup_fails_when_reused_nsys_kernel_count_differs(
             "ncu",
             "--profile-from",
             str(source),
+            "--ncu-timeout",
+            "1800",
         ],
     )
     assert benchmark.main() == 3
@@ -335,6 +338,7 @@ def test_ncu_followup_fails_when_reused_nsys_kernel_count_differs(
     assert result["nsys_comparison"]["gpu_kernels"] == 114
     assert result["profiles"]["ncu"]["status"] == "coverage_mismatch"
     assert result["profiles"]["ncu"]["profiled_kernels"] == 1
+    assert result["profiles"]["ncu"]["timeout_seconds"] == 1800
 
 
 def test_dino_matching_counts_same_score_box_replacements_as_missing_and_extra():

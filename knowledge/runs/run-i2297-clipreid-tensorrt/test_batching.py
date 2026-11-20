@@ -1,7 +1,7 @@
 """CPU checks for batch boundaries and the FP32 batch-one reference."""
 
 import json
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 
 import benchmark
 import numpy as np
@@ -9,6 +9,21 @@ import pytest
 import runtime
 import torch
 from batching import batch_slices, require_engine_profile
+from clipreid import visual_forward_with_dynamic_batch
+
+from src.tasks.player_association.appearance.encoders import _ClipVisual
+
+
+def test_traced_clip_class_token_expands_to_the_runtime_batch():
+    visual = _ClipVisual((2, 2), width=32, layers=1, heads=4, output_dim=16).eval()
+    sample = torch.randn(4, 3, 32, 32)
+    with torch.no_grad():
+        expected = visual(sample[:2])
+        visual.forward = MethodType(visual_forward_with_dynamic_batch, visual)
+        traced = torch.jit.trace(visual, sample)
+        actual = traced(sample[:2])
+    assert actual[0].shape == (2, 32)
+    torch.testing.assert_close(actual, expected)
 
 
 def test_clip_tail_is_timed_separately_and_all_features_keep_input_order(monkeypatch):
@@ -102,6 +117,7 @@ def test_clip_batched_fp32_compares_against_pinned_batch_one(tmp_path, monkeypat
         inputs=tmp_path,
         checkpoint=checkpoint,
         batch_size=2,
+        adapter=None,
         model=benchmark.MODEL,
         condition="0",
         profile_from=None,

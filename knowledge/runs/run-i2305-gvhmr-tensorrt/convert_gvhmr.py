@@ -92,13 +92,13 @@ def export_network(model, samples, output, dtype, opt, *, dynamic_batch=False):
         for frames, arrays in samples.items():
             args = network_args(arrays, dtype)
             native = model(*args)
-            with dynamic_attention(model):
+            with dynamic_attention(model, dynamic_batch=dynamic_batch):
                 converted = model(*args)
             for name, a, b in zip(OUTPUT_WIDTHS, native, converted, strict=True):
                 torch.testing.assert_close(
                     a, b, rtol=0, atol=0, msg=f"L={frames} {name}"
                 )
-        with dynamic_attention(model):
+        with dynamic_attention(model, dynamic_batch=dynamic_batch):
             torch.onnx.export(
                 model,
                 network_args(samples[opt], dtype),

@@ -1,0 +1,299 @@
+{
+  "fixed_inputs": {
+    "tensor_lock_sha256": "757984765eb0a9f069154dc3e143121b9ede97f6223806e10cef971a081a4b8e",
+    "independent_decode_matches_lock": true,
+    "shared_media": 0,
+    "shared_raw_frame_intervals": 0
+  },
+  "first_attempts": {
+    "vitpose_h/0": {
+      "queue_job": "0-8204856901100826992_2026-11-20T02-51-38-899173007Z_3774884_i2303-vitpose-0",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "pytorch_dtype_probe",
+      "diagnostic": "RuntimeError: PyTorch compute did not execute at torch.float32: {'add': Counter({'torch.float32': 67}), 'gelu': Counter({'torch.float32': 32})}"
+    },
+    "vitpose_h/1": {
+      "queue_job": "0-8204856900813208528_2026-11-20T02-51-39-186791471Z_3774968_i2303-vitpose-1",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/vitpose_h/0/result.json'"
+    },
+    "vitpose_h/2": {
+      "queue_job": "0-8204856900534923493_2026-11-20T02-51-39-465076506Z_3775047_i2303-vitpose-2",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/vitpose_h/0/result.json'"
+    },
+    "vitpose_h/3b": {
+      "queue_job": "0-8204856782726462122_2026-11-20T02-53-37-273537877Z_3794639_i2303-vitpose_h-3b",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/vitpose_h/0/result.json'"
+    },
+    "hmr2/0": {
+      "queue_job": "0-8204856782467620314_2026-11-20T02-53-37-532379685Z_3794706_i2303-hmr2-0",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "pytorch_dtype_probe",
+      "diagnostic": "RuntimeError: PyTorch compute did not execute at torch.float32: {'add': Counter({'torch.float32': 84}), 'gelu': Counter({'torch.float32': 38})}"
+    },
+    "hmr2/1": {
+      "queue_job": "0-8204856782198179124_2026-11-20T02-53-37-801820875Z_3794768_i2303-hmr2-1",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/hmr2/0/result.json'"
+    },
+    "hmr2/2": {
+      "queue_job": "0-8204856781937826455_2026-11-20T02-53-38-062173544Z_3794839_i2303-hmr2-2",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/hmr2/0/result.json'"
+    },
+    "hmr2/3b": {
+      "queue_job": "0-8204856781641902168_2026-11-20T02-53-38-358097831Z_3794902_i2303-hmr2-3b",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/hmr2/0/result.json'"
+    }
+  },
+  "pytorch_dtype_probe": {
+    "cause": "PyTorch 2.13 Python dispatch exposed aten::linear, aten::matmul, aten::conv2d and aten::conv_transpose2d as composite calls.",
+    "revision": "Verify compute output dtypes on both composite and decomposed operators."
+  },
+  "completed_clip_diagnostics": {
+    "0-8204857150290752393_2026-11-20T02-47-29-709247606Z_3742419_i2303-clip-ptq": "done",
+    "0-8204856579539421818_2026-11-20T02-57-00-460578181Z_3827362_i2303-clip-calibration": "done"
+  },
+  "second_attempts": {
+    "clip/3b": {
+      "queue_job": "0-8204852802152759124_2026-11-20T03-59-57-847240875Z_670114_i2303-clip-3b-r2.job",
+      "state": "done"
+    },
+    "hmr2/0": {
+      "queue_job": "0-8204852804155488370_2026-11-20T03-59-55-844511629Z_669548_i2303-hmr2-0-r2.job",
+      "state": "done"
+    },
+    "hmr2/1": {
+      "queue_job": "0-8204852803610594421_2026-11-20T03-59-56-389405578Z_669697_i2303-hmr2-1-r2.job",
+      "state": "done"
+    },
+    "hmr2/2": {
+      "queue_job": "0-8204852802992082111_2026-11-20T03-59-57-007917888Z_669842_i2303-hmr2-2-r2.job",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "conversion",
+      "diagnostic": "RuntimeError: Compute layer __mye119277+__mye119265+__mye119253_myl0_231 has no unique precision requirement",
+      "cause": "HMR2 head's input-independent matrix operations and single-token attention tactics were missing from the inspector verifier."
+    },
+    "hmr2/3b": {
+      "queue_job": "0-8204852802433786206_2026-11-20T03-59-57-566213793Z_669998_i2303-hmr2-3b-r2.job",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "conversion",
+      "diagnostic": "ValueError: Explicit PTQ selection is empty",
+      "cause": "HMR2 backbone ONNX node names use /hmr/backbone/blocks.N/, which did not match the original selector."
+    },
+    "vitpose_h/0": {
+      "queue_job": "0-8204852804541795353_2026-11-20T03-59-55-458204646Z_669464_i2303-vitpose-0-r2.job",
+      "state": "done"
+    },
+    "vitpose_h/1": {
+      "queue_job": "0-8204852803878590053_2026-11-20T03-59-56-121409946Z_669629_i2303-vitpose-1-r2.job",
+      "state": "done"
+    },
+    "vitpose_h/2": {
+      "queue_job": "0-8204852803329206807_2026-11-20T03-59-56-670793192Z_669769_i2303-vitpose-2-r2.job",
+      "state": "done"
+    },
+    "vitpose_h/3b": {
+      "queue_job": "0-8204852802712525666_2026-11-20T03-59-57-287474333Z_669925_i2303-vitpose-3b-r2.job",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "conversion",
+      "diagnostic": "ValueError: Explicit PTQ selection is empty",
+      "cause": "ViTPose backbone ONNX node names use /backbone/blocks.N/, which did not match the original selector."
+    }
+  },
+  "hmr2_fp16_inspector_recheck": {
+    "source_inspector_sha256": "c5f123d5c56a7157fd2ad2a86d41bb18b68cb4eb2e30e37a3d0df03aca9a053e",
+    "expected_scope_graph_sha256": "8925e2e6f3c3e746eb2fe0229b78f03d6f650fdc120d27d10de5afc9272f0a24",
+    "engine_layers_by_precision": {
+      "fp16": 216
+    },
+    "onnx_operations_by_precision": {
+      "fp16": 259
+    },
+    "unobserved_constant_onnx_operations": [
+      "/hmr/smpl_head/transformer/to_token_embedding/MatMul"
+    ]
+  },
+  "third_attempts": {
+    "clip/3a": {
+      "queue_job": "0-8204842679229479399_2026-11-20T06-48-40-770520600Z_2612917_i2303-clip-3a-r3.job",
+      "state": "done",
+      "status": "complete"
+    },
+    "hmr2/2": {
+      "queue_job": "0-8204842680091142395_2026-11-20T06-48-39-908857604Z_2612701_i2303-hmr2-2-r3.job",
+      "state": "failed",
+      "status": "failed",
+      "exit_code": 1,
+      "stage": "conversion",
+      "diagnostic": "RuntimeError: Compute layer /hmr/smpl_head/transformer/transformer/layers_0_1/fn/to_out/to_out_0/MatMul_myl0_240 expected fp16 operands, got inputs ['Half'] and tactic 'sm50_xmma_cublas_gemvx_f16f16_f32_f32_tn_n_int32_unit_n_launch_param16x8x8_strided_unit_stride'",
+      "cause": "The cuBLAS GEMV tactic encodes both operand types together; the inspector treated the accumulator type as the second operand.",
+      "inspector_recheck": {
+        "inspector_sha256": "b0681869351ba60b44509fa1ffb7f370fe740b5a938e72aab364d4643adb178c",
+        "precision_manifest_sha256": "732b4d967b8f22a0431ec596863d04546bf18b13e4dc8eec2156ead49dfb7320",
+        "engine_layers_by_precision": {
+          "fp16": 216
+        },
+        "onnx_operations_by_precision": {
+          "fp16": 259
+        },
+        "unobserved_constant_onnx_operations": [
+          "/hmr/smpl_head/transformer/to_token_embedding/MatMul"
+        ]
+      }
+    },
+    "hmr2/3a": {
+      "queue_job": "0-8204842679805963649_2026-11-20T06-48-40-194036350Z_2612771_i2303-hmr2-3a-r3.job",
+      "state": "failed",
+      "status": "profile_incomplete",
+      "exit_code": 3,
+      "stage": "ncu",
+      "timeout_seconds": 900,
+      "csv_kernels_before_timeout": 228,
+      "nsys_gpu_kernels": 341,
+      "partial_csv_sha256": "9ae0a92135b45341b6b49d2d0f28c903319e1b928cb5df9f7c7717515a20a83a"
+    },
+    "hmr2/3b": {
+      "queue_job": "0-8204842679522710353_2026-11-20T06-48-40-477289646Z_2612844_i2303-hmr2-3b-r3.job",
+      "state": "done",
+      "status": "complete"
+    },
+    "vitpose_h/3a": {
+      "queue_job": "0-8204842680668697072_2026-11-20T06-48-39-331302927Z_2612555_i2303-vitpose-3a-r3.job",
+      "state": "failed",
+      "status": "failed",
+      "exit_code": 1,
+      "stage": "conversion",
+      "diagnostic": "RuntimeError: Compute layer __myl_FcCastAddAdd_myl0_8 expected int8 operands, got inputs ['Half', 'Int8'] and tactic 'sm80_xmma_gemm_i8f32_i8i32_f32_tn_n_tilesize128x128x64_stage3_warpsize2x2x1_tensor16x8x32_by_fusion_tactic'",
+      "cause": "The fused INT8 attention output projection listed the FP16 residual first and the INT8 activation second; the inspector required the first input to match.",
+      "inspector_recheck": {
+        "inspector_sha256": "8cfaa081a4bf811b37a0552adc01bfd2d621051800cdb7d7f499c9c7fd3c1e49",
+        "precision_manifest_sha256": "7a7c99da9c457c231f997be3d02d0ff82ca04ea27ff255297fb799627162f27b",
+        "engine_layers_by_precision": {
+          "fp16": 132,
+          "int8": 32
+        },
+        "onnx_operations_by_precision": {
+          "fp16": 164,
+          "int8": 32
+        }
+      }
+    },
+    "vitpose_h/3b": {
+      "queue_job": "0-8204842680381613157_2026-11-20T06-48-39-618386842Z_2612632_i2303-vitpose-3b-r3.job",
+      "state": "done",
+      "status": "complete"
+    }
+  },
+  "fourth_attempts": {
+    "vitpose_h/3a": {
+      "queue_job": "0-8204838163145463422_2026-11-20T08-03-56-854536577Z_3129954_i2303-vitpose-3a-r4.job",
+      "state": "failed",
+      "status": "profile_incomplete",
+      "exit_code": 3,
+      "stage": "ncu",
+      "timeout_seconds": 1800,
+      "csv_kernels_before_timeout": 228,
+      "nsys_gpu_kernels": 300,
+      "partial_csv_sha256": "6bb87271292170419828a01c5b151b7c6830f37897af8dcf6df540de2ccaa6de"
+    },
+    "hmr2/2": {
+      "queue_job": "0-8204838162888051058_2026-11-20T08-03-57-111948941Z_3130036_i2303-hmr2-2-r4.job",
+      "state": "done",
+      "status": "complete"
+    },
+    "hmr2/3a-ncu": {
+      "queue_job": "0-8204838162611562645_2026-11-20T08-03-57-388437354Z_3130100_i2303-hmr2-3a-ncu-r4.job",
+      "state": "done",
+      "status": "complete",
+      "measurement_reused_from": "outputs/i2303/round3/hmr2/3a",
+      "plan_sha256": "8982c851eb60a15744e441258f170d7bad69591a4f5efc5c563dd9c4a610e5dd",
+      "nsys_gpu_kernels": 341,
+      "ncu_profiled_kernels": 341
+    }
+  },
+  "fifth_attempts": {
+    "vitpose_h/3a-ncu": {
+      "queue_job": "0-8204828400464429831_2026-11-20T10-46-39-535570168Z_4184786_i2303-vitpose-3a-ncu-r5.job",
+      "state": "done",
+      "status": "complete",
+      "measurement_reused_from": "outputs/i2303/round4/vitpose_h/3a",
+      "profile_output": "outputs/i2303/round5/vitpose_h/3a-ncu",
+      "plan_sha256": "10bb5ccbdb498909aa46006ec6bdec4eb1fd7f9f9e3eafa35d515a738387c4c7",
+      "precision_manifest_sha256": "7a7c99da9c457c231f997be3d02d0ff82ca04ea27ff255297fb799627162f27b",
+      "features_sha256": "d5f30c92296c258b82a2cc9137a9b58c290de9859259ef7cf0e9cc8ac2444e43",
+      "ncu_csv_sha256": "a4d095cf18e5511136a8331feadf908e176887a9568873568c9d943793536083",
+      "nsys_gpu_kernels": 300,
+      "ncu_profiled_kernels": 300
+    }
+  },
+  "inspector_recheck_after_rebase": {
+    "conditions": 8,
+    "matching_conversion_and_runtime_receipts": 8,
+    "main_base": "b392f45ee"
+  },
+  "explicit_ptq_scope_recheck": {
+    "clip/3a": {
+      "recipe": "attention-out-max",
+      "quantized_graph": "outputs/i2303/round3/clip/3a/quantized.onnx",
+      "onnx_sha256": "462cde8ad1d604c3bacdda0b1e57163f1d5692ff9ebc0fdf0dcb294008e227b2",
+      "quantized_operations": 12,
+      "verified_operand_input_edges": 24
+    },
+    "clip/3b": {
+      "recipe": "linear-max",
+      "quantized_graph": "outputs/i2303/round2/clip/3b/quantized.onnx",
+      "onnx_sha256": "59b39485b9c76bfb335f520b05afc17f58bb3e5c71ffd5933fce18e96f92ae4a",
+      "quantized_operations": 48,
+      "verified_operand_input_edges": 96
+    },
+    "hmr2/3a": {
+      "recipe": "attention-out-max",
+      "quantized_graph": "outputs/i2303/round3/hmr2/3a/quantized.onnx",
+      "onnx_sha256": "c2a0146f2966f9380a9988edde5e3acdd8912f60a373d5f30b5800121e6f68ac",
+      "quantized_operations": 32,
+      "verified_operand_input_edges": 64
+    },
+    "hmr2/3b": {
+      "recipe": "linear-max",
+      "quantized_graph": "outputs/i2303/round3/hmr2/3b/quantized.onnx",
+      "onnx_sha256": "6dcb5991d4132c64429c509b1b6fed0d3ed29342ac50fd17eb1c8a2788a0fd06",
+      "quantized_operations": 128,
+      "verified_operand_input_edges": 256
+    },
+    "vitpose_h/3a": {
+      "recipe": "attention-out-max",
+      "quantized_graph": "outputs/i2303/round4/vitpose_h/3a/quantized.onnx",
+      "onnx_sha256": "7be42aad486fb574c61ef2f8e41ac7ac7707d313c31e0bbf6e01ccf4b15e0a66",
+      "quantized_operations": 32,
+      "verified_operand_input_edges": 64
+    },
+    "vitpose_h/3b": {
+      "recipe": "linear-max",
+      "quantized_graph": "outputs/i2303/round3/vitpose_h/3b/quantized.onnx",
+      "onnx_sha256": "e14e703095656d82553339abb7c5ca71a5886ea321d210c41cc0074bacf66fcc",
+      "quantized_operations": 128,
+      "verified_operand_input_edges": 256
+    }
+  }
+}

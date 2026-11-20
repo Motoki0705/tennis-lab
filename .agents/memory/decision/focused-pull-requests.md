@@ -1,10 +1,15 @@
 ---
 title: "独立した目的の変更は別PRに分ける"
+summary: "独立した目的の変更は別PRに分ける。同じ目的を成立させる実装・テスト・文書はまとめる。"
 applies_to: all
 source: "2026-10-13のユーザー指示（Colab・Drive skillと定期監視・review運用のPR分割）"
 created: 2026-10-13
-last_verified: 2026-10-13
-evidence: "PRのbaseとの差分を確認し、各変更が同じ目的・受入条件に必要か、別の変更だけを独立して採用・取り消しできるかをレビューする"
+last_verified: 2026-11-20
+evidence: "#1087の補足と、AGENTS.md・.agents/README.md・現在のPR受入条件を照合する。"
+citations:
+  - path: ".agents/skills/parent-session/references/review.md"
+    symbol: "#依頼する前に"
+    note: "元の受入条件とPRの照合"
 ---
 
 ユーザーは、作業中に見つかった独立した改善を一つのPRへ混ぜず、目的ごとにレビュー・採用できる粒度を希望している。Colabの操作、定期監視の復旧、review運用の修正のように責務が異なる変更は分ける。

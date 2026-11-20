@@ -1,0 +1,113 @@
+{
+  "body_pins_sha256": "07f8e6fb0274f516b4780eab5b6af474e397b69facf5edf5f31dad5eab416fed",
+  "cross_split_shared_media": 0,
+  "cross_split_shared_raw_frame_intervals": 0,
+  "models": {
+    "hmr2": {
+      "profile_address": [
+        "video_000/clip_000",
+        "cam0",
+        178,
+        0,
+        0
+      ],
+      "tensors": {
+        "calibration": {
+          "dtype": "float32",
+          "sha256": "aaca87763ee03fd10f8dbea4f9336d546ffa5224bc3519a3fb64d0a8f67bf4a0",
+          "shape": [
+            32,
+            3,
+            256,
+            256
+          ]
+        },
+        "calibration-boxes": {
+          "dtype": "float32",
+          "sha256": "909a9729aef0682dc0d49b9396d1e37df98dcf235e0f8e2894ead6c50e9011f8",
+          "shape": [
+            32,
+            3
+          ]
+        },
+        "eval": {
+          "dtype": "float32",
+          "sha256": "45e264e16fb59ce9ca6edb18540f7af4c981e854f133f218eb6c724713c2fb3b",
+          "shape": [
+            40,
+            3,
+            256,
+            256
+          ]
+        },
+        "eval-boxes": {
+          "dtype": "float32",
+          "sha256": "742117d5c3e51e452849e1f6585fbf976e537d122379938eeaec86f828a36d83",
+          "shape": [
+            40,
+            3
+          ]
+        }
+      }
+    },
+    "vitpose_h": {
+      "profile_address": [
+        "video_000/clip_000",
+        "cam0",
+        178,
+        0,
+        1897
+      ],
+      "tensors": {
+        "calibration": {
+          "dtype": "float32",
+          "sha256": "c78f8ef77c18ad51f592d1f58b14fb6918249540e489f1c91c496ad10ea1b5a4",
+          "shape": [
+            254,
+            3,
+            256,
+            192
+          ]
+        },
+        "calibration-boxes": {
+          "dtype": "float32",
+          "sha256": "224049dbceca89debedb61b671d496a32ac2999deebfdc819589fda768f59167",
+          "shape": [
+            254,
+            3
+          ]
+        },
+        "eval": {
+          "dtype": "float32",
+          "sha256": "5b251225b42a65348e2f10e39828e6f551e432919d4f5b4847be5505289e3971",
+          "shape": [
+            236,
+            3,
+            256,
+            192
+          ]
+        },
+        "eval-boxes": {
+          "dtype": "float32",
+          "sha256": "225d039fdf9aefd3ae7dc3824a08934a09014b0ef3e54270c6e9e226a63dc592",
+          "shape": [
+            236,
+            3
+          ]
+        }
+      }
+    }
+  },
+  "opencv": "5.0.0",
+  "pins_sha256": "0afd0fb666d383bd6cfda6dd4d0095d69086307b985443dcc2870e06a41927ee",
+  "split": {
+    "calibration": [
+      "video_000/clip_027"
+    ],
+    "eval": [
+      "video_000/clip_000",
+      "video_000/clip_037"
+    ]
+  },
+  "vitpose_bbox_enlarge": 1.2
+}

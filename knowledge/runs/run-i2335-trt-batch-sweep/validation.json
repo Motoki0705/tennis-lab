@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "first_attempt": {
+    "clipreid": {
+      "queue_job": "0-8204817422666730453_2026-11-20T13-49-37-333269546Z_1038617_i2335-clipreid.job",
+      "output": "outputs/trt-batch-i2335/clipreid",
+      "build_exit_code": 1,
+      "build_log": "logs/build.log",
+      "build_error": "FileNotFoundError: engine/export.onnx の親ディレクトリが存在しなかった",
+      "export_warning": "CLS tokenの展開に使われるlen(x)がトレース時に固定値になる",
+      "retained_timing_accuracy_nsys": ["c0-b1", "c0-b4", "c0-b8", "c0-b16"],
+      "overlap_timing_nsys_excluded": ["c0-b32", "c1-b1", "c1-b4", "c1-b8", "c1-b16", "c1-b32"]
+    },
+    "gvhmr": {
+      "queue_job": "0-8204817422399039221_2026-11-20T13-49-37-600960778Z_1038674_i2335-gvhmr.job",
+      "output": "outputs/trt-batch-i2335/gvhmr",
+      "build_exit_code": -11,
+      "build_log": "logs/build.log",
+      "build_error": "ONNX生成とTensorRTのlength入出力警告の後でSIGSEGV。plan未生成",
+      "export_warning": "length_to_maskのlen(lengths)がトレース時に固定値になる",
+      "overlap_timing_nsys_excluded": ["c0-b1-l145", "c0-b2-l145", "c0-b4-l145", "c0-b1-l177", "c0-b2-l177", "c0-b4-l177"],
+      "ncu_reuse_candidates": ["c1-b4-l145", "c1-b4-l177"]
+    },
+    "late_ncu_output": [
+      {"case": "clipreid/c0-b16", "timeout_seconds": 900, "result_mtime_jst": "2026-11-20T23:11:21+09:00", "csv_mtime_jst": "2026-11-20T23:46:42+09:00", "csv_rows": 201, "nsys_kernels": 201},
+      {"case": "clipreid/c1-b16", "timeout_seconds": 900, "result_mtime_jst": "2026-11-20T23:28:50+09:00", "csv_mtime_jst": "2026-11-21T00:00:23+09:00", "csv_rows": 189, "nsys_kernels": 189},
+      {"case": "gvhmr/c0-b4-l145", "timeout_seconds": 2400, "result_mtime_jst": "2026-11-21T00:13:34+09:00", "csv_mtime_jst": "2026-11-21T00:39:02+09:00", "csv_rows": 713, "nsys_kernels": 713}
+    ],
+    "ncu_handling": "タイムアウト後にCSVが追記され、後続の計測区間と重なった。上記CSVのカウンタ値は採用せず再計測する。GVHMR FP32 L=177のncuも、L=145の子プロセスの残存期間に開始したため再計測する。GVHMR FP16のncuは再計測したnsysのkernel数と代表入力を照合した上で採否を決める"
+  }
+}

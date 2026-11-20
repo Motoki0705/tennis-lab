@@ -117,6 +117,27 @@ def test_dynamic_attention_runs_the_original_blocks_with_length_derived_padding(
     assert model.network.max_len == 120
 
 
+def test_traced_gvhmr_padding_mask_uses_the_runtime_batch():
+    model = DenoiserIO(
+        NetworkEncoderRoPE(latent_dim=32, num_heads=2, num_layers=1)
+    ).eval()
+    inputs = tuple(
+        torch.randn(shape)
+        for name, shape in input_shapes(121, 4).items()
+        if name != "length"
+    )
+    lengths = torch.tensor([118, 119, 120, 121])
+    two_people = (lengths[:2], *(tensor[:2] for tensor in inputs))
+    with torch.inference_mode():
+        expected = model(*two_people)
+        with dynamic_attention(model, dynamic_batch=True):
+            traced = torch.jit.trace(model, (lengths, *inputs))
+            actual = traced(*two_people)
+    assert actual[-1].tolist() == [118, 119]
+    assert actual[-2][:, -3:].tolist() == [[False, False, False], [True, False, False]]
+    torch.testing.assert_close(actual, expected)
+
+
 def test_profile_contains_exact_locked_lengths_and_distinct_representatives():
     profile = json.loads((HERE / "shape-profile.json").read_text())
     lock = json.loads((HERE / "tensor-lock.json").read_text())

@@ -3,6 +3,8 @@
 import argparse
 import json
 import time
+from collections import Counter, defaultdict
+from contextlib import nullcontext
 from functools import partial
 from pathlib import Path
 
@@ -25,6 +27,7 @@ from convert import (
     require_queue,
     verify_compute_precision,
 )
+from inputs import sha256_file
 from profiles import PROFILE_RANGE
 
 WARMUP = 30
@@ -33,10 +36,23 @@ REPEATS_PER_BLOCK = 100
 
 
 class TorchRunner:
-    def __init__(self, condition, checkpoint, *, batch_size=1):
-        self.dtype = torch.float32 if condition == "0" else torch.float16
-        self.model = VisualFeatures(checkpoint).to(dtype=self.dtype).eval().cuda()
-        self.set_batch_size(batch_size)
+    def __init__(self, condition, checkpoint, adapter=None, *, batch_size=1):
+        self.autocast = adapter is not None and adapter.autocast and condition == "1"
+        self.dtype = (
+            torch.float32 if condition == "0" or self.autocast else torch.float16
+        )
+        model = (
+            VisualFeatures(checkpoint)
+            if adapter is None
+            else adapter.torch_model(checkpoint)
+        )
+        self.model = model.to(dtype=self.dtype).eval().cuda()
+        if adapter is None:
+            self.set_batch_size(batch_size)
+        else:
+            self.pixels = torch.empty(
+                adapter.engine_shape, device="cuda", dtype=self.dtype
+            )
 
     def set_batch_size(self, batch_size):
         self.pixels = torch.empty(
@@ -44,7 +60,12 @@ class TorchRunner:
         )
 
     def run(self):
-        return self.model(self.pixels)
+        with (
+            torch.autocast("cuda", dtype=torch.float16)
+            if self.autocast
+            else nullcontext()
+        ):
+            return self.model(self.pixels)
 
 
 class TensorRTContext:
@@ -97,7 +118,13 @@ class TensorRTContext:
 
 class TensorRTRunner(TensorRTContext):
     def __init__(
-        self, plan, *, omit_layer_nvtx=False, batch_size=1, input_profile=None
+        self,
+        plan,
+        *,
+        omit_layer_nvtx=False,
+        adapter=None,
+        batch_size=1,
+        input_profile=None,
     ):
         import tensorrt as trt
 
@@ -116,10 +143,14 @@ class TensorRTRunner(TensorRTContext):
                 *BATCH_SHAPE[1:],
             ):
                 raise ValueError("CLIP engine lacks a dynamic input batch dimension")
-        self.dtypes = {trt.float16: torch.float16}
-        if not self.dynamic_batch:
-            self.dtypes[trt.float32] = torch.float32
-        self.set_batch_size(batch_size)
+        self.dtypes = {trt.float32: torch.float32, trt.float16: torch.float16}
+        if adapter is None:
+            self.set_batch_size(batch_size)
+        else:
+            self.pixels = self.bind(INPUT_NAME, adapter.engine_shape, self.dtypes)
+            self.features = self.bind(
+                OUTPUT_NAME, adapter.engine_output_shape, self.dtypes
+            )
 
     def set_batch_size(self, batch_size):
         shape = (batch_size, *BATCH_SHAPE[1:])
@@ -136,11 +167,11 @@ class TensorRTRunner(TensorRTContext):
         self.execute()
         return self.features
 
-    def compute_precision(self, condition):
+    def compute_precision(self, condition, requirements):
         return verify_compute_precision(
             inspect_engine(self.engine, self.context if self.dynamic_batch else None),
             TRT_PRECISIONS[condition],
-            expected_operations=clipreid_precision_requirements(condition),
+            **requirements,
         )
 
 
@@ -213,6 +244,56 @@ def profile_one(runner, sample, *, load=load_sample):
             raise RuntimeError("cudaProfilerStop failed")
 
 
+def torch_dispatch_precisions(infer, expected_dtype):
+    from torch.utils._python_dispatch import TorchDispatchMode
+
+    # The Python dispatch layer can see either the composite op or its
+    # lowering, depending on the PyTorch release and execution path.
+    compute = {
+        "linear",
+        "matmul",
+        "addmm",
+        "mm",
+        "bmm",
+        "conv2d",
+        "conv_transpose2d",
+        "convolution",
+        "_convolution",
+    }
+    watched = compute | {
+        "layer_norm",
+        "native_layer_norm",
+        "softmax",
+        "_softmax",
+        "gelu",
+        "add",
+    }
+    seen = defaultdict(Counter)
+
+    class Dtypes(TorchDispatchMode):
+        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+            name = func._schema.name.removeprefix("aten::")
+            result = func(*args, **(kwargs or {}))
+            if name in watched:
+                tensors = (result,) if isinstance(result, torch.Tensor) else result
+                seen[name][str(tensors[0].dtype)] += 1
+            return result
+
+    with Dtypes():
+        infer()
+    expected = str(expected_dtype)
+    measured = {name for name in seen if name in compute}
+    if not measured:
+        raise RuntimeError(
+            f"PyTorch precision probe observed no matrix or convolution ops: {dict(seen)}"
+        )
+    if any(set(seen[op]) != {expected} for op in measured):
+        raise RuntimeError(
+            f"PyTorch compute did not execute at {expected}: {dict(seen)}"
+        )
+    return dict(seen)
+
+
 def stats(samples_ms, batch=1):
     p25, p50, p75, p95 = np.quantile(samples_ms, [0.25, 0.5, 0.75, 0.95])
     return {
@@ -248,23 +329,22 @@ def measure_latency(
     }
 
 
-def collect_features(runner, batches):
+def collect_features(runner, batches, output_shape=(FEATURE_DIMENSION,)):
     features = []
     for batch in batches:
         load_batch(runner, batch)
         result = runner.run()
         torch.cuda.synchronize()
         value = result.float().cpu().numpy()
-        if (
-            value.shape != (len(batch), FEATURE_DIMENSION)
-            or not np.isfinite(value).all()
-        ):
-            raise ValueError("Invalid CLIP features")
+        if value.shape != (len(batch), *output_shape) or not np.isfinite(value).all():
+            raise ValueError(f"Invalid measured model output: {value.shape}")
         features.append(value)
     return features
 
 
-def measure(runner, batches, memory, *, check_precision=None):
+def measure(
+    runner, batches, memory, output_shape=(FEATURE_DIMENSION,), *, check_precision=None
+):
     batch_shape = tuple(runner.pixels.shape)
     tail = batches[-1:] if len(batches[-1]) != batch_shape[0] else []
     full = batches[:-1] if tail else batches
@@ -276,7 +356,7 @@ def measure(runner, batches, memory, *, check_precision=None):
         load=load_batch,
         summarize=partial(stats, batch=batch_shape[0]),
     )
-    features = collect_features(runner, full)
+    features = collect_features(runner, full, output_shape)
     if tail:
         tail_size = len(tail[0])
         runner.set_batch_size(tail_size)
@@ -294,7 +374,7 @@ def measure(runner, batches, memory, *, check_precision=None):
         }
         if check_precision is not None:
             latency["tail_batch"]["trt_compute_precision"] = check_precision()
-        features.extend(collect_features(runner, tail))
+        features.extend(collect_features(runner, tail, output_shape))
     memory.sample("after_accuracy")
     return {
         **latency,
@@ -312,29 +392,35 @@ def measure(runner, batches, memory, *, check_precision=None):
 
 @torch.inference_mode()
 def run(args):
+    from benchmark import load_adapter
+
     torch.set_num_threads(4)
     torch.backends.fp32_precision = "ieee"
     torch.backends.cuda.matmul.fp32_precision = "ieee"
     torch.backends.cudnn.conv.fp32_precision = "ieee"
+    adapter = load_adapter(args.adapter, args.model) if args.adapter else None
+    shape = BATCH_SHAPE if adapter is None else adapter.batch_shape
     data = np.load(args.eval, allow_pickle=False)
     if (
         data.ndim != 4
-        or data.shape[1:] != BATCH_SHAPE[1:]
+        or data.shape[1:] != shape[1:]
         or data.dtype != np.float32
         or not len(data)
     ):
         raise ValueError("Unexpected evaluation tensor dtype or shape")
     if not (args.probe and args.dynamic_batch):
         batch_slices(len(data), args.batch_size)
+    if args.profile_index is not None and not 0 <= args.profile_index < len(data):
+        raise ValueError("Representative input index is outside evaluation tensors")
     memory = None if args.profile_index is not None else DeviceMemory()
     try:
         if memory is not None and memory.sample("idle") < 6 * 1024**3:
-            raise RuntimeError("Less than 6 GiB free before CLIP inference")
+            raise RuntimeError("Less than 6 GiB free before inference")
         if torch.cuda.device_count() != 1 or torch.cuda.get_device_capability() != (
             12,
             0,
         ):
-            raise RuntimeError("The pinned CLIP run requires one CC 12.0 CUDA GPU")
+            raise RuntimeError("The pinned run requires one CC 12.0 CUDA GPU")
         torch.cuda.init()
         torch.cuda.reset_peak_memory_stats()
         trt_settings = {}
@@ -344,6 +430,12 @@ def run(args):
             input_profile = None
             if args.dynamic_batch:
                 certificate = json.loads((plan.parent / "conversion.json").read_text())
+                if certificate["condition"] != args.condition or certificate[
+                    "engine_sha256"
+                ] != sha256_file(plan):
+                    raise ValueError(
+                        "Dynamic CLIP plan differs from its conversion receipt"
+                    )
                 input_profile = certificate["input_profile"]
             runner = TensorRTRunner(
                 plan,
@@ -352,17 +444,51 @@ def run(args):
                 ),
                 batch_size=args.batch_size,
                 input_profile=input_profile,
+                adapter=adapter,
             )
+            if (
+                args.dynamic_batch
+                and args.condition == "2"
+                and (
+                    runner.pixels.dtype != torch.float16
+                    or runner.features.dtype != torch.float16
+                )
+            ):
+                raise ValueError("The dynamic CLIP FP16 plan requires FP16 bindings")
             if memory is not None:
-                check_precision = partial(runner.compute_precision, args.condition)
+                if adapter is None and input_profile is None:
+                    requirements = {
+                        "expected_operations": clipreid_precision_requirements(
+                            args.condition
+                        )
+                    }
+                else:
+                    manifest = plan.with_suffix(".precision.json")
+                    if (
+                        input_profile is not None
+                        and sha256_file(manifest)
+                        != certificate["precision_manifest_sha256"]
+                    ):
+                        raise ValueError(
+                            "Dynamic CLIP precision manifest differs from conversion"
+                        )
+                    requirements = json.loads(manifest.read_text())
+                    if "expected_operations" not in requirements:
+                        # Earlier Phase 1-B plans used a flat operation-to-precision map.
+                        requirements = {"expected_operations": requirements}
+                check_precision = partial(
+                    runner.compute_precision, args.condition, requirements
+                )
                 trt_settings = {
                     "trt_nvtx_verbosity": runner.context.nvtx_verbosity.name,
                     "trt_compute_precision": check_precision(),
                 }
         else:
             runner = TorchRunner(
-                args.condition, args.checkpoint, batch_size=args.batch_size
+                args.condition, args.checkpoint, adapter, batch_size=args.batch_size
             )
+        if adapter is not None:
+            runner = adapter.wrap_runner(runner)
         torch.cuda.synchronize()
         batches = [data[rows] for rows in batch_slices(len(data), args.batch_size)]
         if args.probe:
@@ -379,9 +505,21 @@ def run(args):
             warmup(runner, full, load=load_batch)
             profile_one(runner, full[index], load=load_batch)
             return
+        output_shape = (FEATURE_DIMENSION,) if adapter is None else adapter.output_shape
         result, features = measure(
-            runner, batches, memory, check_precision=check_precision
+            runner, batches, memory, output_shape, check_precision=check_precision
         )
+        if adapter is not None:
+            result.update(adapter.measurement_settings(args.condition))
+            if args.condition in {"0", "1"}:
+                load_sample(runner, data[0])
+                expected_dtype = (
+                    torch.float32 if args.condition == "0" else torch.float16
+                )
+                result["torch_first_eval_crop_op_output_dtypes"] = (
+                    torch_dispatch_precisions(runner.run, expected_dtype)
+                )
+                torch.cuda.synchronize()
         np.save(args.output / "features.npy", features, allow_pickle=False)
         (args.output / "measurement.json").write_text(
             json.dumps({**result, **trt_settings}, indent=2, allow_nan=False) + "\n"
@@ -403,9 +541,13 @@ def main():
     parser.add_argument("--probe", action="store_true")
     parser.add_argument("--profile-index", type=int)
     parser.add_argument("--omit-trt-layer-nvtx", action="store_true")
+    parser.add_argument("--adapter", type=Path)
+    parser.add_argument("--model")
     args = parser.parse_args()
-    if args.dynamic_batch and args.condition != "2":
-        parser.error("--dynamic-batch requires condition 2")
+    if args.dynamic_batch and args.condition not in TRT_PRECISIONS:
+        parser.error("--dynamic-batch requires a TensorRT condition")
+    if args.adapter and (args.batch_size != 1 or args.dynamic_batch or args.probe):
+        parser.error("Batch sweep options require the built-in CLIP runtime")
     if args.batch_size < 1 and not (args.probe and args.dynamic_batch):
         parser.error("--batch-size must be positive")
     if args.probe and args.profile_index is not None:

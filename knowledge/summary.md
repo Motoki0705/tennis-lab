@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-16
+更新日: 2026-11-20
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -23,6 +23,8 @@
 
 - **動画一括推論の現行本番構成**: [player証拠と特徴分離のCPU統合](nodes/tennis_scene/000072-run-i1752-player-main-cpu-20261119.md)で、共有コートload・clip単位のplayer side判定・ball両機能off・ダブルス2・DINO/ViTPose fp16を明示します。ballありのbenchmarkも共通設定で選択可能です。保存済み3clipの単独/共有判定は#2270と完全一致しました。全69clipのplayer証拠の採否、新構成のGPU再測定と本番実行は未確認です。
 - **動画一括推論の過去GPU証拠**: C4の[共有court_side・明示fp16・ダブルス2](nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)で000/037/027の全114nodeが1計画で完了し、GVHMR配置・scene公開まで通りました。各side2 identity、C3管理7resourceは各1load/unload。CPU AFLinkの都度loadは別に記録しています。[同じfp16での単一027比較](nodes/tennis_scene/000065-run-i1752-shared-fp16-reference-20261118.md)は最終scene29配列・metadata・全離散値がexactですが、Ball補助evidence9配列が従来許容を超え、全component一致は未達です。原因と採否は親レビューに残します。69clipは未実行で、25.27〜25.88時間はballありの短い3clipからの条件付き投影で、現行player-only本番の時間ではありません。C1同期・初回compile等を含み、共有side・精度・profilerの差を単独の高速化率にはしません。
+
+- **TensorRTの人物モデル単体比較**　ViTPose-HはFP16が許容差内で中央値54.423→8.468 ms。INT8・FP8には最大5 pxの基準を超える関節があり、E2E候補はFP16です。HMR2はFP8も単体精度の基準を満たし、中央値5.399 msでした。CLIP-ReIDの新INT8・FP8は、同じ2クリップから設定選定用12 cropを除いた224件で、cosine P05が0.999602／0.995416、FP32とのID一致が両方224/224でした。下流の時系列・人物対応と速度はE2Eで確認します。[固定入力の全条件比較](nodes/tennis_scene/000077-run-i2303-vit-tensorrt.md)
 
 ## Court Detection
 

@@ -1,6 +1,6 @@
 # CLIP-ReIDとGVHMRのバッチサイズ掃引
 
-#2335 / #2278 Phase 1。条件0（PyTorch FP32）、条件1（PyTorch FP16）、条件2（TensorRT FP16）を[共通プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md)で測る。各モデル・系列長の同じ入力を処理したPyTorch FP32 B=1を全条件の単体精度の参照にする。
+#2335 / #2278 Phase 1。条件0（PyTorch FP32）、条件1（PyTorch FP16）、条件2（TensorRT FP16）を[共通プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md)で測る。各モデル・系列長の同じ入力を処理したPyTorch FP32 B=1を全条件の単体精度の参照にする。CLIP-ReIDは #2303 のPTQ設定で224 cropの許容差を満たした条件3a（`attention-out-max`）と3b（`linear-max`）も対象とする。これらのエンジンも全236 cropを処理し、単体精度の判定時に選定用12件をqueryとgalleryから外す。 [#2303の測定記録](../run-i2303-vit-tensorrt/metrics.json)
 
 ## バッチとプロファイル
 
@@ -19,7 +19,7 @@ GVHMRは同じ長さの4本をBで等分する。全系列を保持し、padding
 
 専用環境は[#2297のセットアップ](../run-i2297-clipreid-tensorrt/README.md#専用環境)と[#2305のGVHMR依存](../run-i2305-gvhmr-tensorrt/README.md#再現)を使う。`clip_inputs` は[CLIP-ReIDの展開済み入力](../run-i2297-clipreid-tensorrt/README.md#入力の展開)、`gvhmr_inputs` は[GVHMRの固定系列](../run-i2305-gvhmr-tensorrt/README.md#固定入力)のディレクトリ。入力と重みはそれぞれの既存tensor lockに照合する。
 
-worktree rootで`clip_inputs` と `gvhmr_inputs` を設定し、共有training queueに2件登録する。各jobでビルド、速度・VRAM、精度比較、プロファイラを個別プロセスで実行する。子プロセスの終了値とログ、境界検査、計測データは `--output` に残る。`sweep.json` の `verified` は各コマンドの終了値と、範囲外shapeの場合はTensorRTの拒否出力から決める。
+worktree rootで`clip_inputs` と `gvhmr_inputs` を設定し、共有training queueに速度・VRAM、精度、nsysを取得するjobを登録する。`sweep.json` の `verified` は各コマンドの終了値と、範囲外shapeの場合はTensorRTの拒否出力から決める。ncuはケースごとに独立したjobで、計測済みのケースを `--profile-from` に指定する。`timeout --foreground` で子プロセスをqueue管理下のプロセスグループに留める。再計測先は新しいディレクトリに置く。照合済みのCLIP FP32の速度・精度・nsysは `--reuse-case` を指定して再利用できる。 [初回の失敗と再計測対象](validation.json)
 
 ```bash
 bundle=knowledge/runs/run-i2335-trt-batch-sweep
@@ -31,17 +31,21 @@ queue=.agents/skills/training-queue/scripts/training_queue.sh
 export TRAINING_QUEUE_DIR="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.training_queue"
 
 enqueue() {
-    local model=$1 inputs=$2 limit=$3 command
-    printf -v command '%q ' timeout --kill-after=30s "$limit" env \
+    local label=$1 model=$2 inputs=$3 limit=$4 output=$5 command
+    shift 5
+    printf -v command '%q ' timeout --foreground --kill-after=30s "$limit" env \
         "PATH=/usr/local/cuda/bin:$PATH" "PYTHONPATH=$PWD:$PWD/$common:$PWD/$gvhmr" \
         OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
         "$trt_exp_env/bin/python" -B "$bundle/sweep.py" \
-        --model "$model" --inputs "$inputs" --output "$out/$model"
-    bash "$queue" add "$command" --name "i2335-$model" \
+        --model "$model" --inputs "$inputs" --output "$output" "$@"
+    bash "$queue" add "$command" --name "i2335-$label" \
         --resource all --issue 2335 --provider codex --session "$CODEX_THREAD_ID"
 }
-enqueue clipreid "$clip_inputs" 4h
-enqueue gvhmr "$gvhmr_inputs" 5h
+enqueue clipreid-timing clipreid "$clip_inputs" 45m "$out/clipreid"
+enqueue gvhmr-timing gvhmr "$gvhmr_inputs" 40m "$out/gvhmr"
+# ncuの登録例。各条件のB=16またはB=4の計測先を指定する。
+enqueue clipreid-ncu-0 clipreid "$clip_inputs" 68m "$out/c0-b16-ncu" \
+    --profile-from "$out/clipreid/c0-b16" --ncu-timeout 3900
 ```
 
 ## CPU検証
