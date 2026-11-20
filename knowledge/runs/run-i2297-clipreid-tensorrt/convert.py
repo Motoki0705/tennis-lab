@@ -13,6 +13,7 @@ WORKSPACE_BYTES = 512 * 1024**2
 PLAN = "clipreid.plan"
 CONDITIONS = ("0", "1", "2", "3a", "3b")
 TRT_PRECISIONS = {"2": "fp16", "3a": "int8", "3b": "fp8"}
+QUANTIZABLE_OPS = {"MatMul", "Gemm", "Conv", "ConvTranspose"}
 
 OPERAND_CODE = {"fp16": "f16", "int8": "i8", "fp8": "e4m3"}
 TENSOR_DTYPE = {"fp16": r"FP16|Float16|Half", "int8": "Int8", "fp8": "FP8"}
@@ -73,20 +74,61 @@ def linear_names(graph):
     }
 
 
-def quantized_matrix_ops(graph):
-    """Compute ops with explicit DQ on both multiplicands."""
-    dequantized = {
+def dequantized_tensors(graph):
+    return {
         result
         for node in graph.node
         if node.op_type == "DequantizeLinear"
         for result in node.output
     }
+
+
+def quantized_matrix_ops(graph):
+    """Compute ops with explicit DQ on both multiplicands."""
+    dequantized = dequantized_tensors(graph)
     return {
         node.name
         for node in graph.node
-        if node.op_type in {"MatMul", "Gemm", "Conv", "ConvTranspose"}
+        if node.op_type in QUANTIZABLE_OPS
+        and len(node.input) >= 2
         and set(node.input[:2]) <= dequantized
     }
+
+
+def verify_qdq_scope(graph, operations):
+    """Require Q/DQ only at the two multiplicands of the selected operations."""
+    expected = set(operations)
+    observed = quantized_matrix_ops(graph)
+    if observed != expected:
+        raise RuntimeError(
+            "Q/DQ compute scope differs from request: "
+            f"missing {sorted(expected - observed)}, unexpected {sorted(observed - expected)}"
+        )
+    names = Counter(node.name for node in graph.node if node.name in expected)
+    if any(count != 1 for count in names.values()):
+        raise RuntimeError("Q/DQ scope has ambiguous selected operation names")
+    dequantized = dequantized_tensors(graph)
+    unexpected = [
+        f"{node.name} ({node.op_type}) input[{index}]"
+        for node in graph.node
+        for index, value in enumerate(node.input)
+        if value in dequantized
+        and (
+            node.name not in expected
+            or node.op_type not in QUANTIZABLE_OPS
+            or index >= 2
+        )
+    ]
+    unexpected.extend(
+        f"graph output {output.name}"
+        for output in graph.output
+        if output.name in dequantized
+    )
+    if unexpected:
+        raise RuntimeError(
+            f"Q/DQ connected to unselected inputs or outputs: {unexpected}"
+        )
+    return observed
 
 
 def clipreid_precision_requirements(condition):
@@ -401,12 +443,11 @@ def modelopt_ptq(
     ops = Counter(node.op_type for node in model.graph.node)
     if not ops["QuantizeLinear"] or not ops["DequantizeLinear"]:
         raise RuntimeError(f"{mode} PTQ produced no explicit Q/DQ pairs")
-    matrix = quantized_matrix_ops(model.graph)
-    if nodes is not None and matrix != set(nodes):
-        raise RuntimeError(
-            f"{mode} Q/DQ compute scope differs from request: "
-            f"missing {sorted(set(nodes) - matrix)}, unexpected {sorted(matrix - set(nodes))}"
-        )
+    matrix = (
+        quantized_matrix_ops(model.graph)
+        if nodes is None
+        else verify_qdq_scope(model.graph, nodes)
+    )
     return {
         "mode": mode,
         "method": method,

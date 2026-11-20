@@ -7429,5 +7429,118 @@
         "profile_output": "outputs/i2303/round5/vitpose_h/3a-ncu"
       }
     }
+  },
+  "clip_accuracy_excluding_selection": {
+    "excluded_indices": [
+      0,
+      20,
+      40,
+      60,
+      80,
+      100,
+      120,
+      140,
+      160,
+      180,
+      200,
+      220
+    ],
+    "excluded_addresses": [
+      [
+        "video_000/clip_000",
+        "cam0",
+        32,
+        0
+      ],
+      [
+        "video_000/clip_000",
+        "cam0",
+        260,
+        2
+      ],
+      [
+        "video_000/clip_000",
+        "cam1",
+        112,
+        1
+      ],
+      [
+        "video_000/clip_000",
+        "cam1",
+        328,
+        1
+      ],
+      [
+        "video_000/clip_000",
+        "cam2",
+        260,
+        2
+      ],
+      [
+        "video_000/clip_000",
+        "cam3",
+        221,
+        0
+      ],
+      [
+        "video_000/clip_037",
+        "cam0",
+        101,
+        1
+      ],
+      [
+        "video_000/clip_037",
+        "cam0",
+        270,
+        1
+      ],
+      [
+        "video_000/clip_037",
+        "cam1",
+        172,
+        0
+      ],
+      [
+        "video_000/clip_037",
+        "cam2",
+        52,
+        0
+      ],
+      [
+        "video_000/clip_037",
+        "cam2",
+        243,
+        0
+      ],
+      [
+        "video_000/clip_037",
+        "cam3",
+        172,
+        0
+      ]
+    ],
+    "fp32_features_sha256": "d1fdb3589703e670bd09cba5145fd7dd5ccdeda00fc4dfda38f110416f97e754",
+    "conditions": {
+      "3a": {
+        "crops": 224,
+        "cosine_mean": 0.9996852273173528,
+        "cosine_median": 0.9996918419663996,
+        "cosine_p05": 0.9996019834576204,
+        "cosine_min": 0.9993952781122366,
+        "id_matches_fp32": 224,
+        "id_changed_examples": [],
+        "id_matches_association": 222
+      },
+      "3b": {
+        "crops": 224,
+        "cosine_mean": 0.9966613948142532,
+        "cosine_median": 0.9967715885474691,
+        "cosine_p05": 0.9954161714134918,
+        "cosine_min": 0.9948755120200949,
+        "id_matches_fp32": 224,
+        "id_changed_examples": [],
+        "id_matches_association": 222
+      }
+    }
   }
 }

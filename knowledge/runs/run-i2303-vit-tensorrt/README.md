@@ -57,6 +57,13 @@ env "PYTHONPATH=$PYTHONPATH" OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 \
 
 CLIP-ReID の追測は `benchmark.py --adapter "$bundle/vit_models.py" --model clipreid_vitb16_market1501` を使い、#2297 の `inputs` と基準FP32の `0` を参照する。
 
+選定に使った12 cropを除く精度判定は、#2297のFP32と `metrics.json` が指す3a・3bの保存済み特徴からCPUで再集計できる。
+
+```bash
+PYTHONPATH="$PYTHONPATH" .venv/bin/python -B "$bundle/clip_ptq.py" \
+  --only accuracy --source outputs/trt-phase1a --output "$out/review-accuracy"
+```
+
 ## 実測の照合とGPUカウンタの追測
 
 `metrics.json` の `output` に元の計測、`profile_output` があればそこにNsight Computeの追測がある。queueログは `validation.json` のjob IDに対応する共有queueの `logs/<job名>.log` に残る。 [全条件の計測値](metrics.json)・[入力・ログの照合](validation.json)・[校正・層別比較](int8-diagnosis.json)

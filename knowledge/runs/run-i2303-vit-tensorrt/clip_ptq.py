@@ -1,4 +1,4 @@
-"""Paired CLIP calibration experiments and activation Q/DQ interventions."""
+"""CLIP calibration experiments, Q/DQ interventions, and saved-feature scoring."""
 
 import argparse
 import json
@@ -9,12 +9,11 @@ from collections import Counter
 from pathlib import Path
 
 import numpy as np
-import onnx
-import onnxruntime as ort
-from benchmark import normalize, verify_inputs, write_json
+from benchmark import accuracy, normalize, verify_inputs, write_json
 from convert import constant_tensors, linear_names, modelopt_ptq, require_queue
-from inputs import sha256_file
+from inputs import MODEL, sha256_file
 
+BUNDLE = Path(__file__).resolve().parent
 BLOCK = re.compile(r"/resblocks/resblocks\.(\d+)/")
 MATRIX = {"MatMul", "Gemm"}
 NONLINEAR = {"Add", "LayerNormalization", "Softmax", "Gelu", "Erf", "Mul", "Div"}
@@ -44,6 +43,8 @@ def selected_nodes(graph, scope):
 
 
 def evaluate(path, samples):
+    import onnxruntime as ort
+
     opts = ort.SessionOptions()
     opts.intra_op_num_threads = 4
     opts.inter_op_num_threads = 1
@@ -105,6 +106,8 @@ def interventions(graph):
 
 
 def ablate(float_graph, legacy_graph, output, held_out, baseline, report):
+    import onnx
+
     report["variants"].update(
         fp32_export=cosine_summary(evaluate(float_graph, held_out), baseline),
         legacy_full=cosine_summary(evaluate(legacy_graph, held_out), baseline),
@@ -157,6 +160,8 @@ def ablate(float_graph, legacy_graph, output, held_out, baseline, report):
 def compare_calibrations(
     float_graph, output, calibration, held_out, baseline, report, variants
 ):
+    import onnx
+
     # ModelOpt infers shapes in place. Keep the original #2297 export intact.
     source = output / "calibration-source.onnx"
     shutil.copyfile(float_graph, source)
@@ -188,22 +193,84 @@ def compare_calibrations(
         write_json(output / "metrics.json", report)
 
 
+def load_saved_features(directory, condition, tensors):
+    features = directory / "features.npy"
+    receipt = json.loads((directory / "result.json").read_text())
+    identity = receipt["identity"]
+    if (
+        identity["model"] != MODEL
+        or identity["condition"] != condition
+        or identity["tensors"] != tensors
+        or sha256_file(features) != receipt["features_sha256"]
+    ):
+        raise ValueError(
+            f"Saved CLIP features differ from their expected inputs: {directory}"
+        )
+    return np.load(features, allow_pickle=False), receipt
+
+
+def accuracy_excluding_selection(actual, baseline, addresses, selected):
+    keep = np.array([address not in selected for address in addresses], dtype=bool)
+    retained = [address for address, use in zip(addresses, keep, strict=True) if use]
+    return accuracy(actual[keep], baseline[keep], retained)
+
+
+def score_saved_features(root):
+    lock, addresses = verify_inputs(root / "inputs")
+    tensors = lock["tensors"]
+    diagnosis = json.loads((BUNDLE / "int8-diagnosis.json").read_text())
+    selection = diagnosis["projection_sensitivity"]
+    indices = selection["held_out_indices"]
+    selected = {tuple(address) for address in selection["held_out_addresses"]}
+    if (
+        len(indices) != len(selected)
+        or [list(addresses[index]) for index in indices]
+        != selection["held_out_addresses"]
+        or any(
+            diagnosis[step]["tensors"] != tensors
+            or diagnosis[step]["held_out_addresses"] != selection["held_out_addresses"]
+            for step in (
+                "paired_calibration",
+                "separate_runtime_and_static_ablation",
+                "projection_sensitivity",
+            )
+        )
+    ):
+        raise ValueError("PTQ selection records differ from the fixed CLIP inputs")
+
+    baseline, reference = load_saved_features(root / "0", "0", tensors)
+    measured = json.loads((BUNDLE / "metrics.json").read_text())["models"]["clip"]
+    conditions = {}
+    for condition, row in sorted(measured.items()):
+        actual, receipt = load_saved_features(Path(row["output"]), condition, tensors)
+        if (
+            receipt["identity"] != row["identity"]
+            or receipt["features_sha256"] != row["features_sha256"]
+            or receipt["identity"]["checkpoint_sha256"]
+            != reference["identity"]["checkpoint_sha256"]
+        ):
+            raise ValueError(f"Saved CLIP receipt differs for condition {condition}")
+        conditions[condition] = accuracy_excluding_selection(
+            actual, baseline, addresses, selected
+        )
+    return {
+        "excluded_indices": indices,
+        "excluded_addresses": selection["held_out_addresses"],
+        "fp32_features_sha256": reference["features_sha256"],
+        "conditions": conditions,
+    }
+
+
 def run(root, output, only):
     lock, addresses = verify_inputs(root / "inputs")
-    reference = root / "0" / "features.npy"
-    original = json.loads((root / "0" / "result.json").read_text())
-    if (
-        original["identity"]["tensors"] != lock["tensors"]
-        or sha256_file(reference) != original["features_sha256"]
-    ):
-        raise ValueError("CLIP reference output differs from #2297")
+    reference, _ = load_saved_features(root / "0", "0", lock["tensors"])
     float_graph = root / "3a" / "export.onnx"
     legacy_graph = root / "3a" / "quantized.onnx"
     output.mkdir(parents=True, exist_ok=False)
     inputs = np.load(root / "inputs" / "eval.npy", mmap_mode="r")
     indices = np.arange(0, len(inputs), 20)
     held_out = inputs[indices]
-    baseline = np.load(reference)[indices]
+    baseline = reference[indices]
     calibration_indices = np.arange(0, lock["tensors"]["calibration"]["shape"][0], 8)
     calibration = np.load(root / "inputs" / "calibration.npy", mmap_mode="r")[
         calibration_indices
@@ -243,10 +310,17 @@ def main():
         "--source", type=Path, required=True, help="completed #2297 output root"
     )
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--only", choices=("ablation", "calibration", "sensitivity"))
+    parser.add_argument(
+        "--only", choices=("ablation", "calibration", "sensitivity", "accuracy")
+    )
     args = parser.parse_args()
-    require_queue()
-    run(args.source, args.output, args.only)
+    if args.only == "accuracy":
+        report = score_saved_features(args.source)
+        args.output.mkdir(parents=True, exist_ok=False)
+        write_json(args.output / "metrics.json", report)
+    else:
+        require_queue()
+        run(args.source, args.output, args.only)
 
 
 if __name__ == "__main__":

@@ -32,6 +32,8 @@ CLIP-ReID・ViTPose-H・HMR2には、FP32 ONNXを校正用 `clip_027` で ModelO
 
 対象外の線形演算・畳み込み・入力が両方可変のattention MatMulはFP16とする。残差Add・LayerNorm・GELU・softmaxは直接のQ/DQ対象から外し、reductionやcastにはFP32を許す。HMR2のSMPL headはFP16で、`_gemv_mha_v1_` 融合の3入力と、長さ1のself-attentionのMatMulを積に置換するタクティクスの2入力およびshapeを照合する。実行層で見つからない演算は、ONNXグラフで画像入力に依存しない場合に限って別途記録する。設定の根拠は [CLIP-ReIDの校正・層別比較](../run-i2303-vit-tensorrt/int8-diagnosis.json) にある。
 
+明示レシピのONNXは、TensorRTビルド前に全DequantizeLinearの接続先を演算名と入力位置で照合する。対象演算の2つの積入力にそれぞれDQを要求し、共有入力を介した対象外演算への接続、bias等の対象外入力への接続、グラフ出力への直接接続があれば非ゼロで停止する。
+
 TensorRTのcuBLAS GEMVタクティクスでは、累積精度の前に並ぶ2個のオペランド精度を読む。ViTPose-Hのattention出力投影が残差Addと融合した場合は、同形状のFP16残差とINT8活性化の2入力、投影および2個のDequantizeLinearのメタデータ、GEMMの両オペランドのINT8を照合する。
 
 ## 入力とshape
@@ -89,6 +91,8 @@ CLIPは `OpenCVVideoFrameReader` でBGRを始端からdecodeする。選択済�
 | CLIP-ReID | 1280-dのL2正規化特徴の対応crop cosine。clip内で各カメラ・playerの最初の有効cropをgalleryにし、queryとは異なるカメラのgalleryだけで最近傍IDを出す。条件ごとにgallery/queryを算出し、同じ順序で同点を解決 | cosine P05 ≥ 0.995、FP32とのID一致 ≥ 99%。変化したqueryとgalleryの候補差を精査 |
 | HMR2 | `(F,1024)` 画像特徴に対するper-crop cosineと相対L2誤差、各次元の絶対差。対応するframeと欠測を照合 | cosine P05 ≥ 0.995、相対L2 P95 ≤ 0.05 |
 | GVHMR | `body_pose/global_orient` をSO(3)角度差に変換。 `betas/transl` の絶対差と、同じSMPLモデル・座標系での関節L2距離を比較。lengthとmaskも照合 | 回転角P95 ≤ 1°、joint距離P95 ≤ 10 mm、maskと有効frame数一致。 `betas/transl` は差分を提示して下流3Dと併せて判断 |
+
+CLIP-ReIDの新3a・3bは、`clip_000/037` の236 cropからPTQ設定の選定に使った12 cropを先に外し、残る224 cropで上表の許容差を判定する。cosineとqueryの母数を224件とし、同じ残りのcropで条件ごとにgalleryを作り直す。全236 cropの集計は #2297 の旧条件との同一入力比較に使う。 [選定・評価分割と結果](../run-i2303-vit-tensorrt/metrics.json)
 
 DINOの対応付けは `dino_accuracy.py` の `compare_dino_frame` を使う。対応が0件の場合、対応ペアの分位点は欠測として扱う。IoU 0.50はPhase 1の暫定値で、Phase 2で人間が許容差と併せて見直せる。
 

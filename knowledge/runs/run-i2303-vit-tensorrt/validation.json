@@ -251,5 +251,49 @@
     "conditions": 8,
     "matching_conversion_and_runtime_receipts": 8,
     "main_base": "b392f45ee"
+  },
+  "explicit_ptq_scope_recheck": {
+    "clip/3a": {
+      "recipe": "attention-out-max",
+      "quantized_graph": "outputs/i2303/round3/clip/3a/quantized.onnx",
+      "onnx_sha256": "462cde8ad1d604c3bacdda0b1e57163f1d5692ff9ebc0fdf0dcb294008e227b2",
+      "quantized_operations": 12,
+      "verified_operand_input_edges": 24
+    },
+    "clip/3b": {
+      "recipe": "linear-max",
+      "quantized_graph": "outputs/i2303/round2/clip/3b/quantized.onnx",
+      "onnx_sha256": "59b39485b9c76bfb335f520b05afc17f58bb3e5c71ffd5933fce18e96f92ae4a",
+      "quantized_operations": 48,
+      "verified_operand_input_edges": 96
+    },
+    "hmr2/3a": {
+      "recipe": "attention-out-max",
+      "quantized_graph": "outputs/i2303/round3/hmr2/3a/quantized.onnx",
+      "onnx_sha256": "c2a0146f2966f9380a9988edde5e3acdd8912f60a373d5f30b5800121e6f68ac",
+      "quantized_operations": 32,
+      "verified_operand_input_edges": 64
+    },
+    "hmr2/3b": {
+      "recipe": "linear-max",
+      "quantized_graph": "outputs/i2303/round3/hmr2/3b/quantized.onnx",
+      "onnx_sha256": "6dcb5991d4132c64429c509b1b6fed0d3ed29342ac50fd17eb1c8a2788a0fd06",
+      "quantized_operations": 128,
+      "verified_operand_input_edges": 256
+    },
+    "vitpose_h/3a": {
+      "recipe": "attention-out-max",
+      "quantized_graph": "outputs/i2303/round4/vitpose_h/3a/quantized.onnx",
+      "onnx_sha256": "7be42aad486fb574c61ef2f8e41ac7ac7707d313c31e0bbf6e01ccf4b15e0a66",
+      "quantized_operations": 32,
+      "verified_operand_input_edges": 64
+    },
+    "vitpose_h/3b": {
+      "recipe": "linear-max",
+      "quantized_graph": "outputs/i2303/round3/vitpose_h/3b/quantized.onnx",
+      "onnx_sha256": "e14e703095656d82553339abb7c5ca71a5886ea321d210c41cc0074bacf66fcc",
+      "quantized_operations": 128,
+      "verified_operand_input_edges": 256
+    }
   }
 }

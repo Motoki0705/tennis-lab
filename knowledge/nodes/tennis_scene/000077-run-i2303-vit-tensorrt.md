@@ -153,8 +153,9 @@ metrics:
       dram_read_bytes: 155445248
       dram_write_bytes: 0
       gpu_kernels: 127
-      cosine_p05: 0.999601593
-      id_matches_fp32: 236
+      accuracy_crops: 224
+      cosine_p05: 0.999601983
+      id_matches_fp32: 224
     tensorrt_fp8:
       median_ms: 1.664813
       p95_ms: 2.277651
@@ -164,8 +165,9 @@ metrics:
       dram_read_bytes: 75960832
       dram_write_bytes: 0
       gpu_kernels: 115
-      cosine_p05: 0.995428508
-      id_matches_fp32: 236
+      accuracy_crops: 224
+      cosine_p05: 0.995416171
+      id_matches_fp32: 224
 artifacts:
   run_dir: knowledge/runs/run-i2303-vit-tensorrt
   output_dir: .worktree-outputs/trt-vit-pose-hmr2/i2303
@@ -191,7 +193,7 @@ repro:
 
 # ViTPose-H・HMR2の5精度条件とViT系PTQの比較
 
-ViTPose-HではTensorRT FP16が座標とconfidenceの許容差を満たし、中央値は54.423 msから8.468 msになった。INT8・FP8ではそれぞれ1点・6点で座標の最大差5 pxを超えた。HMR2では5条件とも単体精度の判定を満たし、FP8の中央値が5.399 msと最短だった。CLIP-ReIDではINT8をattention出力投影に絞り、FP32とのID一致が96/236から236/236に回復した。
+ViTPose-HではTensorRT FP16が座標とconfidenceの許容差を満たし、中央値は54.423 msから8.468 msになった。INT8・FP8ではそれぞれ1点・6点で座標の最大差5 pxを超えた。HMR2では5条件とも単体精度の判定を満たし、FP8の中央値が5.399 msと最短だった。CLIP-ReIDの新INT8・FP8は、選定用cropを除いた224件でcosineとID一致の許容差を満たした。
 
 ## 固定入力と計測区間
 
@@ -267,12 +269,16 @@ HMR2では対応フレーム・欠測のずれは0件。基準はcosine P05が0.
 | 3a TensorRT INT8 | 0.99990905 | 0.013965 / 0.018077 | 適合 |
 | 3b TensorRT FP8 | 0.99965411 | 0.026229 / 0.076740 | 適合 |
 
-| CLIP-ReID | cosine P05 | FP32とのID一致 |
-|---|---:|---:|
-| #2297の旧INT8 | 0.489896 | 96/236 |
-| #2297の旧FP8 | 0.988983 | 236/236 |
-| 3a TensorRT INT8 | 0.999602 | 236/236 |
-| 3b TensorRT FP8 | 0.995429 | 236/236 |
+CLIP-ReIDはPTQ設定の選定に使った12 cropをqueryとgalleryの両方から外し、同じ2クリップ内の残り224件で精度を判定した。保存済みの特徴から条件ごとにgalleryを作り直した。両条件ともcosine P05 ≥ 0.995、FP32とのID一致 ≥ 99%を満たした。旧条件との比較用に全236件の集計も残す。 [除外した入力と両方の集計](../../runs/run-i2303-vit-tensorrt/metrics.json)
+
+| CLIP-ReID | 集計の用途 | cosine P05 | FP32とのID一致 |
+|---|---|---:|---:|
+| 3a TensorRT INT8 | 精度判定 | 0.999602 | 224/224 |
+| 3b TensorRT FP8 | 精度判定 | 0.995416 | 224/224 |
+| #2297の旧INT8 | 同一入力比較 | 0.489896 | 96/236 |
+| #2297の旧FP8 | 同一入力比較 | 0.988983 | 236/236 |
+| 3a TensorRT INT8 | 同一入力比較 | 0.999602 | 236/236 |
+| 3b TensorRT FP8 | 同一入力比較 | 0.995429 | 236/236 |
 
 ## CLIP-ReIDのINT8劣化の切り分け
 
@@ -303,14 +309,16 @@ HMR2では対応フレーム・欠測のずれは0件。基準はcosine P05が0.
 | MLP出力投影のみ / max | 0.86000 |
 | MLP出力以外の重み付き線形層 / max | 0.99415 |
 
-3aは12 cropで最も精度を保ったattention出力投影のみのINT8 max、3bは画像backboneの4種の重み付き投影をFP8 maxとした。3モデルを同一定義で再計測し、CLIP-ReIDとHMR2はいずれも3a・3bで単体許容差を満たした。ViTPose-Hの3a・3bは最大座標差が許容外だった。設定選択に使ったCLIP-ReIDの12 cropは全236 cropにも含まれる。 [3a・3bの定義](../../runs/run-i2297-clipreid-tensorrt/PROTOCOL.md#vit-3モデルのptq設定)・[同一入力の旧条件](000075-run-i2297-clipreid-tensorrt.md)
+3aは12 cropで最も精度を保ったattention出力投影のみのINT8 max、3bは画像backboneの4種の重み付き投影をFP8 maxとした。3モデルを同一定義で再計測し、ViTPose-Hの3a・3bは最大座標差が許容外だった。 [3a・3bの定義](../../runs/run-i2297-clipreid-tensorrt/PROTOCOL.md#vit-3モデルのptq設定)・[同一入力の旧条件](000075-run-i2297-clipreid-tensorrt.md)
 
 ## 実行精度と追測
 
 TensorRTの8条件すべてでONNXの主要演算、実行タクティクスのオペランドと活性入力をTensorRT Engine Inspectorで照合した。INT8はCLIP-ReID・ViTPose-H・HMR2で12・32・32演算、FP8は48・128・128演算。HMR2のFP16では259演算を照合し、画像入力に依存しない `to_token_embedding/MatMul` が実行層に現れなかったことを記録した。
 
+3モデルの保存済みINT8・FP8 ONNX全6件で、DQの接続先が選定した演算の2つの積入力だけであることを確認した。MatMulと共有する入力から対象外のLayerNormにDQが接続すると、対象行列演算の集合が一致していても入力辺の検査で拒否する。 [照合したONNXと入力辺数](../../runs/run-i2303-vit-tensorrt/validation.json)
+
 監査式が対象演算を認識できない場合、ONNX名とPTQ対象が合わない場合は非ゼロで停止した。INT8のカウンタ収集はHMR2が341件中228件、ViTPose-Hが300件中228件でタイムアウトした。再計測ではplan・入力・出力のdigestを照合し、同じ341件と300件をすべて取得した。途中のCSVは集計から除外した。GVHMRの変更を含むmainにrebaseした後も、保存した8件のinspectorの再集計が変換時と推論時の照合結果に一致した。 [非ゼロ終了と追測](../../runs/run-i2303-vit-tensorrt/validation.json)
 
 ## E2Eへの引き継ぎ
 
-単体結果が支持するE2E候補はViTPose-HのTensorRT FP16、HMR2のTensorRT FP16とFP8、CLIP-ReIDの設定変更後のINT8・FP8。B=1の速度・サンプルされたVRAMは固定入力の単独起動に限る。段間転送、複数モデル常駐、形状やバッチの変化、HMR2特徴差の時系列復元への影響、候補のIDと3D関節の安定性はE2E側で確認する。ViTPose-H量子化の外れ値は、固定cropを指定して再現できる。
+単体結果が支持するE2E候補はViTPose-HのTensorRT FP16、HMR2のTensorRT FP16とFP8、CLIP-ReIDの設定変更後のINT8・FP8。CLIP-ReIDの精度判定は同じ2クリップ内に限る。B=1の速度・サンプルされたVRAMは固定入力の単独起動に限る。段間転送、複数モデル常駐、形状やバッチの変化、HMR2特徴差の時系列復元への影響、候補のIDと3D関節の安定性はE2E側で確認する。ViTPose-H量子化の外れ値は、固定cropを指定して再現できる。

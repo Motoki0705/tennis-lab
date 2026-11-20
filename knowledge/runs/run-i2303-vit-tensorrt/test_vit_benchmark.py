@@ -5,11 +5,14 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 import torch
+from benchmark import accuracy
+from clip_ptq import accuracy_excluding_selection
 from convert import (
     constant_tensors,
     linear_names,
     quantized_matrix_ops,
     verify_compute_precision,
+    verify_qdq_scope,
 )
 from fixed_crops import body_rows
 from runtime import torch_dispatch_precisions
@@ -140,6 +143,59 @@ def test_qdq_scope_requires_dequantization_of_both_operands():
         ]
     )
     assert quantized_matrix_ops(graph) == {"explicit_int8"}
+
+
+@pytest.mark.parametrize(
+    ("operation", "norm_input", "bias", "unexpected"),
+    [
+        ("MatMul", "pixels", [], None),
+        ("MatMul", "pixels_dq", [], r"layer_norm \(LayerNormalization\) input\[0\]"),
+        ("Gemm", "pixels", ["bias_dq"], r"projection \(Gemm\) input\[2\]"),
+    ],
+)
+def test_explicit_qdq_scope_checks_every_consumer_input(
+    operation, norm_input, bias, unexpected
+):
+    nodes = [
+        ("activation_q", "QuantizeLinear", ["pixels", "scale"], ["pixels_q"]),
+        ("activation_dq", "DequantizeLinear", ["pixels_q", "scale"], ["pixels_dq"]),
+        ("weight_dq", "DequantizeLinear", ["weight_q", "scale"], ["weight_dq"]),
+        ("bias_dq", "DequantizeLinear", ["bias_q", "scale"], ["bias_dq"]),
+        ("projection", operation, ["pixels_dq", "weight_dq", *bias], ["projected"]),
+        ("layer_norm", "LayerNormalization", [norm_input, "gamma"], ["normalized"]),
+    ]
+    graph = SimpleNamespace(
+        node=[
+            SimpleNamespace(name=name, op_type=op, input=inputs, output=outputs)
+            for name, op, inputs, outputs in nodes
+        ],
+        output=[SimpleNamespace(name="projected"), SimpleNamespace(name="normalized")],
+    )
+    # The matrix set alone misses both the shared DQ and a quantized bias.
+    assert quantized_matrix_ops(graph) == {"projection"}
+    if unexpected is None:
+        assert verify_qdq_scope(graph, {"projection"}) == {"projection"}
+    else:
+        with pytest.raises(RuntimeError, match=unexpected):
+            verify_qdq_scope(graph, {"projection"})
+
+
+def test_clip_selection_exclusion_rebuilds_gallery_and_queries():
+    addresses = [
+        ("clip_000", "cam0", 10, 0),
+        ("clip_000", "cam0", 10, 1),
+        ("clip_000", "cam1", 10, 0),
+        ("clip_000", "cam1", 10, 1),
+        ("clip_000", "cam1", 20, 0),
+    ]
+    baseline = np.array([[1, 0], [0, 1], [1, 0], [0, 1], [1, 0]], dtype=np.float32)
+    actual = baseline.copy()
+    actual[2] = [0, 1]
+    full = accuracy(actual, baseline, addresses)
+    assert any(row["address"] == addresses[1] for row in full["id_changed_examples"])
+    retained = accuracy_excluding_selection(actual, baseline, addresses, {addresses[2]})
+    assert retained["crops"] == retained["id_matches_fp32"] == 4
+    assert retained["cosine_p05"] == pytest.approx(1)
 
 
 @pytest.mark.parametrize("precision", [torch.float32, torch.float16])
