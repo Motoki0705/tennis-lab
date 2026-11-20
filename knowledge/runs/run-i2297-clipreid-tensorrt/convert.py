@@ -32,6 +32,10 @@ TACTIC_OPERANDS = re.compile(
     r"(f16|i8|e4m3|f32|tf32|bf16)(?:f16|i8|e4m3|f32|tf32|bf16|i32)?_"
     r"(f16|i8|e4m3|f32|tf32|bf16)(?:f16|i8|e4m3|f32|tf32|bf16|i32)?_"
 )
+# cuBLAS GEMV concatenates its two operand types before the accumulator type.
+CUBLAS_GEMVX_OPERANDS = re.compile(
+    r"_cublas_gemvx_(f16|i8|e4m3|f32|tf32|bf16)(f16|i8|e4m3|f32|tf32|bf16)_"
+)
 
 
 def require_queue():
@@ -114,6 +118,23 @@ def inspect_engine(engine, context=None):
     return json.loads(inspector.get_engine_information(trt.LayerInformationFormat.JSON))
 
 
+def has_int8_projection_with_fp16_residual(layer, tactic, metadata, operations, inputs):
+    """The named ViTPose fusion takes the residual before the INT8 activation."""
+    return (
+        layer["LayerType"] == "fusion"
+        and layer["Name"].startswith("__myl_FcCastAddAdd_")
+        and tactic.endswith("_by_fusion_tactic")
+        and len(operations) == 1
+        and next(iter(operations)).endswith("/attn/proj/MatMul")
+        and sum(op.endswith("_DequantizeLinear") for op in metadata) == 2
+        and any(op.endswith("/Add") for op in metadata)
+        and len(inputs) == 2
+        and re.search(rf"\b(?:{TENSOR_DTYPE['fp16']})\b", inputs[0], re.IGNORECASE)
+        and re.search(r"\bInt8\b", inputs[1], re.IGNORECASE)
+        and layer["Inputs"][0]["Dimensions"] == layer["Inputs"][1]["Dimensions"]
+    )
+
+
 def verify_compute_precision(
     details, required_precision, *, expected_operations=None, constant_operations=()
 ):
@@ -123,7 +144,10 @@ def verify_compute_precision(
     for layer in details["Layers"]:
         kind = layer["LayerType"].lower()
         tactic = layer.get("TacticName") or ""
-        operands = TACTIC_OPERANDS.search(tactic)
+        operand_pattern = (
+            CUBLAS_GEMVX_OPERANDS if "_cublas_gemvx_" in tactic else TACTIC_OPERANDS
+        )
+        operands = operand_pattern.search(tactic)
         metadata = set(ONNX_LAYER.findall(layer.get("Metadata") or ""))
         operations = metadata
         if expected_operations is not None:
@@ -195,7 +219,16 @@ def verify_compute_precision(
             matches = (
                 operands is not None
                 and operands.groups() == (code, code)
-                and (bool(inputs and pattern.search(inputs[0])) or int8_residual)
+                and (
+                    bool(inputs and pattern.search(inputs[0]))
+                    or int8_residual
+                    or (
+                        precision == "int8"
+                        and has_int8_projection_with_fp16_residual(
+                            layer, tactic, metadata, operations, inputs
+                        )
+                    )
+                )
             )
         if not matches:
             raise RuntimeError(

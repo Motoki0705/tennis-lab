@@ -59,7 +59,7 @@ CLIP-ReID の追測は `benchmark.py --adapter "$bundle/vit_models.py" --model c
 
 32 crop の校正比較では、デフォルト対象の max で cosine P05 が 0.526、MatMul/Gemm のみで 0.850、重み付き線形層のみの max で 0.849、entropy で 0.856 だった。旧グラフで活性化181辺だけをFP16へ戻すと 0.515 から 0.99974 に回復し、定数49辺だけを戻したときは 0.486 だった。LayerNorm入力だけを戻すと 0.749、LayerNorm・QuickGELUの積・残差Addの入力をまとめて戻すと 0.848 だった。重み付き線形層のうち、MLP出力投影だけを量子化した条件の0.860に対し、attention出力投影だけの条件は0.99971だった。3aには同じ12 cropで最も高い値を得た attention出力投影を使う。範囲の選定に使った12 cropは全236 cropでの比較にも含まれる。[校正・層別比較](int8-diagnosis.json)
 
-[条件別の計測結果](metrics.json) と [HMR2の次元別絶対差](hmr2-feature-errors.json) を参照。初回はPyTorch 2.13の複合演算を実行精度検査が捕捉できず、続く計測も比較用FP32が揃うまで停止した。第2回の変換エラーと入力照合は [validation.json](validation.json) に記録した。
+[条件別の計測結果](metrics.json) と [HMR2の次元別絶対差](hmr2-feature-errors.json) を参照。実行精度検査、入力照合、プロファイラの失敗と追測は [validation.json](validation.json) に記録した。HMR2のINT8は元のplanと結果を `--profiles ncu --profile-from "$out/round3/hmr2/3a" --ncu-timeout 1800` で参照すると、同じ代表入力でGPUカウンタだけを追測できる。
 
 ## CPU検証
 

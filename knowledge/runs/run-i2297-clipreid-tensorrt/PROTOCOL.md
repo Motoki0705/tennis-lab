@@ -32,6 +32,8 @@ CLIP-ReID・ViTPose-H・HMR2には、FP32 ONNXを校正用 `clip_027` で ModelO
 
 対象外の線形演算・畳み込み・入力が両方可変のattention MatMulはFP16とする。残差Add・LayerNorm・GELU・softmaxは直接のQ/DQ対象から外し、reductionやcastにはFP32を許す。HMR2のSMPL headはFP16で、`_gemv_mha_v1_` 融合の3入力と、長さ1のself-attentionのMatMulを積に置換するタクティクスの2入力およびshapeを照合する。実行層で見つからない演算は、ONNXグラフで画像入力に依存しない場合に限って別途記録する。設定の根拠は [CLIP-ReIDの校正・層別比較](../run-i2303-vit-tensorrt/int8-diagnosis.json) にある。
 
+TensorRTのcuBLAS GEMVタクティクスでは、累積精度の前に並ぶ2個のオペランド精度を読む。ViTPose-Hのattention出力投影が残差Addと融合した場合は、同形状のFP16残差とINT8活性化の2入力、投影および2個のDequantizeLinearのメタデータ、GEMMの両オペランドのINT8を照合する。
+
 ## 入力とshape
 
 評価は #2238 と共通の `clip_000` と `clip_037`。固定8画像のframe 178、146も4台分を含める。PTQは別区間の `clip_027`。同じコート・4方向のカメラから実推論の分布を取れ、既存のplayer evidenceから観測boxを固定できるため選んだ。clip ID、4台のMP4のSHA-256、同一収録元の各カメラの包括frame区間で非重複を確認する。同じ会場におけるキャリブレーションであり、選手や会場単位の汎化は測らない。
@@ -72,6 +74,7 @@ CLIPは `OpenCVVideoFrameReader` でBGRを始端からdecodeする。選択済�
 - **nsys** 2026.5.2の `--trace=cuda-sw,nvtx` を使用。SQLiteの `CUPTI_ACTIVITY_KIND_KERNEL` から同期を含むNVTX範囲内のGPU activityを1行1件として数える。CUDA API呼び出し、memcpy、warm-upは除く。`sum_kernel_duration_ns` は並列実行区間も各カーネルの時間を足す。
 - **ncu** GB206（CC 12.0）で `dram__bytes_op_read.sum`、`dram__bytes_op_write.sum` を各kernelから合算する。`sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed` は各kernelの `gpu__time_duration.sum` で加重する。memory stallは `smsp__warp_issue_stalled_{long_scoreboard,short_scoreboard,lg_throttle,mio_throttle}_per_warp_active.pct` を理由別に同じ重みで記録する。long scoreboardはL1TEX依存、short scoreboardは主にMIO依存を示す。スロットルの2指標は各パイプの命令待ち。これらはkernelごとのstall率を時間で要約した値で、GPUが停止した壁時計時間の割合は表さない。
 - TensorRTの `ncu` 収集では実行contextの `nvtx_verbosity` を `NONE` にする。Nsight Compute 2025.3.1は詳細NVTXラベルのJSON内のカンマでraw CSVの列をずらすため、この設定で外側の `steady_inference` の範囲を収集する。同じplanと代表入力を使い、各条件で `nsys` の範囲内kernel数と照合する。`--profiles ncu --profile-from` の追測は元の `result.json` にある取得済み `nsys` の件数を使う。件数に差があれば `coverage_mismatch` を記録し、非ゼロで終了する。
+- `--ncu-timeout` はカウンタ取得の制限秒数を指定する。時間切れのCSVから得た途中の行数は診断に使い、指標は全カーネルを取得できたときに記録する。
 - `ncu` のkernel replayは計測やキャッシュに影響し得るため、独立したlatencyの値と区別する。cacheとclock controlはnone。raw CSVの欠測と権限エラーは理由を残す。別GPUでは `ncu --query-metrics` で名前と単位を照合してから、同じ意味を持つ値として比較する。
 - 律速判断はDRAM bytesとkernel時間、warp stallの内訳、Tensor pipe、nsysのkernel数を合わせて行う。単一の比率から結論を出さない。層precisionはengine inspectorとtraceのkernel名も照合する。
 

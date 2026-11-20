@@ -294,3 +294,75 @@ def test_static_onnx_ops_are_checked_if_executed_and_can_be_folded():
     )
     with pytest.raises(RuntimeError, match="Compute layer constant expected fp16"):
         verify_compute_precision(details, "fp16", **requirements)
+
+
+def test_cublas_gemvx_uses_adjacent_operand_codes_before_accumulator():
+    layer = {
+        "Name": "decoder projection",
+        "LayerType": "gemm",
+        "TacticName": "sm50_xmma_cublas_gemvx_f16f16_f32_f32_tn_n_int32_unit_n",
+        "Inputs": [{"Format/Datatype": "Half"}],
+        "Metadata": "[ONNX Layer: projection]",
+    }
+    expected = {"projection": "fp16"}
+    assert verify_compute_precision(
+        {"Layers": [layer]}, "fp16", expected_operations=expected
+    )["onnx_operations_by_precision"] == {"fp16": 1}
+    layer["TacticName"] = "sm50_xmma_cublas_gemvx_f16f32_f16_f16_tn_n_int32_unit_n"
+    with pytest.raises(RuntimeError, match="expected fp16 operands"):
+        verify_compute_precision(
+            {"Layers": [layer]}, "fp16", expected_operations=expected
+        )
+
+
+def test_vitpose_int8_projection_fusion_keeps_fp16_residual():
+    name = "/backbone/blocks.0/attn/proj/MatMul"
+    layer = {
+        "Name": "__myl_FcCastAddAdd_myl0_8",
+        "LayerType": "fusion",
+        "TacticName": "sm80_xmma_gemm_i8f32_i8i32_f32_tn_by_fusion_tactic",
+        "Inputs": [
+            {"Format/Datatype": "Half", "Dimensions": [384, 1280]},
+            {"Format/Datatype": "Int8", "Dimensions": [384, 1280]},
+        ],
+        "Metadata": (
+            f"[ONNX Layer: {name}]"
+            "[ONNX Layer: activation_DequantizeLinear]"
+            "[ONNX Layer: weight_DequantizeLinear]"
+            "[ONNX Layer: /backbone/blocks.0/Add]"
+        ),
+    }
+    expected = {name: "int8"}
+    assert verify_compute_precision(
+        {"Layers": [layer]}, "int8", expected_operations=expected
+    )["onnx_operations_by_precision"] == {"int8": 1}
+    layer["Metadata"] = layer["Metadata"].replace(
+        "[ONNX Layer: activation_DequantizeLinear]", ""
+    )
+    with pytest.raises(RuntimeError, match="expected int8 operands"):
+        verify_compute_precision(
+            {"Layers": [layer]}, "int8", expected_operations=expected
+        )
+
+
+def test_vitpose_fused_int8_input_cannot_mask_a_fp16_gemm():
+    name = "/backbone/blocks.0/attn/proj/MatMul"
+    layer = {
+        "Name": "__myl_FcCastAddAdd_myl0_8",
+        "LayerType": "fusion",
+        "TacticName": "sm80_xmma_gemm_f16f16_f16f32_f32_tn_by_fusion_tactic",
+        "Inputs": [
+            {"Format/Datatype": "Half", "Dimensions": [384, 1280]},
+            {"Format/Datatype": "Int8", "Dimensions": [384, 1280]},
+        ],
+        "Metadata": (
+            f"[ONNX Layer: {name}]"
+            "[ONNX Layer: activation_DequantizeLinear]"
+            "[ONNX Layer: weight_DequantizeLinear]"
+            "[ONNX Layer: /backbone/blocks.0/Add]"
+        ),
+    }
+    with pytest.raises(RuntimeError, match="expected int8 operands"):
+        verify_compute_precision(
+            {"Layers": [layer]}, "int8", expected_operations={name: "int8"}
+        )

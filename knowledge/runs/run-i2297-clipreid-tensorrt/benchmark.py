@@ -262,8 +262,10 @@ def run_case(args):
                 # ncu 2025.3.1 raw CSV misquotes TensorRT's JSON NVTX payloads.
                 profile_command.append("--omit-trt-layer-nvtx")
             result["profiles"][tool] = capture(
-                tool, executable, profile_command, output
+                tool, executable, profile_command, output, ncu_timeout=args.ncu_timeout
             )
+            if tool == "ncu":
+                result["profiles"][tool]["timeout_seconds"] = args.ncu_timeout
             write_json(output / "result.json", result)
     nsys = result["profiles"].get("nsys", nsys_reference)
     ncu = result["profiles"].get("ncu", {})
@@ -300,6 +302,7 @@ def main():
     )
     parser.add_argument("--nsys", type=Path, default=NSYS)
     parser.add_argument("--ncu", type=Path, default=Path("/usr/local/cuda/bin/ncu"))
+    parser.add_argument("--ncu-timeout", type=int, default=900)
     reuse = parser.add_mutually_exclusive_group()
     reuse.add_argument(
         "--profile-from",
@@ -312,6 +315,8 @@ def main():
         help="repeat timing with the existing TensorRT engine from a result",
     )
     args = parser.parse_args()
+    if args.ncu_timeout <= 0:
+        parser.error("--ncu-timeout must be positive")
     if (args.model != MODEL or args.ptq_recipe) and args.adapter is None:
         parser.error("--adapter is required for this model or PTQ recipe")
     if args.ptq_recipe and (
