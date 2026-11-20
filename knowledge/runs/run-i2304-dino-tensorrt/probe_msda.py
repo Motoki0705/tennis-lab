@@ -49,12 +49,12 @@ class SampleBlock(torch.nn.Module):
         return plugin_core(value, self.geometry, self.starts, locations, weights)
 
 
-def evidence(details, names):
+def evidence(details, names, method):
     return {
         **verify_compute_precision(
             details, "fp16", expected_operations={"/projection/MatMul": "fp16"}
         ),
-        "sampling_layers": sampling_layers(details, names),
+        "sampling_layers": sampling_layers(details, names, method=method),
     }
 
 
@@ -97,7 +97,7 @@ def run_method(
     checked = build_checked_plan(
         graph,
         plan,
-        verify=lambda details: evidence(details, sampling),
+        verify=lambda details: evidence(details, sampling, method),
         init_plugins=method == "plugin",
         min_free_gib=11,
         allow_tf32=False,

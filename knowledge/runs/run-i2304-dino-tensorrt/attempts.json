@@ -211,7 +211,8 @@
     "result_written_at": "2026-11-20T22:54:35+09:00",
     "late_csv_mtime": "2026-11-21T00:32:18+09:00",
     "late_csv_kernel_rows": 585,
-    "late_csv_used": false
+    "late_csv_used": false,
+    "queue_finished_at": "2026-11-20T22:54:36+09:00"
   },
   "dino-grid-3a-ncu-v7": {
     "queue_job": "0-8204816680926065162_2026-11-20T14-01-59-073934837Z_1137002_i2304-dino-grid-3a-ncu-v7",

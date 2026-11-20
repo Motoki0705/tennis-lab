@@ -228,11 +228,13 @@ RTX 5060 Tiで評価64枚と校正64枚を固定した。評価は `clip_000`・
 
 条件1は #2238 と同じPyTorch CUDA FP16 autocastとFP32 MSDAブロックを使った。基準の494 boxに対して1件が欠落し、単体許容差の草案を満たした。正式な条件2はFP32比で中央値4.71倍の速度で、代表入力のDRAM readは26.36 GBから6.48 GB、kernelは1,862から561に減った。TRTの3条件と比較用プラグインは、いずれもIoU P05とscore差P95が草案の範囲を外れた。 [#2238のrun](000050-run-person-stage-precision-meiji-20261118.md)・[精度許容差](../../runs/run-i2297-clipreid-tensorrt/PROTOCOL.md#精度の指標と許容差草案)
 
+条件2の精度低下の原因は未確認。条件1のMSDAブロック全体はFP32で、条件2はMSDA方式を変え、Swinなどを含むONNX全体をFP16化してTensorRTで実行した。固定入力でのモデル全体の差を観測したが、方式・変換・精度配分の寄与は未分離。同一精度でのexport前後の出力照合と、モデル全体でMSDAだけをFP32に戻す対照は未実施。 [精度比較の内訳](../../runs/run-i2304-dino-tensorrt/metrics.json)
+
 ## MSDAと量子化
 
 小規模比較ではGridSample、TensorRT v2プラグイン、FP16射影とPyTorch FP32 CUDA MSDAを組み合わせた部分TRT化が動作した。モデル全体の条件2ではプラグインの中央値がGridSampleより27.2%短く、GPU kernel時間合計は54.85 msと39.67 msだった。box一致精度は上表の範囲で変化した。GridSampleの標準ONNXはCPU校正にも使用できた。プラグインはTensorRT配布版のライブラリとplanの版管理を要し、配布にない環境ではビルドも必要になる。プラグイン版のPTQと部分TRT化のモデル全体は未計測。 [3方式の速度・誤差・運用負担](../../runs/run-i2304-dino-tensorrt/README.md#msdaの方式比較)
 
-DINOの3a・3bは計測時点の #2297 で定めたModelOpt max、ORT CPU、明示Q/DQ、校正外FP16を用いた。3aは292演算をINT8、24演算をFP16に保った。3bは275演算をFP8 E4M3、41演算をFP16に保った。#2334で導入されたViT 3モデルの新設定は、3aでattention出力投影だけを量子化し、3bで重み付きQKV・attention出力・MLP前後の線形演算を量子化する。DINOの新設定での速度と精度は未計測。 [演算ごとの精度](../../runs/run-i2304-dino-tensorrt/precision-requirements.json)・[ViT 3モデルのPTQ設定](../../runs/run-i2297-clipreid-tensorrt/PROTOCOL.md#vit-3モデルのptq設定)
+DINOの3a・3bは計測時点の #2297 のModelOpt max、ORT CPU、明示Q/DQで測った。主要演算のオペランドは3aがINT8 292・FP16 24、3bがFP8 E4M3 275・FP16 41だった。実測ONNXでは指定外のAdd 36件、LayerNormalization 5件、Where 1件が両条件でDQ出力を直接受けた。3a・3bの結果は、この指定外の数値入力まで量子化が及んだ実測グラフでの値。現行の変換はDQの接続先を照合し、旧グラフを拒否する。#2334のViT向け設定でのDINOは未計測で、再計測は #2278 で判断する。 [演算ごとの精度](../../runs/run-i2304-dino-tensorrt/precision-requirements.json)・[実測グラフのDQ接続](../../runs/run-i2304-dino-tensorrt/metrics.json)・[ViT 3モデルのPTQ設定](../../runs/run-i2297-clipreid-tensorrt/PROTOCOL.md#vit-3モデルのptq設定)
 
 ## 採取範囲と下流への影響
 

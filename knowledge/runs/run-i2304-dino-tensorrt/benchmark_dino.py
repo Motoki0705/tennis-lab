@@ -142,16 +142,19 @@ def run_case(args):
     if args.engine_dir:
         plan = args.engine_dir / "dino.plan"
         conversion = json.loads((args.engine_dir / "conversion.json").read_text())
+        method = conversion.get("method")
         if (
             conversion["condition"] != args.condition
             or conversion["input_shape"] != identity["plan_profile"]["opt"]
             or conversion["tensor_set_sha256"] != identity["tensor_set_sha256"]
             or conversion["checkpoint_sha256"] != identity["checkpoint_sha256"]
             or conversion["plan_sha256"] != sha256_file(plan)
+            or method not in {"grid", "plugin"}
+            or (method == "plugin" and args.condition != "2")
         ):
             raise ValueError("DINO TensorRT plan receipt does not match the condition")
         result["conversion"] = conversion
-        command += ["--plan", str(plan)]
+        command += ["--plan", str(plan), "--method", method]
     else:
         result["extension_sha256"] = EXTENSION_SHA256
 

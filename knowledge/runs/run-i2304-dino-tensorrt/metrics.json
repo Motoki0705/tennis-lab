@@ -4258,7 +4258,52 @@
         "nsys": "0-8204822146448313429_2026-11-20T12-30-53-551686570Z_638131_i2304-dino-grid-3a-v6",
         "ncu": "0-8204822146448313429_2026-11-20T12-30-53-551686570Z_638131_i2304-dino-grid-3a-v6"
       },
-      "status": "measured"
+      "status": "measured",
+      "quantization_scope_audit": {
+        "status": "measured_with_unapproved_numeric_dq_consumers",
+        "typed_onnx_files": {
+          "typed.onnx": "d6823b154cf20ba38639e610a4af1e7a40511eedd9ab0f0190272a1a39d991ce",
+          "typed.onnx_data": "be1da28f99b6d9abf9137e86716f00b7b367dcd6c698ff38987c0890fa0824fb"
+        },
+        "measured_plan_sha256": "8143039d2cf90c24cff4bd146931468f601c6b60708665e2cc16889115e7386b",
+        "direct_dq_consumer_nodes_by_op_type": {
+          "Add": 36,
+          "Conv": 5,
+          "Gemm": 6,
+          "LayerNormalization": 5,
+          "MatMul": 281,
+          "Shape": 123,
+          "Where": 1
+        },
+        "direct_dq_consumer_inputs_by_op_type": {
+          "Add": 36,
+          "Conv": 10,
+          "Gemm": 12,
+          "LayerNormalization": 5,
+          "MatMul": 562,
+          "Shape": 123,
+          "Where": 1
+        },
+        "unapproved_numeric_consumer_nodes_by_op_type": {
+          "Add": 36,
+          "LayerNormalization": 5,
+          "Where": 1
+        },
+        "unapproved_numeric_consumer_inputs_by_op_type": {
+          "Add": 36,
+          "LayerNormalization": 5,
+          "Where": 1
+        },
+        "shape_metadata_consumers": 123,
+        "direct_dq_graph_outputs": [],
+        "unapproved_numeric_input_example": {
+          "operation": "/model/transformer/encoder/layers.0/Add",
+          "op_type": "Add",
+          "input_index": 0,
+          "dq_output": "/model/transformer/Concat_8_output_0_DequantizeLinear_Output"
+        },
+        "strict_scope_check": "Q/DQ connected to unselected inputs or outputs"
+      }
     },
     "3b": {
       "identity": {
@@ -5480,7 +5525,50 @@
         "nsys": "0-8204832989781990368_2026-11-20T09-30-10-218009631Z_3677236_i2304-dino-grid-3b-v5",
         "ncu": "0-8204832989781990368_2026-11-20T09-30-10-218009631Z_3677236_i2304-dino-grid-3b-v5"
       },
-      "status": "measured"
+      "status": "measured",
+      "quantization_scope_audit": {
+        "status": "measured_with_unapproved_numeric_dq_consumers",
+        "typed_onnx_files": {
+          "typed.onnx": "640f21e09556409edb2d96f1a2665398f9342ca5927a0fe41094f5ce73e9c6b6",
+          "typed.onnx_data": "0ce04624f2af4761a3e31ccf995041549e1f5ec37910fd679adb7bed6eeeba4f"
+        },
+        "measured_plan_sha256": "5d084da7b2decdfbd53ecae5233a68223041a375ff41fd4857e07a8645c34718",
+        "direct_dq_consumer_nodes_by_op_type": {
+          "Add": 36,
+          "Gemm": 6,
+          "LayerNormalization": 5,
+          "MatMul": 269,
+          "Shape": 117,
+          "Where": 1
+        },
+        "direct_dq_consumer_inputs_by_op_type": {
+          "Add": 36,
+          "Gemm": 12,
+          "LayerNormalization": 5,
+          "MatMul": 538,
+          "Shape": 117,
+          "Where": 1
+        },
+        "unapproved_numeric_consumer_nodes_by_op_type": {
+          "Add": 36,
+          "LayerNormalization": 5,
+          "Where": 1
+        },
+        "unapproved_numeric_consumer_inputs_by_op_type": {
+          "Add": 36,
+          "LayerNormalization": 5,
+          "Where": 1
+        },
+        "shape_metadata_consumers": 117,
+        "direct_dq_graph_outputs": [],
+        "unapproved_numeric_input_example": {
+          "operation": "/model/transformer/encoder/layers.0/Add",
+          "op_type": "Add",
+          "input_index": 0,
+          "dq_output": "/model/transformer/Concat_8_output_0_DequantizeLinear_Output"
+        },
+        "strict_scope_check": "Q/DQ connected to unselected inputs or outputs"
+      }
     }
   },
   "variants": {
@@ -6613,5 +6701,20 @@
       },
       "status": "measured"
     }
+  },
+  "accuracy_interpretation": {
+    "comparison": [
+      "1",
+      "2",
+      "2-plugin"
+    ],
+    "condition_1": "PyTorch CUDA FP16 autocast with complete MSDA blocks in FP32.",
+    "condition_2_variants": "Strongly typed TensorRT with FP16 conversion across the ONNX graph, including Swin, and MSDA implemented with GridSample or the v2 plugin.",
+    "condition_2_accuracy_regression_cause": "unconfirmed",
+    "scope": "The comparison measures differences between complete model paths. Changing the backend, casting policy and MSDA implementation together prevents attributing the accuracy regression to one of them. The small MSDA probe does not isolate that regression.",
+    "unperformed_controls": [
+      "Compare pre-export and post-export outputs at the same precision on fixed inputs.",
+      "Measure the full TensorRT model with only the complete MSDA blocks restored to FP32."
+    ]
   }
 }

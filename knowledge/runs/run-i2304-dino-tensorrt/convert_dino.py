@@ -8,7 +8,6 @@ import shutil
 from collections import Counter
 from pathlib import Path
 
-import onnx
 from benchmark import write_json
 from benchmark_dino import CHECKPOINT_SHA256, verify_inputs
 from convert import (
@@ -17,14 +16,11 @@ from convert import (
     build_checked_plan,
     require_queue,
     verify_compute_precision,
+    verify_qdq_scope,
 )
-from export_dino import graph_files
 from fixed_inputs import CHECKPOINT, load_sample, rows_for, sha256_file
 from measure_dino import INPUT_NAME
 from msda import PLUGIN, sampling_layers, sampling_names
-from onnxruntime.quantization import CalibrationDataReader
-from onnxruntime.transformers.float16 import convert_float_to_float16
-from onnxruntime.transformers.onnx_model import OnnxModel
 
 COMPUTE_OPS = {"Conv", "MatMul", "Gemm"}
 MIN_BUILD_FREE_GIB = 11
@@ -42,28 +38,31 @@ CONSTANT_OPERATIONS = frozenset(
 )
 
 
-class CalibrationFrames(CalibrationDataReader):
-    def __init__(self, directory, rows):
-        self.directory = directory
-        self.rows = rows
-        self.rewind()
+def calibration_frames(directory, rows):
+    from onnxruntime.quantization import CalibrationDataReader
 
-    def get_first(self):
-        return {INPUT_NAME: load_sample(self.directory, self.rows[0])}
+    class CalibrationFrames(CalibrationDataReader):
+        def __init__(self):
+            self.rewind()
 
-    def get_next(self):
-        row = next(self.pending, None)
-        if row is None:
-            return None
-        self.read += 1
-        return {INPUT_NAME: load_sample(self.directory, row)}
+        def get_first(self):
+            return {INPUT_NAME: load_sample(directory, rows[0])}
 
-    def rewind(self):
-        self.read = 0
-        self.pending = iter(self.rows)
+        def get_next(self):
+            row = next(self.pending, None)
+            if row is None:
+                return None
+            self.read += 1
+            return {INPUT_NAME: load_sample(directory, row)}
 
-    def __len__(self):
-        return len(self.rows)
+        def rewind(self):
+            self.read = 0
+            self.pending = iter(rows)
+
+        def __len__(self):
+            return len(rows)
+
+    return CalibrationFrames()
 
 
 def precision_requirements(graph, condition):
@@ -91,21 +90,14 @@ def precision_requirements(graph, condition):
 
 
 def verify_qdq(graph, expected, precision):
-    required = {name for name, dtype in expected.items() if dtype == precision}
-    dqs = {node.output[0] for node in graph.node if node.op_type == "DequantizeLinear"}
-    verified = {
-        node.name
-        for node in graph.node
-        if node.name in required and len(node.input) >= 2 and set(node.input[:2]) <= dqs
-    }
-    missing = required - verified
-    if missing:
-        raise RuntimeError(
-            f"{precision} missing Q/DQ on both operands of {len(missing)} operations: {sorted(missing)}"
-        )
+    verify_qdq_scope(
+        graph, {name for name, dtype in expected.items() if dtype == precision}
+    )
 
 
 def load_manifest(directory, stem):
+    from export_dino import graph_files
+
     path = directory / f"{stem}.onnx"
     receipt = json.loads((directory / f"{stem}.json").read_text())
     if graph_files(path) != receipt["files"]:
@@ -140,6 +132,9 @@ def bind_initializer_weights(graph):
 
 
 def prepare(args, lock, export, source):
+    import onnx
+    from export_dino import graph_files
+
     target = args.output / "typed.onnx"
     primary = onnx.load(source, load_external_data=False).graph
     required = precision_requirements(primary, args.condition)
@@ -147,6 +142,9 @@ def prepare(args, lock, export, source):
     quantization = None
     precision = TRT_PRECISIONS[args.condition]
     if args.condition == "2":
+        from onnxruntime.transformers.float16 import convert_float_to_float16
+        from onnxruntime.transformers.onnx_model import OnnxModel
+
         model = convert_float_to_float16(onnx.load(source), keep_io_types=True)
         OnnxModel.graph_topological_sort(model.graph)
         onnx.save_model(
@@ -161,7 +159,7 @@ def prepare(args, lock, export, source):
         from modelopt.onnx.quantization.quantize import quantize
 
         rows = rows_for(lock, args.bucket, "calibration")
-        reader = CalibrationFrames(args.inputs, rows)
+        reader = calibration_frames(args.inputs, rows)
         selection = [
             rf"^{re.escape(name)}$"
             for name, dtype in required.items()
@@ -231,23 +229,25 @@ def prepare(args, lock, export, source):
     )
 
 
-def build(args, source, typed):
-    plugin = typed["method"] == "plugin"
+def build(args, source, typed, graph):
+    method = typed["method"]
+    precision = TRT_PRECISIONS[args.condition]
+    if args.condition in {"3a", "3b"}:
+        verify_qdq(graph, typed["precision_requirements"], precision)
+    plugin = method == "plugin"
     count = 12 if plugin else 48
-    sampling = sampling_names(
-        onnx.load(source, load_external_data=False).graph, typed["method"], count
-    )
+    sampling = sampling_names(graph, method, count)
 
     def verify(details):
         evidence = verify_compute_precision(
             details,
-            TRT_PRECISIONS[args.condition],
+            precision,
             expected_operations=typed["precision_requirements"],
             constant_operations=CONSTANT_OPERATIONS,
         )
         if unobserved := evidence.get("unobserved_constant_onnx_operations"):
             raise RuntimeError(f"Missing DINO constant tactic evidence: {unobserved}")
-        layers = sampling_layers(details, sampling)
+        layers = sampling_layers(details, sampling, method=method, precision=precision)
         return {
             **evidence,
             "sampling_operation": PLUGIN if plugin else "GridSample",
@@ -257,6 +257,9 @@ def build(args, source, typed):
             ),
             "sampling_operand_formats": dict(
                 Counter(dtype for layer in layers for dtype in layer["inputs"])
+            ),
+            "sampling_output_formats": dict(
+                Counter(dtype for layer in layers for dtype in layer["outputs"])
             ),
         }
 
@@ -308,7 +311,9 @@ def main():
     if args.stage == "prepare":
         prepare(args, lock, receipt, source)
     else:
-        build(args, source, receipt)
+        import onnx
+
+        build(args, source, receipt, onnx.load(source, load_external_data=False).graph)
 
 
 if __name__ == "__main__":

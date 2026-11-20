@@ -52,7 +52,7 @@ enqueue_dino i2304-dino-export-grid "$bundle/export_dino.py" --method grid \
 
 `comparison.json` は小規模のvalue projectionとサンプリングを比較する。部分TRT化ではvalue projectionをTensorRT FP16で実行し、同一CUDA streamで結果をFP32へcastしてPyTorchのCUDA拡張へ渡す。境界を含めて同期計測する。TensorRTプラグインは配布版の `MultiscaleDeformableAttnPlugin_TRT` v2を使う。 [NVIDIA v2実装](https://github.com/NVIDIA/TensorRT/blob/release/10.14/plugin/multiscaleDeformableAttnPlugin/multiscaleDeformableAttnPlugin.cpp)
 
-inspectorの実行層とONNX演算は `Metadata` で対応付ける。DINOのncuはkernel replayを使い、上限を既定で1条件45分とする。再試行では `--ncu-timeout` で秒数を指定できる。nsysとの件数一致を収集完了条件にする。 [試行記録と終了値](attempts.json)
+inspectorの実行層とONNX演算は `Metadata` で対応付ける。DINOのncuはkernel replayを使い、上限を既定で1条件45分とする。再試行では `--ncu-timeout` で秒数を指定できる。nsysとの件数一致を収集完了条件にする。タイムアウト時はqueueのプロセスグループ内の監督プロセスがncuと残った子孫を停止し、子プロセスが残っていないことを確かめてから失敗を返す。 [試行記録と終了値](attempts.json)
 
 ## MSDAの方式比較
 
@@ -70,13 +70,17 @@ PTQ条件は、同じ標準ONNXでModelOptのCPU校正とTensorRT実行ができ
 
 条件0はTF32を無効化したPyTorch FP32。条件1は #2238 と同じCUDA autocast FP16で、MSDAの各ブロック全体はFP32。条件2はTensorRTのstrongly typed FP16で、DINOの主要Conv・Gemm・MatMulのオペランドをinspectorで照合する。画像の転送とdecoderは計測区間の外に置く。
 
+条件2の精度低下の原因は未確認。条件1から条件2へ比較を移すと、MSDAの方式とバックエンドに加え、Swinなどを含むONNX全体のFP16変換が加わる。固定入力でのモデル全体の差は観測できた。各変更の寄与を切り分けるには、同一精度でのONNX export前後の出力照合と、モデル全体でMSDAブロックだけをFP32に戻す対照が必要で、いずれも未実施。 [精度の集計と比較条件](metrics.json)
+
 shifted-window attentionの融合層では、マスクの2つのviewを形状で確認した上でQ/K/Vのdtypeを照合する。最初のdecoder V射影は固定B=1で学習済みqueryと重みを使うため、inspectorでは実行時の入力が空になる。対象のONNX演算を特定し、タクティクス名の両オペランド精度を照合する。
 
 INT8のGEMMと残差和が融合した層では、出力と同じshapeのFP16残差と、INT8の活性入力を区別する。実行タクティクスの両オペランドと、融合層に含まれるQ/DQ対も照合する。1×1畳み込みとして実行される線形層では `conv_fprop_smallk_i8i8_i32` をオペランド精度の証拠に使う。 [主要演算ごとの要求精度](precision-requirements.json)・[試行記録](attempts.json)
 
-計測時点の #2297 の設定でModelOpt `max`、ORT CPU、明示Q/DQを適用した。校正は `clip_027` の固定64枚。INT8はK/N<16のbox最終射影12演算と900 queryのdecoder self-attention 6層の行列積12演算をFP16に保ち、残る292演算をINT8とした。FP8 E4M3はbox最終射影12演算、Conv 5演算、Swinのshifted-window attention 12層の行列積24演算をFP16に保ち、残る275演算をFP8とした。指定精度はQ/DQと実行層で照合した。
+計測時点の #2297 の設定でModelOpt `max`、ORT CPU、明示Q/DQを適用した。校正は `clip_027` の固定64枚。主要演算のオペランドで、3aはINT8 292演算、FP16 24演算（box最終射影12とdecoder self-attentionの行列積12）を照合した。3bはFP8 E4M3 275演算、FP16 41演算（box最終射影12、Conv 5、Swin shifted-window attentionの行列積24）を照合した。
 
-#2303（PR #2334）のマージ後は、ViT 3モデルの3aがattention出力投影だけのINT8 max、3bがQKV・attention出力・MLP前後の線形演算を対象にしたFP8 maxになった。DINOの3a・3bは上記 #2297 時点の設定として扱う。新しい設定でのDINO精度と速度は未計測。 [現行のViT 3モデル向け設定](../run-i2297-clipreid-tensorrt/PROTOCOL.md#vit-3モデルのptq設定)
+実測planに対応するONNXのハッシュを照合したところ、3a・3bとも指定外の数値入力にも量子化後の値が渡っていた。DequantizeLinearの出力を直接受けるAddが36件、LayerNormalizationが5件、Whereが1件ずつあり、最初のencoder残差Addの第1入力も含まれる。Shapeへの接続は3aが123件、3bが117件で、参照するのはテンソルの寸法。3a・3bの速度と精度はこのグラフでの実測値。 [演算種別・入力辺の集計と対象ハッシュ](metrics.json)
+
+現行のprepare/buildは共通の `verify_qdq_scope` で指定演算・オペランド位置とDQの全接続先を照合し、旧グラフを非ゼロで拒否する。#2303（PR #2334）のマージ後は、ViT 3モデルの3aがattention出力投影だけのINT8 max、3bがQKV・attention出力・MLP前後の線形演算を対象にしたFP8 maxになった。新設定でのDINOは未計測で、再計測の採否は #2278 で判断する。 [現行のViT 3モデル向け設定](../run-i2297-clipreid-tensorrt/PROTOCOL.md#vit-3モデルのptq設定)
 
 ModelOptはshape推論で入力ONNXを書き換えるため、校正は各条件のコピーで行う。decoderの共有重みを隠すONNX `Identity` は行列積から同じinitializerを直接参照する形に直す。別名のままでは、固定B=1がGEMVの判定に使われて18演算が校正対象から外れた。前処理にはTensorRTによるop検査があり、PTQジョブのCUDA可視性を保持する。 [試行記録](attempts.json)
 
@@ -94,19 +98,17 @@ for condition in 0 1; do
         --output "$out/ncu-$condition" --profiles ncu --profile-from "$out/$condition"
 done
 
-for condition in 2 3a 3b; do
-    enqueue_dino "i2304-dino-prepare-$condition" "$bundle/convert_dino.py" prepare \
-        --condition "$condition" --bucket 750x1333 --inputs "$out/inputs" \
-        --source "$out/export-grid" --output "$out/typed-$condition"
-    enqueue_dino "i2304-dino-build-$condition" "$bundle/convert_dino.py" build \
-        --condition "$condition" --bucket 750x1333 --inputs "$out/inputs" \
-        --source "$out/typed-$condition" --output "$out/engine-$condition"
-done
+enqueue_dino i2304-dino-prepare-2 "$bundle/convert_dino.py" prepare \
+    --condition 2 --bucket 750x1333 --inputs "$out/inputs" \
+    --source "$out/export-grid" --output "$out/typed-2"
+enqueue_dino i2304-dino-build-2 "$bundle/convert_dino.py" build \
+    --condition 2 --bucket 750x1333 --inputs "$out/inputs" \
+    --source "$out/typed-2" --output "$out/engine-2"
 ```
 
 ビルドが成功した条件で、`benchmark_dino.py` に `--engine-dir "$out/engine-$condition" --reference "$out/0"` を追加して測る。追測の `--profile-from` では同一 `--engine-dir` を指定し、`--reference` は省く。TensorRTの主要演算の条件別精度をONNX演算と実行層で照合し、検証に失敗したビルドは非ゼロで停止する。
 
-プラグイン版の条件2では `--method plugin` でexportする。`prepare` の `--condition 2` にそのexportを渡し、`build` と `benchmark_dino.py` でも各成果物を指定する。GridSample版と共通の `--bucket 750x1333 --inputs "$out/inputs"` とFP32参照を用い、出力先には別ディレクトリを指定する。
+プラグイン版の条件2では `--method plugin` でexportする。`prepare` の `--condition 2` にそのexportを渡し、`build` と `benchmark_dino.py` でも各成果物を指定する。GridSample版と共通の `--bucket 750x1333 --inputs "$out/inputs"` とFP32参照を用い、出力先には別ディレクトリを指定する。照合済みの変換記録から方式を計測プロセスへ渡し、プラグイン版を選んだ場合だけロード時に初期化する。変換時はプラグインの `custom_layer` と3個のFP16入力・1個のFP16出力を検査する。GridSampleは融合層と境界の型を検査する。
 
 kernel replayの時間切れを切り分ける追測では、`--profiles ncu --profile-from` に `--ncu-replay application` を明示できる。同じplan・入力・指標でアプリケーションを再実行し、各パスでkernelの名前、グリッド、ブロック、context、streamを厳密に照合する。結果にはreplay方式を記録する。 [NVIDIAのreplay仕様](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#application-replay)
 

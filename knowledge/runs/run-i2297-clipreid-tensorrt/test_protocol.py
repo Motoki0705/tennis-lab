@@ -1,7 +1,9 @@
 """CPU checks for the fixed-input, profiler and strict CLI contracts."""
 
 import csv
+import errno
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -348,11 +350,59 @@ def test_ncu_uses_the_requested_replay_and_requires_strict_application_matching(
         else:
             assert "--app-replay-mode" not in command
 
-    monkeypatch.setattr(profiles.subprocess, "run", inspect_command)
+    monkeypatch.setattr(profiles, "_run_ncu", inspect_command)
     monkeypatch.setattr(profiles, "read_ncu", lambda _path: {"profiled_kernels": 4})
     assert profiles.capture(
         "ncu", "ncu", ["runner"], tmp_path, ncu_timeout=720, ncu_replay=mode
     ) == {"status": "measured", "profiled_kernels": 4}
+
+
+def test_ncu_timeout_stops_orphaned_writer_before_returning(tmp_path):
+    fake_ncu = tmp_path / "fake-ncu"
+    marker = tmp_path / "writer-group"
+    gate = tmp_path / "write-late"
+    os.mkfifo(gate)
+    fake_ncu.write_text(
+        f"""#!{sys.executable}
+import os
+import signal
+import sys
+from pathlib import Path
+
+if os.fork():
+    signal.pause()
+else:
+    report = Path(sys.argv[sys.argv.index("--log-file") + 1])
+    report.write_text("partial report")
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    gate = os.open({str(gate)!r}, os.O_RDWR)
+    Path({str(marker)!r}).write_text(str(os.getpgrp()))
+    os.read(gate, 1)
+    os.close(gate)
+    with report.open("a") as stream:
+        stream.write("late row")
+"""
+    )
+    fake_ncu.chmod(0o700)
+
+    result = profiles.capture("ncu", str(fake_ncu), [], tmp_path, ncu_timeout=1)
+    try:
+        gate_writer = os.open(gate, os.O_WRONLY | os.O_NONBLOCK)
+    except OSError as exc:
+        assert exc.errno == errno.ENXIO  # There is no report-writing reader left.
+    else:
+        try:
+            os.write(
+                gate_writer, b"x"
+            )  # Release a surviving fake writer before failing.
+        finally:
+            os.close(gate_writer)
+        pytest.fail("ncu returned while its report writer was still alive")
+
+    assert int(marker.read_text()) == os.getpgrp()
+    assert result["status"] == "unavailable"
+    assert "timed out after 1 seconds" in result["reason"]
+    assert (tmp_path / "ncu.csv").read_text() == "partial report"
 
 
 def test_ncu_followup_fails_when_reused_nsys_kernel_count_differs(

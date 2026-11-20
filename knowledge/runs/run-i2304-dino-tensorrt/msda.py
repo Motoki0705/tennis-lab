@@ -16,7 +16,7 @@ PLUGIN_VERSION = "2"
 
 
 def sampling_names(graph, method, count):
-    op_type = PLUGIN if method == "plugin" else "GridSample"
+    op_type = {"grid": "GridSample", "partial": "GridSample", "plugin": PLUGIN}[method]
     nodes = [node for node in graph.node if node.op_type == op_type]
     names = {node.name for node in nodes}
     if len(nodes) != count or len(names) != count or "" in names:
@@ -24,21 +24,56 @@ def sampling_names(graph, method, count):
     return names
 
 
-def sampling_layers(details, names):
+def sampling_layers(details, names, *, method, precision="fp16"):
+    grid_formats = {"Half", "Float", "Bool"}
+    grid_outputs = (
+        grid_formats | {"fp16": set(), "int8": {"Int8"}, "fp8": {"FP8"}}[precision]
+    )
     layers = []
     seen = set()
     for layer in details["Layers"]:
-        matches = names.intersection(ONNX_LAYER.findall(layer.get("Metadata", "")))
-        if matches:
-            layers.append(
-                {
-                    "name": layer["Name"],
-                    "type": layer["LayerType"],
-                    "operations": sorted(matches),
-                    "inputs": [tensor["Format/Datatype"] for tensor in layer["Inputs"]],
-                }
+        matches = names.intersection(ONNX_LAYER.findall(layer.get("Metadata") or ""))
+        if not matches:
+            continue
+        kind = layer["LayerType"]
+        inputs = [tensor["Format/Datatype"] for tensor in layer["Inputs"]]
+        outputs = [tensor["Format/Datatype"] for tensor in layer["Outputs"]]
+        if method == "plugin":
+            # TensorRT folds the integer geometry into the plugin fields.
+            valid = (
+                precision == "fp16"
+                and kind == "custom_layer"
+                and PLUGIN in layer["Name"]
+                and len(matches) == 1
+                and matches.isdisjoint(seen)
+                and inputs == ["Half"] * 3
+                and outputs == ["Half"]
             )
-            seen.update(matches)
+        else:
+            # Fused GridSample kernels expose adjacent casts, masks and Q/DQ.
+            valid = (
+                method == "grid"
+                and kind == "kgen"
+                and "Half" in inputs
+                and set(inputs) <= grid_formats
+                and bool(outputs)
+                and set(outputs) <= grid_outputs
+            )
+        if not valid:
+            raise RuntimeError(
+                f"Unexpected {method} sampling layer {layer['Name']} at {precision}: "
+                f"{kind}, inputs {inputs}, outputs {outputs}"
+            )
+        layers.append(
+            {
+                "name": layer["Name"],
+                "type": kind,
+                "operations": sorted(matches),
+                "inputs": inputs,
+                "outputs": outputs,
+            }
+        )
+        seen.update(matches)
     if missing := names - seen:
         raise RuntimeError(
             f"Missing TensorRT layer evidence for ONNX sampling operations: {sorted(missing)}"

@@ -99,12 +99,14 @@ class DinoTRTContext(TensorRTContext):
 
 
 class TensorRTDino(DinoTRTContext):
-    def __init__(self, plan, shape):
+    def __init__(self, plan, shape, *, method):
+        if method not in {"grid", "plugin"}:
+            raise ValueError(f"Unknown DINO TensorRT sampling method: {method}")
         super().__init__(
             plan,
             input_shapes={INPUT_NAME: shape},
             output_shapes=OUTPUT_SHAPES,
-            init_plugins=True,
+            init_plugins=method == "plugin",
         )
         self.pixels = self.inputs[INPUT_NAME]
 
@@ -161,9 +163,10 @@ def measure(args):
         setup_cuda(memory)
         if args.condition in TRT_PRECISIONS:
             torch.cuda.set_stream(torch.cuda.Stream())
-            runner = TensorRTDino(args.plan, shape)
+            runner = TensorRTDino(args.plan, shape, method=args.method)
             settings = {
                 "backend": "TensorRT",
+                "msda_method": args.method,
                 "trt_nvtx_verbosity": runner.context.nvtx_verbosity.name,
                 "output_dtypes": {
                     key: str(value.dtype) for key, value in runner.outputs.items()
@@ -217,10 +220,14 @@ def main():
     parser.add_argument("--checkpoint", type=Path, default=CHECKPOINT)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--plan", type=Path)
+    parser.add_argument("--method", choices=("grid", "plugin"))
     parser.add_argument("--profile", action="store_true")
     args = parser.parse_args()
-    if (args.condition in TRT_PRECISIONS) != (args.plan is not None):
-        parser.error("Specify --plan only for TensorRT conditions")
+    is_trt = args.condition in TRT_PRECISIONS
+    if (args.plan is not None) != is_trt or (args.method is not None) != is_trt:
+        parser.error("Specify both --plan and --method for TensorRT conditions only")
+    if args.method == "plugin" and args.condition != "2":
+        parser.error("DINO plugin measurement is available for condition 2")
     require_queue()
     measure(args)
 
