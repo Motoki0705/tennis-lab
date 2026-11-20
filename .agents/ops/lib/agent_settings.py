@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import shlex
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -300,8 +301,9 @@ def command(
         return cmd
     # WSL drvfs CODEX_HOME cannot host the daemon's Unix socket. Keep the
     # supported CLI feature override on both initial and resumed invocations.
+    memory_autodream = settings["profile"] == "memory_autodream"
     cmd = ["codex", "--disable", "daemon_auto_start", "exec", "--cd", str(cwd)]
-    if mode == "read-only":
+    if mode == "read-only" and not memory_autodream:
         cmd += ["--sandbox", "read-only"]
     if session:
         cmd += ["resume"]
@@ -357,13 +359,47 @@ def command(
                     cmd += ["-c", f"mcp_servers.{name}.{key}=" + json.dumps(value)]
     if settings["profile"] == "review":
         cmd += ["-c", "web_search=" + json.dumps(settings["web_search"])]
-    if settings["profile"] == "memory_autodream":
+    if memory_autodream:
+        if session or read_dirs:
+            raise ValueError(
+                "memory_autodream requires a fresh turn with only the pinned checkout"
+            )
+        executable = shutil.which("codex")
+        if executable is None:
+            raise ValueError("memory_autodream requires the Codex CLI")
+        # The sandbox re-execs the CLI. Grant the exact executable, not its host home.
+        cmd[0] = str(Path(executable).resolve(strict=True))
+        roots = ", ".join(
+            f'{json.dumps(root, ensure_ascii=False)}="read"'
+            for root in dict.fromkeys((":minimal", str(cwd), cmd[0]))
+        )
         cmd += [
             "--skip-git-repo-check",
+            "--ignore-user-config",
+            "--ignore-rules",
+            "--strict-config",
+            "-c",
+            'default_permissions="memory_autodream"',
+            "-c",
+            f"permissions={{memory_autodream={{filesystem={{{roots}}},network={{enabled=false}}}}}}",
             "-c",
             'approval_policy="never"',
             "-c",
             'web_search="disabled"',
+            "-c",
+            "project_doc_max_bytes=0",
+            "-c",
+            'shell_environment_policy.inherit="none"',
+            "-c",
+            'shell_environment_policy.set.PATH="/usr/bin:/bin"',
+            "--disable",
+            "apps",
+            "--disable",
+            "plugins",
+            "--disable",
+            "hooks",
+            "--disable",
+            "memories",
         ]
     if settings["profile"] in {
         "review",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from collections import defaultdict
 from collections.abc import Callable
@@ -12,8 +13,16 @@ from hashlib import sha256
 from pathlib import Path, PurePosixPath
 
 from . import publish
-from .autodream_plan import Plan, Runner, parse_plan, run_agent
-from .autodream_state import STATE_FILE, Outcome, read_state, state_lock, write_state
+from .autodream_plan import DEFAULT_RUNNER_TIMEOUT, Plan, Runner, parse_plan, run_agent
+from .autodream_state import (
+    STATE_FILE,
+    Outcome,
+    State,
+    preserve_state,
+    read_state,
+    state_lock,
+    write_state,
+)
 from .git import Git, GitTree
 from .layout import (
     DEDICATED_PATH,
@@ -253,6 +262,7 @@ def consolidate(
     today: date,
     runner: Runner,
     log_dir: Path,
+    runner_timeout: float,
 ) -> Plan:
     context: dict[str, object] = {
         "today": today.isoformat(),
@@ -261,7 +271,9 @@ def consolidate(
         },
         "signals": asdict(signals),
     }
-    plan = parse_plan(runner(git, snapshot.base, context, log_dir=log_dir))
+    plan = parse_plan(
+        runner(git, snapshot.base, context, log_dir=log_dir, timeout=runner_timeout)
+    )
     for operation in plan["operations"]:
         if operation["op"] == "add":
             continue
@@ -292,6 +304,7 @@ def prune_and_index(
     remote: str,
     dry_run: bool,
     today: date,
+    guard: publish.PublicationGuard,
 ) -> publish.Publication | None:
     if plan["operations"]:
         return publish.publish_operations(
@@ -301,6 +314,7 @@ def prune_and_index(
             dry_run=dry_run,
             today=today,
             require_fresh=True,
+            guard=guard,
         )
     if signals.generated_drift:
         reason = (
@@ -315,12 +329,32 @@ def prune_and_index(
             dry_run=dry_run,
             today=today,
             require_fresh=True,
+            guard=guard,
         )
     return None
 
 
 def _local_now() -> datetime:
     return datetime.now().astimezone()
+
+
+def _confirmed_merge(
+    state: State,
+    number: int,
+    head: str,
+    clock: Callable[[], datetime],
+    cleanup_error: str | None,
+) -> State:
+    return replace(
+        state,
+        last_outcome="merged",
+        last_completed_at=clock().astimezone(UTC).isoformat(),
+        last_consolidated_sha=head,
+        last_pr=number,
+        last_merge_sha=head,
+        pending_publication=None,
+        branch_cleanup_error=cleanup_error,
+    )
 
 
 def run(
@@ -332,91 +366,143 @@ def run(
     force: bool = False,
     dry_run: bool = False,
     runner: Runner = run_agent,
+    runner_timeout: float = DEFAULT_RUNNER_TIMEOUT,
     clock: Callable[[], datetime] = _local_now,
 ) -> dict[str, object]:
     state_dir = state_dir.resolve()
     with state_lock(state_dir):
         state_file = state_dir / STATE_FILE
-        state = read_state(state_file)
         started = clock()
+        started_at = started.astimezone(UTC).isoformat()
+        try:
+            state = read_state(state_file)
+        except (OSError, ValueError) as exc:
+            backup = preserve_state(state_file)
+            error = f"Read State: {exc}; original preserved at {backup}; manual recovery required"
+            write_state(
+                state_file,
+                State(
+                    last_run_at=started_at,
+                    last_outcome="failed",
+                    last_error=error,
+                    state_backup=str(backup),
+                ),
+            )
+            raise ValueError(error) from exc
         today = started.date()
         state = replace(
             state,
-            last_run_at=started.astimezone(UTC).isoformat(),
+            last_run_at=started_at,
             last_trigger=None,
             last_error=None,
         )
-        phase = "Orient"
+        phase = "Read State"
         report: dict[str, object] = {"dry_run": dry_run}
         outcome: Outcome = "skipped_trigger"
+        completion: State | None = None
+
+        def record_intent(intent: publish.PublicationIntent | None) -> None:
+            nonlocal state
+            state = replace(state, pending_publication=intent)
+            if intent is not None:
+                state = replace(state, last_outcome="publishing")
+                write_state(state_file, state)
+
         try:
+            if state.state_backup is not None:
+                raise ValueError(
+                    f"manual recovery required; original preserved at {state.state_backup}"
+                )
+            if not math.isfinite(runner_timeout) or runner_timeout <= 0:
+                raise ValueError("runner timeout must be finite and positive")
             git = Git(repo)
-            snapshot = orient(git, remote)
-            report["base"] = snapshot.base
-            phase = "Gather Signal"
-            signals = gather_signal(
-                git, snapshot, state.last_consolidated_sha, today=today
-            )
-            previous = state.last_completed_at
-            trigger = decide_trigger(
-                elapsed=started - datetime.fromisoformat(previous)
-                if previous
-                else None,
-                main_commits=signals.main_commits,
-                memory_commits=signals.memory_commits,
-                report=signals.audit,
-                generated_drift=len(signals.generated_drift),
-                thresholds=thresholds,
-                force=force,
-            )
-            state = replace(state, last_trigger=asdict(trigger))
-            if dry_run:
-                report.update(signals=asdict(signals), plan=None, validation=None)
-            if trigger.reasons:
-                phase = "Consolidate"
-                plan = consolidate(
-                    git, snapshot, signals, today, runner, state_dir / "agent-runs"
+            if (pending := state.pending_publication) is not None:
+                phase = "Recover Publication"
+                cleanup_error = publish.reconcile_publication(
+                    git, remote, pending, dry_run=dry_run
                 )
-                phase = "Prune & Index"
-                publication = prune_and_index(
-                    repo,
-                    plan,
-                    signals,
-                    remote=remote,
-                    dry_run=dry_run,
-                    today=today,
+                report.update(
+                    recovered=not dry_run, confirmed_publication=asdict(pending)
                 )
-                report["publication"] = asdict(publication) if publication else None
                 if dry_run:
                     outcome = "dry_run"
-                    report.update(plan=plan, validation="passed")
-                elif publication is None:
-                    outcome = "noop"
                 else:
-                    if publication.pr is None or publication.merge_sha is None:
-                        raise ValueError("publisher did not confirm a merge")
-                    state = replace(
-                        state,
-                        last_pr=publication.pr,
-                        last_merge_sha=publication.merge_sha,
+                    assert pending.pr is not None  # PR identity was confirmed above.
+                    completion = _confirmed_merge(
+                        state, pending.pr, pending.head, clock, cleanup_error
                     )
-                    if publication.branch_cleanup_error:
-                        raise ValueError(
-                            f"PR #{publication.pr} merged; branch cleanup failed ({publication.branch_cleanup_error})"
+            else:
+                phase = "Orient"
+                snapshot = orient(git, remote)
+                report["base"] = snapshot.base
+                phase = "Gather Signal"
+                signals = gather_signal(
+                    git, snapshot, state.last_consolidated_sha, today=today
+                )
+                previous = state.last_completed_at
+                trigger = decide_trigger(
+                    elapsed=started - datetime.fromisoformat(previous)
+                    if previous
+                    else None,
+                    main_commits=signals.main_commits,
+                    memory_commits=signals.memory_commits,
+                    report=signals.audit,
+                    generated_drift=len(signals.generated_drift),
+                    thresholds=thresholds,
+                    force=force,
+                )
+                state = replace(state, last_trigger=asdict(trigger))
+                if dry_run:
+                    report.update(signals=asdict(signals), plan=None, validation=None)
+                if trigger.reasons:
+                    phase = "Consolidate"
+                    plan = consolidate(
+                        git,
+                        snapshot,
+                        signals,
+                        today,
+                        runner,
+                        state_dir / "agent-runs",
+                        runner_timeout,
+                    )
+                    phase = "Prune & Index"
+                    publication = prune_and_index(
+                        repo,
+                        plan,
+                        signals,
+                        remote=remote,
+                        dry_run=dry_run,
+                        today=today,
+                        guard=publish.PublicationGuard(snapshot.base, record_intent),
+                    )
+                    report["publication"] = asdict(publication) if publication else None
+                    if dry_run:
+                        outcome = "dry_run"
+                        report.update(plan=plan, validation="passed")
+                    elif publication is None:
+                        completion = replace(
+                            state,
+                            last_outcome="noop",
+                            last_completed_at=clock().astimezone(UTC).isoformat(),
+                            last_consolidated_sha=snapshot.base,
                         )
-                    outcome = "merged"
-                if not dry_run:
-                    state = replace(
-                        state,
-                        last_completed_at=clock().astimezone(UTC).isoformat(),
-                        last_consolidated_sha=snapshot.base,
-                    )
+                    else:
+                        if publication.pr is None or publication.merge_sha is None:
+                            raise ValueError("publisher did not confirm a merge")
+                        completion = _confirmed_merge(
+                            state,
+                            publication.pr,
+                            publication.merge_sha,
+                            clock,
+                            publication.branch_cleanup_error,
+                        )
         except Exception as exc:
             error = f"{phase}: {exc}"
             write_state(
                 state_file, replace(state, last_outcome="failed", last_error=error)
             )
             raise ValueError(error) from exc
-        state = replace(state, last_outcome=outcome)
-        write_state(state_file, state)
-        return {**report, **asdict(state)}
+        # Keep the prior completion and intent until the new outcome is durable.
+        final_state = completion or replace(state, last_outcome=outcome)
+        write_state(state_file, final_state)
+        return {**report, **asdict(final_state)}

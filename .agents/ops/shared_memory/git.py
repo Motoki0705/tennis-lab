@@ -103,6 +103,16 @@ class Git:
             raise ValueError("remote did not return exactly one main ref")
         return _sha(sha)
 
+    def remote_branch(self, remote: str, branch: str) -> str | None:
+        ref = f"refs/heads/{branch}"
+        result = self.run("ls-remote", "--refs", "--", remote, ref)
+        if not result:
+            return None
+        sha, separator, found = result.partition(b"\t")
+        if separator != b"\t" or found != ref.encode() + b"\n":
+            raise ValueError("remote did not return exactly the requested branch")
+        return _sha(sha)
+
     def fetch_main(self, remote: str) -> str:
         sha = self.remote_main(remote)
         self.run(

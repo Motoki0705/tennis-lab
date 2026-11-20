@@ -20,10 +20,15 @@ if __name__ == "__main__":
 from lib.checkout_lock import CHECKOUT_ROOT_ENV, state_root  # noqa: E402
 
 from shared_memory.autodream import DEFAULT_THRESHOLDS, Thresholds, run  # noqa: E402
+from shared_memory.autodream_plan import DEFAULT_RUNNER_TIMEOUT  # noqa: E402
+
+
+class JobInterrupted(RuntimeError):
+    """Keep a requested stop distinct from a retryable EINTR in subprocess I/O."""
 
 
 def _interrupt(signum: int, _frame: FrameType | None) -> NoReturn:
-    raise InterruptedError(f"interrupted by {signal.Signals(signum).name}")
+    raise JobInterrupted(f"interrupted by {signal.Signals(signum).name}")
 
 
 def main() -> int:
@@ -40,6 +45,7 @@ def main() -> int:
     )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--runner-timeout", type=float, default=DEFAULT_RUNNER_TIMEOUT)
     args = parser.parse_args()
     previous = {
         sig: signal.signal(sig, _interrupt) for sig in (signal.SIGINT, signal.SIGTERM)
@@ -54,8 +60,9 @@ def main() -> int:
             ),
             force=args.force,
             dry_run=args.dry_run,
+            runner_timeout=args.runner_timeout,
         )
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, JobInterrupted) as exc:
         print(f"memory-autodream: {exc}", file=sys.stderr)
         return 1
     finally:

@@ -681,8 +681,8 @@ Claude Code 2.1.308の `claude --help` でツールアクセス用の追加デ�
 この組合せで、既存の `--tools Read Grep Glob --permission-mode dontAsk` のまま追加先を読む。
 明示的なdeny/ask規則やhooks等による拒否はCLIの規則に従う。writeでの編集許可も既存modeに従う。
 
-Codexはread-only/writeとも追加引数を付けない。
-read-only sandboxはOSの権限で読めるファイルシステム全体を読み取れる前提を使う。
+Codexはread-only/writeとも `--read-dir` から追加引数を組み立てない。
+既定のread-only sandboxはOSの権限で読めるファイルシステム全体を読み取れる前提を使う。
 公式 [Sandbox read access](https://learn.chatgpt.com/docs/app-server#sandbox-read-access-readonlyaccess)
 では `readOnly.access` の既定は `fullAccess`、限定する場合は `restricted` と読取rootを指定する契約である。
 read-dirによってCodexのwriteに追加の書込権限は与えない。
@@ -697,6 +697,17 @@ cwd/branch等と同様に契約不一致として終了値2で拒否する。rea
 子の担当identityは子CLI自身が設定する値を使い、親の値やPIDを代用しない。
 `AGENT_RUNTIME_RUN_DIR` と `AGENT_RUNTIME_TASK_ID` は子のローカル記録への参照であり、
 担当identityや起動権限ではない。実CLIが環境を生成すること自体の検証は実機検証で行う。
+
+### AutoDreamのCodex隔離
+
+`memory_autodream` は固定した一時展開で新規ターンを起動する。Linux の Codex CLI の
+名前付き permissions profile を `--strict-config` で指定する。読み取りを許可するのは
+一時展開、CLI の最小実行環境（`:minimal`）、sandbox の再実行に使う Codex 実行ファイル。
+モデルのツールはこの範囲を読み取り専用で参照し、ネットワークアクセスは無効。
+
+runner は限定した環境と一時的な Codex home を使う。既存のファイル認証を参照するか設定済みの
+`OPENAI_API_KEY` を受け取り、ツールには親の環境を継承しない。ホストの設定・指示・memory、
+plugin、hook、app は読み込ませない。隔離設定を解釈できる CLI が必要で、設定エラーはジョブの失敗になる。
 
 ## 記録と結果JSON（schema_version 1）
 

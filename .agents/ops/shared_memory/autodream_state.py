@@ -12,14 +12,19 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Literal
+from uuid import uuid4
 
 from .git import is_sha
 from .operations import load_json
+from .publish import PublicationIntent
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 STATE_FILE = "autodream_state.json"
 LOCK_FILE = "autodream.lock"
-Outcome = Literal["merged", "noop", "skipped_trigger", "dry_run", "failed"]
+Outcome = Literal[
+    "publishing", "merged", "noop", "skipped_trigger", "dry_run", "failed"
+]
+VERSION_2_FIELDS = {"pending_publication", "branch_cleanup_error", "state_backup"}
 
 
 @dataclass(frozen=True)
@@ -33,6 +38,9 @@ class State:
     last_pr: int | None = None
     last_merge_sha: str | None = None
     last_error: str | None = None
+    pending_publication: PublicationIntent | None = None
+    branch_cleanup_error: str | None = None
+    state_backup: str | None = None
 
 
 def _timestamp(value: object) -> bool:
@@ -53,12 +61,21 @@ def read_state(path: Path) -> State:
     if (
         not isinstance(value, dict)
         or type(value.get("schema_version")) is not int
-        or value["schema_version"] != SCHEMA_VERSION
+        or value["schema_version"] not in (1, SCHEMA_VERSION)
     ):
         raise ValueError(f"{path}: unsupported AutoDream state schema")
     try:
-        if value.keys() != {item.name for item in fields(State)}:
+        keys = {item.name for item in fields(State)}
+        if value["schema_version"] == 1:
+            keys -= VERSION_2_FIELDS
+        if value.keys() != keys:
             raise ValueError()
+        value["schema_version"] = SCHEMA_VERSION
+        if value.get("pending_publication") is not None:
+            pending = value["pending_publication"]
+            if not isinstance(pending, dict):
+                raise ValueError()
+            value["pending_publication"] = PublicationIntent(**pending)
         state = State(**value)
         has_error = isinstance(state.last_error, str) and bool(state.last_error)
         if (
@@ -73,7 +90,14 @@ def read_state(path: Path) -> State:
                 )
             )
             or state.last_outcome
-            not in ("merged", "noop", "skipped_trigger", "dry_run", "failed")
+            not in (
+                "publishing",
+                "merged",
+                "noop",
+                "skipped_trigger",
+                "dry_run",
+                "failed",
+            )
             or (
                 state.last_trigger is not None
                 and not isinstance(state.last_trigger, dict)
@@ -89,11 +113,47 @@ def read_state(path: Path) -> State:
             )
             or ((state.last_outcome == "failed") != has_error)
             or (state.last_error is not None and not has_error)
+            or (
+                state.last_outcome == "publishing" and state.pending_publication is None
+            )
+            or (
+                state.pending_publication is not None
+                and state.last_outcome not in ("publishing", "failed", "dry_run")
+            )
+            or (
+                state.branch_cleanup_error is not None
+                and not isinstance(state.branch_cleanup_error, str)
+            )
+            or (
+                state.state_backup is not None
+                and (
+                    not isinstance(state.state_backup, str)
+                    or not Path(state.state_backup).is_absolute()
+                    or state.pending_publication is not None
+                    or state.last_outcome != "failed"
+                )
+            )
         ):
             raise ValueError()
-    except ValueError:
+    except (TypeError, ValueError):
         raise ValueError(f"{path}: invalid AutoDream state fields") from None
     return state
+
+
+def _sync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def preserve_state(path: Path) -> Path:
+    """Keep the original inode before replacing the live status atomically."""
+    backup = path.with_name(f"{path.name}.corrupt-{uuid4().hex}")
+    os.link(path, backup, follow_symlinks=False)
+    _sync_directory(path.parent)
+    return backup
 
 
 def write_state(path: Path, state: State) -> None:
@@ -112,11 +172,7 @@ def write_state(path: Path, state: State) -> None:
             stream.flush()
             os.fsync(stream.fileno())
         temporary.replace(path)
-        descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
-        try:
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
+        _sync_directory(path.parent)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)

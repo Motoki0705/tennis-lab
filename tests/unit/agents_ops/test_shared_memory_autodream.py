@@ -181,7 +181,7 @@ def test_plan_never_extracts_or_repairs_malformed_json(raw: str) -> None:
     ("raw", "message"),
     [
         ("{", "invalid AutoDream state JSON"),
-        ('{"schema_version":2}', "unsupported AutoDream state schema"),
+        ('{"schema_version":99}', "unsupported AutoDream state schema"),
         ('{"schema_version":true}', "unsupported AutoDream state schema"),
         ('{"schema_version":1}', "invalid AutoDream state fields"),
     ],
@@ -192,6 +192,29 @@ def test_bad_state_is_preserved(tmp_path: Path, raw: str, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         states.read_state(state)
     assert state.read_text() == raw
+
+
+def test_version_one_state_preserves_completed_baseline(tmp_path: Path) -> None:
+    path = tmp_path / states.STATE_FILE
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "last_run_at": "2026-01-03T00:00:00+00:00",
+                "last_completed_at": "2026-01-02T00:00:00+00:00",
+                "last_consolidated_sha": "a" * 40,
+                "last_outcome": "skipped_trigger",
+                "last_trigger": {},
+                "last_pr": None,
+                "last_merge_sha": None,
+                "last_error": None,
+            }
+        )
+    )
+    state = states.read_state(path)
+    assert state.schema_version == 2 and state.pending_publication is None
+    assert state.last_completed_at == "2026-01-02T00:00:00+00:00"
+    assert state.last_consolidated_sha == "a" * 40
 
 
 def test_state_replace_failure_preserves_previous_record(

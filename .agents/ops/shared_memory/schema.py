@@ -229,6 +229,17 @@ def parse_entry(layer: str, filename: str, text: str, *, today: date) -> Entry:
     if not is_entry_filename(filename):
         raise ValueError("entry filename must be kebab-case.md")
     data, _ = read_frontmatter(text)
+    if "citations" not in data:
+        raise CitationError("missing frontmatter fields: citations")
+    if not isinstance(data["citations"], list):
+        raise CitationError("citations must be a list")
+    try:
+        citations = tuple(
+            _citation(citation, f"citations[{index}]")
+            for index, citation in enumerate(data["citations"])
+        )
+    except ValueError as exc:
+        raise CitationError(str(exc)) from None
     if missing := REQUIRED_KEYS - data.keys():
         raise ValueError(f"missing frontmatter fields: {', '.join(sorted(missing))}")
     if "type" in data:
@@ -244,15 +255,6 @@ def parse_entry(layer: str, filename: str, text: str, *, today: date) -> Entry:
     verified = iso_date(data["last_verified"], "last_verified")
     if not created <= verified <= today:
         raise ValueError("need created <= last_verified <= today")
-    if not isinstance(data["citations"], list):
-        raise CitationError("citations must be a list")
-    try:
-        citations = tuple(
-            _citation(citation, f"citations[{index}]")
-            for index, citation in enumerate(data["citations"])
-        )
-    except ValueError as exc:
-        raise CitationError(str(exc)) from None
     return Entry(
         layer=layer,
         filename=filename,

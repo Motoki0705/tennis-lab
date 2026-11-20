@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import tarfile
 from collections.abc import Mapping
 from pathlib import Path
@@ -18,6 +20,8 @@ from .operations import load_json, publication_reason
 from .schema import APPLIES_TO, ENTRY_FIELDS
 
 AGENT_EXEC = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
+DEFAULT_RUNNER_TIMEOUT = 30 * 60
+RUNNER_CLEANUP_ALLOWANCE = 15
 
 
 class Plan(TypedDict):
@@ -28,7 +32,13 @@ class Plan(TypedDict):
 
 class Runner(Protocol):
     def __call__(
-        self, git: Git, base: str, context: Mapping[str, object], *, log_dir: Path
+        self,
+        git: Git,
+        base: str,
+        context: Mapping[str, object],
+        *,
+        log_dir: Path,
+        timeout: float,
     ) -> str: ...
 
 
@@ -121,11 +131,44 @@ def _omit_nulls(value: object) -> object:
     return value
 
 
+def _runner_environment(git: Git, runtime_home: Path) -> dict[str, str]:
+    codex = shutil.which("codex")
+    if codex is None:
+        raise ValueError("memory_autodream requires the Codex CLI")
+    launcher = Path(codex).absolute()
+    host_home = Path.home().resolve()
+    auth_home = Path(os.environ.get("CODEX_HOME") or host_home / ".codex").resolve()
+    auth = (auth_home / "auth.json").resolve()
+    if any(
+        path.is_relative_to(git.cwd)
+        for path in (launcher, launcher.resolve(), auth, host_home)
+    ):
+        raise ValueError(
+            "Codex runtime and authentication must be outside the source checkout"
+        )
+    if auth.is_file():
+        # Use the existing login, including the CLI's normal token refresh behaviour.
+        (runtime_home / "auth.json").symlink_to(auth)
+    env = {
+        "PATH": f"{launcher.parent}{os.pathsep}{os.defpath}",
+        "LANG": "C.UTF-8",
+        "HOME": str(host_home),
+        "CODEX_HOME": str(runtime_home),
+    }
+    if key := os.environ.get("OPENAI_API_KEY"):
+        env["OPENAI_API_KEY"] = key
+    return env
+
+
 def run_agent(
-    git: Git, base: str, context: Mapping[str, object], *, log_dir: Path
+    git: Git, base: str, context: Mapping[str, object], *, log_dir: Path, timeout: float
 ) -> str:
     run_dir = log_dir / uuid4().hex
-    with TemporaryDirectory(prefix="memory-autodream-") as temporary:
+    log_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with (
+        TemporaryDirectory(prefix="memory-autodream-") as temporary,
+        TemporaryDirectory(prefix=".codex-", dir=log_dir) as runtime_home,
+    ):
         root = Path(temporary)
         checkout = root / "checkout"
         checkout.mkdir()
@@ -164,10 +207,13 @@ def run_agent(
                     str(schema_file),
                     "--run-dir",
                     str(run_dir),
+                    "--timeout",
+                    str(timeout),
                 ],
                 cwd=checkout,
-                env=git.env,
-                timeout=None,
+                env=_runner_environment(git, Path(runtime_home)),
+                timeout=timeout + RUNNER_CLEANUP_ALLOWANCE,
+                reap_descendants=True,
             )
         except CommandError as exc:
             raise ValueError(

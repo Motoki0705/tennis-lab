@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
-from .git import Git, GitTree, diff_changes
+from .git import Git, GitTree, diff_changes, is_sha
 from .github import GitHub, Pull, RefUpdateRejected
 from .operations import (
     Operation,
@@ -47,6 +49,43 @@ class Publication:
 
 
 @dataclass(frozen=True)
+class PublicationIntent:
+    repository: str
+    base: str
+    head: str
+    branch: str
+    operation: Literal["batch", "repair_index"]
+    pr: int | None = None
+    stage: Literal["prepared", "advancing"] = "prepared"
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.repository, str)
+            or not re.fullmatch(
+                r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+", self.repository
+            )
+            or not is_sha(self.base)
+            or not is_sha(self.head)
+            or self.base == self.head
+            or not isinstance(self.branch, str)
+            or not re.fullmatch(
+                r"shared-memory/[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}", self.branch
+            )
+            or self.operation not in ("batch", "repair_index")
+            or self.stage not in ("prepared", "advancing")
+            or (self.pr is None and self.stage == "advancing")
+            or (self.pr is not None and (type(self.pr) is not int or self.pr < 1))
+        ):
+            raise ValueError("invalid pending publication identity or stage")
+
+
+@dataclass(frozen=True)
+class PublicationGuard:
+    base: str
+    record_intent: Callable[[PublicationIntent | None], None]
+
+
+@dataclass(frozen=True)
 class _Prepared:
     base: str
     head: str
@@ -66,8 +105,13 @@ def _prepare(
     retry_reason: str,
     *,
     require_fresh: bool,
+    expected_base: str | None,
 ) -> _Prepared:
     base = git.fetch_main(remote)
+    if expected_base is not None and base != expected_base:
+        raise ValueError(
+            "remote main changed since the observed snapshot; replan AutoDream"
+        )
     if previous_base is not None:
         if base == previous_base:
             raise ValueError(f"{retry_reason}; remote main has not advanced")
@@ -135,7 +179,12 @@ def _body(
 
 
 def _advance_checked(
-    github: GitHub, number: int, branch: str, body: str, candidate: _Prepared
+    github: GitHub,
+    number: int,
+    branch: str,
+    body: str,
+    candidate: _Prepared,
+    before_advance: Callable[[], None],
 ) -> None:
     def verify_state() -> Pull:
         pull = github.pull(number, branch, candidate.head, body)
@@ -150,6 +199,7 @@ def _advance_checked(
     verify_state()
     github.verify_files(number, candidate.files)
     pull = verify_state()
+    before_advance()
     try:
         github.advance_main(pull.repository_id, branch, candidate.base, candidate.head)
     except RefUpdateRejected as exc:
@@ -164,6 +214,7 @@ def publish_operations(
     dry_run: bool = False,
     today: date | None = None,
     require_fresh: bool = False,
+    guard: PublicationGuard | None = None,
 ) -> Publication:
     """Validate, publish and merge a batch, raising on refused or uncertain steps."""
     today = today or date.today()
@@ -174,6 +225,7 @@ def publish_operations(
         remote,
         dry_run,
         require_fresh=require_fresh,
+        guard=guard,
     )
 
 
@@ -185,6 +237,7 @@ def publish_index_repair(
     dry_run: bool = False,
     today: date | None = None,
     require_fresh: bool = False,
+    guard: PublicationGuard | None = None,
 ) -> Publication:
     """Publish only regenerated documents when the latest main has a repair diff."""
     return _publish(
@@ -195,6 +248,7 @@ def publish_index_repair(
         dry_run,
         repair_reason=publication_reason(reason),
         require_fresh=require_fresh,
+        guard=guard,
     )
 
 
@@ -206,6 +260,7 @@ def _publish(
     dry_run: bool,
     *,
     require_fresh: bool,
+    guard: PublicationGuard | None,
     repair_reason: str | None = None,
 ) -> Publication:
     summaries = tuple(
@@ -219,12 +274,20 @@ def _publish(
     retry_reason = ""
     number = None
     push_attempted = False
+    intent: PublicationIntent | None = None
+    advancing = False
     old_body = ""
     retries = 0
 
     def verify_remote() -> None:
         if git.github_repo(remote).casefold() != github.repo.casefold():
             raise ValueError("configured remote changed during publication")
+
+    def begin_advance() -> None:
+        nonlocal advancing
+        if guard is not None and intent is not None:
+            guard.record_intent(replace(intent, stage="advancing"))
+        advancing = True
 
     try:
         while True:
@@ -237,6 +300,7 @@ def _publish(
                 previous.base if previous else None,
                 retry_reason,
                 require_fresh=require_fresh,
+                expected_base=guard.base if guard is not None else None,
             )
             result = Publication(
                 dry_run,
@@ -251,6 +315,15 @@ def _publish(
             if previous is not None and number is not None:
                 github.pull(number, branch, previous.head, old_body)
             verify_remote()
+            if guard is not None:
+                intent = PublicationIntent(
+                    github.repo,
+                    candidate.base,
+                    candidate.head,
+                    branch,
+                    "repair_index" if repair_reason is not None else "batch",
+                )
+                guard.record_intent(intent)
             push_attempted = True
             git.push(
                 remote,
@@ -261,11 +334,19 @@ def _publish(
             body = _body(checked, candidate.files, repair_reason)
             if number is None:
                 number = github.create(branch, body)
+                if guard is not None and intent is not None:
+                    intent = replace(intent, pr=number)
+                    guard.record_intent(intent)
             elif body != old_body:
                 github.update_body(number, body)
             try:
-                _advance_checked(github, number, branch, body, candidate)
+                _advance_checked(github, number, branch, body, candidate, begin_advance)
             except _Retry as exc:
+                advancing = False
+                if guard is not None:
+                    raise ValueError(
+                        f"{exc}; replan AutoDream from the latest main"
+                    ) from None
                 if retries == MAX_RETRIES:
                     raise ValueError(
                         f"{exc}; retry limit reached ({MAX_RETRIES})"
@@ -286,6 +367,15 @@ def _publish(
                 f"main update acknowledged but merge confirmation failed: {exc}"
             ) from None
     except (OSError, ValueError) as exc:
+        # A definite pre-merge rejection cannot change main. Keep the intent
+        # across interruptions and any ambiguous response to the ref update.
+        if (
+            guard is not None
+            and intent is not None
+            and not advancing
+            and not isinstance(exc, InterruptedError)
+        ):
+            guard.record_intent(None)
         if not push_attempted:
             raise
         identity = f"PR #{number}, {branch}" if number is not None else branch
@@ -305,3 +395,34 @@ def _publish(
         retries=retries,
         branch_cleanup_error=cleanup_error,
     )
+
+
+def reconcile_publication(
+    git: Git, remote: str, intent: PublicationIntent, *, dry_run: bool = False
+) -> str | None:
+    """Confirm a pending merge and, on a live run, clean up its exact branch."""
+    repository = git.github_repo(remote)
+    if repository.casefold() != intent.repository.casefold():
+        raise ValueError("configured remote does not match the pending publication")
+    main = git.fetch_main(remote)
+    github = GitHub(repository)
+    if intent.pr is None:
+        raise ValueError(
+            f"pending publication has no confirmed PR number for {intent.branch}; manual reconciliation required"
+        )
+    pull = github.pull(intent.pr, intent.branch, intent.head, None, merged=None)
+    if not git.is_ancestor(intent.head, main) or not pull.merged:
+        raise ValueError(
+            f"pending PR #{intent.pr} head {intent.head} is not confirmed on main; "
+            "manual reconciliation required before another publication"
+        )
+    if dry_run:
+        return None
+    try:
+        if git.github_repo(remote).casefold() != repository.casefold():
+            raise ValueError("configured remote changed during publication recovery")
+        if git.remote_branch(remote, intent.branch) is not None:
+            git.push(remote, intent.branch, "", expected=intent.head)
+    except (OSError, ValueError) as exc:
+        return f"{intent.branch}: {exc}"
+    return None
