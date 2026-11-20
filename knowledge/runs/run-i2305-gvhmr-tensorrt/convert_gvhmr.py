@@ -6,12 +6,20 @@ import re
 from collections import Counter
 from pathlib import Path
 
+import numpy as np
 import torch
 from benchmark import write_json
 from convert import TRT_PRECISIONS, build_engine, require_queue
 from inputs import sha256_file
 from locked_inputs import HERE, checked_segments
-from model import INPUT_WIDTHS, OUTPUT_WIDTHS, PLAN, dynamic_attention, load_network
+from model import (
+    INPUT_WIDTHS,
+    OUTPUT_WIDTHS,
+    PLAN,
+    dynamic_attention,
+    input_shapes,
+    load_network,
+)
 from torch.onnx import symbolic_helper, symbolic_opset9, symbolic_opset11
 
 MAJOR_TYPES = {"MatMul", "Gemm", "Conv"}
@@ -127,31 +135,39 @@ def major_operations(model, source):
     return {node.name: node.op_type for node in nodes}
 
 
+def calibration_inputs(segments):
+    """Pack the equal-length PTQ sequences along the provider's sample axis."""
+    if not segments:
+        raise ValueError("GVHMR PTQ requires locked calibration sequences")
+    frames = int(segments[0]["length"][0])
+    shapes = input_shapes(frames)
+    for segment in segments:
+        if segment["length"].tolist() != [frames] or any(
+            segment[name].shape != dims for name, dims in shapes.items()
+        ):
+            raise ValueError(
+                "The calibration provider requires one locked sequence length"
+            )
+    data = {
+        name: np.concatenate([segment[name] for segment in segments], axis=0)
+        for name in shapes
+    }
+    spec = ",".join(
+        f"{name}:{'x'.join(map(str, dims))}" for name, dims in shapes.items()
+    )
+    return data, spec
+
+
 def quantize_graph(graph, target, mode, stages, expected, settings):
     import onnx
     from modelopt.onnx.quantization.quantize import quantize
-    from onnxruntime.quantization import CalibrationDataReader
 
-    class SegmentCalibration(CalibrationDataReader):
-        def __init__(self):
-            self.sequences = [
-                {name: arrays[name] for name in INPUT_WIDTHS} for arrays in stages
-            ]
-            self.rewind()
-
-        def get_next(self):
-            return next(self.iterator, None)
-
-        def rewind(self):
-            self.iterator = iter(self.sequences)
-
-        def __len__(self):
-            return len(self.sequences)
-
+    data, calibration_shapes = calibration_inputs(stages)
     quantize(
         str(graph),
         quantize_mode=mode,
-        calibration_data_reader=SegmentCalibration(),
+        calibration_data=data,
+        calibration_shapes=calibration_shapes,
         nodes_to_quantize=[name for name, dtype in expected.items() if dtype == mode],
         op_types_to_quantize=["MatMul", "Gemm"],
         calibration_method=settings["calibration_method"],
@@ -181,6 +197,7 @@ def quantize_graph(graph, target, mode, stages, expected, settings):
     return {
         "mode": mode,
         "sequences": len(stages),
+        "calibration_input_shapes": calibration_shapes,
         "frames": sum(int(stage["length"][0]) for stage in stages),
         "Q": sum(node.op_type == "QuantizeLinear" for node in quantized.graph.node),
         "DQ": sum(node.op_type == "DequantizeLinear" for node in quantized.graph.node),

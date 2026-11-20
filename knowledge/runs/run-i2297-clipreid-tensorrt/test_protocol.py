@@ -11,7 +11,7 @@ from pathlib import Path
 import benchmark
 import numpy as np
 import pytest
-from convert import PLAN, verify_compute_precision
+from convert import PLAN, set_profile_shapes, verify_compute_precision
 from dino_accuracy import compare_dino_frame
 from inputs import CAMERAS, check_split, sha256_file
 from profiles import (
@@ -121,6 +121,33 @@ def test_engine_inspection_requires_every_declared_onnx_operation():
         verify_compute_precision(
             {"Layers": [layer]}, "fp16", expected_operations=expected
         )
+
+
+def test_profile_uses_shape_readback_instead_of_set_shape_return():
+    class Profile:
+        def __init__(self):
+            self.shapes = {}
+
+        def set_shape(self, name, minimum, optimum, maximum):
+            self.shapes[name] = (minimum, optimum, maximum)
+
+        def get_shape(self, name):
+            return list(self.shapes[name])
+
+    shapes = {
+        "length": [[1], [1], [1]],
+        "obs": [[1, 117, 17, 3], [1, 145, 17, 3], [1, 177, 17, 3]],
+    }
+    profile = Profile()
+    set_profile_shapes(profile, shapes)
+    assert profile.get_shape("obs") == [
+        (1, 117, 17, 3),
+        (1, 145, 17, 3),
+        (1, 177, 17, 3),
+    ]
+    profile.get_shape = lambda _: []
+    with pytest.raises(ValueError, match="TensorRT profile length"):
+        set_profile_shapes(profile, shapes)
 
 
 def test_nsys_counts_only_real_kernels_inside_the_range(tmp_path):

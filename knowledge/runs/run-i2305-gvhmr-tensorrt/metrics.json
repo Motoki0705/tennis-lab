@@ -808,7 +808,7 @@
         }
       },
       "177": {
-        "status": "profile_incomplete",
+        "status": "measured",
         "queue": {
           "job": "i2305-gvhmr-0-l177-r2",
           "queue_run_id": "0-8204853008604397544_2026-11-20T03-56-31-395602455Z_611210_i2305-gvhmr-0-l177-r2",
@@ -1593,12 +1593,29 @@
               "splitKreduce_kernel": 2
             }
           },
+          "nsys_reused": true,
           "ncu": {
-            "status": "unavailable",
-            "reason": "kernel replay timed out after 900 seconds"
+            "status": "measured",
+            "profiled_kernels": 867,
+            "dram_read_bytes": 345229056,
+            "dram_write_bytes": 0,
+            "tensor_active_pct_time_weighted": 0.0,
+            "stall_pct_time_weighted": {
+              "long_scoreboard": 7.09223797169103,
+              "short_scoreboard": 7.261722680236807,
+              "lg_throttle": 1.0009016598715788,
+              "mio_throttle": 22.510427138950405
+            }
           },
-          "queue_run_id": "0-8204853008604397544_2026-11-20T03-56-31-395602455Z_611210_i2305-gvhmr-0-l177-r2",
+          "queue_run_id": "0-8204850209114937734_2026-11-20T04-43-10-885062265Z_1233300_i2305-gvhmr-ncu-0-l177-r3",
           "measurement_sha256": "36edb4c20f9fb61dc8ce75c5ae644a5bb1c28d239cde1c519999f5ec9053d3cb"
+        },
+        "profile_followup_queue": {
+          "job": "i2305-gvhmr-ncu-0-l177-r3",
+          "queue_run_id": "0-8204850209114937734_2026-11-20T04-43-10-885062265Z_1233300_i2305-gvhmr-ncu-0-l177-r3",
+          "queue_log": ".training_queue/logs/0-8204850209114937734_2026-11-20T04-43-10-885062265Z_1233300_i2305-gvhmr-ncu-0-l177-r3.log",
+          "queue_log_sha256": "b9c8fa3509273ab856b6ef80e01bf8b3bd8ef3312ca205451022b9b7dcc01ab5",
+          "terminal_state": "done"
         }
       }
     },

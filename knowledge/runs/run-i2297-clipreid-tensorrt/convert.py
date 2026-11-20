@@ -129,6 +129,17 @@ def verify_compute_precision(details, required_precision, *, expected_operations
     return evidence
 
 
+def set_profile_shapes(profile, profile_shapes):
+    for name, shapes in profile_shapes.items():
+        expected = tuple(tuple(shape) for shape in shapes)
+        profile.set_shape(name, *expected)
+        actual = tuple(tuple(shape) for shape in profile.get_shape(name))
+        if actual != expected:
+            raise ValueError(
+                f"TensorRT profile {name}={actual} differs from {expected}"
+            )
+
+
 def build_engine(
     onnx_file,
     plan,
@@ -162,11 +173,7 @@ def build_engine(
         if names != profile_shapes.keys():
             raise ValueError(f"Optimization profile inputs do not match ONNX: {names}")
         profile = builder.create_optimization_profile()
-        for name, shapes in profile_shapes.items():
-            if not profile.set_shape(name, *shapes):
-                raise ValueError(
-                    f"TensorRT rejected optimization profile {name}={shapes}"
-                )
+        set_profile_shapes(profile, profile_shapes)
         if config.add_optimization_profile(profile) != 0:
             raise RuntimeError("TensorRT did not accept the first optimization profile")
         config.clear_flag(trt.BuilderFlag.TF32)

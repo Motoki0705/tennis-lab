@@ -125,5 +125,65 @@
       "path": "outputs/trt-gvhmr/case-0-177/profiles.json",
       "sha256": "3eda6922d9d322c823192f15139f8ff0f39dc8f3936becfbe1ba48e79f5dd67e"
     }
+  },
+  "third_attempt_conversions": {
+    "2": {
+      "job": "i2305-gvhmr-build-2-r3",
+      "queue_run_id": "0-8204850210179070579_2026-11-20T04-43-09-820929420Z_1233308_i2305-gvhmr-build-2-r3",
+      "queue_log": ".training_queue/logs/0-8204850210179070579_2026-11-20T04-43-09-820929420Z_1233308_i2305-gvhmr-build-2-r3.log",
+      "queue_log_sha256": "d57856d3f6d1d31f0d9d4e89150c15e95e503f0abda2de3f6db0bd227bb6b75c",
+      "terminal_state": "failed",
+      "exit_code": 1,
+      "stage": "optimization_profile",
+      "onnx_parser_passed": true,
+      "error": "ValueError: TensorRT rejected optimization profile length=[[1], [1], [1]]",
+      "export": "outputs/trt-gvhmr/build-2-r3/export.onnx",
+      "export_sha256": "12273a5f52633d4048d275f950b28c13cd69b2174828a0ec1e89fad19aa04d02"
+    },
+    "3a": {
+      "job": "i2305-gvhmr-build-3a-r3",
+      "queue_run_id": "0-8204850209811861864_2026-11-20T04-43-10-188138135Z_1233424_i2305-gvhmr-build-3a-r3",
+      "queue_log": ".training_queue/logs/0-8204850209811861864_2026-11-20T04-43-10-188138135Z_1233424_i2305-gvhmr-build-3a-r3.log",
+      "queue_log_sha256": "7e14f319ead22cc9de6c3b3dc87c57bdaad51c4c0175d3bd7d020d56f4d2db4f",
+      "terminal_state": "failed",
+      "exit_code": 1,
+      "stage": "modelopt_gemv_shape_analysis",
+      "onnx_parser_passed": true,
+      "error": "AttributeError: 'SegmentCalibration' object has no attribute 'get_first'",
+      "export": "outputs/trt-gvhmr/build-3a-r3/export.onnx",
+      "export_sha256": "b4c5e33f039524f54ecf7548a7df7891da23b1cf3db51fa32db52b9f6448a677"
+    },
+    "3b": {
+      "job": "i2305-gvhmr-build-3b-r3",
+      "queue_run_id": "0-8204850209461743406_2026-11-20T04-43-10-538256593Z_1233534_i2305-gvhmr-build-3b-r3",
+      "queue_log": ".training_queue/logs/0-8204850209461743406_2026-11-20T04-43-10-538256593Z_1233534_i2305-gvhmr-build-3b-r3.log",
+      "queue_log_sha256": "74daddcd54fab96bd343e6e39abe2dc0ae7857916247a35fee789ce09e131e43",
+      "terminal_state": "failed",
+      "exit_code": 1,
+      "stage": "modelopt_gemv_shape_analysis",
+      "onnx_parser_passed": true,
+      "error": "AttributeError: 'SegmentCalibration' object has no attribute 'get_first'",
+      "export": "outputs/trt-gvhmr/build-3b-r3/export.onnx",
+      "export_sha256": "b4c5e33f039524f54ecf7548a7df7891da23b1cf3db51fa32db52b9f6448a677"
+    }
+  },
+  "third_attempt_conversion_causes": {
+    "2": "TensorRT 10.14 IOptimizationProfile.set_shape returns None on success. Shape property verification now uses get_shape.",
+    "3a/3b": "ModelOpt requires get_first from its calibration provider during GEMV shape detection. Use the built-in provider with packed B=1 samples and explicit calibration shapes."
+  },
+  "fp32_l177_ncu_retry": {
+    "job": "i2305-gvhmr-ncu-0-l177-r3",
+    "queue_run_id": "0-8204850209114937734_2026-11-20T04-43-10-885062265Z_1233300_i2305-gvhmr-ncu-0-l177-r3",
+    "queue_log": ".training_queue/logs/0-8204850209114937734_2026-11-20T04-43-10-885062265Z_1233300_i2305-gvhmr-ncu-0-l177-r3.log",
+    "queue_log_sha256": "b9c8fa3509273ab856b6ef80e01bf8b3bd8ef3312ca205451022b9b7dcc01ab5",
+    "terminal_state": "done",
+    "exit_code": 0,
+    "timeout_seconds": 2400,
+    "nsys_gpu_kernels": 867,
+    "ncu_profiled_kernels": 867,
+    "raw_csv": "outputs/trt-gvhmr/profile-0-177-r3/ncu.csv",
+    "raw_csv_sha256": "60afd7ab6be96222f293829a301683cfdf9035c368c1cf1c295ea91a8f4aec64",
+    "profile_receipt": "outputs/trt-gvhmr/profile-0-177-r3/profiles.json",
+    "profile_receipt_sha256": "179aac1a1ac2f703da43ca4ae6c964d69537820a320c6d2c59bbcd88e4509e05"
   }
 }

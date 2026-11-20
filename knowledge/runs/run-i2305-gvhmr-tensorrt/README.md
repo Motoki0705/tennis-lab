@@ -26,7 +26,7 @@ PyTorchはSIGA24のdenoiserをそのまま呼び出す。ONNXでは系列長120�
 
 条件2では全110行列積をFP16で検査する。条件3a・3bは12ブロック内の96行列積（72線形・24 attention）を指定精度、入力・出力headの14行列積をFP16として検査する。正規化・Softmax・reduction・castに高い精度を許容する。TensorRTは `STRONGLY_TYPED`、profile付きの各実行shapeでEngine Inspectorを照合する。主要演算の精度の証拠が欠ける条件は非ゼロで停止する。 [TensorRTの動的shape仕様](https://docs.nvidia.com/deeplearning/tensorrt/latest/inference-library/dynamic-shapes-basics.html)・[Engine Inspector](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/engine-tools.html)
 
-[PTQの設定](ptq.json) は #2297 と同じModelOpt ONNXのmax、ORT CPU、Q/DQ外FP16。キャリブレーションには `clip_027` の実系列4本だけをB=1で順次渡す。FP8はE4M3。適用演算を上記のGVHMRのブロックに固定し、Q/DQと実行precisionを照合する。
+#2303のPTQ設定がmainに入る前のため、#2297と同じModelOpt ONNXのmax、ORT CPU、Q/DQ外FP16を採用した。ModelOpt標準の入力providerに、キャリブレーションshapeを明示して `clip_027` の実系列4本をB=1で順次渡す。FP8はE4M3。適用演算を上記のGVHMRのブロックに固定し、Q/DQと実行precisionを照合する。 [PTQ設定](ptq.json)・[ModelOptのcalibration provider](https://nvidia.github.io/Model-Optimizer/reference/generated/modelopt.onnx.quantization.calib_utils.html)
 
 ## 再現
 

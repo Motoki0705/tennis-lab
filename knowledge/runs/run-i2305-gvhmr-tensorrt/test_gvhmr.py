@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 from accuracy_gvhmr import rotation_degrees
-from convert_gvhmr import OPSET, export_index_put
+from convert_gvhmr import OPSET, calibration_inputs, export_index_put
 from inputs import sha256_file
 from locked_inputs import HERE, load_segments, tensor_addresses
 from model import DenoiserIO, attention_mask, dynamic_attention, input_shapes
@@ -94,6 +94,29 @@ def test_so3_metric_respects_degrees_and_axis_angle_wrap():
     np.testing.assert_allclose(
         rotation_degrees(actual, reference), [[[0, 60]]], atol=1e-10
     )
+
+
+def test_ptq_provider_arrays_preserve_each_sequence_and_use_batch_one():
+    first, second = [
+        {
+            name: np.array([2], dtype=np.int64)
+            if name == "length"
+            else np.full(shape, value, dtype=np.float32)
+            for name, shape in input_shapes(2).items()
+        }
+        for value in (1, 3)
+    ]
+    data, shapes = calibration_inputs([first, second])
+    assert (
+        shapes
+        == "length:1,obs:1x2x17x3,f_cliffcam:1x2x3,f_cam_angvel:1x2x6,f_imgseq:1x2x1024"
+    )
+    np.testing.assert_array_equal(data["length"], [2, 2])
+    for index, sample in enumerate((first, second)):
+        np.testing.assert_array_equal(data["obs"][index : index + 1], sample["obs"])
+    second["length"] = np.array([1], dtype=np.int64)
+    with pytest.raises(ValueError, match="one locked sequence length"):
+        calibration_inputs([first, second])
 
 
 def test_obs_boolean_index_export_keeps_coordinate_axis():
