@@ -50,11 +50,17 @@ def test_seed_restore_waits_for_git_maintenance(
     ):
         run_git(p.repo, "config", key, value)
     host_config = p.root / "host-git-config"
-    host_config.write_text("[maintenance]\n\tautoDetach = true\n[gc]\n\tautoDetach = true\n")
+    host_config.write_text(
+        "[maintenance]\n\tautoDetach = true\n[gc]\n\tautoDetach = true\n"
+    )
     trace = p.root / "git-trace.jsonl"
     result = subprocess.run(
         [sys.executable, "-c", OBSERVE_GIT, str(p.repo), str(trace)],
-        env={**p.env, "GIT_CONFIG_GLOBAL": str(host_config), "GIT_CONFIG_NOSYSTEM": "1"},
+        env={
+            **p.env,
+            "GIT_CONFIG_GLOBAL": str(host_config),
+            "GIT_CONFIG_NOSYSTEM": "1",
+        },
         check=True,
         capture_output=True,
         text=True,

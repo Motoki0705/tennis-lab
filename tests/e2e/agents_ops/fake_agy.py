@@ -48,7 +48,12 @@ if args == ["--version"]:
         settings.write_text(json.dumps({"toolPermission": "always-proceed"}))
     updated = (root / "updated").exists()
     print(
-        "Antigravity CLI " + ("9.0.0" if scenario == "version" or updated else os.environ.get("FAKE_AGY_VERSION", "1.4.11"))
+        "Antigravity CLI "
+        + (
+            "9.0.0"
+            if scenario == "version" or updated
+            else os.environ.get("FAKE_AGY_VERSION", "1.4.11")
+        )
     )
     raise SystemExit(0)
 
@@ -95,7 +100,14 @@ if probe and probe["stage"] == "deny" and scenario == "probe_cli_error":
 
 log = Path(args[args.index("--log-file") + 1])
 requested_model = args[args.index("--model") + 1]
-label = {"gemini-3.8-flash-high": "Gemini 3.8 Flash (High)", "gemini-4-hydrogen-high": "Gemini 4 Hydrogen (High)"}.get(requested_model, "Unknown model") if scenario != "model" else "Gemini 3.8 Pro"
+label = (
+    {
+        "gemini-3.8-flash-high": "Gemini 3.8 Flash (High)",
+        "gemini-4-hydrogen-high": "Gemini 4 Hydrogen (High)",
+    }.get(requested_model, "Unknown model")
+    if scenario != "model"
+    else "Gemini 3.8 Pro"
+)
 if probe and probe["stage"] == "deny" and scenario == "probe_bad_model":
     label = "Other Model"
 with log.open("a") as handle:
