@@ -586,7 +586,7 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/ops-report
 ## 専用memoryの保存
 
 保存先は [`.agents/memory/ops-report/`](../../memory/ops-report/SUMMARY.md)。観察の内容・再検証・圧縮・削除は
-[memory skill](../../skills/memory/SKILL.md#運用レポート専用memory) を正本とする。共有5層の保守（#1192）は行わない。
+[memory skill](../../skills/memory/SKILL.md#運用レポート専用memory) を正本とする。保存の対象は専用領域に限る。
 
 入力 `ops_memory.files` は、新しい予定回でfetchした `origin/main` の固定SHAから読む（再開は固定入力を維持する）。
 `ops_memory.base_sha` と前回保存の状態はレポート冒頭にも表示する。未導入ならその旨を表示し、更新案が返ればエラー。
@@ -650,7 +650,7 @@ PR作成・CI未完了をメモリ更新成功とみなさない。CI未登録/�
   古いPRを勝手にrebase/force-pushせず、次回のmain入力から新しい観察を作る。失敗の記録を成功へ書き換えない。
 - `report` とtriageのメモリ処理は同じ `schedule.lock` で排他される。ロックファイルを消して並行実行しない。
 
-テストは `test_ops_report_memory.py`。fake gh / fake agentと実gitで、2回の引き継ぎ・採否、共有5層のハッシュ不変、
+テストは `test_ops_report_memory.py`。fake gh / fake agentと実gitで、2回の引き継ぎ・採否、共有memoryのハッシュ不変、
 公開/push/PR失敗・CI保留/失敗・HEAD更新・同時起動・保存中断・mainの先行更新・削除/圧縮を検証する。
 
 ## systemd --user への導入（merge後に人間が行う）

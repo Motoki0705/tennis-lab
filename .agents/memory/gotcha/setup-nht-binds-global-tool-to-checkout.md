@@ -1,10 +1,16 @@
 ---
 title: "spin setup-nht は、実行したtreeの third_party/nht に全体共通の nht-render を結び付ける"
+summary: "spin setup-nhtは実行したcheckoutのNHTに共通コマンドを結び付ける。作業用worktreeでは専用の実行パスで試す。"
 applies_to: all
 source: "nht-render の ModuleNotFoundError 調査（2026-10-16）"
 created: 2026-10-16
-last_verified: 2026-10-16
+last_verified: 2026-11-20
 evidence: "`uv tool dir` 配下の nht 環境にある `__editable___nht_*_finder.py` の MAPPING が、どのtreeの third_party/nht を指しているかを見る"
+citations:
+  - path: ".spin/cmds.py"
+    symbol: "def setup_nht"
+  - path: "src/synthetic_data_generation/rendering/nht/contracts.py"
+    symbol: "class NHTRenderCommandRequest"
 ---
 
 `spin setup-nht` は、`uv tool install --editable third_party/nht` で、ユーザー全体に1つの `nht-render` / `nht-reconstruct` を入れる。editable なので、実行したtreeの `third_party/nht` と `third_party/nht/gsplat` をそのまま参照する。

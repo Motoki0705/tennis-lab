@@ -1,4 +1,4 @@
-"""Dedicated report observations. Shared five-layer memory is never written here."""
+"""Read and write dedicated report observations."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ import yaml
 from . import shell
 
 DIRECTORY = ".agents/memory/ops-report"
-SHARED_LAYERS = ("workflow", "decision", "environment", "gotcha", "review")
 SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 FIELDS = {
     "slug",
