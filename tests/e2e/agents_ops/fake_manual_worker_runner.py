@@ -193,7 +193,7 @@ def main() -> int:
     )
     if sequence := os.environ.get("MANUAL_FINAL_SEQUENCE"):
         final = json.loads(sequence)[len(task["worker_runs"]) - 1]
-    elif repair is None:
+    elif repair is None and final.strip():
         final += '\n\nPARENT_RESULT {"schema_version":1,"state":"done","wait":null}\n'
     (directory / "final.md").write_text(final, encoding="utf-8")
     if previous is None and (pr := os.environ.get("MANUAL_PR_AFTER_START")):

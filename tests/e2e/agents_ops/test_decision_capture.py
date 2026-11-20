@@ -184,7 +184,14 @@ def test_worker_planning_judgement_continuation_and_explicit_verification(
 
 
 @pytest.mark.parametrize(
-    "failure", ["input", "runner_rejection", "runtime_failure", "final_missing"]
+    "failure",
+    [
+        "input",
+        "runner_rejection",
+        "runtime_failure",
+        "final_missing",
+        "declaration_missing",
+    ],
 )
 def test_failures_never_become_success_or_parent_acceptance(
     reserved: ParentEnv, failure: str
@@ -196,8 +203,11 @@ def test_failures_never_become_success_or_parent_acceptance(
         )
         expected = 2
     elif failure == "final_missing":
-        response = run(p, MANUAL_PLANNING_FINAL="")
-        expected = 0
+        response = run(p, ok=False, MANUAL_PLANNING_FINAL="")
+        expected = 2
+    elif failure == "declaration_missing":
+        response = run(p, ok=False, MANUAL_FINAL_SEQUENCE=json.dumps(["成果の報告。"]))
+        expected = 2
     else:
         response = run(
             p,
@@ -218,6 +228,16 @@ def test_failures_never_become_success_or_parent_acceptance(
         "partial",
         "unknown",
     }
+    if failure in {"final_missing", "declaration_missing"}:
+        outcome = json.loads(response.stdout)
+        assert outcome["runner_summary"]["exit_code"] == 0
+        assert outcome["followup"]["state"] == "error"
+        assert results[-1]["data"]["status"] == "failure"
+        waited = manual(p, "wait-worker", "--child", "10", "--timeout", "5", ok=False)
+        assert waited.returncode == 2
+        waited_outcome = json.loads(waited.stdout)
+        assert waited_outcome["wait_state"] == "followup_error"
+        assert waited_outcome["followup"] == outcome["followup"]
     if failure == "final_missing":
         assert not any(r["data"]["status"] == "success" for r in results)
         assert any(
@@ -225,6 +245,8 @@ def test_failures_never_become_success_or_parent_acceptance(
             == {"status": "unavailable", "reason": "missing_final"}
             for r in results
         )
+    elif failure == "declaration_missing":
+        assert any(r["data"]["final_report"]["status"] == "observed" for r in results)
     assert not any(
         r["kind"] == "result" and r["data"]["observer"] == "parent_verification"
         for r in rows
@@ -238,7 +260,7 @@ def test_failures_never_become_success_or_parent_acceptance(
         "unknown"
         if failure == "runner_rejection"
         else "ended"
-        if failure in {"runtime_failure", "final_missing"}
+        if failure in {"runtime_failure", "final_missing", "declaration_missing"}
         else "rejected_before_start"
     )
     assert all(
