@@ -68,6 +68,18 @@ ENTRIES = (
         "project_progress",
     ),
     Entry(
+        "shared-memory",
+        "shared_memory/__main__.py",
+        "shared_memory/cli_impl.py",
+        "shared_memory",
+    ),
+    Entry(
+        "shared-memory-cli",
+        "shared_memory/cli.py",
+        "shared_memory/cli_impl.py",
+        "shared_memory.cli",
+    ),
+    Entry(
         "retrieval-server",
         "lib/review_tools/mcp_server.py",
         "lib/review_tools/mcp_server_impl.py",

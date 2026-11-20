@@ -8,12 +8,32 @@ from dataclasses import dataclass
 from datetime import date
 from html import unescape
 from ipaddress import ip_address
-from typing import Final
 from urllib.parse import unquote, urlsplit
 
 import yaml
 
-SHARED_LAYERS = ("workflow", "decision", "environment", "gotcha")
+from .layout import (
+    DEDICATED_AREA as DEDICATED_AREA,
+)
+from .layout import (
+    INDEX_NAME as INDEX_NAME,
+)
+from .layout import (
+    MEMORY_DIR as MEMORY_DIR,
+)
+from .layout import (
+    SHARED_LAYERS as SHARED_LAYERS,
+)
+from .layout import (
+    SUMMARY_PATH as SUMMARY_PATH,
+)
+from .layout import (
+    is_entry_filename as is_entry_filename,
+)
+from .layout import (
+    is_shared_path as is_shared_path,
+)
+
 LAYER_DESCRIPTIONS = {
     "workflow": "作業のコツ",
     "decision": "ユーザーの判断",
@@ -28,24 +48,17 @@ ENTRY_MAX_LINES = 40
 SUMMARY_ITEM_MAX_CHARS = 160
 STALE_DAYS = 90
 
-MEMORY_DIR: Final = ".agents/memory"
-SUMMARY_PATH = f"{MEMORY_DIR}/SUMMARY.md"
-INDEX_NAME = "index.md"
-DEDICATED_AREA = "ops-report"
-
-REQUIRED_KEYS = frozenset(
-    {
-        "title",
-        "summary",
-        "applies_to",
-        "source",
-        "created",
-        "last_verified",
-        "evidence",
-        "citations",
-    }
+ENTRY_FIELDS = (
+    "title",
+    "summary",
+    "applies_to",
+    "source",
+    "created",
+    "last_verified",
+    "evidence",
+    "citations",
 )
-_FILENAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md")
+REQUIRED_KEYS = frozenset(ENTRY_FIELDS)
 _ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)^---[ \t]*\r?$", re.MULTILINE | re.DOTALL)
 _URL_AUTHORITY = re.compile(
@@ -195,12 +208,8 @@ def _citation(value: object, field: str) -> Citation:
     )
 
 
-def parse_entry(layer: str, filename: str, text: str, *, today: date) -> Entry:
-    """Parse frontmatter or raise ValueError with the field that needs repair."""
-    if layer not in SHARED_LAYERS:
-        raise ValueError("unknown shared memory layer")
-    if filename == INDEX_NAME or not _FILENAME.fullmatch(filename):
-        raise ValueError("entry filename must be kebab-case.md")
+def read_frontmatter(text: str) -> tuple[dict[str, object], str]:
+    """Read the YAML mapping and preserve the Markdown after its delimiter."""
     match = _FRONTMATTER.match(text)
     if match is None:
         raise ValueError("missing YAML frontmatter")
@@ -210,6 +219,16 @@ def parse_entry(layer: str, filename: str, text: str, *, today: date) -> Entry:
         raise ValueError("invalid YAML frontmatter") from None
     if not isinstance(data, dict):
         raise ValueError("frontmatter must be a mapping")
+    return data, text[match.end() :]
+
+
+def parse_entry(layer: str, filename: str, text: str, *, today: date) -> Entry:
+    """Parse frontmatter or raise ValueError with the field that needs repair."""
+    if layer not in SHARED_LAYERS:
+        raise ValueError("unknown shared memory layer")
+    if not is_entry_filename(filename):
+        raise ValueError("entry filename must be kebab-case.md")
+    data, _ = read_frontmatter(text)
     if missing := REQUIRED_KEYS - data.keys():
         raise ValueError(f"missing frontmatter fields: {', '.join(sorted(missing))}")
     if "type" in data:
