@@ -42,8 +42,8 @@ EXAMPLES = {
     "agree": 'agree --spec agreement.json\n{"purpose":"モデルの再読込を減らす","scope":"推論入口","behavior":"共有モデルを再利用する","acceptance":"比較入力の出力が一致する","human_confirmation":"確認した人間の元発言と出典"}',
     "create-child": "create-child --spec child.json\nJSONは key、spec、任意の dependencies（先行子番号の配列）。specは .agents/ops/issues/README.md の「CLIと整合検査」にある子Issue入力。再送時は同じkeyとspecを使う。",
     "delegate": "delegate --child 1217 --agent codex --branch codex/impl --worktree .claude/worktrees/impl\n最初が統合担当。補助担当は別のbranch・worktreeと --worker quality を指定。予約後は run-worker。",
-    "run-worker": "run-worker --child 1217 --worker quality --prompt-file compare.md\n終了後に同じ担当へ追加検証を渡すには --resume --prompt-file next.md。調査結果だけを受け取る場合は --planning。",
-    "start-worker": "start-worker --child 1217 --worker quality --branch codex/quality --worktree .claude/worktrees/quality --prompt-file compare.md\n自律親用。返されたjob_idで予約を識別し、inspect-workerで終了と成果物を照合する。",
+    "run-worker": "run-worker --child 1217 --worker quality --from BASE_SHA --prompt-file compare.md\n--fromは専用branch・worktree・共有入力・venvを準備して予約し、そのまま起動する。既存予約は--fromを省く。終了後に同じ担当へ追加検証を渡すには --resume --prompt-file next.md。調査結果だけを受け取る場合は --planning。",
+    "start-worker": "start-worker --child 1217 --worker quality --from BASE_SHA --prompt-file compare.md\n自律親用。返されたjob_idで予約を識別し、inspect-workerで終了と成果物を照合する。",
     "continue-worker": "continue-worker --child 1217 --worker primary --prompt-file fix.md\n自律親用。同じbranch・sessionの終了を照合してから修正を渡す。",
     "inspect-worker": "inspect-worker --child 1217 --worker quality\n実行状態とfinal_fileを確認する。",
     "wait-worker": "wait-worker --child 1217 --worker quality --timeout 900\n終了値0は終了・回収済み。runner_summaryで実行結果、final_fileで成果を確認する。124は時間満了で再待機可。2は理由を読み、inspect-workerで元runの状態を照合する。",
@@ -51,7 +51,7 @@ EXAMPLES = {
     "decide-worker-plan": "decide-worker-plan --child 1217 --worker quality --action investigate --answer-file next.md\n直近の調査報告に対する判断を書く。approve / investigate / reject と具体的な回答を保存し、次の同sessionの継続時に渡す。",
     "record-worker-ended": "record-worker-ended --child 1217 --worker quality --delegation-id DELEGATION_ID --evidence-file ended.md\nstatusで対象IDを取得し、runnerと子孫の終了・回収を照合した根拠を書く。",
     "record-result": "record-result --child 1217 --evidence-file verified.md\n統合HEAD、受入条件、対応するテスト結果を書く。",
-    "review-request": "review-request --prs 1250 --instruction-file review.md --evidence-file verified.md --wait\nreview.mdに原要件・確認対象、verified.mdに受入確認を記載する。同じPRの再送は既存runを返す。",
+    "review-request": "review-request --prs 1250 --instruction 品質比較を確認 --evidence-file - --wait\n検証結果をstdinで渡す。保存済みnoteは --evidence-ref SHA（またはURL）。成果の記録もこの操作が行う。同じPRの再送は既存runを返す。",
     "merge-continue": "merge-continue --run-id RUN --instruction-file fixes.md --wait\nmajorごとの修正commit・検証結果・親の判断を記す。同じrunで現HEADのマージ条件へ進む。",
     "merge-status": "merge-status --run-id RUN\nPRの段階・停止理由・review_usageを確認する。RUN省略時はこの親の最新run。",
     "wait-merge": "wait-merge --run-id RUN --after 1\n最後に受け取った通知ID以降のイベントを待つ。",
@@ -60,12 +60,12 @@ EXAMPLES = {
     "stop": "stop --child 1217 --spec stop.json\nJSONの5項目は reason, facts, impact, resume_condition, next_action（すべて文章）。Issueと依存する作業を保留する。",
     "resume": "resume --child 1217 --spec resume.json\nreason, facts, impact, resume_condition, next_action に再開条件が満たされた根拠と次の操作を記す。",
     "stop-worker": "stop-worker --child 1217 --worker quality --spec stop.json\nspecの5項目は stop --help を参照。複数担当では指定した担当だけを止める。自律親の単独担当ではIssueと依存jobにも停止が及ぶ。",
-    "release": 'release --ended --spec finish.json\nstatus.completion.requirements が available=true のとき、その basis_ref と criteria の全IDを使う。本文に条件が1件ある場合の例（実際の値と証拠に置換）\n{"schema_version":1,"state":"completed","basis_ref":"実際の参照","acceptance":[{"id":"agreement","state":"met","evidence":"合意した動作の検証結果"},{"id":"ac-1","state":"met","evidence":"本文の条件1に対応する測定結果"}],"remaining_required":[],"improvements":{"reviewed":true,"candidates":[]},"summary":"受入結果"}',
-    "workflow-report": 'workflow-report --spec report.json\n{"schema_version":1,"state":"waiting","reason":"CI待ち","resume_condition":"CI終了","evidence":"対象PRとHEAD"}\ncompletedはschema_version=2とし、これらの項目にrelease --helpのfinishオブジェクトを追加する（キーはfinish）。',
+    "release": 'release --ended --spec finish.json\nversion 2は通知・公開確認・終了まで同じ入力で行う。evidenceはこの親の機械記録のコメントURL。マージ済みPRのURLは自動で含む。追加の成果物はartifacts、解決した質問keyはresolvesで渡す。basis_refと条件IDはstatus.completion.requirementsの値に置換。\n{"schema_version":2,"state":"completed","evidence":["https://github.com/OWNER/REPO/issues/1234#issuecomment-5678"],"basis_ref":"実際の参照","acceptance":[{"id":"agreement","state":"met","evidence":"合意した動作の検証結果"},{"id":"ac-1","state":"met","evidence":"本文の条件1に対応する測定結果"}],"remaining_required":[],"improvements":{"reviewed":true,"candidates":[]},"summary":"受入結果"}',
+    "workflow-report": 'workflow-report --spec report.json\n{"schema_version":1,"state":"waiting","reason":"CI待ち","resume_condition":"CI終了","evidence":"対象PRとHEAD"}\n完了時はrelease --helpと同じversion 2の受入JSONをそのまま渡す。',
     "decide": "decide --spec decision.json\ninputsに観測結果ID、evaluationに判断、reasonに根拠。初回判断はbasisに要求・合意の固定参照が必要。後続操作に --decision-id を渡す。計画の書式は .agents/ops/decision_logs/README.ja.md の「親の判断を明示記録する」。",
     "project-sync": 'project-sync --event start --spec project.json --dry-run\n初期登録済みの子の例。プレビューの確認後は同じevent・specで --apply。\n{"schema_version":1,"items":[{"issue":1217,"stage":"作業中","wait_reason":"","next_action":"実装と品質比較を開始する"}]}',
     "record-cancellation": "record-cancellation --child 1217 --spec cancel.json\nJSONは schema_version=1, reason, handoff, evidence。",
-    "improvement": "improvement --key result-access --spec idea.json\nschema_version=1。purpose, observation, evidence, judgment, scope, out_of_scope, behavior, stop_conditions, unknowns, expected_effect は文章。acceptanceとunmet_acceptanceは配列。",
+    "improvement": "improvement --purpose 結果の発見を早める --evidence 検証結果の探索に毎回3操作 --scope 結果の表示\n返されたkeyで提案時に詳細化する（improvement --key KEY --spec idea.json）。詳細specはschema_version=1。purpose, observation, evidence, judgment, scope, out_of_scope, behavior, stop_conditions, unknowns, expected_effect は文章。acceptanceとunmet_acceptanceは配列。",
     "improvement-decide": 'improvement-decide --candidate I-1216-result-access --action approve --spec decision.json\n{"schema_version":1,"request_key":"decision-1","revision":1,"previous_decision":null,"human_confirmation":{"quote":"元発言","source":"出典"},"reason":"判断の根拠"}\n複数候補ではrevisionとprevious_decisionを候補ID別のcandidatesオブジェクトにまとめる。',
     "improvement-extract": "improvement-extract --candidates I-1216-result-access\n人間が取り出しを指示した承認済み候補を、新しい親Issueにまとめる。",
 }
@@ -112,6 +112,7 @@ def configure(
     lines = [
         "実行例  PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 status",
         "操作の詳細  PYTHONPATH=.agents/ops .venv/bin/python -m parent delegate --help",
+        "--spec / --*-file の入力は1つだけ - で標準入力から読める。",
         "日次jobのimprovement-expireはcheckout_job.py経由で実行する（helpを含む）。.agents/ops/parent/README.md「改善提案の期限」参照。",
         "",
     ]
@@ -132,4 +133,8 @@ def configure(
                 if example
                 else ""
             ) + f"手順  {path}"
+            if any(
+                a.dest == "spec" or a.dest.endswith("_file") for a in command._actions
+            ):
+                command.epilog += "\n--spec / --*-file は1つだけ - で標準入力にできる。"
     root.epilog = "\n".join(lines)

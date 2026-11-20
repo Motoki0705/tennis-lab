@@ -202,6 +202,8 @@ def test_parent_cli_completion_examples_cover_the_agreement_and_issue(
     notice = json.loads(examples["notify"].splitlines()[-1])
     assert notifications.validate(notice)["kind"] == "completion"
     finish = json.loads(examples["release"].splitlines()[-1])
+    assert finish.pop("evidence") and finish["schema_version"] == 2
+    finish["schema_version"] = 1
     requirements = {
         "basis_ref": finish["basis_ref"],
         "criteria": [{"id": "agreement"}, {"id": "ac-1"}],

@@ -642,3 +642,39 @@ def test_standalone_worker_uses_same_log_entry(
         public += git(logs.upstream, "show", "main:" + name)
     assert str(logs.root) not in public and "private-parent-session" not in public
     assert credential not in public
+
+
+@pytest.mark.parametrize("lost_response", [False, True])
+def test_ready_turns_share_one_pr_and_resume_its_frozen_members(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, lost_response: bool
+) -> None:
+    service = importlib.import_module("worker_logs.service")
+    monkeypatch.setattr(service, "Publisher", lambda root, path: logs.publisher(path))
+    first = logs.ready()
+    row = journal.read(first)
+    assert row["publication_mode"] == "delegation_batch"
+    row["source"].update(sequence=2, kind="resume", turn_id="private-next-turn")
+    row["files"] = {
+        k: raw.decode()
+        for k, raw in sources.render(row["source"], row["receipt"]).items()
+    }
+    second = first.parent.parent / "2" / "journal.json"
+    journal.atomic(second, row)
+    assert service.publish(first, milestone=False)["state"] == "ready"
+    assert logs.github.calls == []
+    if lost_response:
+        logs.github.failure = "create_response_lost"
+        assert not service.publish(first)["saved_to_main"]
+    assert service.publish(second)["saved_to_main"]
+    assert logs.github.calls == ["create", "merge"]
+    assert (
+        len(
+            [
+                name
+                for name in logs.main_files()
+                if name.startswith(schema.DIRECTORY + "/")
+            ]
+        )
+        == 6
+    )
+    assert journal.read(first)["pr_number"] == journal.read(second)["pr_number"]

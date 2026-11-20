@@ -1315,3 +1315,32 @@ def test_retired_creator_handoff_reuses_branch_without_resuming_astra(
     assert latest(p) != old_run and old_run.is_dir()
     assert len(current["worker_runs"]) == 2
     assert current["worker_runs"][-1]["kind"] == "initial"
+
+
+def test_from_commit_prepares_and_starts_separate_manual_workers(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("worker")
+    for name in ("data", "outputs", "ckpt", ".venv"):
+        (p.repo / name).mkdir(exist_ok=True)
+    base = run_git(p.repo, "rev-parse", "HEAD")
+    for worker in ("primary", "quality"):
+        args = (
+            "run-worker",
+            "--child",
+            "10",
+            "--worker",
+            worker,
+            "--from",
+            base,
+            "--prompt-file",
+            p.note("Compare recorded observations."),
+        )
+        manual(p, *args)
+        assert "already" in manual(p, *args, ok=False).stderr
+        checkout = p.repo / ".claude/worktrees" / f"parent-1-issue-10-{worker}"
+        assert run_git(checkout, "rev-parse", "HEAD") == base
+        assert (checkout / ".venv").resolve() == p.repo / ".venv"
+    assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2

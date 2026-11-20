@@ -95,25 +95,11 @@ URLは原文と復号後の両方から取り出し、query/fragmentも復号し
 
 ## 専用PRと限定merge例外
 
-専用branchは `worker-log/d-<公開キー>/<turn>`、worktreeは元repoの `.claude/worktrees/worker-log-<公開キー>-<turn>`。
-実装branchへログを入れず、実装PRへログのcommitを積まない。PR本文は固定markerとRefsだけを生成し、
-具体指示・最終報告や `Closes` をPR本文へ転記しない。
+新規ターンは終了時に指示・受信証拠・公開用3ファイルを固定する。レビュー依頼、workflow報告、担当終了・引継ぎ、明示公開で、同じ委任の準備済みターンを1本のPRへまとめる。1本は最大32ターン（96ファイル）。1ターンだけの場合と旧journalは従来の専用PR形式を使う。
 
-この入口だけは、人間との合意に基づくログ保存限定の例外として、Codexレビュー・Python check・
-`AGENT_AUTO_MERGE` を要求せずにmergeする。次をすべて機械検査する。
-
-- 固定したbaseを唯一の親とする1 commit。全差分は当該turnの3ファイルの追加だけ。
-  baseが現在のorigin/mainの祖先であることと、当該turnのディレクトリがmainにまだ無いことを照合する。
-- `--no-renames` の全変更種別と旧/新mode、Git treeのmode 100644/blob、期待する全バイト列。
-  既存記録の改変・削除・rename元、対象外追加、symlink、gitlink、実行可能ファイルを許可しない。
-- schema・本文digest・公開検査、同一repoのorigin、PRのrepo・branch・固定HEAD・marker、base refがmain、変更件数が3件であること。
-- ローカルの固定baseとHEADの差分だけでなく、GitHubが返すPRの変更ファイル一覧も照合する。
-  ファイル名が当該turnの3ファイルと完全一致し、全件が追加でrename元も無いことを要求する。
-  100件を取得する最初のページで3件以外なら拒否するため、ページの先にある余計な差分も受理しない。
-- merge直前にPRを再取得し、HEAD指定でmergeする。PRの `base.sha` は作成時のsnapshotとして扱い、
-  現在のmainとの一致は要求しない。mainが独立した変更で進んでも、固定base・HEAD・公開内容を書き換えずに照合する。
-- PRがmergedであること、HEADとmerge commitがorigin/mainに含まれること、main上の保存内容を照合する。
-  ここまで確認して初めて `merged / saved_to_main=true` とする。
+- 複数ターンは `worker-log-batch/d-<公開キー>/<先頭turn>`。委任のlock内で対象連番を `batches/<先頭turn>.json` に固定してからGit/GitHubへ書く。中断後は同じ対象とHEADから続け、mainに保存されたPR番号を各ターンに記録する。
+- ログ専用のmerge例外は、元の指示・受信記録から再生成し公開検査を通ったファイルに限定する。固定baseを唯一の親に持つ1 commit、Git上の全差分とGitHubが返す変更一覧が、各ターンの3ファイルの追加に完全一致することを照合する。既存ファイルの変更、rename、symlink、実行可能ファイルを拒否する。
+- merge直前にrepo、branch、marker、最新HEADを照合する。merge後はHEADとmerge commitがmainの祖先であること、全ファイルがmainで元の内容と一致することを確認し、`saved_to_main=true` を記録する。
 
 通常の [merge gate](../../skills/parent-session/references/review.md) とops-report memoryのCI必須処理は変更しない。
 保存実装、schema、公開検査、workflow、規則を変更するコードPRは通常レビューと対象HEADのPython成功が必要。
@@ -127,14 +113,14 @@ knowledge.ymlの対象パス・手動workflow入口は変更せず、skip ciのc
 labelerにはpushイベントを追加しない。ログ実装のREADMEやPythonは除外対象ではない。
 
 [GitHubのnative path filter](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#git-diff-comparisons)には差分評価上限・diff生成timeout等の制約があり、任意の巨大差分の絶対保証はしない。
-本入口の3ファイルPRと通常規模の混在PRを検証対象にする。
+本入口のログ専用PR（最大96ファイル）と通常規模の混在PRを検証対象にする。
 通常・混在PRでworkflowが起動しなくても、repo内の通常merge gateは対象HEADの `Python` 成功を要求し、
 欠落時にはfail-closedで止まる。未検証のコードが静かにmergeされる例外へ広げない。
 mainにGitHub側の必須checkが導入された場合は、Pendingを無視せずmerge失敗を記録し、親が設定と契約を確認する。
 
 ## 状態と復旧CLI
 
-各ターンの終了後、手動応答の `log_publication` または次のCLIで `saved_to_main` を確認する。
+各ターンの終了後は `ready`、公開後は `saved_to_main` を手動応答の `log_publication` または次のCLIで確認する。
 workerの終了値はrunnerの結果であり、公開CLIも保留なら0を返すため、終了値だけで保存成功とはしない。
 `pending` なら同じturnの `publish-worker-log` で公開を続ける。他の作業を一律停止せず、未保存の事実を残す。
 公開エラーの終了値は2。状態ごとの原因と次の操作は下の表で照合する。
@@ -177,11 +163,7 @@ PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致
 
 ## 続行・一括回収・終了checkpoint
 
-`parent.log_publication.Continuation` が書込み操作の確定後に同じ親の残件を一度処理する。
-`run-worker` / `start-worker` / `continue-worker` は新turnの予約前に処理する。
-対象は同モジュールの `MUTATIONS` と、`evidence --create`、Projectの `--apply`。
-通常の担当・合意・記録・レビュー・停止/再開・同期・公開・終了/引継ぎの書込みを含む。
-status各種、inspect-worker、basis-input/check、wait-supplement、wait-worker、全dry-run、state-migrateは除外する。
+新規turnの公開時点は上記の節目に集約する。移行前のturnは従来どおり、親の書込み操作で続行し、次のworker予約前にも照合する。
 所有確認は親operation lock→registry lockで行い、公開中は両方を解放する。
 各journalの公開開始直前にも担当・generationを照合し、引継ぎ後は以降のjournalを開始しない。
 同じ照合をsupervisorと明示的な一括回収にも渡し、orphan PRの巡回も世代変更で停止する。
@@ -203,8 +185,8 @@ worker公開の最終入口は `service.publish(owner_check=...)`。
 | 明示的な `--all-parents` | 回収親の担当・世代を固定し、元の親を変更せず `continue_workers` → `service.publish` |
 | `--adopt-orphan-prs`（元journalあり） | 回収親の照合を通常の `continue_workers` → `service.publish` へ渡す |
 | `--adopt-orphan-prs`（元journalなし） | `recover_orphans` の各PRと `OrphanRecovery.recover` の検査後・merge処理開始前で照合。元turnのlock取得前に行い、registryとturnのlock順序を反転させない |
-| 通常の `run-worker` 終了後 | 起動予約時の世代を `finish_manual` → `finish` → `service.publish` へ渡す。workerの終了値は保持 |
-| supervisorの通常の子終了 | registry内で担当・世代を固定し、lock解放後の各 `service.publish` で照合。不一致の親の残りを停止 |
+| 通常の `run-worker` 終了後 | 起動予約時の世代を `finish_manual` → `finish` → `service.publish` へ渡す。新規turnは受信・固定まで、旧turnは公開まで。workerの終了値は保持 |
+| supervisorの通常の子終了 | 新規turnは受信まで。旧turnはregistry内で担当・世代を固定し、lock解放後の各 `service.publish` で照合。不一致の親の残りを停止 |
 
 worker/decisionの公開はいずれもmergeable=nullなら固定HEADのmerge要求へ進み、falseなら拒否する。
 HTTP応答があったmergeはjournalとCLIのmerge_http_statusへ保存する。原文の診断はprivateに留める。
@@ -229,7 +211,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent REC
 `--source-parent` と `--pr` は複数指定できる。省略時は同repoの既存journal／open worker-log PRを対象にする。
 実行はdry-runを外す。新しいworker・公開キー・二重PRは作らない。
 元journalがあるPRは通常経路へ回す。journal不在PRはbranch/公開パス、唯一のcommit、全差分とPR変更一覧の
-3ファイル追加、blob mode、schema/digest、本文・metadata・PR本文の安全検査、mainの祖先関係と未存在を再検査する。
+対象turnごとの3ファイル追加、blob mode、schema/digest、本文・metadata・PR本文の安全検査、mainの祖先関係と未存在を再検査する。
 元の送信・受信との照合はできないため `original_journal_available=false` を明示する。
 合格した固定HEADだけをmergeしmainを照合する。検査不合格のログPRには固定の理由コメントを付けてcloseする。
 対象外PR、取得失敗で未検証のPR、private記録に問題がある場合はcloseしない。HTTP拒否・応答不明も成功へ変換しない。

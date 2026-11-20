@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,31 @@ from .state import Store, state_directory, unique_object
 
 def read_text(path: str) -> str:
     return nonempty(Path(path).read_text(encoding="utf-8"), path)
+
+
+def saved_note(session: ParentSession, reference: str) -> str:
+    from .policy import digest
+
+    history = session.gh.record_history(session.parent, session.login)
+    history.require_valid()
+    notes = [
+        r
+        for r in history.records
+        if r.payload.get("event") == "note"
+        and r.publisher_verified
+        and reference in (r.url, r.payload.get("body_sha256"))
+    ]
+    if not notes:
+        raise ValueError("evidence-ref must identify a verified note of this parent")
+    values = set()
+    for note in notes:
+        _, separator, body = note.body.partition("\n\n")
+        if not separator or digest(body) != note.payload["body_sha256"]:
+            raise ValueError("saved evidence content changed")
+        values.add(body)
+    if len(values) != 1:
+        raise ValueError("ambiguous evidence reference")
+    return values.pop()
 
 
 def read_object(path: str) -> dict[str, Any]:
@@ -158,8 +184,13 @@ def parser() -> argparse.ArgumentParser:
                 help="investigate and report before implementation",
             )
         if name == "start-worker":
-            worker.add_argument("--branch", required=True)
-            worker.add_argument("--worktree", type=Path, required=True)
+            worker.add_argument("--branch")
+            worker.add_argument("--worktree", type=Path)
+            worker.add_argument(
+                "--from",
+                dest="base_ref",
+                help="基準commitから専用branchとworktreeを準備する",
+            )
         if name == "continue-worker":
             worker.add_argument("--evidence-file")
         if name == "stop-worker":
@@ -232,6 +263,11 @@ def parser() -> argparse.ArgumentParser:
     ended.add_argument("--delegation-id", required=True)
     ended.add_argument("--evidence-file", required=True)
     manual = commands.add_parser("run-worker")
+    manual.add_argument(
+        "--from",
+        dest="base_ref",
+        help="新規担当のworktree準備・委任・初回起動をまとめる",
+    )
     manual.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     manual.add_argument(
         "--prompt-file",
@@ -294,7 +330,10 @@ def parser() -> argparse.ArgumentParser:
     improvement = commands.add_parser("improvement")
     improvement.add_argument("--child", type=int)
     improvement.add_argument("--key")
-    improvement.add_argument("--spec", required=True)
+    improvement.add_argument("--spec", help="候補の詳細JSON。- は標準入力")
+    improvement.add_argument("--purpose", help="改善の目的")
+    improvement.add_argument("--evidence", help="観測した問題の根拠")
+    improvement.add_argument("--scope", help="改善する範囲")
     commands.add_parser("improvement-propose")
     extract = commands.add_parser("improvement-extract")
     extract.add_argument("--candidates", nargs="+", required=True)
@@ -313,15 +352,19 @@ def parser() -> argparse.ArgumentParser:
     inspection.add_argument("--prs", type=int, nargs="+", required=True)
     request = commands.add_parser("review-request")
     request.add_argument("--prs", type=int, nargs="+", required=True)
-    request.add_argument(
+    evidence = request.add_mutually_exclusive_group(required=True)
+    evidence.add_argument(
+        "--evidence-ref", help="この親のnoteが返したbody_sha256またはURL"
+    )
+    evidence.add_argument(
         "--evidence-file",
-        required=True,
         help="受入条件・対象HEAD・テスト結果を記したファイル",
     )
     request.add_argument("--reason-file")
-    request.add_argument(
+    instruction = request.add_mutually_exclusive_group(required=True)
+    instruction.add_argument("--instruction", help="レビュー指示を直接指定")
+    instruction.add_argument(
         "--instruction-file",
-        required=True,
         help="原要件とレビューで確認すべき点を記したファイル",
     )
     request.add_argument(
@@ -384,8 +427,8 @@ def parser() -> argparse.ArgumentParser:
     return root
 
 
-def _main(argv: list[str] | None = None) -> int:
-    args = parser().parse_args(argv)
+def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
+    args = argv if isinstance(argv, argparse.Namespace) else parser().parse_args(argv)
     capture_token = None
     continuation = None
     try:
@@ -695,6 +738,7 @@ def _main(argv: list[str] | None = None) -> int:
                 nonempty(identity, "parent identity"),
                 child=number(args.child),
                 prompt=args.prompt_file,
+                base_ref=args.base_ref,
                 resume=args.resume,
                 worker=args.worker,
                 repair=repair_request(args.repair_id, args.repair_pr)
@@ -851,7 +895,13 @@ def _main(argv: list[str] | None = None) -> int:
             elif command == "workflow-report":
                 from .development import load, report
 
-                result = report(session, load(Path(args.spec)))
+                spec = load(Path(args.spec))
+                if spec.get("schema_version") == 2 and "acceptance" in spec:
+                    from .completion import submit
+
+                    result = submit(session, spec, managed_report=True)
+                else:
+                    result = report(session, spec)
             elif command == "record-cancellation":
                 from .development import load, record_cancellation
 
@@ -871,7 +921,13 @@ def _main(argv: list[str] | None = None) -> int:
                         raise ValueError("structured finish requires release --ended")
                     from .completion import release
 
-                    result = release(session, read_object(args.spec))
+                    spec = read_object(args.spec)
+                    if spec.get("schema_version") == 2:
+                        from .completion import submit
+
+                        result = submit(session, spec, managed_report=False)
+                    else:
+                        result = release(session, spec)
                 else:
                     result = session.lifecycle(
                         "ended" if args.ended else "released", read_text(args.note_file)
@@ -937,9 +993,21 @@ def _main(argv: list[str] | None = None) -> int:
                     number(args.child), read_object(args.spec), command == "resume"
                 )
             elif command == "improvement":
+                if args.spec and any((args.purpose, args.evidence, args.scope)):
+                    raise ValueError(
+                        "choose --spec or --purpose / --evidence / --scope"
+                    )
+                candidate = (
+                    read_object(args.spec)
+                    if args.spec
+                    else {
+                        k: nonempty(getattr(args, k), "--" + k)
+                        for k in ("purpose", "evidence", "scope")
+                    }
+                )
                 result = session.improvement(
                     number(args.child) if args.child is not None else None,
-                    read_object(args.spec),
+                    candidate,
                     args.key,
                 )
             elif command == "improvement-propose":
@@ -1000,8 +1068,12 @@ def _main(argv: list[str] | None = None) -> int:
                 result = handoff_review(
                     session,
                     args.prs,
-                    read_text(args.instruction_file),
-                    read_text(args.evidence_file),
+                    args.instruction
+                    if args.instruction is not None
+                    else read_text(args.instruction_file),
+                    saved_note(session, args.evidence_ref)
+                    if args.evidence_ref is not None
+                    else read_text(args.evidence_file),
                     read_text(args.reason_file) if args.reason_file else None,
                     review_selection=review_choice(session, args),
                     options=options,
@@ -1164,7 +1236,10 @@ def _main(argv: list[str] | None = None) -> int:
             if observed_exit is not None:
                 print(json.dumps(observed_exit, ensure_ascii=False, sort_keys=True))
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
-        print(f"parent-session: {exc}\n操作の説明: parent {args.command} --help", file=sys.stderr)
+        print(
+            f"parent-session: {exc}\n操作の説明: parent {args.command} --help",
+            file=sys.stderr,
+        )
         return 2
     finally:
         if capture_token is not None:
@@ -1177,6 +1252,26 @@ def main(argv: list[str] | None = None) -> int:
     with metrics.command(
         args.command, Path(destination) if destination else None
     ) as row:
-        result = _main(argv)
+        # Several consumers (including the audit capture) may read the same
+        # input. Spool stdin once, preserving original bytes and path types.
+        streams = [
+            key
+            for key, value in vars(args).items()
+            if (key == "spec" or key.endswith("_file")) and str(value) == "-"
+        ]
+        if len(streams) > 1:
+            print("parent: only one input may consume stdin (-)", file=sys.stderr)
+            return 2
+        with tempfile.TemporaryDirectory() if streams else nullcontext() as directory:
+            if streams:
+                key = streams[0]
+                path = Path(str(directory)) / "stdin"
+                path.write_bytes(sys.stdin.buffer.read())
+                setattr(
+                    args,
+                    key,
+                    path if isinstance(getattr(args, key), Path) else str(path),
+                )
+            result = _main(args)
         row["exit_code"] = result
         return result

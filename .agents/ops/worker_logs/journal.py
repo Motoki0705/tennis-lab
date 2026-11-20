@@ -282,6 +282,8 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
         "pr": number,
         "saved_to_main": row["state"] == "merged",
     }
+    if "publication_batch" in row:
+        result["batch_first_turn"] = row["publication_batch"]
     if "merge_http_status" in row:
         require(
             type(row["merge_http_status"]) is int

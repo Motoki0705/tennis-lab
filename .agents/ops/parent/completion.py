@@ -303,14 +303,91 @@ def record(
     return receipt
 
 
-def release(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
+def submit(
+    session: ParentSession, submission: dict[str, Any], *, managed_report: bool
+) -> dict[str, Any]:
+    """Publish a completion and consume the same acceptance input on either path."""
+    from .development import report, verify_completion
+    from .improvements import candidates
+    from .notifications import notify
+
+    finish = dict(submission)
+    evidence = finish.pop("evidence", None)
+    artifacts = finish.pop("artifacts", [])
+    resolves = finish.pop("resolves", [])
+    finish["schema_version"] = 1
+    if submission.get("schema_version") != 2 or finish.get("state") != "completed":
+        raise ValueError("combined completion requires version 2 and state=completed")
+    signature = digest(submission)
+    if not managed_report and session.row.get("status") == "ended":
+        if session.row.get("completion_submission") != signature:
+            raise ValueError("ended parent has a different completion submission")
+        return release(session, finish)
+    session.owner()
+    session.public(submission)
+    auth = authorization(session)
+    required = requirements(session)
+    validate_finish(finish, required, candidates(session), session.parent)
+    prs = verify_completion(session)
+    from .notifications import strings
+
+    urls = strings(artifacts, "artifacts", empty=True)
+    urls = list(
+        dict.fromkeys(
+            [*urls, *(f"https://github.com/{session.gh.repo}/pull/{n}" for n in prs)]
+        )
+    )
+    criteria = {item["id"]: item["criterion"] for item in required["criteria"]}
+    notice = {
+        "schema_version": 1,
+        "key": "completion",
+        "kind": "completion",
+        "summary": finish["summary"],
+        "evidence": evidence,
+        "resolves": resolves,
+        "details": {
+            "achievements": [
+                f"{criteria[item['id']]} — {item['evidence']}"
+                for item in finish["acceptance"]
+            ],
+            "artifacts": urls,
+            "remaining": finish["remaining_required"],
+        },
+    }
+    published = notify(session, notice)
+    if authorization(session) != auth:
+        raise ValueError("completion authorization changed during notification")
+    session.row["completion_submission"] = signature
+    session.store.save()
+    if managed_report:
+        return report(
+            session,
+            {
+                "schema_version": 2,
+                "state": "completed",
+                "reason": finish["summary"],
+                "resume_condition": "全条件を受入済み",
+                "evidence": published["url"],
+                "finish": finish,
+            },
+            verified_prs=prs,
+        )
+    return release(session, finish, verified_prs=prs)
+
+
+def release(
+    session: ParentSession,
+    spec: dict[str, Any],
+    *,
+    verified_prs: list[int] | None = None,
+) -> dict[str, Any]:
     previous = session.row.get("completion", {})
     if session.row.get("status") == "ended" and previous.get("finish_sha256") == digest(
         spec
     ):
         # Replay repairs no execution and never revives the ended source owner.
         return dict(session.status())
-    record(session, spec)
+    record(session, spec, prs=verified_prs)
     return dict(session.lifecycle("ended", spec["summary"]))
 
 

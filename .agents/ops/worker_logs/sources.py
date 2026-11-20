@@ -201,6 +201,7 @@ def freeze(session: Any, child: int, prompt: str, standard: bytes) -> Path:
             "version": 1,
             "source": source,
             "state": "captured",
+            "publication_mode": "delegation_batch",
             "stage": "awaiting_final",
             "error": None,
         }

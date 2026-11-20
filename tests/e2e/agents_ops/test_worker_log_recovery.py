@@ -165,7 +165,7 @@ def logs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> LogEnv:
 
 
 def public_pr(logs: LogEnv, *, erase: bool = True) -> tuple[Path, PublicGitHub]:
-    path = logs.ready()
+    path = logs.ready(legacy=True)
     logs.github.pause_reads = True
     assert logs.publisher(path).publish()["state"] == "pending"
     logs.github.pause_reads = False
@@ -376,7 +376,7 @@ def test_foreign_unassigned_journal_replay_and_inventory_are_read_only_until_exe
     logs: LogEnv,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    path = logs.ready(parent=1723, child=1727)
+    path = logs.ready(legacy=True, parent=1723, child=1727)
     before = snapshot(logs.state)
     inventory = recovery.remaining_publications("o/r", 1723, state_dir=logs.state)
     assert inventory[0]["kind"] == "worker_log" and inventory[0]["issue"] == 1727
@@ -400,7 +400,7 @@ def test_bulk_recovery_requires_recovery_owner_and_reuses_foreign_journal(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     state = importlib.import_module("parent.state")
-    path = logs.ready(parent=1723, child=1727)
+    path = logs.ready(legacy=True, parent=1723, child=1727)
     owner = {
         "session": "codex:recovery",
         "status": "active",
@@ -510,7 +510,7 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
     module = importlib.import_module("parent.log_publication")
     lifecycle = importlib.import_module("worker_logs.lifecycle")
     state = importlib.import_module("parent.state")
-    first = logs.ready(child=10)
+    first = logs.ready(legacy=True, child=10)
     if entry.startswith("explicit"):
         source = journal.read(first)["source"]
         session = logs.sessions[-1]
@@ -549,8 +549,10 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
             == "ready"
         )
     else:
-        second = logs.ready(child=11)
-    later = logs.ready(child=11) if entry == "explicit_generation" else None
+        second = logs.ready(legacy=True, child=11)
+    later = (
+        logs.ready(legacy=True, child=11) if entry == "explicit_generation" else None
+    )
     actor = 1900 if entry in {"bulk", "orphan", "orphan_adopt"} else 1
     owner: dict[str, Any] = {
         "session": "codex:previous",
@@ -749,7 +751,7 @@ def test_decision_publication_postlude_keeps_its_original_generation(
 ) -> None:
     cli = importlib.import_module("parent.cli_impl")
     decisions = importlib.import_module("decision_logs.publication")
-    path = logs.ready()
+    path = logs.ready(legacy=True)
     owner = {
         "session": "codex:previous",
         "status": "active",
@@ -863,7 +865,7 @@ def test_existing_journal_merge_refusal_reaches_orphan_cli_exit(
 
 
 def test_exit_checkpoint_marks_corrupt_inventory_as_unknown(logs: LogEnv) -> None:
-    path = logs.ready()
+    path = logs.ready(legacy=True)
     path.write_text("invalid JSON")
     lifecycle = importlib.import_module("worker_logs.lifecycle")
     with pytest.raises(journal.PublicationError):
@@ -887,7 +889,7 @@ def test_definite_merge_rejection_stays_failed_and_only_405_retries(
     status: int,
     error: str,
 ) -> None:
-    path = logs.ready()
+    path = logs.ready(legacy=True)
     merge = logs.github.merge
 
     def refuse(number: int, head: str) -> None:
@@ -986,7 +988,7 @@ def test_http_200_without_merge_confirmation_is_an_uncertain_response(
 def test_uncertain_merge_remains_pending_without_blind_retry(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
-    path = logs.ready()
+    path = logs.ready(legacy=True)
     calls = []
 
     def uncertain(number: int, head: str) -> None:
@@ -1015,7 +1017,7 @@ def test_read_only_completion_never_creates_or_changes_state(
 ) -> None:
     module = importlib.import_module("parent.log_publication")
     state = importlib.import_module("parent.state")
-    logs.ready()
+    logs.ready(legacy=True)
     before = snapshot(logs.state)
     args = SimpleNamespace(command=command, dry_run=command == "publish-worker-log")
     continuation = module.Continuation(args, state.Store(logs.state), "o/r", 1, None)
@@ -1045,7 +1047,7 @@ def test_common_continuation_visits_pending_turn_once_outside_operation_lock(
 ) -> None:
     module = importlib.import_module("parent.log_publication")
     state = importlib.import_module("parent.state")
-    path = logs.ready()
+    path = logs.ready(legacy=True)
     owner = logs.sessions[0].row
     owner.update(
         status="ended"
@@ -1110,7 +1112,7 @@ def test_saved_assignment_exit_is_reconciled_even_when_the_original_command_fail
 ) -> None:
     module = importlib.import_module("parent.log_publication")
     state = importlib.import_module("parent.state")
-    path = logs.ready()
+    path = logs.ready(legacy=True)
     owner: dict[str, Any] = {
         "session": "codex:previous",
         "status": "handoff_pending" if accept else "active",

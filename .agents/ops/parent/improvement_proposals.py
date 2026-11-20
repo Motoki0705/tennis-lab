@@ -234,6 +234,11 @@ def propose(session: ParentSession) -> dict[str, Any]:
     rows = session.gh.issue_rows()  # all states, all pages; never a search index
     index = index_proposals(session, rows, recorded)
     available = eligible(recorded)
+    discoveries = [
+        k for k, row in available.items() if row["candidate"]["data"]["legacy"]
+    ]
+    if any(not r["candidate"]["data"]["legacy"] for r in available.values()):
+        available = {k: row for k, row in available.items() if k not in discoveries}
     name = f"proposal-{session.parent}"
     receipt = load_receipt(session, name)
     opened = [(s, r) for s, r in index.items() if r["state"] == "open"]

@@ -765,6 +765,7 @@ def run_worker(
     child: int,
     prompt: Path | None,
     resume: bool,
+    base_ref: str | None = None,
     restart_evidence: str | None,
     model: str | None = None,
     model_reason: str | None = None,
@@ -778,9 +779,52 @@ def run_worker(
         gh.targeted_history = True
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
-        worker = worker_slots.select(session.row, child, worker)
+        worker = worker_slots.select(
+            session.row, child, worker, creating=base_ref is not None
+        )
         session.worker = worker
         session.agreed()
+        if base_ref is not None:
+            from .snapshot import worker_location
+
+            if (
+                session.row.get("dispatch")
+                or resume
+                or replace_session
+                or repair
+                or restart_evidence
+            ):
+                raise ValueError(
+                    "--from is for a new manual worker; continue an existing session with --resume"
+                )
+            if prompt is None:
+                raise ValueError("initial worker requires --prompt-file")
+            nonempty(read_original(prompt), "worker instruction")
+            implementation_model(model)
+            branch, tree = worker_location(parent, child, worker)
+            existing = session.worker_task(child)
+            if not existing.get("delegated"):
+                session.delegate(
+                    child, "codex", branch, tree, None, None, base_ref=base_ref
+                )
+            elif (
+                existing.get("worker_runs")
+                or existing.get("worktree") != str(tree)
+                or existing.get("branch") != branch
+            ):
+                raise ValueError(
+                    "worker already reserved or started; inspect-worker before continuing"
+                )
+            else:
+                from .snapshot import prepare_worker_tree
+
+                with session.gh.io_scope():
+                    prepare_worker_tree(
+                        tree,
+                        branch,
+                        base_ref,
+                        store.directory,
+                    )
         previous_ended = copy.deepcopy(current_task(session, child).get("worker_ended"))
         previous_runtime = copy.deepcopy(
             current_task(session, child).get("preflight", {}).get("runtime")
