@@ -204,5 +204,32 @@
       "state": "done",
       "status": "complete"
     }
+  },
+  "fourth_attempts": {
+    "vitpose_h/3a": {
+      "queue_job": "0-8204838163145463422_2026-11-20T08-03-56-854536577Z_3129954_i2303-vitpose-3a-r4.job",
+      "state": "failed",
+      "status": "profile_incomplete",
+      "exit_code": 3,
+      "stage": "ncu",
+      "timeout_seconds": 1800,
+      "csv_kernels_before_timeout": 228,
+      "nsys_gpu_kernels": 300,
+      "partial_csv_sha256": "6bb87271292170419828a01c5b151b7c6830f37897af8dcf6df540de2ccaa6de"
+    },
+    "hmr2/2": {
+      "queue_job": "0-8204838162888051058_2026-11-20T08-03-57-111948941Z_3130036_i2303-hmr2-2-r4.job",
+      "state": "done",
+      "status": "complete"
+    },
+    "hmr2/3a-ncu": {
+      "queue_job": "0-8204838162611562645_2026-11-20T08-03-57-388437354Z_3130100_i2303-hmr2-3a-ncu-r4.job",
+      "state": "done",
+      "status": "complete",
+      "measurement_reused_from": "outputs/i2303/round3/hmr2/3a",
+      "plan_sha256": "8982c851eb60a15744e441258f170d7bad69591a4f5efc5c563dd9c4a610e5dd",
+      "nsys_gpu_kernels": 341,
+      "ncu_profiled_kernels": 341
+    }
   }
 }
