@@ -33,7 +33,7 @@ class TorchRunner:
 
 
 class TensorRTRunner:
-    def __init__(self, plan):
+    def __init__(self, plan, *, omit_layer_nvtx=False):
         import tensorrt as trt
 
         self.logger = trt.Logger(trt.Logger.WARNING)
@@ -44,6 +44,8 @@ class TensorRTRunner:
         self.context = self.engine.create_execution_context()
         if self.context is None:
             raise RuntimeError("Could not create TensorRT execution context")
+        if omit_layer_nvtx:
+            self.context.nvtx_verbosity = trt.ProfilingVerbosity.NONE
         expected = {
             INPUT_NAME: trt.TensorIOMode.INPUT,
             OUTPUT_NAME: trt.TensorIOMode.OUTPUT,
@@ -221,7 +223,9 @@ def run(args):
         runner = (
             TorchRunner(args.condition, args.checkpoint)
             if args.condition in {"0", "1"}
-            else TensorRTRunner(args.output / PLAN)
+            else TensorRTRunner(
+                args.output / PLAN, omit_layer_nvtx=args.omit_trt_layer_nvtx
+            )
         )
         torch.cuda.synchronize()
         if memory is not None:
@@ -247,6 +251,7 @@ def main():
     parser.add_argument("--eval", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--profile-index", type=int)
+    parser.add_argument("--omit-trt-layer-nvtx", action="store_true")
     args = parser.parse_args()
     require_queue()
     run(args)

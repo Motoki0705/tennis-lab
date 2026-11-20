@@ -202,11 +202,12 @@ def run_case(args):
     write_json(output / "result.json", result)
     for tool, executable in {"nsys": str(args.nsys), "ncu": str(args.ncu)}.items():
         if args.profiles in {"all", tool}:
+            profile_command = [*command, "--profile-index", str(profile_index)]
+            if tool == "ncu" and args.condition in {"2", "3a", "3b"}:
+                # ncu 2025.3.1 raw CSV misquotes TensorRT's JSON NVTX payloads.
+                profile_command.append("--omit-trt-layer-nvtx")
             result["profiles"][tool] = capture(
-                tool,
-                executable,
-                [*command, "--profile-index", str(profile_index)],
-                output,
+                tool, executable, profile_command, output
             )
             write_json(output / "result.json", result)
     nsys = result["profiles"].get("nsys", {})

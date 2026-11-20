@@ -60,17 +60,23 @@ def read_ncu(path):
         if missing:
             raise ValueError(f"Missing Nsight Compute columns: {sorted(missing)}")
         columns = {name: header.index(name) for name in NCU_METRICS}
-        values = [
-            dict(zip(header, row, strict=True))
-            for row in rows
-            if row and row[0].isdigit()
-        ]
+        values = []
+        for row in rows:
+            if not row or not row[0].isdigit():
+                continue
+            if len(row) != len(header):
+                raise ValueError(
+                    f"Nsight Compute CSV row {row[0]} has {len(row)} columns, "
+                    f"expected {len(header)}"
+                )
+            values.append(row)
     if not values:
         raise ValueError("Nsight Compute returned no kernel rows")
-    if len({row["ID"] for row in values}) != len(values):
+    if len({row[0] for row in values}) != len(values):
         raise ValueError("Duplicate Nsight Compute kernel IDs")
     metrics = {
-        name: [float(row[name].replace(",", "")) for row in values] for name in columns
+        name: [float(row[index].replace(",", "")) for row in values]
+        for name, index in columns.items()
     }
     if not all(
         math.isfinite(value) and value >= 0

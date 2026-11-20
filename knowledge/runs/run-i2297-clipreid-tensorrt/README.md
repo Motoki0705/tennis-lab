@@ -57,7 +57,7 @@ done
 
 キューが停止中であれば共有workerを起動する。 `status.json` と `result.json` で各条件の計測・収集状態を確認する。終了値2は無効なCLI入力。変換や実行の失敗は終了時に非ゼロを返し、 `convert.log` または `measure.log` と `status.json` を残す。終了値3の `profile_incomplete` は速度・メモリ・精度の収集後に指定プロファイラの指標が欠けた状態を示す。個別プロファイラのログと結果はその条件の出力先に残る。 [training queue](../../../.agents/skills/training-queue/SKILL.md)
 
-`ERR_NVGPUCTRPERM` の解消には Windows 側 NVIDIA Control Panel の権限設定が必要。管理者が Desktop メニューで開発者設定を表示し、Developer の Manage GPU Performance Counters で利用者にアクセスを許可する。設定後は同じキュー登録コマンドで `--profiles ncu --profile-from "$out/$condition" --output "$out/ncu-$condition"` を指定する。前回のエンジンと測定結果を照合し、同じ代表入力のカウンタだけを追測する。 [NVIDIAの手順](https://developer.nvidia.com/ERR_NVGPUCTRPERM)
+`ERR_NVGPUCTRPERM` が出た場合、Windows側のNVIDIA Control Panelで Desktop メニューから開発者設定を表示し、Developer の Manage GPU Performance Counters でアクセスを許可する。2026-11-20の追測では設定後に共有キューで新規CUDAプロセスを起動して疎通した。既存結果を使う場合は同じキュー登録コマンドで `--profiles ncu --profile-from "$out/$condition" --output "$out/ncu-$condition"` を指定する。前回のエンジンと測定結果を照合し、同じ代表入力のカウンタを取得する。 [NVIDIAの手順](https://developer.nvidia.com/ERR_NVGPUCTRPERM)
 
 ## CPU検証
 

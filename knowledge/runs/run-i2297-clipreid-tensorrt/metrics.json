@@ -436,12 +436,18 @@
           }
         },
         "ncu": {
-          "status": "unavailable",
-          "reason": "==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM",
-          "dram_read_bytes": null,
-          "dram_write_bytes": null,
-          "stall_pct_time_weighted": null,
-          "tensor_active_pct_time_weighted": null
+          "status": "measured",
+          "profiled_kernels": 188,
+          "dram_read_bytes": 483787520,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 1.3903657928775706,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 4.6486334239162685,
+            "short_scoreboard": 7.888927066892923,
+            "lg_throttle": 2.444751272710012,
+            "mio_throttle": 31.195321173859913
+          },
+          "queue_job": "0-8204864177025535035_2026-11-20T00-50-22-974464964Z_3541034_i2297-clipreid-0-ncu"
         }
       }
     },
@@ -879,12 +885,18 @@
           }
         },
         "ncu": {
-          "status": "unavailable",
-          "reason": "==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM",
-          "dram_read_bytes": null,
-          "dram_write_bytes": null,
-          "stall_pct_time_weighted": null,
-          "tensor_active_pct_time_weighted": null
+          "status": "measured",
+          "profiled_kernels": 166,
+          "dram_read_bytes": 191208960,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 19.166529662326955,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 11.841370787674764,
+            "short_scoreboard": 3.9372946652468155,
+            "lg_throttle": 1.3578781216722209,
+            "mio_throttle": 1.6207612242794824
+          },
+          "queue_job": "0-8204864176778836987_2026-11-20T00-50-23-221163012Z_3541072_i2297-clipreid-1-ncu"
         }
       }
     },
@@ -1339,12 +1351,18 @@
           }
         },
         "ncu": {
-          "status": "unavailable",
-          "reason": "==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM",
-          "dram_read_bytes": null,
-          "dram_write_bytes": null,
-          "stall_pct_time_weighted": null,
-          "tensor_active_pct_time_weighted": null
+          "status": "measured",
+          "profiled_kernels": 114,
+          "dram_read_bytes": 161052160,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 29.880349771666207,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 9.472630813582672,
+            "short_scoreboard": 3.6707097481950135,
+            "lg_throttle": 0.4215506288746588,
+            "mio_throttle": 1.5857040079597928
+          },
+          "queue_job": "0-8204863795956040101_2026-11-20T00-56-44-043959898Z_3574763_i2297-clipreid-2-ncu-omit-layer-nvtx"
         }
       }
     },
@@ -3220,12 +3238,18 @@
           }
         },
         "ncu": {
-          "status": "unavailable",
-          "reason": "==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM",
-          "dram_read_bytes": null,
-          "dram_write_bytes": null,
-          "stall_pct_time_weighted": null,
-          "tensor_active_pct_time_weighted": null
+          "status": "measured",
+          "profiled_kernels": 117,
+          "dram_read_bytes": 85307392,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 22.98423009705128,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 12.290217900568926,
+            "short_scoreboard": 6.559096790986503,
+            "lg_throttle": 0.4617603093741866,
+            "mio_throttle": 3.2538537909493175
+          },
+          "queue_job": "0-8204863795709133592_2026-11-20T00-56-44-290866407Z_3574802_i2297-clipreid-3a-ncu-omit-layer-nvtx"
         }
       }
     },
@@ -3699,12 +3723,18 @@
           }
         },
         "ncu": {
-          "status": "unavailable",
-          "reason": "==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM",
-          "dram_read_bytes": null,
-          "dram_write_bytes": null,
-          "stall_pct_time_weighted": null,
-          "tensor_active_pct_time_weighted": null
+          "status": "measured",
+          "profiled_kernels": 139,
+          "dram_read_bytes": 76959232,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 18.988903478381374,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 12.096510185698442,
+            "short_scoreboard": 6.207964939024387,
+            "lg_throttle": 1.2271123198447895,
+            "mio_throttle": 1.3418555986696243
+          },
+          "queue_job": "0-8204863795462601406_2026-11-20T00-56-44-537398593Z_3574847_i2297-clipreid-3b-ncu-omit-layer-nvtx"
         }
       }
     }

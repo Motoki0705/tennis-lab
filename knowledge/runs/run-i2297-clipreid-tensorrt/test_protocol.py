@@ -122,6 +122,16 @@ def test_ncu_sums_bytes_and_weights_percentages_by_gpu_duration(tmp_path):
     assert result["stall_pct_time_weighted"]["long_scoreboard"] == 20
 
 
+def test_ncu_rejects_a_shifted_row_even_with_numeric_metric_cells(tmp_path):
+    report = tmp_path / "ncu.csv"
+    with report.open("w", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["ID", "NVTX Range", *NCU_METRICS])
+        writer.writerow([0, "outer", "split payload", 10, 32, 64, 25, 1, 2, 3, 4])
+    with pytest.raises(ValueError, match=r"CSV row 0 has 11 columns, expected 10"):
+        read_ncu(report)
+
+
 def test_clip_local_id_decisions_and_cosine_use_held_out_camera():
     addresses = [
         (clip, camera, index, player)
