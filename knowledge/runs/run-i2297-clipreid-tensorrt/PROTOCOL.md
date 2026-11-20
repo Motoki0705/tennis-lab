@@ -11,7 +11,7 @@
 
 ## TensorRTの実行精度
 
-主要な `MatMul`、`Gemm`、`Conv` をモデルごとに列挙し、条件別の期待精度を実行前に固定する。CLIP-ReIDは24個のattention行列積と48個のTransformerの線形演算に加え、入力のpatch embeddingと末尾projectionを検査する。
+主要な `MatMul`、`Gemm`、`Conv` をモデルごとに列挙し、条件別の期待精度を実行前に固定する。CLIP-ReIDは24個のattention行列積と48個のTransformerの線形演算に加え、入力のpatch embeddingと末尾projectionを検査する。下表は #2297 の初回計測の条件を示す。
 
 | 条件 | CLIP-ReIDの主要演算 | 高い精度を許容する範囲 |
 |---|---|---|
@@ -20,6 +20,17 @@
 | 3b | Transformerの72演算をFP8 E4M3 | patch `/visual/conv1/Conv` と末尾 `/visual/MatMul` はQ/DQの対象外でFP16。LayerNorm・softmax・reduction・cast・入出力にFP16/FP32を許容 |
 
 ビルド時に `DETAILED` を指定し、実行層のinspector JSONで各ONNX演算を `Metadata` から対応付ける。GEMM・Convは実行タクティクス名に含まれる両オペランド精度と、inspectorに現れる活性入力dtypeを照合する。FP32/INT32の積和累積や、出力・融合後段のcastに使う精度はオペランドの判定から除く。CLIPの `_gemm_mha_v2_` は2つのattention MatMulを束ねる実行層で、3つのQ/K/V入力dtypeを照合する。inspectorで分かるのはこの融合層の入力形式までで、内部の命令ごとの精度は記録対象外とする。確認できた実行層数とONNX演算数を精度別に記録する。主要演算にFP32や未承認の別精度が現れた場合、対応層や精度の根拠が欠ける場合は非ゼロで停止する。タクティクス表記が変わる場合やdynamic shapeを追加する場合は、対象shapeのinspectorで検証方法を確かめる。 [NVIDIAのEngine Inspector仕様](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/engine-tools.html)
+
+### ViT 3モデルのPTQ設定
+
+CLIP-ReID・ViTPose-H・HMR2には、FP32 ONNXを校正用 `clip_027` で ModelOpt max 校正し、下表の重み付き演算へQ/DQを挿入する。ViTPose-Hの校正時は各cropと水平反転を同一バッチに並べる。
+
+| 条件 | 量子化対象 | ONNXの対象演算数（CLIP-ReID / ViTPose-H / HMR2） |
+|---|---|---:|
+| 3a `attention-out-max` | 画像backboneの各Transformerブロックでattentionの出力投影1個をINT8 | 12 / 32 / 32 |
+| 3b `linear-max` | 画像backboneの各TransformerブロックでQKV投影・attention出力投影・MLPの前後2個の線形演算をFP8 E4M3 | 48 / 128 / 128 |
+
+対象外の線形演算・畳み込み・入力が両方可変のattention MatMulはFP16とする。残差Add・LayerNorm・GELU・softmaxは直接のQ/DQ対象から外し、reductionやcastにはFP32を許す。HMR2のSMPL headはFP16で、`_gemv_mha_v1_` 融合の3入力と、長さ1のself-attentionのMatMulを積に置換するタクティクスの2入力およびshapeを照合する。実行層で見つからない演算は、ONNXグラフで画像入力に依存しない場合に限って別途記録する。設定の根拠は [CLIP-ReIDの校正・層別比較](../run-i2303-vit-tensorrt/int8-diagnosis.json) にある。
 
 ## 入力とshape
 

@@ -28,7 +28,7 @@ ViTPose-H は [#2297 の検出行](../run-i2297-clipreid-tensorrt/inputs.json)�
 
 ## 計測
 
-[共有キュー](../../../.agents/skills/training-queue/SKILL.md)の `--resource all` で登録する。下記の例は ViTPose-H の基準。HMR2 はモデルを `hmr2`、重みを `ckpt/hmr2/epoch=10-step=25000.ckpt` にし、出力と入力をモデル名に合わせる。実行種別は `0`、`1`、`2`、`3a`、`3b`。条件0を先に登録し、以降は `--reference "$out/$model/0"` を付ける。FP8の比較では Transformer ブロック内の重み付き線形層を対象にした `--ptq-recipe linear-max` を指定する。
+[共有キュー](../../../.agents/skills/training-queue/SKILL.md)の `--resource all` で登録する。下記の例は ViTPose-H の基準。HMR2 はモデルを `hmr2`、重みを `ckpt/hmr2/epoch=10-step=25000.ckpt` にし、出力と入力をモデル名に合わせる。実行種別は `0`、`1`、`2`、`3a`、`3b`。条件0を先に登録し、以降は `--reference "$out/$model/0"` を付ける。量子化条件は [プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md#vit-3モデルのptq設定) のとおり `--ptq-recipe` を指定する。
 
 ```bash
 export TRAINING_QUEUE_DIR="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.training_queue"
@@ -57,9 +57,9 @@ env "PYTHONPATH=$PYTHONPATH" OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 \
 
 CLIP-ReID の追測は `benchmark.py --adapter "$bundle/vit_models.py" --model clipreid_vitb16_market1501` を使い、#2297 の `inputs` と基準FP32の `0` を参照する。
 
-32 crop の校正比較では、デフォルト対象の max で cosine P05 が 0.526、MatMul/Gemm のみで 0.850、重み付き線形層のみの max で 0.849、entropy で 0.856 だった。旧グラフで LayerNorm・QuickGELU の積・残差 Add の活性化Q/DQだけを外すと 0.515 から 0.848 に改善した。旧グラフの全入力辺を外した初回試行には活性化181辺と定数49辺が含まれる。比較と初回試行の内訳は [int8-diagnosis.json](int8-diagnosis.json) に記録した。
+32 crop の校正比較では、デフォルト対象の max で cosine P05 が 0.526、MatMul/Gemm のみで 0.850、重み付き線形層のみの max で 0.849、entropy で 0.856 だった。旧グラフで活性化181辺だけをFP16へ戻すと 0.515 から 0.99974 に回復し、定数49辺だけを戻したときは 0.486 だった。LayerNorm入力だけを戻すと 0.749、LayerNorm・QuickGELUの積・残差Addの入力をまとめて戻すと 0.848 だった。重み付き線形層のうち、MLP出力投影だけを量子化した条件の0.860に対し、attention出力投影だけの条件は0.99971だった。3aには同じ12 cropで最も高い値を得た attention出力投影を使う。範囲の選定に使った12 cropは全236 cropでの比較にも含まれる。[校正・層別比較](int8-diagnosis.json)
 
-初回計測は、PyTorch 2.13 の実行精度検査が `aten::linear` などの複合演算を捕捉できず、両モデルのFP32測定を公開する前に止まった。後続6件は比較用FP32の欠落を検出して終了値1で止まった。エラーと入力照合は [validation.json](validation.json) を参照。
+[条件別の計測結果](metrics.json) と [HMR2の次元別絶対差](hmr2-feature-errors.json) を参照。初回はPyTorch 2.13の複合演算を実行精度検査が捕捉できず、続く計測も比較用FP32が揃うまで停止した。第2回の変換エラーと入力照合は [validation.json](validation.json) に記録した。
 
 ## CPU検証
 

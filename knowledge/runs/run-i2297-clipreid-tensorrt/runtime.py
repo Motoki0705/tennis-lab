@@ -342,17 +342,25 @@ def run(args):
                 adapter=adapter,
             )
             if memory is not None:
-                expected = (
-                    clipreid_precision_requirements(args.condition)
-                    if adapter is None
-                    else json.loads(plan.with_suffix(".precision.json").read_text())
-                )
+                if adapter is None:
+                    requirements = {
+                        "expected_operations": clipreid_precision_requirements(
+                            args.condition
+                        )
+                    }
+                else:
+                    requirements = json.loads(
+                        plan.with_suffix(".precision.json").read_text()
+                    )
+                    if "expected_operations" not in requirements:
+                        # Earlier Phase 1-B plans used a flat operation-to-precision map.
+                        requirements = {"expected_operations": requirements}
                 trt_settings = {
                     "trt_nvtx_verbosity": runner.context.nvtx_verbosity.name,
                     "trt_compute_precision": verify_compute_precision(
                         inspect_engine(runner.engine),
                         TRT_PRECISIONS[args.condition],
-                        expected_operations=expected,
+                        **requirements,
                     ),
                 }
         else:

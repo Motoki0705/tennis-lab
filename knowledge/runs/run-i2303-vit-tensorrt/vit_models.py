@@ -1,6 +1,7 @@
 """Model and accuracy adapters for the shared Phase 1 benchmark."""
 
 import re
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -36,15 +37,46 @@ MODEL_ASSETS = {
 MEAN_PARAMS = Path("ckpt/body_models/gvhmr/smpl_mean_params.npz")
 MEAN_PARAMS_SHA256 = "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
 PIPELINE = Path("src/tennis_scene/configs/pipeline.yaml")
-BLOCKS = re.compile(
-    r"/(?:transformer/resblocks/resblocks|backbone/blocks/blocks)\.\d+/"
-)
+BLOCKS = {
+    MODEL: re.compile(r"^/visual/transformer/resblocks/resblocks\.(\d+)/"),
+    VITPOSE: re.compile(r"^/backbone/blocks\.(\d+)/"),
+    HMR2: re.compile(r"^/hmr/backbone/blocks\.(\d+)/"),
+}
+ATTENTION_OUT = {
+    MODEL: "/attn/Gemm",
+    VITPOSE: "/attn/proj/MatMul",
+    HMR2: "/attn/proj/MatMul",
+}
 COMPUTE_OPS = {"MatMul", "Gemm", "Conv", "ConvTranspose"}
 RECIPES = {
-    "linear-max": (True, "max"),
-    "linear-entropy": (True, "entropy"),
-    "matmul-max": (False, "max"),
+    "attention-out-max": ("attention-out", "max"),
+    "linear-max": ("linear", "max"),
+    "linear-entropy": ("linear", "entropy"),
+    "matmul-max": ("matmul", "max"),
 }
+
+
+def ptq_operations(model, graph, scope):
+    pattern = BLOCKS[model]
+    linear = linear_names(graph)
+    selected = {}
+    for node in graph.node:
+        block = pattern.match(node.name)
+        if block is None or node.op_type not in {"MatMul", "Gemm"}:
+            continue
+        if scope != "matmul" and node.name not in linear:
+            continue
+        if scope == "attention-out" and not node.name.endswith(ATTENTION_OUT[model]):
+            continue
+        selected[node.name] = int(block[1])
+    block_count = 12 if model == MODEL else 32
+    per_block = {"attention-out": 1, "linear": 4, "matmul": 6}[scope]
+    if Counter(selected.values()) != {block: per_block for block in range(block_count)}:
+        raise ValueError(
+            f"{model} {scope} PTQ selects {len(selected)} operations; "
+            f"expected {per_block} operations in each of {block_count} blocks"
+        )
+    return set(selected)
 
 
 def head_settings():
@@ -325,18 +357,11 @@ class VitAdapter:
 
         if recipe not in RECIPES:
             raise ValueError(f"Select a PTQ recipe explicitly: {sorted(RECIPES)}")
-        linear_only, method = RECIPES[recipe]
+        scope, method = RECIPES[recipe]
         if mode == "fp8" and method != "max":
             raise ValueError("Use max calibration for FP8")
         model = onnx.load(graph, load_external_data=False)
-        linear = linear_names(model.graph)
-        selected = {
-            node.name
-            for node in model.graph.node
-            if node.op_type in {"MatMul", "Gemm"}
-            and BLOCKS.search(node.name)
-            and (not linear_only or node.name in linear)
-        }
+        selected = ptq_operations(self.model, model.graph, scope)
         # Static ViTPose graph batch 2 has adjacent original and mirrored views.
         calibration = (
             data
@@ -352,6 +377,7 @@ class VitAdapter:
             nodes=sorted(selected),
             method=method,
             external_data=self.model != MODEL,
+            disable_mha_qdq=self.model != MODEL and scope != "matmul",
         )
         report.update(
             recipe=recipe,
@@ -363,17 +389,25 @@ class VitAdapter:
     def compute_requirements(self, graph, mode, selected):
         import onnx
 
+        exported = onnx.load(graph, load_external_data=False).graph
+        if [inp.name for inp in exported.input] != ["pixels"]:
+            raise ValueError("Export must have one input named pixels")
         dynamic = {"pixels"}
         operations = {}
-        for node in onnx.load(graph, load_external_data=False).graph.node:
-            if dynamic.isdisjoint(node.input):
-                continue
-            dynamic.update(node.output)
+        constants = []
+        for node in exported.node:
+            depends_on_pixels = not dynamic.isdisjoint(node.input)
+            if depends_on_pixels:
+                dynamic.update(node.output)
             if node.op_type in COMPUTE_OPS:
                 operations[node.name] = mode if node.name in selected else "fp16"
-        if not operations.keys() >= selected or not operations:
+                if not depends_on_pixels:
+                    constants.append(node.name)
+        if not operations.keys() >= selected or len(operations) == len(constants):
             raise ValueError("Export did not preserve the declared compute operations")
-        return operations
+        if set(constants) & selected:
+            raise ValueError("PTQ selection contains an input-independent operation")
+        return {"expected_operations": operations, "constant_operations": constants}
 
 
 def adapter(model):

@@ -70,5 +70,68 @@
   "completed_clip_diagnostics": {
     "0-8204857150290752393_2026-11-20T02-47-29-709247606Z_3742419_i2303-clip-ptq": "done",
     "0-8204856579539421818_2026-11-20T02-57-00-460578181Z_3827362_i2303-clip-calibration": "done"
+  },
+  "second_attempts": {
+    "clip/3b": {
+      "queue_job": "0-8204852802152759124_2026-11-20T03-59-57-847240875Z_670114_i2303-clip-3b-r2.job",
+      "state": "done"
+    },
+    "hmr2/0": {
+      "queue_job": "0-8204852804155488370_2026-11-20T03-59-55-844511629Z_669548_i2303-hmr2-0-r2.job",
+      "state": "done"
+    },
+    "hmr2/1": {
+      "queue_job": "0-8204852803610594421_2026-11-20T03-59-56-389405578Z_669697_i2303-hmr2-1-r2.job",
+      "state": "done"
+    },
+    "hmr2/2": {
+      "queue_job": "0-8204852802992082111_2026-11-20T03-59-57-007917888Z_669842_i2303-hmr2-2-r2.job",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "conversion",
+      "diagnostic": "RuntimeError: Compute layer __mye119277+__mye119265+__mye119253_myl0_231 has no unique precision requirement",
+      "cause": "HMR2 head's input-independent matrix operations and single-token attention tactics were missing from the inspector verifier."
+    },
+    "hmr2/3b": {
+      "queue_job": "0-8204852802433786206_2026-11-20T03-59-57-566213793Z_669998_i2303-hmr2-3b-r2.job",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "conversion",
+      "diagnostic": "ValueError: Explicit PTQ selection is empty",
+      "cause": "HMR2 backbone ONNX node names use /hmr/backbone/blocks.N/, which did not match the original selector."
+    },
+    "vitpose_h/0": {
+      "queue_job": "0-8204852804541795353_2026-11-20T03-59-55-458204646Z_669464_i2303-vitpose-0-r2.job",
+      "state": "done"
+    },
+    "vitpose_h/1": {
+      "queue_job": "0-8204852803878590053_2026-11-20T03-59-56-121409946Z_669629_i2303-vitpose-1-r2.job",
+      "state": "done"
+    },
+    "vitpose_h/2": {
+      "queue_job": "0-8204852803329206807_2026-11-20T03-59-56-670793192Z_669769_i2303-vitpose-2-r2.job",
+      "state": "done"
+    },
+    "vitpose_h/3b": {
+      "queue_job": "0-8204852802712525666_2026-11-20T03-59-57-287474333Z_669925_i2303-vitpose-3b-r2.job",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "conversion",
+      "diagnostic": "ValueError: Explicit PTQ selection is empty",
+      "cause": "ViTPose backbone ONNX node names use /backbone/blocks.N/, which did not match the original selector."
+    }
+  },
+  "hmr2_fp16_inspector_recheck": {
+    "source_inspector_sha256": "c5f123d5c56a7157fd2ad2a86d41bb18b68cb4eb2e30e37a3d0df03aca9a053e",
+    "expected_scope_graph_sha256": "8925e2e6f3c3e746eb2fe0229b78f03d6f650fdc120d27d10de5afc9272f0a24",
+    "engine_layers_by_precision": {
+      "fp16": 216
+    },
+    "onnx_operations_by_precision": {
+      "fp16": 259
+    },
+    "unobserved_constant_onnx_operations": [
+      "/hmr/smpl_head/transformer/to_token_embedding/MatMul"
+    ]
   }
 }

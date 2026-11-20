@@ -114,25 +114,39 @@ def inspect_engine(engine, context=None):
     return json.loads(inspector.get_engine_information(trt.LayerInformationFormat.JSON))
 
 
-def verify_compute_precision(details, required_precision, *, expected_operations=None):
+def verify_compute_precision(
+    details, required_precision, *, expected_operations=None, constant_operations=()
+):
     """Require operand evidence for each compute layer and cover the pinned ONNX ops."""
     precisions = Counter()
     seen = set()
     for layer in details["Layers"]:
         kind = layer["LayerType"].lower()
-        tactic = layer.get("TacticName", "")
+        tactic = layer.get("TacticName") or ""
         operands = TACTIC_OPERANDS.search(tactic)
-        fused_attention = kind == "kgen" and tactic.startswith("_gemm_mha_v2_")
-        if kind not in COMPUTE_TYPES and not operands and not fused_attention:
+        metadata = set(ONNX_LAYER.findall(layer.get("Metadata") or ""))
+        operations = metadata
+        if expected_operations is not None:
+            operations = metadata & expected_operations.keys()
+        fused_attention = kind == "kgen" and tactic.startswith(
+            ("_gemm_mha_v2_", "_gemv_mha_v1_")
+        )
+        singleton_matmul = (
+            kind == "kgen"
+            and bool(operations)
+            and tactic.startswith("__myl_ReshMoveMul_")
+        )
+        if (
+            kind not in COMPUTE_TYPES
+            and not operands
+            and not (fused_attention or singleton_matmul)
+        ):
             continue
 
         name = layer["Name"]
-        metadata = set(ONNX_LAYER.findall(layer.get("Metadata", "")))
         if expected_operations is None:
-            operations = metadata
             precision = required_precision
         else:
-            operations = metadata & expected_operations.keys()
             targets = {expected_operations[op] for op in operations}
             if len(targets) != 1:
                 raise RuntimeError(
@@ -150,6 +164,16 @@ def verify_compute_precision(details, required_precision, *, expected_operations
                 else inputs
             )
             matches = len(qkv) == 3 and all(pattern.search(dtype) for dtype in qkv)
+        elif singleton_matmul:
+            # HMR2 self-attention has one token. TensorRT lowers its value
+            # MatMul to one scalar multiply per head and channel.
+            shapes = sorted(tuple(t["Dimensions"]) for t in layer["Inputs"])
+            matches = (
+                precision == "fp16"
+                and len(operations) == 1
+                and shapes == [(1, 8, 1, 1), (8, 1, 64)]
+                and all(pattern.search(dtype) for dtype in inputs)
+            )
         else:
             code = OPERAND_CODE[precision]
             # The FP16 residual is the first binding of this INT8 GEMM epilogue.
@@ -185,14 +209,17 @@ def verify_compute_precision(details, required_precision, *, expected_operations
         raise RuntimeError(f"No compute layers verified at {required_precision}")
     evidence = {"engine_layers_by_precision": dict(precisions)}
     if expected_operations is not None:
-        missing = expected_operations.keys() - seen
+        unobserved = expected_operations.keys() - seen
+        missing = unobserved - set(constant_operations)
         if missing:
             raise RuntimeError(
                 f"Missing compute evidence for ONNX operations: {sorted(missing)}"
             )
         evidence["onnx_operations_by_precision"] = dict(
-            Counter(expected_operations.values())
+            Counter(expected_operations[op] for op in seen)
         )
+        if unobserved:
+            evidence["unobserved_constant_onnx_operations"] = sorted(unobserved)
     return evidence
 
 
@@ -214,6 +241,7 @@ def build_engine(
     required_precision,
     expected_operations=None,
     profile_shapes=None,
+    constant_operations=(),
 ):
     import tensorrt as trt
     import torch
@@ -289,7 +317,10 @@ def build_engine(
         details_by_label[label] = details
     evidence = {
         label.removeprefix("."): verify_compute_precision(
-            details, required_precision, expected_operations=expected_operations
+            details,
+            required_precision,
+            expected_operations=expected_operations,
+            constant_operations=constant_operations,
         )
         for label, details in details_by_label.items()
     }
@@ -310,6 +341,7 @@ def modelopt_ptq(
     method="max",
     nodes=None,
     external_data=False,
+    disable_mha_qdq=False,
 ):
     import onnx
     from modelopt.onnx.quantization.quantize import quantize
@@ -328,6 +360,7 @@ def modelopt_ptq(
         if nodes is None
         else [rf"^{re.escape(name)}$" for name in nodes],
         high_precision_dtype="fp16",
+        disable_mha_qdq=disable_mha_qdq,
         use_external_data_format=external_data,
         output_path=str(target),
     )
@@ -429,14 +462,12 @@ def convert_adapter(adapter, condition, checkpoint, calibration, output, recipe)
             raise ValueError("Calibration tensor has an unexpected dtype or shape")
         quantization, selected = adapter.quantize(graph, target, data, mode, recipe)
         graph = target
-    expected = adapter.compute_requirements(exported, mode, selected)
+    requirements = adapter.compute_requirements(exported, mode, selected)
     plan = output / f"{adapter.model}.plan"
-    evidence = build_engine(
-        graph, plan, required_precision=mode, expected_operations=expected
-    )
     plan.with_suffix(".precision.json").write_text(
-        json.dumps(expected, indent=2) + "\n"
+        json.dumps(requirements, indent=2) + "\n"
     )
+    evidence = build_engine(graph, plan, required_precision=mode, **requirements)
     receipt = {
         "condition": condition,
         "workspace_bytes": WORKSPACE_BYTES,

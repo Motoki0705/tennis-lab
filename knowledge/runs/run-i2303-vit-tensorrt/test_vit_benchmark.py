@@ -5,11 +5,24 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 import torch
-from convert import constant_tensors, linear_names, quantized_matrix_ops
+from convert import (
+    constant_tensors,
+    linear_names,
+    quantized_matrix_ops,
+    verify_compute_precision,
+)
 from fixed_crops import body_rows
 from runtime import torch_dispatch_precisions
 from torch import nn
-from vit_models import FlipRunner, feature_accuracy, pose_accuracy
+from vit_models import (
+    HMR2,
+    MODEL,
+    VITPOSE,
+    FlipRunner,
+    feature_accuracy,
+    pose_accuracy,
+    ptq_operations,
+)
 
 
 def test_body_view_rows_use_exact_frame_and_its_box():
@@ -190,3 +203,94 @@ def test_quantized_initializer_is_static_and_quantized_input_is_dynamic():
         ],
     )
     assert constant_tensors(graph) == {"weight", "scale", "wt", "qw", "weight_dq"}
+
+
+@pytest.mark.parametrize(
+    ("model", "prefix", "suffix", "blocks"),
+    [
+        (MODEL, "/visual/transformer/resblocks/resblocks", "/attn/Gemm", 12),
+        (VITPOSE, "/backbone/blocks", "/attn/proj/MatMul", 32),
+        (HMR2, "/hmr/backbone/blocks", "/attn/proj/MatMul", 32),
+    ],
+)
+def test_attention_out_ptq_selects_one_weighted_projection_per_block(
+    model, prefix, suffix, blocks
+):
+    outputs = [f"{prefix}.{block}{suffix}" for block in range(blocks)]
+    graph = SimpleNamespace(
+        initializer=[SimpleNamespace(name="weight")],
+        node=[
+            SimpleNamespace(
+                name=name,
+                op_type="MatMul",
+                input=["pixels", "weight"],
+                output=[name + ":0"],
+            )
+            for name in [*outputs, f"{prefix}.0/mlp/fc2/MatMul", "/smpl_head/MatMul"]
+        ],
+    )
+    assert ptq_operations(model, graph, "attention-out") == set(outputs)
+    graph.node.pop(0)
+    with pytest.raises(ValueError, match="expected 1 operations"):
+        ptq_operations(model, graph, "attention-out")
+
+
+@pytest.mark.parametrize(
+    ("tactic", "shapes", "names"),
+    [
+        (
+            "_gemv_mha_v1_test",
+            [[8, 1, 64], [8, 192, 64], [8, 192, 64]],
+            ("scores", "values"),
+        ),
+        ("__myl_ReshMoveMul_test", [[8, 1, 64], [1, 8, 1, 1]], ("values",)),
+    ],
+)
+def test_hmr2_attention_tactics_require_fp16_operands(tactic, shapes, names):
+    layer = {
+        "Name": "attention",
+        "LayerType": "kgen",
+        "TacticName": tactic,
+        "Inputs": [
+            {"Dimensions": shape, "Format/Datatype": "Half"} for shape in shapes
+        ],
+        "Metadata": "".join(f"[ONNX Layer: {name}]" for name in names),
+    }
+    expected = dict.fromkeys(names, "fp16")
+    result = verify_compute_precision(
+        {"Layers": [layer]}, "fp16", expected_operations=expected
+    )
+    assert result["onnx_operations_by_precision"] == {"fp16": len(names)}
+    layer["Inputs"][-1]["Format/Datatype"] = "FP32"
+    with pytest.raises(RuntimeError, match="expected fp16 operands"):
+        verify_compute_precision(
+            {"Layers": [layer]}, "fp16", expected_operations=expected
+        )
+
+
+def test_static_onnx_ops_are_checked_if_executed_and_can_be_folded():
+    dynamic_layer = {
+        "LayerType": "gemm",
+        "Name": "dynamic",
+        "TacticName": "sm80_xmma_gemm_f16f16_f16f32_f32_tn",
+        "Inputs": [{"Format/Datatype": "Half"}],
+        "Metadata": "[ONNX Layer: dynamic]",
+    }
+    requirements = {
+        "expected_operations": {"dynamic": "fp16", "constant": "fp16"},
+        "constant_operations": ["constant"],
+    }
+    details = {"Layers": [dynamic_layer]}
+    result = verify_compute_precision(details, "fp16", **requirements)
+    assert result["onnx_operations_by_precision"] == {"fp16": 1}
+    assert result["unobserved_constant_onnx_operations"] == ["constant"]
+    details["Layers"].append(
+        {
+            **dynamic_layer,
+            "Name": "constant",
+            "Metadata": "[ONNX Layer: constant]",
+            "TacticName": "sm80_xmma_gemm_f32f32_f32f32_f32_tn",
+        }
+    )
+    with pytest.raises(RuntimeError, match="Compute layer constant expected fp16"):
+        verify_compute_precision(details, "fp16", **requirements)
