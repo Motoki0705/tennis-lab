@@ -64,7 +64,12 @@ PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory batch --spec - < operat
 PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory validate
 PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory sync-index --check
 PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory audit
-.venv/bin/python -m pytest tests/unit/agents_ops/test_shared_memory_core.py tests/e2e/agents_ops/test_shared_memory_publish.py tests/e2e/agents_ops/test_agents_docs.py tests/e2e/agents_ops/test_interactive_checkout.py -n 2 -q
+.venv/bin/python -m pytest tests/unit/agents_ops/test_shared_memory_core.py \
+  tests/e2e/agents_ops/test_shared_memory_publish.py \
+  tests/e2e/agents_ops/test_agents_docs.py \
+  tests/e2e/agents_ops/test_interactive_checkout.py \
+  tests/e2e/development/test_ci_test_lanes.py::test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs \
+  -n 2 -q
 ```
 
 ## Python API

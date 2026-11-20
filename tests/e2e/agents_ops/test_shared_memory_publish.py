@@ -9,7 +9,6 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any
 
@@ -740,23 +739,3 @@ def test_github_files_pagination_requires_the_complete_diff(
     pages[1].clear()
     with pytest.raises(ValueError, match="file count"):
         client.verify_files(17, expected)
-
-
-@pytest.mark.parametrize("event", ["push", "pull_request"])
-def test_ci_ignores_only_shared_memory_markdown(event: str) -> None:
-    workflow = yaml.load(
-        (ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader
-    )
-    ignored = workflow["on"][event]["paths-ignore"]
-    assert {pattern for pattern in ignored if pattern.startswith(MEMORY)} == {
-        SUMMARY,
-        *(f"{MEMORY}/{layer}/*.md" for layer in LAYERS),
-    }
-    for included in (
-        f"{MEMORY}/ops-report/SUMMARY.md",
-        ".agents/ops/shared_memory/publish.py",
-        ".agents/skills/memory/SKILL.md",
-        "tests/e2e/agents_ops/test_agents_docs.py",
-        ".github/workflows/ci.yml",
-    ):
-        assert not any(fnmatchcase(included, pattern) for pattern in ignored)

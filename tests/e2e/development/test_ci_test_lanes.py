@@ -48,6 +48,9 @@ def _ci_job() -> dict[str, Any]:
         "mixed_log_formats",
         "code",
         "mixed",
+        "shared_memory",
+        "ops_report",
+        "mixed_memory_code",
     ],
 )
 def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
@@ -74,7 +77,7 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         selected = triggers[event]
     assert "paths" not in selected
     ignored = selected["paths-ignore"]
-    assert set(ignored) == {
+    expected_ignored = {
         f".agents/logs/parents/**/{n}"
         for n in ("instruction.md", "final.md", "meta.json")
     } | {
@@ -86,6 +89,14 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         ".agents/logs/parents/parent-*/child-*/d-*/README.md",
         ".agents/logs/parents/parent-*/child-*/d-*/*-*/README.md",
     }
+    memory = ".agents/memory"
+    layers = ("workflow", "decision", "environment", "gotcha")
+    summary = f"{memory}/SUMMARY.md"
+    if event in {"push", "pull_request"}:
+        expected_ignored.add(summary)
+        expected_ignored.update(f"{memory}/{layer}/*.md" for layer in layers)
+    assert set(ignored) == expected_ignored
+
     log = ".agents/logs/parents/parent-1/child-10/d-abc/0001-initial/"
     worker_logs = [log + n for n in ("instruction.md", "final.md", "meta.json")]
     decision_logs = [".agents/logs/parents/parent-1/activity-public/event-public.json"]
@@ -104,6 +115,14 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         log + "README.md",
     ]
     code = ["src/utils/example.py"]
+    shared_memory = [
+        summary,
+        *(
+            f"{memory}/{layer}/{name}"
+            for layer in layers
+            for name in ("index.md", "entry.md")
+        ),
+    ]
     files = {
         "logs": worker_logs,
         "decision_logs": decision_logs,
@@ -115,14 +134,27 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         "mixed_log_formats": [*worker_logs, *decision_logs, *readmes],
         "code": code,
         "mixed": [*worker_logs, *decision_logs, *readmes, *code],
+        "shared_memory": shared_memory,
+        "ops_report": [f"{memory}/ops-report/SUMMARY.md"],
+        "mixed_memory_code": [*shared_memory, *code],
     }[changes]
-    assert any(
-        not any(fnmatch.fnmatchcase(p, pattern) for pattern in ignored) for p in files
-    ) is (changes in {"code", "mixed"})
+    should_run = changes in {"code", "mixed", "ops_report", "mixed_memory_code"} or (
+        event == "pull_request_target" and changes == "shared_memory"
+    )
+    assert (
+        any(
+            not any(fnmatch.fnmatchcase(p, pattern) for pattern in ignored)
+            for p in files
+        )
+        is should_run
+    )
     for ordinary in (
         ".agents/ops/worker_logs/schema.py",
         ".agents/ops/decision_logs/publication.py",
         ".agents/ops/decision_logs/README.md",
+        ".agents/ops/shared_memory/publish.py",
+        ".agents/skills/memory/SKILL.md",
+        "tests/e2e/agents_ops/test_agents_docs.py",
         ".github/workflows/ci.yml",
         log + "stderr.log",
         ".agents/logs/parents/parent-1/activity-public/private.json",
