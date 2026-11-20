@@ -185,5 +185,236 @@
     "raw_csv_sha256": "60afd7ab6be96222f293829a301683cfdf9035c368c1cf1c295ea91a8f4aec64",
     "profile_receipt": "outputs/trt-gvhmr/profile-0-177-r3/profiles.json",
     "profile_receipt_sha256": "179aac1a1ac2f703da43ca4ae6c964d69537820a320c6d2c59bbcd88e4509e05"
-  }
+  },
+  "fourth_attempt_conversions": {
+    "2": {
+      "job": "i2305-gvhmr-build-and-measure-2-r4",
+      "queue_run_id": "0-8204842394767435082_2026-11-20T06-53-25-232564917Z_2678642_i2305-gvhmr-build-and-measure-2-r4",
+      "queue_log": ".training_queue/logs/0-8204842394767435082_2026-11-20T06-53-25-232564917Z_2678642_i2305-gvhmr-build-and-measure-2-r4.log",
+      "queue_log_sha256": "f9864075a656f6955dffe098bc7a7097105e72f77591a49249253ccfe64ef2b7",
+      "exit_code": 1,
+      "stage": "engine_inspector",
+      "engine_built": true,
+      "plan_published": false,
+      "error": "RuntimeError: Compute layer _gemm_mha_v2_myl0_32 expected fp16 operands, got inputs ['Half', 'Half', 'Bool', 'Bool', 'Half'] and tactic '_gemm_mha_v2_0x2f10b38ed711d567ab035435f39d1d30'",
+      "graph": "outputs/trt-gvhmr/build-2-r4/export.onnx",
+      "graph_sha256": "12273a5f52633d4048d275f950b28c13cd69b2174828a0ec1e89fad19aa04d02",
+      "offline_inspector_recheck": {
+        "min": {
+          "inspector": "outputs/trt-gvhmr/build-2-r4/gvhmr.min.layers.json",
+          "inspector_sha256": "438dcfc85c0f167ccbb88069d82b0d357e0aa2b1f4b364ed4d9d7a2ae087aacc",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "Half",
+            "Half",
+            "Bool",
+            "Bool",
+            "Half"
+          ],
+          "int8_fp16_residual_fusions": 0,
+          "engine_layers_by_precision": {
+            "fp16": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 110
+          }
+        },
+        "opt": {
+          "inspector": "outputs/trt-gvhmr/build-2-r4/gvhmr.opt.layers.json",
+          "inspector_sha256": "438dcfc85c0f167ccbb88069d82b0d357e0aa2b1f4b364ed4d9d7a2ae087aacc",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "Half",
+            "Half",
+            "Bool",
+            "Bool",
+            "Half"
+          ],
+          "int8_fp16_residual_fusions": 0,
+          "engine_layers_by_precision": {
+            "fp16": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 110
+          }
+        },
+        "max": {
+          "inspector": "outputs/trt-gvhmr/build-2-r4/gvhmr.max.layers.json",
+          "inspector_sha256": "438dcfc85c0f167ccbb88069d82b0d357e0aa2b1f4b364ed4d9d7a2ae087aacc",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "Half",
+            "Half",
+            "Bool",
+            "Bool",
+            "Half"
+          ],
+          "int8_fp16_residual_fusions": 0,
+          "engine_layers_by_precision": {
+            "fp16": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 110
+          }
+        }
+      }
+    },
+    "3a": {
+      "job": "i2305-gvhmr-build-and-measure-3a-r4",
+      "queue_run_id": "0-8204842394013169528_2026-11-20T06-53-25-986830471Z_2679362_i2305-gvhmr-build-and-measure-3a-r4",
+      "queue_log": ".training_queue/logs/0-8204842394013169528_2026-11-20T06-53-25-986830471Z_2679362_i2305-gvhmr-build-and-measure-3a-r4.log",
+      "queue_log_sha256": "6b362c4f15ce80a389c353fbdac00119a23297a5412253edbfa2b781c7761334",
+      "exit_code": 1,
+      "stage": "engine_inspector",
+      "engine_built": true,
+      "plan_published": false,
+      "error": "RuntimeError: Compute layer _gemm_mha_v2_myl0_35 expected int8 operands, got inputs ['Int8', 'Int8', 'Bool', 'Bool', 'Int8'] and tactic '_gemm_mha_v2_0x7051a7e15e08517b5e72372ecd3b02fb'",
+      "graph": "outputs/trt-gvhmr/build-3a-r4/quantized.onnx",
+      "graph_sha256": "6c4e38a57b14c28990517c75433208dbea87347056734da83efbdeca146e567f",
+      "offline_inspector_recheck": {
+        "min": {
+          "inspector": "outputs/trt-gvhmr/build-3a-r4/gvhmr.min.layers.json",
+          "inspector_sha256": "d3dc0b326aa5eb949dab1ce8cff033433be2931b55092d1930595845430eb13f",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "Int8",
+            "Int8",
+            "Bool",
+            "Bool",
+            "Int8"
+          ],
+          "int8_fp16_residual_fusions": 23,
+          "engine_layers_by_precision": {
+            "fp16": 12,
+            "int8": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 14,
+            "int8": 96
+          }
+        },
+        "opt": {
+          "inspector": "outputs/trt-gvhmr/build-3a-r4/gvhmr.opt.layers.json",
+          "inspector_sha256": "d3dc0b326aa5eb949dab1ce8cff033433be2931b55092d1930595845430eb13f",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "Int8",
+            "Int8",
+            "Bool",
+            "Bool",
+            "Int8"
+          ],
+          "int8_fp16_residual_fusions": 23,
+          "engine_layers_by_precision": {
+            "fp16": 12,
+            "int8": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 14,
+            "int8": 96
+          }
+        },
+        "max": {
+          "inspector": "outputs/trt-gvhmr/build-3a-r4/gvhmr.max.layers.json",
+          "inspector_sha256": "d3dc0b326aa5eb949dab1ce8cff033433be2931b55092d1930595845430eb13f",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "Int8",
+            "Int8",
+            "Bool",
+            "Bool",
+            "Int8"
+          ],
+          "int8_fp16_residual_fusions": 23,
+          "engine_layers_by_precision": {
+            "fp16": 12,
+            "int8": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 14,
+            "int8": 96
+          }
+        }
+      }
+    },
+    "3b": {
+      "job": "i2305-gvhmr-build-and-measure-3b-r4",
+      "queue_run_id": "0-8204842393308061770_2026-11-20T06-53-26-691938229Z_2679639_i2305-gvhmr-build-and-measure-3b-r4",
+      "queue_log": ".training_queue/logs/0-8204842393308061770_2026-11-20T06-53-26-691938229Z_2679639_i2305-gvhmr-build-and-measure-3b-r4.log",
+      "queue_log_sha256": "165c34232dfa536b939d7d478e52fb373ff47977925094e093a3969547c860b4",
+      "exit_code": 1,
+      "stage": "engine_inspector",
+      "engine_built": true,
+      "plan_published": false,
+      "error": "RuntimeError: Compute layer _gemm_mha_v2_myl0_35 expected fp8 operands, got inputs ['FP8', 'FP8', 'Bool', 'Bool', 'FP8'] and tactic '_gemm_mha_v2_0xce52e774a75cef974823293326225c2d'",
+      "graph": "outputs/trt-gvhmr/build-3b-r4/quantized.onnx",
+      "graph_sha256": "d2968621b15647e756d1fa8206b869c912dd1207cff36b86d7b09944c5e9ebd6",
+      "offline_inspector_recheck": {
+        "min": {
+          "inspector": "outputs/trt-gvhmr/build-3b-r4/gvhmr.min.layers.json",
+          "inspector_sha256": "09c36ba0be3efae63b2097e0a2878c8e52f24538debfa13268b1a2cd13edeea5",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "FP8",
+            "FP8",
+            "Bool",
+            "Bool",
+            "FP8"
+          ],
+          "int8_fp16_residual_fusions": 0,
+          "engine_layers_by_precision": {
+            "fp16": 12,
+            "fp8": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 14,
+            "fp8": 96
+          }
+        },
+        "opt": {
+          "inspector": "outputs/trt-gvhmr/build-3b-r4/gvhmr.opt.layers.json",
+          "inspector_sha256": "09c36ba0be3efae63b2097e0a2878c8e52f24538debfa13268b1a2cd13edeea5",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "FP8",
+            "FP8",
+            "Bool",
+            "Bool",
+            "FP8"
+          ],
+          "int8_fp16_residual_fusions": 0,
+          "engine_layers_by_precision": {
+            "fp16": 12,
+            "fp8": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 14,
+            "fp8": 96
+          }
+        },
+        "max": {
+          "inspector": "outputs/trt-gvhmr/build-3b-r4/gvhmr.max.layers.json",
+          "inspector_sha256": "09c36ba0be3efae63b2097e0a2878c8e52f24538debfa13268b1a2cd13edeea5",
+          "fused_attention_layers": 12,
+          "fused_attention_input_dtypes": [
+            "FP8",
+            "FP8",
+            "Bool",
+            "Bool",
+            "FP8"
+          ],
+          "int8_fp16_residual_fusions": 0,
+          "engine_layers_by_precision": {
+            "fp16": 12,
+            "fp8": 72
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 14,
+            "fp8": 96
+          }
+        }
+      }
+    }
+  },
+  "fourth_attempt_inspection_change": "The saved inspector reports show two Bool masks between K and V. Check all three Q/K/V dtypes. INT8 residual fusions expose an FP16 residual input and an INT8 activation input. Require the observed fused tactic signature, both INT8 tactic operands and a matching ONNX Q/DQ pair."
 }

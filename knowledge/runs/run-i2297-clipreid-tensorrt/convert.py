@@ -81,11 +81,12 @@ def verify_compute_precision(details, required_precision, *, expected_operations
             continue
 
         name = layer["Name"]
-        operations = set(ONNX_LAYER.findall(layer.get("Metadata", "")))
+        metadata = set(ONNX_LAYER.findall(layer.get("Metadata", "")))
         if expected_operations is None:
+            operations = metadata
             precision = required_precision
         else:
-            operations &= expected_operations.keys()
+            operations = metadata & expected_operations.keys()
             targets = {expected_operations[op] for op in operations}
             if len(targets) != 1:
                 raise RuntimeError(
@@ -96,15 +97,35 @@ def verify_compute_precision(details, required_precision, *, expected_operations
         inputs = [tensor["Format/Datatype"] for tensor in layer.get("Inputs", [])]
         pattern = re.compile(rf"\b(?:{TENSOR_DTYPE[precision]})\b", re.IGNORECASE)
         if fused_attention:
-            matches = len(inputs) == 3 and all(
-                pattern.search(dtype) for dtype in inputs
+            # GVHMR fuses the local and padding masks between K and V.
+            qkv = (
+                [inputs[0], inputs[1], inputs[4]]
+                if len(inputs) == 5 and inputs[2:4] == ["Bool", "Bool"]
+                else inputs
             )
+            matches = len(qkv) == 3 and all(pattern.search(dtype) for dtype in qkv)
         else:
             code = OPERAND_CODE[precision]
+            # The FP16 residual is the first binding of this INT8 GEMM epilogue.
+            # Require both INT8 tactic operands and an explicit fused Q/DQ pair.
+            int8_residual = (
+                precision == "int8"
+                and kind == "fusion"
+                and name.startswith("__myl_FcCastAddMulAdd_")
+                and tactic.endswith("_by_fusion_tactic")
+                and inputs == ["Half", "Int8"]
+                and len(operations) == 1
+                and any(
+                    node.endswith("_QuantizeLinear")
+                    and node.removesuffix("_QuantizeLinear") + "_DequantizeLinear"
+                    in metadata
+                    for node in metadata
+                )
+            )
             matches = (
                 operands is not None
                 and operands.groups() == (code, code)
-                and bool(inputs and pattern.search(inputs[0]))
+                and (bool(inputs and pattern.search(inputs[0])) or int8_residual)
             )
         if not matches:
             raise RuntimeError(
@@ -198,6 +219,7 @@ def build_engine(
         if context is None:
             raise RuntimeError("Could not create engine inspection context")
     details_by_label = {}
+    context_shapes = {}
     for label, shapes in shapes_by_label.items():
         if shapes is not None:
             for name, shape in shapes.items():
@@ -205,6 +227,15 @@ def build_engine(
                     raise ValueError(
                         f"TensorRT rejected inspection shape {name}={shape}"
                     )
+            actual_shapes = {
+                name: list(context.get_tensor_shape(name)) for name in shapes
+            }
+            expected_shapes = {name: list(shape) for name, shape in shapes.items()}
+            if actual_shapes != expected_shapes:
+                raise ValueError(
+                    f"TensorRT inspection context returned {actual_shapes}, expected {expected_shapes}"
+                )
+            context_shapes[label] = actual_shapes
         details = inspect_engine(engine, context)
         plan.with_suffix(f"{label}.layers.json").write_text(
             json.dumps(details, indent=2) + "\n"
@@ -216,6 +247,8 @@ def build_engine(
         )
         for label, details in details_by_label.items()
     }
+    for label, shapes in context_shapes.items():
+        evidence[label.removeprefix(".")]["bound_input_shapes"] = shapes
     with plan.open("xb") as stream:
         stream.write(memoryview(engine_bytes))
     return evidence[""] if profile_shapes is None else evidence
