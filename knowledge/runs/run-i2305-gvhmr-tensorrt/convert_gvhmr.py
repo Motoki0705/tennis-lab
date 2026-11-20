@@ -6,14 +6,13 @@ import re
 from collections import Counter
 from pathlib import Path
 
-import onnx
 import torch
 from benchmark import write_json
 from convert import TRT_PRECISIONS, build_engine, require_queue
 from inputs import sha256_file
 from locked_inputs import HERE, checked_segments
 from model import INPUT_WIDTHS, OUTPUT_WIDTHS, PLAN, dynamic_attention, load_network
-from torch.onnx import symbolic_helper
+from torch.onnx import symbolic_helper, symbolic_opset9, symbolic_opset11
 
 MAJOR_TYPES = {"MatMul", "Gemm", "Conv"}
 OPSET = 19
@@ -30,6 +29,28 @@ def export_attention_matmul(graph, equation, operands, _path=None):
     return graph.op("MatMul", left, right)
 
 
+@symbolic_helper.parse_args("v", "v", "v", "b")
+def export_index_put(graph, data, indices, value, accumulate=False):
+    """Keep the coordinate axis when lowering obs[~visible] = 0."""
+    keys = (
+        symbolic_helper._unpack_list(indices)
+        if symbolic_helper._is_packed_list(indices)
+        else [indices]
+    )
+    rank = symbolic_helper._get_tensor_rank
+    if (
+        not accumulate
+        and len(keys) == 1
+        and symbolic_helper._is_bool(keys[0])
+        and rank(data) == 4
+        and rank(keys[0]) == 3
+        and rank(value) == 0
+    ):
+        mask = symbolic_helper._unsqueeze_helper(graph, keys[0], [-1])
+        return symbolic_opset9.masked_fill(graph, data, mask, value)
+    return symbolic_opset11.index_put(graph, data, indices, value, accumulate)
+
+
 def network_args(arrays, dtype):
     return tuple(
         torch.from_numpy(arrays[name]).to(dtype=dtype)
@@ -40,14 +61,19 @@ def network_args(arrays, dtype):
 
 
 def export_network(model, samples, output, dtype, opt):
+    import onnx
+
     dynamic_axes = {
         name: {1: "frames"}
         for name in (*INPUT_WIDTHS, *OUTPUT_WIDTHS)
         if name not in {"length", "length_out"}
     }
-    torch.onnx.register_custom_op_symbolic(
-        "aten::einsum", export_attention_matmul, OPSET
-    )
+    lowerings = {
+        "aten::einsum": export_attention_matmul,
+        "aten::index_put": export_index_put,
+    }
+    for operator, lowering in lowerings.items():
+        torch.onnx.register_custom_op_symbolic(operator, lowering, OPSET)
     try:
         # The short (117) and both local-attention sequence lengths come from real segments.
         for frames, arrays in samples.items():
@@ -72,7 +98,8 @@ def export_network(model, samples, output, dtype, opt):
                 external_data=False,
             )
     finally:
-        torch.onnx.unregister_custom_op_symbolic("aten::einsum", OPSET)
+        for operator in lowerings:
+            torch.onnx.unregister_custom_op_symbolic(operator, OPSET)
     onnx.checker.check_model(str(output))
     model = onnx.load(output)
     for value in (*model.graph.input, *model.graph.output):
@@ -101,6 +128,7 @@ def major_operations(model, source):
 
 
 def quantize_graph(graph, target, mode, stages, expected, settings):
+    import onnx
     from modelopt.onnx.quantization.quantize import quantize
     from onnxruntime.quantization import CalibrationDataReader
 

@@ -58,5 +58,72 @@
     }
   ],
   "initial_failure_cause": "The queued entrypoints imported pin_segments.py for tensor verification. It imported body_view_selection and loaded ball_detection configuration, which requires Hydra. All seven jobs exited before conversion or CUDA inference.",
-  "correction": "Use locked_inputs.py for prepared tensor verification. Keep the scene artifact imports in the CPU capture entrypoint."
+  "correction": "Use locked_inputs.py for prepared tensor verification. Keep the scene artifact imports in the CPU capture entrypoint.",
+  "second_attempt_conversions": {
+    "2": {
+      "job": "i2305-gvhmr-build-2-r2",
+      "queue_run_id": "0-8204853009901986773_2026-11-20T03-56-30-098013226Z_610711_i2305-gvhmr-build-2-r2",
+      "queue_log": ".training_queue/logs/0-8204853009901986773_2026-11-20T03-56-30-098013226Z_610711_i2305-gvhmr-build-2-r2.log",
+      "queue_log_sha256": "c4a1b249d13b863ed90df4b1988d007324b20dae326ad9b27624f201183512ff",
+      "terminal_state": "failed",
+      "exit_code": 1,
+      "stage": "engine_onnx_parse",
+      "node": "/network/Where",
+      "error": "ITensor::getDimensions: Error Code 4: Shape Error (broadcast dimensions must be conformable In op at /_src/optimizer/common/shape/shapeContext.cpp:2698)",
+      "export": {
+        "path": "outputs/trt-gvhmr/build-2/export.onnx",
+        "sha256": "9043b0de22ce6fdb3f3ca3d8ba4a019b1cbbdfd678cdefa61749fc2f0653122e"
+      }
+    },
+    "3a": {
+      "job": "i2305-gvhmr-build-3a-r2",
+      "queue_run_id": "0-8204853009614257261_2026-11-20T03-56-30-385742738Z_610782_i2305-gvhmr-build-3a-r2",
+      "queue_log": ".training_queue/logs/0-8204853009614257261_2026-11-20T03-56-30-385742738Z_610782_i2305-gvhmr-build-3a-r2.log",
+      "queue_log_sha256": "309050afe8c06f452b7f09c369bafc5cafdf5d3c5c4e8129c410b84dba2f5f2c",
+      "terminal_state": "failed",
+      "exit_code": 1,
+      "stage": "ptq_preprocess_onnx_parse",
+      "node": "/network/Where",
+      "error": "ITensor::getDimensions: Error Code 4: Shape Error (broadcast dimensions must be conformable In op at /_src/optimizer/common/shape/shapeContext.cpp:2698)",
+      "export": {
+        "path": "outputs/trt-gvhmr/build-3a/export.onnx",
+        "sha256": "e91681120c36d9031e68ba5d092729914064bffebc214af81d25fa6875af27f7"
+      }
+    },
+    "3b": {
+      "job": "i2305-gvhmr-build-3b-r2",
+      "queue_run_id": "0-8204853009272366236_2026-11-20T03-56-30-727633763Z_610856_i2305-gvhmr-build-3b-r2",
+      "queue_log": ".training_queue/logs/0-8204853009272366236_2026-11-20T03-56-30-727633763Z_610856_i2305-gvhmr-build-3b-r2.log",
+      "queue_log_sha256": "65a54b7a85c47ede876c02e3aedc7a9a530a1cab59e3b3a17449e3438d7f0eab",
+      "terminal_state": "failed",
+      "exit_code": 1,
+      "stage": "ptq_preprocess_onnx_parse",
+      "node": "/network/Where",
+      "error": "ITensor::getDimensions: Error Code 4: Shape Error (broadcast dimensions must be conformable In op at /_src/optimizer/common/shape/shapeContext.cpp:2698)",
+      "export": {
+        "path": "outputs/trt-gvhmr/build-3b/export.onnx",
+        "sha256": "e91681120c36d9031e68ba5d092729914064bffebc214af81d25fa6875af27f7"
+      }
+    }
+  },
+  "second_attempt_conversion_cause": "The legacy exporter lowered scalar boolean index assignment on obs to Where with a (B,L,17) condition and a (B,L,17,3) data input. These axes cannot broadcast. The GVHMR export lowering now appends the missing singleton coordinate axis.",
+  "fp32_l177_ncu_first_attempt": {
+    "job": "i2305-gvhmr-0-l177-r2",
+    "queue_run_id": "0-8204853008604397544_2026-11-20T03-56-31-395602455Z_611210_i2305-gvhmr-0-l177-r2",
+    "queue_log": ".training_queue/logs/0-8204853008604397544_2026-11-20T03-56-31-395602455Z_611210_i2305-gvhmr-0-l177-r2.log",
+    "queue_log_sha256": "6f0811005318657fefe34a2fd8aee4bd4f3ca6564f070ab462fc4ec3505ebe43",
+    "terminal_state": "failed",
+    "exit_code": 3,
+    "timeout_seconds": 900,
+    "partial_ncu_rows": 455,
+    "nsys_gpu_kernels": 867,
+    "partial_report": {
+      "path": "outputs/trt-gvhmr/case-0-177/ncu.csv",
+      "sha256": "7c35ff2a623e3a9a860e980b58cac554ab584fab61e7e4b64a950215f290c8db"
+    },
+    "profile_receipt": {
+      "path": "outputs/trt-gvhmr/case-0-177/profiles.json",
+      "sha256": "3eda6922d9d322c823192f15139f8ff0f39dc8f3936becfbe1ba48e79f5dd67e"
+    }
+  }
 }

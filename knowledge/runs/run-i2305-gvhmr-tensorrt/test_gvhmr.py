@@ -1,13 +1,18 @@
 """Check sequence geometry, locked input identity and error units without CUDA."""
 
 import json
+from types import SimpleNamespace
 
+import experiment
 import numpy as np
 import pytest
 import torch
 from accuracy_gvhmr import rotation_degrees
+from convert_gvhmr import OPSET, export_index_put
+from inputs import sha256_file
 from locked_inputs import HERE, load_segments, tensor_addresses
 from model import DenoiserIO, attention_mask, dynamic_attention, input_shapes
+from torch.onnx._internal.torchscript_exporter.jit_utils import GraphContext
 
 from src.submodules.vendor.gvhmr.network.relative_transformer import NetworkEncoderRoPE
 
@@ -89,3 +94,84 @@ def test_so3_metric_respects_degrees_and_axis_angle_wrap():
     np.testing.assert_allclose(
         rotation_degrees(actual, reference), [[[0, 60]]], atol=1e-10
     )
+
+
+def test_obs_boolean_index_export_keeps_coordinate_axis():
+    graph = torch._C.Graph()
+    obs = graph.addInput().setType(
+        torch._C.TensorType.create_from_tensor(torch.zeros(1, 145, 17, 3))
+    )
+    mask = graph.addInput().setType(
+        torch._C.TensorType.create_from_tensor(
+            torch.zeros(1, 145, 17, dtype=torch.bool)
+        )
+    )
+    indices = graph.insertNode(graph.create("prim::ListConstruct", [mask], 1))
+    context = GraphContext(graph, graph.block(), OPSET, indices, {}, {}, set())
+    value = context.op("Constant", value_t=torch.tensor(0.0))
+
+    where = export_index_put(context, obs, indices.output(), value).node()
+    assert where.kind() == "onnx::Where"
+    broadcast_mask, _, unmasked = list(where.inputs())
+    assert unmasked is obs
+    unsqueeze = next(broadcast_mask.node().inputs()).node()
+    assert unsqueeze.kind() == "onnx::Unsqueeze"
+    original, axis = list(unsqueeze.inputs())
+    assert original is mask
+    assert axis.node().t("value").tolist() == [-1]
+
+
+@pytest.mark.parametrize("replayed", [867, 866])
+def test_ncu_retry_uses_saved_nsys_coverage(replayed, tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    source.mkdir()
+    output = tmp_path / "retry"
+    output.mkdir()
+    timing = source / "measurement.json"
+    timing.write_text(
+        json.dumps(
+            {
+                "condition": "0",
+                "length": 177,
+                "tensor_lock_sha256": sha256_file(HERE / "tensor-lock.json"),
+            }
+        )
+    )
+    (source / "profiles.json").write_text(
+        json.dumps(
+            {
+                "nsys": {"status": "measured", "gpu_kernels": 867},
+                "measurement_sha256": sha256_file(timing),
+            }
+        )
+    )
+    args = SimpleNamespace(
+        output=output,
+        profile_from=source,
+        condition="0",
+        conversion=None,
+        length=177,
+        profiles="ncu",
+        ncu_timeout=2400,
+        inputs=tmp_path,
+        checkpoints=tmp_path,
+    )
+
+    def capture(tool, executable, command, directory, *, ncu_timeout):
+        assert (tool, executable, directory, ncu_timeout) == (
+            "ncu",
+            "/ncu",
+            output,
+            2400,
+        )
+        assert command[command.index("--mode") + 1] == "profile"
+        return {"status": "measured", "profiled_kernels": replayed}
+
+    monkeypatch.setattr(experiment.shutil, "which", lambda _: "/ncu")
+    monkeypatch.setattr(experiment, "capture", capture)
+    monkeypatch.setenv("TENNIS_RUN_ID", "retry")
+    matches = replayed == 867
+    assert experiment.collect_profiles(args) is matches
+    recorded = json.loads((output / "profiles.json").read_text())
+    assert recorded["nsys_reused"]
+    assert recorded["ncu"]["status"] == ("measured" if matches else "coverage_mismatch")

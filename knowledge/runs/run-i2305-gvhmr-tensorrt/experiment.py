@@ -76,11 +76,25 @@ def collect_profiles(args):
         expected = read_conversion(args.conversion, args.condition)["engine_sha256"]
         if timing["engine_sha256"] != expected:
             raise ValueError("Profiling must use the same TensorRT plan as timing")
-    profiling = {}
+    measurement_hash = sha256_file(measurement_root / "measurement.json")
+    if args.profiles == "ncu":
+        previous = json.loads((measurement_root / "profiles.json").read_text())
+        if (
+            previous["measurement_sha256"] != measurement_hash
+            or previous["nsys"]["status"] != "measured"
+        ):
+            raise ValueError("NCU follow-up requires matched, completed nsys evidence")
+        profiling = {"nsys": previous["nsys"], "nsys_reused": True}
+        tools = (("ncu", shutil.which("ncu")),)
+    else:
+        profiling = {}
+        tools = (("nsys", str(NSYS)), ("ncu", shutil.which("ncu")))
     command = runtime_command(args, mode="profile")
-    for tool, executable in (("nsys", str(NSYS)), ("ncu", shutil.which("ncu"))):
+    for tool, executable in tools:
         profiling[tool] = (
-            capture(tool, executable, command, args.output)
+            capture(
+                tool, executable, command, args.output, ncu_timeout=args.ncu_timeout
+            )
             if executable is not None
             else {"status": "unavailable", "reason": f"{tool} not found"}
         )
@@ -93,7 +107,7 @@ def collect_profiles(args):
         ncu["status"] = "coverage_mismatch"
         ncu["nsys_gpu_kernels"] = nsys["gpu_kernels"]
     profiling["queue_run_id"] = os.environ["TENNIS_RUN_ID"]
-    profiling["measurement_sha256"] = sha256_file(measurement_root / "measurement.json")
+    profiling["measurement_sha256"] = measurement_hash
     write_json(args.output / "profiles.json", profiling)
     return all(profiling[tool]["status"] == "measured" for tool in ("nsys", "ncu"))
 
@@ -148,8 +162,9 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--conversion", type=Path)
     parser.add_argument("--reference", type=Path)
-    parser.add_argument("--profiles", choices=("both", "none"), default="both")
+    parser.add_argument("--profiles", choices=("both", "ncu", "none"), default="both")
     parser.add_argument("--profile-from", type=Path)
+    parser.add_argument("--ncu-timeout", type=int, default=900)
     parser.add_argument("--boundaries", action="store_true")
     args = parser.parse_args()
     if (args.condition in TRT_PRECISIONS) != (args.conversion is not None):
@@ -167,6 +182,10 @@ def main():
         parser.error("Accuracy requires a condition 0 reference at the same length")
     if args.profile_from and args.profiles == "none":
         parser.error("Profiling follow-up requires profiling tools")
+    if args.profiles == "ncu" and not args.profile_from:
+        parser.error("NCU follow-up requires existing measurement and nsys evidence")
+    if args.ncu_timeout <= 0:
+        parser.error("NCU timeout must be positive")
     require_queue()
     args.output.mkdir(parents=True)
     status = {"condition": args.condition, "length": args.length, "stage": "boundaries"}
@@ -177,7 +196,7 @@ def main():
             if args.profile_from is None:
                 status["stage"] = "measurement"
                 measure(args)
-            if args.profiles == "both":
+            if args.profiles != "none":
                 status["stage"] = "profiling"
                 if not collect_profiles(args):
                     write_json(

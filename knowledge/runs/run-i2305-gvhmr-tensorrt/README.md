@@ -20,7 +20,7 @@
 
 [shape-profile.json](shape-profile.json) のB=1、min/opt/maxは117/145/177。117はPTQでのみ使用し、profileの最短での実行確認にも使う。評価で同数だった2 shapeのうち短い145をoptとした。145と177を別々に計る。各shapeの固定代表は両方とも人物ID 0で、145は `clip_037/cam2`、177は `clip_000/cam0`。
 
-PyTorchはSIGA24のdenoiserをそのまま呼び出す。ONNXでは系列長120を超えるときの局所attentionを同じ行別ウィンドウのテンソル演算で表し、2種のattention einsumは等価なMatMulに変換する。clipとpersonをまたぐ連結、入力の切り詰め、paddingは行わない。profileの全端点で `length` と `mask` を確認する。116と178の入力shapeはTensorRTのcontextで拒否する。
+PyTorchはSIGA24のdenoiserをそのまま呼び出す。ONNXでは系列長120を超えるときの局所attentionを同じ行別ウィンドウのテンソル演算で表し、2種のattention einsumは等価なMatMulに変換する。不可視keypointのゼロ埋めは、可視maskの座標軸に長さ1を加えた `Where` に変換する。clipとpersonをまたぐ連結、入力の切り詰め、paddingは行わない。profileの全端点で `length` と `mask` を確認する。116と178の入力shapeはTensorRTのcontextで拒否する。
 
 計測区間は正規化済みのdenoiser入力から3つのheadと系列長・maskの出力まで。入力転送と、共通FP32の元のGVHMR `Pipeline` によるSMPL-X復号・静止カメラ補正・IK・COCO-17再構成は区間の外に置く。ネイティブFP32の `Pipeline` 出力との照合も行う。条件0はTF32を無効にし、条件1は重みと浮動小数点の入力をFP16へ明示castする。
 
@@ -89,7 +89,7 @@ for condition in 0 1 2 3a 3b; do
 done
 ```
 
-速度・精度だけを先に記録する場合は `--profiles none`。後から同一shapeの `--profile-from <計測先>` に対して別の `--output` を指定して追測できる。nsys と ncu のkernel数に差がある場合、プロフィールの状態に差を記録して終了値3を返す。エンジン検査、変換、子プロセスのログとrawデータは各出力ディレクトリに保存する。
+速度・精度だけを先に記録する場合は `--profiles none`。後から同一shapeの `--profile-from <計測先>` に対して別の `--output` を指定して追測できる。nsysを取得済みの場合、`--profiles ncu` で保存済みのnsysを参照してncuだけを追測する。kernel replayの制限時間は `--ncu-timeout` で指定できる。nsys と ncu のkernel数に差がある場合、差を記録して終了値3を返す。エンジン検査、変換、子プロセスのログとrawデータは各出力ディレクトリに保存する。
 
 ## CPU検証
 

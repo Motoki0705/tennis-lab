@@ -104,7 +104,7 @@ def read_ncu(path):
     }
 
 
-def capture(tool, executable, command, output):
+def capture(tool, executable, command, output, *, ncu_timeout=900):
     log = output / f"{tool}.log"
     report = output / ("nsys.sqlite" if tool == "nsys" else "ncu.csv")
     try:
@@ -173,7 +173,7 @@ def capture(tool, executable, command, output):
                     stdout=stream,
                     stderr=subprocess.STDOUT,
                     check=True,
-                    timeout=900,
+                    timeout=ncu_timeout,
                 )
                 metrics = read_ncu(report)
     except (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as exc:
