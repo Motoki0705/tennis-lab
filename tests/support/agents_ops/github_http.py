@@ -65,13 +65,16 @@ class Handler(BaseHTTPRequestHandler):
         )
         output = result.stdout.replace("\r\n", "\n")
         status = re.match(r"HTTP/\S+ (\d{3})", output)
+        location = None
         if status:
             code = int(status[1])
-            _, separator, body = output.partition("\n\n")
+            headers, separator, body = output.partition("\n\n")
             if not separator:
                 self.connection.sendall(output.encode())
                 self.close_connection = True
                 return
+            if code == 302:
+                location = re.search(r"^Location: ([^\n]+)$", headers, re.M | re.I)
         elif result.returncode:
             # A scenario failure is an explicit server error. Real statusless
             # disconnects are separately tested with socket fault injection.
@@ -80,6 +83,8 @@ class Handler(BaseHTTPRequestHandler):
             code, body = 200, output
         encoded = body.encode()
         self.send_response(code)
+        if location:
+            self.send_header("Location", location[1])
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(encoded)))
         self.end_headers()

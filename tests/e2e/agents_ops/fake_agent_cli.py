@@ -190,6 +190,8 @@ def main() -> None:
     if scenario == "schema_mismatch":
         payload = {"message": 123}
     final = json.dumps(payload) if structured else prompt
+    if not structured and os.environ.get("FAKE_WORKER_RESULT"):
+        final += '\n\nPARENT_RESULT {"schema_version":1,"state":"done","wait":null}\n'
     if scenario == "schema_preamble":
         final = "I'm writing the final JSON now.\n\n" + final
     if agent == "codex":

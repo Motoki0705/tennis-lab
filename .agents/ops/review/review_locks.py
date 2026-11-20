@@ -14,20 +14,27 @@ from parent.policy import digest
 
 
 @contextmanager
-def targets(directory: Path, state: dict[str, Any]) -> Iterator[None]:
+def pr_lease(directory: Path, repo: str, number: int) -> Iterator[Path]:
     leases = directory / "progression-targets"
     leases.mkdir(mode=0o700, parents=True, exist_ok=True)
+    name = digest([repo.casefold(), number])
+    with (leases / (name + ".lock")).open("a") as lock:
+        os.chmod(lock.name, 0o600)
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError("PR already has an active progression") from exc
+        yield leases / (name + ".json")
+
+
+@contextmanager
+def targets(directory: Path, state: dict[str, Any]) -> Iterator[None]:
     receipts = []
     with ExitStack() as stack:
         for target in sorted(state["targets"].values(), key=lambda t: t["number"]):
-            name = digest([state["request"]["repo"].casefold(), target["number"]])
-            lock = stack.enter_context((leases / (name + ".lock")).open("a"))
-            os.chmod(lock.name, 0o600)
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise ValueError("PR already has an active progression") from exc
-            receipt = leases / (name + ".json")
+            receipt = stack.enter_context(
+                pr_lease(directory, state["request"]["repo"], target["number"])
+            )
             if receipt.exists():
                 previous = read(receipt)["progression"]
                 if previous != state["id"]:

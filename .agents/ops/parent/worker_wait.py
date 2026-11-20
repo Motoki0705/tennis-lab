@@ -1,4 +1,4 @@
-"""Read-only, explicitly requested waits for a pinned manual worker run."""
+"""Read-only waits for a pinned worker run or manual follow-up."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from typing import Any
 
 from dispatcher.runtime import Runtime
 
-from . import manual_workers, worker_slots
+from . import manual_workers, worker_followup, worker_slots
 from .policy import object_value
 from .state import Store
 
@@ -28,13 +28,19 @@ class Target:
     job: dict[str, Any] | None = None
 
     @property
+    def followup(self) -> dict[str, Any] | None:
+        record = worker_followup.current(self.task) if self.job is None else None
+        return record if record and record["run_dir"] == str(self.directory) else None
+
+    @property
     def binding(self) -> tuple[Any, ...]:
+        followup = self.followup
         return (
             self.task["delegation_id"],
             self.task["worktree"],
             self.task["branch"],
             self.task.get("model"),
-            self.directory,
+            followup["id"] if followup else self.directory,
             self.job["id"] if self.job else None,
         )
 
@@ -162,54 +168,76 @@ def wait_worker(
         }
         if error is not None:
             value.update(error=error, recovery=RECOVERY)
+        if current.followup:
+            value["followup"] = worker_followup.public_view(current.followup)
         return value
 
     while True:
         current = target(store, key, child, worker)
         if current.binding != pinned.binding:
             raise ValueError("manual worker delegation/latest run changed during wait")
+        if current.directory != pinned.directory:
+            pinned, run_id, proof = current, None, None
         remaining = None if deadline is None else deadline - clock()
         if remaining is not None and remaining <= 0:
             return 124, response("timeout", "wait_timeout")
-        try:
-            settings = (
-                None
-                if pinned.job
-                else manual_workers.validate_run(pinned.task, pinned.directory)
-            )
-            remaining = None if deadline is None else deadline - clock()
-            if remaining is not None and remaining <= 0:
-                return 124, response("timeout", "wait_timeout")
-            observed = runtime.inspect(pinned.directory, timeout=remaining)
-            record = observed["record"]
-            validate_evidence(record)
-            if pinned.job:
-                from dispatcher.supervisor import Supervisor
+        followup = current.followup
+        if followup and not (pinned.directory / "result.json").exists():
+            if followup["state"] != "running" or not worker_followup.live(followup):
+                return 2, response("liveness_unknown", "followup_runtime_unconfirmed")
+            sleep(1.0 if remaining is None else min(1.0, remaining))
+            continue
+        # While the CLI monitors a job, the recovered runtime cannot change.
+        # Inspect again only if the current turn is still live or a resume
+        # created a new run directory.
+        if proof is None or not runtime.ended(proof):
+            try:
+                settings = (
+                    None
+                    if pinned.job
+                    else manual_workers.validate_run(pinned.task, pinned.directory)
+                )
+                remaining = None if deadline is None else deadline - clock()
+                if remaining is not None and remaining <= 0:
+                    return 124, response("timeout", "wait_timeout")
+                observed = runtime.inspect(pinned.directory, timeout=remaining)
+                record = observed["record"]
+                validate_evidence(record)
+                if pinned.job:
+                    from dispatcher.supervisor import Supervisor
 
-                Supervisor._check_contract(pinned.job, record)
-            elif manual_workers.model_settings(pinned.task, record) != settings:
-                raise ValueError("runner settings changed during observation")
-            if run_id is not None and record["run_id"] != run_id:
-                raise ValueError("runner run ID changed during wait")
-        except subprocess.TimeoutExpired:
-            return 124, response("timeout", "wait_timeout")
-        except (OSError, ValueError, KeyError, TypeError, OverflowError):
-            # In particular, a reservation without result.json is not proof
-            # that a runtime started. Never wait on an unverified launch.
-            proof = None
-            return 2, response(
-                "liveness_unknown", "runner_records_unavailable_or_invalid"
-            )
-        proof, run_id = observed, record["run_id"]
+                    Supervisor._check_contract(pinned.job, record)
+                elif manual_workers.model_settings(pinned.task, record) != settings:
+                    raise ValueError("runner settings changed during observation")
+                if run_id is not None and record["run_id"] != run_id:
+                    raise ValueError("runner run ID changed during wait")
+            except subprocess.TimeoutExpired:
+                return 124, response("timeout", "wait_timeout")
+            except (OSError, ValueError, KeyError, TypeError, OverflowError):
+                proof = None
+                return 2, response(
+                    "liveness_unknown", "runner_records_unavailable_or_invalid"
+                )
+            proof, run_id = observed, record["run_id"]
         current = target(store, key, child, worker)
         if current.binding != pinned.binding:
             raise ValueError("manual worker delegation/latest run changed during wait")
+        if current.directory != pinned.directory:
+            continue
         if runtime.ended(proof):
-            return 0, response("ended")
-        if not proof["summary"]["runner_alive"]:
+            followup = current.followup
+            if not followup or followup["state"] not in worker_followup.ACTIVE:
+                if followup and followup["state"] == "error":
+                    return 2, response("followup_error", followup["reason"])
+                return 0, response("ended")
+            if not worker_followup.live(followup):
+                return 2, response(
+                    "liveness_unknown", "followup_controller_unconfirmed"
+                )
+        elif not proof["summary"]["runner_alive"]:
             state = (
                 "cleanup_unconfirmed"
-                if record["result"] in {"completed", "failed"}
+                if proof["record"]["result"] in {"completed", "failed"}
                 else "liveness_unknown"
             )
             return 2, response(state, "runner_termination_or_cleanup_unconfirmed")

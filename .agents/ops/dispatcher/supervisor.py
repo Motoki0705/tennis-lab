@@ -1229,6 +1229,15 @@ class Supervisor:
                 worker_logs.capture(
                     session, child, items[child].body, prepared_instruction
                 )
+            else:
+                expected = phase["turns"][-1].get("prompt_sha256")
+                if (
+                    expected
+                    and hashlib.sha256(prompt.encode("utf-8")).hexdigest() != expected
+                ):
+                    raise ValueError(
+                        "dispatcher prompt differs from the reserved worker turn"
+                    )
             worker_preflight.check_admission(
                 self._session(key, row, worker),
                 child,

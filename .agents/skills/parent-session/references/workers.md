@@ -29,9 +29,23 @@ setsid "${p[@]}" run-worker --child 1217 --worker quality --from "$base" --promp
 ## 待つ、追加する、受け入れる
 
 - `launch_plan` の `action=ready`、既存予約、依存・枠の待機理由を確認する。別の担当を同じIssueへ追加するときは、成果PRがopenでも新しい名前とworktreeを指定できる。複数人になったら、既存担当への操作にも `--worker primary` または補助担当名を付ける。
-- 手動runの登録を `inspect-worker` で確認したら、`wait-worker --child 1217 --worker quality` を会話のシェルツールで背景実行する。待機コマンド自体はシェルから切り離さず、終了通知を受け取る。`wait_state=ended` は終了・回収の確認。runの成否は `runner_summary`、実際に得た結果・未確認事項は `final_file` と成果物で確認する。待機が終了コード124なら待機時間の満了で、同じrunをもう一度待てる。
+- 手動runの登録を `inspect-worker` で確認したら、`wait-worker --child 1217 --worker quality` を会話のシェルツールで背景実行して終了通知を受ける。`wait_state=ended` は、宣言を受けた監視と自動再開がある場合はその一連の終了まで含む。最後のrunの成否は `runner_summary`、成果は `final_file`、監視の成否・親の判断・再開回数は `followup` で確認する。終了コード124は読取側の時間満了。同じ処理をもう一度待てる。終了コード2は異常。保存済みの理由を読んで [復旧](recovery.md) へ進む。
 - 調査だけを任せるターンは `--planning`。結果から次の方針を決め、必要に応じて `decide-worker-plan` で回答を結び付ける。同じ担当に続きやmajor修正を頼むときは、終了・回収を照合して手動の `run-worker --resume` または自律の `continue-worker` を使う。
 - 補助担当はcommitまたは測定結果を返す。統合担当が競合を解消して統合HEADを検証し、担当Issueを閉じるPRに `Closes #1217` を書く。親はPRのbranch・HEADと条件ごとの証拠を確かめ、[正式レビュー](review.md) の `review-request` へ一度渡す。個別に受入だけを記録する場合は `record-result`。
 - 複数担当の一人を止めるには `stop-worker --worker 名前`。Issue全体の保留は `stop` を使う。自律親で担当が一人のときの `stop-worker` は、対象Issueを保留し、依存して保留されたjobにも停止を要求する。影響先は `launch_plan` で確認する。停止要求だけでは終了・枠解放は確定しない。[終了が不明な場合](recovery.md)
 
 **未マージの依存PRを土台にする場合**は、`stacked_on` の全headを取り込み、実際に積んだ境界commitを保存する。依存先が一つなら先行branchを後続PRのbaseにする。先行PRのマージ後、cleanな後続worktreeでその境界から後続のcommitだけをmainへ載せ替え、PRのbase・差分・CIを新HEADで確認する。先行がsquash mergeされても、保存した境界を使える。
+
+## CI・ローカルqueueの待機
+
+[共通のワーカー指示](../../../ops/parent/worker_prompt.md) が、最終メッセージ末尾の `PARENT_RESULT` の形式を定める。親が書く具体指示も、投入／pushまでの作業と、結果を受け取ってからの作業に区切る。
+
+- 良い例「検証してcommit・pushし、PR番号と完全なHEADを宣言して終了。Python成功後にドラフトを解除するよう後続作業に指定する」
+- 悪い例「pushしたら、このターンでPython成功を確認してドラフトを解除する」
+- 計測の例「条件AとBを共有queueに投入し、両方のjob IDを宣言して終了。結果を受け取ったターンで集計して記録する」
+
+手動委任では `run-worker` が宣言を検査する。監視はユーザーのsystemd transient serviceで実行する。GitHubとCodexのCLI認証は、そのユーザーの設定を使う。CIは宣言したPR・HEADのPythonの結果を使う。失敗したときと、成功後の後続作業があるときは同じsessionを再開する。queueは宣言した全jobの終端を待ち、終了状態・ログ・取得できた出力先をまとめて一度だけ渡す。再開は担当ごとに3回まで。上限や人間の判断が返ったら、理由と成果を照合する。
+
+共有queueの `worker: RUNNING` は親側が委任前に確認する。停止中なら親側の独立したサービスで `training_queue.sh serve` を起動する。委任した子はworktreeから `add` を行い、queue workerを起動しない。子の共通ランナーは終了時に子孫を回収するため、子から起動したqueue workerと実行中jobも停止する。終了値143では、子の終了とqueue workerの停止が同時刻か確認する。専用のqueueを使うなら、親CLIの `TRAINING_QUEUE_DIR` を起動前に指定して子と共有する。
+
+自律親にも同じ宣言が届く。子の終了イベントで `inspect-worker` と `final_file` を照合し、外部の結果を得た後に `continue-worker` で継続する。[自律親](dispatch.md) の待機手順を使う。自動CI・gate修正は専用JSONを受ける [レビュー進行](review.md) がCIを監視する。

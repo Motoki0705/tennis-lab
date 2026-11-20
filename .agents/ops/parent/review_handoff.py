@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from . import worker_followup
 from .policy import closing_issues, object_value
 from .session import ParentSession
 
@@ -93,8 +94,20 @@ def request(
             raise ValueError("review requires related open PRs")
         linked.update(relevant)
     for child in sorted(linked):
+        require_followup_ended(session.row, child)
         runner_ended(session, child)
     session.record_results(sorted(linked), evidence)
     from lib.ops_review.merge_gate_impl import register
 
     return register(session, prs, instruction, reason, review_selection, options or {})
+
+
+def require_followup_ended(row: dict[str, Any], child: int) -> None:
+    task = row.get("tasks", {}).get(str(child), {})
+    followup = worker_followup.current(task)
+    if (
+        followup
+        and followup["state"] in worker_followup.ACTIVE
+        and worker_followup.same_owner(row, followup)
+    ):
+        raise ValueError(f"#{child}: worker follow-up is active; use wait-worker")

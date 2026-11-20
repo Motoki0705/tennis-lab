@@ -6,6 +6,7 @@ import copy
 import hashlib
 import json
 import re
+import subprocess
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,7 +29,7 @@ from worker_logs.ownership import publication_owner
 from worker_logs.sources import original as original_text
 from worker_logs.sources import read_original
 
-from . import worker_preflight, worker_slots
+from . import worker_followup, worker_preflight, worker_slots
 from .execution import authorization
 from .github import GitHub
 from .policy import closing_issues, digest, nonempty, object_value
@@ -249,6 +250,7 @@ def record_worker_run(
         and run_directory(session.store, r) == path
         for r in worker_runs(task)
     ):
+        worker_followup.check_admission(session.row, task, None)
         append_run(session, task, path, "registered", model, reason)
     else:
         task.update(model=model, model_reason=reason)
@@ -462,8 +464,22 @@ def prepare_run(
     planning: bool = False,
     replace_session: bool = False,
     repair: dict[str, Any] | None = None,
+    automatic: str | None = None,
 ) -> tuple[list[str], str, str]:
     task = current_task(session, child)
+    worker_followup.check_admission(session.row, task, automatic)
+    if automatic is not None:
+        followup = worker_followup.current(task)
+        assert followup is not None
+        if str(latest_run(session, task)) != followup["run_dir"]:
+            raise ValueError("automatic resume source is no longer the latest run")
+        if any(
+            not d["invalidated"] and d["delivered_turn_id"] is None
+            for d in worker_preflight.state(task)["decisions"]
+        ):
+            raise ValueError(
+                "automatic resume cannot deliver a pending parent decision"
+            )
     if repair is not None:
         validate_repair_request(repair)
         if (
@@ -740,6 +756,8 @@ def prepare_run(
             "details_sha256": instruction_digest,
             "launch_state": "reserved",
         }
+    else:
+        worker_followup.reserve(session.row, task, directory, automatic, turn["phase"])
     append_run(
         session,
         task,
@@ -774,7 +792,10 @@ def run_worker(
     replace_session: bool = False,
     repair: dict[str, Any] | None = None,
     worker: str | None = None,
+    automatic: str | None = None,
 ) -> tuple[int, dict[str, Any]]:
+    if automatic is not None and (not resume or repair or replace_session):
+        raise ValueError("automatic follow-up requires a normal session resume")
     if repair is not None:
         gh.targeted_history = True
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
@@ -841,6 +862,7 @@ def run_worker(
             planning,
             replace_session,
             repair,
+            automatic,
         )
         if repair is not None:
             attempt = current_task(session, child)["repair_attempts"][
@@ -983,6 +1005,15 @@ def run_worker(
                     "delegation_id": delegation,
                     "evidence": "Runtime admission rejected this attempt before Popen; no worker started.",
                 }
+            followup = worker_followup.current(current)
+            if followup is not None:
+                followup.update(
+                    state="error",
+                    reason="rejected_before_start",
+                    run_dir=str(run_directory(store, runs[-2]))
+                    if len(runs) > 1
+                    else None,
+                )
             store.save()
         failure.mkdir(parents=True, mode=0o700)
         (failure / "stderr.txt").write_bytes(proc.stderr)
@@ -1034,6 +1065,7 @@ def run_worker(
             ) from None
     elif code == 0:
         raise ValueError("common runner returned no summary; inspect private records")
+    followup = None
     if summary is not None:
         from .review_handoff import runner_ended
 
@@ -1058,6 +1090,12 @@ def run_worker(
                 current["repair_attempts"][repair["repair_id"]]["launch_state"] = (
                     "ended"
                 )
+            else:
+                followup = worker_followup.current(current)
+                if followup is None:
+                    raise ValueError("worker follow-up reservation missing")
+                if followup["reason"] != "worker_stopped":
+                    code = worker_followup.finish(followup, directory, code)
             store.save()
     log_result = worker_logs.finish_manual(
         log_path,
@@ -1067,12 +1105,24 @@ def run_worker(
             store, gh.repo, parent, identity, reserved_owner["generation"]
         ),
     )
+    if followup and followup["state"] == "waiting" and automatic is None:
+        from .worker_monitor import Monitor, start
+
+        try:
+            start(store, gh.repo, parent, child, worker, followup["id"])
+        except (OSError, ValueError, subprocess.SubprocessError) as exc:
+            monitor = Monitor(store, gh.repo, parent, child, worker, followup["id"])
+            # A lost launcher response can follow a successful service claim.
+            if monitor.fail(str(exc), unclaimed_only=True):
+                followup.update(state="error", reason=str(exc))
+                code = 2
     return code, {
         "child": child,
         "delegation_id": delegation,
         "exit_code": code,
         "runner_summary": summary,
         "log_publication": log_result,
+        **({"followup": worker_followup.public_view(followup)} if followup else {}),
         **(
             {"repair": dict(repair), "run_dir": str(directory)}
             if repair is not None
@@ -1103,6 +1153,7 @@ def inspect_manual(session: ParentSession, child: int, *, stop: bool) -> dict[st
         matching_contract(task, proof["record"])
         terminated = runtime.ended(proof)
         if stop and terminated:
+            worker_followup.stop(task)
             task["worker_ended"] = {
                 "delegation_id": delegation,
                 "evidence": "Runner confirmed termination and cleanup.",
@@ -1114,6 +1165,12 @@ def inspect_manual(session: ParentSession, child: int, *, stop: bool) -> dict[st
             "delegation_id": delegation,
             "termination_confirmed": terminated,
             "result": proof["record"]["result"],
+            **(
+                {"followup": worker_followup.public_view(followup)}
+                if (followup := worker_followup.current(task))
+                and followup["run_dir"] == str(directory)
+                else {}
+            ),
             "final_file": str(directory / "final.md")
             if (directory / "final.md").is_file()
             else None,

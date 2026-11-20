@@ -152,6 +152,7 @@ def test_bootstrap_delegates_standalone_sol_and_does_not_trust_exit_zero(
         prompt = (Path(job["directory"]) / "prompt.md").read_text()
         assert f"担当issue: #{target}" in prompt
         assert "tests/README.md" in prompt
+        assert "PARENT_RESULT" in prompt
         assert "PYTEST_LOCK:" not in prompt
         assert "pytestは共有lockなし" in prompt
         state = mod.inspect_worker(session, target)
@@ -267,6 +268,10 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
             prompt="指摘と回帰テストを修正。",
             model=resume_model,
             continuation="前turn終了・同じPRの差分とHEADを確認。",
+        )
+        second_job = d.row()["dispatch"]["jobs"][second["job_id"]]
+        assert (
+            "PARENT_RESULT" in (Path(second_job["directory"]) / "prompt.md").read_text()
         )
         before = json.loads(
             (Path(previous["directory"]) / "runtime/result.json").read_text()

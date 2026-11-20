@@ -264,7 +264,14 @@ def test_launch_is_durable_private_and_preserves_registry(
         k: v
         for k, v in after.items()
         if k
-        not in {"worker_runs", "model", "model_reason", "preflight", "worker_ended"}
+        not in {
+            "worker_runs",
+            "model",
+            "model_reason",
+            "preflight",
+            "worker_ended",
+            "manual_followup",
+        }
     } == {k: v for k, v in before.items() if k not in {"worker_runs", "preflight"}}
     assert after["preflight"]["phase"] == "implementing"
     assert after["worker_runs"][-1]["preflight"]["phase"] == "implementing"
@@ -308,6 +315,7 @@ def test_launch_is_durable_private_and_preserves_registry(
     summary = json.loads(result.stdout)
     assert summary["runner_summary"]["result"] == "completed"
     assert summary["exit_code"] == 0
+    assert summary["followup"]["state"] == "done"
     assert store(p).read_data()["version"] == version
     for command in ("status", "reconcile", "sync"):
         output = p.cli(command).stdout
@@ -525,6 +533,7 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
         assert entry["prompt_file"] == "-"
         text = entry["prompt"]
         assert text.startswith(WORKER_PROMPT.read_text(encoding="utf-8"))
+        assert "PARENT_RESULT" in text
         assert "親issue: #1\n担当issue: #10\n" in text
         assert f"branch: {task(p)['branch']}\n" in text
         assert f"## 担当issueの原文\n\n{body}\n" in text
@@ -1073,6 +1082,7 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
     ]
     assert answer in prompts[-1] and "## 親の追加指示" in prompts[-1]
     assert len(prompts) == 2
+    assert all("PARENT_RESULT" in prompt for prompt in prompts)
     log_rows = [
         json.loads(Path(t["log"]["journal"]).read_text())
         for t in current["preflight"]["turns"]

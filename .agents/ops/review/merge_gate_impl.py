@@ -323,6 +323,7 @@ def continue_progression(
 ) -> None:
     from lib.ops_review.progression_backend import LiveBackend
     from lib.ops_review.progression_workers import refresh
+    from parent.review_handoff import require_followup_ended
 
     with controller_lock(path):
         state = read(path)
@@ -330,6 +331,10 @@ def continue_progression(
         with store.consistent_snapshot():
             session = ParentSession(backend.gh, store, backend.parent, identity)
             current = authorization(session)
+            for target in state["targets"].values():
+                if prs is None or target["number"] in prs:
+                    for child in target["issues"]:
+                        require_followup_ended(session.row, child)
             saved = state["request"]["authorization"]
             if current != {**saved, "generation": current["generation"]}:
                 raise ValueError("progression execution authority changed")
