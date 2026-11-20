@@ -1,0 +1,74 @@
+{
+  "fixed_inputs": {
+    "tensor_lock_sha256": "757984765eb0a9f069154dc3e143121b9ede97f6223806e10cef971a081a4b8e",
+    "independent_decode_matches_lock": true,
+    "shared_media": 0,
+    "shared_raw_frame_intervals": 0
+  },
+  "first_attempts": {
+    "vitpose_h/0": {
+      "queue_job": "0-8204856901100826992_2026-11-20T02-51-38-899173007Z_3774884_i2303-vitpose-0",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "pytorch_dtype_probe",
+      "diagnostic": "RuntimeError: PyTorch compute did not execute at torch.float32: {'add': Counter({'torch.float32': 67}), 'gelu': Counter({'torch.float32': 32})}"
+    },
+    "vitpose_h/1": {
+      "queue_job": "0-8204856900813208528_2026-11-20T02-51-39-186791471Z_3774968_i2303-vitpose-1",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/vitpose_h/0/result.json'"
+    },
+    "vitpose_h/2": {
+      "queue_job": "0-8204856900534923493_2026-11-20T02-51-39-465076506Z_3775047_i2303-vitpose-2",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/vitpose_h/0/result.json'"
+    },
+    "vitpose_h/3b": {
+      "queue_job": "0-8204856782726462122_2026-11-20T02-53-37-273537877Z_3794639_i2303-vitpose_h-3b",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/vitpose_h/0/result.json'"
+    },
+    "hmr2/0": {
+      "queue_job": "0-8204856782467620314_2026-11-20T02-53-37-532379685Z_3794706_i2303-hmr2-0",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "pytorch_dtype_probe",
+      "diagnostic": "RuntimeError: PyTorch compute did not execute at torch.float32: {'add': Counter({'torch.float32': 84}), 'gelu': Counter({'torch.float32': 38})}"
+    },
+    "hmr2/1": {
+      "queue_job": "0-8204856782198179124_2026-11-20T02-53-37-801820875Z_3794768_i2303-hmr2-1",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/hmr2/0/result.json'"
+    },
+    "hmr2/2": {
+      "queue_job": "0-8204856781937826455_2026-11-20T02-53-38-062173544Z_3794839_i2303-hmr2-2",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/hmr2/0/result.json'"
+    },
+    "hmr2/3b": {
+      "queue_job": "0-8204856781641902168_2026-11-20T02-53-38-358097831Z_3794902_i2303-hmr2-3b",
+      "state": "failed",
+      "exit_code": 1,
+      "stage": "reference_receipt",
+      "diagnostic": "[Errno 2] No such file or directory: 'outputs/i2303/hmr2/0/result.json'"
+    }
+  },
+  "pytorch_dtype_probe": {
+    "cause": "PyTorch 2.13 Python dispatch exposed aten::linear, aten::matmul, aten::conv2d and aten::conv_transpose2d as composite calls.",
+    "revision": "Verify compute output dtypes on both composite and decomposed operators."
+  },
+  "completed_clip_diagnostics": {
+    "0-8204857150290752393_2026-11-20T02-47-29-709247606Z_3742419_i2303-clip-ptq": "done",
+    "0-8204856579539421818_2026-11-20T02-57-00-460578181Z_3827362_i2303-clip-calibration": "done"
+  }
+}

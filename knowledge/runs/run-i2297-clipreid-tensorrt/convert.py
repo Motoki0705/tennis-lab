@@ -39,6 +39,52 @@ def require_queue():
         raise RuntimeError("Run GPU workloads through the shared training queue.")
 
 
+def constant_tensors(graph):
+    """Identify initializer data propagated through weight layout and Q/DQ."""
+    constants = {item.name for item in graph.initializer}
+    for node in graph.node:
+        if node.op_type == "Constant" or (
+            node.op_type
+            in {
+                "Cast",
+                "Transpose",
+                "Identity",
+                "Reshape",
+                "QuantizeLinear",
+                "DequantizeLinear",
+            }
+            and all(name in constants for name in node.input if name)
+        ):
+            constants.update(node.output)
+    return constants
+
+
+def linear_names(graph):
+    """Find MatMul/Gemm with a constant second operand, even after Q/DQ insertion."""
+    constants = constant_tensors(graph)
+    return {
+        node.name
+        for node in graph.node
+        if node.op_type in {"MatMul", "Gemm"} and node.input[1] in constants
+    }
+
+
+def quantized_matrix_ops(graph):
+    """Compute ops with explicit DQ on both multiplicands."""
+    dequantized = {
+        result
+        for node in graph.node
+        if node.op_type == "DequantizeLinear"
+        for result in node.output
+    }
+    return {
+        node.name
+        for node in graph.node
+        if node.op_type in {"MatMul", "Gemm", "Conv", "ConvTranspose"}
+        and set(node.input[:2]) <= dequantized
+    }
+
+
 def clipreid_precision_requirements(condition):
     """Pin the compute ops in the CLIP ViT-B/16 export, including fused attention."""
     precision = TRT_PRECISIONS[condition]
@@ -254,6 +300,57 @@ def build_engine(
     return evidence[""] if profile_shapes is None else evidence
 
 
+def modelopt_ptq(
+    graph,
+    target,
+    calibration,
+    mode,
+    *,
+    input_name,
+    method="max",
+    nodes=None,
+    external_data=False,
+):
+    import onnx
+    from modelopt.onnx.quantization.quantize import quantize
+
+    if nodes is not None and not nodes:
+        raise ValueError("Explicit PTQ selection is empty")
+    if method not in {"max", "entropy"}:
+        raise ValueError(f"Unsupported ModelOpt calibration method: {method}")
+    quantize(
+        str(graph),
+        quantize_mode=mode,
+        calibration_data={input_name: calibration},
+        calibration_method=method,
+        calibration_eps=["cpu"],
+        nodes_to_quantize=None
+        if nodes is None
+        else [rf"^{re.escape(name)}$" for name in nodes],
+        high_precision_dtype="fp16",
+        use_external_data_format=external_data,
+        output_path=str(target),
+    )
+    model = onnx.load(target, load_external_data=False)
+    ops = Counter(node.op_type for node in model.graph.node)
+    if not ops["QuantizeLinear"] or not ops["DequantizeLinear"]:
+        raise RuntimeError(f"{mode} PTQ produced no explicit Q/DQ pairs")
+    matrix = quantized_matrix_ops(model.graph)
+    if nodes is not None and matrix != set(nodes):
+        raise RuntimeError(
+            f"{mode} Q/DQ compute scope differs from request: "
+            f"missing {sorted(set(nodes) - matrix)}, unexpected {sorted(matrix - set(nodes))}"
+        )
+    return {
+        "mode": mode,
+        "method": method,
+        "crops": len(calibration),
+        "Q": ops["QuantizeLinear"],
+        "DQ": ops["DequantizeLinear"],
+        "qdq_matrix_operations": len(matrix),
+    }
+
+
 def convert(condition, checkpoint, calibration, output):
     import onnx
     import torch
@@ -279,8 +376,6 @@ def convert(condition, checkpoint, calibration, output):
     mode = TRT_PRECISIONS[condition]
     quantization = None
     if condition in {"3a", "3b"}:
-        from modelopt.onnx.quantization.quantize import quantize
-
         if calibration is None:
             raise ValueError("PTQ requires the fixed calibration tensors")
         data = np.load(calibration, allow_pickle=False)
@@ -291,32 +386,8 @@ def convert(condition, checkpoint, calibration, output):
         ):
             raise ValueError("Unexpected calibration tensor dtype or shape")
         target = output / "quantized.onnx"
-        quantize(
-            str(graph),
-            quantize_mode=mode,
-            calibration_data={INPUT_NAME: data},
-            calibration_method="max",
-            calibration_eps=["cpu"],
-            high_precision_dtype="fp16",
-            use_external_data_format=False,
-            output_path=str(target),
-        )
+        quantization = modelopt_ptq(graph, target, data, mode, input_name=INPUT_NAME)
         graph = target
-        quantized = onnx.load(graph)
-        quantize_nodes = sum(
-            node.op_type == "QuantizeLinear" for node in quantized.graph.node
-        )
-        dequantize_nodes = sum(
-            node.op_type == "DequantizeLinear" for node in quantized.graph.node
-        )
-        if not quantize_nodes or not dequantize_nodes:
-            raise RuntimeError(f"{mode} PTQ produced no explicit Q/DQ pairs")
-        quantization = {
-            "mode": mode,
-            "crops": len(data),
-            "Q": quantize_nodes,
-            "DQ": dequantize_nodes,
-        }
     evidence = build_engine(
         graph,
         output / PLAN,
@@ -338,15 +409,68 @@ def convert(condition, checkpoint, calibration, output):
     )
 
 
+def convert_adapter(adapter, condition, checkpoint, calibration, output, recipe):
+    mode = TRT_PRECISIONS[condition]
+    exported = output / "export.onnx"
+    adapter.export(checkpoint, exported, fp16=condition == "2")
+    graph = exported
+    quantization = None
+    selected = set()
+    if mode in {"int8", "fp8"}:
+        if calibration is None:
+            raise ValueError("PTQ requires fixed calibration tensors")
+        target = output / "quantized.onnx"
+        data = np.load(calibration, allow_pickle=False)
+        if (
+            data.dtype != np.float32
+            or data.shape[1:] != adapter.batch_shape[1:]
+            or not len(data)
+        ):
+            raise ValueError("Calibration tensor has an unexpected dtype or shape")
+        quantization, selected = adapter.quantize(graph, target, data, mode, recipe)
+        graph = target
+    expected = adapter.compute_requirements(exported, mode, selected)
+    plan = output / f"{adapter.model}.plan"
+    evidence = build_engine(
+        graph, plan, required_precision=mode, expected_operations=expected
+    )
+    plan.with_suffix(".precision.json").write_text(
+        json.dumps(expected, indent=2) + "\n"
+    )
+    receipt = {
+        "condition": condition,
+        "workspace_bytes": WORKSPACE_BYTES,
+        "quantization": quantization,
+        "compute_precision": evidence,
+    }
+    (output / "conversion.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    print(f"Engine compute precision: {evidence}", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--condition", required=True, choices=("2", "3a", "3b"))
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--calibration", type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--adapter", type=Path)
+    parser.add_argument("--model")
+    parser.add_argument("--ptq-recipe")
     args = parser.parse_args()
     require_queue()
-    convert(args.condition, args.checkpoint, args.calibration, args.output)
+    if args.adapter:
+        from benchmark import load_adapter
+
+        convert_adapter(
+            load_adapter(args.adapter, args.model),
+            args.condition,
+            args.checkpoint,
+            args.calibration,
+            args.output,
+            args.ptq_recipe,
+        )
+    else:
+        convert(args.condition, args.checkpoint, args.calibration, args.output)
 
 
 if __name__ == "__main__":
