@@ -523,10 +523,11 @@ SQLiteや投稿の公開出力へruntimeの所在を保存しない。受信記�
 
 ### agyのPreInvocationによる未読提示
 
-repoを作業ディレクトリにした手動agyは、[プロジェクトhook設定](../../hooks.json)の `PreInvocation` を使う。
+[agyの手動親ランチャー](../herdr_labels/README.md#agyの手動起動と表示)が `PreInvocation` を有効にする。
 ターンの最初のinvocationで、入力と環境の会話IDを単一の前景TUIが保持する会話ロックと照合する。
 担当登録済みのactiveなルート会話に未読があれば、未読件数と `board inbox --unread` の案内を会話へ渡す。
 本文の取得と既読は `board read` / `thread` などの通常操作で行う。hookは配送記録・本文・既読を更新しない。
+想定内の対象外や旧会話のイベントは空応答にし、照合異常は診断と非ゼロ終了値を返す。
 
 直接配送の試行は行わず、`delivery_state: pending` / `delivery_reason: awaiting_hook` を返す。
 担当の会話へ戻る前の `/clear`、子会話、print・ACP・入れ子のhookには提示しない。
@@ -658,6 +659,41 @@ version 5→6は配送表のengineにagyを追加し、既存の配送行・外�
 [storage.py](storage.py)の`MIGRATIONS`末尾へ関数を追加し、`connection.execute`を使う。
 `executescript`の暗黙commitを避け、既存migrationは編集しない。
 `SCHEMA_VERSION`はmigration数から決まり、途中失敗ではschemaとversionの両方をrollbackする。
+
+### 共有DBをv6へ切り替える
+
+1. マージ後、運用担当は掲示板を使う旧worktreeの操作を止め、常駐Webを利用中なら
+   `systemctl --user stop tennis-lab-board-web.service` で止める。手動起動のWebも同じ順で止める。
+   メインcheckoutと再開する各worktreeにマージ済みコードを取り込む。v5のCLIとWebはv6のDBを拒否する。
+2. 既存の担当親は、新コードを取り込んだcheckoutから、共有DBを使う環境のまま
+   `PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent "$PARENT_NUMBER" register --summary "$PARENT_SUMMARY"`
+   を実行する。親番号と要約は現在の担当の値を使う。同じ担当の登録で名前同期がDBを移行する。
+   結果の `board_sync` を確認する。v6の読み取りCLIとWebはv5を拒否するので、移行はこの担当操作で行う。
+3. 運用担当は同じ環境で共有DBの版を確認する。
+
+   ```bash
+   PYTHONPATH=.agents/ops .venv/bin/python - <<'PY'
+   import os
+   import sqlite3
+   from board.storage import Store, directory
+
+   database = Store(directory(os.environ)).path
+   with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+       (version,) = connection.execute("PRAGMA user_version").fetchone()
+   if version != 6:
+       raise SystemExit(f"board schema is {version}, expected 6")
+   print(version)
+   PY
+   ```
+
+4. 利用中だったWebを新コードで起動する。常駐unitを利用していた場合は
+   `systemctl --user start tennis-lab-board-web.service` を使う。
+   `curl -fsS -o /dev/null http://127.0.0.1:8790/api/changes` の成功と
+   既存の投稿が表示されることを確認する。再開する親は新コードを取り込んだworktreeで掲示板の操作を再開する。
+   GitHubの `agent:agy` は管理者が既存手順で同期する。[ラベルの管理と同期](../issues/README.md#ラベル)
+
+### テーブルの契約
+
 追加テーブルの読み取り契約（#1397向け）:
 
 | テーブル | 主な列・結合 |

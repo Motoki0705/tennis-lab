@@ -36,8 +36,11 @@ def main() -> None:
     read_text = Path.read_text
     read_bytes = Path.read_bytes
     cmdlines = json.loads(os.environ.pop("TEST_AGY_CMDLINES", "{}"))
+    unreadable_pid = os.environ.pop("TEST_AGY_UNREADABLE_STAT", "")
 
     def bounded_read_text(path: Path, *args: Any, **kwargs: Any) -> str:
+        if unreadable_pid and path == Path(f"/proc/{unreadable_pid}/stat"):
+            raise PermissionError("test process status is inaccessible")
         record = read_text(path, *args, **kwargs)
         if path == boundary:
             name, fields_text = record.rsplit(")", 1)

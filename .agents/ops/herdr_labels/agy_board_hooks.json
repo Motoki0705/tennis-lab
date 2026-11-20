@@ -3,7 +3,7 @@
     "PreInvocation": [
       {
         "type": "command",
-        "command": "../.venv/bin/python -I ops/herdr_labels/agy_hook.py pre-invocation",
+        "command": "exec \"${TENNIS_LAB_AGY_HOOK_ENTRY:?agy parent hook: launcher entry is missing}\" --hook=pre-invocation",
         "timeout": 5
       }
     ]

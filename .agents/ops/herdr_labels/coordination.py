@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-from lib.agy_session import AgyTui
+from lib.agy_session import AgyTui, AgyVerificationError
 from parent.state import Store
 
 from .client import Herdr
@@ -240,6 +240,12 @@ class Guard:
         self._check_process()
         if read_record(self.path) != self.runtime:
             raise ValueError("pane session changed during display synchronization")
+
+    def require_agy_tui(self, tui: AgyTui) -> None:
+        if self.stamp != [{"pid": tui.pid, "start": tui.start_ticks}]:
+            raise AgyVerificationError(
+                "agy TUI does not match the inherited Herdr pane"
+            )
 
     def require_native_ancestor(self) -> None:
         """A lifecycle payload must originate from the pane's current agent."""

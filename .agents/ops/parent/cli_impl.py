@@ -16,6 +16,7 @@ from typing import Any
 from decision_logs import parent_commands as decision_capture
 from decision_logs.capture import CURRENT
 from lib.agent_settings import implementation_models
+from lib.agy_session import AGY_LAUNCH_ENV, CONVERSATION_ENV, AgyExcluded
 from lib.identity import session_identity
 from worker_logs.sources import read_original
 
@@ -488,6 +489,22 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
             }
             else session_identity(dict(os.environ))
         )
+        agy_status = args.command == "status" and bool(os.environ.get(CONVERSATION_ENV))
+        if agy_status:
+            with suppress(AgyExcluded):
+                identity = session_identity(dict(os.environ))
+        if (
+            identity is not None
+            and identity.startswith("agy:")
+            and (
+                args.command == "register"
+                or (args.command == "handoff" and args.accept)
+            )
+            and os.environ.get(AGY_LAUNCH_ENV) != "1"
+        ):
+            raise ValueError(
+                "start agy with .agents/ops/herdr_labels/agy-parent.sh to enable the board hook"
+            )
         args.state_dir = (args.state_dir or state_directory()).resolve()
         workers = {"start-worker", "continue-worker", "inspect-worker", "stop-worker"}
         store: Store
@@ -876,8 +893,9 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 result = session.set_summary(args.text)
             elif command == "status":
                 # Status works outside a live session; disclose no raw session identifiers.
-                with suppress(ValueError):
-                    session.session = session_identity(dict(os.environ))
+                if not agy_status:
+                    with suppress(ValueError):
+                        session.session = session_identity(dict(os.environ))
                 result = session.status()
             elif command == "checking":
                 result = session.checking()

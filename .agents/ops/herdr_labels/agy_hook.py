@@ -1,4 +1,4 @@
-"""Antigravity's TUI status line and project PreInvocation entry points."""
+"""Antigravity's manual-parent status line and PreInvocation entry points."""
 
 from __future__ import annotations
 
@@ -13,26 +13,38 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from board.display import agy_unread  # noqa: E402
 from board.errors import BoardError  # noqa: E402
-from lib.agy_session import CONVERSATION_ENV, AgyTui, caller_tui  # noqa: E402
+from lib.agy_session import (  # noqa: E402
+    AGY_LAUNCH_ENV,
+    CONVERSATION_ENV,
+    AgyExcluded,
+    AgyTui,
+    AgyVerificationError,
+    caller_tui,
+)
 
-from herdr_labels.service import AGY_LAUNCH_ENV, agy_session_changed  # noqa: E402
+from herdr_labels.service import agy_session_changed  # noqa: E402
 
 
 def _event(
     env: dict[str, str], payload: dict[str, Any], mode: str
 ) -> tuple[AgyTui, str] | None:
+    if env.get(AGY_LAUNCH_ENV) != "1":
+        return None
     if mode == "pre-invocation":
-        if (
-            payload.get("hookEventName") != "PreInvocation"
-            or type(payload.get("invocationNum")) is not int
-            or payload["invocationNum"] != 0
-        ):
+        if payload.get("hookEventName") != "PreInvocation":
+            return None
+        invocation = payload.get("invocationNum")
+        if type(invocation) is not int or invocation < 0:
+            raise AgyVerificationError("invalid agy hook invocation number")
+        if invocation != 0:
             return None
         conversation = payload.get("conversationId")
-        if conversation != env.get(CONVERSATION_ENV):
-            return None
+        if not conversation or conversation != env.get(CONVERSATION_ENV):
+            raise AgyVerificationError(
+                "agy hook conversation differs from its environment"
+            )
     elif mode == "status-line":
-        if env.get("HERDR_ENV") != "1" or env.get(AGY_LAUNCH_ENV) != "1":
+        if env.get("HERDR_ENV") != "1":
             return None
         conversation = payload.get("conversation_id")
         if conversation != payload.get("session_id"):
@@ -43,9 +55,14 @@ def _event(
         return None
     try:
         tui = caller_tui()
-    except ValueError:
-        return None  # Print, ACP and nested invocations also load project hooks.
-    if tui.conversation() != conversation:
+    except AgyExcluded:
+        return None
+    locked = tui.conversation()
+    if locked is None:
+        raise AgyVerificationError(
+            "agy foreground TUI is missing its conversation lock"
+        )
+    if locked != conversation:
         return None  # Stale event or an in-process child conversation.
     return tui, conversation
 
@@ -75,6 +92,9 @@ def main() -> int:
                             }
                         ]
                     }
+    except AgyVerificationError as exc:
+        print(f"agy parent hook: {exc}", file=sys.stderr)
+        return 1
     except (
         BoardError,
         ValueError,

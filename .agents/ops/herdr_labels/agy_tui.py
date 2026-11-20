@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -14,13 +15,21 @@ from tempfile import TemporaryDirectory
 from types import FrameType
 from typing import Any
 
-from lib.agy_session import interactive_options
+from lib.agy_session import (
+    AGY_LAUNCH_ENV,
+    AgyExcluded,
+    AgyVerificationError,
+    interactive_options,
+)
 from lib.opsproc import process_identity
 from parent.state import Store
 
 from .client import Herdr
 from .coordination import locked, owner_token, pane_record, read_record, state_root
-from .service import AGY_LAUNCH_ENV, TOKEN_KEYS, clear_inbox
+from .service import TOKEN_KEYS, clear_inbox
+
+HOOK_ENTRY_ENV = "TENNIS_LAB_AGY_HOOK_ENTRY"
+HERE = Path(__file__).resolve().parent
 
 
 def clear_after_exit(
@@ -66,11 +75,9 @@ def clear_after_exit(
         Store.write_json(path, {**record, "state": "ended"})
 
 
-def launch(args: Sequence[str], env: dict[str, str]) -> int:
-    options = tuple(interactive_options(args))
-    if env.get("HERDR_ENV") != "1":
-        os.execvpe("agy", ["agy", *args], env)
-    terminal = Herdr(env).pane()["terminal_id"]
+def _display_settings(
+    options: Sequence[tuple[str, str | None]], entry: Path
+) -> dict[str, Any]:
     existing = next(
         (value for name, value in reversed(options) if name == "settings"), None
     )
@@ -87,17 +94,18 @@ def launch(args: Sequence[str], env: dict[str, str]) -> int:
         raise ValueError("agy launch settings must be a JSON object")
     settings["statusLine"] = {
         "type": "command",
-        "command": shlex.join(
-            [
-                sys.executable,
-                "-I",
-                str(Path(__file__).with_name("agy_hook.py")),
-                "status-line",
-            ]
-        ),
+        "command": shlex.join([str(entry), "--hook=status-line"]),
         "stack_with_default": True,
     }
+    return settings
+
+
+def launch(args: Sequence[str], env: dict[str, str]) -> int:
+    options = tuple(interactive_options(args))
+    terminal = Herdr(env).pane()["terminal_id"] if env.get("HERDR_ENV") == "1" else None
+    entry = HERE / "agy-parent.sh"
     env[AGY_LAUNCH_ENV] = "1"
+    env[HOOK_ENTRY_ENV] = str(entry)
     agent: subprocess.Popen[bytes] | None = None
 
     def forward(number: int, _frame: FrameType | None) -> None:
@@ -106,30 +114,37 @@ def launch(args: Sequence[str], env: dict[str, str]) -> int:
             agent.send_signal(number)
 
     with TemporaryDirectory(prefix="agy-parent-") as temp:
-        config = Path(temp) / "settings.json"
-        config.write_text(json.dumps(settings), encoding="utf-8")
+        workspace = Path(temp) / "board-hook"
+        (workspace / ".agents").mkdir(parents=True)
+        shutil.copyfile(HERE / "agy_board_hooks.json", workspace / ".agents/hooks.json")
         command = [
             "agy",
             *(
                 f"--{name}" if value is None else f"--{name}={value}"
                 for name, value in options
-                if name != "settings"
+                if terminal is None or name != "settings"
             ),
-            "--settings",
-            str(config),
+            "--add-dir",
+            str(workspace),
         ]
+        if terminal is not None:
+            config = Path(temp) / "settings.json"
+            config.write_text(
+                json.dumps(_display_settings(options, entry)), encoding="utf-8"
+            )
+            command.extend(["--settings", str(config)])
         handlers = {
             number: signal.signal(number, forward)
             for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
         }
         try:
             agent = subprocess.Popen(command, env=env)
-            process = process_identity(agent.pid)
+            process = process_identity(agent.pid) if terminal is not None else None
             result = agent.wait()
         finally:
             for number, handler in handlers.items():
                 signal.signal(number, handler)
-        if process is not None:
+        if terminal is not None and process is not None:
             clear_after_exit(env, terminal, process)
     return result if result >= 0 else 128 - result
 
@@ -137,6 +152,9 @@ def launch(args: Sequence[str], env: dict[str, str]) -> int:
 def main() -> int:
     try:
         return launch(sys.argv[1:], dict(os.environ))
+    except (AgyExcluded, AgyVerificationError) as exc:
+        print(f"agy parent launcher: {exc}", file=sys.stderr)
+        return 1
     except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
         print(
             "agy parent launcher: could not start the TUI or verify display cleanup",

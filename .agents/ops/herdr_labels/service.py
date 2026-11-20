@@ -9,7 +9,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-from lib.agy_session import AgyTui
+from lib.agy_session import AGY_LAUNCH_ENV, AgyTui, caller_tui
 from lib.identity import session_identity
 from parent.policy import digest
 from parent.state import Store
@@ -26,7 +26,6 @@ TOKEN_KEYS = (
     "tl_owner",
 )
 INBOX_KEYS = ("tl_inbox", "tl_inbox_label")
-AGY_LAUNCH_ENV = "TENNIS_LAB_AGY_DISPLAY"
 
 
 def issue_label(parent: int) -> str:
@@ -234,7 +233,7 @@ def sync(
     if identity.startswith("agy:") and env.get(AGY_LAUNCH_ENV) != "1":
         return {
             "status": "not_configured",
-            "reason": "start agy with herdr_labels.agy_tui to enable lifecycle display",
+            "reason": "start agy with .agents/ops/herdr_labels/agy-parent.sh",
         }
     destination = target(env, identity)
     if destination is None:
@@ -246,6 +245,8 @@ def sync(
     if (session_start or session_end) and env.get("HERDR_ENV") != "1":
         raise ValueError("lifecycle events require the inherited Herdr caller context")
     guard = Guard(env, identity, client, pane)
+    if identity.startswith("agy:"):
+        guard.require_agy_tui(caller_tui())
     if session_start or session_end:
         guard.require_native_ancestor()
     try:
@@ -285,8 +286,7 @@ def agy_session_changed(env: Mapping[str, str], tui: AgyTui, conversation: str) 
         return
     client, pane = destination
     guard = Guard(env, identity, client, pane)
-    if guard.stamp != [{"pid": tui.pid, "start": tui.start_ticks}]:
-        raise ValueError("agy TUI does not match the inherited Herdr pane")
+    guard.require_agy_tui(tui)
     guard.require_native_ancestor()
     with guard.hold(start=True):
         _sync(

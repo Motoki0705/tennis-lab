@@ -67,27 +67,35 @@ registryやGitHubを書き換えない。Codexも同じparent CLIとskillを使�
 
 ## agyの手動起動と表示
 
-Herdrの端末でrepoのrootへ移動し、手動親として起動する。検証対象はAntigravity CLI 1.5.13（Linux）。
+repo rootから手動親を起動する。Herdrの端末から起動すると担当表示も有効になる。
+検証対象はAntigravity CLI 1.5.13（Linux）。
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels.agy_tui
-PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels.agy_tui --continue
+.agents/ops/herdr_labels/agy-parent.sh
+.agents/ops/herdr_labels/agy-parent.sh --continue
 ```
 
 個別再開ではagy自身の `--conversation` または `/resume` を使う。担当登録や変更は起動した会話の
 ホスト側 `run_command` からparent CLIで行う。識別の前提は[parent CLI](../parent/README.md#agyの手動親)を参照。
 
-ランチャーは一時的な `--settings` で `statusLine` を設定する。他の起動時設定は引き継ぎ、
+ランチャーはcheckoutの `.venv/bin/python` を検査し、未設定なら起動前にエラーを返す。
+手動親の `PreInvocation` は、専用のhook設定だけを置いた一時ディレクトリを `--add-dir` で渡して有効にする。
+起動した会話だけがこの設定を読み、一時ディレクトリは終了時に削除する。担当登録と引継ぎ受領ではこのランチャーを使う。
+未読件数の扱いは[掲示板の仕様](../board/README.md#agyのpreinvocationによる未読提示)を参照。
+[Antigravityのカスタマイズ検出](https://antigravity.google/docs/customization-discovery?tab=cli)
+
+Herdr内では一時的な `--settings` で `statusLine` を設定する。他の起動時設定は引き継ぎ、
 指定済みのカスタム `statusLine` はその起動中だけ置き換える。Herdrが認識する `agent == "agy"` と
-実行元の前景PIDを照合し、`statusLine` の会話IDとPIDが現在保持する会話ロックが一致したイベントで同期する。
+実行元TUIのPID・開始時刻を、`statusLine` と通常同期の両方で対象paneと照合する。
+`statusLine` の会話IDとPIDが現在保持する会話ロックが一致したイベントで同期する。
 `/clear` や別会話への切替は次の入力前に古い表示を消し、登録済みの会話を再開すれば名前と担当を復元する。
 同じ端末に紐付く元のプロセスの終了後は、ランチャーが管理する表示と未読トークンを消す。
 
 別paneへの移動は、新paneのTUIが対象会話のロックを保持しており、登録済みの旧paneが空いたと確認できた場合に限る。
 移動前の空き確認と競合時の再照合は[共通のpane確認](#claudeのsessionstartによる表示先の移動)と同じ。
 agyではキャッシュされたnative参照より実際の会話ロックで照合する。
-起動した会話のHerdr環境を使うため、agyへの明示bindは受け付けない。通常の `agy` 起動で登録済みの場合は、
-上のランチャーで同じ会話を開き、`parent register` を再実行して表示先を登録する。
+表示先は起動した会話のHerdr環境から確認する。表示先の初回登録や修復では、
+上のランチャーで担当会話を開き、`parent register` を実行する。
 
 ## Codexのclear通知
 

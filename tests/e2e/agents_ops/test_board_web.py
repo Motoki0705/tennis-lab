@@ -18,15 +18,18 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.e2e.agents_ops.test_board import board as board
 from tests.e2e.agents_ops.test_board import (
+    NOW,
     prepare_roster,
     private_output_absent,
     run_board,
 )
+from tests.e2e.agents_ops.test_board import board as board
 from tests.e2e.agents_ops.test_board_messages import World
 from tests.e2e.agents_ops.test_board_messages import world as world
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
+from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
 @pytest.fixture
@@ -1939,6 +1942,66 @@ def test_web_writes_do_not_initialize_or_migrate_a_database(
     world.store.path.unlink()
     assert client.post("/api/posts", headers=headers, json=payload).status_code == 503
     assert not world.store.path.exists() and world.fake.calls == []
+
+
+def test_shared_board_v5_web_requires_parent_register_before_v6_cutover(
+    parent_env: ParentEnv, board: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = board.storage.Store(board.storage.directory(parent_env.env))
+    store.directory.mkdir(parents=True)
+    post_id = "1234" * 8
+    with sqlite3.connect(store.path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        for migration in board.storage.MIGRATIONS[:5]:
+            migration(connection)
+        connection.execute("PRAGMA user_version=5")
+        assignment = board.names.ensure_name(connection, "o/r", 1, "開発", now=NOW)
+        connection.execute(
+            "INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                post_id,
+                board.names.timestamp(NOW),
+                assignment.id,
+                assignment.name,
+                "o/r",
+                1,
+                "info",
+                0,
+                "切替前の投稿",
+                "共有DBの履歴。",
+                None,
+                post_id,
+            ),
+        )
+
+    create_app = importlib.import_module("board.web").create_app
+    with pytest.raises(
+        board.errors.BoardError, match="requires migration through parent register"
+    ):
+        create_app(parent_env.env)
+    with sqlite3.connect(store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone() == (5,)
+
+    result = json.loads(parent_env.cli("register").stdout)
+    assert result["board_sync"]["status"] == "retained"
+    with sqlite3.connect(store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone() == (6,)
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    with TestClient(create_app(parent_env.env), base_url="http://127.0.0.1") as client:
+        current = client.get("/api/changes")
+        assert current.status_code == 200
+        assert [post["id"] for post in current.json()["posts"]] == [post_id]
+        # A v5 process still using the same state rejects v6 at its version check.
+        with monkeypatch.context() as old:
+            old.setattr(board.storage, "SCHEMA_VERSION", 5)
+            with (
+                pytest.raises(
+                    board.errors.BoardError, match="unknown board schema version"
+                ),
+                store.read(),
+            ):
+                pass
+            assert client.get("/api/changes").status_code == 503
 
 
 def test_browser_human_conversation_workflow(

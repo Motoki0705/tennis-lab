@@ -14,6 +14,7 @@ CONVERSATION_ENV = "ANTIGRAVITY_CONVERSATION_ID"
 TRAJECTORY_ENV = "ANTIGRAVITY_TRAJECTORY_ID"
 ADDRESS_ENV = "ANTIGRAVITY_LS_ADDRESS"
 TOKEN_ENV = "ANTIGRAVITY_CSRF_TOKEN"
+AGY_LAUNCH_ENV = "TENNIS_LAB_AGY_PARENT"
 _UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
 _VALUE_OPTIONS = {
     "add-dir",
@@ -36,6 +37,25 @@ _SWITCHES = {
     "remote-control",
     "sandbox",
 }
+_NONINTERACTIVE_OPTIONS = {
+    "disable-slash-commands",
+    "input-format",
+    "json-schema",
+    "output-format",
+    "p",
+    "print",
+    "print-timeout",
+    "prompt",
+    "remote-agent",
+}
+
+
+class AgyExcluded(ValueError):
+    """Expected non-parent execution, such as print, ACP or a nested agent."""
+
+
+class AgyVerificationError(ValueError):
+    """The host TUI or the provenance of the caller could not be verified."""
 
 
 def interactive_options(args: Sequence[str]) -> Iterator[tuple[str, str | None]]:
@@ -43,23 +63,30 @@ def interactive_options(args: Sequence[str]) -> Iterator[tuple[str, str | None]]
     values = iter(args)
     for arg in values:
         name, equals, value = arg.removeprefix("-").removeprefix("-").partition("=")
-        if not arg.startswith("-"):
-            raise ValueError("agy parent operations require the interactive TUI")
+        if not arg.startswith("-") or name in _NONINTERACTIVE_OPTIONS:
+            raise AgyExcluded("agy parent operations require the interactive TUI")
         if name in _VALUE_OPTIONS:
             parameter = value if equals else next(values, None)
             if not parameter:
-                raise ValueError("agy interactive option requires a value")
+                raise AgyVerificationError("agy interactive option requires a value")
             yield name, parameter
         elif name in _SWITCHES:
             yield name, value if equals else None
         else:
-            raise ValueError("agy parent operations require a local interactive TUI")
+            raise AgyVerificationError("unknown agy interactive option")
 
 
 def _stat(pid: int) -> tuple[str, list[str]]:
-    raw = Path(f"/proc/{pid}/stat").read_text()
-    label, fields = raw.rsplit(")", 1)
-    return label.split("(", 1)[1], fields.split()
+    try:
+        raw = Path(f"/proc/{pid}/stat").read_text()
+        label, record = raw.rsplit(")", 1)
+        name = label.split("(", 1)[1]
+        fields = record.split()
+        if len(fields) >= 20:
+            return name, fields
+    except (OSError, ValueError, IndexError):
+        pass
+    raise AgyVerificationError("agy host process ancestry is unavailable")
 
 
 def _fd_targets(pid: int) -> Iterator[tuple[str, str]]:
@@ -79,29 +106,36 @@ class AgyTui:
     @classmethod
     def inspect(cls, pid: int) -> AgyTui:
         name, fields = _stat(pid)
+        if name != "agy" or fields[0] == "Z":
+            raise AgyVerificationError("agy TUI process changed")
+        try:
+            argv = Path(f"/proc/{pid}/cmdline").read_bytes().rstrip(b"\0").split(b"\0")
+        except OSError:
+            raise AgyVerificationError("agy TUI command line is unavailable") from None
+        if not argv[0]:
+            raise AgyVerificationError("agy TUI command line is unavailable")
+        tuple(interactive_options([os.fsdecode(arg) for arg in argv[1:]]))
         if (
-            name != "agy"
-            or fields[0] == "Z"
-            or fields[4] == "0"  # No controlling terminal.
+            fields[4] == "0"  # No controlling terminal.
             or fields[2] != fields[5]  # Not the foreground process group.
         ):
-            raise ValueError("agy parent operations require the foreground host TUI")
-        argv = Path(f"/proc/{pid}/cmdline").read_bytes().rstrip(b"\0").split(b"\0")
-        tuple(interactive_options([os.fsdecode(arg) for arg in argv[1:]]))
+            raise AgyVerificationError(
+                "agy parent operations require the foreground host TUI"
+            )
         return cls(pid, fields[19])
 
     def conversation(self) -> str | None:
         """Read the conversation actually locked by this TUI."""
         proc = Path(f"/proc/{self.pid}")
         if self.inspect(self.pid) != self:
-            raise ValueError("agy TUI process changed")
+            raise AgyVerificationError("agy TUI process changed")
         homes = [
             os.fsdecode(item[5:])
             for item in (proc / "environ").read_bytes().split(b"\0")
             if item.startswith(b"HOME=")
         ]
         if len(homes) != 1 or not Path(homes[0]).is_absolute():
-            raise ValueError("agy TUI home is unavailable")
+            raise AgyVerificationError("agy TUI home is unavailable")
         presence = Path(homes[0]).resolve() / ".gemini/antigravity-cli/presence"
         held: set[str] = set()
         for fd, target in _fd_targets(self.pid):
@@ -125,31 +159,39 @@ class AgyTui:
             ):
                 held.add(path.stem)
         if self.inspect(self.pid) != self or len(held) > 1:
-            raise ValueError("agy TUI conversation lock changed or is ambiguous")
+            raise AgyVerificationError(
+                "agy TUI conversation lock changed or is ambiguous"
+            )
         return next(iter(held), None)
 
     def require_conversation(self, conversation: str) -> None:
         if self.conversation() != conversation:
-            raise ValueError("agy conversation differs from the foreground TUI lock")
+            raise AgyVerificationError(
+                "agy conversation differs from the foreground TUI lock"
+            )
 
 
 def caller_tui() -> AgyTui:
     """Select exactly one native agent in the actual host ancestry."""
-    found = None
+    engines = []
     pid = os.getppid()
-    try:
-        while pid > 1:
-            name, fields = _stat(pid)
-            if name in {"agy", "claude", "codex", "antigravity", "antigravity-cli"}:
-                if found is not None or name != "agy":
-                    raise ValueError("nested agy parent operations are unsupported")
-                found = AgyTui.inspect(pid)
+    while pid > 1:
+        name, fields = _stat(pid)
+        if name in {"agy", "claude", "codex", "antigravity", "antigravity-cli"}:
+            engines.append((name, pid))
+        try:
             pid = int(fields[1])
-    except OSError:
-        raise ValueError("agy host process ancestry is unavailable") from None
-    if found is None:
-        raise ValueError("agy host process ancestry is unavailable (terminal sandbox?)")
-    return found
+        except ValueError:
+            raise AgyVerificationError(
+                "agy host process ancestry is unavailable"
+            ) from None
+    if not any(name == "agy" for name, _ in engines):
+        raise AgyVerificationError(
+            "agy host process ancestry is unavailable (terminal sandbox?)"
+        )
+    if len(engines) != 1:
+        raise AgyExcluded("nested agy parent operations are unsupported")
+    return AgyTui.inspect(engines[0][1])
 
 
 def _listener(tui: AgyTui, port: int) -> tuple[str, str]:
@@ -172,7 +214,9 @@ def _listener(tui: AgyTui, port: int) -> tuple[str, str]:
                 and f"socket:[{fields[9]}]" in sockets
             ):
                 return host, fields[9]
-    raise ValueError("agy metadata endpoint is not owned by the foreground TUI")
+    raise AgyVerificationError(
+        "agy metadata endpoint is not owned by the foreground TUI"
+    )
 
 
 def _require_root(env: Mapping[str, str], tui: AgyTui, conversation: str) -> None:
@@ -183,10 +227,12 @@ def _require_root(env: Mapping[str, str], tui: AgyTui, conversation: str) -> Non
     )
     token = env.get(TOKEN_ENV)
     if not address or not _UUID.fullmatch(trajectory) or not token:
-        raise ValueError("agy root metadata requires a host run_command environment")
+        raise AgyVerificationError(
+            "agy root metadata requires a host run_command environment"
+        )
     port = int(address[1])
     if not 0 < port <= 65535:
-        raise ValueError("invalid agy metadata endpoint")
+        raise AgyVerificationError("invalid agy metadata endpoint")
     listener = _listener(tui, port)
     connection = http.client.HTTPConnection(listener[0], port, timeout=2)
     try:
@@ -211,26 +257,30 @@ def _require_root(env: Mapping[str, str], tui: AgyTui, conversation: str) -> Non
         metadata = payload["metadata"]
         root = metadata["rootConversationId"]
         observed_trajectory = payload["trajectoryId"]
+        if not isinstance(root, str) or not _UUID.fullmatch(root):
+            raise ValueError("invalid agy metadata root")
     except (http.client.HTTPException, OSError, ValueError, TypeError, KeyError):
-        raise ValueError("could not verify agy conversation metadata") from None
+        raise AgyVerificationError(
+            "could not verify agy conversation metadata"
+        ) from None
     finally:
         connection.close()
     if root != conversation or metadata.get("parentConversationId"):
-        raise ValueError("agy parent operations require a root conversation")
+        raise AgyExcluded("agy parent operations require a root conversation")
     if observed_trajectory != trajectory:
-        raise ValueError("agy trajectory differs from the caller")
+        raise AgyVerificationError("agy trajectory differs from the caller")
 
 
 def root_session(env: Mapping[str, str], conversation: str) -> str:
     if not _UUID.fullmatch(conversation):
-        raise ValueError("invalid agy conversation ID")
+        raise AgyVerificationError("invalid agy conversation ID")
     try:
         tui = caller_tui()
         tui.require_conversation(conversation)
         _require_root(env, tui, conversation)
         tui.require_conversation(conversation)
     except OSError:
-        raise ValueError(
+        raise AgyVerificationError(
             "could not verify the agy host TUI or conversation lock"
         ) from None
     return f"agy:{conversation}"

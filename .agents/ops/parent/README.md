@@ -30,7 +30,8 @@
 そのTUIのローカル読み取りRPCでルート会話IDと実行trajectoryを照合する。
 子会話を別paneで開き直した場合も、ルートの確認に通らなければ担当操作を拒否する。
 print、ACP、入れ子、子agent、workflowからの担当操作、ホスト祖先を確認できないterminal sandboxは対象外。
-表示付きの起動と再開は[Herdrの手順](../herdr_labels/README.md#agyの手動起動と表示)を使う。
+担当登録・引継ぎ受領に使う起動と再開の手順は[手動親ランチャー](../herdr_labels/README.md#agyの手動起動と表示)を参照。
+agyの識別情報がある `status` は、ホスト祖先・会話ロック・trajectoryの照合異常をエラーとして返す。
 自律親の起動範囲は[dispatcher](../dispatcher/README.md#担当実行枠中断復旧)を参照。
 
 ## 改善提案の期限

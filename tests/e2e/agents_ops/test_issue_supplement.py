@@ -272,6 +272,16 @@ def controller_seed(tmp_path_factory: pytest.TempPathFactory) -> DirectorySeed:
         package,
         ignore=shutil.ignore_patterns("__pycache__"),
     )
+    # The model's fixed checkout must include any shipped agy hook assets.
+    # Including the shared path reproduces the exclusive-create failure if it returns.
+    for relative in (
+        ".agents/hooks.json",
+        ".agents/ops/herdr_labels/agy_board_hooks.json",
+    ):
+        if (source := ROOT / relative).is_file():
+            target = repo / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
     (repo / ".gitignore").write_text("*.ignored\n")
     (repo / "history.txt").write_text("previous commit\n")
     git(repo, "init", "-q", "-b", "main")
@@ -625,6 +635,10 @@ def test_hook_recovery_records_commands_and_keeps_failures_private(
     )
     assert [entry["command"] for entry in capture["commands"]] == writer["commands"]
     if ending == "success":
+        loaded = git(
+            env.repo, "show", "HEAD:.agents/ops/herdr_labels/agy_board_hooks.json"
+        )
+        assert "PreInvocation" in json.loads(loaded)["tennis-lab-parent-board"]
         assert env.run("apply") == 0
         assert env.state()["issue"]["body"] == env.supplemented
     else:

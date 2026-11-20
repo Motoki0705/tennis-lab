@@ -81,10 +81,14 @@ class Tui:
         metadata_port: int | None = None,
         stdin: dict[str, Any] | None = None,
         nested: bool = False,
+        other_tui: Tui | None = None,
     ) -> subprocess.CompletedProcess[str]:
         from tests.support.agents_ops.hook_process import hook_command
 
         port = self.port if metadata_port is None else metadata_port
+        cmdlines = {str(self.pid): ("agy", *self.args)}
+        if other_tui is not None:
+            cmdlines[str(other_tui.pid)] = ("agy", *other_tui.args)
         caller = {
             **{
                 key: val
@@ -95,7 +99,7 @@ class Tui:
             "ANTIGRAVITY_TRAJECTORY_ID": trajectory,
             "ANTIGRAVITY_LS_ADDRESS": f"localhost:{port}",
             "ANTIGRAVITY_CSRF_TOKEN": TOKEN,
-            ARGV_ENV: json.dumps({str(self.pid): ("agy", *self.args)}),
+            ARGV_ENV: json.dumps(cmdlines),
         }
         command = [*hook_command(entry), *args]
         if nested:
