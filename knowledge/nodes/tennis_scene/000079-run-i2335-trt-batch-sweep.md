@@ -8,7 +8,7 @@ title: CLIP-ReIDとGVHMRのバッチサイズ別推論比較
 issue: 2335
 provider: codex
 date: '2026-11-21'
-status: running
+status: done
 summary_impact: none
 config:
   dataset: meiji_4cam
@@ -26,6 +26,8 @@ metrics:
   historical_timing_accuracy_nsys_cases: 2
   planned_cases: 43
   ncu_with_matching_nsys: 9
+  planned_ncu_cases: 11
+  gvhmr_trt_fp16_batched_build_failures: 10
   clipreid_b16:
     fp32_images_per_second: 356.37
     pytorch_fp16_images_per_second: 1191.40
@@ -101,6 +103,8 @@ B=16のFP8は2,958 crop/sで、同じBのTensorRT FP16の2,358 crop/sより25.4%
 | 145 | 1 | 2 | 14.88 / 40.45 | 103.6 | 15,016 | 121.9 / 301.1 | 712 | 8.503 / 21.422 |
 | 145 | 1 | 4 | 15.80 / 23.29 | 221.7 | 32,151 | 126.7 / 303.1 | 712 | 8.523 / 23.961 |
 | 145 | 2 | 1 | 2.51 / 3.17 | 393.6 | 57,068 | 0.3 / 263.1 | 135 | 8.614 / 23.499 |
+| 145 | 2 | 2 | ビルド不可 | — | — | — | — | — |
+| 145 | 2 | 4 | ビルド不可 | — | — | — | — | — |
 | 177 | 0 | 1 | 16.70 / 38.93 | 44.8 | 7,936 | 206.5 / 393.1 | 867 | 0.000 / 0.000 |
 | 177 | 0 | 2 | 15.28 / 23.01 | 123.9 | 21,926 | 212.5 / 397.1 | 745 | 0.006 / 0.534 |
 | 177 | 0 | 4 | 16.37 / 23.58 | 232.8 | 41,213 | 224.4 / 407.1 | 745 | 0.016 / 1.594 |
@@ -108,10 +112,23 @@ B=16のFP8は2,958 crop/sで、同じBのTensorRT FP16の2,358 crop/sより25.4%
 | 177 | 1 | 2 | 15.06 / 22.17 | 126.6 | 22,401 | 123.0 / 303.1 | 744 | 8.451 / 16.474 |
 | 177 | 1 | 4 | 15.85 / 25.54 | 216.1 | 38,256 | 128.9 / 307.1 | 745 | 8.637 / 17.756 |
 | 177 | 2 | 1 | 2.50 / 2.98 | 394.2 | 69,780 | 0.4 / 263.1 | 135 | 8.721 / 18.325 |
+| 177 | 2 | 2 | ビルド不可 | — | — | — | — | — |
+| 177 | 2 | 4 | ビルド不可 | — | — | — | — | — |
 
 PyTorch FP32のバッチ間のカメラ座標関節差はP95最大0.017 mmだった。PyTorch FP16の関節差はカメラ座標で8.45–8.65 mm、重力整列座標で16.47–24.05 mmとなり、座標系によって暫定10 mm基準をまたいだ。 [精度の内訳](../../runs/run-i2335-trt-batch-sweep/metrics.json)
 
-TensorRT FP16はBとLの両軸を可変にしたprofileと、Lを固定してBのみ可変にしたprofileで `build_serialized_network` 内にSIGSEGVを再現した。固定長・可変Bでビルダー最適化レベル0にしても、L=145と177で子プロセスが−11、queueジョブが1で終了した。verboseログに最後に出たTiming Runnerは両方とも `{ForeignNode[/network/Unsqueeze_7.../network/ScatterND]} (Myelin[0x80000023])`。固定B=2・4と固定L=145・177の4形状を独立したエンジンとして試す。掃引用planのB>1での計測、ncu、層精度と拒否検査が未確認。 [失敗ログと試行条件](../../runs/run-i2335-trt-batch-sweep/validation.json)
+今回のRTX 5060 TiとTensorRT 10.14.1.48.post1では、GVHMRのFP16 B>1はビルド不可だった。合計10件で変換の子プロセスは−11（SIGSEGV）、queueジョブは1で終了した。B>1のplanが生成されず、速度・VRAM・nsys・精度、B=4のncu、層精度と範囲外shape拒否の実機確認は未取得。 [試行ごとの終了状態・ログ・SHA-256](../../runs/run-i2335-trt-batch-sweep/validation.json)
+
+| 試行 | B / L | 件数 | 結果 | verboseログの最後のTiming Runner |
+|---|---|---:|---|---|
+| 可変B・可変L | B=1/4/4、L=145/145/177。初回と動的mask修正後 | 2 | −11 / queue 1 | — |
+| 可変B・固定L、既定の最適化 | B=1/4/4、L=145と177を別々に作成 | 2 | −11 / queue 1 | — |
+| 可変B・固定L、最適化レベル0 | B=1/4/4、L=145と177を別々に作成 | 2 | −11 / queue 1 | `ForeignNode[/network/Unsqueeze_7.../network/ScatterND]` |
+| 固定B・固定L、最適化レベル3 | B=2・4 × L=145・177を別々に作成 | 4 | −11 / queue 1 | `ForeignNode[/network/Unsqueeze_3.../network/ScatterND]` |
+
+固定shapeのONNXでは `/network/Unsqueeze_3` の入力は `length`、`/network/ScatterND` の出力は `pred_cam`。B=2、L=145のパーサーログではScatterNDが登録され、FP16データ `(2,145,3)`、INT64インデックス `(2,145,1,3)`、FP16更新値 `(2,145,1)` を受け取っていた。全4件でMyelinのTiming Runnerとcompiler backendのメッセージに続いて `build_serialized_network` 内で停止した。SIGSEGVの原因となった内部演算の特定には至っていない。 [固定shapeログの抜粋と入出力](../../runs/run-i2335-trt-batch-sweep/validation.json)
+
+パイプラインで人物を束ねずに処理する場合、#2305のTensorRT FP16 B=1固定planを人物ごとに使う構成を評価できる。検証済みの系列長profileはmin/opt/max=117/145/177。実測は145・177で393.6・394.2系列/sだった。標準パイプラインでの速度と下流精度はE2Eで確認する。 [B=1の範囲と検査](../../runs/run-i2305-gvhmr-tensorrt/validation.json)
 
 ### #2305で使ったPTQグラフのQ/DQ範囲
 
@@ -137,4 +154,4 @@ DRAM R/W、Tensor Core active、stallは先行のB=1 → 今回の代表Bの順�
 
 CLIP-ReIDのB=16でDRAM readはFP16の61.0 MB/cropからFP8で45.3 MB/crop、long scoreboardは22.5%から13.4%になった。Tensor Core activeは同じ比較で51.0%から31.1%になった。観測値はkernel時間で加重した比率で、DRAM帯域飽和の有無はこの計測からは判定できない。PyTorch FP16とTensorRT FP16のB=16は `retry-2` のncuが時間切れで、nsysの189件と114件のうち119件と66件で止まった。途中CSVだけの値は採用せず、追測した70件と48件を足し、順番・grid・blockの全件照合後に集計した。GVHMRのncu未取得2件はTensorRT FP16のB=4、L=145と177。変換が止まったためmeasurement.jsonがなく両方ともncu起動前に終了し、カーネル数の比較に至らなかった。 [B=1の値と計測区間](../../runs/run-i2335-trt-batch-sweep/metrics.json)・[終了ログの記録](../../runs/run-i2335-trt-batch-sweep/validation.json)
 
-標準パイプラインでの採用判断は、GVHMRのTensorRT再試行と、CLIP-ReIDのE2Eを含めて行う。
+標準パイプラインでのCLIP-ReIDとGVHMRの採用判断は、下流の人物対応と時系列の精度、実行速度のE2E確認に委ねる。 [標準パイプラインの判断記録](../../summary.md#標準pipelinetennis_scene)

@@ -11,7 +11,7 @@
 
 CLIP-ReIDのB=1と4は全バッチが指定サイズ。B=8の最後の1バッチは4件、B=16と32では12件。端数をそのまま推論し、全236件を順序どおり精度照合に使う。速度とthroughputは完全バッチを循環して計測し、端数も固定shapeの区分として30 warm-upと300反復で別に計測する。VRAMは完全バッチと端数を処理する同じプロセスのピークを記録する。nsysは各指定Bの完全バッチを使う。
 
-GVHMRは同じ長さの4本をBで等分する。全フレームを保持したまま連結する。秒当たりの処理量は人物系列数とフレーム数を長さ区分ごとに記録する。精度評価は出力を人物ごとに戻し、条件共通のFP32復号とCOCO-17再構成を適用する。B=1固定のTensorRTは #2305 と今回で固定入力とFP32参照が一致したため、計測を再利用する。系列長を固定してBのみ可変にしたビルドは既定の最適化設定とレベル0の両方でSIGSEGVとなった。BとLを固定したビルドでは、すべての入力軸をONNXと照合して既定の最適化レベルとverboseログでビルドする。 [ビルドの記録](validation.json)・[TensorRTのビルダー最適化設定](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/performance/builder-performance.html#builder-optimization-level)
+GVHMRは同じ長さの4本をBで等分する。全フレームを保持したまま連結する。秒当たりの処理量は人物系列数とフレーム数を長さ区分ごとに記録する。精度評価は出力を人物ごとに戻し、条件共通のFP32復号とCOCO-17再構成を適用する。B=1固定のTensorRTは #2305 と今回で固定入力とFP32参照が一致したため、計測を再利用した。可変Bでは系列長も可変のprofileと固定長profileを試し、固定長profileで最適化レベル0も試した。固定B・固定Lでは全入力軸をONNXと照合して既定の最適化レベル3でビルドした。試した全設定でSIGSEGVとなり、FP16 B>1のplanは生成されなかった。 [ビルドの記録](validation.json)
 
 可変バッチのTensorRT条件はモデル・系列長ごとに単一profileのplanをロードする。min・opt・maxの実行を先に確認し、B=0と最大B+1がTensorRTから拒否されることをログに保存する。GVHMRの可変profileでは範囲から外れるLも検査する。ビルド時の3端点と計測時の実shapeで主要演算のprecisionを照合する。ncuのkernel数は同じplan・入力で取得したnsysの件数と照合する。B=1のncu比較には#2297・#2303・#2305の記録を使う。TensorRTの比較は、profileの違いによるカーネルやタクティクスの差も含む。
 
@@ -91,4 +91,4 @@ CUDA_VISIBLE_DEVICES="" PYTHONPATH="$PWD:$PWD/$common:$PWD/$gvhmr:$PWD/$bundle" 
 
 ## #2336での再利用
 
-共通ディレクトリの `batching.batch_slices` でmanifest順と端数を保持し、`runtime.measure_latency` に固定shapeのバッチ列と `stats(batch=B)` を使う集計関数を渡す。TRTではモデルの実入力shapeのmin・opt・maxを `convert.build_engine(profile_shapes=...)` に渡し、`batching.require_engine_profile` でplanのprofileを照合する。`runtime.TensorRTContext` のshape設定とbinding、`profiles.capture` のNVTX範囲とkernel集計も共通。ViTPose-Hのflip testではエンジン入力軸は2Bで、throughputはB cropを数える。DINOはH/Wが揃う入力を同じサイズのバッチ列にまとめる。
+共通ディレクトリの `batching.batch_slices` でmanifest順と端数を保持し、`runtime.measure_latency` に固定shapeのバッチ列と `stats(batch=B)` を使う集計関数を渡す。TRTではモデルの実入力shapeのmin・opt・maxを `convert.build_engine(profile_shapes=...)` に渡し、`batching.require_engine_profile` でplanのprofileを照合する。`runtime.TensorRTContext` のshape設定とbinding、`profiles.capture` のNVTX範囲とkernel集計も共通。ViTPose-Hのflip testではエンジン入力軸は2Bで、throughputはB cropを数える。HMR2はcrop数をそのままBに使う。DINOは固定H/Wのbucketごとにバッチを作り、#2304の採用adapterを使う。許容したPTQ演算は変換後に `convert.verify_qdq_scope` で照合し、単体精度は同一入力のFP32 B=1と比較する。 [共通プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md)

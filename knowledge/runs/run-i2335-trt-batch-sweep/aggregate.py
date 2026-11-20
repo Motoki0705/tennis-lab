@@ -203,8 +203,49 @@ def historical_gvhmr_batch1(entry, conversion, baseline, fp32_ref):
     }
 
 
-def gvhmr_cases(root, prior_batch1):
-    retry2, retry3, retry4 = (root / f"retry-{attempt}" for attempt in (2, 3, 4))
+def gvhmr_static_build_failure(root, batch, length, validation):
+    name = case_id("2", batch, length)
+    retry = validation["retry_5"]
+    attempt = retry["gvhmr_static_builds"][name]
+    output = root / f"retry-5/gvhmr-b{batch}-l{length}"
+    path = output / "sweep.json"
+    report = read(path)
+    stage = report["stages"]["build-2"]
+    fixed_shape = {"length": length, "batch_size": batch}
+    if (
+        report["fixed_shape"] != fixed_shape
+        or report["queue_job"] + ".job" != attempt["queue_job"]
+        or stage["verified"]
+        or stage["exit_code"] != attempt["build_exit_code"]
+        or stage["log"] != attempt["build_log"]
+        or sha256_file(output / stage["log"]) != attempt["build_log_sha256"]
+        or (output / "engine-2/gvhmr.plan").exists()
+    ):
+        raise ValueError(f"GVHMR fixed-shape build outcome does not match {path}")
+    result = {
+        "status": "unavailable",
+        "reason": "trt_engine_build_failed",
+        "fixed_shape": fixed_shape,
+        "stage_evidence": str(path),
+        "failure": {"name": "build-2", **stage},
+        "queue_job": attempt["queue_job"],
+        "last_timing_runner": retry["last_verbose_timing_runner"],
+    }
+    if batch == GVHMR_OPT:
+        profile = validation["representative_ncu_unavailable"][name]
+        result["ncu"] = {
+            "status": "unavailable",
+            "reason": "no_measurement_after_failed_build",
+            "queue_job": profile["queue_job"],
+            "nsys_kernels": profile["nsys_kernels"],
+            "profiled_kernels": profile["ncu_kernels"],
+        }
+    return result
+
+
+def gvhmr_cases(root, prior_batch1, validation):
+    retry2 = root / "retry-2"
+    directory = retry2 / "gvhmr"
     cases = {}
     lock = sha256_file(GVHMR / "tensor-lock.json")
     prior_validation = read(GVHMR / "validation.json")
@@ -212,20 +253,20 @@ def gvhmr_cases(root, prior_batch1):
         "2"
     ]["conversion"]
     for length in GVHMR_LENGTHS:
-        retry = retry4 if (retry4 / f"gvhmr-l{length}/sweep.json").is_file() else retry3
-        baseline = retry2 / "gvhmr" / case_id("0", 1, length)
+        baseline = directory / case_id("0", 1, length)
         fp32_ref = sha256_file(baseline / "decoded-outputs.npz")
         for condition in ("0", "1", "2"):
             for batch in GVHMR_BATCHES:
                 name = case_id(condition, batch, length)
-                if condition == "2" and batch == 1:
-                    cases[name] = historical_gvhmr_batch1(
-                        prior_batch1[str(length)], conversion, baseline, fp32_ref
+                if condition == "2":
+                    cases[name] = (
+                        historical_gvhmr_batch1(
+                            prior_batch1[str(length)], conversion, baseline, fp32_ref
+                        )
+                        if batch == 1
+                        else gvhmr_static_build_failure(root, batch, length, validation)
                     )
                     continue
-                directory = (
-                    retry / f"gvhmr-l{length}" if condition == "2" else retry2 / "gvhmr"
-                )
                 case = directory / name
                 path = case / "measurement.json"
                 accuracy_path = case / "accuracy.json"
@@ -233,9 +274,7 @@ def gvhmr_cases(root, prior_batch1):
                 if not all(
                     receipt.is_file() for receipt in (path, accuracy_path, profile_path)
                 ):
-                    cases[name] = unavailable(
-                        case, condition, fallback=retry2 / "gvhmr"
-                    )
+                    cases[name] = unavailable(case, condition, fallback=directory)
                     continue
                 measured, accuracy_result = read(path), read(accuracy_path)
                 identity_keys = (
@@ -298,8 +337,7 @@ def gvhmr_cases(root, prior_batch1):
                             )
                         measurement_hash = sha256_file(old_case / "measurement.json")
                     else:
-                        profile_root = retry if condition == "2" else retry2
-                        replay = profile_root / "ncu/gvhmr" / name / "profiles.json"
+                        replay = retry2 / "ncu/gvhmr" / name / "profiles.json"
                         measurement_hash = sha256_file(path)
                     if replay.is_file():
                         ncu = read(replay)
@@ -319,10 +357,21 @@ def collect(root):
     prior_clip = read(CLIP / "metrics.json")["conditions"]
     prior_gvhmr = read(GVHMR / "metrics.json")["conditions"]
     prior_vit = read(VIT.parent / "metrics.json")
+    validation = read(Path(__file__).with_name("validation.json"))
     return {
         "schema_version": 1,
         "clipreid": clip_cases(root, addresses, lock["tensors"], prior_vit),
-        "gvhmr": gvhmr_cases(root, prior_gvhmr["2"]),
+        "gvhmr": gvhmr_cases(root, prior_gvhmr["2"], validation),
+        "gvhmr_trt_fp16_batch_builds": {
+            **validation["gvhmr_trt_fp16_batch_outcome"],
+            "first_dynamic_attempt": validation["first_attempt"]["gvhmr"],
+            "dynamic_batch_and_length": validation["retry_2"]["gvhmr"],
+            "dynamic_batch_fixed_length": validation["retry_3"][
+                "gvhmr_fixed_length_builds"
+            ],
+            "dynamic_batch_fixed_length_level_0": validation["retry_4"],
+            "static_batch_and_length": validation["retry_5"],
+        },
         "historical_batch1_ncu": {
             "clipreid": {
                 condition: (

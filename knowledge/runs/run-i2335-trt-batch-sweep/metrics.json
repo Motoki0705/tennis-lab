@@ -4128,26 +4128,47 @@
     },
     "c2-b2-l145": {
       "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-4/gvhmr-l145/sweep.json",
+      "reason": "trt_engine_build_failed",
+      "fixed_shape": {
+        "length": 145,
+        "batch_size": 2
+      },
+      "stage_evidence": "outputs/trt-batch-i2335/retry-5/gvhmr-b2-l145/sweep.json",
       "failure": {
+        "name": "build-2",
         "exit_code": -11,
         "verified": false,
         "expected_rejection": null,
-        "wall_seconds": 50.7510053460137,
-        "log": "logs/build-2.log",
-        "name": "build-2"
-      }
+        "wall_seconds": 38.93217054900015,
+        "log": "logs/build-2.log"
+      },
+      "queue_job": "0-8204797085800108978_2026-11-20T19-28-34-199891021Z_3059882_i2335-r5-gvhmr-static-b2-l145.job",
+      "last_timing_runner": "{ForeignNode[/network/Unsqueeze_3.../network/ScatterND]} (Myelin[0x80000023])"
     },
     "c2-b4-l145": {
       "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-4/gvhmr-l145/sweep.json",
+      "reason": "trt_engine_build_failed",
+      "fixed_shape": {
+        "length": 145,
+        "batch_size": 4
+      },
+      "stage_evidence": "outputs/trt-batch-i2335/retry-5/gvhmr-b4-l145/sweep.json",
       "failure": {
+        "name": "build-2",
         "exit_code": -11,
         "verified": false,
         "expected_rejection": null,
-        "wall_seconds": 50.7510053460137,
-        "log": "logs/build-2.log",
-        "name": "build-2"
+        "wall_seconds": 40.9290222209529,
+        "log": "logs/build-2.log"
+      },
+      "queue_job": "0-8204797085545995659_2026-11-20T19-28-34-454004340Z_3059921_i2335-r5-gvhmr-static-b4-l145.job",
+      "last_timing_runner": "{ForeignNode[/network/Unsqueeze_3.../network/ScatterND]} (Myelin[0x80000023])",
+      "ncu": {
+        "status": "unavailable",
+        "reason": "no_measurement_after_failed_build",
+        "queue_job": "0-8204799079374224902_2026-11-20T18-55-20-625775097Z_2920221_i2335-r3-gvhmr-fixed-ncu-l145.job",
+        "nsys_kernels": null,
+        "profiled_kernels": null
       }
     },
     "c0-b1-l177": {
@@ -5402,27 +5423,272 @@
     },
     "c2-b2-l177": {
       "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-4/gvhmr-l177/sweep.json",
+      "reason": "trt_engine_build_failed",
+      "fixed_shape": {
+        "length": 177,
+        "batch_size": 2
+      },
+      "stage_evidence": "outputs/trt-batch-i2335/retry-5/gvhmr-b2-l177/sweep.json",
       "failure": {
+        "name": "build-2",
         "exit_code": -11,
         "verified": false,
         "expected_rejection": null,
-        "wall_seconds": 42.593934268981684,
-        "log": "logs/build-2.log",
-        "name": "build-2"
-      }
+        "wall_seconds": 41.8551767260069,
+        "log": "logs/build-2.log"
+      },
+      "queue_job": "0-8204797085268455169_2026-11-20T19-28-34-731544830Z_3060059_i2335-r5-gvhmr-static-b2-l177.job",
+      "last_timing_runner": "{ForeignNode[/network/Unsqueeze_3.../network/ScatterND]} (Myelin[0x80000023])"
     },
     "c2-b4-l177": {
       "status": "unavailable",
-      "stage_evidence": "outputs/trt-batch-i2335/retry-4/gvhmr-l177/sweep.json",
+      "reason": "trt_engine_build_failed",
+      "fixed_shape": {
+        "length": 177,
+        "batch_size": 4
+      },
+      "stage_evidence": "outputs/trt-batch-i2335/retry-5/gvhmr-b4-l177/sweep.json",
       "failure": {
+        "name": "build-2",
         "exit_code": -11,
         "verified": false,
         "expected_rejection": null,
-        "wall_seconds": 42.593934268981684,
-        "log": "logs/build-2.log",
-        "name": "build-2"
+        "wall_seconds": 42.15345920599066,
+        "log": "logs/build-2.log"
+      },
+      "queue_job": "0-8204797085017034634_2026-11-20T19-28-34-982965365Z_3060193_i2335-r5-gvhmr-static-b4-l177.job",
+      "last_timing_runner": "{ForeignNode[/network/Unsqueeze_3.../network/ScatterND]} (Myelin[0x80000023])",
+      "ncu": {
+        "status": "unavailable",
+        "reason": "no_measurement_after_failed_build",
+        "queue_job": "0-8204799079111382642_2026-11-20T18-55-20-888617357Z_2920285_i2335-r3-gvhmr-fixed-ncu-l177.job",
+        "nsys_kernels": null,
+        "profiled_kernels": null
       }
+    }
+  },
+  "gvhmr_trt_fp16_batch_builds": {
+    "status": "build_unavailable",
+    "requested_shapes": {
+      "batch_sizes": [
+        2,
+        4
+      ],
+      "lengths": [
+        145,
+        177
+      ]
+    },
+    "cuda_compute_capability": [
+      12,
+      0
+    ],
+    "tensorrt": "10.14.1.48.post1",
+    "historical_batch1_available": true,
+    "build_attempts": 10,
+    "reason": "\u53ef\u5909profile\u3068\u56fa\u5b9ashape\u306e\u5168\u8a66\u884c\u3067\u30d3\u30eb\u30c9\u5b50\u304cSIGSEGV\u3002faulthandler\u3092\u6709\u52b9\u306b\u3057\u305f\u8a66\u884c\u306fbuild_serialized_network\u5185\u3067\u505c\u6b62\u3057\u3001B>1\u306eplan\u306f\u751f\u6210\u3055\u308c\u306a\u304b\u3063\u305f",
+    "first_dynamic_attempt": {
+      "queue_job": "0-8204817422399039221_2026-11-20T13-49-37-600960778Z_1038674_i2335-gvhmr.job",
+      "output": "outputs/trt-batch-i2335/gvhmr",
+      "build_exit_code": -11,
+      "queue_exit_code": 1,
+      "build_log": "logs/build.log",
+      "build_log_sha256": "3048f38b6fda6712b909a744ee3917d0af23359c313dee3e44358d73e41bf26a",
+      "build_error": "ONNX\u751f\u6210\u3068TensorRT\u306elength\u5165\u51fa\u529b\u8b66\u544a\u306e\u5f8c\u3067SIGSEGV\u3002plan\u672a\u751f\u6210",
+      "export_warning": "length_to_mask\u306elen(lengths)\u304c\u30c8\u30ec\u30fc\u30b9\u6642\u306b\u56fa\u5b9a\u5024\u306b\u306a\u308b",
+      "overlap_timing_nsys_excluded": [
+        "c0-b1-l145",
+        "c0-b2-l145",
+        "c0-b4-l145",
+        "c0-b1-l177",
+        "c0-b2-l177",
+        "c0-b4-l177"
+      ],
+      "ncu_reuse_candidates": [
+        "c1-b4-l145",
+        "c1-b4-l177"
+      ]
+    },
+    "dynamic_batch_and_length": {
+      "queue_job": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing.job",
+      "output": "outputs/trt-batch-i2335/retry-2/gvhmr",
+      "timing_accuracy_nsys_cases": 12,
+      "batch_min_opt_max": [
+        1,
+        4,
+        4
+      ],
+      "length_min_opt_max": [
+        145,
+        145,
+        177
+      ],
+      "build_exit_code": -11,
+      "queue_exit_code": 1,
+      "build_log": "logs/build-2.log",
+      "build_log_sha256": "5c0900cf44ac6ade81720cc8af87e2a5edd78b03704b0c6daa81b57839bec237",
+      "build_error": "TensorRT\u3067B\u3068L\u3092\u4e21\u65b9\u53ef\u5909\u306b\u3057\u305fprofile\u306ebuild_serialized_network\u4e2d\u306bSIGSEGV\u3002\u52d5\u7684batch\u306emask\u4fee\u6b63\u5f8c\u3082\u518d\u73fe",
+      "fixed_length_retry": [
+        145,
+        177
+      ],
+      "cumulative_queue_minutes": 113.36
+    },
+    "dynamic_batch_fixed_length": {
+      "145": {
+        "queue_job": "0-8204799080648304534_2026-11-20T18-55-19-351695465Z_2919820_i2335-r3-gvhmr-fixed-timing-l145.job",
+        "output": "outputs/trt-batch-i2335/retry-3/gvhmr-l145",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "db5fde29c830a1071bf41bd187f48f60fabdf380e0425ae312344988ab32531f",
+        "batch_min_opt_max": [
+          1,
+          4,
+          4
+        ]
+      },
+      "177": {
+        "queue_job": "0-8204799080397544024_2026-11-20T18-55-19-602455975Z_2919857_i2335-r3-gvhmr-fixed-timing-l177.job",
+        "output": "outputs/trt-batch-i2335/retry-3/gvhmr-l177",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "28a8314c48871b5029052b949992eaafc4807c86e4f93439fb3816fea80af266",
+        "batch_min_opt_max": [
+          1,
+          4,
+          4
+        ]
+      }
+    },
+    "dynamic_batch_fixed_length_level_0": {
+      "batch_min_opt_max": [
+        1,
+        4,
+        4
+      ],
+      "builder_optimization_level": 0,
+      "gvhmr_fixed_length_builds": {
+        "145": {
+          "queue_job": "0-8204797946636145129_2026-11-20T19-14-13-363854870Z_3037453_i2335-r4-gvhmr-builder0-l145.job",
+          "output": "outputs/trt-batch-i2335/retry-4/gvhmr-l145",
+          "build_exit_code": -11,
+          "queue_exit_code": 1,
+          "build_log": "logs/build-2.log",
+          "build_log_sha256": "9ec537dd62e656fba782686f9c7d40bd17684b2b55cc58428ab1c8dfd9439bc2",
+          "plan_published": false
+        },
+        "177": {
+          "queue_job": "0-8204797946383013931_2026-11-20T19-14-13-616986068Z_3037497_i2335-r4-gvhmr-builder0-l177.job",
+          "output": "outputs/trt-batch-i2335/retry-4/gvhmr-l177",
+          "build_exit_code": -11,
+          "queue_exit_code": 1,
+          "build_log": "logs/build-2.log",
+          "build_log_sha256": "fd975be59dc799b38557c68dd99a87fa89f59fdf81b54ff1c9e93157672b24a4",
+          "plan_published": false
+        }
+      },
+      "last_verbose_timing_runner": "{ForeignNode[/network/Unsqueeze_7.../network/ScatterND]} (Myelin[0x80000023])",
+      "stage_at_signal": "build_serialized_network",
+      "cumulative_gvhmr_queue_minutes": 116.92
+    },
+    "static_batch_and_length": {
+      "model": "gvhmr",
+      "condition": "2",
+      "fixed_lengths": [
+        145,
+        177
+      ],
+      "fixed_batches": [
+        2,
+        4
+      ],
+      "optimization_profile_added": false,
+      "builder_optimization_level": 3,
+      "trt_log_verbosity": "VERBOSE",
+      "stage_at_signal": "build_serialized_network",
+      "last_verbose_timing_runner": "{ForeignNode[/network/Unsqueeze_3.../network/ScatterND]} (Myelin[0x80000023])",
+      "scatternd_parser_example": {
+        "case": "c2-b2-l145",
+        "onnx_node": "/network/ScatterND",
+        "data": {
+          "name": "/network/Add_4_output_0",
+          "shape": [
+            2,
+            145,
+            3
+          ],
+          "dtype": "FP16"
+        },
+        "indices": {
+          "name": "/network/Concat_1_output_0",
+          "shape": [
+            2,
+            145,
+            1,
+            3
+          ],
+          "dtype": "INT64"
+        },
+        "updates": {
+          "name": "/network/Reshape_1_output_0",
+          "shape": [
+            2,
+            145,
+            1
+          ],
+          "dtype": "FP16"
+        },
+        "output": {
+          "name": "pred_cam",
+          "shape": [
+            2,
+            145,
+            3
+          ],
+          "dtype": "FP16"
+        }
+      },
+      "gvhmr_static_builds": {
+        "c2-b2-l145": {
+          "queue_job": "0-8204797085800108978_2026-11-20T19-28-34-199891021Z_3059882_i2335-r5-gvhmr-static-b2-l145.job",
+          "output": "outputs/trt-batch-i2335/retry-5/gvhmr-b2-l145",
+          "build_exit_code": -11,
+          "queue_exit_code": 1,
+          "build_log": "logs/build-2.log",
+          "build_log_sha256": "e4c5adde777c263b8c8821257c10b84e26277fe6379eefe259cc7b942c102cc4",
+          "plan_published": false
+        },
+        "c2-b4-l145": {
+          "queue_job": "0-8204797085545995659_2026-11-20T19-28-34-454004340Z_3059921_i2335-r5-gvhmr-static-b4-l145.job",
+          "output": "outputs/trt-batch-i2335/retry-5/gvhmr-b4-l145",
+          "build_exit_code": -11,
+          "queue_exit_code": 1,
+          "build_log": "logs/build-2.log",
+          "build_log_sha256": "ff3a38baaed9779d36496e7b69104c91fd876bb7a4eb7c93d707a63defcdd4cb",
+          "plan_published": false
+        },
+        "c2-b2-l177": {
+          "queue_job": "0-8204797085268455169_2026-11-20T19-28-34-731544830Z_3060059_i2335-r5-gvhmr-static-b2-l177.job",
+          "output": "outputs/trt-batch-i2335/retry-5/gvhmr-b2-l177",
+          "build_exit_code": -11,
+          "queue_exit_code": 1,
+          "build_log": "logs/build-2.log",
+          "build_log_sha256": "e0ccd42913d4869f852ea3907fe425c1ac3210fa8e77f109bfa0595a7f08f895",
+          "plan_published": false
+        },
+        "c2-b4-l177": {
+          "queue_job": "0-8204797085017034634_2026-11-20T19-28-34-982965365Z_3060193_i2335-r5-gvhmr-static-b4-l177.job",
+          "output": "outputs/trt-batch-i2335/retry-5/gvhmr-b4-l177",
+          "build_exit_code": -11,
+          "queue_exit_code": 1,
+          "build_log": "logs/build-2.log",
+          "build_log_sha256": "44263184eb41908ed358388a05da390f0595617fdd8be585d653aa64be76ac86",
+          "plan_published": false
+        }
+      },
+      "cumulative_gvhmr_queue_minutes": 119.71
     }
   },
   "historical_batch1_ncu": {
