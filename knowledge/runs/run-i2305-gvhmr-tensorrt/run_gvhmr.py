@@ -44,7 +44,9 @@ def read_conversion(directory, condition):
     profile = certificate["dynamic_profile"]
     batches = profile.get("profile_batches")
     if batches:
-        expected_profile = sweep_profile(batches["opt"], batches["max"])
+        expected_profile = sweep_profile(
+            batches["opt"], batches["max"], fixed_length=profile.get("fixed_length")
+        )
         if condition != "2" or certificate["expected_precision_sha256"] != sha256_file(
             directory / "expected-precision.json"
         ):
@@ -82,7 +84,9 @@ class PytorchRunner:
 
 
 class TensorRTSequenceRunner(TensorRTContext):
-    def __init__(self, plan, frames, *, batch_size=1, input_profile=None):
+    def __init__(
+        self, plan, frames, *, batch_size=1, input_profile=None, fixed_length=None
+    ):
         import tensorrt as trt
 
         super().__init__(plan, omit_layer_nvtx=True)
@@ -101,9 +105,12 @@ class TensorRTSequenceRunner(TensorRTContext):
         if input_profile is not None:
             require_engine_profile(self.engine, input_profile)
             leading_dim = -1
+        time_dim = -1 if fixed_length is None else fixed_length
         for name, shape in shapes.items():
             expected = (
-                (leading_dim,) if name == "length" else (leading_dim, -1, *shape[2:])
+                (leading_dim,)
+                if name == "length"
+                else (leading_dim, time_dim, *shape[2:])
             )
             if tuple(self.engine.get_tensor_shape(name)) != expected:
                 raise ValueError(
@@ -247,6 +254,7 @@ def run(args):
                 input_profile=conversion["dynamic_profile"]["inputs"]
                 if dynamic_batch
                 else None,
+                fixed_length=conversion["dynamic_profile"].get("fixed_length"),
             )
         )
         if not selected:

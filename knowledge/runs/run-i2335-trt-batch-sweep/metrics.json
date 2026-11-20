@@ -1,0 +1,4566 @@
+{
+  "schema_version": 1,
+  "clipreid": {
+    "c0-b1": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c0-b1/result.json",
+      "measurement_queue_job": "0-8204817422666730453_2026-11-20T13-49-37-333269546Z_1038617_i2335-clipreid",
+      "measurement": {
+        "median_ms": 6.1017955,
+        "p95_ms": 7.1141379,
+        "iqr_ms": 0.22911349999999953,
+        "mad_ms": 0.10933999999999999,
+        "images_per_second": 159.3446512276863,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 6.1833504999999995,
+            "p95_ms": 7.276873099999999,
+            "iqr_ms": 0.3680785000000011,
+            "mad_ms": 0.14344949999999956,
+            "images_per_second": 155.79931688169202
+          },
+          {
+            "median_ms": 6.10291,
+            "p95_ms": 6.975333399999999,
+            "iqr_ms": 0.24464024999999978,
+            "mad_ms": 0.12135499999999988,
+            "images_per_second": 158.91056282944726
+          },
+          {
+            "median_ms": 6.060974,
+            "p95_ms": 6.348400249999998,
+            "iqr_ms": 0.13728674999999946,
+            "mad_ms": 0.0738534999999998,
+            "images_per_second": 163.5121555516906
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2308120576,
+        "nvml_device_peak_minus_idle_bytes": 609325056,
+        "torch_peak_allocated_bytes": 387707904,
+        "torch_peak_reserved_bytes": 436207616,
+        "batch_shape": [
+          1,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999999999999998,
+        "cosine_median": 1.0,
+        "cosine_p05": 0.999999999999999,
+        "cosine_min": 0.9999999999999983,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 188,
+        "sum_kernel_duration_ns": 5111221
+      },
+      "engine_sha256": null
+    },
+    "c0-b4": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c0-b4/result.json",
+      "measurement_queue_job": "0-8204817422666730453_2026-11-20T13-49-37-333269546Z_1038617_i2335-clipreid",
+      "measurement": {
+        "median_ms": 12.7994105,
+        "p95_ms": 16.3467672,
+        "iqr_ms": 0.26296875000000064,
+        "mad_ms": 0.1289440000000006,
+        "images_per_second": 301.82582340870874,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 12.8083655,
+            "p95_ms": 16.858185799999998,
+            "iqr_ms": 0.40554999999999986,
+            "mad_ms": 0.14615899999999993,
+            "images_per_second": 299.40627585794226
+          },
+          {
+            "median_ms": 12.814316999999999,
+            "p95_ms": 17.97919145,
+            "iqr_ms": 0.3059774999999991,
+            "mad_ms": 0.15100200000000008,
+            "images_per_second": 293.7585106476411
+          },
+          {
+            "median_ms": 12.7801115,
+            "p95_ms": 13.27300535,
+            "iqr_ms": 0.20365824999999838,
+            "mad_ms": 0.08957749999999987,
+            "images_per_second": 312.94914657109103
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2326994944,
+        "nvml_device_peak_minus_idle_bytes": 628199424,
+        "torch_peak_allocated_bytes": 412837888,
+        "torch_peak_reserved_bytes": 455081984,
+        "batch_shape": [
+          4,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999999999993446,
+        "cosine_median": 0.9999999999993925,
+        "cosine_p05": 0.9999999999991611,
+        "cosine_min": 0.999999999992518,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 201,
+        "sum_kernel_duration_ns": 12016742
+      },
+      "engine_sha256": null
+    },
+    "c0-b8": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c0-b8/result.json",
+      "measurement_queue_job": "0-8204817422666730453_2026-11-20T13-49-37-333269546Z_1038617_i2335-clipreid",
+      "measurement": {
+        "median_ms": 22.6985155,
+        "p95_ms": 23.01356015,
+        "iqr_ms": 0.17965124999999915,
+        "mad_ms": 0.07856849999999937,
+        "images_per_second": 353.29379011820555,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 22.6924015,
+            "p95_ms": 23.01356015,
+            "iqr_ms": 0.2073032500000025,
+            "mad_ms": 0.09221599999999874,
+            "images_per_second": 352.65198136094097
+          },
+          {
+            "median_ms": 22.6933425,
+            "p95_ms": 22.95890785,
+            "iqr_ms": 0.14861549999999824,
+            "mad_ms": 0.05968299999999971,
+            "images_per_second": 354.17080453456333
+          },
+          {
+            "median_ms": 22.717196,
+            "p95_ms": 23.04359525,
+            "iqr_ms": 0.173763000000001,
+            "mad_ms": 0.08121150000000021,
+            "images_per_second": 353.06207629618757
+          }
+        ],
+        "tail_batch": {
+          "size": 4,
+          "median_ms": 12.748587,
+          "p95_ms": 13.6464098,
+          "iqr_ms": 0.18456575000000086,
+          "mad_ms": 0.0957220000000012,
+          "images_per_second": 308.25056852020225,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 12.722761,
+              "p95_ms": 14.18167225,
+              "iqr_ms": 0.20260925000000007,
+              "mad_ms": 0.09940300000000057,
+              "images_per_second": 307.09247553486955
+            },
+            {
+              "median_ms": 12.7741395,
+              "p95_ms": 14.035737949999989,
+              "iqr_ms": 0.1481735000000004,
+              "mad_ms": 0.07456049999999959,
+              "images_per_second": 304.46993723021126
+            },
+            {
+              "median_ms": 12.7372775,
+              "p95_ms": 13.105001849999999,
+              "iqr_ms": 0.17772799999999833,
+              "mad_ms": 0.09143850000000064,
+              "images_per_second": 313.32271372471376
+            }
+          ]
+        },
+        "nvml_device_peak_sampled_bytes": 2371035136,
+        "nvml_device_peak_minus_idle_bytes": 672239616,
+        "torch_peak_allocated_bytes": 439367680,
+        "torch_peak_reserved_bytes": 499122176,
+        "batch_shape": [
+          8,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.99999999999859,
+        "cosine_median": 0.9999999999986295,
+        "cosine_p05": 0.9999999999981718,
+        "cosine_min": 0.9999999999962671,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 202,
+        "sum_kernel_duration_ns": 22285056
+      },
+      "engine_sha256": null
+    },
+    "c0-b16": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c0-b16/result.json",
+      "measurement_queue_job": "0-8204817422666730453_2026-11-20T13-49-37-333269546Z_1038617_i2335-clipreid",
+      "measurement": {
+        "median_ms": 45.1333475,
+        "p95_ms": 45.3485503,
+        "iqr_ms": 0.1930842499999983,
+        "mad_ms": 0.09531750000000017,
+        "images_per_second": 356.36660463557774,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 45.0570545,
+            "p95_ms": 45.33128945,
+            "iqr_ms": 0.213676999999997,
+            "mad_ms": 0.10519299999999987,
+            "images_per_second": 355.7151011298578
+          },
+          {
+            "median_ms": 45.1722775,
+            "p95_ms": 45.350908999999994,
+            "iqr_ms": 0.1450157499999989,
+            "mad_ms": 0.07463149999999885,
+            "images_per_second": 355.51607881315334
+          },
+          {
+            "median_ms": 45.131367499999996,
+            "p95_ms": 45.3391764,
+            "iqr_ms": 0.16551224999999903,
+            "mad_ms": 0.08430400000000304,
+            "images_per_second": 357.87824701325854
+          }
+        ],
+        "tail_batch": {
+          "size": 12,
+          "median_ms": 33.739076,
+          "p95_ms": 35.457898650000004,
+          "iqr_ms": 0.2729075000000023,
+          "mad_ms": 0.1263724999999951,
+          "images_per_second": 355.26438696927977,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 33.6818855,
+              "p95_ms": 34.131168800000005,
+              "iqr_ms": 0.22475524999999408,
+              "mad_ms": 0.0975804999999994,
+              "images_per_second": 359.9462116538292
+            },
+            {
+              "median_ms": 33.7386125,
+              "p95_ms": 34.14093445,
+              "iqr_ms": 0.2435339999999968,
+              "mad_ms": 0.11517399999999967,
+              "images_per_second": 357.9634881197614
+            },
+            {
+              "median_ms": 33.860019,
+              "p95_ms": 37.559510849999995,
+              "iqr_ms": 0.4893577500000035,
+              "mad_ms": 0.18566000000000216,
+              "images_per_second": 348.1116772720461
+            }
+          ]
+        },
+        "nvml_device_peak_sampled_bytes": 2450726912,
+        "nvml_device_peak_minus_idle_bytes": 751931392,
+        "torch_peak_allocated_bytes": 499668992,
+        "torch_peak_reserved_bytes": 578813952,
+        "batch_shape": [
+          16,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999999999985766,
+        "cosine_median": 0.9999999999986269,
+        "cosine_p05": 0.999999999998167,
+        "cosine_min": 0.9999999999962671,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 201,
+        "sum_kernel_duration_ns": 44575201
+      },
+      "engine_sha256": null,
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 201,
+        "dram_read_bytes": 3197421056,
+        "dram_write_bytes": 420901632,
+        "tensor_active_pct_time_weighted": 2.5707552146631736,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 23.636800768392852,
+          "short_scoreboard": 5.617011820203273,
+          "lg_throttle": 0.6280519967064923,
+          "mio_throttle": 11.159578595799463
+        },
+        "timeout_seconds": 3900,
+        "artifact": "outputs/trt-batch-i2335/retry-2/ncu/clipreid/c0-b16/result.json",
+        "queue_job": "0-8204808791368097600_2026-11-20T16-13-28-631902399Z_2041270_i2335-r2-clip-ncu-0",
+        "nsys_kernels": 201,
+        "raw_csv_sha256": "3da89cfe12903f236cf9cbc54dfd34d2bebc1c1e10f4ac29c469718cb21fa084"
+      }
+    },
+    "c0-b32": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c0-b32/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 90.729852,
+        "p95_ms": 91.15726315,
+        "iqr_ms": 0.20114674999999238,
+        "mad_ms": 0.08542999999999523,
+        "images_per_second": 353.4669099364038,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 90.8670095,
+            "p95_ms": 91.71490164999999,
+            "iqr_ms": 0.21456249999999955,
+            "mad_ms": 0.09296249999999873,
+            "images_per_second": 352.65612278918763
+          },
+          {
+            "median_ms": 90.7262585,
+            "p95_ms": 91.170796,
+            "iqr_ms": 0.19590199999998958,
+            "mad_ms": 0.07870249999999857,
+            "images_per_second": 354.60633248014346
+          },
+          {
+            "median_ms": 90.682954,
+            "p95_ms": 90.8181286,
+            "iqr_ms": 0.08926625000000854,
+            "mad_ms": 0.04373549999999682,
+            "images_per_second": 353.14409489815336
+          }
+        ],
+        "tail_batch": {
+          "size": 12,
+          "median_ms": 33.6619535,
+          "p95_ms": 33.99472315,
+          "iqr_ms": 0.23951825000000326,
+          "mad_ms": 0.11745100000000264,
+          "images_per_second": 356.73520856499823,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 33.650716,
+              "p95_ms": 34.0762693,
+              "iqr_ms": 0.24436724999999626,
+              "mad_ms": 0.13116400000000183,
+              "images_per_second": 356.35936755852964
+            },
+            {
+              "median_ms": 33.6694725,
+              "p95_ms": 33.900777149999996,
+              "iqr_ms": 0.21525025000000397,
+              "mad_ms": 0.11047699999999949,
+              "images_per_second": 357.35347830502445
+            },
+            {
+              "median_ms": 33.664544500000005,
+              "p95_ms": 33.95790635,
+              "iqr_ms": 0.23379200000000822,
+              "mad_ms": 0.10898700000000261,
+              "images_per_second": 356.49440856151773
+            }
+          ]
+        },
+        "nvml_device_peak_sampled_bytes": 2626887680,
+        "nvml_device_peak_minus_idle_bytes": 928092160,
+        "torch_peak_allocated_bytes": 619649024,
+        "torch_peak_reserved_bytes": 754974720,
+        "batch_shape": [
+          32,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999999999985766,
+        "cosine_median": 0.9999999999986269,
+        "cosine_p05": 0.999999999998167,
+        "cosine_min": 0.9999999999962671,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 201,
+        "sum_kernel_duration_ns": 81815427
+      },
+      "engine_sha256": null
+    },
+    "c1-b1": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c1-b1/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 3.8714009999999996,
+        "p95_ms": 6.997287150000003,
+        "iqr_ms": 0.6661327500000005,
+        "mad_ms": 0.3253765000000004,
+        "images_per_second": 233.09031308801946,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 3.8726125,
+            "p95_ms": 8.567696849999999,
+            "iqr_ms": 0.9980379999999993,
+            "mad_ms": 0.3929819999999997,
+            "images_per_second": 217.67546120733869
+          },
+          {
+            "median_ms": 3.8711515,
+            "p95_ms": 5.344713199999998,
+            "iqr_ms": 0.5251360000000007,
+            "mad_ms": 0.29275450000000003,
+            "images_per_second": 246.74570665308005
+          },
+          {
+            "median_ms": 3.871547,
+            "p95_ms": 6.035974049999999,
+            "iqr_ms": 0.5832389999999998,
+            "mad_ms": 0.2820340000000001,
+            "images_per_second": 236.75378999373456
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2100502528,
+        "nvml_device_peak_minus_idle_bytes": 401707008,
+        "torch_peak_allocated_bytes": 216023552,
+        "torch_peak_reserved_bytes": 228589568,
+        "batch_shape": [
+          1,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999981435443387,
+        "cosine_median": 0.9999983448820186,
+        "cosine_p05": 0.9999967627060908,
+        "cosine_min": 0.9999861845351405,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 166,
+        "sum_kernel_duration_ns": 1532151
+      },
+      "engine_sha256": null
+    },
+    "c1-b4": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c1-b4/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 4.7352360000000004,
+        "p95_ms": 9.70038185,
+        "iqr_ms": 1.9443772500000005,
+        "mad_ms": 0.5186290000000002,
+        "images_per_second": 704.1026907300173,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 5.2262105000000005,
+            "p95_ms": 10.923754499999992,
+            "iqr_ms": 2.35961175,
+            "mad_ms": 0.8503775000000009,
+            "images_per_second": 615.3975614557776
+          },
+          {
+            "median_ms": 4.453193000000001,
+            "p95_ms": 6.147113399999999,
+            "iqr_ms": 0.5049232499999992,
+            "mad_ms": 0.21398100000000042,
+            "images_per_second": 828.3351727068067
+          },
+          {
+            "median_ms": 5.125176,
+            "p95_ms": 9.6519078,
+            "iqr_ms": 2.4494912500000003,
+            "mad_ms": 0.9780219999999997,
+            "images_per_second": 700.0175870668529
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2104696832,
+        "nvml_device_peak_minus_idle_bytes": 405901312,
+        "torch_peak_allocated_bytes": 227427328,
+        "torch_peak_reserved_bytes": 232783872,
+        "batch_shape": [
+          4,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999982708036668,
+        "cosine_median": 0.9999984201005512,
+        "cosine_p05": 0.9999967940057282,
+        "cosine_min": 0.9999957441903486,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 191,
+        "sum_kernel_duration_ns": 4235959
+      },
+      "engine_sha256": null
+    },
+    "c1-b8": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c1-b8/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 7.109468,
+        "p95_ms": 10.518422550000006,
+        "iqr_ms": 1.9444759999999999,
+        "mad_ms": 0.21501550000000025,
+        "images_per_second": 986.9874225219444,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 7.315852,
+            "p95_ms": 14.518931949999997,
+            "iqr_ms": 2.4739830000000005,
+            "mad_ms": 0.37425249999999943,
+            "images_per_second": 949.7014714330334
+          },
+          {
+            "median_ms": 7.003192,
+            "p95_ms": 7.351758449999999,
+            "iqr_ms": 0.18893049999999967,
+            "mad_ms": 0.10066949999999997,
+            "images_per_second": 1131.1321645630287
+          },
+          {
+            "median_ms": 7.3762895,
+            "p95_ms": 11.259461449999984,
+            "iqr_ms": 2.4993067500000006,
+            "mad_ms": 0.8773355000000005,
+            "images_per_second": 907.0130576139411
+          }
+        ],
+        "tail_batch": {
+          "size": 4,
+          "median_ms": 6.2186965,
+          "p95_ms": 10.008790450000001,
+          "iqr_ms": 4.654951250000001,
+          "mad_ms": 1.7919725,
+          "images_per_second": 577.1684570402543,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 7.881586499999999,
+              "p95_ms": 10.5834666,
+              "iqr_ms": 3.711266499999999,
+              "mad_ms": 1.7487760000000012,
+              "images_per_second": 492.75167217743706
+            },
+            {
+              "median_ms": 6.448971500000001,
+              "p95_ms": 9.8667146,
+              "iqr_ms": 4.276546750000001,
+              "mad_ms": 1.795681000000001,
+              "images_per_second": 577.5464950484944
+            },
+            {
+              "median_ms": 4.768515,
+              "p95_ms": 9.781624650000001,
+              "iqr_ms": 1.8685947500000006,
+              "mad_ms": 0.6330309999999999,
+              "images_per_second": 695.9392070796114
+            }
+          ]
+        },
+        "nvml_device_peak_sampled_bytes": 2125668352,
+        "nvml_device_peak_minus_idle_bytes": 426872832,
+        "torch_peak_allocated_bytes": 242936832,
+        "torch_peak_reserved_bytes": 253755392,
+        "batch_shape": [
+          8,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999982544694004,
+        "cosine_median": 0.9999984090260116,
+        "cosine_p05": 0.99999693105041,
+        "cosine_min": 0.9999905382571868,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 191,
+        "sum_kernel_duration_ns": 6403441
+      },
+      "engine_sha256": null
+    },
+    "c1-b16": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c1-b16/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 13.183038,
+        "p95_ms": 13.8310159,
+        "iqr_ms": 0.1955177499999987,
+        "mad_ms": 0.09696699999999936,
+        "images_per_second": 1191.4036716407302,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 13.148687500000001,
+            "p95_ms": 15.281926699999998,
+            "iqr_ms": 0.20609724999999912,
+            "mad_ms": 0.0905415000000005,
+            "images_per_second": 1198.8502324942992
+          },
+          {
+            "median_ms": 13.191624000000001,
+            "p95_ms": 13.45534055,
+            "iqr_ms": 0.1584354999999995,
+            "mad_ms": 0.08403950000000027,
+            "images_per_second": 1193.6372581074327
+          },
+          {
+            "median_ms": 13.18871,
+            "p95_ms": 14.01426534999999,
+            "iqr_ms": 0.22826075000000046,
+            "mad_ms": 0.11069050000000047,
+            "images_per_second": 1181.8511672842608
+          }
+        ],
+        "tail_batch": {
+          "size": 12,
+          "median_ms": 10.0683975,
+          "p95_ms": 10.859129100000002,
+          "iqr_ms": 0.21557149999999936,
+          "mad_ms": 0.08055949999999967,
+          "images_per_second": 1161.4766324245622,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 10.0516135,
+              "p95_ms": 10.51156435,
+              "iqr_ms": 0.16503950000000067,
+              "mad_ms": 0.06461749999999977,
+              "images_per_second": 1177.3126310847476
+            },
+            {
+              "median_ms": 10.1901565,
+              "p95_ms": 13.1980195,
+              "iqr_ms": 0.3547722500000017,
+              "mad_ms": 0.16495050000000067,
+              "images_per_second": 1126.6178267198504
+            },
+            {
+              "median_ms": 10.0474165,
+              "p95_ms": 10.761365699999995,
+              "iqr_ms": 0.12774249999999832,
+              "mad_ms": 0.05365400000000076,
+              "images_per_second": 1182.1526454899026
+            }
+          ]
+        },
+        "nvml_device_peak_sampled_bytes": 2182291456,
+        "nvml_device_peak_minus_idle_bytes": 483495936,
+        "torch_peak_allocated_bytes": 272641024,
+        "torch_peak_reserved_bytes": 310378496,
+        "batch_shape": [
+          16,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999983979985115,
+        "cosine_median": 0.9999985429652615,
+        "cosine_p05": 0.9999973066516065,
+        "cosine_min": 0.999995678107167,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 189,
+        "sum_kernel_duration_ns": 12244023
+      },
+      "engine_sha256": null,
+      "ncu": {
+        "status": "unavailable",
+        "artifact": "outputs/trt-batch-i2335/retry-2/ncu/clipreid/c1-b16/result.json",
+        "queue_job": "0-8204808791103005008_2026-11-20T16-13-28-896994991Z_2041307_i2335-r2-clip-ncu-1",
+        "nsys_kernels": 189,
+        "timeout_seconds": 1650,
+        "reason": "timeout"
+      }
+    },
+    "c1-b32": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c1-b32/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 28.1117355,
+        "p95_ms": 28.271923450000003,
+        "iqr_ms": 0.12713700000000117,
+        "mad_ms": 0.0624980000000015,
+        "images_per_second": 1146.6612999700808,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 28.094854,
+            "p95_ms": 28.2782902,
+            "iqr_ms": 0.134897500000001,
+            "mad_ms": 0.07127899999999876,
+            "images_per_second": 1150.9390028289374
+          },
+          {
+            "median_ms": 28.127202,
+            "p95_ms": 28.2529363,
+            "iqr_ms": 0.11402474999999868,
+            "mad_ms": 0.05827999999999989,
+            "images_per_second": 1142.3713751332234
+          },
+          {
+            "median_ms": 28.0966965,
+            "p95_ms": 28.22935015,
+            "iqr_ms": 0.13819700000000168,
+            "mad_ms": 0.06974149999999923,
+            "images_per_second": 1146.705532492409
+          }
+        ],
+        "tail_batch": {
+          "size": 12,
+          "median_ms": 9.900401500000001,
+          "p95_ms": 13.929839750000008,
+          "iqr_ms": 0.34084725000000127,
+          "mad_ms": 0.15032250000000058,
+          "images_per_second": 1143.8684307635212,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 9.7887325,
+              "p95_ms": 16.33955014999999,
+              "iqr_ms": 0.21479849999999878,
+              "mad_ms": 0.09011350000000018,
+              "images_per_second": 1135.1711122359166
+            },
+            {
+              "median_ms": 9.9845235,
+              "p95_ms": 13.6409973,
+              "iqr_ms": 0.408365749999998,
+              "mad_ms": 0.18196000000000012,
+              "images_per_second": 1149.6131026440607
+            },
+            {
+              "median_ms": 9.9207185,
+              "p95_ms": 13.291198049999998,
+              "iqr_ms": 0.3531537500000006,
+              "mad_ms": 0.1468834999999995,
+              "images_per_second": 1146.924563359367
+            }
+          ]
+        },
+        "nvml_device_peak_sampled_bytes": 2261983232,
+        "nvml_device_peak_minus_idle_bytes": 563187712,
+        "torch_peak_allocated_bytes": 332762112,
+        "torch_peak_reserved_bytes": 390070272,
+        "batch_shape": [
+          32,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0"
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999983979985115,
+        "cosine_median": 0.9999985429652615,
+        "cosine_p05": 0.9999973066516065,
+        "cosine_min": 0.999995678107167,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 189,
+        "sum_kernel_duration_ns": 27286520
+      },
+      "engine_sha256": null
+    },
+    "c2-b1": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c2-b1/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 1.822344,
+        "p95_ms": 2.13801965,
+        "iqr_ms": 0.17683975000000007,
+        "mad_ms": 0.08388950000000006,
+        "images_per_second": 536.1238623257296,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 1.861934,
+            "p95_ms": 2.1895131,
+            "iqr_ms": 0.2180669999999998,
+            "mad_ms": 0.09090699999999996,
+            "images_per_second": 524.8224734189356
+          },
+          {
+            "median_ms": 1.7765175000000002,
+            "p95_ms": 2.0670623,
+            "iqr_ms": 0.1793722499999999,
+            "mad_ms": 0.09107500000000002,
+            "images_per_second": 544.0599496611798
+          },
+          {
+            "median_ms": 1.8029475000000001,
+            "p95_ms": 2.0978057,
+            "iqr_ms": 0.16264924999999986,
+            "mad_ms": 0.0669120000000002,
+            "images_per_second": 539.8743414396836
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2134056960,
+        "nvml_device_peak_minus_idle_bytes": 435261440,
+        "torch_peak_allocated_bytes": 204288,
+        "torch_peak_reserved_bytes": 2097152,
+        "batch_shape": [
+          1,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 62
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 74
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999913815244157,
+        "cosine_median": 0.9999922010688284,
+        "cosine_p05": 0.999986826508138,
+        "cosine_min": 0.9999368505420423,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 114,
+        "sum_kernel_duration_ns": 1228875
+      },
+      "engine_sha256": "7c1c1c5d6492191c8a79621aa8cb076c677f1ec2330376dae8cf0774fe218038"
+    },
+    "c2-b4": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c2-b4/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 2.4886095,
+        "p95_ms": 5.949261100000002,
+        "iqr_ms": 0.24441325000000047,
+        "mad_ms": 0.06175249999999988,
+        "images_per_second": 1278.8545896239552,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 2.4829985,
+            "p95_ms": 5.6956301,
+            "iqr_ms": 0.32262374999999954,
+            "mad_ms": 0.06936649999999989,
+            "images_per_second": 1276.331793834687
+          },
+          {
+            "median_ms": 2.4848415,
+            "p95_ms": 2.8506891999999997,
+            "iqr_ms": 0.09423849999999989,
+            "mad_ms": 0.043511499999999925,
+            "images_per_second": 1582.5707620502747
+          },
+          {
+            "median_ms": 2.5071125,
+            "p95_ms": 8.821339,
+            "iqr_ms": 2.103607999999999,
+            "mad_ms": 0.10130999999999979,
+            "images_per_second": 1074.7250063510876
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2134056960,
+        "nvml_device_peak_minus_idle_bytes": 435261440,
+        "torch_peak_allocated_bytes": 817152,
+        "torch_peak_reserved_bytes": 2097152,
+        "batch_shape": [
+          4,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 62
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 74
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999913815244157,
+        "cosine_median": 0.9999922010688284,
+        "cosine_p05": 0.999986826508138,
+        "cosine_min": 0.9999368505420423,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 114,
+        "sum_kernel_duration_ns": 2238004
+      },
+      "engine_sha256": "7c1c1c5d6492191c8a79621aa8cb076c677f1ec2330376dae8cf0774fe218038"
+    },
+    "c2-b8": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c2-b8/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 3.9069585,
+        "p95_ms": 4.38055195,
+        "iqr_ms": 0.0386747500000002,
+        "mad_ms": 0.01842799999999989,
+        "images_per_second": 1969.6859941689033,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 3.9023505,
+            "p95_ms": 4.04427275,
+            "iqr_ms": 0.03365974999999999,
+            "mad_ms": 0.016274999999999817,
+            "images_per_second": 2031.2656161478878
+          },
+          {
+            "median_ms": 3.907119,
+            "p95_ms": 7.841568,
+            "iqr_ms": 0.04480999999999957,
+            "mad_ms": 0.023568000000000033,
+            "images_per_second": 1859.102774412969
+          },
+          {
+            "median_ms": 3.9117604999999998,
+            "p95_ms": 4.2178305499999995,
+            "iqr_ms": 0.03298649999999981,
+            "mad_ms": 0.017053999999999903,
+            "images_per_second": 2028.8600266642934
+          }
+        ],
+        "tail_batch": {
+          "size": 4,
+          "median_ms": 2.4885675000000003,
+          "p95_ms": 4.5194997500000005,
+          "iqr_ms": 0.11243800000000048,
+          "mad_ms": 0.0551145000000004,
+          "images_per_second": 1431.370903785052,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 2.4624375,
+              "p95_ms": 2.5540921500000002,
+              "iqr_ms": 0.09856724999999944,
+              "mad_ms": 0.05095699999999992,
+              "images_per_second": 1632.6696944634998
+            },
+            {
+              "median_ms": 2.504828,
+              "p95_ms": 2.9524961000000003,
+              "iqr_ms": 0.11745800000000006,
+              "mad_ms": 0.059543500000000193,
+              "images_per_second": 1559.7537306394447
+            },
+            {
+              "median_ms": 2.4938485000000004,
+              "p95_ms": 7.90167745,
+              "iqr_ms": 0.23628124999999978,
+              "mad_ms": 0.054859500000000505,
+              "images_per_second": 1187.2646290540226
+            }
+          ],
+          "trt_compute_precision": {
+            "engine_layers_by_precision": {
+              "fp16": 62
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 74
+            }
+          }
+        },
+        "nvml_device_peak_sampled_bytes": 2155028480,
+        "nvml_device_peak_minus_idle_bytes": 456232960,
+        "torch_peak_allocated_bytes": 2379776,
+        "torch_peak_reserved_bytes": 23068672,
+        "batch_shape": [
+          8,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 62
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 74
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999913815244157,
+        "cosine_median": 0.9999922010688284,
+        "cosine_p05": 0.999986826508138,
+        "cosine_min": 0.9999368505420423,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 114,
+        "sum_kernel_duration_ns": 3300392
+      },
+      "engine_sha256": "7c1c1c5d6492191c8a79621aa8cb076c677f1ec2330376dae8cf0774fe218038"
+    },
+    "c2-b16": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c2-b16/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 6.639097,
+        "p95_ms": 7.502576000000003,
+        "iqr_ms": 0.06537725000000005,
+        "mad_ms": 0.03051149999999936,
+        "images_per_second": 2358.3603498292105,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 6.619139499999999,
+            "p95_ms": 6.754758,
+            "iqr_ms": 0.05791825000000017,
+            "mad_ms": 0.02882950000000095,
+            "images_per_second": 2406.368752088945
+          },
+          {
+            "median_ms": 6.664441500000001,
+            "p95_ms": 7.90517415,
+            "iqr_ms": 0.16023499999999924,
+            "mad_ms": 0.0579509999999992,
+            "images_per_second": 2331.5053097949653
+          },
+          {
+            "median_ms": 6.641462499999999,
+            "p95_ms": 8.111775649999997,
+            "iqr_ms": 0.050228249999999974,
+            "mad_ms": 0.025969000000000353,
+            "images_per_second": 2338.6403904827844
+          }
+        ],
+        "tail_batch": {
+          "size": 12,
+          "median_ms": 5.696351,
+          "p95_ms": 6.95382885,
+          "iqr_ms": 0.0632337500000002,
+          "mad_ms": 0.029595999999999734,
+          "images_per_second": 2060.362578680462,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 5.7020175,
+              "p95_ms": 7.471938,
+              "iqr_ms": 0.08174124999999943,
+              "mad_ms": 0.04586549999999967,
+              "images_per_second": 2033.3599575273129
+            },
+            {
+              "median_ms": 5.6927705,
+              "p95_ms": 6.7048927,
+              "iqr_ms": 0.04438474999999986,
+              "mad_ms": 0.022528500000000395,
+              "images_per_second": 2070.916259658707
+            },
+            {
+              "median_ms": 5.6966215,
+              "p95_ms": 5.806712149999999,
+              "iqr_ms": 0.06140200000000018,
+              "mad_ms": 0.029650499999999802,
+              "images_per_second": 2077.363017267438
+            }
+          ],
+          "trt_compute_precision": {
+            "engine_layers_by_precision": {
+              "fp16": 62
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 74
+            }
+          }
+        },
+        "nvml_device_peak_sampled_bytes": 2155028480,
+        "nvml_device_peak_minus_idle_bytes": 456232960,
+        "torch_peak_allocated_bytes": 5545984,
+        "torch_peak_reserved_bytes": 23068672,
+        "batch_shape": [
+          16,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 62
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 74
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999913815244157,
+        "cosine_median": 0.9999922010688284,
+        "cosine_p05": 0.999986826508138,
+        "cosine_min": 0.9999368505420423,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 114,
+        "sum_kernel_duration_ns": 6172077
+      },
+      "engine_sha256": "7c1c1c5d6492191c8a79621aa8cb076c677f1ec2330376dae8cf0774fe218038",
+      "ncu": {
+        "status": "unavailable",
+        "artifact": "outputs/trt-batch-i2335/retry-2/ncu/clipreid/c2-b16/result.json",
+        "queue_job": "0-8204808790835095928_2026-11-20T16-13-29-164904071Z_2041344_i2335-r2-clip-ncu-2",
+        "nsys_kernels": 114,
+        "timeout_seconds": 1050,
+        "reason": "timeout"
+      }
+    },
+    "c2-b32": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c2-b32/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 13.7946765,
+        "p95_ms": 13.891679949999999,
+        "iqr_ms": 0.07446425000000012,
+        "mad_ms": 0.03615349999999928,
+        "images_per_second": 2341.497032249464,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 13.797021999999998,
+            "p95_ms": 13.92056785,
+            "iqr_ms": 0.06697600000000037,
+            "mad_ms": 0.03479299999999963,
+            "images_per_second": 2327.5308580622604
+          },
+          {
+            "median_ms": 13.775163,
+            "p95_ms": 13.844802999999999,
+            "iqr_ms": 0.09434775000000073,
+            "mad_ms": 0.04230200000000117,
+            "images_per_second": 2353.51914193387
+          },
+          {
+            "median_ms": 13.799565000000001,
+            "p95_ms": 13.8919112,
+            "iqr_ms": 0.07561100000000032,
+            "mad_ms": 0.03862349999999992,
+            "images_per_second": 2343.5881762663253
+          }
+        ],
+        "tail_batch": {
+          "size": 12,
+          "median_ms": 5.6981035,
+          "p95_ms": 5.9978956000000005,
+          "iqr_ms": 0.09395599999999948,
+          "mad_ms": 0.04636149999999972,
+          "images_per_second": 2103.3268327524734,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 5.7033085,
+              "p95_ms": 5.8875777,
+              "iqr_ms": 0.1427347500000007,
+              "mad_ms": 0.056161499999999975,
+              "images_per_second": 2116.8657323982084
+            },
+            {
+              "median_ms": 5.700693,
+              "p95_ms": 5.84899865,
+              "iqr_ms": 0.05702249999999953,
+              "mad_ms": 0.03085400000000016,
+              "images_per_second": 2113.9555353693167
+            },
+            {
+              "median_ms": 5.6921975,
+              "p95_ms": 6.68501575,
+              "iqr_ms": 0.09632400000000008,
+              "mad_ms": 0.04682899999999979,
+              "images_per_second": 2079.570642694999
+            }
+          ],
+          "trt_compute_precision": {
+            "engine_layers_by_precision": {
+              "fp16": 62
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 74
+            }
+          }
+        },
+        "nvml_device_peak_sampled_bytes": 2155028480,
+        "nvml_device_peak_minus_idle_bytes": 456232960,
+        "torch_peak_allocated_bytes": 8732672,
+        "torch_peak_reserved_bytes": 23068672,
+        "batch_shape": [
+          32,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float16",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 62
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 74
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9999913815244157,
+        "cosine_median": 0.9999922010688284,
+        "cosine_p05": 0.999986826508138,
+        "cosine_min": 0.9999368505420423,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": null,
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 114,
+        "sum_kernel_duration_ns": 13365129
+      },
+      "engine_sha256": "7c1c1c5d6492191c8a79621aa8cb076c677f1ec2330376dae8cf0774fe218038"
+    },
+    "c3a-b1": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c3a-b1/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 1.896915,
+        "p95_ms": 2.25634045,
+        "iqr_ms": 0.24970399999999993,
+        "mad_ms": 0.12805250000000012,
+        "images_per_second": 515.560824358042,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 1.8335599999999999,
+            "p95_ms": 2.1779249,
+            "iqr_ms": 0.20924999999999994,
+            "mad_ms": 0.10198749999999979,
+            "images_per_second": 526.7928558565418
+          },
+          {
+            "median_ms": 1.959979,
+            "p95_ms": 2.275989,
+            "iqr_ms": 0.22589050000000022,
+            "mad_ms": 0.11128549999999993,
+            "images_per_second": 500.9207951101756
+          },
+          {
+            "median_ms": 1.910922,
+            "p95_ms": 2.18463705,
+            "iqr_ms": 0.23933500000000008,
+            "mad_ms": 0.11979149999999994,
+            "images_per_second": 519.6686503302486
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2115182592,
+        "nvml_device_peak_minus_idle_bytes": 416387072,
+        "torch_peak_allocated_bytes": 398336,
+        "torch_peak_reserved_bytes": 2097152,
+        "batch_shape": [
+          1,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 50,
+            "int8": 12
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 62,
+            "int8": 12
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9996828538526547,
+        "cosine_median": 0.9996903934865128,
+        "cosine_p05": 0.999592950544407,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": {
+        "crops": 224,
+        "cosine_mean": 0.9996826925914769,
+        "cosine_median": 0.9996899019171339,
+        "cosine_p05": 0.9995935536683211,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 224,
+        "id_changed_examples": [],
+        "id_matches_association": 222
+      },
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 127,
+        "sum_kernel_duration_ns": 1178823
+      },
+      "engine_sha256": "f0bc8bead9d73cc8995b0f98fcb562e115fc1eb189c941d5fb60086c06e4a758"
+    },
+    "c3a-b4": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c3a-b4/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 2.5217425,
+        "p95_ms": 2.9402107,
+        "iqr_ms": 0.06737925000000011,
+        "mad_ms": 0.029937500000000172,
+        "images_per_second": 1547.7717326901484,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 2.5135215,
+            "p95_ms": 2.6372684,
+            "iqr_ms": 0.045554500000000164,
+            "mad_ms": 0.022321999999999953,
+            "images_per_second": 1571.8859767745046
+          },
+          {
+            "median_ms": 2.523751,
+            "p95_ms": 3.0474031,
+            "iqr_ms": 0.1003617499999998,
+            "mad_ms": 0.03972549999999986,
+            "images_per_second": 1513.112658890022
+          },
+          {
+            "median_ms": 2.5270775,
+            "p95_ms": 2.64033265,
+            "iqr_ms": 0.04601025000000014,
+            "mad_ms": 0.02423099999999989,
+            "images_per_second": 1559.569641747983
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2136154112,
+        "nvml_device_peak_minus_idle_bytes": 437358592,
+        "torch_peak_allocated_bytes": 1593344,
+        "torch_peak_reserved_bytes": 23068672,
+        "batch_shape": [
+          4,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 50,
+            "int8": 12
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 62,
+            "int8": 12
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9996828538526547,
+        "cosine_median": 0.9996903934865128,
+        "cosine_p05": 0.999592950544407,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": {
+        "crops": 224,
+        "cosine_mean": 0.9996826925914769,
+        "cosine_median": 0.9996899019171339,
+        "cosine_p05": 0.9995935536683211,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 224,
+        "id_changed_examples": [],
+        "id_matches_association": 222
+      },
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 127,
+        "sum_kernel_duration_ns": 1936585
+      },
+      "engine_sha256": "f0bc8bead9d73cc8995b0f98fcb562e115fc1eb189c941d5fb60086c06e4a758"
+    },
+    "c3a-b8": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c3a-b8/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 4.1625375,
+        "p95_ms": 4.71194115,
+        "iqr_ms": 0.0484972499999996,
+        "mad_ms": 0.024716999999999878,
+        "images_per_second": 1867.9428927797821,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 4.159291,
+            "p95_ms": 7.827579549999999,
+            "iqr_ms": 0.038507250000000326,
+            "mad_ms": 0.020414500000000224,
+            "images_per_second": 1814.6793262356073
+          },
+          {
+            "median_ms": 4.158635,
+            "p95_ms": 4.2218751,
+            "iqr_ms": 0.04526825000000123,
+            "mad_ms": 0.023254500000000178,
+            "images_per_second": 1922.974691085894
+          },
+          {
+            "median_ms": 4.176088,
+            "p95_ms": 4.78364285,
+            "iqr_ms": 0.05969200000000008,
+            "mad_ms": 0.03029700000000002,
+            "images_per_second": 1869.3139354750863
+          }
+        ],
+        "tail_batch": {
+          "size": 4,
+          "median_ms": 2.518611,
+          "p95_ms": 2.7861873,
+          "iqr_ms": 0.06715424999999975,
+          "mad_ms": 0.03379350000000003,
+          "images_per_second": 1495.139158687961,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 2.5235149999999997,
+              "p95_ms": 2.67696135,
+              "iqr_ms": 0.06491875000000036,
+              "mad_ms": 0.0327025000000003,
+              "images_per_second": 1568.6103254464854
+            },
+            {
+              "median_ms": 2.5164809999999997,
+              "p95_ms": 2.6901442999999996,
+              "iqr_ms": 0.05459674999999997,
+              "mad_ms": 0.027542500000000025,
+              "images_per_second": 1572.6427100131452
+            },
+            {
+              "median_ms": 2.5195730000000003,
+              "p95_ms": 3.6140706499999964,
+              "iqr_ms": 0.09833425000000018,
+              "mad_ms": 0.04922850000000012,
+              "images_per_second": 1364.027791561562
+            }
+          ],
+          "trt_compute_precision": {
+            "engine_layers_by_precision": {
+              "fp16": 50,
+              "int8": 12
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 62,
+              "int8": 12
+            }
+          }
+        },
+        "nvml_device_peak_sampled_bytes": 2136154112,
+        "nvml_device_peak_minus_idle_bytes": 437358592,
+        "torch_peak_allocated_bytes": 4759552,
+        "torch_peak_reserved_bytes": 23068672,
+        "batch_shape": [
+          8,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 50,
+            "int8": 12
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 62,
+            "int8": 12
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9996828538526547,
+        "cosine_median": 0.9996903934865128,
+        "cosine_p05": 0.999592950544407,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": {
+        "crops": 224,
+        "cosine_mean": 0.9996826925914769,
+        "cosine_median": 0.9996899019171339,
+        "cosine_p05": 0.9995935536683211,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 224,
+        "id_changed_examples": [],
+        "id_matches_association": 222
+      },
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 127,
+        "sum_kernel_duration_ns": 3756348
+      },
+      "engine_sha256": "f0bc8bead9d73cc8995b0f98fcb562e115fc1eb189c941d5fb60086c06e4a758"
+    },
+    "c3a-b16": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c3a-b16/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 6.811049000000001,
+        "p95_ms": 6.9193392,
+        "iqr_ms": 0.09742524999999969,
+        "mad_ms": 0.048559999999999715,
+        "images_per_second": 2372.2259864533944,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 6.811749000000001,
+            "p95_ms": 6.9146671,
+            "iqr_ms": 0.09410324999999986,
+            "mad_ms": 0.048807500000000115,
+            "images_per_second": 2373.4313513803972
+          },
+          {
+            "median_ms": 6.811954500000001,
+            "p95_ms": 6.9191375,
+            "iqr_ms": 0.09058025000000036,
+            "mad_ms": 0.04606600000000016,
+            "images_per_second": 2371.224682224734
+          },
+          {
+            "median_ms": 6.8099925,
+            "p95_ms": 6.91936325,
+            "iqr_ms": 0.10726625000000034,
+            "mad_ms": 0.0507945000000003,
+            "images_per_second": 2372.022978106812
+          }
+        ],
+        "tail_batch": {
+          "size": 12,
+          "median_ms": 5.731794000000001,
+          "p95_ms": 5.81745275,
+          "iqr_ms": 0.06944775000000014,
+          "mad_ms": 0.034791499999999864,
+          "images_per_second": 2097.0887940739094,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 5.732219499999999,
+              "p95_ms": 5.7870316,
+              "iqr_ms": 0.06691125000000042,
+              "mad_ms": 0.03001150000000008,
+              "images_per_second": 2097.586928131925
+            },
+            {
+              "median_ms": 5.720807499999999,
+              "p95_ms": 5.8546527500000005,
+              "iqr_ms": 0.07112449999999981,
+              "mad_ms": 0.035747500000000265,
+              "images_per_second": 2095.7962184123676
+            },
+            {
+              "median_ms": 5.735405,
+              "p95_ms": 5.78818595,
+              "iqr_ms": 0.0674039999999998,
+              "mad_ms": 0.031705500000000164,
+              "images_per_second": 2097.8844529333865
+            }
+          ],
+          "trt_compute_precision": {
+            "engine_layers_by_precision": {
+              "fp16": 50,
+              "int8": 12
+            },
+            "onnx_operations_by_precision": {
+              "fp16": 62,
+              "int8": 12
+            }
+          }
+        },
+        "nvml_device_peak_sampled_bytes": 2136154112,
+        "nvml_device_peak_minus_idle_bytes": 437358592,
+        "torch_peak_allocated_bytes": 11091968,
+        "torch_peak_reserved_bytes": 23068672,
+        "batch_shape": [
+          16,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 50,
+            "int8": 12
+          },
+          "onnx_operations_by_precision": {
+            "fp16": 62,
+            "int8": 12
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9996828538526547,
+        "cosine_median": 0.9996903934865128,
+        "cosine_p05": 0.999592950544407,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": {
+        "crops": 224,
+        "cosine_mean": 0.9996826925914769,
+        "cosine_median": 0.9996899019171339,
+        "cosine_p05": 0.9995935536683211,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 224,
+        "id_changed_examples": [],
+        "id_matches_association": 222
+      },
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 127,
+        "sum_kernel_duration_ns": 6471094
+      },
+      "engine_sha256": "f0bc8bead9d73cc8995b0f98fcb562e115fc1eb189c941d5fb60086c06e4a758",
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 127,
+        "dram_read_bytes": 973647616,
+        "dram_write_bytes": 11938048,
+        "tensor_active_pct_time_weighted": 48.71460472451902,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 24.389518734561804,
+          "short_scoreboard": 2.6584624245727553,
+          "lg_throttle": 0.8703162822341539,
+          "mio_throttle": 1.572854425902518
+        },
+        "timeout_seconds": 1050,
+        "artifact": "outputs/trt-batch-i2335/retry-2/ncu/clipreid/c3a-b16/result.json",
+        "queue_job": "0-8204808790540958882_2026-11-20T16-13-29-459041117Z_2041419_i2335-r2-clip-ncu-3a",
+        "nsys_kernels": 127,
+        "raw_csv_sha256": "7cec830e4390596b750f674ce40d7af7cc7fdb01e45a22ea1af9ff16de53b757"
+      }
+    },
+    "c3a-b32": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/clipreid/c3a-b32/result.json",
+      "measurement_queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing",
+      "measurement": {
+        "median_ms": 14.212784,
+        "p95_ms": 14.321653399999999,
+        "iqr_ms": 0.11648699999999934,
+        "mad_ms": 0.051592999999999556,
+        "images_per_second": 2283.412254950745,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 14.21336,
+            "p95_ms": 14.30702095,
+            "iqr_ms": 0.14024024999999973,
+            "mad_ms": 0.05489049999999995,
+            "images_per_second": 2284.5749290330355
+          },
+          {
+            "median_ms": 14.223946999999999,
+            "p95_ms": 14.34985745,
+            "iqr_ms": 0.11177800000000104,
+            "mad_ms": 0.05645250000000068,
+            "images_per_second": 2280.036324284699
+          },
+          {
+            "median_ms": 14.2017325,
+            "p95_ms": 14.27932485,
+            "iqr_ms": 0.09675674999999906,
+            "mad_ms": 0.04164749999999984,
+            "images_per_second": 2285.633260015218
+          }
+        ],
+        "tail_batch": {
+          "size": 12,
+          "median_ms": 5.722236,
+          "p95_ms": 5.835714100000001,
+          "iqr_ms": 0.10335074999999971,
+          "mad_ms": 0.050535500000000066,
+          "images_per_second": 2110.9425017939675,
+          "warmup": 30,
+          "blocks": [
+            {
+              "median_ms": 5.7234549999999995,
+              "p95_ms": 5.79821515,
+              "iqr_ms": 0.09215250000000008,
+              "mad_ms": 0.04420850000000032,
+              "images_per_second": 2111.4271025992257
+            },
+            {
+              "median_ms": 5.715474,
+              "p95_ms": 5.82440665,
+              "iqr_ms": 0.30683675000000044,
+              "mad_ms": 0.05221799999999943,
+              "images_per_second": 2119.40651156672
+            },
+            {
+              "median_ms": 5.721676,
+              "p95_ms": 5.91173,
+              "iqr_ms": 0.11093199999999914,
+              "mad_ms": 0.05460200000000004,
+              "images_per_second": 2102.0652933396477
+            }
+          ],
+          "trt_compute_precision": {
+            "engine_layers_by_precision": {
+              "fp16": 50,
+              "int8": 12
+            },
+            "onnx_operations_by_precision": {
+              "int8": 12,
+              "fp16": 62
+            }
+          }
+        },
+        "nvml_device_peak_sampled_bytes": 2148737024,
+        "nvml_device_peak_minus_idle_bytes": 449941504,
+        "torch_peak_allocated_bytes": 17465344,
+        "torch_peak_reserved_bytes": 35651584,
+        "batch_shape": [
+          32,
+          3,
+          256,
+          128
+        ],
+        "input_dtype": "torch.float32",
+        "driver": "621.24",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": [
+          12,
+          0
+        ],
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "trt_nvtx_verbosity": "NONE",
+        "trt_compute_precision": {
+          "engine_layers_by_precision": {
+            "fp16": 50,
+            "int8": 12
+          },
+          "onnx_operations_by_precision": {
+            "int8": 12,
+            "fp16": 62
+          }
+        }
+      },
+      "accuracy_all_crops": {
+        "crops": 236,
+        "cosine_mean": 0.9996828538526547,
+        "cosine_median": 0.9996903934865128,
+        "cosine_p05": 0.999592950544407,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 236,
+        "id_changed_examples": [],
+        "id_matches_association": 234
+      },
+      "accuracy_excluding_ptq_selection": {
+        "crops": 224,
+        "cosine_mean": 0.9996826925914769,
+        "cosine_median": 0.9996899019171339,
+        "cosine_p05": 0.9995935536683211,
+        "cosine_min": 0.9994236690396627,
+        "id_matches_fp32": 224,
+        "id_changed_examples": [],
+        "id_matches_association": 222
+      },
+      "within_draft": true,
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 127,
+        "sum_kernel_duration_ns": 13935456
+      },
+      "engine_sha256": "f0bc8bead9d73cc8995b0f98fcb562e115fc1eb189c941d5fb60086c06e4a758"
+    },
+    "c3b-b1": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/clipreid/sweep.json",
+      "failure": {
+        "exit_code": 1,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 106.76839713501977,
+        "log": "logs/build-3b.log",
+        "name": "build-3b"
+      }
+    },
+    "c3b-b4": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/clipreid/sweep.json",
+      "failure": {
+        "exit_code": 1,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 106.76839713501977,
+        "log": "logs/build-3b.log",
+        "name": "build-3b"
+      }
+    },
+    "c3b-b8": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/clipreid/sweep.json",
+      "failure": {
+        "exit_code": 1,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 106.76839713501977,
+        "log": "logs/build-3b.log",
+        "name": "build-3b"
+      }
+    },
+    "c3b-b16": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/clipreid/sweep.json",
+      "failure": {
+        "exit_code": 1,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 106.76839713501977,
+        "log": "logs/build-3b.log",
+        "name": "build-3b"
+      }
+    },
+    "c3b-b32": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/clipreid/sweep.json",
+      "failure": {
+        "exit_code": 1,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 106.76839713501977,
+        "log": "logs/build-3b.log",
+        "name": "build-3b"
+      }
+    }
+  },
+  "gvhmr": {
+    "c0-b1-l145": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c0-b1-l145/measurement.json",
+      "measurement": {
+        "condition": "0",
+        "length": 145,
+        "batch_size": 1,
+        "segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_037-p0-cam2-s0",
+        "profile_batch_segments": [
+          "clip_037-p0-cam2-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "e68439f4cfe1a4d39fd464ec0ecd87ff51976c7c27c5adb3c95e9b6760ebf0cc",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float32",
+          "f_cliffcam": "torch.float32",
+          "f_cam_angvel": "torch.float32",
+          "f_imgseq": "torch.float32"
+        },
+        "output_dtypes": {
+          "pred_x": "float32",
+          "pred_cam": "float32",
+          "static_conf_logits": "float32",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.246331,
+        "p95_ms": 23.079186550000003,
+        "iqr_ms": 1.7028842500000003,
+        "mad_ms": 0.7305029999999997,
+        "sequences_per_second": 59.30220029584333,
+        "frames_per_second": 8598.819042897283,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 15.014329499999999,
+            "p95_ms": 19.634708349999997,
+            "iqr_ms": 1.6030382500000009,
+            "mad_ms": 0.7050644999999998,
+            "sequences_per_second": 64.42471804675155,
+            "frames_per_second": 9341.584116778975
+          },
+          {
+            "median_ms": 15.2267885,
+            "p95_ms": 22.61520255,
+            "iqr_ms": 2.031390499999997,
+            "mad_ms": 0.7117239999999994,
+            "sequences_per_second": 61.324726112029516,
+            "frames_per_second": 8892.08528624428
+          },
+          {
+            "median_ms": 15.482059,
+            "p95_ms": 26.984664349999992,
+            "iqr_ms": 1.9217320000000004,
+            "mad_ms": 0.6519919999999999,
+            "sequences_per_second": 53.30571869667112,
+            "frames_per_second": 7729.329211017312
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2108891136,
+        "nvml_device_peak_minus_idle_bytes": 410095616,
+        "torch_peak_allocated_bytes": 215580160,
+        "torch_peak_reserved_bytes": 234881024
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 580,
+        "expected_frames": 580,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "global_orient_deg": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "betas_abs": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "transl_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "coco17_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "global_orient_deg": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "betas_abs": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "transl_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "coco17_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+        "fp32_reference_sha256": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+        "native_wrapper_max_abs": {
+          "incam_body_pose": 0,
+          "incam_betas": 0,
+          "incam_global_orient": 0,
+          "incam_transl": 0,
+          "global_body_pose": 0,
+          "global_betas": 0,
+          "global_global_orient": 0,
+          "global_transl": 0
+        }
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 730,
+        "sum_kernel_duration_ns": 4459062
+      }
+    },
+    "c0-b2-l145": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c0-b2-l145/measurement.json",
+      "measurement": {
+        "condition": "0",
+        "length": 145,
+        "batch_size": 2,
+        "segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_037-p0-cam2-s0",
+        "profile_batch_segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "f6f463ea79c7efc03cab2a43fa825b28c8a0c9a2ea32143d1f3f82777332330e",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float32",
+          "f_cliffcam": "torch.float32",
+          "f_cam_angvel": "torch.float32",
+          "f_imgseq": "torch.float32"
+        },
+        "output_dtypes": {
+          "pred_x": "float32",
+          "pred_cam": "float32",
+          "static_conf_logits": "float32",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.5467385,
+        "p95_ms": 24.326022200000004,
+        "iqr_ms": 2.3714485000000014,
+        "mad_ms": 0.9130180000000001,
+        "sequences_per_second": 115.86694583882907,
+        "frames_per_second": 16800.707146630215,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 17.9092785,
+            "p95_ms": 29.150798849999997,
+            "iqr_ms": 7.216967750000002,
+            "mad_ms": 2.7278589999999996,
+            "sequences_per_second": 98.25410145190695,
+            "frames_per_second": 14246.844710526508
+          },
+          {
+            "median_ms": 15.151774,
+            "p95_ms": 21.256702349999998,
+            "iqr_ms": 1.4156497500000018,
+            "mad_ms": 0.6518685,
+            "sequences_per_second": 125.87025213349641,
+            "frames_per_second": 18251.18655935698
+          },
+          {
+            "median_ms": 15.175175,
+            "p95_ms": 18.80279105,
+            "iqr_ms": 1.1268267499999993,
+            "mad_ms": 0.5591294999999992,
+            "sequences_per_second": 128.71029656508185,
+            "frames_per_second": 18662.99300193687
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2110988288,
+        "nvml_device_peak_minus_idle_bytes": 412192768,
+        "torch_peak_allocated_bytes": 220806656,
+        "torch_peak_reserved_bytes": 236978176
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 580,
+        "expected_frames": 580,
+        "incam": {
+          "body_pose_deg": {
+            "median": 1.0948109771099541e-05,
+            "p95": 0.0009451736399521678,
+            "max": 0.5216548009100418
+          },
+          "global_orient_deg": {
+            "median": 5.702920315488698e-06,
+            "p95": 1.8571046326483427e-05,
+            "max": 4.710622606703355e-05
+          },
+          "betas_abs": {
+            "median": 5.960464477539063e-08,
+            "p95": 2.384185791015625e-07,
+            "max": 2.384185791015625e-07
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0,
+            "p95": 0.00095367431640625,
+            "max": 0.003814697265625
+          },
+          "transl_l2_mm": {
+            "median": 0.0,
+            "p95": 0.001911348739186287,
+            "max": 0.0039609069170561196
+          },
+          "coco17_l2_mm": {
+            "median": 0.00017881393432617188,
+            "p95": 0.004629711453894943,
+            "max": 6.924057920584915
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 1.0948109771099541e-05,
+            "p95": 0.0009451736399521678,
+            "max": 0.5216548009100418
+          },
+          "global_orient_deg": {
+            "median": 0.011585268253082048,
+            "p95": 0.052991084900377024,
+            "max": 0.0634692384078577
+          },
+          "betas_abs": {
+            "median": 5.960464477539063e-08,
+            "p95": 2.384185791015625e-07,
+            "max": 2.384185791015625e-07
+          },
+          "transl_component_abs_mm": {
+            "median": 0.00038743019104003906,
+            "p95": 0.8415810763835906,
+            "max": 19.037961959838867
+          },
+          "transl_l2_mm": {
+            "median": 0.06948393013000215,
+            "p95": 1.2922585587070101,
+            "max": 19.053850455992308
+          },
+          "coco17_l2_mm": {
+            "median": 0.08164747372042092,
+            "p95": 1.3595046664500665,
+            "max": 19.124514789341326
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "c33ca8c512ee1f6cddfddb553736e51f017afab1f7a399d10afdf152297e79e6",
+        "fp32_reference_sha256": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 713,
+        "sum_kernel_duration_ns": 5522118
+      }
+    },
+    "c0-b4-l145": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c0-b4-l145/measurement.json",
+      "measurement": {
+        "condition": "0",
+        "length": 145,
+        "batch_size": 4,
+        "segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_037-p0-cam2-s0",
+        "profile_batch_segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "f20337eeee6bf82cea8d027cc11122478d5d0f5b32a15e5098fc1e8809b5a8e6",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float32",
+          "f_cliffcam": "torch.float32",
+          "f_cam_angvel": "torch.float32",
+          "f_imgseq": "torch.float32"
+        },
+        "output_dtypes": {
+          "pred_x": "float32",
+          "pred_cam": "float32",
+          "static_conf_logits": "float32",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.254266999999999,
+        "p95_ms": 21.8177175,
+        "iqr_ms": 1.8368072499999997,
+        "mad_ms": 0.8402069999999986,
+        "sequences_per_second": 242.91833124327607,
+        "frames_per_second": 35223.15803027503,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 15.230659,
+            "p95_ms": 20.9590966,
+            "iqr_ms": 2.3941699999999972,
+            "mad_ms": 0.9122135,
+            "sequences_per_second": 246.84683408197444,
+            "frames_per_second": 35792.79094188629
+          },
+          {
+            "median_ms": 15.335057500000001,
+            "p95_ms": 21.6614933,
+            "iqr_ms": 1.7744789999999995,
+            "mad_ms": 0.8877805000000007,
+            "sequences_per_second": 244.52085881579444,
+            "frames_per_second": 35455.524528290196
+          },
+          {
+            "median_ms": 15.241626499999999,
+            "p95_ms": 23.348337149999992,
+            "iqr_ms": 1.674501000000003,
+            "mad_ms": 0.7161039999999996,
+            "sequences_per_second": 237.58026279444218,
+            "frames_per_second": 34449.13810519411
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2125668352,
+        "nvml_device_peak_minus_idle_bytes": 426872832,
+        "torch_peak_allocated_bytes": 230962176,
+        "torch_peak_reserved_bytes": 251658240
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 580,
+        "expected_frames": 580,
+        "incam": {
+          "body_pose_deg": {
+            "median": 1.35379734963309e-05,
+            "p95": 0.000887605129214845,
+            "max": 0.6432361216592006
+          },
+          "global_orient_deg": {
+            "median": 8.67406167539454e-06,
+            "p95": 2.3867628005660547e-05,
+            "max": 3.6496507138589516e-05
+          },
+          "betas_abs": {
+            "median": 5.960464477539063e-08,
+            "p95": 2.786517143249891e-07,
+            "max": 4.76837158203125e-07
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0,
+            "p95": 0.00095367431640625,
+            "max": 0.003814697265625
+          },
+          "transl_l2_mm": {
+            "median": 2.9802322387695312e-05,
+            "p95": 0.0019804534585280598,
+            "max": 0.0039609069170561196
+          },
+          "coco17_l2_mm": {
+            "median": 0.00024027400458748787,
+            "p95": 0.004291534423828125,
+            "max": 8.298576334929848
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 1.35379734963309e-05,
+            "p95": 0.000887605129214845,
+            "max": 0.6432361216592006
+          },
+          "global_orient_deg": {
+            "median": 0.01311821612764354,
+            "p95": 0.08203097851727671,
+            "max": 0.0922042570061452
+          },
+          "betas_abs": {
+            "median": 5.960464477539063e-08,
+            "p95": 2.786517143249891e-07,
+            "max": 4.76837158203125e-07
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0026747584342956543,
+            "p95": 0.8495992980897425,
+            "max": 19.137144088745117
+          },
+          "transl_l2_mm": {
+            "median": 0.12859688568279465,
+            "p95": 1.3851409336175322,
+            "max": 19.137213381701788
+          },
+          "coco17_l2_mm": {
+            "median": 0.13970090552167658,
+            "p95": 1.3973347574450512,
+            "max": 19.19562925847758
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "f3e120cbc811360abb87304ee1f9c29e17c9e725b08a336a6fbcd1b87784e456",
+        "fp32_reference_sha256": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 713,
+        "sum_kernel_duration_ns": 9170227
+      },
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 713,
+        "dram_read_bytes": 802298112,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 0.0,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 6.483690141014345,
+          "short_scoreboard": 9.181237038127653,
+          "lg_throttle": 2.1966148141693433,
+          "mio_throttle": 7.231618945742685
+        },
+        "artifact": "outputs/trt-batch-i2335/retry-2/ncu/gvhmr/c0-b4-l145/profiles.json",
+        "queue_job": "0-8204808789835131929_2026-11-20T16-13-30-164868070Z_2041708_i2335-r2-gvhmr-ncu-0-l145",
+        "nsys_kernels": 713,
+        "raw_csv_sha256": "cc293ea777be108d4efe85e9665a903a24d9d5241f68eb0de777ae8d2c998ee4"
+      }
+    },
+    "c1-b1-l145": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c1-b1-l145/measurement.json",
+      "measurement": {
+        "condition": "1",
+        "length": 145,
+        "batch_size": 1,
+        "segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_037-p0-cam2-s0",
+        "profile_batch_segments": [
+          "clip_037-p0-cam2-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "01e88114b6259e0488ce3ae3dbdc2ed8fbc47d6d811e065a6349adcb4d6fdd97",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float16",
+          "f_cliffcam": "torch.float16",
+          "f_cam_angvel": "torch.float16",
+          "f_imgseq": "torch.float16"
+        },
+        "output_dtypes": {
+          "pred_x": "float16",
+          "pred_cam": "float16",
+          "static_conf_logits": "float16",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.275117,
+        "p95_ms": 22.5445679,
+        "iqr_ms": 1.7365914999999994,
+        "mad_ms": 0.8458729999999992,
+        "sequences_per_second": 62.17561012711714,
+        "frames_per_second": 9015.463468431984,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 15.170532,
+            "p95_ms": 17.76094929999999,
+            "iqr_ms": 1.5199024999999988,
+            "mad_ms": 0.7326414999999997,
+            "sequences_per_second": 63.07397637816134,
+            "frames_per_second": 9145.726574833394
+          },
+          {
+            "median_ms": 15.2921665,
+            "p95_ms": 21.6363009,
+            "iqr_ms": 1.8156422499999998,
+            "mad_ms": 0.9433989999999994,
+            "sequences_per_second": 62.34764487900242,
+            "frames_per_second": 9040.40850745535
+          },
+          {
+            "median_ms": 15.311932500000001,
+            "p95_ms": 22.66490225,
+            "iqr_ms": 1.778485749999998,
+            "mad_ms": 0.8778825000000001,
+            "sequences_per_second": 61.136152509747184,
+            "frames_per_second": 8864.742113913342
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2010324992,
+        "nvml_device_peak_minus_idle_bytes": 311529472,
+        "torch_peak_allocated_bytes": 125176832,
+        "torch_peak_reserved_bytes": 136314880
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 580,
+        "expected_frames": 580,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.01814901268172089,
+            "p95": 0.061537636909538534,
+            "max": 2.6213456035731277
+          },
+          "global_orient_deg": {
+            "median": 0.017641000480764956,
+            "p95": 0.04071567248572658,
+            "max": 0.12856290919131869
+          },
+          "betas_abs": {
+            "median": 0.00038623809814453125,
+            "p95": 0.0010761409997940654,
+            "max": 0.0015906095504760742
+          },
+          "transl_component_abs_mm": {
+            "median": 0.5285143852233887,
+            "p95": 5.203342437744135,
+            "max": 12.027740478515625
+          },
+          "transl_l2_mm": {
+            "median": 2.553291072336372,
+            "p95": 8.509329601046492,
+            "max": 12.415740871330208
+          },
+          "coco17_l2_mm": {
+            "median": 2.5359684891501506,
+            "p95": 8.654326257863667,
+            "max": 15.487215710822168
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.01814901268172089,
+            "p95": 0.061537636909538534,
+            "max": 2.6213456035731277
+          },
+          "global_orient_deg": {
+            "median": 0.0794320703356276,
+            "p95": 0.39411896625501686,
+            "max": 0.5302910610631008
+          },
+          "betas_abs": {
+            "median": 0.00038623809814453125,
+            "p95": 0.0010761409997940654,
+            "max": 0.0015906095504760742
+          },
+          "transl_component_abs_mm": {
+            "median": 0.3539919853210449,
+            "p95": 22.227659076452255,
+            "max": 43.209172785282135
+          },
+          "transl_l2_mm": {
+            "median": 1.8163596290769777,
+            "p95": 23.85447989091075,
+            "max": 43.21628283707311
+          },
+          "coco17_l2_mm": {
+            "median": 1.8905018995870766,
+            "p95": 24.049851316342973,
+            "max": 43.3927737746876
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "7cc38154cc0710b185bb5f3b8ce12ce64791ec24f70fea8c8695b869f76c6a12",
+        "fp32_reference_sha256": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 701,
+        "sum_kernel_duration_ns": 2114083
+      }
+    },
+    "c1-b2-l145": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c1-b2-l145/measurement.json",
+      "measurement": {
+        "condition": "1",
+        "length": 145,
+        "batch_size": 2,
+        "segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_037-p0-cam2-s0",
+        "profile_batch_segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "89ee6c316f83db5a6cc447855e5b44090af5ab7df4b89acfbaac9c3c045d9c67",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float16",
+          "f_cliffcam": "torch.float16",
+          "f_cam_angvel": "torch.float16",
+          "f_imgseq": "torch.float16"
+        },
+        "output_dtypes": {
+          "pred_x": "float16",
+          "pred_cam": "float16",
+          "static_conf_logits": "float16",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 14.8811315,
+        "p95_ms": 40.447175050000084,
+        "iqr_ms": 2.1737677499999997,
+        "mad_ms": 0.8236265000000005,
+        "sequences_per_second": 103.56205156026465,
+        "frames_per_second": 15016.497476238374,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 14.9089745,
+            "p95_ms": 21.0636437,
+            "iqr_ms": 1.1375260000000011,
+            "mad_ms": 0.5706495,
+            "sequences_per_second": 127.78844604355946,
+            "frames_per_second": 18529.324676316122
+          },
+          {
+            "median_ms": 16.243746,
+            "p95_ms": 63.37965709999984,
+            "iqr_ms": 8.208175249999998,
+            "mad_ms": 2.4880945000000017,
+            "sequences_per_second": 74.34304840719317,
+            "frames_per_second": 10779.74201904301
+          },
+          {
+            "median_ms": 14.494081000000001,
+            "p95_ms": 22.440158699999998,
+            "iqr_ms": 1.2566354999999998,
+            "mad_ms": 0.5538285000000016,
+            "sequences_per_second": 130.01281420598227,
+            "frames_per_second": 18851.858059867427
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2014519296,
+        "nvml_device_peak_minus_idle_bytes": 315723776,
+        "torch_peak_allocated_bytes": 127791616,
+        "torch_peak_reserved_bytes": 140509184
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 580,
+        "expected_frames": 580,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.0165459775480694,
+            "p95": 0.06143570500019587,
+            "max": 2.106698349458458
+          },
+          "global_orient_deg": {
+            "median": 0.016994802283214552,
+            "p95": 0.04189149200583523,
+            "max": 0.14254585271628503
+          },
+          "betas_abs": {
+            "median": 0.0005094185471534729,
+            "p95": 0.0011532634496689287,
+            "max": 0.0015906095504760742
+          },
+          "transl_component_abs_mm": {
+            "median": 0.5327463150024414,
+            "p95": 5.203342437744135,
+            "max": 12.027740478515625
+          },
+          "transl_l2_mm": {
+            "median": 2.5640391583337445,
+            "p95": 8.363008518147838,
+            "max": 12.404114515153463
+          },
+          "coco17_l2_mm": {
+            "median": 2.5374850396687587,
+            "p95": 8.503428111773188,
+            "max": 20.758957877114312
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.0165459775480694,
+            "p95": 0.06143570500019587,
+            "max": 2.106698349458458
+          },
+          "global_orient_deg": {
+            "median": 0.0703459964735634,
+            "p95": 0.21191851932685077,
+            "max": 0.3411965800729441
+          },
+          "betas_abs": {
+            "median": 0.0005094185471534729,
+            "p95": 0.0011532634496689287,
+            "max": 0.0015906095504760742
+          },
+          "transl_component_abs_mm": {
+            "median": 0.2675056457519531,
+            "p95": 20.522898621857166,
+            "max": 41.781388223171234
+          },
+          "transl_l2_mm": {
+            "median": 1.3571004009403593,
+            "p95": 20.841515647723327,
+            "max": 41.786544544159305
+          },
+          "coco17_l2_mm": {
+            "median": 1.390138728547167,
+            "p95": 21.42173937264297,
+            "max": 42.6054829508605
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "b909408f09f189dd77bc28a9ff5f05e21fd25fd7a67d7f9b92f1f11ae3511e9d",
+        "fp32_reference_sha256": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 712,
+        "sum_kernel_duration_ns": 2429467
+      }
+    },
+    "c1-b4-l145": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c1-b4-l145/measurement.json",
+      "measurement": {
+        "condition": "1",
+        "length": 145,
+        "batch_size": 4,
+        "segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_037-p0-cam2-s0",
+        "profile_batch_segments": [
+          "clip_037-p0-cam2-s0",
+          "clip_037-p1-cam0-s0",
+          "clip_037-p2-cam2-s0",
+          "clip_037-p3-cam2-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "7faa6d8c8e9303085f99c3e749a0dd2f47b95bcfa4ce9dcbbfc4241d2326c10b",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float16",
+          "f_cliffcam": "torch.float16",
+          "f_cam_angvel": "torch.float16",
+          "f_imgseq": "torch.float16"
+        },
+        "output_dtypes": {
+          "pred_x": "float16",
+          "pred_cam": "float16",
+          "static_conf_logits": "float16",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.804165000000001,
+        "p95_ms": 23.2855744,
+        "iqr_ms": 2.64636475,
+        "mad_ms": 1.0484209999999994,
+        "sequences_per_second": 221.72758788461732,
+        "frames_per_second": 32150.50024326951,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 16.615559,
+            "p95_ms": 23.15402435,
+            "iqr_ms": 2.5783682500000005,
+            "mad_ms": 1.2057269999999995,
+            "sequences_per_second": 228.032922830157,
+            "frames_per_second": 33064.77381037276
+          },
+          {
+            "median_ms": 16.1768575,
+            "p95_ms": 58.08511229999999,
+            "iqr_ms": 3.754223250000001,
+            "mad_ms": 1.4016664999999993,
+            "sequences_per_second": 191.88838371585442,
+            "frames_per_second": 27823.81563879889
+          },
+          {
+            "median_ms": 15.0171135,
+            "p95_ms": 18.355983799999997,
+            "iqr_ms": 1.4219872500000008,
+            "mad_ms": 0.682312500000001,
+            "sequences_per_second": 254.2315886619588,
+            "frames_per_second": 36863.58035598403
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2016616448,
+        "nvml_device_peak_minus_idle_bytes": 317820928,
+        "torch_peak_allocated_bytes": 132833792,
+        "torch_peak_reserved_bytes": 142606336
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 580,
+        "expected_frames": 580,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.016988131625716517,
+            "p95": 0.065003212511201,
+            "max": 4.446877491424747
+          },
+          "global_orient_deg": {
+            "median": 0.01728850965073262,
+            "p95": 0.04221964305140766,
+            "max": 0.14937454006632067
+          },
+          "betas_abs": {
+            "median": 0.0004584789276123047,
+            "p95": 0.001109921932220496,
+            "max": 0.0015906095504760742
+          },
+          "transl_component_abs_mm": {
+            "median": 0.5334615707397461,
+            "p95": 5.329227447509763,
+            "max": 15.008926391601562
+          },
+          "transl_l2_mm": {
+            "median": 2.5720534618460533,
+            "p95": 8.484660040529628,
+            "max": 15.477663150679925
+          },
+          "coco17_l2_mm": {
+            "median": 2.575109710740704,
+            "p95": 8.523394380958795,
+            "max": 15.763032202869937
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.016988131625716517,
+            "p95": 0.065003212511201,
+            "max": 4.446877491424747
+          },
+          "global_orient_deg": {
+            "median": 0.09276954466563014,
+            "p95": 0.3134766333392905,
+            "max": 0.4432603449228788
+          },
+          "betas_abs": {
+            "median": 0.0004584789276123047,
+            "p95": 0.001109921932220496,
+            "max": 0.0015906095504760742
+          },
+          "transl_component_abs_mm": {
+            "median": 0.33243000507354736,
+            "p95": 20.767012983560562,
+            "max": 41.42852872610092
+          },
+          "transl_l2_mm": {
+            "median": 1.3226467219355071,
+            "p95": 23.512029587634466,
+            "max": 41.485452475231455
+          },
+          "coco17_l2_mm": {
+            "median": 1.424705231827054,
+            "p95": 23.960700898736654,
+            "max": 42.694250509297994
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "55a219a71206d1cfd8ee57b347c6946af8ed73d6067488b76d90eabe247cc1b8",
+        "fp32_reference_sha256": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 712,
+        "sum_kernel_duration_ns": 4633572
+      },
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 712,
+        "dram_read_bytes": 388011264,
+        "dram_write_bytes": 3840,
+        "tensor_active_pct_time_weighted": 12.553520205682641,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 13.63808306414398,
+          "short_scoreboard": 4.331242072648168,
+          "lg_throttle": 1.857187355791416,
+          "mio_throttle": 2.232699980222823
+        },
+        "artifact": "outputs/trt-batch-i2335/gvhmr/c1-b4-l145/profiles.json",
+        "queue_job": "0-8204817422399039221_2026-11-20T13-49-37-600960778Z_1038674_i2335-gvhmr",
+        "nsys_kernels": 712,
+        "raw_csv_sha256": "18a811ba6b4d972625a58a2728d2885f73b2314cb36be375e412f64f025ef645"
+      }
+    },
+    "c2-b1-l145": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/gvhmr/sweep.json",
+      "failure": {
+        "exit_code": -11,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 65.19268131698482,
+        "log": "logs/build-2.log",
+        "name": "build-2"
+      }
+    },
+    "c2-b2-l145": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/gvhmr/sweep.json",
+      "failure": {
+        "exit_code": -11,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 65.19268131698482,
+        "log": "logs/build-2.log",
+        "name": "build-2"
+      }
+    },
+    "c2-b4-l145": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/gvhmr/sweep.json",
+      "failure": {
+        "exit_code": -11,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 65.19268131698482,
+        "log": "logs/build-2.log",
+        "name": "build-2"
+      }
+    },
+    "c0-b1-l177": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c0-b1-l177/measurement.json",
+      "measurement": {
+        "condition": "0",
+        "length": 177,
+        "batch_size": 1,
+        "segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_000-p0-cam0-s0",
+        "profile_batch_segments": [
+          "clip_000-p0-cam0-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "3252a0b6879c281c8d0cec5d42878e5aec57b231a60ce97d5fecc8b4c2b2a777",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float32",
+          "f_cliffcam": "torch.float32",
+          "f_cam_angvel": "torch.float32",
+          "f_imgseq": "torch.float32"
+        },
+        "output_dtypes": {
+          "pred_x": "float32",
+          "pred_cam": "float32",
+          "static_conf_logits": "float32",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 16.6982255,
+        "p95_ms": 38.929067600000074,
+        "iqr_ms": 2.991045749999998,
+        "mad_ms": 1.0959930000000009,
+        "sequences_per_second": 44.83391786457896,
+        "frames_per_second": 7935.603462030475,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 16.6982255,
+            "p95_ms": 24.584443999999994,
+            "iqr_ms": 2.2836250000000007,
+            "mad_ms": 1.1244129999999997,
+            "sequences_per_second": 46.69297996633959,
+            "frames_per_second": 8264.657454042108
+          },
+          {
+            "median_ms": 16.5377205,
+            "p95_ms": 26.252164099999998,
+            "iqr_ms": 2.67805525,
+            "mad_ms": 0.914125499999999,
+            "sequences_per_second": 54.98374132418555,
+            "frames_per_second": 9732.122214380843
+          },
+          {
+            "median_ms": 17.0305495,
+            "p95_ms": 99.11724139999995,
+            "iqr_ms": 5.937044,
+            "mad_ms": 1.333371999999999,
+            "sequences_per_second": 36.61671030693193,
+            "frames_per_second": 6481.157724326951
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2110988288,
+        "nvml_device_peak_minus_idle_bytes": 412192768,
+        "torch_peak_allocated_bytes": 216482304,
+        "torch_peak_reserved_bytes": 236978176
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 708,
+        "expected_frames": 708,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "global_orient_deg": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "betas_abs": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "transl_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "coco17_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "global_orient_deg": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "betas_abs": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "transl_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          },
+          "coco17_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0,
+            "max": 0.0
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1",
+        "fp32_reference_sha256": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1",
+        "native_wrapper_max_abs": {
+          "incam_body_pose": 0,
+          "incam_betas": 0,
+          "incam_global_orient": 0,
+          "incam_transl": 0,
+          "global_body_pose": 0,
+          "global_betas": 0,
+          "global_global_orient": 0,
+          "global_transl": 0
+        }
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 867,
+        "sum_kernel_duration_ns": 4943889
+      }
+    },
+    "c0-b2-l177": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c0-b2-l177/measurement.json",
+      "measurement": {
+        "condition": "0",
+        "length": 177,
+        "batch_size": 2,
+        "segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_000-p0-cam0-s0",
+        "profile_batch_segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "c2885557e711e0d50284bb22a5d44a4974a5b09e8a492efbdc4d83418fff6296",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float32",
+          "f_cliffcam": "torch.float32",
+          "f_cam_angvel": "torch.float32",
+          "f_imgseq": "torch.float32"
+        },
+        "output_dtypes": {
+          "pred_x": "float32",
+          "pred_cam": "float32",
+          "static_conf_logits": "float32",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.2836115,
+        "p95_ms": 23.013198250000006,
+        "iqr_ms": 1.1535712500000006,
+        "mad_ms": 0.4735964999999993,
+        "sequences_per_second": 123.87672751425795,
+        "frames_per_second": 21926.180770023657,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 15.2707215,
+            "p95_ms": 23.34212015,
+            "iqr_ms": 1.0437640000000012,
+            "mad_ms": 0.5180409999999993,
+            "sequences_per_second": 124.01892696251004,
+            "frames_per_second": 21951.350072364276
+          },
+          {
+            "median_ms": 15.308114,
+            "p95_ms": 18.4080422,
+            "iqr_ms": 1.0174052500000013,
+            "mad_ms": 0.47748349999999995,
+            "sequences_per_second": 127.61063052394672,
+            "frames_per_second": 22587.08160273857
+          },
+          {
+            "median_ms": 15.289564500000001,
+            "p95_ms": 24.1947619,
+            "iqr_ms": 2.4472720000000017,
+            "mad_ms": 0.4069710000000013,
+            "sequences_per_second": 120.22119531387736,
+            "frames_per_second": 21279.151570556292
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2115182592,
+        "nvml_device_peak_minus_idle_bytes": 416387072,
+        "torch_peak_allocated_bytes": 222862336,
+        "torch_peak_reserved_bytes": 241172480
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 708,
+        "expected_frames": 708,
+        "incam": {
+          "body_pose_deg": {
+            "median": 1.206394376949301e-05,
+            "p95": 0.0012614568388234324,
+            "max": 0.017667907655977533
+          },
+          "global_orient_deg": {
+            "median": 6.1854946223281055e-06,
+            "p95": 2.3735997997928593e-05,
+            "max": 4.28898585162105e-05
+          },
+          "betas_abs": {
+            "median": 5.960464477539063e-08,
+            "p95": 2.384185791015625e-07,
+            "max": 2.8312206268310547e-07
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0,
+            "p95": 0.00095367431640625,
+            "max": 0.003814697265625
+          },
+          "transl_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0019258850123171224,
+            "max": 0.003910355440820867
+          },
+          "coco17_l2_mm": {
+            "median": 0.0002384185791015625,
+            "p95": 0.0058628045618445744,
+            "max": 0.09423780859175067
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 1.206394376949301e-05,
+            "p95": 0.0012614568388234324,
+            "max": 0.017667907655977533
+          },
+          "global_orient_deg": {
+            "median": 0.027978569065068015,
+            "p95": 0.059360184208205845,
+            "max": 0.08034436338101086
+          },
+          "betas_abs": {
+            "median": 5.960464477539063e-08,
+            "p95": 2.384185791015625e-07,
+            "max": 2.8312206268310547e-07
+          },
+          "transl_component_abs_mm": {
+            "median": 0.012363307178020477,
+            "p95": 0.2962082624435425,
+            "max": 0.768125057220459
+          },
+          "transl_l2_mm": {
+            "median": 0.10110977169761828,
+            "p95": 0.4011865750603594,
+            "max": 0.9291544491795791
+          },
+          "coco17_l2_mm": {
+            "median": 0.15604083904059032,
+            "p95": 0.5344125372683424,
+            "max": 1.347328788951308
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "3a0f27399ec593e915ac584c67e9c162ffa7b57b60ba9ef7058cfb449d8b10ad",
+        "fp32_reference_sha256": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 745,
+        "sum_kernel_duration_ns": 7345973
+      }
+    },
+    "c0-b4-l177": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c0-b4-l177/measurement.json",
+      "measurement": {
+        "condition": "0",
+        "length": 177,
+        "batch_size": 4,
+        "segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_000-p0-cam0-s0",
+        "profile_batch_segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "8d044d3ab0789389dafdd408c202f3520b75725e60aa563f2568ac887bed2170",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float32",
+          "f_cliffcam": "torch.float32",
+          "f_cam_angvel": "torch.float32",
+          "f_imgseq": "torch.float32"
+        },
+        "output_dtypes": {
+          "pred_x": "float32",
+          "pred_cam": "float32",
+          "static_conf_logits": "float32",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 16.3722235,
+        "p95_ms": 23.577809249999998,
+        "iqr_ms": 1.510702999999996,
+        "mad_ms": 0.7485695000000003,
+        "sequences_per_second": 232.8424575484859,
+        "frames_per_second": 41213.114986082,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 16.118111499999998,
+            "p95_ms": 17.75057015,
+            "iqr_ms": 1.236904000000001,
+            "mad_ms": 0.620899999999998,
+            "sequences_per_second": 245.74477380794607,
+            "frames_per_second": 43496.82496400645
+          },
+          {
+            "median_ms": 16.4408935,
+            "p95_ms": 25.0498507,
+            "iqr_ms": 1.6272122499999995,
+            "mad_ms": 0.8136894999999997,
+            "sequences_per_second": 221.00416476657637,
+            "frames_per_second": 39117.73716368402
+          },
+          {
+            "median_ms": 16.574196999999998,
+            "p95_ms": 22.9928567,
+            "iqr_ms": 1.5830269999999977,
+            "mad_ms": 0.7918390000000013,
+            "sequences_per_second": 233.09023575678793,
+            "frames_per_second": 41256.97172895147
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2125668352,
+        "nvml_device_peak_minus_idle_bytes": 426872832,
+        "torch_peak_allocated_bytes": 235258368,
+        "torch_peak_reserved_bytes": 251658240
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 708,
+        "expected_frames": 708,
+        "incam": {
+          "body_pose_deg": {
+            "median": 1.478255332321971e-05,
+            "p95": 0.00318656077762907,
+            "max": 0.027612066069101104
+          },
+          "global_orient_deg": {
+            "median": 1.19636736007248e-05,
+            "p95": 2.911423444971688e-05,
+            "max": 4.9749514622383005e-05
+          },
+          "betas_abs": {
+            "median": 8.940696716308594e-08,
+            "p95": 2.384185791015625e-07,
+            "max": 3.5762786865234375e-07
+          },
+          "transl_component_abs_mm": {
+            "median": 0.0,
+            "p95": 0.00095367431640625,
+            "max": 0.003814697265625
+          },
+          "transl_l2_mm": {
+            "median": 0.0,
+            "p95": 0.0019369216929998303,
+            "max": 0.0038884893489599445
+          },
+          "coco17_l2_mm": {
+            "median": 0.0002457562461863554,
+            "p95": 0.016123770749816604,
+            "max": 0.12710115751238973
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 1.478255332321971e-05,
+            "p95": 0.00318656077762907,
+            "max": 0.027612066069101104
+          },
+          "global_orient_deg": {
+            "median": 0.027978271300303392,
+            "p95": 0.08491637020151208,
+            "max": 0.10356516750500581
+          },
+          "betas_abs": {
+            "median": 8.940696716308594e-08,
+            "p95": 2.384185791015625e-07,
+            "max": 3.5762786865234375e-07
+          },
+          "transl_component_abs_mm": {
+            "median": 0.011885538697242737,
+            "p95": 0.8562222123146044,
+            "max": 1.846909523010254
+          },
+          "transl_l2_mm": {
+            "median": 0.0846344898634431,
+            "p95": 1.6511913218890906,
+            "max": 1.9135398888952835
+          },
+          "coco17_l2_mm": {
+            "median": 0.1625192814541511,
+            "p95": 1.5936533244749487,
+            "max": 2.541467532520331
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "b48392261a58fa04b75c77d9bb04db80dfa48dd6965c88003b3a6f8516d9c977",
+        "fp32_reference_sha256": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 745,
+        "sum_kernel_duration_ns": 9408866
+      },
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 745,
+        "dram_read_bytes": 955437824,
+        "dram_write_bytes": 62976,
+        "tensor_active_pct_time_weighted": 0.0,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 7.314315647374893,
+          "short_scoreboard": 6.221922921160943,
+          "lg_throttle": 3.8853444857660877,
+          "mio_throttle": 7.561854550748421
+        },
+        "artifact": "outputs/trt-batch-i2335/retry-2/ncu/gvhmr/c0-b4-l177/profiles.json",
+        "queue_job": "0-8204808789536315216_2026-11-20T16-13-30-463684783Z_2041781_i2335-r2-gvhmr-ncu-0-l177",
+        "nsys_kernels": 745,
+        "raw_csv_sha256": "5e0ca01db05ecd3d17366f430f52756b2fa0ec7179ba6d03cdfb664995b2186e"
+      }
+    },
+    "c1-b1-l177": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c1-b1-l177/measurement.json",
+      "measurement": {
+        "condition": "1",
+        "length": 177,
+        "batch_size": 1,
+        "segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_000-p0-cam0-s0",
+        "profile_batch_segments": [
+          "clip_000-p0-cam0-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "f39caa2abf2d47ff410659ca073ab9ca4d8dbc942a921d70654fcdf8ef4bfc30",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float16",
+          "f_cliffcam": "torch.float16",
+          "f_cam_angvel": "torch.float16",
+          "f_imgseq": "torch.float16"
+        },
+        "output_dtypes": {
+          "pred_x": "float16",
+          "pred_cam": "float16",
+          "static_conf_logits": "float16",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.097948,
+        "p95_ms": 19.3002367,
+        "iqr_ms": 1.3223692499999995,
+        "mad_ms": 0.6759840000000006,
+        "sequences_per_second": 63.432007704989594,
+        "frames_per_second": 11227.465363783158,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 15.173515,
+            "p95_ms": 22.000228099999998,
+            "iqr_ms": 1.99099775,
+            "mad_ms": 0.7791344999999996,
+            "sequences_per_second": 60.3967808554458,
+            "frames_per_second": 10690.230211413906
+          },
+          {
+            "median_ms": 15.048608999999999,
+            "p95_ms": 17.097674849999997,
+            "iqr_ms": 1.1415902500000001,
+            "mad_ms": 0.5560325000000015,
+            "sequences_per_second": 65.92834115161268,
+            "frames_per_second": 11669.316383835445
+          },
+          {
+            "median_ms": 15.122954499999999,
+            "p95_ms": 18.066544149999995,
+            "iqr_ms": 1.2915849999999995,
+            "mad_ms": 0.5510524999999991,
+            "sequences_per_second": 64.22781822931407,
+            "frames_per_second": 11368.32382658859
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2012422144,
+        "nvml_device_peak_minus_idle_bytes": 313626624,
+        "torch_peak_allocated_bytes": 125765632,
+        "torch_peak_reserved_bytes": 138412032
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 708,
+        "expected_frames": 708,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.017506429868947557,
+            "p95": 0.06286948713423601,
+            "max": 2.025986307652545
+          },
+          "global_orient_deg": {
+            "median": 0.01679205553480194,
+            "p95": 0.04653430747118604,
+            "max": 0.15087098290787657
+          },
+          "betas_abs": {
+            "median": 0.0004762709140777588,
+            "p95": 0.0013775587081907032,
+            "max": 0.0019000768661499023
+          },
+          "transl_component_abs_mm": {
+            "median": 0.44214725494384766,
+            "p95": 5.798816680908202,
+            "max": 11.175155639648438
+          },
+          "transl_l2_mm": {
+            "median": 2.3847425053470923,
+            "p95": 8.564570039755369,
+            "max": 11.273556018021177
+          },
+          "coco17_l2_mm": {
+            "median": 2.374600319128525,
+            "p95": 8.550253029295307,
+            "max": 13.04721047319681
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.017506429868947557,
+            "p95": 0.06286948713423601,
+            "max": 2.025986307652545
+          },
+          "global_orient_deg": {
+            "median": 0.058826369715435575,
+            "p95": 0.19581828990679678,
+            "max": 0.2782683731840538
+          },
+          "betas_abs": {
+            "median": 0.0004762709140777588,
+            "p95": 0.0013775587081907032,
+            "max": 0.0019000768661499023
+          },
+          "transl_component_abs_mm": {
+            "median": 0.2680085599422455,
+            "p95": 3.1044960021972656,
+            "max": 20.858287811279297
+          },
+          "transl_l2_mm": {
+            "median": 0.9630811986303005,
+            "p95": 20.348897650730624,
+            "max": 21.604904778022064
+          },
+          "coco17_l2_mm": {
+            "median": 0.9775036227101587,
+            "p95": 20.126688317324504,
+            "max": 22.80140240718787
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "043783d5e822c9f703105a991d20ebd11cffd90ef812b767e6d5a24cdcf4417d",
+        "fp32_reference_sha256": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 732,
+        "sum_kernel_duration_ns": 1778025
+      }
+    },
+    "c1-b2-l177": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c1-b2-l177/measurement.json",
+      "measurement": {
+        "condition": "1",
+        "length": 177,
+        "batch_size": 2,
+        "segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_000-p0-cam0-s0",
+        "profile_batch_segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "66a5052994830071b9d3d7fcf4be5e3152f937c7466941e5bc9d5d625f9cfc15",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float16",
+          "f_cliffcam": "torch.float16",
+          "f_cam_angvel": "torch.float16",
+          "f_imgseq": "torch.float16"
+        },
+        "output_dtypes": {
+          "pred_x": "float16",
+          "pred_cam": "float16",
+          "static_conf_logits": "float16",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.058252,
+        "p95_ms": 22.172010500000003,
+        "iqr_ms": 1.5636507500000008,
+        "mad_ms": 0.7462814999999994,
+        "sequences_per_second": 126.5584290523595,
+        "frames_per_second": 22400.84194226763,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 14.596483500000001,
+            "p95_ms": 17.93513555,
+            "iqr_ms": 1.397898249999999,
+            "mad_ms": 0.6243495000000019,
+            "sequences_per_second": 132.21864623083988,
+            "frames_per_second": 23402.70038285866
+          },
+          {
+            "median_ms": 15.098234,
+            "p95_ms": 22.1720105,
+            "iqr_ms": 1.4099717499999969,
+            "mad_ms": 0.7891529999999989,
+            "sequences_per_second": 125.99187997326607,
+            "frames_per_second": 22300.562755268093
+          },
+          {
+            "median_ms": 15.399315999999999,
+            "p95_ms": 23.0321453,
+            "iqr_ms": 1.9945169999999983,
+            "mad_ms": 0.8918195000000004,
+            "sequences_per_second": 121.88853647425626,
+            "frames_per_second": 21574.270955943357
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2016616448,
+        "nvml_device_peak_minus_idle_bytes": 317820928,
+        "torch_peak_allocated_bytes": 128956416,
+        "torch_peak_reserved_bytes": 142606336
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 708,
+        "expected_frames": 708,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.017349540184509765,
+            "p95": 0.06275062395045719,
+            "max": 2.323056252896756
+          },
+          "global_orient_deg": {
+            "median": 0.016756654918722823,
+            "p95": 0.048565539627774136,
+            "max": 0.1460620312484919
+          },
+          "betas_abs": {
+            "median": 0.0005252957344055176,
+            "p95": 0.0014152705669401217,
+            "max": 0.0019000768661499023
+          },
+          "transl_component_abs_mm": {
+            "median": 0.4297494888305664,
+            "p95": 5.729103088378906,
+            "max": 15.539169311523438
+          },
+          "transl_l2_mm": {
+            "median": 2.384651344810754,
+            "p95": 8.425354994739159,
+            "max": 15.712307410169904
+          },
+          "coco17_l2_mm": {
+            "median": 2.3685659052800694,
+            "p95": 8.450563908233232,
+            "max": 15.93253801119305
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.017349540184509765,
+            "p95": 0.06275062395045719,
+            "max": 2.323056252896756
+          },
+          "global_orient_deg": {
+            "median": 0.06571618887088165,
+            "p95": 0.17487591495842345,
+            "max": 0.3096519389631787
+          },
+          "betas_abs": {
+            "median": 0.0005252957344055176,
+            "p95": 0.0014152705669401217,
+            "max": 0.0019000768661499023
+          },
+          "transl_component_abs_mm": {
+            "median": 0.27584098279476166,
+            "p95": 1.8519721925258594,
+            "max": 20.28130367398262
+          },
+          "transl_l2_mm": {
+            "median": 0.9400888320836368,
+            "p95": 16.731409451620845,
+            "max": 20.296314506478687
+          },
+          "coco17_l2_mm": {
+            "median": 0.929714543277548,
+            "p95": 16.474182525082995,
+            "max": 21.314996196220044
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "0bcdfd1e42c1dc792ea2099c71430399a83edde6433a3b29198a53ad45b8a69b",
+        "fp32_reference_sha256": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 744,
+        "sum_kernel_duration_ns": 2831399
+      }
+    },
+    "c1-b4-l177": {
+      "status": "measured",
+      "artifact": "outputs/trt-batch-i2335/retry-2/gvhmr/c1-b4-l177/measurement.json",
+      "measurement": {
+        "condition": "1",
+        "length": 177,
+        "batch_size": 4,
+        "segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "profile_representative": "clip_000-p0-cam0-s0",
+        "profile_batch_segments": [
+          "clip_000-p0-cam0-s0",
+          "clip_000-p1-cam0-s0",
+          "clip_000-p2-cam0-s0",
+          "clip_000-p3-cam2-s0"
+        ],
+        "tensor_lock_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+        "engine_sha256": null,
+        "raw_outputs_sha256": "107e88aec6bc6a956f556791e365c8201790bc445dfd1b863475ba5c873f3ad8",
+        "input_dtypes": {
+          "length": "torch.int64",
+          "obs": "torch.float16",
+          "f_cliffcam": "torch.float16",
+          "f_cam_angvel": "torch.float16",
+          "f_imgseq": "torch.float16"
+        },
+        "output_dtypes": {
+          "pred_x": "float16",
+          "pred_cam": "float16",
+          "static_conf_logits": "float16",
+          "mask_out": "bool",
+          "length_out": "int64"
+        },
+        "trt_nvtx_verbosity": null,
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "tensorrt": null,
+        "device": "NVIDIA GeForce RTX 5060 Ti",
+        "device_uuid": "GPU-15feca48-ad19-0234-6b87-88551f498c6d",
+        "driver": "621.24",
+        "cc": [
+          12,
+          0
+        ],
+        "queue_run_id": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing",
+        "median_ms": 15.849191999999999,
+        "p95_ms": 25.54124875,
+        "iqr_ms": 2.259253749999999,
+        "mad_ms": 0.8568214999999979,
+        "sequences_per_second": 216.13823832991736,
+        "frames_per_second": 38256.46818439537,
+        "warmup": 30,
+        "blocks": [
+          {
+            "median_ms": 16.2240195,
+            "p95_ms": 26.220854549999995,
+            "iqr_ms": 4.169761749999999,
+            "mad_ms": 1.3713889999999997,
+            "sequences_per_second": 216.26223132481246,
+            "frames_per_second": 38278.41494449181
+          },
+          {
+            "median_ms": 15.790996499999999,
+            "p95_ms": 41.73740239999995,
+            "iqr_ms": 1.8640995000000018,
+            "mad_ms": 0.8225794999999998,
+            "sequences_per_second": 196.0434201319072,
+            "frames_per_second": 34699.68536334758
+          },
+          {
+            "median_ms": 15.7584505,
+            "p95_ms": 20.5600788,
+            "iqr_ms": 1.7742177499999965,
+            "mad_ms": 0.6580350000000008,
+            "sequences_per_second": 240.6693069260894,
+            "frames_per_second": 42598.46732591782
+          }
+        ],
+        "nvml_device_peak_sampled_bytes": 2020810752,
+        "nvml_device_peak_minus_idle_bytes": 322015232,
+        "torch_peak_allocated_bytes": 135111680,
+        "torch_peak_reserved_bytes": 146800640
+      },
+      "accuracy": {
+        "mask_matches_input": true,
+        "length_matches_input": true,
+        "mask_matches_fp32": true,
+        "length_matches_fp32": true,
+        "mask_disagreeing_frames": 0,
+        "compared_frames": 708,
+        "expected_frames": 708,
+        "incam": {
+          "body_pose_deg": {
+            "median": 0.017556018481923213,
+            "p95": 0.06331302963348832,
+            "max": 1.516852856740343
+          },
+          "global_orient_deg": {
+            "median": 0.01701161384756026,
+            "p95": 0.04821964221654815,
+            "max": 0.14546627652136238
+          },
+          "betas_abs": {
+            "median": 0.0004632920026779175,
+            "p95": 0.0014152705669401217,
+            "max": 0.0019000768661499023
+          },
+          "transl_component_abs_mm": {
+            "median": 0.4252195358276367,
+            "p95": 5.798816680908202,
+            "max": 15.539169311523438
+          },
+          "transl_l2_mm": {
+            "median": 2.365800913389604,
+            "p95": 8.687870871583616,
+            "max": 15.712307410169904
+          },
+          "coco17_l2_mm": {
+            "median": 2.3587551214362215,
+            "p95": 8.637423449648029,
+            "max": 15.801488705545285
+          }
+        },
+        "global": {
+          "body_pose_deg": {
+            "median": 0.017556018481923213,
+            "p95": 0.06331302963348832,
+            "max": 1.516852856740343
+          },
+          "global_orient_deg": {
+            "median": 0.09264046396473663,
+            "p95": 0.1950474658579507,
+            "max": 0.2483768935880555
+          },
+          "betas_abs": {
+            "median": 0.0004632920026779175,
+            "p95": 0.0014152705669401217,
+            "max": 0.0019000768661499023
+          },
+          "transl_component_abs_mm": {
+            "median": 0.30527450144290924,
+            "p95": 4.126189649105069,
+            "max": 19.228458404541016
+          },
+          "transl_l2_mm": {
+            "median": 1.0990342025480453,
+            "p95": 17.727673684690092,
+            "max": 19.465070027516415
+          },
+          "coco17_l2_mm": {
+            "median": 1.1214183984278336,
+            "p95": 17.75580327267215,
+            "max": 20.354324969243315
+          }
+        },
+        "head_nonfinite": {
+          "pred_x": 0,
+          "pred_cam": 0,
+          "static_conf_logits": 0
+        },
+        "decoded_outputs_sha256": "407a8e8aee50ceab85863fb017ebb5034b1cbb54a7cd5b01b47af32657c57893",
+        "fp32_reference_sha256": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1",
+        "native_wrapper_max_abs": null
+      },
+      "nsys": {
+        "status": "measured",
+        "gpu_kernels": 745,
+        "sum_kernel_duration_ns": 4277504
+      },
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 745,
+        "dram_read_bytes": 493240576,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 13.225655617617441,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 13.903006478344478,
+          "short_scoreboard": 4.225370387327167,
+          "lg_throttle": 1.9333588384763305,
+          "mio_throttle": 2.2905362947532266
+        },
+        "artifact": "outputs/trt-batch-i2335/gvhmr/c1-b4-l177/profiles.json",
+        "queue_job": "0-8204817422399039221_2026-11-20T13-49-37-600960778Z_1038674_i2335-gvhmr",
+        "nsys_kernels": 745,
+        "raw_csv_sha256": "e467bf5b72f79c89845ce8bcbafb8a77c109adb5f3abfd9b89c87c996e737d6d"
+      }
+    },
+    "c2-b1-l177": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/gvhmr/sweep.json",
+      "failure": {
+        "exit_code": -11,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 65.19268131698482,
+        "log": "logs/build-2.log",
+        "name": "build-2"
+      }
+    },
+    "c2-b2-l177": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/gvhmr/sweep.json",
+      "failure": {
+        "exit_code": -11,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 65.19268131698482,
+        "log": "logs/build-2.log",
+        "name": "build-2"
+      }
+    },
+    "c2-b4-l177": {
+      "status": "unavailable",
+      "stage_evidence": "outputs/trt-batch-i2335/retry-2/gvhmr/sweep.json",
+      "failure": {
+        "exit_code": -11,
+        "verified": false,
+        "expected_rejection": null,
+        "wall_seconds": 65.19268131698482,
+        "log": "logs/build-2.log",
+        "name": "build-2"
+      }
+    }
+  },
+  "historical_batch1_ncu": {
+    "clipreid": {
+      "0": {
+        "status": "measured",
+        "profiled_kernels": 188,
+        "dram_read_bytes": 483787520,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 1.3903657928775706,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 4.6486334239162685,
+          "short_scoreboard": 7.888927066892923,
+          "lg_throttle": 2.444751272710012,
+          "mio_throttle": 31.195321173859913
+        },
+        "queue_job": "0-8204864177025535035_2026-11-20T00-50-22-974464964Z_3541034_i2297-clipreid-0-ncu"
+      },
+      "1": {
+        "status": "measured",
+        "profiled_kernels": 166,
+        "dram_read_bytes": 191208960,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 19.166529662326955,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 11.841370787674764,
+          "short_scoreboard": 3.9372946652468155,
+          "lg_throttle": 1.3578781216722209,
+          "mio_throttle": 1.6207612242794824
+        },
+        "queue_job": "0-8204864176778836987_2026-11-20T00-50-23-221163012Z_3541072_i2297-clipreid-1-ncu"
+      },
+      "2": {
+        "status": "measured",
+        "profiled_kernels": 114,
+        "dram_read_bytes": 161052160,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 29.880349771666207,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 9.472630813582672,
+          "short_scoreboard": 3.6707097481950135,
+          "lg_throttle": 0.4215506288746588,
+          "mio_throttle": 1.5857040079597928
+        },
+        "queue_job": "0-8204863795956040101_2026-11-20T00-56-44-043959898Z_3574763_i2297-clipreid-2-ncu-omit-layer-nvtx"
+      },
+      "3a": {
+        "status": "measured",
+        "profiled_kernels": 127,
+        "dram_read_bytes": 155445248,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 28.932484479886945,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 9.110752788573166,
+          "short_scoreboard": 4.089799121788725,
+          "lg_throttle": 0.4418949679503356,
+          "mio_throttle": 1.5874998738202188
+        }
+      },
+      "3b": {
+        "status": "measured",
+        "profiled_kernels": 115,
+        "dram_read_bytes": 75960832,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 17.11219296565812,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 16.63980403421422,
+          "short_scoreboard": 7.244811694114646,
+          "lg_throttle": 0.8964001659645091,
+          "mio_throttle": 1.9381782203498024
+        }
+      }
+    },
+    "gvhmr": {
+      "0": {
+        "145": {
+          "status": "measured",
+          "profiled_kernels": 730,
+          "dram_read_bytes": 275522304,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 0.0,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 8.752616083777903,
+            "short_scoreboard": 8.48390081011657,
+            "lg_throttle": 2.4305097806757567,
+            "mio_throttle": 21.480690245669454
+          }
+        },
+        "177": {
+          "status": "measured",
+          "profiled_kernels": 867,
+          "dram_read_bytes": 345229056,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 0.0,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 7.09223797169103,
+            "short_scoreboard": 7.261722680236807,
+            "lg_throttle": 1.0009016598715788,
+            "mio_throttle": 22.510427138950405
+          }
+        }
+      },
+      "1": {
+        "145": {
+          "status": "measured",
+          "profiled_kernels": 701,
+          "dram_read_bytes": 106659072,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 7.2980054988309115,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 18.595115675192964,
+            "short_scoreboard": 8.599345780117252,
+            "lg_throttle": 0.6128683217991046,
+            "mio_throttle": 3.423689504047754
+          }
+        },
+        "177": {
+          "status": "measured",
+          "profiled_kernels": 732,
+          "dram_read_bytes": 150749696,
+          "dram_write_bytes": 512,
+          "tensor_active_pct_time_weighted": 6.409783841737566,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 20.2316636692721,
+            "short_scoreboard": 8.041532245048533,
+            "lg_throttle": 0.6910297203200301,
+            "mio_throttle": 1.5889293537156168
+          }
+        }
+      },
+      "2": {
+        "145": {
+          "status": "measured",
+          "profiled_kernels": 135,
+          "dram_read_bytes": 71316992,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 20.150211559358873,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 14.248490220048897,
+            "short_scoreboard": 5.05202424612877,
+            "lg_throttle": 0.6086875169790816,
+            "mio_throttle": 1.7636701983156753
+          }
+        },
+        "177": {
+          "status": "measured",
+          "profiled_kernels": 135,
+          "dram_read_bytes": 71583232,
+          "dram_write_bytes": 0,
+          "tensor_active_pct_time_weighted": 19.326536141663716,
+          "stall_pct_time_weighted": {
+            "long_scoreboard": 14.242040770248035,
+            "short_scoreboard": 5.5045566558075025,
+            "lg_throttle": 0.5531003451278907,
+            "mio_throttle": 1.5955407541205682
+          }
+        }
+      }
+    }
+  }
+}

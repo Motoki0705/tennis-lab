@@ -21,7 +21,7 @@ Claude・Codexなど、このrepoで働くすべてのエージェントが読�
 2. 作業に関係しそうな層の `index.md` を開き、関係するエントリだけを読む。全件は読まない。
 3. エントリの内容に頼る前に、`evidence` の方法で今も成り立つかを確かめる。確かめたら `last_verified` を更新してよい。
 
-共有memory自体を変更するPRでは、既存の判断を確認するときにbase側のmemoryを読む。
+公開する内容は、[専用CLI](../../ops/shared_memory/README.md) が取得する最新の `main` に対して確かめる。
 
 ## 層
 
@@ -65,45 +65,19 @@ Claude・Codexなど、このrepoで働くすべてのエージェントが読�
 3. 既存エントリと重なるなら、新しく作らず、そのエントリを書き換えて `last_verified` を更新する。同じ指示が繰り返されたことは、そのエントリの重要度が高い証拠なので、本文で明確にする。
 4. 複数の作業に使える人間の判断を `decision/` に置く。
 
-上の出典確認と「書く」の条件を満たす記録に、追加の人間の承認は不要である。今の作業から生まれた記録は今の作業ブランチに別コミットで入れ、PR本文に書き添える。作業ブランチが無ければ、memoryだけのPRを作る。
+共有4層の追加・更新・削除はすべて [専用CLI](../../ops/shared_memory/README.md) で公開する。上の出典確認と「書く」の条件を満たしたら、作業中に得た観察も同じ経路で独立して反映する。CLI が機械検査を行い、共有memory専用のPRを作成してマージする。
 
 ### 形式
 
-ファイル名は `<kebab-case>.md`。下の例のキーはすべて必須。frontmatterはYAMLなので、文字列（`#` やバッククォートで始まるものを含む）は二重引用符で囲む。
+ファイル名は `<kebab-case>.md`。CLI は JSON の spec から `title`、`summary`、`applies_to`、`source`、`created`、`last_verified`、`evidence`、`citations` の frontmatter と Markdown 本文を生成する。`summary` は `SUMMARY.md` に載る1行の要点。`applies_to` は `all`、`claude`、`codex`、`gemini` のいずれかを選ぶ。
 
-```markdown
----
-title: "1行で事実を述べる（index.md のリンク文字列）"
-summary: "SUMMARY.md に載せる1行の要点"
-applies_to: all         # all | claude | codex | gemini
-source: "どこで観察したか（#issue / PR / commit / 日付）"
-created: 2026-10-15
-last_verified: 2026-10-15
-evidence: "今も成り立つかを確かめる方法（コマンド、ファイル、行）"
-citations:
-  - path: ".agents/ops/storage_tier/README.md"
-    symbol: "#worktrees-and-service"
----
+`citations` には観察の根拠になったコード・README・規則の相対パスを指定する。該当する参照が無ければ `[]` を使う。形式の詳細と実行例は [CLI README](../../ops/shared_memory/README.md#コマンド)、サイズと行数の上限は [schema.py](../../ops/shared_memory/schema.py) を参照する。[SUMMARY.md](../../memory/SUMMARY.md) と各層の `index.md` は公開時に自動生成する。
 
-観察（何が起きるか、ユーザーが何を望むか）。
+## 利用・変更時の自己修復（JIT）
 
-**使い方:** 次にどう行動するか。
-```
-
-`citations` の `path` はrepo相対パス。 `symbol` は省略でき、本文の文字列、または `#worktrees-and-service` のような `#` 付きのMarkdownアンカーを指定する。 `note` は省略可能な補足。対応するrepo内の参照が無い観察には `citations: []` を使う。
-
-エントリを追加・更新・削除したら、repo rootから次のコマンドで [SUMMARY.md](../../memory/SUMMARY.md) と各層の `index.md` を再生成して検査する。
-
-```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory sync-index
-PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory validate
-```
-
-## 更新・削除
-
-- **更新**: 内容を確かめ直したら `last_verified` を更新する。事実が変わったら本文を書き換える（変更履歴は書かない。gitにある）。
-- **削除**: エントリを消し、再生成した索引を同じコミットに含める。理由はコミットメッセージに書く。
-- **検証期限**: `last_verified` から90日を過ぎたエントリは、確かめ直すか削除する。ユーザーの判断は、その後の指示と矛盾しないかで確かめる。期限・参照・上限の状況は `PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory audit` で確認できる。
+1. エントリを使うときは `evidence` と `citations` を開いて、観察と根拠を照合する。コード・README・規則を変更するときは、対象パスを `rg` で共有4層のエントリから探し、アンカーや記述への影響を確認する。
+2. 矛盾や参照切れを見つけたら、今も成り立つ観察は `shared_memory update` で本文・根拠・引用を修正し、確認した日を `last_verified` に記録する。反証、廃止、仕様への昇格で役目を終えた観察は `shared_memory delete` で削除する。どちらも理由と、読んだ版の生バイトの SHA-256 を `expected_sha256` に渡す。対象が変わっていた場合は最新版から判断し直す。[CLIの形式](../../ops/shared_memory/README.md#コマンド)
+3. 新しい引用先は公開時点の `main` に存在するものを選ぶ。まだマージされていない変更で引用先が消える場合は、先に `main` にある有効な引用先へ差し替えるか、不要になった観察を削除する。必要に応じて `--dry-run` で照合する。実際の公開は [専用CLI](../../ops/shared_memory/README.md#コマンド) から行う。
 
 ## 圧縮
 
@@ -112,7 +86,13 @@ memoryは毎日読まれるので、大きくなるほど高くつく。`SUMMARY
 1. 期限切れ・反証済み・コードやREADMEで分かるようになったエントリを削除する。
 2. 同じ事柄を言っている複数のエントリを1つに統合する。
 3. 繰り返し効いているエントリを、規則・skill・READMEへ昇格させて削除する。
-4. 残ったエントリから `SUMMARY.md` と各層の `index.md` を再生成する。
+4. 関係する更新と削除を `shared_memory batch` でまとめて公開する。
+
+## 定期保守（AutoDream）
+
+期限・壊れた引用・上限の使用量は `PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory audit` で確認する。検証期限の定義は [schema.py](../../ops/shared_memory/schema.py) を参照する。人間の判断は、その後の指示と矛盾しないかを確かめる。
+
+AutoDream は経過日数と `main`・共有memoryの更新件数を組み合わせたトリガーや、手動実行、点検で見つかった問題を契機として、全4層を同じ条件で整理する。Orient → Gather Signal → Consolidate → Prune & Index の順で状況と根拠を確認し、重複や矛盾を整理した操作を専用CLI経由で反映する（#2326で実装中）。生成文書だけがずれていた場合は `shared_memory repair-index --reason <理由>` で公開する。
 
 ## 運用レポート専用memory
 

@@ -69,10 +69,12 @@ class TorchRunner:
 
 
 class TensorRTContext:
-    def __init__(self, plan, *, omit_layer_nvtx=False):
+    def __init__(self, plan, *, omit_layer_nvtx=False, init_plugins=False):
         import tensorrt as trt
 
         self.logger = trt.Logger(trt.Logger.WARNING)
+        if init_plugins and not trt.init_libnvinfer_plugins(self.logger, ""):
+            raise RuntimeError("Could not initialize TensorRT plugins")
         self.runtime = trt.Runtime(self.logger)
         self.engine = self.runtime.deserialize_cuda_engine(plan.read_bytes())
         if self.engine is None:

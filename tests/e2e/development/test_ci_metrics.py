@@ -384,6 +384,7 @@ def scoped_observation(tmp_path: Path) -> Path:
         "missing_markers",
         "wrong_head",
         "runtime_job_skipped",
+        "scope_job_failed",
     ],
 )
 def test_required_system_runtime_cannot_lose_or_skip_tests(
@@ -463,14 +464,21 @@ def test_required_system_runtime_cannot_lose_or_skip_tests(
         observed["source"]["commit"] = "b" * 40
         write_json(system / "environment.json", observed)
     needs = {
-        name: {"result": "success"} for name in ("plan", "lint", "tests", "system-deps")
+        name: {"result": "success"}
+        for name in ("scope", "plan", "lint", "tests", "system-deps")
     }
     if fault == "runtime_job_skipped":
         needs["system-deps"]["result"] = "skipped"
+    if fault == "scope_job_failed":
+        needs["scope"]["result"] = "failure"
     result = verify_shards(
         root, 1, sha="a" * 40, run_id="123", attempt="1", needs=needs, lane_plan=plan
     )
     assert result["success"] is (fault is None), result["issues"]
+    if fault == "scope_job_failed":
+        assert result["issues"] == [
+            "all CI scope, planning, lint and CPU/runtime test jobs must succeed"
+        ]
     if fault == "runtime_failure":
         assert result["observations_complete"] is True
         assert result["system_deps"]["counts"] == {"failed": 1}

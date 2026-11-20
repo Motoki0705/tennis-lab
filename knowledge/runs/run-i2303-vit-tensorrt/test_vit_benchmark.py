@@ -11,6 +11,7 @@ from convert import (
     constant_tensors,
     linear_names,
     quantized_matrix_ops,
+    restore_shape_inputs,
     verify_compute_precision,
     verify_qdq_scope,
 )
@@ -178,6 +179,31 @@ def test_explicit_qdq_scope_checks_every_consumer_input(
     else:
         with pytest.raises(RuntimeError, match=unexpected):
             verify_qdq_scope(graph, {"projection"})
+
+
+def test_ptq_shape_reads_are_restored_without_removing_the_projection_qdq():
+    nodes = [
+        ("q", "QuantizeLinear", ["pixels", "scale"], ["pixels_q"]),
+        ("dq", "DequantizeLinear", ["pixels_q", "scale"], ["pixels_dq"]),
+        ("dq_weight", "DequantizeLinear", ["q_weight", "scale"], ["weight_dq"]),
+        ("size", "Shape", ["pixels_dq"], ["sizes"]),
+        ("projection", "MatMul", ["pixels_dq", "weight_dq"], ["projected"]),
+    ]
+    graph = SimpleNamespace(
+        node=[
+            SimpleNamespace(
+                name=name, op_type=op, domain="", input=inputs, output=outputs
+            )
+            for name, op, inputs, outputs in nodes
+        ],
+        output=[SimpleNamespace(name="projected")],
+    )
+    with pytest.raises(RuntimeError, match=r"size \(Shape\) input\[0\]"):
+        verify_qdq_scope(graph, {"projection"})
+    assert restore_shape_inputs(graph) == 1
+    assert graph.node[3].input == ["pixels"]
+    assert graph.node[4].input == ["pixels_dq", "weight_dq"]
+    assert verify_qdq_scope(graph, {"projection"}) == {"projection"}
 
 
 def test_clip_selection_exclusion_rebuilds_gallery_and_queries():

@@ -377,14 +377,19 @@ class VitAdapter:
             nodes=sorted(selected),
             method=method,
             calibration_shapes=calibration_shapes,
+            restore_dynamic_shapes=self.model == MODEL
+            and calibration_shapes is not None,
             external_data=self.model != MODEL,
             disable_mha_qdq=self.model != MODEL and scope != "matmul",
         )
         report.update(
             recipe=recipe,
             representative_crops=len(data),
-            engine_batch=self.engine_shape[0],
         )
+        batch_field = (
+            "engine_batch" if calibration_shapes is None else "calibration_batch"
+        )
+        report[batch_field] = self.engine_shape[0]
         return report, selected
 
     def compute_requirements(self, graph, mode, selected):

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import fnmatch
 import importlib
 import json
 import os
@@ -32,8 +31,25 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 def _ci_job() -> dict[str, Any]:
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
-    assert set(workflow["jobs"]) == {"plan", "lint", "tests", "system-deps", "python"}
+    assert set(workflow["jobs"]) == {
+        "scope",
+        "plan",
+        "lint",
+        "tests",
+        "system-deps",
+        "python",
+    }
     return cast(dict[str, Any], workflow["jobs"]["tests"])
+
+
+def _matches_actions_path(path: str, pattern: str) -> bool:
+    # The documented Actions operators used by these paths-ignore lists.
+    atoms = {"**/": "(?:.*/)?", "**": ".*", "*": "[^/]*", "[a-z0-9]+": "[a-z0-9]+"}
+    parts = re.split(r"(\*\*/|\*\*|\*|\[a-z0-9\]\+)", pattern)
+    return (
+        re.fullmatch("".join(atoms.get(part, re.escape(part)) for part in parts), path)
+        is not None
+    )
 
 
 @pytest.mark.parametrize("event", ["pull_request", "push", "pull_request_target"])
@@ -48,6 +64,9 @@ def _ci_job() -> dict[str, Any]:
         "mixed_log_formats",
         "code",
         "mixed",
+        "shared_memory",
+        "ops_report",
+        "mixed_memory_code",
     ],
 )
 def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
@@ -74,7 +93,7 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         selected = triggers[event]
     assert "paths" not in selected
     ignored = selected["paths-ignore"]
-    assert set(ignored) == {
+    expected_ignored = {
         f".agents/logs/parents/**/{n}"
         for n in ("instruction.md", "final.md", "meta.json")
     } | {
@@ -86,6 +105,14 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         ".agents/logs/parents/parent-*/child-*/d-*/README.md",
         ".agents/logs/parents/parent-*/child-*/d-*/*-*/README.md",
     }
+    memory = ".agents/memory"
+    layers = ("workflow", "decision", "environment", "gotcha")
+    summary = f"{memory}/SUMMARY.md"
+    if event in {"push", "pull_request"}:
+        expected_ignored.add(summary)
+        expected_ignored.update(f"{memory}/{layer}/[a-z0-9]+.md" for layer in layers)
+    assert set(ignored) == expected_ignored
+
     log = ".agents/logs/parents/parent-1/child-10/d-abc/0001-initial/"
     worker_logs = [log + n for n in ("instruction.md", "final.md", "meta.json")]
     decision_logs = [".agents/logs/parents/parent-1/activity-public/event-public.json"]
@@ -104,6 +131,14 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         log + "README.md",
     ]
     code = ["src/utils/example.py"]
+    shared_memory = [
+        summary,
+        *(
+            f"{memory}/{layer}/{name}"
+            for layer in layers
+            for name in ("index.md", "entry.md")
+        ),
+    ]
     files = {
         "logs": worker_logs,
         "decision_logs": decision_logs,
@@ -115,23 +150,131 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         "mixed_log_formats": [*worker_logs, *decision_logs, *readmes],
         "code": code,
         "mixed": [*worker_logs, *decision_logs, *readmes, *code],
+        "shared_memory": shared_memory,
+        "ops_report": [f"{memory}/ops-report/SUMMARY.md"],
+        "mixed_memory_code": [*shared_memory, *code],
     }[changes]
-    assert any(
-        not any(fnmatch.fnmatchcase(p, pattern) for pattern in ignored) for p in files
-    ) is (changes in {"code", "mixed"})
+    should_run = changes in {"code", "mixed", "ops_report", "mixed_memory_code"} or (
+        event == "pull_request_target" and changes == "shared_memory"
+    )
+    assert (
+        any(
+            not any(_matches_actions_path(p, pattern) for pattern in ignored)
+            for p in files
+        )
+        is should_run
+    )
     for ordinary in (
         ".agents/ops/worker_logs/schema.py",
         ".agents/ops/decision_logs/publication.py",
         ".agents/ops/decision_logs/README.md",
+        ".agents/ops/shared_memory/publish.py",
+        ".agents/skills/memory/SKILL.md",
+        "tests/e2e/agents_ops/test_agents_docs.py",
         ".github/workflows/ci.yml",
         log + "stderr.log",
         ".agents/logs/parents/parent-1/activity-public/private.json",
     ):
-        assert not any(fnmatch.fnmatchcase(ordinary, pattern) for pattern in ignored)
+        assert not any(_matches_actions_path(ordinary, pattern) for pattern in ignored)
     assert workflow["concurrency"] == {
         "group": "ci-${{ github.event.pull_request.number || github.ref }}",
         "cancel-in-progress": "${{ github.event_name == 'pull_request' }}",
     }
+
+
+@pytest.mark.parametrize("event", ["push", "pull_request"])
+@pytest.mark.parametrize(
+    ("paths", "exempt"),
+    [
+        (["workflow/a-12-b-3.md", "environment/index.md", "SUMMARY.md"], True),
+        (["workflow/valid-name.md", "../../src/utils/example.py"], False),
+        (["workflow/Draft.md"], False),
+        (["workflow/bad_name.md"], False),
+        (["workflow/bad name.md"], False),
+        (["workflow/-bad.md"], False),
+        (["workflow/bad-.md"], False),
+        (["workflow/bad--name.md"], False),
+        (["workflow/a.b.md"], False),
+        (["workflow/.md"], False),
+        (["workflow/観察.md"], False),
+        (["workflow/docs/entry.md"], False),
+        (["workflow/data.json"], False),
+        (["ops-report/SUMMARY.md"], False),
+    ],
+)
+def test_shared_memory_ci_scope_checks_exact_filenames_and_the_event_diff(
+    tmp_path: Path, event: str, paths: list[str], exempt: bool
+) -> None:
+    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))
+    ignored = triggers[event]["paths-ignore"]
+    relative = [Path(os.path.normpath(f".agents/memory/{path}")) for path in paths]
+    # These cases must reach the scope job, including every disallowed filename.
+    assert any(
+        not any(_matches_actions_path(path.as_posix(), glob) for glob in ignored)
+        for path in relative
+    )
+    repo = tmp_path / "source"
+    repo.mkdir()
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(
+            [
+                "git",
+                "-c",
+                "user.name=CI Test",
+                "-c",
+                "user.email=ci@example.test",
+                *args,
+            ],
+            cwd=repo,
+            text=True,
+            stderr=subprocess.PIPE,
+        ).strip()
+
+    git("init", "-qb", "main")
+    git("commit", "-qm", "Base", "--allow-empty")
+    base = git("rev-parse", "HEAD")
+    for path in relative:
+        (repo / path.parent).mkdir(parents=True, exist_ok=True)
+        (repo / path).write_text("changed\n")
+    git("add", "-A")
+    git("commit", "-qm", "Topic")
+    head = git("rev-parse", "HEAD")
+    payload: dict[str, object]
+    if event == "push":
+        revision = head
+        payload = {"before": base, "after": head, "ref": "refs/heads/main"}
+    else:
+        tree = git("rev-parse", f"{head}^{{tree}}")
+        revision = git(
+            "commit-tree", tree, "-p", base, "-p", head, "-m", "GitHub merge"
+        )
+        git("checkout", "--detach", revision)
+        git("branch", "-f", "main", revision)
+        payload = {"pull_request": {"base": {"sha": base}, "head": {"sha": head}}}
+    checkout = tmp_path / "checkout"
+    git("clone", "--depth=2", repo.as_uri(), str(checkout))
+    event_path, output = tmp_path / "event.json", tmp_path / "output"
+    event_path.write_text(json.dumps(payload))
+    command = shlex.split(workflow["jobs"]["scope"]["steps"][1]["run"])
+    result = subprocess.run(
+        [sys.executable, *command[1:]],
+        cwd=checkout,
+        env={
+            **os.environ,
+            "PYTHONPATH": str(REPO_ROOT / ".agents/ops"),
+            "GITHUB_EVENT_NAME": event,
+            "GITHUB_SHA": revision,
+            "GITHUB_EVENT_PATH": str(event_path),
+            "GITHUB_OUTPUT": str(output),
+        },
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    assert output.read_text() == f"shared_memory_only={str(exempt).lower()}\n"
 
 
 def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
@@ -170,7 +313,18 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     assert workers["default"] == "2"
     assert workflow["env"]["CI_WORKERS"] == "${{ inputs.workers || '2' }}"
     lint = workflow["jobs"]["lint"]
-    assert "needs" not in lint
+    scope = workflow["jobs"]["scope"]
+    assert "needs" not in scope
+    assert scope["steps"][0]["with"]["fetch-depth"] == 2
+    assert (
+        scope["outputs"]["shared_memory_only"]
+        == "${{ steps.paths.outputs.shared_memory_only }}"
+    )
+    assert lint["needs"] == ["scope"]
+    assert (
+        lint["if"]
+        == "${{ !cancelled() && needs.scope.outputs.shared_memory_only != 'true' }}"
+    )
     commands = [
         shlex.split(step["run"])
         for step in lint["steps"]
@@ -195,8 +349,11 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     assert command[command.index("--shard-count") + 1] == str(len(shards))
     aggregate = workflow["jobs"]["python"]
     assert aggregate["name"] == "Python"
-    assert aggregate["if"] == "always()"
-    assert set(aggregate["needs"]) == {"plan", "lint", "tests", "system-deps"}
+    assert (
+        aggregate["if"]
+        == "${{ always() && needs.scope.outputs.shared_memory_only != 'true' }}"
+    )
+    assert set(aggregate["needs"]) == {"scope", "plan", "lint", "tests", "system-deps"}
     runtime = workflow["jobs"]["system-deps"]
     assert runtime["needs"] == ["plan"]
     assert any(
@@ -217,7 +374,7 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     )
     assert "playwright install chromium --only-shell" in browser["run"]
     planning = workflow["jobs"]["plan"]
-    assert "needs" not in planning
+    assert planning["needs"] == ["scope"] and planning["if"] == lint["if"]
     assert not any("uv sync" in step.get("run", "") for step in planning["steps"])
     plan_command = next(
         step["run"] for step in planning["steps"] if step["name"] == "Plan CPU lanes"

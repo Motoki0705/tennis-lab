@@ -45,6 +45,7 @@ DOCS = [
     ROOT / ".agents/ops/parent/README.md",
     ROOT / ".agents/ops/parent/worker_prompt.md",
     ROOT / ".agents/ops/worker_logs/README.md",
+    ROOT / ".agents/ops/shared_memory/README.md",
     ROOT / ".agents/ops/decision_logs/README.md",
     ROOT / ".agents/ops/decision_logs/README.ja.md",
     ROOT / ".agents/ops/decision_logs/README.zh-CN.md",

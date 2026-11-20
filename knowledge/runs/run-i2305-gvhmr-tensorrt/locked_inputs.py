@@ -12,7 +12,7 @@ from model import CHECKPOINT, INPUT_WIDTHS, input_shapes
 HERE = Path(__file__).resolve().parent
 
 
-def sweep_profile(optimum, maximum):
+def sweep_profile(optimum, maximum, *, fixed_length=None):
     profile = json.loads((HERE / "shape-profile.json").read_text())
     del profile["batch"]
     batches = batch_profile_points(optimum, maximum)
@@ -20,7 +20,12 @@ def sweep_profile(optimum, maximum):
     if maximum > min(counts.values()):
         raise ValueError("GVHMR batch maximum exceeds an evaluation length bucket")
     shortest, longest = sorted(map(int, counts))
-    lengths = (shortest, shortest, longest)
+    if fixed_length is None:
+        lengths = (shortest, shortest, longest)
+    else:
+        if str(fixed_length) not in counts:
+            raise ValueError(f"No locked GVHMR evaluation bucket at L={fixed_length}")
+        lengths = (fixed_length,) * 3
     bindings = [
         input_shapes(length, size)
         for size, length in zip(batches, lengths, strict=True)
@@ -33,7 +38,8 @@ def sweep_profile(optimum, maximum):
         "inputs": {
             name: [list(bound[name]) for bound in bindings] for name in INPUT_WIDTHS
         },
-        "outside_lengths": [shortest - 1, longest + 1],
+        "outside_lengths": [lengths[0] - 1, lengths[-1] + 1],
+        **({"fixed_length": fixed_length} if fixed_length is not None else {}),
     }
 
 

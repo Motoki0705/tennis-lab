@@ -1,0 +1,2366 @@
+{
+  "pins_sha256": "0afd0fb666d383bd6cfda6dd4d0095d69086307b985443dcc2870e06a41927ee",
+  "split": {
+    "eval": [
+      "video_000/clip_000",
+      "video_000/clip_037"
+    ],
+    "calibration": [
+      "video_000/clip_027"
+    ]
+  },
+  "cross_split_shared_media": 0,
+  "cross_split_shared_raw_frame_intervals": 0,
+  "preprocessing": {
+    "short_side": 800,
+    "max_long_side": 1333,
+    "channels": "RGB",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "dtype": "float32"
+  },
+  "tensor_set_sha256": "481cf905f03d63ce93d9ca34df8b38093ef661be7776b355daefd9b6f58da96e",
+  "buckets": {
+    "750x1333": {
+      "profile": {
+        "min": [
+          1,
+          3,
+          750,
+          1333
+        ],
+        "opt": [
+          1,
+          3,
+          750,
+          1333
+        ],
+        "max": [
+          1,
+          3,
+          750,
+          1333
+        ]
+      },
+      "counts": {
+        "eval": 64,
+        "calibration": 64
+      },
+      "representative": "video_000/clip_000/cam0/0178.npy"
+    }
+  },
+  "samples": [
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 32,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam0/0032.npy",
+      "sha256": "ba8b7e4eab40dc92f162c99bc20194520a7b715653b400883e1d3d2a6c3514fa"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 73,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam0/0073.npy",
+      "sha256": "ae62ffc4145ccba823af889e3aed14b02b7c524c41e9c6bbfa397db59301abf2"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 112,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam0/0112.npy",
+      "sha256": "15c449f15d1ac6423b0f8c3f3ae9b700f5decc41d8780fe2268a95f728251109"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 178,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam0/0178.npy",
+      "sha256": "9998614b42608ccfa21f48648f11372d40924bfd50e17f3ccffee31e39d4fd65"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 221,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam0/0221.npy",
+      "sha256": "f431918315bfba9bd15266cd4718f50826352792b775d3e2e783018a23b39158"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 260,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam0/0260.npy",
+      "sha256": "4271b87a26a529c8c70cbdf78ca1c23bb95860ad7fad78a9a3030a75c37b7d8d"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 301,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam0/0301.npy",
+      "sha256": "6b1e599cb7a0008fac0e1542e1f318253ee2a2fdf830bf1d2426b2801c37c88c"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 328,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam0/0328.npy",
+      "sha256": "84c101b8077d180309a903e7cc16fb47bac6730916cb1bdbc465fff7e63cdae3"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 32,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam1/0032.npy",
+      "sha256": "779a742bff4eea04db17dba568d57e3ee76582eeab10fb1376d5b7b7a16527ee"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 73,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam1/0073.npy",
+      "sha256": "a2138cb7e104fd8a8b524aff0e4f9c5cd926060db9d6a9a7c2b1009589c65c36"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 112,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam1/0112.npy",
+      "sha256": "e5baa988ae30dee103938f58450060e04189d4d10a01df27269bf9223effdcc6"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 178,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam1/0178.npy",
+      "sha256": "26c2d12913d47a0519b799f69527de62e6daa2188c0375636706623b3a511872"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 221,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam1/0221.npy",
+      "sha256": "24b7445046c78d320dba8c4d9b6dc8bffd90e61c74040d7b3bf22273297cfd72"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 260,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam1/0260.npy",
+      "sha256": "f3568f94e5d48db4132007de0f9f67c7828b56de3827d2a5b00bde2a1484f586"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 301,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam1/0301.npy",
+      "sha256": "48fe681ec585dc9401ff107cd97799def82d2bc08334c03bb4c746c1a6472967"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 328,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam1/0328.npy",
+      "sha256": "f19e3e08c1350ea75c78280b80129a94991a2e4040ba81aceed0b702c16669e6"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 32,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam2/0032.npy",
+      "sha256": "69cfa49e5263ed6cca929af7a943bf0a3179df2568f7bd206a1d0ba69aba1f5e"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 73,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam2/0073.npy",
+      "sha256": "45926dc427baa4feb695e69239088c2af99bf2fb20ac518c05299b0e9a32baeb"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 112,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam2/0112.npy",
+      "sha256": "34bdea0170ec3e877eba55947f5fefd1e69302c25fa82789457f8a3f853a8f9a"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 178,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam2/0178.npy",
+      "sha256": "90bbbae476055b5ce322167db00804e9ac686d36f36cb1a4849b0b531a916ff0"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 221,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam2/0221.npy",
+      "sha256": "e30c1a3a973dfec4643c5e772fd542586fc9a07200cba3cfc3be94c9d96bd447"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 260,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam2/0260.npy",
+      "sha256": "3c533c39d55dcf9b22b79d373eca16ffecced5a3a1a31f1b8e0bfc718a866916"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 301,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam2/0301.npy",
+      "sha256": "10db04445f802dbcb937c0c01c462d5d66453c971b870839c600262ac1f67768"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 328,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam2/0328.npy",
+      "sha256": "122b0549c216e4768f717174f43fddddad6c119c05812f0562a3b341b1447ee5"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 32,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam3/0032.npy",
+      "sha256": "86eedd62ba73a5d842883ada605445f839a4012047fc228a34363888a4d5862c"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 73,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam3/0073.npy",
+      "sha256": "74a18046c010806aaa07ee2ae66bf0292272fce9684baf634e277bf9fd7e70c5"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 112,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam3/0112.npy",
+      "sha256": "aaaa5d80b7c6f6e15c80db8e5d3e8e558aa21123a57d9755f71a0c306ad5ab4d"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 178,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam3/0178.npy",
+      "sha256": "39b83c5b85eb243c4790f6deb9a35d8f9b4b21e2edd1c4dfeb070ef580044e1e"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 221,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam3/0221.npy",
+      "sha256": "9e3ea533e81c81edcd6e680b19e9a955a95aea75492967e0912a4f5408142c6a"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 260,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam3/0260.npy",
+      "sha256": "15447135c37649b1d6342e0ad88f9e3e0991d56ba14980c776bba6774d1528e6"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 301,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam3/0301.npy",
+      "sha256": "4eba74317654faa56568c35c05d9489fb72796fc6eae8baef03b06e21f6a4c44"
+    },
+    {
+      "clip": "video_000/clip_000",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 328,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_000/cam3/0328.npy",
+      "sha256": "0a3cf72996df712eb5607659cba52568cb28a2537219525c6f6df8c9e105b041"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 22,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam0/0022.npy",
+      "sha256": "de6e4c682b8d132bbeeeef4151a4933c78527dcbb29e343903434b216fe0c875"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 52,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam0/0052.npy",
+      "sha256": "c0bdf8a8c93c67f0f9cbf8ce46805a8b1395fa5293567fd79cf7919ca33427f8"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 101,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam0/0101.npy",
+      "sha256": "ed9c9f0b6241a4bd0d8d292197811d0e17700418d494a0315278276ebba3fa41"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 146,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam0/0146.npy",
+      "sha256": "84303e13784cd781d6b376202c832718e211d19c2537f6061c5ec2b87200589d"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 172,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam0/0172.npy",
+      "sha256": "d6bdc09116408ae6bf6eae2e11252c9671b676e7d8bd610b16994e277d9f97d4"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 207,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam0/0207.npy",
+      "sha256": "1213da4a8fe76acbdb61129416ab47e35cb20beecda02917707b91be3e5b1edc"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 243,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam0/0243.npy",
+      "sha256": "b8062a29c84929a9f7065231c65803dd552d4d1ae0965382aa70662c7baa004a"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam0",
+      "frame": 270,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam0/0270.npy",
+      "sha256": "b43abd9c78a755527ef75b24c60cffcc07b62db75e4197bf2fefc741340f9b14"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 22,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam1/0022.npy",
+      "sha256": "74d836da64bd4d954fc63d7a21fe925d58e6fab0f7dcaaa2499252d8590dd20f"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 52,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam1/0052.npy",
+      "sha256": "b55dd2556ca940e31a1e03061124b6d85dad5860439c60582153011b09af6485"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 101,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam1/0101.npy",
+      "sha256": "ef016dd4e41903deb5d3079fadf16562526a9e8ca6748bfe08595321f5af46b8"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 146,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam1/0146.npy",
+      "sha256": "c19343e409ab22277c782c72c8ce290792aa232942156625f1b0c3fe5424a4a6"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 172,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam1/0172.npy",
+      "sha256": "0de631de738c86cb8086ee244ace39a92e2ed63c7876b9853404618fb448c846"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 207,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam1/0207.npy",
+      "sha256": "28a862f6143d19b173296d10cf09634639e9b3821141864cc95f4b27e1a47538"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 243,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam1/0243.npy",
+      "sha256": "e98ddb2020d88736c87566d621a05568f31eb213f3e524fef92c8a2844c3f233"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam1",
+      "frame": 270,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam1/0270.npy",
+      "sha256": "5e6aca72f7a407241b24ce42d7b04ce7e96d2a9761e6aaf750fbb17d76e49b7b"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 22,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam2/0022.npy",
+      "sha256": "989bc96a9f173cb6304e977b6f79bb24682590584723b0e15b93c2b2bf86967f"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 52,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam2/0052.npy",
+      "sha256": "1c7135a8b183797da5e242b81ebee14c2c22291b374c5f7cc2bca64b3d3b806e"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 101,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam2/0101.npy",
+      "sha256": "252ab2e2ba5b135012570bd5e94a241a464c161fe82798446f0a9cf86c73ac84"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 146,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam2/0146.npy",
+      "sha256": "13e6083d750d6851d4a22b5dbf8a542451fdfa24e0979618de4a71998b304f0c"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 172,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam2/0172.npy",
+      "sha256": "c5a0e1712dd639dae9729b8ff3a6fd5428d68dde0825d3c4949f5c417b4cd402"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 207,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam2/0207.npy",
+      "sha256": "548b93555c8c88e2ad72ae2c97cd321bfd7326d5670112b1f74fa6fbede22aef"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 243,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam2/0243.npy",
+      "sha256": "9b85a8c739ceef899294ac693fa56d78e9574e80c60ab4b1d58a75598b53aa0c"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam2",
+      "frame": 270,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam2/0270.npy",
+      "sha256": "cd30e0009a0fbc6331c4f96a67fe6c005aacf1479457018be770a543ef02e989"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 22,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam3/0022.npy",
+      "sha256": "9da2e62869b03a79523e5d54c5a797c6c1c0a710107956e350353f5950eaa40f"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 52,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam3/0052.npy",
+      "sha256": "c49238ea140bce3e0d86b3c528a1d496629d98da396a421b5484d46c0f1f1fb0"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 101,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam3/0101.npy",
+      "sha256": "1e0b856f6b7318440cb3b6b071576b9ba143253f06d6e73c238477ae823f45ce"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 146,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam3/0146.npy",
+      "sha256": "123ae11bd5b4269d7cf388136b2ce013998d095316166ad30c3ac066787df861"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 172,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam3/0172.npy",
+      "sha256": "e5386650e0b97405cba3cc8e549c5e2e916f18cc52271b2f991450d690419b53"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 207,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam3/0207.npy",
+      "sha256": "907759a14755f3c9bd891eec66d8b1ca2accc4c88f8326940f2cbae005ded218"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 243,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam3/0243.npy",
+      "sha256": "c35ddf92eac3496ddf2f69c8707214c3c76d6923ce5ebe71807a7fc50b707b11"
+    },
+    {
+      "clip": "video_000/clip_037",
+      "split": "eval",
+      "camera": "cam3",
+      "frame": 270,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_037/cam3/0270.npy",
+      "sha256": "2ab80c261dba9dfc9261ba18526f77912851fb9cbffded200cba38e4169a69c1"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 8,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0008.npy",
+      "sha256": "632f4aca0ec83d34afd462c0a158b29deba1bb4fb5951eae802c40f89ac208c5"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 23,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0023.npy",
+      "sha256": "3cbd0c8b31969f6c893a847fa5295deed1c382da77d521f4d78ba2ad7480652a"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 37,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0037.npy",
+      "sha256": "4e541b4401ef2ece7334c09bb0e1a3952605600b9ffb7f303fccae618c9e182f"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 52,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0052.npy",
+      "sha256": "fb6cf39c408259f75507c8f7c54449af876dca399659ecf962d09ceea1befa80"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 66,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0066.npy",
+      "sha256": "ee730bff27aaa54daff37b2848205167e24a710339454bdf44d80ef3ba9025ab"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 81,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0081.npy",
+      "sha256": "926360bec1c1d80084b3c7218aab71271fbd4c8fa80b726859653e635143d409"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 95,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0095.npy",
+      "sha256": "a1c86ee672d281051813822cb22bc1bd4cd5d974550b0297f44cea978ae0143e"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 110,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0110.npy",
+      "sha256": "43d9074e724614bca240748d90030a01a5b62dd979b15ed40aff6056cb8f1976"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 124,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0124.npy",
+      "sha256": "ce3d58364b8112a819e3d25658eb9f71b7af0d6e4d794a0f2a7176484517aa26"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 139,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0139.npy",
+      "sha256": "167a789965369a45ea65ba90209eddb2b3cb4d17fe5f2ccc7418130b01e07996"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 153,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0153.npy",
+      "sha256": "e0d03d451621dface0b77722945ecaba12e199e16f3dd6c9996a5db452e47c90"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 168,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0168.npy",
+      "sha256": "97e4fbbe070cda095627a303bea9b4907352c13e0b39c6c889deeff3ba7e7911"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 182,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0182.npy",
+      "sha256": "5b8028c8accf5c8c04d1344701d283644738eaabe6d86b4d35f6ae9ea3fc6a07"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 197,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0197.npy",
+      "sha256": "70191db08550e0e2b5cc4d9bce8ea81e9f65be9b2b3ab9a2458386ca3abf919e"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 211,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0211.npy",
+      "sha256": "963d5eb779c3e0e817fd72939eb30338a9419e2e1ce62a835719ea149d2c9195"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam0",
+      "frame": 226,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam0/0226.npy",
+      "sha256": "72ca6c7ef644db5d0af13db6790680a48fdaa7b2b2c1354c3340cf1b0574592b"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 8,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0008.npy",
+      "sha256": "19c54499161d4a4efd01a6427491b818266c523b9b8f0b714ca73368cec1e91e"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 23,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0023.npy",
+      "sha256": "6795a0a0639ce989c8ac6b937d88d10a1ebdfee75dcf3be9df143680fe538797"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 37,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0037.npy",
+      "sha256": "5488d6ea3520575fb5f255e97553f4992e04a91cec45896a5ae5a5e42277fa96"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 52,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0052.npy",
+      "sha256": "a3a6ee400b1b8e3a28ea4845674fa78c92c88e5eb0e715669d7c267560555efe"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 66,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0066.npy",
+      "sha256": "2cd8f151353d3b5df7d0043f5002048e7feba54922f49d63dcba5cdb21f39ecf"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 81,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0081.npy",
+      "sha256": "98bdc3d06238aadbd63180d405aab4de5d091759b2793f46ae4e809e417303a0"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 95,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0095.npy",
+      "sha256": "2ca41423d2509e070073a24bc1a9fb34ef77c54819239517adf868d7da72e72e"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 110,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0110.npy",
+      "sha256": "ddde65f51253a09d54d47ca47ade04dd57d1ec73e7de4486dafdae742b703f1c"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 124,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0124.npy",
+      "sha256": "466288368139be2f4cc84de0fc173ad3c78bff960fd37debe63c454be285d107"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 139,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0139.npy",
+      "sha256": "9b1d3eae38a2fb95b59598b7b01654bd105af166d7686c32e7ee4b909629ce85"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 153,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0153.npy",
+      "sha256": "95e724326f5924e29b7160376eb4b4a2fb8c589bb0c0ff2ca2d658c2e6a66eed"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 168,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0168.npy",
+      "sha256": "534590929a65886eeebb77f12b0ebc804696465bfa27e3bd13fe4cc9f4d2d722"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 182,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0182.npy",
+      "sha256": "5135c79bf5e874c1c2915ec23364fec35298eca3c0205f141b6968e124cfb774"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 197,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0197.npy",
+      "sha256": "03933c4882599a5ade6127a25004a98c756af0cd58945e1442422d1ef36c1c91"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 211,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0211.npy",
+      "sha256": "4ebe908c3c55037e4b6b823af624c75d8df2b379d85d3055cf1ed75abb96116a"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam1",
+      "frame": 226,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam1/0226.npy",
+      "sha256": "69f7b3eaa8a5b851508251417ab62cb0822251505a68afc967a5336cca8ddd25"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 8,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0008.npy",
+      "sha256": "192091de9121feaec1cfdff84882cedeebaabeff434be6c4253ba057443c9743"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 23,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0023.npy",
+      "sha256": "37a6b43209e9aec193e751293102852905fce0ef2450069d5b449901392dd2eb"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 37,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0037.npy",
+      "sha256": "12305938e5d08b78b51a3782af7ddab0a47130bf6de59ba1ca5e227b13879fda"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 52,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0052.npy",
+      "sha256": "0d5534aeeb2c2a6b54448e1b221770740a79236a9f60d4525ce2a584390ed07b"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 66,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0066.npy",
+      "sha256": "0477af2482f5f67bcab0bd53019bdfca24436dce4fe2b2931737f2a0328e0184"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 81,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0081.npy",
+      "sha256": "65bb7c2bbd2fbed54a7651ecdafa809dda7796b0c6279e66d07d30ab81ab2e7f"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 95,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0095.npy",
+      "sha256": "d7ea4e9a07ae6d97eba77460d8b283a2735a4c9cc0380a57fcd1e571edf0b401"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 110,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0110.npy",
+      "sha256": "71fbd4337990d535b3014791711f9850c9f61f2b05cca838a8b00a96bc117611"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 124,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0124.npy",
+      "sha256": "2a44d3adf3c3869695763ed8a7d543003f36851e281d4cd8f50c7a130d3ae116"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 139,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0139.npy",
+      "sha256": "47573d04fd2d20579a80d9dcd139a52dc6d923ddd36be3dafcf645f72ae2b331"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 153,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0153.npy",
+      "sha256": "4cc675ffdd0a6f87920594865bb69db363a6d4c719ec196bcbe5f0c79cf5a47c"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 168,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0168.npy",
+      "sha256": "891b04e5620417f2d7530edad827e3eb44395044631f80a8d639293fb77de54b"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 182,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0182.npy",
+      "sha256": "ad4f57cf996056a5941cd397e146be536ad6626d29c834a0ab9488684dc115b3"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 197,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0197.npy",
+      "sha256": "e33fbd540f0b0a431e65d5d5d512a9b2874c02b67cac5e0c6d2e45eced0cac04"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 211,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0211.npy",
+      "sha256": "2aa2eedc17afca76a798607698ad128e6e4f32c2f02170cc785fd04721830b9c"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam2",
+      "frame": 226,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam2/0226.npy",
+      "sha256": "dbcfc840e407de964f8828d2260ff4b2758273576247a6ea16c224ce257c9e7a"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 8,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0008.npy",
+      "sha256": "a3e283316ffec3d9b7a5699da876ff4676e558174cc275086c60546414a2b716"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 23,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0023.npy",
+      "sha256": "c23c302194a60827872d816507f8c4eadef2eaab51ad1ec952eabdb3b0510103"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 37,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0037.npy",
+      "sha256": "68f50894cfed030b3743f2a6cd2e5dad57257fc8bf568da600339345b6a66374"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 52,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0052.npy",
+      "sha256": "4c518a469b38610265d3aa24145e6fa4217415d9fe8a5d3b2d70d46812e573c7"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 66,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0066.npy",
+      "sha256": "590d621c802d4dd6d7f2c29fa06974ef07f55e4c037a40ac3eb6b965ef551e30"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 81,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0081.npy",
+      "sha256": "b92f1d06a1684c102a18fa252a8eb6b262bd4c2285394bbdb8ec73922e3c92da"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 95,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0095.npy",
+      "sha256": "3383efa8c8f81439de33ad18213e1f2703ad8e2e91d382f1ded870532f428756"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 110,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0110.npy",
+      "sha256": "caade42f58a8a5c5373d68ffba2d6faeda9db85f61ded9d29ed8d2f22ce065ac"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 124,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0124.npy",
+      "sha256": "2da4c84787d380be87c1ff38c018aedad340a3d2918e8f00713f6f4b66979162"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 139,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0139.npy",
+      "sha256": "8e83845c6dc52d8e4389f5c7e96fd410102135826eb66ab105f653ad8d8fe2ec"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 153,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0153.npy",
+      "sha256": "85b1a2b25a3c2b180c2086c0475f2cc315c39a45d2cae96e8c936f46ff1cf850"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 168,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0168.npy",
+      "sha256": "5c03ec341bd33a861e28fd53abebe774640d86d132b28f8b42709c3a45f28f3c"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 182,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0182.npy",
+      "sha256": "598cb6542fd514ceb5b10b9b181f30a65184d80debe3b563f7ad6b8b0b677438"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 197,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0197.npy",
+      "sha256": "84fdf601450a448c434085312f11d68e50334950ca782382d961b4cbce4a261d"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 211,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0211.npy",
+      "sha256": "9c651cef23f50a07b8ce7c6ab2e8201627cb929c6a5376b0d21fd46bb7fd1965"
+    },
+    {
+      "clip": "video_000/clip_027",
+      "split": "calibration",
+      "camera": "cam3",
+      "frame": 226,
+      "original_hw": [
+        1080,
+        1920
+      ],
+      "shape": [
+        1,
+        3,
+        750,
+        1333
+      ],
+      "file": "video_000/clip_027/cam3/0226.npy",
+      "sha256": "45ed017c02a77d7b6f08b35227e2847071ed0e11847956fa922f3b342b26c948"
+    }
+  ]
+}

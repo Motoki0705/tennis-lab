@@ -127,7 +127,9 @@ def test_required_check_run_pages_are_all_checked(
     tail: str,
 ) -> None:
     Store = importlib.import_module("parent.state").Store
-    LiveBackend = importlib.import_module("lib.ops_review.progression_backend").LiveBackend
+    LiveBackend = importlib.import_module(
+        "lib.ops_review.progression_backend"
+    ).LiveBackend
     backend = LiveBackend(
         {"request": {"repo": "o/r", "parent_issue": 1}}, Store(tmp_path)
     )

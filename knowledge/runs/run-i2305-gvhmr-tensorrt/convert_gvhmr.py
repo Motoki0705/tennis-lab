@@ -70,13 +70,15 @@ def network_args(arrays, dtype):
     )
 
 
-def export_network(model, samples, output, dtype, opt, *, dynamic_batch=False):
+def export_network(
+    model, samples, output, dtype, opt, *, dynamic_batch=False, dynamic_length=True
+):
     import onnx
 
     dynamic_axes = {
         name: {1: "frames"}
         for name in (*INPUT_WIDTHS, *OUTPUT_WIDTHS)
-        if name not in {"length", "length_out"}
+        if dynamic_length and name not in {"length", "length_out"}
     }
     if dynamic_batch:
         for name in (*INPUT_WIDTHS, *OUTPUT_WIDTHS):
@@ -117,7 +119,13 @@ def export_network(model, samples, output, dtype, opt, *, dynamic_batch=False):
     model = onnx.load(output)
     for value in (*model.graph.input, *model.graph.output):
         if value.name not in {"length", "length_out"}:
-            require_dynamic_axis(value, 1, "frames")
+            dims = value.type.tensor_type.shape.dim
+            if dynamic_length:
+                require_dynamic_axis(value, 1, "frames")
+            elif (value.name in INPUT_WIDTHS or dims[1].HasField("dim_value")) and dims[
+                1
+            ].dim_value != opt:
+                raise ValueError(f"Export did not fix {value.name} at L={opt}")
         if dynamic_batch:
             require_dynamic_axis(value, 0, "batch")
     return major_operations(model, output)
@@ -216,7 +224,7 @@ def convert(args):
     segments, checkpoint = checked_segments(args.inputs, args.checkpoints)
     dynamic_batch = args.batch_profile is not None
     profile = (
-        sweep_profile(*args.batch_profile)
+        sweep_profile(*args.batch_profile, fixed_length=args.fixed_length)
         if dynamic_batch
         else json.loads((HERE / "shape-profile.json").read_text())
     )
@@ -255,6 +263,7 @@ def convert(args):
         dtype,
         profile["profile_lengths"]["opt"],
         dynamic_batch=dynamic_batch,
+        dynamic_length=args.fixed_length is None,
     )
     del network
     expected = {
@@ -300,9 +309,12 @@ def main():
     parser.add_argument("--checkpoints", default=Path("ckpt"), type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--batch-profile", type=int, nargs=2, metavar=("OPT", "MAX"))
+    parser.add_argument("--fixed-length", type=int)
     args = parser.parse_args()
     if args.batch_profile is not None and args.condition != "2":
         parser.error("Dynamic GVHMR batch export requires condition 2")
+    if args.fixed_length is not None and args.batch_profile is None:
+        parser.error("--fixed-length requires --batch-profile")
     require_queue()
     convert(args)
 

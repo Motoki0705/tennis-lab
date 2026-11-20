@@ -2,10 +2,14 @@
 
 import csv
 import math
+import os
+import signal
 import sqlite3
 import subprocess
+import sys
 from collections import Counter
 from contextlib import closing
+from pathlib import Path
 
 PROFILE_RANGE = "steady_inference"
 DURATION = "gpu__time_duration.sum"
@@ -17,18 +21,24 @@ STALL = {
     for reason in ("long_scoreboard", "short_scoreboard", "lg_throttle", "mio_throttle")
 }
 NCU_METRICS = [DURATION, READ, WRITE, TENSOR, *STALL.values()]
+NCU_TIMEOUT_EXIT = 124
+
+
+def nsys_span(db, name):
+    ranges = db.execute(
+        """SELECT n.start,n.end FROM NVTX_EVENTS n LEFT JOIN StringIds s ON n.textId=s.id
+           WHERE coalesce(n.text,s.value)=? AND n.end>n.start""",
+        (name,),
+    ).fetchall()
+    if len(ranges) != 1:
+        raise ValueError(f"Expected one NVTX range {name!r}, found {len(ranges)}")
+    return ranges[0]
 
 
 def read_nsys(path, name=PROFILE_RANGE):
     """Count actual GPU kernel activities inside the one synchronized NVTX span."""
     with closing(sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)) as db:
-        ranges = db.execute(
-            """SELECT n.start,n.end FROM NVTX_EVENTS n LEFT JOIN StringIds s ON n.textId=s.id
-               WHERE coalesce(n.text,s.value)=? AND n.end>n.start""",
-            (name,),
-        ).fetchall()
-        if len(ranges) != 1:
-            raise ValueError(f"Expected one NVTX range {name!r}, found {len(ranges)}")
+        span = nsys_span(db, name)
         if not db.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='CUPTI_ACTIVITY_KIND_KERNEL'"
         ).fetchone():
@@ -37,7 +47,7 @@ def read_nsys(path, name=PROFILE_RANGE):
             """SELECT s.value,k.end-k.start FROM CUPTI_ACTIVITY_KIND_KERNEL k
                JOIN StringIds s ON k.shortName=s.id WHERE k.start>=? AND k.end<=?
                ORDER BY k.start,k.correlationId""",
-            ranges[0],
+            span,
         ).fetchall()
     if not kernels or any(duration <= 0 for _, duration in kernels):
         raise ValueError("Nsight Systems has no valid GPU kernels in the NVTX range")
@@ -48,10 +58,9 @@ def read_nsys(path, name=PROFILE_RANGE):
     }
 
 
-def read_ncu(path):
-    """Sum DRAM bytes and time-weight per-kernel stall/tensor percentages."""
+def ncu_rows(path):
     with path.open(newline="") as stream:
-        rows = csv.reader(stream)
+        rows = csv.reader(stream, strict=True)
         try:
             header = next(line for line in rows if line and line[0] == "ID")
         except StopIteration as exc:
@@ -59,7 +68,6 @@ def read_ncu(path):
         missing = set(NCU_METRICS) - set(header)
         if missing:
             raise ValueError(f"Missing Nsight Compute columns: {sorted(missing)}")
-        columns = {name: header.index(name) for name in NCU_METRICS}
         values = []
         for row in rows:
             if not row or not row[0].isdigit():
@@ -74,9 +82,15 @@ def read_ncu(path):
         raise ValueError("Nsight Compute returned no kernel rows")
     if len({row[0] for row in values}) != len(values):
         raise ValueError("Duplicate Nsight Compute kernel IDs")
+    return header, values
+
+
+def read_ncu(path):
+    """Sum DRAM bytes and time-weight per-kernel stall/tensor percentages."""
+    header, values = ncu_rows(path)
     metrics = {
-        name: [float(row[index].replace(",", "")) for row in values]
-        for name, index in columns.items()
+        name: [float(row[header.index(name)].replace(",", "")) for row in values]
+        for name in NCU_METRICS
     }
     if not all(
         math.isfinite(value) and value >= 0
@@ -104,7 +118,100 @@ def read_ncu(path):
     }
 
 
-def capture(tool, executable, command, output, *, ncu_timeout=900):
+def nsys_launch_shapes(path):
+    with closing(sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)) as db:
+        return db.execute(
+            """SELECT gridX,gridY,gridZ,blockX,blockY,blockZ FROM CUPTI_ACTIVITY_KIND_KERNEL
+               WHERE start>=? AND end<=? ORDER BY start,correlationId""",
+            nsys_span(db, PROFILE_RANGE),
+        ).fetchall()
+
+
+def ncu_launch_shapes(header, rows):
+    columns = [header.index(name) for name in ("Grid Size", "Block Size")]
+    return [
+        tuple(
+            int(dim) for column in columns for dim in row[column].strip("()").split(",")
+        )
+        for row in rows
+    ]
+
+
+def stitch_ncu(prefix, suffix, reference, output):
+    header, first = ncu_rows(prefix)
+    suffix_header, rest = ncu_rows(suffix)
+    if suffix_header != header:
+        raise ValueError("Nsight Compute prefix and suffix columns differ")
+    skip = len(first)
+    joined = first + rest
+    for rows, start in ((first, 0), (rest, int(rest[0][0]))):
+        if [int(row[0]) for row in rows] != list(range(start, start + len(rows))):
+            raise ValueError("Nsight Compute segment kernel IDs are not consecutive")
+    if (
+        int(rest[0][0]) not in {0, skip}
+        or ncu_launch_shapes(header, joined) != reference
+    ):
+        raise ValueError("Joined ncu launch shapes differ from the ordered nsys range")
+    with output.open("x", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(header)
+        writer.writerows([index, *row[1:]] for index, row in enumerate(joined))
+    return {**read_ncu(output), "prefix_kernels": skip, "suffix_kernels": len(rest)}
+
+
+def _supervise_ncu(command, timeout):
+    ops_lib = Path(__file__).resolve().parents[3] / ".agents" / "ops" / "lib"
+    sys.path.insert(0, str(ops_lib))
+    from opsproc import CommandError, enable_child_subreaper, terminate_descendants
+
+    # Stay in the workload's process group so the queue can also tear it down.
+    # This dedicated process adopts any children left behind by the profiler.
+    enable_child_subreaper()
+
+    def interrupted(signum, _frame):
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGTERM, interrupted)
+    try:
+        subprocess.run(command, check=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return NCU_TIMEOUT_EXIT
+    finally:
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        while True:
+            try:
+                terminate_descendants(0.5)
+                os.waitpid(-1, os.WNOHANG)
+            except ChildProcessError:
+                break
+            except CommandError as exc:
+                # Retain the workload until all adopted processes have stopped.
+                print(f"Waiting for Nsight Compute teardown: {exc}", file=sys.stderr)
+    return 0
+
+
+def _run_ncu(command, *, stdout, timeout):
+    supervisor = subprocess.run(
+        [sys.executable, "-B", str(Path(__file__).resolve()), str(timeout), *command],
+        stdout=stdout,
+        stderr=subprocess.STDOUT,
+    )
+    if supervisor.returncode == NCU_TIMEOUT_EXIT:
+        raise subprocess.TimeoutExpired(command, timeout)
+    supervisor.check_returncode()
+
+
+def capture(
+    tool,
+    executable,
+    command,
+    output,
+    *,
+    ncu_timeout=900,
+    ncu_replay="kernel",
+    ncu_prefix=None,
+    nsys_trace=None,
+):
     log = output / f"{tool}.log"
     report = output / ("nsys.sqlite" if tool == "nsys" else "ncu.csv")
     try:
@@ -145,7 +252,27 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
                 )
                 metrics = read_nsys(report)
             else:
-                subprocess.run(
+                replay = (
+                    ["--app-replay-match", "all", "--app-replay-mode", "strict"]
+                    if ncu_replay == "application"
+                    else []
+                )
+                launch_filter = []
+                if ncu_prefix is not None:
+                    header, prefix_rows = ncu_rows(ncu_prefix)
+                    launch_shapes = nsys_launch_shapes(nsys_trace)
+                    skip = len(prefix_rows)
+                    if (
+                        skip >= len(launch_shapes)
+                        or ncu_launch_shapes(header, prefix_rows)
+                        != launch_shapes[:skip]
+                    ):
+                        raise ValueError(
+                            "ncu prefix does not match the start of the ordered nsys range"
+                        )
+                    launch_filter = ["--launch-skip", str(skip)]
+                    report = output / "ncu-suffix.csv"
+                _run_ncu(
                     [
                         executable,
                         "--profile-from-start",
@@ -154,7 +281,9 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
                         "--nvtx-include",
                         f"{PROFILE_RANGE}/",
                         "--replay-mode",
-                        "kernel",
+                        ncu_replay,
+                        *replay,
+                        *launch_filter,
                         "--cache-control",
                         "none",
                         "--clock-control",
@@ -171,12 +300,20 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
                         *command,
                     ],
                     stdout=stream,
-                    stderr=subprocess.STDOUT,
-                    check=True,
                     timeout=ncu_timeout,
                 )
-                metrics = read_ncu(report)
-    except (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as exc:
+                metrics = (
+                    stitch_ncu(ncu_prefix, report, launch_shapes, output / "ncu.csv")
+                    if ncu_prefix is not None
+                    else read_ncu(report)
+                )
+    except (
+        OSError,
+        ValueError,
+        csv.Error,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ) as exc:
         context = "\n".join(
             path.read_text(errors="replace")
             for path in (log, report)
@@ -190,3 +327,7 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
             detail = str(exc)
         return {"status": "unavailable", "reason": detail}
     return {"status": "measured", **metrics}
+
+
+if __name__ == "__main__":
+    sys.exit(_supervise_ncu(sys.argv[2:], float(sys.argv[1])))

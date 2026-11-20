@@ -297,6 +297,35 @@ def run_case(args):
 
     result["profile_queue_job"] = os.environ["TENNIS_RUN_ID"]
     result["profiles"] = {}
+    ncu_options = {}
+    if args.profiles == "ncu" and args.ncu_prefix:
+        prefix = json.loads((args.ncu_prefix / "result.json").read_text())
+        profile = prefix["profiles"]["ncu"]
+        if (
+            Path(prefix["profile_from"]).resolve() != source.resolve()
+            or any(
+                prefix.get(key) != previous.get(key)
+                for key in (
+                    "identity",
+                    "features_sha256",
+                    "engine_sha256",
+                    "measurement_queue_job",
+                )
+            )
+            or prefix["nsys_comparison"]["gpu_kernels"] != nsys_reference["gpu_kernels"]
+            or profile["status"] != "unavailable"
+            or "timed out after" not in profile.get("reason", "")
+        ):
+            raise ValueError(
+                "ncu prefix is not a timed-out replay of this exact measurement"
+            )
+        prefix_csv = args.ncu_prefix / "ncu.csv"
+        ncu_options = {"ncu_prefix": prefix_csv, "nsys_trace": source / "nsys.sqlite"}
+        result["ncu_prefix"] = {
+            "queue_job": prefix["profile_queue_job"],
+            "csv_sha256": sha256_file(prefix_csv),
+            "source": str(args.ncu_prefix),
+        }
     write_json(output / "result.json", result)
     for tool, executable in {"nsys": str(args.nsys), "ncu": str(args.ncu)}.items():
         if args.profiles in {"all", tool}:
@@ -305,7 +334,12 @@ def run_case(args):
                 # ncu 2025.3.1 raw CSV misquotes TensorRT's JSON NVTX payloads.
                 profile_command.append("--omit-trt-layer-nvtx")
             result["profiles"][tool] = capture(
-                tool, executable, profile_command, output, ncu_timeout=args.ncu_timeout
+                tool,
+                executable,
+                profile_command,
+                output,
+                ncu_timeout=args.ncu_timeout,
+                **ncu_options,
             )
             if tool == "ncu":
                 result["profiles"][tool]["timeout_seconds"] = args.ncu_timeout
@@ -349,6 +383,9 @@ def main():
     parser.add_argument("--nsys", type=Path, default=NSYS)
     parser.add_argument("--ncu", type=Path, default=Path("/usr/local/cuda/bin/ncu"))
     parser.add_argument("--ncu-timeout", type=int, default=900)
+    parser.add_argument(
+        "--ncu-prefix", type=Path, help="recover a matching timed-out ncu replay"
+    )
     reuse = parser.add_mutually_exclusive_group()
     reuse.add_argument("--conversion", type=Path, help="reuse a dynamic CLIP engine")
     reuse.add_argument(
@@ -381,6 +418,8 @@ def main():
         parser.error("Batched TensorRT measurement requires an existing dynamic engine")
     if args.ncu_timeout <= 0:
         parser.error("--ncu-timeout must be positive")
+    if args.ncu_prefix and (args.profiles != "ncu" or args.profile_from is None):
+        parser.error("--ncu-prefix requires --profiles ncu and --profile-from")
     if (args.model != MODEL or args.ptq_recipe) and args.adapter is None:
         parser.error("--adapter is required for this model or PTQ recipe")
     if args.ptq_recipe and (

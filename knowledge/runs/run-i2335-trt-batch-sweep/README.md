@@ -1,19 +1,19 @@
 # CLIP-ReIDとGVHMRのバッチサイズ掃引
 
-#2335 / #2278 Phase 1。条件0（PyTorch FP32）、条件1（PyTorch FP16）、条件2（TensorRT FP16）を[共通プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md)で測る。各モデル・系列長の同じ入力を処理したPyTorch FP32 B=1を全条件の単体精度の参照にする。CLIP-ReIDは #2303 のPTQ設定で224 cropの許容差を満たした条件3a（`attention-out-max`）と3b（`linear-max`）も対象とする。これらのエンジンも全236 cropを処理し、単体精度の判定時に選定用12件をqueryとgalleryから外す。 [#2303の測定記録](../run-i2303-vit-tensorrt/metrics.json)
+#2335 / #2278 Phase 1。条件0（PyTorch FP32）、条件1（PyTorch FP16）、条件2（TensorRT FP16）を[共通プロトコル](../run-i2297-clipreid-tensorrt/PROTOCOL.md)で測る。各モデル・系列長の同じ入力を処理したPyTorch FP32 B=1を全条件の単体精度の参照にする。CLIP-ReIDは #2303 のPTQ設定で224 cropの許容差を満たした条件3a（`attention-out-max`）と3b（`linear-max`）も対象とする。校正は固定 `clip_027` の254 cropを1件ずつ使う。各エンジンが評価の全236 cropを処理し、単体精度の判定時に選定用12件をqueryとgalleryから外す。 [#2303の測定記録](../run-i2303-vit-tensorrt/metrics.json)
 
 ## バッチとプロファイル
 
 | モデル | 固定入力と束ね方 | TensorRT min / opt / max | ncu代表バッチ |
 |---|---|---|---|
 | CLIP-ReID | #2297の236 cropをmanifest順に連続して束ねる。B=1, 4, 8, 16, 32 | B=1 / 16 / 32 | B=16。#2297の代表cropを含む先頭側の完全バッチ |
-| GVHMR | #2305の同じ長さの4人物系列をmanifest順に束ねる。clip_037のL=145とclip_000のL=177を別々に測る。B=1, 2, 4 | (B,L)=(1,145) / (4,145) / (4,177) | B=4。各評価クリップの全4人物を束ねた上限バッチ |
+| GVHMR | #2305の同じ長さの4人物系列をmanifest順に束ねる。clip_037のL=145とclip_000のL=177を別々に測る。B=1, 2, 4 | L=145と177でそれぞれB=1 / 4 / 4 | B=4。各評価クリップの全4人物を束ねた上限バッチ |
 
 CLIP-ReIDのB=1と4は全バッチが指定サイズ。B=8の最後の1バッチは4件、B=16と32では12件。端数をそのまま推論し、全236件を順序どおり精度照合に使う。速度とthroughputは完全バッチを循環して計測し、端数も固定shapeの区分として30 warm-upと300反復で別に計測する。VRAMは完全バッチと端数を処理する同じプロセスのピークを記録する。nsysは各指定Bの完全バッチを使う。
 
-GVHMRは同じ長さの4本をBで等分する。全系列を保持し、padding・切り詰めを行わない。秒当たりの処理量は人物系列数とフレーム数を長さ区分ごとに記録する。従来のopt長145を引き継ぎ、評価系列の範囲145–177を使う。精度評価は出力を人物ごとに戻し、条件共通のFP32復号とCOCO-17再構成を適用する。
+GVHMRは同じ長さの4本をBで等分する。全フレームを保持したまま連結する。秒当たりの処理量は人物系列数とフレーム数を長さ区分ごとに記録する。BとLの両軸が可変の単一profileはビルドでSIGSEGVを再現したため、系列長ごとにBの可変profileをビルドする。精度評価は出力を人物ごとに戻し、条件共通のFP32復号とCOCO-17再構成を適用する。 [ビルドの記録](validation.json)
 
-各モデルの条件2は全バッチで同じ単一profileのplanをロードする。min・opt・maxの実行を先に確認し、B=0と最大B+1がTensorRTから拒否されることをログに保存する。GVHMRではL=144と178も検査する。ビルド時の3端点と計測時の実shapeで主要演算のprecisionを照合する。ncuのkernel数は同じplan・入力で取得したnsysの件数と照合する。B=1のncu比較には#2297と#2305の記録を使う。条件2はprofileが異なるため、カーネルやタクティクスの差も含む比較になる。
+各TensorRT条件はモデル・系列長ごとに単一profileのplanをロードする。min・opt・maxの実行を先に確認し、B=0と最大B+1がTensorRTから拒否されることをログに保存する。GVHMRは各planの範囲から外れるLも検査する。ビルド時の3端点と計測時の実shapeで主要演算のprecisionを照合する。ncuのkernel数は同じplan・入力で取得したnsysの件数と照合する。B=1のncu比較には#2297・#2303・#2305の記録を使う。TensorRTの比較は、profileの違いによるカーネルやタクティクスの差も含む。
 
 ## 再現
 
@@ -42,10 +42,27 @@ enqueue() {
         --resource all --issue 2335 --provider codex --session "$CODEX_THREAD_ID"
 }
 enqueue clipreid-timing clipreid "$clip_inputs" 45m "$out/clipreid"
-enqueue gvhmr-timing gvhmr "$gvhmr_inputs" 40m "$out/gvhmr"
+enqueue gvhmr-torch gvhmr "$gvhmr_inputs" 40m "$out/gvhmr" --condition 0 --condition 1
+for frames in 145 177; do
+    enqueue "gvhmr-timing-l$frames" gvhmr "$gvhmr_inputs" 20m "$out/gvhmr-l$frames" \
+        --condition 2 --fixed-length "$frames" --reference-root "$out/gvhmr"
+done
 # ncuの登録例。各条件のB=16またはB=4の計測先を指定する。
 enqueue clipreid-ncu-0 clipreid "$clip_inputs" 68m "$out/c0-b16-ncu" \
     --profile-from "$out/clipreid/c0-b16" --ncu-timeout 3900
+```
+
+CLIP-ReIDのタイムアウトからncuを再開するには、上の `--profile-from` に加えて、同一caseの時間切れ記録を `--ncu-prefix` に渡す。別々のreplayで得たprefixとsuffixが全launchを順番どおり覆うことをnsysで照合する。キャッシュとGPUクロックの設定は共通プロトコルを使う。
+
+## 計測結果
+
+[metrics.json](metrics.json) は速度・VRAM・nsys・単体精度と代表バッチの内部指標をまとめる。各ケースの `artifact` にraw計測の場所を、[validation.json](validation.json) にエンジンの拒否検査と失敗時の証拠を記録する。元のqueue出力をこのrunの構成で保持している場合は、次のコマンドで集計を再生成できる。
+
+```bash
+vit=knowledge/runs/run-i2303-vit-tensorrt
+CUDA_VISIBLE_DEVICES="" PYTHONPATH="$PWD:$PWD/$common:$PWD/$gvhmr:$PWD/$vit" \
+    .venv/bin/python -B "$bundle/aggregate.py" \
+    --source outputs/trt-batch-i2335 --output "$bundle/metrics.json"
 ```
 
 ## CPU検証

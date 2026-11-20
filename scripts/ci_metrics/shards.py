@@ -405,6 +405,8 @@ def verify_shards(
     if not result["successful_test_observations"]:
         result["issues"].append("incomplete/failed test observations")
     expected_jobs = {"plan", "lint", "tests"}
+    if "scope" in needs:
+        expected_jobs.add("scope")
     if result["schema_version"] == 3 or "system-deps" in needs:
         expected_jobs.add("system-deps")
         if result["schema_version"] != 3:
@@ -415,7 +417,7 @@ def verify_shards(
         row.get("result") != "success" for row in needs.values()
     ):
         result["issues"].append(
-            "plan, lint and every CPU/runtime test job must succeed"
+            "all CI scope, planning, lint and CPU/runtime test jobs must succeed"
         )
     result["success"] = not result["issues"]
     result["full_cpu_success"] &= result["success"]

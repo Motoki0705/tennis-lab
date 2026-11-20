@@ -35,6 +35,20 @@ def test_gvhmr_batch_profile_keeps_the_two_evaluation_lengths():
     ]
 
 
+def test_gvhmr_fixed_length_profiles_keep_only_the_batch_axis_dynamic():
+    for frames in (145, 177):
+        profile = sweep_profile(4, 4, fixed_length=frames)
+        assert profile["profile_lengths"] == dict.fromkeys(
+            ("min", "opt", "max"), frames
+        )
+        assert profile["inputs"]["obs"] == [
+            [batch, frames, 17, 3] for batch in (1, 4, 4)
+        ]
+        assert profile["outside_lengths"] == [frames - 1, frames + 1]
+    with pytest.raises(ValueError, match="No locked"):
+        sweep_profile(4, 4, fixed_length=146)
+
+
 def test_gvhmr_person_batches_preserve_frames_and_refuse_mixed_lengths():
     def person(frames, marker):
         arrays = {

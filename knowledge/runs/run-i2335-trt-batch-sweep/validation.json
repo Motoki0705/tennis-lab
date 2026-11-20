@@ -27,5 +27,40 @@
       {"case": "gvhmr/c0-b4-l145", "timeout_seconds": 2400, "result_mtime_jst": "2026-11-21T00:13:34+09:00", "csv_mtime_jst": "2026-11-21T00:39:02+09:00", "csv_rows": 713, "nsys_kernels": 713}
     ],
     "ncu_handling": "タイムアウト後にCSVが追記され、後続の計測区間と重なった。上記CSVのカウンタ値は採用せず再計測する。GVHMR FP32 L=177のncuも、L=145の子プロセスの残存期間に開始したため再計測する。GVHMR FP16のncuは再計測したnsysのkernel数と代表入力を照合した上で採否を決める"
+  },
+  "retry_2": {
+    "clipreid": {
+      "queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing.job",
+      "output": "outputs/trt-batch-i2335/retry-2/clipreid",
+      "timing_accuracy_nsys_cases": 20,
+      "verified_trt_profiles": {
+        "2": {"batch_min_opt_max": [1, 16, 32], "onnx_precision_each_endpoint": {"fp16": 74}, "rejected_batch_exit_codes": {"0": 1, "33": 1}},
+        "3a": {"batch_min_opt_max": [1, 16, 32], "onnx_precision_each_endpoint": {"fp16": 62, "int8": 12}, "rejected_batch_exit_codes": {"0": 1, "33": 1}}
+      },
+      "fp8_build_exit_code": 1,
+      "fp8_build_log": "logs/build-3b.log",
+      "fp8_error": "ModelOptが選定演算と同じ活性を参照する48個のShape演算へDequantizeLinearを接続し、Q/DQ範囲の検査が拒否した",
+      "fp8_cpu_check": "実際の失敗ONNXで48個のShape入力を元の活性へ戻すと、48個の選定積のQ/DQ照合とONNX checkerが通った",
+      "cumulative_queue_minutes": 152.46
+    },
+    "gvhmr": {
+      "queue_job": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing.job",
+      "output": "outputs/trt-batch-i2335/retry-2/gvhmr",
+      "timing_accuracy_nsys_cases": 12,
+      "build_exit_code": -11,
+      "build_log": "logs/build-2.log",
+      "build_error": "TensorRTでBとLを両方可変にしたprofileのbuild_serialized_network中にSIGSEGV。動的batchのmask修正後も再現",
+      "fixed_length_retry": [145, 177],
+      "cumulative_queue_minutes": 113.36
+    },
+    "ncu_prefixes": [
+      {"case": "clipreid/c1-b16", "timeout_seconds": 1650, "prefix_kernels": 119, "nsys_kernels": 189},
+      {"case": "clipreid/c2-b16", "timeout_seconds": 1050, "prefix_kernels": 66, "nsys_kernels": 114}
+    ],
+    "ncu_prefix_evidence": "2件とも再計測した同一caseのnsysに対し、prefixのgridとblockが先頭から一致。残りを同じplan・shapeで採取し、範囲全体を照合するまで集計は保留",
+    "ncu_reused_gvhmr_fp16": {
+      "c1-b4-l145": {"ncu_kernels": 712, "original_nsys_kernels": 712, "retry_nsys_kernels": 712},
+      "c1-b4-l177": {"ncu_kernels": 745, "original_nsys_kernels": 745, "retry_nsys_kernels": 745}
+    }
   }
 }

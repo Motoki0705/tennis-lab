@@ -9,8 +9,8 @@ import time
 from pathlib import Path
 
 from benchmark import verify_inputs, write_json
+from convert import CONDITIONS, TRT_PRECISIONS, require_queue
 from convert import PLAN as CLIP_PLAN
-from convert import TRT_PRECISIONS, require_queue
 from inputs import CHECKPOINT as CLIP_CHECKPOINT
 from inputs import MODEL as CLIP_MODEL
 from inputs import sha256_file
@@ -43,7 +43,7 @@ def case_id(condition, batch, length):
     return name if length is None else f"{name}-l{length}"
 
 
-def build_command(model, condition, inputs, conversion):
+def build_command(model, condition, inputs, conversion, *, fixed_length=None):
     if model == "clipreid":
         ptq = (
             [
@@ -83,6 +83,7 @@ def build_command(model, condition, inputs, conversion):
         "--batch-profile",
         GVHMR_OPT,
         max(GVHMR_BATCHES),
+        *(["--fixed-length", fixed_length] if fixed_length is not None else []),
     )
 
 
@@ -123,7 +124,17 @@ def probe_command(model, condition, batch, length, inputs, conversion):
 
 
 def case_command(
-    model, condition, batch, length, inputs, output, *, source=None, ncu_timeout=None
+    model,
+    condition,
+    batch,
+    length,
+    inputs,
+    output,
+    *,
+    source=None,
+    ncu_timeout=None,
+    ncu_prefix=None,
+    reference_root=None,
 ):
     arguments = [
         "--condition",
@@ -139,8 +150,12 @@ def case_command(
     ]
     if source is not None:
         arguments.extend(("--profile-from", source, "--ncu-timeout", ncu_timeout))
+        if ncu_prefix is not None:
+            arguments.extend(("--ncu-prefix", ncu_prefix))
     elif (condition, batch) != ("0", 1):
-        arguments.extend(("--reference", output.parent / case_id("0", 1, length)))
+        arguments.extend(
+            ("--reference", (reference_root or output.parent) / case_id("0", 1, length))
+        )
     if condition in TRT_PRECISIONS and (source is None or model == "gvhmr"):
         base = output.parent if source is None else source.parent
         arguments.extend(("--conversion", base / f"engine-{condition}"))
@@ -159,7 +174,7 @@ def case_command(
     )
 
 
-def run_profile(model, inputs, root, source, ncu_timeout):
+def run_profile(model, inputs, root, source, ncu_timeout, ncu_prefix):
     if model == "clipreid":
         identity = json.loads((source / "result.json").read_text())["identity"]
         length = None
@@ -179,6 +194,7 @@ def run_profile(model, inputs, root, source, ncu_timeout):
         root,
         source=source,
         ncu_timeout=ncu_timeout,
+        ncu_prefix=ncu_prefix,
     )
     return subprocess.run(command, check=False).returncode
 
@@ -201,7 +217,16 @@ def reused_clip_measurement(path, batch, tensors):
     return {"exit_code": 0, "verified": True, "reused_measurement": str(path)}
 
 
-def run_sweep(model, inputs, root, reused=()):
+def run_sweep(
+    model,
+    inputs,
+    root,
+    reused=(),
+    *,
+    selected=(),
+    fixed_length=None,
+    reference_root=None,
+):
     reuse = {path.name: path for path in reused}
     allow_reuse = (
         {case_id("0", batch, None) for batch in CLIP_BATCHES}
@@ -249,17 +274,24 @@ def run_sweep(model, inputs, root, reused=()):
     batches, lengths = (
         (CLIP_BATCHES, (None,))
         if model == "clipreid"
-        else (GVHMR_BATCHES, GVHMR_LENGTHS)
+        else (
+            GVHMR_BATCHES,
+            (fixed_length,) if fixed_length is not None else GVHMR_LENGTHS,
+        )
     )
     conditions = (
         ("0", "1", "2", *CLIP_RECIPES) if model == "clipreid" else ("0", "1", "2")
     )
     for condition in conditions:
+        if selected and condition not in selected:
+            continue
         if condition in TRT_PRECISIONS:
             conversion = root / f"engine-{condition}"
             if not run_stage(
                 f"build-{condition}",
-                build_command(model, condition, inputs, conversion),
+                build_command(
+                    model, condition, inputs, conversion, fixed_length=fixed_length
+                ),
             ):
                 continue
             if model == "clipreid":
@@ -275,11 +307,16 @@ def run_sweep(model, inputs, root, reused=()):
                     ),
                 )
             else:
-                short, long = GVHMR_LENGTHS
+                short, long = lengths[0], lengths[-1]
+                endpoints = dict.fromkeys(
+                    (
+                        (1, short, None),
+                        (GVHMR_OPT, short, None),
+                        (max(batches), long, None),
+                    )
+                )
                 probes = (
-                    (1, short, None),
-                    (GVHMR_OPT, short, None),
-                    (max(batches), long, None),
+                    *endpoints,
                     (0, short, "length=(0,)"),
                     (max(batches) + 1, short, f"length=({max(batches) + 1},)"),
                     (1, short - 1, f"obs=(1, {short - 1}, 17, 3)"),
@@ -308,11 +345,15 @@ def run_sweep(model, inputs, root, reused=()):
                     destination.symlink_to(reuse[name], target_is_directory=True)
                     write_json(root / "sweep.json", report)
                     continue
-                reference = report["stages"].get(case_id("0", 1, length), {})
-                # Exit 3 means the predictions passed but the requested profiles did not.
-                if (condition, batch) != ("0", 1) and reference.get(
-                    "exit_code"
-                ) not in (0, 3):
+                reference_case = case_id("0", 1, length)
+                if reference_root is None:
+                    ready = (
+                        report["stages"].get(reference_case, {}).get("exit_code") == 0
+                    )
+                else:
+                    receipt = "result.json" if model == "clipreid" else "accuracy.json"
+                    ready = (reference_root / reference_case / receipt).is_file()
+                if (condition, batch) != ("0", 1) and not ready:
                     report["stages"][name] = {
                         "verified": False,
                         "reason": "Missing FP32 batch 1 reference",
@@ -321,7 +362,15 @@ def run_sweep(model, inputs, root, reused=()):
                     continue
                 run_stage(
                     name,
-                    case_command(model, condition, batch, length, inputs, destination),
+                    case_command(
+                        model,
+                        condition,
+                        batch,
+                        length,
+                        inputs,
+                        destination,
+                        reference_root=reference_root,
+                    ),
                 )
                 if report["stages"][name]["exit_code"] == 3:
                     # Release the queue's process group before another profiler can run.
@@ -335,24 +384,52 @@ def main():
     parser.add_argument("--inputs", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reuse-case", type=Path, action="append", default=[])
+    parser.add_argument("--condition", choices=CONDITIONS, action="append", default=[])
+    parser.add_argument("--fixed-length", choices=GVHMR_LENGTHS, type=int)
+    parser.add_argument("--reference-root", type=Path)
     parser.add_argument("--profile-from", type=Path)
     parser.add_argument("--ncu-timeout", type=int, default=900)
+    parser.add_argument("--ncu-prefix", type=Path)
     args = parser.parse_args()
-    if args.ncu_timeout <= 0 or (args.profile_from and args.reuse_case):
+    if args.ncu_timeout <= 0 or (
+        args.profile_from
+        and (
+            args.reuse_case
+            or args.condition
+            or args.fixed_length
+            or args.reference_root
+        )
+    ):
         parser.error("Invalid ncu timeout or reuse options")
+    if args.ncu_prefix and (args.model != "clipreid" or not args.profile_from):
+        parser.error("--ncu-prefix requires CLIP --profile-from")
+    if args.model != "gvhmr" and args.fixed_length is not None:
+        parser.error("--fixed-length requires GVHMR")
+    if args.model == "gvhmr" and set(args.condition) & CLIP_RECIPES.keys():
+        parser.error("GVHMR uses conditions 0, 1 and 2")
     require_queue()
     inputs, root = args.inputs.resolve(strict=True), args.output.resolve()
     (Path(os.environ["TENNIS_REPRO_DIR"]) / "output_dir.txt").write_text(f"{root}\n")
     if args.profile_from is not None:
         # Preserve the case path used by the sweep, including its plan-relative links.
         return run_profile(
-            args.model, inputs, root, args.profile_from.absolute(), args.ncu_timeout
+            args.model,
+            inputs,
+            root,
+            args.profile_from.absolute(),
+            args.ncu_timeout,
+            args.ncu_prefix,
         )
     return run_sweep(
         args.model,
         inputs,
         root,
         [case.resolve(strict=True) for case in args.reuse_case],
+        selected=args.condition,
+        fixed_length=args.fixed_length,
+        reference_root=args.reference_root.resolve(strict=True)
+        if args.reference_root
+        else None,
     )
 
 
