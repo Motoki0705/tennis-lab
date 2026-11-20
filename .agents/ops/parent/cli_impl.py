@@ -1189,13 +1189,18 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 TypeError,
                 subprocess.SubprocessError,
             ) as exc:
+                destination_repair = (
+                    "専用ランチャーで同じ会話を開き、parent register を再実行してから、"
+                    if identity is not None and identity.startswith("agy:")
+                    else "自分のpaneを確認して herdr_labels bind を行ってから、"
+                )
                 display = {
                     "status": "error",
                     "error": str(exc),
                     "repair": (
                         "担当操作は適用済みです。表示同期の失敗原因を解消してください。"
                         "表示先が未確認の場合は .agents/ops/herdr_labels/README.md の手順で "
-                        "自分のpaneを確認して herdr_labels bind を行ってから、"
+                        f"{destination_repair}"
                         "PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync "
                         "で表示だけを再試行してください。"
                     ),

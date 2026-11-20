@@ -10,6 +10,7 @@ from types import ModuleType
 from typing import Any
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 REVIEW_DIR = ROOT / ".agents/ops/review"
@@ -40,6 +41,9 @@ SHA = "a" * 40
         ("claude/i1058-cross-review", [], "claude"),
         ("claude/x", ["agent:claude", "tests"], "claude"),
         ("fix/issue-1", ["agent:codex"], "codex"),
+        ("agy/feature", [], "agy"),
+        ("fix/issue-2", ["agent:agy"], "agy"),
+        ("agy/feature", ["agent:agy"], "agy"),
         ("refactor/followup", ["documentation"], None),
         ("codexfoo/x", [], None),
         ("Claude/x", [], None),
@@ -56,6 +60,9 @@ def test_detect_author_agent(
     [
         ("codex/x", ["agent:claude"]),
         ("fix/x", ["agent:claude", "agent:codex"]),
+        ("agy/x", ["agent:codex"]),
+        ("codex/x", ["agent:agy"]),
+        ("fix/x", ["agent:agy", "agent:claude"]),
     ],
 )
 def test_contradicting_author_signals_raise(head_ref: str, labels: list[str]) -> None:
@@ -67,6 +74,12 @@ def test_reviewer_is_codex_for_every_author() -> None:
     # #1178: authorship selects which PRs are reviewed, never who reviews them.
     assert P.REVIEWER == "codex"
     assert not hasattr(P, "reviewer_for")
+
+
+def test_review_authors_have_manifest_labels() -> None:
+    manifest = yaml.safe_load((ROOT / ".github/labels.yml").read_text())
+    registered = {label["name"] for label in manifest["origin"]}
+    assert {"agent:agy", "agent:claude", "agent:codex"} <= registered
 
 
 # --------------------------------------------------------------------------- shared paths

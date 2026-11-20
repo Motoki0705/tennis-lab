@@ -10,6 +10,9 @@
 
 手動の実行根拠は `agree --spec` に目的・範囲・期待動作・受入条件と、人間の確認発言の原文を保存する。会話ですでに明確な指示はそのまま使う。仕様が不足していれば、その判断に依存する作業だけを保留し、人間に確認する。
 
+agyは[手動の対話ルート](../../../ops/parent/README.md#agyの手動親)で担当する。Herdrを使う場合は
+[専用ランチャー](../../../ops/herdr_labels/README.md#agyの手動起動と表示)で起動してから登録する。
+
 親Issueの本文補足が `pending` で合意を保存できないときは `wait-supplement`。対象workflowの終了後もpendingなら、表示されたrun・確定ラベルを照合する。[補足の状態](../../../ops/issues/README.md#親issueの補足追加状態)
 
 ## 要件変更

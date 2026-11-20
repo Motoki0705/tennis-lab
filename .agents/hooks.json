@@ -1,0 +1,11 @@
+{
+  "tennis-lab-parent-board": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "../.venv/bin/python -I ops/herdr_labels/agy_hook.py pre-invocation",
+        "timeout": 5
+      }
+    ]
+  }
+}

@@ -365,6 +365,8 @@ parentの実行根拠検査、子の要件digest・正式関係と既存launch_p
 workerのlifetime lockはrunnerへFD継承する。workerが失われても起動途中のrunnerを見落として再起動しない。
 共通ランナーは親を `--role parent --mode write` で起動し、モデル値の正本は共通設定のまま使う。
 担当受理時だけ、観測した生存Claude runtimeとCLI環境のidentityを照合し、同じgenerationで予約に結合する。
+agyの親担当は[人間が起動する対話TUI](../parent/README.md#agyの手動親)で扱う。dispatcherと
+`agent_exec.sh` によるagy親の自律起動は対象外。
 
 初期の開発親上限は1、各親の実装runtime上限は2。これは手動親の `launch_policy` の既定nullとは別である。
 自律親だけ予約上限も2に揃え、実runtimeの上限はさらに `start-child` で検査する。

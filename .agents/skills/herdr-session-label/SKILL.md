@@ -29,6 +29,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync
 通常はHerdr環境変数が必要。欠落する実行基盤では、READMEの明示bind手順で
 自分の会話であることを照合する。フォーカスや一覧順から対象を選ばない。
 `not_configured`は表示未設定であり、成功ではない。
+agyは[専用ランチャー](../../ops/herdr_labels/README.md#agyの手動起動と表示)で端末から起動し、
+同じ端末の会話で登録・再開する。切替は会話ロックを確認したstatusLine、終了はランチャーで同期する。
 
 Claudeの起動・再開・終了hookは表示の復元・解除だけを行う。担当登録・解除は親の明示操作を使う。
 別画面で再開した登録済みClaudeの担当は、旧端末が空いたと確認できれば表示先が自動で移る。

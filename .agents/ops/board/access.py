@@ -36,6 +36,14 @@ def as_parent(
     env: Mapping[str, str], *, write: bool = False
 ) -> Iterator[tuple[sqlite3.Connection, Assignment, dict[str, Any]]]:
     identity = session_identity(env)  # Reject nested/missing identity before IO.
+    with _as_registered_parent(env, identity, write=write) as context:
+        yield context
+
+
+@contextmanager
+def _as_registered_parent(
+    env: Mapping[str, str], identity: str, *, write: bool = False
+) -> Iterator[tuple[sqlite3.Connection, Assignment, dict[str, Any]]]:
     with parent_state(env) as parents:
         owned = [
             key

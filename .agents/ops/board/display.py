@@ -18,9 +18,11 @@ from herdr_labels.coordination import (
     read_record,
     state_root,
 )
-from herdr_labels.service import issue_label, parent_summary
+from herdr_labels.service import issue_label, parent_summary, registry
+from lib.agy_session import AgyTui
+from lib.identity import session_identity
 
-from .access import as_parent, parent_state
+from .access import _as_registered_parent, as_parent, parent_state
 from .activity import summary
 from .errors import BoardError
 from .storage import Store, directory
@@ -139,10 +141,14 @@ def _confirmed_target(
         if runtime is None or runtime.get("owner") != owner_token(identity):
             raise BoardError("confirmed display conversation changed")
         native = pane.get("agent_session")
-        if native is not None and (
-            native.get("kind") != "id"
-            or native.get("agent") != pane["agent"]
-            or native.get("value") != identity.partition(":")[2]
+        if (
+            pane["agent"] != "agy"
+            and native is not None
+            and (
+                native.get("kind") != "id"
+                or native.get("agent") != pane["agent"]
+                or native.get("value") != identity.partition(":")[2]
+            )
         ):
             raise BoardError("confirmed display native session changed")
         token = pane.get("tokens", {}).get("tl_owner")
@@ -153,7 +159,7 @@ def _confirmed_target(
         if (
             after["terminal_id"] != owner["terminal_id"]
             or after.get("agent") != identity.partition(":")[0]
-            or after.get("agent_session") != native
+            or (pane["agent"] != "agy" and after.get("agent_session") != native)
         ):
             raise BoardError("confirmed display native session or terminal changed")
 
@@ -323,12 +329,7 @@ def read_by_caller(env: Mapping[str, str], result: dict[str, Any]) -> dict[str, 
     return {**result, "inbox_display": update(env, [assignment_id])}
 
 
-def snapshot(env: Mapping[str, str]) -> dict[str, Any] | None:
-    """Counts only; shared by Claude hooks and restored Codex/Claude parents."""
-    from herdr_labels.service import registry
-    from lib.identity import session_identity
-
-    identity = session_identity(env)
+def _snapshot(env: Mapping[str, str], identity: str) -> dict[str, Any] | None:
     owned = [
         row
         for row in registry(env).values()
@@ -336,7 +337,7 @@ def snapshot(env: Mapping[str, str]) -> dict[str, Any] | None:
     ]
     if not owned:
         return None
-    with as_parent(env) as (connection, caller, _):
+    with _as_registered_parent(env, identity) as (connection, caller, _):
         count = summary(connection, caller.id).unread_count
         rows = connection.execute(
             """SELECT state, COUNT(*) FROM deliveries WHERE assignment_id=?
@@ -352,6 +353,19 @@ def snapshot(env: Mapping[str, str]) -> dict[str, Any] | None:
             "held_count": problems.get("held", 0),
             "delivery_failed_count": problems.get("delivery_failed", 0),
         }
+
+
+def snapshot(env: Mapping[str, str]) -> dict[str, Any] | None:
+    """Counts only, for hooks and for restored parent sessions."""
+    return _snapshot(env, session_identity(env))
+
+
+def agy_unread(env: Mapping[str, str], tui: AgyTui, conversation: str) -> int:
+    """For a native hook, use the lock and a previously verified registration."""
+    tui.require_conversation(conversation)
+    state = _snapshot(env, f"agy:{conversation}")
+    tui.require_conversation(conversation)
+    return int(state["unread_count"]) if state else 0
 
 
 def context(env: Mapping[str, str]) -> str:

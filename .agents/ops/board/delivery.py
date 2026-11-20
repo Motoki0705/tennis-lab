@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from herdr_labels.coordination import locked
-from lib.identity import session_identity
+from lib.identity import PARENT_ENGINES, session_identity
 
 from .access import ownership_fence, parent_state
 from .errors import BoardError
@@ -89,7 +89,8 @@ def _result(value: Any) -> NotificationResult:
         if (
             not value.accepted
             and value.reason in REASONS
-            and value.reason not in {"recipient_unavailable", "recipient_retired"}
+            and value.reason
+            not in {"recipient_unavailable", "recipient_retired", "awaiting_hook"}
             and not (value.reason == "notification_uncertain" and value.retryable)
         ):
             return value
@@ -148,7 +149,7 @@ def dispatch(
         filters.append("assignment_id IS ?")
         params.append(assignment_id)
     if held_only:
-        filters.append("state='held'")
+        filters.append("(state='held' OR (state='pending' AND reason='awaiting_hook'))")
     where = " WHERE " + " AND ".join(filters) if filters else ""
     with locked(store.directory / "notifications.lock"):
         reports: dict[tuple[str, int | None], dict[str, Any]] = {}
@@ -246,8 +247,16 @@ def dispatch(
                         )
                         continue
                     engine = owner["session"].partition(":")[0]
-                    if engine not in {"claude", "codex"}:
+                    if engine not in PARENT_ENGINES:
                         raise BoardError("invalid recipient engine identity")
+                    if engine == "agy":
+                        connection.execute(
+                            """UPDATE deliveries SET state='pending', reason='awaiting_hook',
+                               retryable=0, engine=? WHERE post_id=? AND assignment_id=?""",
+                            (engine, target_post, target_id),
+                        )
+                        report.update(outcome="skipped", skip_reason="awaiting_hook")
+                        continue
                     notifier = notifiers.get(engine)
                     if notifier is None:
                         report["skip_reason"] = "notifier_unconfigured"
