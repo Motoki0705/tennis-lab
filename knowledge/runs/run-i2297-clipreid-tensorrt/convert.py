@@ -59,10 +59,12 @@ def clipreid_precision_requirements(condition):
     }
 
 
-def inspect_engine(engine):
+def inspect_engine(engine, context=None):
     import tensorrt as trt
 
     inspector = engine.create_engine_inspector()
+    if context is not None:
+        inspector.execution_context = context
     return json.loads(inspector.get_engine_information(trt.LayerInformationFormat.JSON))
 
 
@@ -127,7 +129,14 @@ def verify_compute_precision(details, required_precision, *, expected_operations
     return evidence
 
 
-def build_engine(onnx_file, plan, *, required_precision, expected_operations=None):
+def build_engine(
+    onnx_file,
+    plan,
+    *,
+    required_precision,
+    expected_operations=None,
+    profile_shapes=None,
+):
     import tensorrt as trt
     import torch
 
@@ -148,6 +157,19 @@ def build_engine(onnx_file, plan, *, required_precision, expected_operations=Non
     if not parser.parse_from_file(str(onnx_file)):
         errors = "\n".join(str(parser.get_error(i)) for i in range(parser.num_errors))
         raise RuntimeError(f"TensorRT ONNX parse failed for {onnx_file}\n{errors}")
+    if profile_shapes is not None:
+        names = {network.get_input(i).name for i in range(network.num_inputs)}
+        if names != profile_shapes.keys():
+            raise ValueError(f"Optimization profile inputs do not match ONNX: {names}")
+        profile = builder.create_optimization_profile()
+        for name, shapes in profile_shapes.items():
+            if not profile.set_shape(name, *shapes):
+                raise ValueError(
+                    f"TensorRT rejected optimization profile {name}={shapes}"
+                )
+        if config.add_optimization_profile(profile) != 0:
+            raise RuntimeError("TensorRT did not accept the first optimization profile")
+        config.clear_flag(trt.BuilderFlag.TF32)
     engine_bytes = builder.build_serialized_network(network, config)
     if engine_bytes is None:
         raise RuntimeError(f"TensorRT build failed for {onnx_file}")
@@ -155,15 +177,41 @@ def build_engine(onnx_file, plan, *, required_precision, expected_operations=Non
     engine = runtime.deserialize_cuda_engine(engine_bytes)
     if engine is None:
         raise RuntimeError("TensorRT could not deserialize the built engine")
-    details = inspect_engine(engine)
-    output = plan.with_suffix(".layers.json")
-    output.write_text(json.dumps(details, indent=2) + "\n")
-    evidence = verify_compute_precision(
-        details, required_precision, expected_operations=expected_operations
-    )
+    if profile_shapes is None:
+        shapes_by_label = {"": None}
+        context = None
+    else:
+        shapes_by_label = {
+            f".{label}": {name: shapes[i] for name, shapes in profile_shapes.items()}
+            for i, label in enumerate(("min", "opt", "max"))
+        }
+        context = engine.create_execution_context(
+            trt.ExecutionContextAllocationStrategy.USER_MANAGED
+        )
+        if context is None:
+            raise RuntimeError("Could not create engine inspection context")
+    details_by_label = {}
+    for label, shapes in shapes_by_label.items():
+        if shapes is not None:
+            for name, shape in shapes.items():
+                if not context.set_input_shape(name, shape):
+                    raise ValueError(
+                        f"TensorRT rejected inspection shape {name}={shape}"
+                    )
+        details = inspect_engine(engine, context)
+        plan.with_suffix(f"{label}.layers.json").write_text(
+            json.dumps(details, indent=2) + "\n"
+        )
+        details_by_label[label] = details
+    evidence = {
+        label.removeprefix("."): verify_compute_precision(
+            details, required_precision, expected_operations=expected_operations
+        )
+        for label, details in details_by_label.items()
+    }
     with plan.open("xb") as stream:
         stream.write(memoryview(engine_bytes))
-    return evidence
+    return evidence[""] if profile_shapes is None else evidence
 
 
 def convert(condition, checkpoint, calibration, output):

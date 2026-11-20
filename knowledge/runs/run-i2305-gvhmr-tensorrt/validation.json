@@ -1,0 +1,62 @@
+{
+  "initial_queue_attempts": [
+    {
+      "job": "i2305-gvhmr-build-3b",
+      "log": ".training_queue/logs/0-8204856466796830453_2026-11-20T02-58-53-203169546Z_3845457_i2305-gvhmr-build-3b.log",
+      "log_sha256": "61a0dc52995c8bcc9b7dbe47273017397877fecb9cb20de1cd80a8c168ad70fc",
+      "exit_code": 1,
+      "stage": "startup_import",
+      "error": "ModuleNotFoundError: No module named 'hydra'"
+    },
+    {
+      "job": "i2305-gvhmr-build-3a",
+      "log": ".training_queue/logs/0-8204856467108791372_2026-11-20T02-58-52-891208627Z_3845387_i2305-gvhmr-build-3a.log",
+      "log_sha256": "111078a06c49d69a94cdabe356cf21f80776f0d26af350cfe24f61a690efe990",
+      "exit_code": 1,
+      "stage": "startup_import",
+      "error": "ModuleNotFoundError: No module named 'hydra'"
+    },
+    {
+      "job": "i2305-gvhmr-1-l177",
+      "log": ".training_queue/logs/0-8204856823572310963_2026-11-20T02-52-56-427689036Z_3785611_i2305-gvhmr-1-l177.log",
+      "log_sha256": "7e30d273ddf0fda04dbb9ea239c8cf5f8e8712894fc4667ae0cf3d105fd0bf75",
+      "exit_code": 1,
+      "stage": "startup_import",
+      "error": "ModuleNotFoundError: No module named 'hydra'"
+    },
+    {
+      "job": "i2305-gvhmr-1-l145",
+      "log": ".training_queue/logs/0-8204856824068374241_2026-11-20T02-52-55-931625758Z_3785525_i2305-gvhmr-1-l145.log",
+      "log_sha256": "10e59ae1f9ca8524ccfce9b57969094753d5820046d7c67cfaa154538b5c7e6e",
+      "exit_code": 1,
+      "stage": "startup_import",
+      "error": "ModuleNotFoundError: No module named 'hydra'"
+    },
+    {
+      "job": "i2305-gvhmr-0-l177",
+      "log": ".training_queue/logs/0-8204856824452482828_2026-11-20T02-52-55-547517171Z_3785457_i2305-gvhmr-0-l177.log",
+      "log_sha256": "4276cc9bf4858168515abbd006f3b84cfb10bd1df92c6ba9a6a0b73bb6c35ba3",
+      "exit_code": 1,
+      "stage": "startup_import",
+      "error": "ModuleNotFoundError: No module named 'hydra'"
+    },
+    {
+      "job": "i2305-gvhmr-0-l145",
+      "log": ".training_queue/logs/0-8204856824771259232_2026-11-20T02-52-55-228740767Z_3785376_i2305-gvhmr-0-l145.log",
+      "log_sha256": "4c12e6edd5ed2da84a2e88286b2dcb9ec2cc7ddecac70c577f01c6b8a063cad2",
+      "exit_code": 1,
+      "stage": "startup_import",
+      "error": "ModuleNotFoundError: No module named 'hydra'"
+    },
+    {
+      "job": "i2305-gvhmr-build-2",
+      "log": ".training_queue/logs/0-8204857042637191939_2026-11-20T02-49-17-362808060Z_3755326_i2305-gvhmr-build-2.log",
+      "log_sha256": "1ab378d8f576725f9ea0719c60700180ca5e403daef465622735d21069ed6940",
+      "exit_code": 1,
+      "stage": "startup_import",
+      "error": "ModuleNotFoundError: No module named 'hydra'"
+    }
+  ],
+  "initial_failure_cause": "The queued entrypoints imported pin_segments.py for tensor verification. It imported body_view_selection and loaded ball_detection configuration, which requires Hydra. All seven jobs exited before conversion or CUDA inference.",
+  "correction": "Use locked_inputs.py for prepared tensor verification. Keep the scene artifact imports in the CPU capture entrypoint."
+}

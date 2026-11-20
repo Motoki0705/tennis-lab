@@ -40,7 +40,7 @@ class TorchRunner:
         return self.model(self.pixels)
 
 
-class TensorRTRunner:
+class TensorRTContext:
     def __init__(self, plan, *, omit_layer_nvtx=False):
         import tensorrt as trt
 
@@ -56,10 +56,9 @@ class TensorRTRunner:
             self.context.nvtx_verbosity = trt.ProfilingVerbosity.NONE
             if self.context.nvtx_verbosity != trt.ProfilingVerbosity.NONE:
                 raise RuntimeError("Could not disable TensorRT layer NVTX ranges")
-        expected = {
-            INPUT_NAME: trt.TensorIOMode.INPUT,
-            OUTPUT_NAME: trt.TensorIOMode.OUTPUT,
-        }
+        self.stream = torch.cuda.current_stream()
+
+    def require_bindings(self, expected):
         actual = {
             name: self.engine.get_tensor_mode(name)
             for name in (
@@ -69,10 +68,10 @@ class TensorRTRunner:
         }
         if expected != actual:
             raise ValueError(f"Unexpected engine bindings: {actual}")
-        dtypes = {trt.float32: torch.float32, trt.float16: torch.float16}
-        self.pixels = self.bind(INPUT_NAME, BATCH_SHAPE, dtypes)
-        self.features = self.bind(OUTPUT_NAME, (1, FEATURE_DIMENSION), dtypes)
-        self.stream = torch.cuda.current_stream()
+
+    def set_input_shape(self, name, shape):
+        if not self.context.set_input_shape(name, shape):
+            raise ValueError(f"TensorRT rejected input shape {name}={shape}")
 
     def bind(self, name, expected_shape, dtypes):
         shape = tuple(self.context.get_tensor_shape(name))
@@ -84,9 +83,28 @@ class TensorRTRunner:
             raise RuntimeError(f"Could not bind TensorRT tensor: {name}")
         return buffer
 
-    def run(self):
+    def execute(self):
         if not self.context.execute_async_v3(self.stream.cuda_stream):
             raise RuntimeError("TensorRT execute_async_v3 failed")
+
+
+class TensorRTRunner(TensorRTContext):
+    def __init__(self, plan, *, omit_layer_nvtx=False):
+        import tensorrt as trt
+
+        super().__init__(plan, omit_layer_nvtx=omit_layer_nvtx)
+        self.require_bindings(
+            {
+                INPUT_NAME: trt.TensorIOMode.INPUT,
+                OUTPUT_NAME: trt.TensorIOMode.OUTPUT,
+            }
+        )
+        dtypes = {trt.float32: torch.float32, trt.float16: torch.float16}
+        self.pixels = self.bind(INPUT_NAME, BATCH_SHAPE, dtypes)
+        self.features = self.bind(OUTPUT_NAME, (1, FEATURE_DIMENSION), dtypes)
+
+    def run(self):
+        self.execute()
         return self.features
 
 
@@ -129,15 +147,15 @@ def load_sample(runner, sample):
     torch.cuda.synchronize()
 
 
-def warmup(runner, data):
+def warmup(runner, data, *, load=load_sample):
     for i in range(WARMUP):
-        load_sample(runner, data[i % len(data)])
+        load(runner, data[i % len(data)])
         runner.run()
     torch.cuda.synchronize()
 
 
-def profile_one(runner, sample):
-    load_sample(runner, sample)
+def profile_one(runner, sample, *, load=load_sample):
+    load(runner, sample)
     cudart = torch.cuda.cudart()
     if int(cudart.cudaProfilerStart()) != 0:
         raise RuntimeError("cudaProfilerStart failed")
@@ -161,13 +179,13 @@ def stats(samples_ms):
     }
 
 
-def measure(runner, data, memory):
+def measure_latency(runner, data, memory, *, load=load_sample, summarize=stats):
     memory.sample("after_warmup")
     blocks = []
     for block in range(BLOCKS):
         elapsed = []
         for i in range(REPEATS_PER_BLOCK):
-            load_sample(runner, data[(block * REPEATS_PER_BLOCK + i) % len(data)])
+            load(runner, data[(block * REPEATS_PER_BLOCK + i) % len(data)])
             start = time.perf_counter_ns()
             runner.run()
             torch.cuda.synchronize()
@@ -175,6 +193,16 @@ def measure(runner, data, memory):
         blocks.append(elapsed)
         memory.sample(f"after_timed_block_{block + 1}")
 
+    return {
+        **summarize([value for block in blocks for value in block]),
+        "warmup": WARMUP,
+        "blocks": [summarize(block) for block in blocks],
+        "latency_samples_ms": blocks,
+    }
+
+
+def measure(runner, data, memory):
+    latency = measure_latency(runner, data, memory)
     features = []
     for sample in data:
         load_sample(runner, sample)
@@ -189,11 +217,8 @@ def measure(runner, data, memory):
         raise ValueError("Invalid CLIP features")
     memory.sample("after_accuracy")
     return {
-        **stats([value for block in blocks for value in block]),
+        **latency,
         **memory.result(),
-        "warmup": WARMUP,
-        "blocks": [stats(block) for block in blocks],
-        "latency_samples_ms": blocks,
         "batch_shape": BATCH_SHAPE,
         "input_dtype": str(runner.pixels.dtype),
         "driver": memory.driver,
