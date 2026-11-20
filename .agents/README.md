@@ -65,7 +65,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/worker_status/](ops/worker_status/README.md) | 親registry・共通ランナー記録から子の実行状況・根拠・鮮度・秘匿済み要約を返す読み取り専用Python API/JSON CLI。GitHub取得は明示指定時のみ |
 | [ops/worker_logs/](ops/worker_logs/README.md) | workerの具体指示・最終報告・来歴を無害化し、委任の節目にログ専用PRへまとめて追記する。公開検査・追加専用merge・CI除外の限定例外と復旧の正本 |
 | [ops/decision_logs/](ops/decision_logs/README.ja.md) | 結果・判断・行動の非公開捕捉と復旧、親ごとのGit公開、階層READMEの決定的生成。新形式の限定例外と公開復旧の正本 |
-| [ops/shared_memory/](ops/shared_memory/README.md) | 共有memory 4層の公開CLI、索引の決定的生成、機械検査とマージ、定期保守との接続 |
+| [ops/shared_memory/](ops/shared_memory/README.md) | 共有memory 4層の公開CLI、索引生成、機械検査とマージ、[AutoDream](ops/shared_memory/README.md#autodream) による定期保守 |
 | [ops/board/](ops/board/README.md) | 親issueに結び付く名前・名簿・投稿と状態・呼び鈴を管理する掲示板CLI |
 | [ops/herdr_labels/](ops/herdr_labels/README.md) | 親担当をHerdrの表示へ同期する。会話からの設定・修復は [herdr-session-label](skills/herdr-session-label/SKILL.md) |
 

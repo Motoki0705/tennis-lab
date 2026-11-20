@@ -43,6 +43,7 @@ repo rootを子へ渡し、入口の `require_checkout_job()` が実FDのinode�
 | `cleanup/cleanup.py` のscan/apply-auto/delete | 有限launcher。直接file実行は拒否 |
 | `worktree_cleanup` のscan/cleanup（dry-run含む） | 有限launcher。直接module実行は拒否 |
 | `storage_tier` の全subcommand（dry-run含む） | 有限launcher。直接module実行は拒否 |
+| `shared_memory/autodream_job.py run`（dry-run含む） | 有限launcher。直接file実行は拒否。[AutoDream](../shared_memory/README.md#autodream) |
 | `dispatcher run` / `dispatcher.judgement` | 有限launcher。直接の判定起動は拒否 |
 | `dispatcher supervise` | `--supervisor` 専用launcher。直接CLIや有限launcherからは拒否 |
 | `board web` | `--board-web-port PORT` 専用launcher。直接CLIからは拒否 |
@@ -507,10 +508,11 @@ timer・systemd操作やagent起動は含まない。
 
 - プロファイルなし: 完全な役割既定値 → タスクの `--model` / `--effort` の順。
   overrideがあっても不足・不正な既定設定を許容しない。
-- `--profile review` / `ops_report` / `ops_scout` / `issue_judgement`: プロファイルの固定値を使う。
+- `--profile review` / `ops_report` / `ops_scout` / `issue_judgement` / `memory_autodream` はプロファイルの固定値を使う。
   `--model` / `--effort` / `--role` との併用を拒否する。
   reviewだけは下記の専用選択入力を受け付ける。他profileの設定・引数・継続契約は変えない。
   `ops_report` はClaude親、`ops_scout` はCodex調査子、`issue_judgement` はCodex着手判定に対応する。
+  `memory_autodream` は一時展開した `main` を読み取り専用で参照して統合計画を返す。
 - configは隣の `agents.conf`。明示設定は `--config-file FILE`。内容はリテラルな
   `NAME=value` とコメントだけで、shellとして評価しない。環境変数の同名pinは読まない。
   CLI自身のmodel/effort/service tier設定より明示引数を優先し、実効値も別途照合する。
@@ -679,8 +681,8 @@ Claude Code 2.1.308の `claude --help` でツールアクセス用の追加デ�
 この組合せで、既存の `--tools Read Grep Glob --permission-mode dontAsk` のまま追加先を読む。
 明示的なdeny/ask規則やhooks等による拒否はCLIの規則に従う。writeでの編集許可も既存modeに従う。
 
-Codexはread-only/writeとも追加引数を付けない。
-read-only sandboxはOSの権限で読めるファイルシステム全体を読み取れる前提を使う。
+Codexはread-only/writeとも `--read-dir` から追加引数を組み立てない。
+既定のread-only sandboxはOSの権限で読めるファイルシステム全体を読み取れる前提を使う。
 公式 [Sandbox read access](https://learn.chatgpt.com/docs/app-server#sandbox-read-access-readonlyaccess)
 では `readOnly.access` の既定は `fullAccess`、限定する場合は `restricted` と読取rootを指定する契約である。
 read-dirによってCodexのwriteに追加の書込権限は与えない。
@@ -695,6 +697,17 @@ cwd/branch等と同様に契約不一致として終了値2で拒否する。rea
 子の担当identityは子CLI自身が設定する値を使い、親の値やPIDを代用しない。
 `AGENT_RUNTIME_RUN_DIR` と `AGENT_RUNTIME_TASK_ID` は子のローカル記録への参照であり、
 担当identityや起動権限ではない。実CLIが環境を生成すること自体の検証は実機検証で行う。
+
+### AutoDreamのCodex隔離
+
+`memory_autodream` は固定した一時展開で新規ターンを起動する。Linux の Codex CLI の
+名前付き permissions profile を `--strict-config` で指定する。読み取りを許可するのは
+一時展開、CLI の最小実行環境（`:minimal`）、sandbox の再実行に使う Codex 実行ファイル。
+モデルのツールはこの範囲を読み取り専用で参照し、ネットワークアクセスは無効。
+
+runner は限定した環境と一時的な Codex home を使う。既存のファイル認証を参照するか設定済みの
+`OPENAI_API_KEY` を受け取り、ツールには親の環境を継承しない。ホストの設定・指示・memory、
+plugin、hook、app は読み込ませない。隔離設定を解釈できる CLI が必要で、設定エラーはジョブの失敗になる。
 
 ## 記録と結果JSON（schema_version 1）
 

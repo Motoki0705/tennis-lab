@@ -24,7 +24,9 @@ def test_live_adapter_resumes_creating_session_and_consumes_strict_report(
     ParentSession = importlib.import_module("parent.session").ParentSession
     progression = importlib.import_module("lib.ops_review.progression")
     new_state, save = progression.new_state, progression.save
-    LiveBackend = importlib.import_module("lib.ops_review.progression_backend").LiveBackend
+    LiveBackend = importlib.import_module(
+        "lib.ops_review.progression_backend"
+    ).LiveBackend
 
     p = reserved
     first = creating_worker(p)
@@ -108,7 +110,9 @@ def test_repair_failure_details_include_attempt_and_unavailable_log_reason(
     tmp_path: Path,
 ) -> None:
     Store = importlib.import_module("parent.state").Store
-    LiveBackend = importlib.import_module("lib.ops_review.progression_backend").LiveBackend
+    LiveBackend = importlib.import_module(
+        "lib.ops_review.progression_backend"
+    ).LiveBackend
 
     state = {"request": {"repo": "o/r", "parent_issue": 1}}
     backend = LiveBackend(state, Store(tmp_path))

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -56,6 +57,16 @@ def advance_main(
         "force": False,
     }
     assert git("rev-list", "--parents", "-n", "1", head).split() == [head, base]
+    if intent_file := os.environ.get("MEMORY_TEST_INTENT_FILE"):
+        record = json.loads(Path(intent_file).read_text())
+        intent = record["pending_publication"]
+        assert record["last_outcome"] == "publishing"
+        assert (intent["base"], intent["head"], intent["branch"]) == (
+            base,
+            head,
+            pr["head"],
+        )
+        assert (intent["pr"], intent["stage"]) == (17, "advancing")
     attempt = pr["merge_calls"]
     pr["merge_calls"] += 1
     state.write_text(json.dumps(pr))
@@ -74,6 +85,11 @@ def advance_main(
             print(f"HTTP/2.0 {conflicts[attempt]}\n\nIncomplete API response")
             return 1
         return respond({"message": "ref update refused"}, conflicts[attempt])
+    if case.get("signal_before_merge"):
+        os.kill(os.getppid(), signal.SIGTERM)
+        return 1
+    if case.get("response_lost_before_merge"):
+        return respond({"message": "service failure"}, 503)
 
     try:
         git(
@@ -96,7 +112,11 @@ def advance_main(
         )
         return 1
     pr["landed_base"] = base
+    pr["landed_head"] = head
     state.write_text(json.dumps(pr))
+    if case.get("signal_after_merge"):
+        os.kill(os.getppid(), signal.SIGTERM)
+        return 1
     if case.get("response_lost_after_merge"):
         return respond({"message": "service failure"}, 503)
     return respond(
@@ -130,6 +150,16 @@ def main(args: list[str]) -> int:
         assert not state.exists()
         assert data["base"] == "main" and data["draft"] is False
         assert git("rev-parse", f"refs/heads/{data['head']}")
+        if intent_file := os.environ.get("MEMORY_TEST_INTENT_FILE"):
+            evidence = json.loads(Path(intent_file).read_text())
+            intent = evidence["pending_publication"]
+            assert evidence["last_outcome"] == "publishing"
+            assert intent["head"] == git("rev-parse", f"refs/heads/{data['head']}")
+            assert (intent["branch"], intent["pr"], intent["stage"]) == (
+                data["head"],
+                None,
+                "prepared",
+            )
         state.write_text(
             json.dumps(
                 {
@@ -147,7 +177,11 @@ def main(args: list[str]) -> int:
         return advance_main(data, state, pr, case)
     route += "/17"
     branch = f"refs/heads/{pr['head']}"
-    base, head = git("rev-parse", "main", branch).splitlines()
+    base = git("rev-parse", "main")
+    try:
+        head = git("rev-parse", "--verify", branch)
+    except subprocess.CalledProcessError:
+        head = pr["landed_head"]
     diff_base = pr.get("landed_base", base)
     fields = git(
         "diff", "--name-status", "--no-renames", "-z", f"{diff_base}...{head}"

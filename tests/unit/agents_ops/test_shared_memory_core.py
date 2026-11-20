@@ -165,13 +165,18 @@ def test_schema_rejects_malformed_entry_files(
     ],
 )
 def test_schema_rejects_malformed_citations(citations: object, message: str) -> None:
+    document = _document(_entry(citations=citations))
     with pytest.raises(schema.CitationError, match=message):
         schema.parse_entry(
             "workflow",
             "example.md",
-            _document(_entry(citations=citations)),
+            document,
             today=TODAY,
         )
+    audit = checks.audit({**_tree({}), ENTRY: document}, today=TODAY)
+    assert [(problem.path, problem.code) for problem in audit.broken_citations] == [
+        (ENTRY, "citation")
+    ]
 
 
 def test_file_map_resolves_code_symbols_and_rendered_markdown_anchors() -> None:

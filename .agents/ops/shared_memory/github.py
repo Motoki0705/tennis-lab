@@ -45,6 +45,7 @@ class Pull:
     changed_files: int
     url: str
     repository_id: str
+    merged: bool
 
 
 class GitHub:
@@ -144,7 +145,13 @@ class GitHub:
             raise ValueError("GitHub returned the wrong pull request after body update")
 
     def pull(
-        self, number: int, branch: str, sha: str, body: str, *, merged: bool = False
+        self,
+        number: int,
+        branch: str,
+        sha: str,
+        body: str | None,
+        *,
+        merged: bool | None = False,
     ) -> Pull:
         response = _object(
             self.request("GET", f"{self.pulls}/{number}"), "pull request"
@@ -152,13 +159,21 @@ class GitHub:
         base = _object(response.get("base"), "base")
         head = _object(response.get("head"), "head")
         count, url = response.get("changed_files"), response.get("html_url")
+        actual_merge, state = response.get("merged"), response.get("state")
         if (
             type(response.get("number")) is not int
             or response["number"] != number
-            or response.get("state") != ("closed" if merged else "open")
-            or response.get("merged") is not merged
+            or type(actual_merge) is not bool
+            or state not in ("open", "closed")
+            or (actual_merge and state != "closed")
+            or (
+                merged is not None
+                and (
+                    actual_merge != merged or state != ("closed" if merged else "open")
+                )
+            )
             or response.get("draft") is not False
-            or response.get("body") != body
+            or (body is not None and response.get("body") != body)
             or base.get("ref") != "main"
             or head.get("ref") != branch
             or head.get("sha") != sha
@@ -182,7 +197,7 @@ class GitHub:
             or repository_id != head_repo.get("node_id")
         ):
             raise ValueError("GitHub pull request repository node IDs do not agree")
-        return Pull(count, url, repository_id)
+        return Pull(count, url, repository_id, actual_merge)
 
     def main(self) -> str:
         # A PR's base.sha can stay pinned to an older commit after main advances.

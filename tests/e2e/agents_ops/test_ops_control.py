@@ -14,6 +14,9 @@ from typing import Any
 
 import pytest
 
+from tests.support.agents_ops.shared_memory import Repository
+from tests.support.agents_ops.shared_memory import memory_repo as memory_repo
+
 ROOT = Path(__file__).resolve().parents[3]
 SUPERVISOR = "tennis-lab-dispatch-supervisor.service"
 JUDGEMENT_TIMER = "tennis-lab-dispatch-judgement.timer"
@@ -85,6 +88,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             "cleanup",
             "board",
             "parent",
+            "shared_memory",
             "git_sync",
             "worktree_cleanup",
             "storage_tier",
@@ -231,6 +235,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "triage",
         "cleanup",
         "proposal-expiry",
+        "memory-autodream",
         "git-sync",
         "worktree-cleanup",
         "storage-tier",
@@ -518,6 +523,7 @@ def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) ->
         "triage",
         "cleanup",
         "proposal-expiry",
+        "memory-autodream",
         "git-sync",
         "worktree-cleanup",
         "storage-tier",
@@ -532,6 +538,7 @@ def test_run_starts_only_oneshot_without_enabling_timer(
         "triage": "tennis-lab-ops-triage",
         "cleanup": "tennis-lab-cleanup",
         "proposal-expiry": "tennis-lab-improvement-expire",
+        "memory-autodream": "tennis-lab-memory-autodream",
         "git-sync": "tennis-lab-git-sync",
         "worktree-cleanup": "tennis-lab-worktree-cleanup",
         "storage-tier": "tennis-lab-storage-tier",
@@ -608,6 +615,106 @@ def test_targeted_install_expands_agents_without_maintenance(
     assert result.returncode == 0, result.stderr
     config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
     assert {path.name for path in config.iterdir()} == AGENT_UNITS
+
+
+def test_memory_autodream_install_schedule_and_state(control: ControlEnv) -> None:
+    target = "memory-autodream"
+    stem = "tennis-lab-memory-autodream"
+    assert control.run("install", target).returncode == 0
+    config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
+    assert {path.name for path in config.iterdir()} == {
+        stem + ".timer",
+        stem + ".service",
+    }
+    timer = (config / (stem + ".timer")).read_text()
+    assert "OnCalendar=*-*-* 05:00:00 Asia/Tokyo" in timer
+    assert "Persistent=true" in timer
+    service = (config / (stem + ".service")).read_text()
+    assert "KillMode=control-group" in service
+    assert "TimeoutStartSec=45min" in service
+    assert "TimeoutStopSec=60" in service
+    checked(control, "on", target)
+    assert control.read()["units"][stem + ".timer"]["UnitFileState"] == "enabled"
+    assert checked(control, "status", target)["targets"][0]["last_run"] is None
+    state = (
+        Path(control.environment["XDG_STATE_HOME"])
+        / "tennis-lab-agents/shared-memory/autodream_state.json"
+    )
+    state.parent.mkdir(parents=True)
+    record = {"schema_version": 1, "last_outcome": "skipped_trigger"}
+    state.write_text(json.dumps(record))
+    report = checked(control, "status", target)["targets"][0]
+    assert report["last_run"] == record
+    exec_start = next(
+        unit["exec_start"]
+        for unit in report["units"]
+        if unit["unit"] == stem + ".service"
+    )
+    assert "checkout_job.py --repo" in exec_start
+    assert exec_start.endswith("/shared_memory/autodream_job.py run")
+
+
+def test_autodream_corrupt_state_preserved_and_reported_by_spin(
+    control: ControlEnv, memory_repo: Repository
+) -> None:
+    state = (
+        Path(control.environment["XDG_STATE_HOME"])
+        / "tennis-lab-agents/shared-memory/autodream_state.json"
+    )
+    state.parent.mkdir(parents=True)
+    raw = b'{"schema_version":2,'
+    state.write_bytes(raw)
+    codex = memory_repo.tmp / "bin/codex"
+    marker = memory_repo.tmp / "unexpected-runner"
+    codex.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(marker)!r}).touch()\n"
+    )
+    codex.chmod(0o700)
+    ops = ROOT / ".agents/ops"
+    command = [
+        sys.executable,
+        str(ops / "checkout_job.py"),
+        "--repo",
+        str(memory_repo.source),
+        "--",
+        sys.executable,
+        str(ops / "shared_memory/autodream_job.py"),
+        "run",
+        "--force",
+        "--state-dir",
+        str(state.parent),
+    ]
+    first_backup = None
+    for _ in range(2):
+        result = subprocess.run(
+            command,
+            cwd=memory_repo.source,
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+        assert result.returncode == 1
+        assert "manual recovery required" in result.stderr
+        failed = checked(control, "status", "memory-autodream")["targets"][0][
+            "last_run"
+        ]
+        assert failed["last_outcome"] == "failed"
+        assert "manual recovery required" in failed["last_error"]
+        assert (
+            failed["last_completed_at"] is None
+            and failed["last_consolidated_sha"] is None
+        )
+        assert failed["pending_publication"] is None
+        backup = Path(failed["state_backup"])
+        assert backup != state and backup.parent == state.parent
+        assert str(backup) in failed["last_error"] and backup.read_bytes() == raw
+        if first_backup is not None:
+            assert backup == first_backup
+        first_backup = backup
+    assert not marker.exists()
+    assert not memory_repo.git_calls("fetch")
+    memory_repo.assert_no_publication()
 
 
 @pytest.mark.parametrize(

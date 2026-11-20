@@ -205,6 +205,7 @@ def run_process_group(
     stdout_file: TextIO | None = None,
     stdin_file: TextIO | None = None,
     cancel: Event | None = None,
+    reap_descendants: bool = False,
 ) -> str:
     """Run ``cmd`` in its own process group and return stdout.
 
@@ -216,9 +217,13 @@ def run_process_group(
     and return an empty string; partial output survives errors and timeouts.
     ``stdin_file`` provides caller-owned input without a large argv or pipe write.
     A supplied ``cancel`` event also interrupts communication and reaps the group.
+    A dedicated job process can become a subreaper and also clean up detached children
+    before waiting for inherited output pipes to close.
     """
     if cancel is not None and cancel.is_set():
         raise ProcessCancelled("process cancelled before launch")
+    if reap_descendants:
+        enable_child_subreaper()
     try:
         proc = subprocess.Popen(
             list(cmd),
@@ -233,6 +238,13 @@ def run_process_group(
     except FileNotFoundError as exc:
         raise CommandError(f"{cmd[0]}: command not found") from exc
     pgid = proc.pid  # session leader: its pid is the process group id
+
+    def cleanup() -> list[int]:
+        killed = _terminate_group(proc, pgid, term_grace)
+        if reap_descendants:
+            killed.extend(terminate_descendants(term_grace))
+        return killed
+
     deadline = None if timeout is None else time.monotonic() + timeout
     try:
         if cancel is None:
@@ -253,15 +265,15 @@ def run_process_group(
                 except subprocess.TimeoutExpired:
                     continue
     except subprocess.TimeoutExpired as exc:
-        killed = _terminate_group(proc, pgid, term_grace)
+        killed = cleanup()
         proc.communicate()
         raise CommandError(
             f"{shlex.join(cmd)} timed out after {timeout}s (killed {killed})"
         ) from exc
     except BaseException:
-        _terminate_group(proc, pgid, term_grace)
+        cleanup()
         raise
-    leftover = _terminate_group(proc, pgid, term_grace)
+    leftover = cleanup()
     if leftover:
         LOG.warning("killed processes left behind by %s: %s", cmd[0], leftover)
     if proc.returncode != 0:

@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
-from .layout import is_shared_path
+from .layout import DEDICATED_PATH, is_shared_path
 from .tree import Edits, FileKind, resolve_links
 
 _LOCAL_GIT_ENV = {
@@ -101,6 +101,16 @@ class Git:
         sha, separator, found = result.partition(b"\t")
         if separator != b"\t" or found != ref.encode() + b"\n":
             raise ValueError("remote did not return exactly one main ref")
+        return _sha(sha)
+
+    def remote_branch(self, remote: str, branch: str) -> str | None:
+        ref = f"refs/heads/{branch}"
+        result = self.run("ls-remote", "--refs", "--", remote, ref)
+        if not result:
+            return None
+        sha, separator, found = result.partition(b"\t")
+        if separator != b"\t" or found != ref.encode() + b"\n":
+            raise ValueError("remote did not return exactly the requested branch")
         return _sha(sha)
 
     def fetch_main(self, remote: str) -> str:
@@ -247,6 +257,8 @@ class GitTree:
             metadata, name = row.split(b"\t", 1)
             mode, _, oid = metadata.split()
             path = os.fsdecode(name)
+            if path.startswith(f"{DEDICATED_PATH}/"):
+                continue
             self.nodes[path] = (_KINDS[mode], _sha(oid))
             parent, _, filename = path.rpartition("/")
             self.directories.setdefault(parent or ".", []).append(filename)

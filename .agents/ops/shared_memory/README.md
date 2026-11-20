@@ -80,6 +80,54 @@ PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory audit
 
 `shared_memory.operations.apply_operations(source, operations, *, today=None)` は checkout の `Path` または `Tree` に対して、`batch` と同形式の操作配列を検査する。返り値はリポジトリ相対パスから書き込む `bytes` または削除を表す `None` への対応で、変更が必要な生成文書も含む。入力ツリーへの書き込みは発生しない。
 
-`shared_memory.publish.publish_operations(repo, operations, *, remote="origin", dry_run=False, today=None)` は、最新 `main` の fetch から公開までを実行し、JSON 出力と同じ項目を持つ `Publication` を返す。`today` を指定した場合は、日付既定値と検査に同じ日を使う。入力・検査・公開の拒否や曖昧な応答では例外を送出する。AutoDream の Prune & Index はこの API に操作配列を渡す（#2326で実装中）。
+`shared_memory.publish.publish_operations(repo, operations, *, remote="origin", dry_run=False, today=None, require_fresh=False, guard=None)` は、最新 `main` の fetch から公開までを実行し、JSON 出力と同じ項目を持つ `Publication` を返す。`today` を指定した場合は、日付既定値と検査に同じ日を使う。入力・検査・公開の拒否や曖昧な応答では例外を送出する。
 
-`shared_memory.publish.publish_index_repair(repo, *, reason, remote="origin", dry_run=False, today=None)` は、エントリ操作が無い場合に生成文書だけを検査・公開する。生成差分が無ければ無変更としてエラーを返す。
+`shared_memory.publish.publish_index_repair(repo, *, reason, remote="origin", dry_run=False, today=None, require_fresh=False, guard=None)` は、エントリ操作が無い場合に生成文書だけを検査・公開する。生成差分が無ければ無変更としてエラーを返す。AutoDream は両 API の `require_fresh` と `PublicationGuard` を使い、候補の鮮度、観測した SHA の一致、公開インテントの記録を必須にする。
+
+## AutoDream
+
+### 発火条件
+
+前回統合完了から **168時間以上**経過したうえで、前回確認した `main` 以降の件数が **main のコミット10件以上**または **共有memory更新3件以上**に達すると起動する。コミットは `main` の first-parent 上で1件ずつ数える。共有memory更新は、同じ区間で `SUMMARY.md` または共有4層直下の Markdown に first parent から差分のあるコミットを数える。初回は経過時間の条件を満たした扱いとし、first-parent 全履歴に件数条件を適用する。
+
+引用の破損、上限超過、最終確認から90日を超えたエントリ、生成文書のバイト差分は直ちに発火する。引用の破損には `citations` 欄の欠落、型・要素の不正、参照先の破損を含む。手動の `--force` も発火する。条件未達なら計測値と `skipped_trigger` を記録して終了する。
+
+### 実行の流れ
+
+1. **Orient** は最新の remote `main` の SHA を固定し、共有4層のエントリの生バイトと SHA-256、生成文書を取得する。
+2. **Gather Signal** は `audit` と `plan_sync` で問題を点検する。上限の80%以上に達した文書、題名・要約の一致による重複候補、履歴上で変更・削除された引用先、規則や skill への昇格候補を示す。
+3. **Consolidate** は専用の `ops-report` memory を除いた Git 管理ファイルを展開し、[隔離した runner](../lib/README.md#autodreamのcodex隔離) に渡す。`workflow`・`decision`・`environment`・`gotcha` を同条件で扱い、根拠のある修正・削除・重複統合・相対日時の絶対日付化を JSON 計画にする。各更新・削除に観測時の SHA-256 を付け、適用後の形式・引用・鮮度などを機械検査する。
+4. **Prune & Index** は検査済みの一括操作を公開 API に渡し、`SUMMARY.md` と4層の索引を再生成して即時マージする。生成文書だけにずれがあれば修復 API を使う。両経路とも、観測した `main` の SHA が変わっていたら拒否して再計画を求める。変更も未修復の問題もなければ `noop` を記録する。
+
+### 手動実行と状態
+
+メインcheckoutから [有限jobのlauncher](../lib/README.md#既存cliと新規jobの接続) 経由で実行する。
+
+```bash
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/shared_memory/autodream_job.py run --force --dry-run
+```
+
+`--dry-run` はトリガー、シグナル、発火時の計画と公開前検査を JSON で返す。PR とマージは発生せず、統合の基準を進めない。件数や間隔は `--min-main-commits`、`--min-memory-commits`、`--min-days` で変更できる。runner は既定1800秒で停止し、外側の監視にも15秒の回収猶予込みで上限を設ける。手動起動では `--runner-timeout`（秒）を指定できる。
+
+状態と排他 lock は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/shared-memory/` に置く。試験時は `--state-dir` で差し替えられる。`autodream_state.json`（schema version 2）に最終起動、結果、トリガーの計測、直近の確定した PR とマージの SHA、失敗詳細を記録する。成功時の `last_completed_at` は統合または無変更の確認時刻、`last_consolidated_sha` はマージ確定の SHA または無変更を確認した `main` の SHA。
+
+runner・検証・公開の失敗は `failed` と詳細を記録して非ゼロで終了する。runner の詳細は状態ディレクトリの `agent-runs/` に残る。排他競合は標準エラー出力に理由を出す。launcher を経由しない起動は終了コード `75` で拒否する。
+
+### 中断時の復旧
+
+- push 前に `pending_publication` へ観測した base、検査済みの head、専用ブランチ、操作種別を保存する。PR 作成後に番号を追加し、ref 更新前に `advancing` を保存する。確定した公開拒否はインテントを消し、統合の基準を進めず失敗を記録する。
+- 応答喪失や中断で結果が不明ならインテントを保持する。再起動は通常の計画に先立ち remote `main` に head が含まれることと PR のマージを照合する。確定すれば専用ブランチの後片付けを試み、統合基準を確定した head に進める。照合できなければ失敗を記録して終了し、計画や再公開を保留する。運用者が PR と専用ブランチを確認してから状態を復旧する。
+- 統合確定後に専用ブランチの削除に失敗した場合は `merged` と基準 SHA を保存し、`branch_cleanup_error` へ理由を記録する。pending の `--dry-run` は照合だけを行い、ブランチや統合基準を更新しない。
+- 状態ファイルの読込・schema 検査に失敗した場合は原本を同じディレクトリに保全し、`last_outcome: "failed"`、`last_error`、`state_backup` を保存する。保全済みの記録がある間は公開処理を開始しない。運用者が原本と公開先を確認して状態を復旧する。
+
+### systemd への導入
+
+merge 後に人間がメインcheckoutで導入・有効化する。日次 timer は毎日05:00 Asia/Tokyoに点検する。service は起動45分・停止60秒を上限とし、子孫プロセスも停止する。`run` で単発実行でき、`status` の `last_run` から状態 JSON を確認できる。
+
+```bash
+spin ops install memory-autodream
+spin ops on memory-autodream
+spin ops status memory-autodream
+spin ops run memory-autodream
+```

@@ -92,7 +92,7 @@ memoryは毎日読まれるので、大きくなるほど高くつく。`SUMMARY
 
 期限・壊れた引用・上限の使用量は `PYTHONPATH=.agents/ops .venv/bin/python -m shared_memory audit` で確認する。検証期限の定義は [schema.py](../../ops/shared_memory/schema.py) を参照する。人間の判断は、その後の指示と矛盾しないかを確かめる。
 
-AutoDream は経過日数と `main`・共有memoryの更新件数を組み合わせたトリガーや、手動実行、点検で見つかった問題を契機として、全4層を同じ条件で整理する。Orient → Gather Signal → Consolidate → Prune & Index の順で状況と根拠を確認し、重複や矛盾を整理した操作を専用CLI経由で反映する（#2326で実装中）。生成文書だけがずれていた場合は `shared_memory repair-index --reason <理由>` で公開する。
+全4層の定期統合、発火条件、手動実行と状態確認は [AutoDream](../../ops/shared_memory/README.md#autodream) を参照する。
 
 ## 運用レポート専用memory
 
