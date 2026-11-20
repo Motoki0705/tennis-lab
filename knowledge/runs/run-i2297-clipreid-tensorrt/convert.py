@@ -37,6 +37,7 @@ TACTIC_OPERANDS = re.compile(
 CUBLAS_GEMVX_OPERANDS = re.compile(
     r"_cublas_gemvx_(f16|i8|e4m3|f32|tf32|bf16)(f16|i8|e4m3|f32|tf32|bf16)_"
 )
+INT8_SMALL_K_OPERANDS = re.compile(r"^sm\d+_xmma_conv_fprop_smallk_(i8)(i8)_i32_")
 
 
 def require_queue():
@@ -177,19 +178,62 @@ def has_int8_projection_with_fp16_residual(layer, tactic, metadata, operations, 
     )
 
 
+def _attention_inputs(inputs):
+    if len(inputs) != 5:
+        return inputs
+    shapes = [tuple(tensor.get("Dimensions", ())) for tensor in inputs]
+    if any(len(shape) != 3 or min(shape) <= 0 for shape in shapes):
+        return inputs
+    row, col, query, key, value = shapes
+    windows = row[0]
+    batches, tokens, head_size = query
+    mask_name = inputs[0].get("Name")
+    # Shifted-window MHA receives two views of the same mask before Q, K, V.
+    if (
+        mask_name
+        and inputs[1].get("Name") == mask_name
+        and batches % windows == 0
+        and row == (windows, 1, tokens)
+        and col == (windows, tokens, 1)
+        and key == (batches, head_size, tokens)
+        and value == query
+    ):
+        return inputs[2:]
+    return inputs
+
+
+def _residual_input_matches_output(layer):
+    inputs, outputs = layer["Inputs"], layer.get("Outputs", [])
+    if len(outputs) != 1:
+        return False
+    residual, activation = (tensor.get("Dimensions", []) for tensor in inputs)
+    return (
+        bool(residual)
+        and residual == outputs[0].get("Dimensions")
+        and len(activation) == len(residual)
+        and activation[:-1] == residual[:-1]
+    )
+
+
 def verify_compute_precision(
     details, required_precision, *, expected_operations=None, constant_operations=()
 ):
     """Require operand evidence for each compute layer and cover the pinned ONNX ops."""
     precisions = Counter()
     seen = set()
+    constant_operations = frozenset(constant_operations)
+    implicit_operands = set()
+    masked_attention_layers = 0
+    residual_layers = 0
+    small_k_layers = 0
     for layer in details["Layers"]:
         kind = layer["LayerType"].lower()
         tactic = layer.get("TacticName") or ""
         operand_pattern = (
             CUBLAS_GEMVX_OPERANDS if "_cublas_gemvx_" in tactic else TACTIC_OPERANDS
         )
-        operands = operand_pattern.search(tactic)
+        small_k = INT8_SMALL_K_OPERANDS.match(tactic)
+        operands = operand_pattern.search(tactic) or small_k
         metadata = set(ONNX_LAYER.findall(layer.get("Metadata") or ""))
         operations = metadata
         if expected_operations is not None:
@@ -220,7 +264,9 @@ def verify_compute_precision(
                 )
             (precision,) = targets
 
-        inputs = [tensor["Format/Datatype"] for tensor in layer.get("Inputs", [])]
+        tensors = layer.get("Inputs", [])
+        attention_tensors = _attention_inputs(tensors) if fused_attention else tensors
+        inputs = [tensor["Format/Datatype"] for tensor in attention_tensors]
         pattern = re.compile(rf"\b(?:{TENSOR_DTYPE[precision]})\b", re.IGNORECASE)
         if fused_attention:
             # GVHMR fuses the local and padding masks between K and V.
@@ -230,6 +276,8 @@ def verify_compute_precision(
                 else inputs
             )
             matches = len(qkv) == 3 and all(pattern.search(dtype) for dtype in qkv)
+            if matches and attention_tensors is not tensors:
+                masked_attention_layers += 1
         elif singleton_matmul:
             # HMR2 self-attention has one token. TensorRT lowers its value
             # MatMul to one scalar multiply per head and channel.
@@ -247,10 +295,16 @@ def verify_compute_precision(
             int8_residual = (
                 precision == "int8"
                 and kind == "fusion"
-                and name.startswith("__myl_FcCastAddMulAdd_")
                 and tactic.endswith("_by_fusion_tactic")
                 and inputs == ["Half", "Int8"]
                 and len(operations) == 1
+                and (
+                    name.startswith("__myl_FcCastAddMulAdd_")
+                    or (
+                        name.startswith("__myl_FcCastAddAdd_")
+                        and _residual_input_matches_output(layer)
+                    )
+                )
                 and any(
                     node.endswith("_QuantizeLinear")
                     and node.removesuffix("_QuantizeLinear") + "_DequantizeLinear"
@@ -258,11 +312,17 @@ def verify_compute_precision(
                     for node in metadata
                 )
             )
+            pinned_constant = (
+                layer.get("Inputs") == []
+                and len(operations) == 1
+                and operations <= constant_operations
+            )
             matches = (
                 operands is not None
                 and operands.groups() == (code, code)
                 and (
-                    bool(inputs and pattern.search(inputs[0]))
+                    pinned_constant
+                    or bool(inputs and pattern.search(inputs[0]))
                     or int8_residual
                     or (
                         precision == "int8"
@@ -272,6 +332,12 @@ def verify_compute_precision(
                     )
                 )
             )
+            if matches and pinned_constant:
+                implicit_operands.update(operations)
+            if matches and int8_residual:
+                residual_layers += 1
+            if matches and small_k:
+                small_k_layers += 1
         if not matches:
             raise RuntimeError(
                 f"Compute layer {name} expected {precision} operands, "
@@ -283,9 +349,17 @@ def verify_compute_precision(
     if not precisions[required_precision]:
         raise RuntimeError(f"No compute layers verified at {required_precision}")
     evidence = {"engine_layers_by_precision": dict(precisions)}
+    if masked_attention_layers:
+        evidence["masked_attention_layers"] = masked_attention_layers
+    if implicit_operands:
+        evidence["constant_operand_operations"] = sorted(implicit_operands)
+    if residual_layers:
+        evidence["int8_fused_residual_layers"] = residual_layers
+    if small_k_layers:
+        evidence["int8_small_k_layers"] = small_k_layers
     if expected_operations is not None:
         unobserved = expected_operations.keys() - seen
-        missing = unobserved - set(constant_operations)
+        missing = unobserved - constant_operations
         if missing:
             raise RuntimeError(
                 f"Missing compute evidence for ONNX operations: {sorted(missing)}"
@@ -309,14 +383,15 @@ def set_profile_shapes(profile, profile_shapes):
             )
 
 
-def build_engine(
+def build_checked_plan(
     onnx_file,
     plan,
     *,
-    required_precision,
-    expected_operations=None,
+    verify,
+    init_plugins=False,
+    min_free_gib=6,
+    allow_tf32=True,
     profile_shapes=None,
-    constant_operations=(),
 ):
     import tensorrt as trt
     import torch
@@ -324,13 +399,19 @@ def build_engine(
     if torch.cuda.device_count() != 1 or torch.cuda.get_device_capability() != (12, 0):
         raise RuntimeError("The pinned TensorRT build requires one CC 12.0 CUDA GPU")
     free_bytes, _ = torch.cuda.mem_get_info()
-    if free_bytes < 6 * 1024**3:
-        raise RuntimeError("Less than 6 GiB free before TensorRT engine build")
+    if free_bytes < min_free_gib * 1024**3:
+        raise RuntimeError(
+            f"Less than {min_free_gib} GiB free before TensorRT engine build"
+        )
     logger = trt.Logger(trt.Logger.WARNING)
+    if init_plugins and not trt.init_libnvinfer_plugins(logger, ""):
+        raise RuntimeError("Could not initialize TensorRT plugins")
     builder = trt.Builder(logger)
     config = builder.create_builder_config()
     config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, WORKSPACE_BYTES)
     config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
+    if not allow_tf32:
+        config.clear_flag(trt.BuilderFlag.TF32)
     network = builder.create_network(
         1 << int(trt.NetworkDefinitionCreationFlag.STRONGLY_TYPED)
     )
@@ -391,12 +472,7 @@ def build_engine(
         )
         details_by_label[label] = details
     evidence = {
-        label.removeprefix("."): verify_compute_precision(
-            details,
-            required_precision,
-            expected_operations=expected_operations,
-            constant_operations=constant_operations,
-        )
+        label.removeprefix("."): verify(details)
         for label, details in details_by_label.items()
     }
     for label, shapes in context_shapes.items():
@@ -404,6 +480,28 @@ def build_engine(
     with plan.open("xb") as stream:
         stream.write(memoryview(engine_bytes))
     return evidence[""] if profile_shapes is None else evidence
+
+
+def build_engine(
+    onnx_file,
+    plan,
+    *,
+    required_precision,
+    expected_operations=None,
+    profile_shapes=None,
+    constant_operations=(),
+):
+    return build_checked_plan(
+        onnx_file,
+        plan,
+        verify=lambda details: verify_compute_precision(
+            details,
+            required_precision,
+            expected_operations=expected_operations,
+            constant_operations=constant_operations,
+        ),
+        profile_shapes=profile_shapes,
+    )
 
 
 def modelopt_ptq(

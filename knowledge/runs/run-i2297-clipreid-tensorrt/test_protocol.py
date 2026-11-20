@@ -1,7 +1,9 @@
 """CPU checks for the fixed-input, profiler and strict CLI contracts."""
 
 import csv
+import errno
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -10,6 +12,7 @@ from pathlib import Path
 
 import benchmark
 import numpy as np
+import profiles
 import pytest
 from convert import PLAN, set_profile_shapes, verify_compute_precision
 from dino_accuracy import compare_dino_frame
@@ -149,11 +152,14 @@ def test_fused_attention_checks_qkv_around_two_boolean_masks(precision, dtype):
         )
 
 
-def test_int8_residual_fusion_requires_matching_qdq_and_int8_tactic_operands():
+@pytest.mark.parametrize("epilogue", ("FcCastAddMulAdd", "FcCastAddAdd"))
+def test_int8_residual_fusion_requires_matching_qdq_and_int8_tactic_operands(epilogue):
     layer = _gemm("Half", "sm80_xmma_gemm_i8f32_i8i32_f32_tn_by_fusion_tactic")
-    layer["Name"] = "__myl_FcCastAddMulAdd_myl0_36"
+    layer["Name"] = f"__myl_{epilogue}_myl0_36"
     layer["LayerType"] = "fusion"
-    layer["Inputs"].append({"Format/Datatype": "Int8"})
+    layer["Inputs"][0]["Dimensions"] = [1, 900, 256]
+    layer["Inputs"].append({"Format/Datatype": "Int8", "Dimensions": [1, 900, 1024]})
+    layer["Outputs"][0]["Dimensions"] = [1, 900, 256]
     layer["Metadata"] += (
         "\x1f[ONNX Layer: weight_QuantizeLinear]\x1f[ONNX Layer: weight_DequantizeLinear]"
     )
@@ -174,6 +180,23 @@ def test_int8_residual_fusion_requires_matching_qdq_and_int8_tactic_operands():
             verify_compute_precision(
                 {"Layers": [broken]}, "int8", expected_operations=expected
             )
+    if epilogue == "FcCastAddAdd":
+        layer["Outputs"][0]["Dimensions"] = [1, 900, 1024]
+        with pytest.raises(RuntimeError, match="expected int8 operands"):
+            verify_compute_precision(
+                {"Layers": [layer]}, "int8", expected_operations=expected
+            )
+
+
+def test_int8_small_k_convolution_tactic_for_linear_layer():
+    layer = _gemm(
+        "Int8", "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32"
+    )
+    details = {"Layers": [layer]}
+    assert verify_compute_precision(details, "int8")["int8_small_k_layers"] == 1
+    layer["TacticName"] = layer["TacticName"].replace("_i8i8_", "_f16f16_")
+    with pytest.raises(RuntimeError, match="expected int8 operands"):
+        verify_compute_precision(details, "int8")
 
 
 def test_profile_uses_shape_readback_instead_of_set_shape_return():
@@ -201,6 +224,55 @@ def test_profile_uses_shape_readback_instead_of_set_shape_return():
     profile.get_shape = lambda _: []
     with pytest.raises(ValueError, match="TensorRT profile length"):
         set_profile_shapes(profile, shapes)
+
+
+def test_engine_inspection_checks_shifted_window_attention_operands():
+    layer = {
+        "Name": "shifted_window_attention",
+        "LayerType": "kgen",
+        "TacticName": "_gemm_mha_v2_observed",
+        "Inputs": [
+            {"Name": "mask", "Dimensions": [7, 1, 144], "Format/Datatype": "Half"},
+            {"Name": "mask", "Dimensions": [7, 144, 1], "Format/Datatype": "Half"},
+            {"Dimensions": [168, 144, 32], "Format/Datatype": "FP8"},
+            {"Dimensions": [168, 32, 144], "Format/Datatype": "FP8"},
+            {"Dimensions": [168, 144, 32], "Format/Datatype": "FP8"},
+        ],
+    }
+    assert (
+        verify_compute_precision({"Layers": [layer]}, "fp8")["masked_attention_layers"]
+        == 1
+    )
+
+    layer["Inputs"][4]["Format/Datatype"] = "Float"
+    with pytest.raises(RuntimeError, match="expected fp8 operands"):
+        verify_compute_precision({"Layers": [layer]}, "fp8")
+    layer["Inputs"][4]["Format/Datatype"] = "FP8"
+    layer["Inputs"][0]["Dimensions"] = [7, 2, 144]
+    with pytest.raises(RuntimeError, match="expected fp8 operands"):
+        verify_compute_precision({"Layers": [layer]}, "fp8")
+
+
+def test_engine_inspection_checks_named_constant_gemm_tactic_without_runtime_inputs():
+    layer = _gemm("Half", "sm80_xmma_gemm_f16f16_f16f32_f32_tn")
+    layer["Inputs"] = []
+    details = {"Layers": [layer]}
+    expected = {"/projection/MatMul": "fp16"}
+    with pytest.raises(RuntimeError, match="expected fp16 operands"):
+        verify_compute_precision(details, "fp16", expected_operations=expected)
+
+    def verify():
+        return verify_compute_precision(
+            details,
+            "fp16",
+            expected_operations=expected,
+            constant_operations=frozenset(expected),
+        )
+
+    assert verify()["constant_operand_operations"] == list(expected)
+    layer["TacticName"] = "sm80_xmma_gemm_f32f32_f32f32_f32_tn"
+    with pytest.raises(RuntimeError, match="expected fp16 operands"):
+        verify()
 
 
 def test_nsys_counts_only_real_kernels_inside_the_range(tmp_path):
@@ -262,6 +334,75 @@ def test_ncu_rejects_a_shifted_row_even_with_numeric_metric_cells(tmp_path):
         writer.writerow([0, "outer", "split payload", 10, 32, 64, 25, 1, 2, 3, 4])
     with pytest.raises(ValueError, match=r"CSV row 0 has 11 columns, expected 10"):
         read_ncu(report)
+
+
+@pytest.mark.parametrize("mode", ("kernel", "application"))
+def test_ncu_uses_the_requested_replay_and_requires_strict_application_matching(
+    mode, tmp_path, monkeypatch
+):
+    def inspect_command(command, *, timeout, **_kwargs):
+        assert command[command.index("--replay-mode") + 1] == mode
+        assert command[command.index("--metrics") + 1].split(",") == NCU_METRICS
+        assert timeout == 720
+        if mode == "application":
+            assert command[command.index("--app-replay-mode") + 1] == "strict"
+            assert command[command.index("--app-replay-match") + 1] == "all"
+        else:
+            assert "--app-replay-mode" not in command
+
+    monkeypatch.setattr(profiles, "_run_ncu", inspect_command)
+    monkeypatch.setattr(profiles, "read_ncu", lambda _path: {"profiled_kernels": 4})
+    assert profiles.capture(
+        "ncu", "ncu", ["runner"], tmp_path, ncu_timeout=720, ncu_replay=mode
+    ) == {"status": "measured", "profiled_kernels": 4}
+
+
+def test_ncu_timeout_stops_orphaned_writer_before_returning(tmp_path):
+    fake_ncu = tmp_path / "fake-ncu"
+    marker = tmp_path / "writer-group"
+    gate = tmp_path / "write-late"
+    os.mkfifo(gate)
+    fake_ncu.write_text(
+        f"""#!{sys.executable}
+import os
+import signal
+import sys
+from pathlib import Path
+
+if os.fork():
+    signal.pause()
+else:
+    report = Path(sys.argv[sys.argv.index("--log-file") + 1])
+    report.write_text("partial report")
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    gate = os.open({str(gate)!r}, os.O_RDWR)
+    Path({str(marker)!r}).write_text(str(os.getpgrp()))
+    os.read(gate, 1)
+    os.close(gate)
+    with report.open("a") as stream:
+        stream.write("late row")
+"""
+    )
+    fake_ncu.chmod(0o700)
+
+    result = profiles.capture("ncu", str(fake_ncu), [], tmp_path, ncu_timeout=1)
+    try:
+        gate_writer = os.open(gate, os.O_WRONLY | os.O_NONBLOCK)
+    except OSError as exc:
+        assert exc.errno == errno.ENXIO  # There is no report-writing reader left.
+    else:
+        try:
+            os.write(
+                gate_writer, b"x"
+            )  # Release a surviving fake writer before failing.
+        finally:
+            os.close(gate_writer)
+        pytest.fail("ncu returned while its report writer was still alive")
+
+    assert int(marker.read_text()) == os.getpgrp()
+    assert result["status"] == "unavailable"
+    assert "timed out after 1 seconds" in result["reason"]
+    assert (tmp_path / "ncu.csv").read_text() == "partial report"
 
 
 def test_ncu_followup_fails_when_reused_nsys_kernel_count_differs(

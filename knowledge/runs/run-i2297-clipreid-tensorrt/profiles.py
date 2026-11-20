@@ -2,10 +2,14 @@
 
 import csv
 import math
+import os
+import signal
 import sqlite3
 import subprocess
+import sys
 from collections import Counter
 from contextlib import closing
+from pathlib import Path
 
 PROFILE_RANGE = "steady_inference"
 DURATION = "gpu__time_duration.sum"
@@ -17,6 +21,7 @@ STALL = {
     for reason in ("long_scoreboard", "short_scoreboard", "lg_throttle", "mio_throttle")
 }
 NCU_METRICS = [DURATION, READ, WRITE, TENSOR, *STALL.values()]
+NCU_TIMEOUT_EXIT = 124
 
 
 def read_nsys(path, name=PROFILE_RANGE):
@@ -104,7 +109,49 @@ def read_ncu(path):
     }
 
 
-def capture(tool, executable, command, output, *, ncu_timeout=900):
+def _supervise_ncu(command, timeout):
+    ops_lib = Path(__file__).resolve().parents[3] / ".agents" / "ops" / "lib"
+    sys.path.insert(0, str(ops_lib))
+    from opsproc import CommandError, enable_child_subreaper, terminate_descendants
+
+    # Stay in the workload's process group so the queue can also tear it down.
+    # This dedicated process adopts any children left behind by the profiler.
+    enable_child_subreaper()
+
+    def interrupted(signum, _frame):
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGTERM, interrupted)
+    try:
+        subprocess.run(command, check=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return NCU_TIMEOUT_EXIT
+    finally:
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        while True:
+            try:
+                terminate_descendants(0.5)
+                os.waitpid(-1, os.WNOHANG)
+            except ChildProcessError:
+                break
+            except CommandError as exc:
+                # Retain the workload until all adopted processes have stopped.
+                print(f"Waiting for Nsight Compute teardown: {exc}", file=sys.stderr)
+    return 0
+
+
+def _run_ncu(command, *, stdout, timeout):
+    supervisor = subprocess.run(
+        [sys.executable, "-B", str(Path(__file__).resolve()), str(timeout), *command],
+        stdout=stdout,
+        stderr=subprocess.STDOUT,
+    )
+    if supervisor.returncode == NCU_TIMEOUT_EXIT:
+        raise subprocess.TimeoutExpired(command, timeout)
+    supervisor.check_returncode()
+
+
+def capture(tool, executable, command, output, *, ncu_timeout=900, ncu_replay="kernel"):
     log = output / f"{tool}.log"
     report = output / ("nsys.sqlite" if tool == "nsys" else "ncu.csv")
     try:
@@ -145,7 +192,12 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
                 )
                 metrics = read_nsys(report)
             else:
-                subprocess.run(
+                replay = (
+                    ["--app-replay-match", "all", "--app-replay-mode", "strict"]
+                    if ncu_replay == "application"
+                    else []
+                )
+                _run_ncu(
                     [
                         executable,
                         "--profile-from-start",
@@ -154,7 +206,8 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
                         "--nvtx-include",
                         f"{PROFILE_RANGE}/",
                         "--replay-mode",
-                        "kernel",
+                        ncu_replay,
+                        *replay,
                         "--cache-control",
                         "none",
                         "--clock-control",
@@ -171,8 +224,6 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
                         *command,
                     ],
                     stdout=stream,
-                    stderr=subprocess.STDOUT,
-                    check=True,
                     timeout=ncu_timeout,
                 )
                 metrics = read_ncu(report)
@@ -190,3 +241,7 @@ def capture(tool, executable, command, output, *, ncu_timeout=900):
             detail = str(exc)
         return {"status": "unavailable", "reason": detail}
     return {"status": "measured", **metrics}
+
+
+if __name__ == "__main__":
+    sys.exit(_supervise_ncu(sys.argv[2:], float(sys.argv[1])))
