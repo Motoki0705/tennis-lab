@@ -59,10 +59,12 @@ def clipreid_precision_requirements(condition):
     }
 
 
-def inspect_engine(engine):
+def inspect_engine(engine, context=None):
     import tensorrt as trt
 
     inspector = engine.create_engine_inspector()
+    if context is not None:
+        inspector.execution_context = context
     return json.loads(inspector.get_engine_information(trt.LayerInformationFormat.JSON))
 
 
@@ -79,11 +81,12 @@ def verify_compute_precision(details, required_precision, *, expected_operations
             continue
 
         name = layer["Name"]
-        operations = set(ONNX_LAYER.findall(layer.get("Metadata", "")))
+        metadata = set(ONNX_LAYER.findall(layer.get("Metadata", "")))
         if expected_operations is None:
+            operations = metadata
             precision = required_precision
         else:
-            operations &= expected_operations.keys()
+            operations = metadata & expected_operations.keys()
             targets = {expected_operations[op] for op in operations}
             if len(targets) != 1:
                 raise RuntimeError(
@@ -94,15 +97,35 @@ def verify_compute_precision(details, required_precision, *, expected_operations
         inputs = [tensor["Format/Datatype"] for tensor in layer.get("Inputs", [])]
         pattern = re.compile(rf"\b(?:{TENSOR_DTYPE[precision]})\b", re.IGNORECASE)
         if fused_attention:
-            matches = len(inputs) == 3 and all(
-                pattern.search(dtype) for dtype in inputs
+            # GVHMR fuses the local and padding masks between K and V.
+            qkv = (
+                [inputs[0], inputs[1], inputs[4]]
+                if len(inputs) == 5 and inputs[2:4] == ["Bool", "Bool"]
+                else inputs
             )
+            matches = len(qkv) == 3 and all(pattern.search(dtype) for dtype in qkv)
         else:
             code = OPERAND_CODE[precision]
+            # The FP16 residual is the first binding of this INT8 GEMM epilogue.
+            # Require both INT8 tactic operands and an explicit fused Q/DQ pair.
+            int8_residual = (
+                precision == "int8"
+                and kind == "fusion"
+                and name.startswith("__myl_FcCastAddMulAdd_")
+                and tactic.endswith("_by_fusion_tactic")
+                and inputs == ["Half", "Int8"]
+                and len(operations) == 1
+                and any(
+                    node.endswith("_QuantizeLinear")
+                    and node.removesuffix("_QuantizeLinear") + "_DequantizeLinear"
+                    in metadata
+                    for node in metadata
+                )
+            )
             matches = (
                 operands is not None
                 and operands.groups() == (code, code)
-                and bool(inputs and pattern.search(inputs[0]))
+                and (bool(inputs and pattern.search(inputs[0])) or int8_residual)
             )
         if not matches:
             raise RuntimeError(
@@ -127,7 +150,25 @@ def verify_compute_precision(details, required_precision, *, expected_operations
     return evidence
 
 
-def build_engine(onnx_file, plan, *, required_precision, expected_operations=None):
+def set_profile_shapes(profile, profile_shapes):
+    for name, shapes in profile_shapes.items():
+        expected = tuple(tuple(shape) for shape in shapes)
+        profile.set_shape(name, *expected)
+        actual = tuple(tuple(shape) for shape in profile.get_shape(name))
+        if actual != expected:
+            raise ValueError(
+                f"TensorRT profile {name}={actual} differs from {expected}"
+            )
+
+
+def build_engine(
+    onnx_file,
+    plan,
+    *,
+    required_precision,
+    expected_operations=None,
+    profile_shapes=None,
+):
     import tensorrt as trt
     import torch
 
@@ -148,6 +189,15 @@ def build_engine(onnx_file, plan, *, required_precision, expected_operations=Non
     if not parser.parse_from_file(str(onnx_file)):
         errors = "\n".join(str(parser.get_error(i)) for i in range(parser.num_errors))
         raise RuntimeError(f"TensorRT ONNX parse failed for {onnx_file}\n{errors}")
+    if profile_shapes is not None:
+        names = {network.get_input(i).name for i in range(network.num_inputs)}
+        if names != profile_shapes.keys():
+            raise ValueError(f"Optimization profile inputs do not match ONNX: {names}")
+        profile = builder.create_optimization_profile()
+        set_profile_shapes(profile, profile_shapes)
+        if config.add_optimization_profile(profile) != 0:
+            raise RuntimeError("TensorRT did not accept the first optimization profile")
+        config.clear_flag(trt.BuilderFlag.TF32)
     engine_bytes = builder.build_serialized_network(network, config)
     if engine_bytes is None:
         raise RuntimeError(f"TensorRT build failed for {onnx_file}")
@@ -155,15 +205,53 @@ def build_engine(onnx_file, plan, *, required_precision, expected_operations=Non
     engine = runtime.deserialize_cuda_engine(engine_bytes)
     if engine is None:
         raise RuntimeError("TensorRT could not deserialize the built engine")
-    details = inspect_engine(engine)
-    output = plan.with_suffix(".layers.json")
-    output.write_text(json.dumps(details, indent=2) + "\n")
-    evidence = verify_compute_precision(
-        details, required_precision, expected_operations=expected_operations
-    )
+    if profile_shapes is None:
+        shapes_by_label = {"": None}
+        context = None
+    else:
+        shapes_by_label = {
+            f".{label}": {name: shapes[i] for name, shapes in profile_shapes.items()}
+            for i, label in enumerate(("min", "opt", "max"))
+        }
+        context = engine.create_execution_context(
+            trt.ExecutionContextAllocationStrategy.USER_MANAGED
+        )
+        if context is None:
+            raise RuntimeError("Could not create engine inspection context")
+    details_by_label = {}
+    context_shapes = {}
+    for label, shapes in shapes_by_label.items():
+        if shapes is not None:
+            for name, shape in shapes.items():
+                if not context.set_input_shape(name, shape):
+                    raise ValueError(
+                        f"TensorRT rejected inspection shape {name}={shape}"
+                    )
+            actual_shapes = {
+                name: list(context.get_tensor_shape(name)) for name in shapes
+            }
+            expected_shapes = {name: list(shape) for name, shape in shapes.items()}
+            if actual_shapes != expected_shapes:
+                raise ValueError(
+                    f"TensorRT inspection context returned {actual_shapes}, expected {expected_shapes}"
+                )
+            context_shapes[label] = actual_shapes
+        details = inspect_engine(engine, context)
+        plan.with_suffix(f"{label}.layers.json").write_text(
+            json.dumps(details, indent=2) + "\n"
+        )
+        details_by_label[label] = details
+    evidence = {
+        label.removeprefix("."): verify_compute_precision(
+            details, required_precision, expected_operations=expected_operations
+        )
+        for label, details in details_by_label.items()
+    }
+    for label, shapes in context_shapes.items():
+        evidence[label.removeprefix(".")]["bound_input_shapes"] = shapes
     with plan.open("xb") as stream:
         stream.write(memoryview(engine_bytes))
-    return evidence
+    return evidence[""] if profile_shapes is None else evidence
 
 
 def convert(condition, checkpoint, calibration, output):

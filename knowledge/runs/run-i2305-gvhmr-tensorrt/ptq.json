@@ -1,0 +1,6 @@
+{
+  "protocol": "2297",
+  "calibration_method": "max",
+  "calibration_eps": ["cpu"],
+  "high_precision_dtype": "fp16"
+}

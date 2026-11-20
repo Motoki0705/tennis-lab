@@ -11,7 +11,7 @@ from pathlib import Path
 import benchmark
 import numpy as np
 import pytest
-from convert import PLAN, verify_compute_precision
+from convert import PLAN, set_profile_shapes, verify_compute_precision
 from dino_accuracy import compare_dino_frame
 from inputs import CAMERAS, check_split, sha256_file
 from profiles import (
@@ -121,6 +121,86 @@ def test_engine_inspection_requires_every_declared_onnx_operation():
         verify_compute_precision(
             {"Layers": [layer]}, "fp16", expected_operations=expected
         )
+
+
+@pytest.mark.parametrize(
+    ("precision", "dtype"), [("fp16", "Half"), ("int8", "Int8"), ("fp8", "FP8")]
+)
+def test_fused_attention_checks_qkv_around_two_boolean_masks(precision, dtype):
+    layer = {
+        "Name": "_gemm_mha_v2_myl0_35",
+        "LayerType": "kgen",
+        "TacticName": "_gemm_mha_v2_example",
+        "Inputs": [
+            {"Format/Datatype": value}
+            for value in (dtype, dtype, "Bool", "Bool", dtype)
+        ],
+        "Metadata": "[ONNX Layer: /attn/MatMul]\x1f[ONNX Layer: /attn/MatMul_1]",
+    }
+    expected = {"/attn/MatMul": precision, "/attn/MatMul_1": precision}
+    passed = verify_compute_precision(
+        {"Layers": [layer]}, precision, expected_operations=expected
+    )
+    assert passed["onnx_operations_by_precision"] == {precision: 2}
+    layer["Inputs"][-1]["Format/Datatype"] = "Float"
+    with pytest.raises(RuntimeError, match=f"expected {precision} operands"):
+        verify_compute_precision(
+            {"Layers": [layer]}, precision, expected_operations=expected
+        )
+
+
+def test_int8_residual_fusion_requires_matching_qdq_and_int8_tactic_operands():
+    layer = _gemm("Half", "sm80_xmma_gemm_i8f32_i8i32_f32_tn_by_fusion_tactic")
+    layer["Name"] = "__myl_FcCastAddMulAdd_myl0_36"
+    layer["LayerType"] = "fusion"
+    layer["Inputs"].append({"Format/Datatype": "Int8"})
+    layer["Metadata"] += (
+        "\x1f[ONNX Layer: weight_QuantizeLinear]\x1f[ONNX Layer: weight_DequantizeLinear]"
+    )
+    expected = {"/projection/MatMul": "int8"}
+    assert verify_compute_precision(
+        {"Layers": [layer]}, "int8", expected_operations=expected
+    )["engine_layers_by_precision"] == {"int8": 1}
+    for broken in (
+        {**layer, "TacticName": layer["TacticName"].replace("i8f32", "f32f32")},
+        {
+            **layer,
+            "Metadata": layer["Metadata"].replace(
+                "weight_DequantizeLinear", "other_DequantizeLinear"
+            ),
+        },
+    ):
+        with pytest.raises(RuntimeError, match="expected int8 operands"):
+            verify_compute_precision(
+                {"Layers": [broken]}, "int8", expected_operations=expected
+            )
+
+
+def test_profile_uses_shape_readback_instead_of_set_shape_return():
+    class Profile:
+        def __init__(self):
+            self.shapes = {}
+
+        def set_shape(self, name, minimum, optimum, maximum):
+            self.shapes[name] = (minimum, optimum, maximum)
+
+        def get_shape(self, name):
+            return list(self.shapes[name])
+
+    shapes = {
+        "length": [[1], [1], [1]],
+        "obs": [[1, 117, 17, 3], [1, 145, 17, 3], [1, 177, 17, 3]],
+    }
+    profile = Profile()
+    set_profile_shapes(profile, shapes)
+    assert profile.get_shape("obs") == [
+        (1, 117, 17, 3),
+        (1, 145, 17, 3),
+        (1, 177, 17, 3),
+    ]
+    profile.get_shape = lambda _: []
+    with pytest.raises(ValueError, match="TensorRT profile length"):
+        set_profile_shapes(profile, shapes)
 
 
 def test_nsys_counts_only_real_kernels_inside_the_range(tmp_path):
