@@ -1,0 +1,60 @@
+{
+  "device": "NVIDIA GeForce RTX 5060 Ti",
+  "compute_capability": [
+    12,
+    0
+  ],
+  "torch": "2.13.0+cu130",
+  "cuda": "13.0",
+  "tensorrt": "10.14.1.48.post1",
+  "onnx": "1.21.0",
+  "onnxruntime": "1.30.0",
+  "onnxruntime_providers": [
+    "TensorrtExecutionProvider",
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "modelopt": "0.48.0",
+  "builder_fast_fp16": true,
+  "builder_fast_int8": true,
+  "torch_fp16_matmul_output": 512.0,
+  "probes": {
+    "int8": {
+      "output": 64.0,
+      "precision_layers": [
+        "__myl_MulMinMaxRounCast_myl0_1",
+        "__myl_FcCast_myl0_2"
+      ]
+    },
+    "fp8": {
+      "output": 64.0,
+      "precision_layers": [
+        "__myl_MulCast_myl0_1",
+        "node_of_y_myl0_2"
+      ]
+    }
+  },
+  "trtexec": {
+    "exit_code": 1,
+    "lines": [
+      "&&&& RUNNING TensorRT.trtexec [TensorRT v101401] [b48]",
+      "Model missing or format not recognized"
+    ],
+    "validated_load": {
+      "arguments": "--loadEngine=outputs/trt-phase1a/environment/fp8.plan --skipInference",
+      "exit_code": 0,
+      "lines": [
+        "&&&& PASSED TensorRT.trtexec [TensorRT v101401] [b48]",
+        "Compute Capability: 12.0",
+        "TensorRT version: 10.14.1"
+      ],
+      "queue_job": "0-8204866928037491586_2026-11-20T00-04-31-962508413Z_3459003_i2297-trtexec-fp8"
+    }
+  },
+  "queue_job": "0-8204867055384409141_2026-11-20T00-02-24-615590858Z_3442736_i2297-tensorrt-environment",
+  "python": "3.11.15",
+  "installation": "~/.venvs/tennis-lab-trt",
+  "ncu": "2025.3.1.0 (build 36398880)",
+  "nsys": "2026.5.2.323-265239015215v0",
+  "cuda_toolkit": "13.0"
+}
