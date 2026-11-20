@@ -41,6 +41,9 @@ origin:
   - name: "agent:codex"
     color: "0E8A16"
     description: "Codex が作成"
+  - name: "agent:agy"
+    color: "1D76DB"
+    description: "Antigravity CLI が作成"
 
 area:
   - name: "module: base"

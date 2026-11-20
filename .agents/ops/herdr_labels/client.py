@@ -72,7 +72,7 @@ class Herdr:
         self,
         pane: dict[str, Any],
         *,
-        agent: str,
+        agent: str | None,
         display: str | None,
         tokens: dict[str, str],
         validate: Callable[[], None] | None = None,
@@ -108,7 +108,8 @@ class Herdr:
             source,
         ]
         if not tokens_only:
-            args.extend(["--agent", agent])
+            if agent is not None:
+                args.extend(["--agent", agent])
             args.extend(
                 ["--display-agent", display] if display else ["--clear-display-agent"]
             )

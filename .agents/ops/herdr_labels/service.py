@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import subprocess
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+from lib.agy_session import AGY_LAUNCH_ENV, AgyTui, caller_tui
 from lib.identity import session_identity
 from parent.policy import digest
 from parent.state import Store
@@ -52,15 +53,17 @@ def board_name(env: Mapping[str, str], repo: str, parent: int) -> str | None:
         return canonical_name(assignment.name)
 
 
-def clear_inbox(client: Herdr, pane: dict[str, Any], guard: Guard) -> dict[str, Any]:
+def clear_inbox(
+    client: Herdr, pane: dict[str, Any], validate: Callable[[], None]
+) -> dict[str, Any]:
     """Lifecycle cleanup uses the board source while holding the pane guard."""
     if any(key in pane.get("tokens", {}) for key in INBOX_KEYS):
         client.publish(
             pane,
-            agent=pane["agent"],
+            agent=pane.get("agent"),
             display=pane.get("display_agent"),
             tokens={key: "" for key in INBOX_KEYS},
-            validate=guard.check,
+            validate=validate,
             source="tennis-board",
             tokens_only=True,
         )
@@ -157,6 +160,8 @@ def bind(
 ) -> dict[str, Any]:
     """Explicit setup for a tool runner that does not inherit Herdr pane variables."""
     identity = session_identity(dict(env))
+    if identity.startswith("agy:"):
+        raise ValueError("agy display requires its inherited Herdr TUI context")
     client = Herdr(env, session)
     pane = client.pane(pane_id)
     if (
@@ -225,6 +230,11 @@ def sync(
     if bind_native and (not session_start or session_end):
         raise ValueError("native binding requires a SessionStart event")
     identity = session_identity(dict(env))
+    if identity.startswith("agy:") and env.get(AGY_LAUNCH_ENV) != "1":
+        return {
+            "status": "not_configured",
+            "reason": "start agy with .agents/ops/herdr_labels/agy-parent.sh",
+        }
     destination = target(env, identity)
     if destination is None:
         return {
@@ -235,6 +245,8 @@ def sync(
     if (session_start or session_end) and env.get("HERDR_ENV") != "1":
         raise ValueError("lifecycle events require the inherited Herdr caller context")
     guard = Guard(env, identity, client, pane)
+    if identity.startswith("agy:"):
+        guard.require_agy_tui(caller_tui())
     if session_start or session_end:
         guard.require_native_ancestor()
     try:
@@ -263,6 +275,31 @@ def sync(
         if session_start and identity.startswith("claude:") and guard.native_verified:
             raise VerifiedSessionStartError(str(exc)) from exc
         raise
+
+
+def agy_session_changed(env: Mapping[str, str], tui: AgyTui, conversation: str) -> None:
+    """Sync a status-line event backed by the pane's live conversation lock."""
+    tui.require_conversation(conversation)
+    identity = f"agy:{conversation}"
+    destination = target(env, identity)
+    if destination is None:
+        return
+    client, pane = destination
+    guard = Guard(env, identity, client, pane)
+    guard.require_agy_tui(tui)
+    guard.require_native_ancestor()
+    with guard.hold(start=True):
+        _sync(
+            env,
+            identity,
+            client,
+            guard.pane,
+            guard,
+            expected_parent=None,
+            clear=False,
+            session_start=True,
+            confirm_parent=False,
+        )
 
 
 def _bind_native(
@@ -335,7 +372,7 @@ def _sync(
             return {"status": "unassigned", "pane": pane["pane_id"]}
         if registry(env) != snapshot:
             raise ValueError("parent registry changed before label cleanup; retry sync")
-        pane = clear_inbox(client, pane, guard)
+        pane = clear_inbox(client, pane, guard.check)
         if not has_label:
             return {"status": "updated", "pane": pane["pane_id"]}
         return client.publish(
@@ -366,7 +403,7 @@ def _sync(
         )
     guard.claim(
         allow_create=confirm_parent,
-        allow_move=session_start and identity.startswith("claude:"),
+        allow_move=session_start and identity.partition(":")[0] in {"claude", "agy"},
     )
     summary = parent_summary(env, key, row)
     name = board_name(env, repo, int(number))
@@ -374,7 +411,7 @@ def _sync(
     if registry(env) != snapshot:
         raise ValueError("parent registry changed during label preparation; retry sync")
     if session_start and previous_owner != token:
-        pane = clear_inbox(client, pane, guard)
+        pane = clear_inbox(client, pane, guard.check)
     result = client.publish(
         pane,
         agent=identity.split(":", 1)[0],

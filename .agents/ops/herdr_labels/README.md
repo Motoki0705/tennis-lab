@@ -37,8 +37,9 @@ boardの名前同期→担当表示→担当復帰時の未読表示の順で同
 名前同期と担当表示は、一方が失敗しても他方を試みる。
 register・handoffの受領時に、担当sessionと確認済みterminalの対応をprivate stateへ保存する。
 この対応は表示トークンを消しても終了hook後も保持する。
-owner記録がない場合、通常のsyncや起動hookは表示先を確認せず、明示bindを求める。
-確認済み記録だけは、[ClaudeのSessionStart](#claudeのsessionstartによる表示先の移動)で条件付きで移せる。
+owner記録がない場合は、まずその会話で担当登録または引継ぎを行う。Claude / Codexでは明示bindも使える。
+確認済み記録は、[ClaudeのSessionStart](#claudeのsessionstartによる表示先の移動)または
+[agyのstatusLine](#agyの手動起動と表示)が条件付きで移せる。
 担当操作が成功して表示だけ失敗したときは終了値1、`parent_action_applied: true`と
 `display_sync.status: error`と`display_sync.repair`の修復手順を返す。担当操作を取り消さず、表示CLIで修復する。
 Herdr環境・bindのないheadless実行は`not_configured`を明示し、担当操作自体は成功を返す。
@@ -63,6 +64,38 @@ registryやGitHubを書き換えない。Codexも同じparent CLIとskillを使�
 表示解除と別の会話へのSessionStartでは、同じpaneロック内でsource `tennis-board`の
 未読トークンも解除し、前の親の未読数を残さない。DBの未読は変更しない。
 同じ担当のresumeでは名前を復元し、未読表示を保持する。compactでは両方とも保持する。
+
+## agyの手動起動と表示
+
+repo rootから手動親を起動する。Herdrの端末から起動すると担当表示も有効になる。
+検証対象はAntigravity CLI 1.5.13（Linux）。
+
+```bash
+.agents/ops/herdr_labels/agy-parent.sh
+.agents/ops/herdr_labels/agy-parent.sh --continue
+```
+
+個別再開ではagy自身の `--conversation` または `/resume` を使う。担当登録や変更は起動した会話の
+ホスト側 `run_command` からparent CLIで行う。識別の前提は[parent CLI](../parent/README.md#agyの手動親)を参照。
+
+ランチャーはcheckoutの `.venv/bin/python` を検査し、未設定なら起動前にエラーを返す。
+手動親の `PreInvocation` は、専用のhook設定だけを置いた一時ディレクトリを `--add-dir` で渡して有効にする。
+起動した会話だけがこの設定を読み、一時ディレクトリは終了時に削除する。担当登録と引継ぎ受領ではこのランチャーを使う。
+未読件数の扱いは[掲示板の仕様](../board/README.md#agyのpreinvocationによる未読提示)を参照。
+[Antigravityのカスタマイズ検出](https://antigravity.google/docs/customization-discovery?tab=cli)
+
+Herdr内では一時的な `--settings` で `statusLine` を設定する。他の起動時設定は引き継ぎ、
+指定済みのカスタム `statusLine` はその起動中だけ置き換える。Herdrが認識する `agent == "agy"` と
+実行元TUIのPID・開始時刻を、`statusLine` と通常同期の両方で対象paneと照合する。
+`statusLine` の会話IDとPIDが現在保持する会話ロックが一致したイベントで同期する。
+`/clear` や別会話への切替は次の入力前に古い表示を消し、登録済みの会話を再開すれば名前と担当を復元する。
+同じ端末に紐付く元のプロセスの終了後は、ランチャーが管理する表示と未読トークンを消す。
+
+別paneへの移動は、新paneのTUIが対象会話のロックを保持しており、登録済みの旧paneが空いたと確認できた場合に限る。
+移動前の空き確認と競合時の再照合は[共通のpane確認](#claudeのsessionstartによる表示先の移動)と同じ。
+agyではキャッシュされたnative参照より実際の会話ロックで照合する。
+表示先は起動した会話のHerdr環境から確認する。表示先の初回登録や修復では、
+上のランチャーで担当会話を開き、`parent register` を実行する。
 
 ## Codexのclear通知
 
@@ -220,7 +253,7 @@ bindは表示先のローカル記録であり、担当を割り当てない。
 ## 検証
 
 ```bash
-.venv/bin/python -m pytest tests/e2e/agents_ops/test_herdr_labels.py -n 4 -q
+.venv/bin/python -m pytest tests/e2e/agents_ops/test_{herdr_labels,agy_parent}.py -n 4 -q
 ```
 
 公式仕様: [metadata API](https://herdr.dev/docs/cli-reference/#panes)、

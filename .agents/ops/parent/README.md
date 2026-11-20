@@ -22,6 +22,18 @@
 - [review_handoff.py](review_handoff.py) が [マージ自動進行](../review/README.md) へ渡す。
 - [completion.py](completion.py) と [improvements.py](improvements.py) が全体の受入・次回改善を記録する。改善提案の期限処理は [systemd](systemd/) にある。
 
+## agyの手動親
+
+手動起動したAntigravity CLIの対話ルートで `register`、`status`、`handoff`、`release` を使える。
+ホスト側の `run_command` から実行すると、[共通identity](../lib/identity.py)が環境の会話IDを
+単一の前景TUI祖先とその排他ロックに照合する。[agy_session.py](../lib/agy_session.py)はさらに
+そのTUIのローカル読み取りRPCでルート会話IDと実行trajectoryを照合する。
+子会話を別paneで開き直した場合も、ルートの確認に通らなければ担当操作を拒否する。
+print、ACP、入れ子、子agent、workflowからの担当操作、ホスト祖先を確認できないterminal sandboxは対象外。
+担当登録・引継ぎ受領に使う起動と再開の手順は[手動親ランチャー](../herdr_labels/README.md#agyの手動起動と表示)を参照。
+agyの識別情報がある `status` は、ホスト祖先・会話ロック・trajectoryの照合異常をエラーとして返す。
+自律親の起動範囲は[dispatcher](../dispatcher/README.md#担当実行枠中断復旧)を参照。
+
 ## 改善提案の期限
 
 期限処理は日次jobとしてcheckoutを固定する。手元でhelpを読む場合も、repoのcheckoutで同じ入口を使う。

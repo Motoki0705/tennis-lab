@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
             result = messages.status(env)
         elif args.command == "dispatch":
             result = dispatch_post(env, configured(env), post_id=args.post, to=args.to)
-            exit_code = 0 if result["status"] == "notified" else 1
+            exit_code = 0 if result["status"] in {"notified", "awaiting_hook"} else 1
         elif args.command == "receipts":
             result = receipts(env)
         else:

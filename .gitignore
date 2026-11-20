@@ -66,6 +66,7 @@ annotations/
 !scripts/ci_metrics/package.json
 !scripts/ci_metrics/package-lock.json
 !/.claude/settings.json
+!/.agents/ops/herdr_labels/agy_board_hooks.json
 !/tests/support/development/ci_attempts.json
 !/tests/support/agents_ops/fixtures/storage-crash-boundaries.json
 !/tests/support/agents_ops/fixtures/storage-recovery-boundaries.json

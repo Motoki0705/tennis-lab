@@ -6,6 +6,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from lib.agy_session import CONVERSATION_ENV, root_session
+
+PARENT_ENGINES = frozenset({"claude", "codex", "agy"})
+
 
 def native_runtime() -> dict[str, Any] | None:
     """Pin the native agent for a later forced local worktree stop.
@@ -41,14 +45,19 @@ def session_identity(env: Mapping[str, str]) -> str:
         for kind, name in (
             ("claude", "CLAUDE_CODE_SESSION_ID"),
             ("codex", "CODEX_SESSION_ID"),
+            ("agy", CONVERSATION_ENV),
         )
         if env.get(name, "").strip()
     ]
     if len(identities) != 1:
         raise ValueError(
-            "exactly one of CLAUDE_CODE_SESSION_ID / CODEX_SESSION_ID must identify this session; missing/ambiguous identity (do not ask the human for an ID)"
+            "exactly one of CLAUDE_CODE_SESSION_ID / CODEX_SESSION_ID / "
+            "ANTIGRAVITY_CONVERSATION_ID must identify this session; "
+            "missing/ambiguous identity (do not ask the human for an ID)"
         )
     kind, value = identities[0]
+    if kind == "agy":
+        return root_session(env, value)
     if kind == "codex" and env.get("CODEX_THREAD_ID", value).strip() != value:
         raise ValueError(
             "run parent operations from the Codex root session, not a subagent thread"

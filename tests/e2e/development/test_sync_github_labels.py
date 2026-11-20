@@ -51,6 +51,7 @@ def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
         "parent-evidence",
         "agent:claude",
         "agent:codex",
+        "agent:agy",
         "python",
         "knowledge",
         "needs-human",

@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 
+from .agy_schema import upgrade as _agy_schema
 from .errors import BoardError
 from .human_schema import upgrade as _human_schema
 
@@ -180,6 +181,7 @@ MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
     _renames_schema,
     _reactions_schema,
     _human_schema,
+    _agy_schema,
 )
 SCHEMA_VERSION = len(MIGRATIONS)
 

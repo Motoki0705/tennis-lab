@@ -14,14 +14,17 @@ from typing import Any
 
 from herdr_labels.client import Herdr
 from herdr_labels.coordination import (
+    ForegroundAgentUnavailable,
     owner_token,
+    pane_record,
     process_stamp,
     read_record,
     state_root,
 )
 from herdr_labels.service import registry
 from issues import CHILD_LABEL, PARENT_LABEL, parse_title
-from lib.identity import session_identity
+from lib.agy_session import AgyTui
+from lib.identity import PARENT_ENGINES, session_identity
 from parent.github import GitHub
 
 from . import activity
@@ -232,15 +235,32 @@ def _runtime_state(
     agent = candidates[0]
     token = agent.get("tokens", {}).get("tl_owner")
     expected = owner_token(identity)
-    runtime_key = owner_token(scope + ":" + owner["terminal_id"])
-    runtime = read_record(root / "panes" / f"{runtime_key}.json")
+    runtime = read_record(pane_record(root, scope, owner["terminal_id"]))
     if runtime is not None and (
         runtime.get("owner") != expected or runtime.get("state") != "active"
     ):
         return "unknown"
     if token != expected and (token or runtime is None):
         return "unknown"
-    if runtime is not None and "processes" in runtime:
+    engine, _, conversation = identity.partition(":")
+    if engine == "agy":
+        if runtime is None or "processes" not in runtime:
+            return "unknown"
+        try:
+            stamps = process_stamp(client, agent)
+        except (ForegroundAgentUnavailable, FileNotFoundError, ProcessLookupError):
+            return "unknown"
+        if stamps != runtime["processes"]:
+            return "unknown"
+        try:
+            if (
+                AgyTui(stamps[0]["pid"], stamps[0]["start"]).conversation()
+                != conversation
+            ):
+                return "unknown"
+        except (ValueError, FileNotFoundError, ProcessLookupError):
+            return "unknown"
+    elif runtime is not None and "processes" in runtime:
         if process_stamp(client, agent) != runtime["processes"]:
             return "unknown"
     elif token != expected:
@@ -248,11 +268,15 @@ def _runtime_state(
     # Native references, when available, fence a replaced conversation even if
     # its terminal still has old display metadata. Never expose the reference.
     native = agent.get("agent_session")
-    if native is not None and (
-        not isinstance(native, dict)
-        or native.get("kind") != "id"
-        or native.get("agent") != identity.partition(":")[0]
-        or native.get("value") != identity.partition(":")[2]
+    if (
+        engine != "agy"
+        and native is not None
+        and (
+            not isinstance(native, dict)
+            or native.get("kind") != "id"
+            or native.get("agent") != engine
+            or native.get("value") != conversation
+        )
     ):
         return "unknown"
     # Current Herdr emits agent_status; older installations emitted state.
@@ -348,7 +372,7 @@ def agents(env: Mapping[str, str]) -> dict[str, list[dict[str, Any]]]:
                 continue
             repo, parent = _reference(key)
             engine, separator, session = row["session"].partition(":")
-            if engine not in {"claude", "codex"} or not separator or not session:
+            if engine not in PARENT_ENGINES or not separator or not session:
                 raise BoardError("invalid parent engine identity")
             assignment = (
                 for_parent(connection, repo, parent) if connection is not None else None

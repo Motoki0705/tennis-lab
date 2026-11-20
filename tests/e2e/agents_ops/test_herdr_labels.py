@@ -71,7 +71,8 @@ if args[:2] == ['pane', 'report-metadata']:
             if a == '--clear-token': tokens.pop(args[i+1],None)
     result = None
 elif args[:2] == ['pane', 'process-info']:
-    result = {'process_info':{'foreground_processes':[{'pid':state['pid'], 'name':pane['agent']}]}}
+    pid = state.get('pane_pids', {}).get(pane_id, state['pid'])
+    result = {'process_info':{'foreground_processes':[{'pid':pid, 'name':pane['agent']}]}}
 elif args == ['agent', 'list']:
     ids = state.get('server_panes', {}).get(session, state['panes'])
     result = {'agents':[state['panes'][key] for key in ids]}

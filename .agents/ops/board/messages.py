@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from herdr_labels.service import registry
+from lib.identity import PARENT_ENGINES
 
 from .access import as_parent, as_participant, parent_state
 from .delivery import Notifiers, dispatch
@@ -50,7 +51,7 @@ def _recipient(assignment: Participant, parents: Mapping[str, Any]) -> str:
     if owner is None:
         raise BoardError("recipient has no registered parent")
     engine = owner["session"].partition(":")[0]
-    if engine not in {"claude", "codex"}:
+    if engine not in PARENT_ENGINES:
         raise BoardError("invalid recipient engine identity")
     return "pending" if owner["status"] == "active" else "held"
 

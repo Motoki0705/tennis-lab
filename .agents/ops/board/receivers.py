@@ -217,6 +217,8 @@ def bind_receiver(env: Mapping[str, str]) -> dict[str, str]:
         binding = _binding(env, identity, parents)
         if binding is None:
             raise BoardError("receiver has no active board assignment")
+        if engine == "agy":
+            return {"status": "awaiting_hook"}
         path = root(env) / f"{owner_token(identity)}.json"
         if engine == "codex":
             # Registration that discovers a broken/ambiguous runtime must not
