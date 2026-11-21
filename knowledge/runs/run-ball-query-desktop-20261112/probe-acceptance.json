@@ -1,0 +1,118 @@
+{
+  "complete": true,
+  "rows": [
+    {
+      "augmentation_eligibility": [
+        {
+          "occlusion_applied": 0,
+          "occlusion_eligible": 1,
+          "occlusion_requested": 0
+        }
+      ],
+      "augmentation_seconds": 0.3830394350006827,
+      "augmentation_sha256": [
+        "0bd5026e0044267be622a7fa8f3e43be0475fc2ff020d07c9bd4f5f5cfe74858"
+      ],
+      "child_windows": 2,
+      "cumulative_input_frames": 1984128,
+      "cumulative_updates": 15501,
+      "data_wait_seconds": 0.7016199619974941,
+      "encoder_frozen": false,
+      "encoder_learning_rate": 4.2035650616334325e-06,
+      "frames_per_second": 0.8021443819161472,
+      "gradient_norm": 1.7466857433319092,
+      "input_frames": 128,
+      "learning_rate": 4.2035650616334327e-05,
+      "loss": 0.004408171379959191,
+      "loss_sum": 0.4011435955762863,
+      "microbatches": 2,
+      "original_teachers_by_kind": {
+        "masked": 0,
+        "observed": 91,
+        "out_of_frame": 0,
+        "reviewed_empty": 37
+      },
+      "pack_ids": [
+        "chat_annotation/ib6hsuefphQ__a4532ebe47d7802a__f000049800-000050580:156:128"
+      ],
+      "pack_indices": [
+        21436
+      ],
+      "peak_reserved_vram_bytes": 11274289152,
+      "peak_vram_bytes": 10581860352,
+      "sample_position": 15501,
+      "seconds": 159.57227013699958,
+      "teachers_by_kind": {
+        "masked": 0,
+        "observed": 91,
+        "out_of_frame": 0,
+        "reviewed_empty": 37
+      },
+      "update": 5501,
+      "valid_teachers": 91
+    },
+    {
+      "augmentation_eligibility": [
+        {
+          "occlusion_applied": 1,
+          "occlusion_eligible": 1,
+          "occlusion_requested": 1
+        }
+      ],
+      "augmentation_seconds": 0.14102789599928656,
+      "augmentation_sha256": [
+        "b805145b4da9753a2c0e9c946eb954eb7a47c18ca38c6450b2f7c7687f4e2e05"
+      ],
+      "child_windows": 2,
+      "cumulative_input_frames": 1984256,
+      "cumulative_updates": 15502,
+      "data_wait_seconds": 0.0005570069988607429,
+      "encoder_frozen": false,
+      "encoder_learning_rate": 4.202622707545969e-06,
+      "frames_per_second": 160.45282414423332,
+      "gradient_norm": 1.258047342300415,
+      "input_frames": 128,
+      "learning_rate": 4.2026227075459687e-05,
+      "loss": 0.005886104318403428,
+      "loss_sum": 0.7298769354820251,
+      "microbatches": 2,
+      "original_teachers_by_kind": {
+        "masked": 4,
+        "observed": 124,
+        "out_of_frame": 0,
+        "reviewed_empty": 0
+      },
+      "pack_ids": [
+        "chat_annotation/EM8tCQrgU-c__7d2f5d10a649f5c8__f000048252-000049030:667:128"
+      ],
+      "pack_indices": [
+        6942
+      ],
+      "peak_reserved_vram_bytes": 11777605632,
+      "peak_vram_bytes": 10581860352,
+      "sample_position": 15502,
+      "seconds": 0.7977422689982632,
+      "teachers_by_kind": {
+        "masked": 4,
+        "observed": 124,
+        "out_of_frame": 0,
+        "reviewed_empty": 0
+      },
+      "update": 5502,
+      "valid_teachers": 124
+    }
+  ],
+  "continuity": {
+    "resume": true,
+    "parent_update": 5500,
+    "parent_sample_position": 15500,
+    "checkpoint_sha256": "84e2c8c8eee7c4b191a134403843c2ed6c059dbc2d4fff6a4ca10a259fd92d88",
+    "model_exact": true,
+    "adamw_exact": true,
+    "rng_exact_before_first_batch": true
+  },
+  "peak_rss_kib": 4009920,
+  "recipe_exact_except_documented_paths": true,
+  "peak_allocated_bytes": 10581860352,
+  "peak_reserved_bytes": 11777605632
+}

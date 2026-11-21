@@ -1,0 +1,21 @@
+{
+  "queue_job": "0-8205509074989833448_2026-11-12T13-42-05-010166551Z_1492333_ball-query-length-desktop-probe-a1.job",
+  "registered_cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-local-runtime",
+  "stale_running_records_preserved": 7,
+  "inconsistent_history_preserved": 12,
+  "live_gpu_lock_was_empty_before_probe": true,
+  "source_checkout_clean": true,
+  "queue_job_headers": [
+    "#!/usr/bin/env bash",
+    "# name: ball-query-length-desktop-probe-a1",
+    "# added: 2026-11-12T22:42:05+09:00",
+    "# provider: codex",
+    "# session: 01a1cff2-2254-7020-bc61-a6913f619fbc",
+    "# issue: 1899",
+    "# resource: all",
+    "# external_teardown_ack: 0",
+    "# prune_ckpt: 0",
+    "# idempotency_key_sha256: a6812a909f730d59d717d48bff5752c23b92c8cb9edb49545ee1ef453efab8a6"
+  ],
+  "production_lifecycle": "systemd --user; detached queue start alone is killed by agent_runtime terminate_descendants"
+}
