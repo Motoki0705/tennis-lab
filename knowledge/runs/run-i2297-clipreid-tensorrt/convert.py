@@ -132,6 +132,24 @@ def verify_qdq_scope(graph, operations):
     return observed
 
 
+def restore_shape_inputs(graph):
+    """Read dimensions from the original activation when ModelOpt shares its Q/DQ."""
+    producer = {value: node for node in graph.node for value in node.output}
+    restored = 0
+    for node in graph.node:
+        if node.op_type != "Shape" or node.domain not in {"", "ai.onnx"}:
+            continue
+        dequantize = producer.get(node.input[0])
+        if dequantize is None or dequantize.op_type != "DequantizeLinear":
+            continue
+        quantize = producer.get(dequantize.input[0])
+        if quantize is None or quantize.op_type != "QuantizeLinear":
+            raise ValueError(f"No original activation for {node.name} shape input")
+        node.input[0] = quantize.input[0]
+        restored += 1
+    return restored
+
+
 def clipreid_precision_requirements(condition):
     """Pin the compute ops in the CLIP ViT-B/16 export, including fused attention."""
     precision = TRT_PRECISIONS[condition]
@@ -392,6 +410,8 @@ def build_checked_plan(
     min_free_gib=6,
     allow_tf32=True,
     profile_shapes=None,
+    builder_optimization_level=None,
+    verbose=False,
 ):
     import tensorrt as trt
     import torch
@@ -403,11 +423,22 @@ def build_checked_plan(
         raise RuntimeError(
             f"Less than {min_free_gib} GiB free before TensorRT engine build"
         )
-    logger = trt.Logger(trt.Logger.WARNING)
+    verbosity = (
+        trt.Logger.VERBOSE
+        if verbose or builder_optimization_level is not None
+        else trt.Logger.WARNING
+    )
+    logger = trt.Logger(verbosity)
     if init_plugins and not trt.init_libnvinfer_plugins(logger, ""):
         raise RuntimeError("Could not initialize TensorRT plugins")
     builder = trt.Builder(logger)
     config = builder.create_builder_config()
+    if builder_optimization_level is not None:
+        config.builder_optimization_level = builder_optimization_level
+        if config.builder_optimization_level != builder_optimization_level:
+            raise RuntimeError(
+                "TensorRT did not apply the requested builder optimization level"
+            )
     config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, WORKSPACE_BYTES)
     config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
     if not allow_tf32:
@@ -428,6 +459,15 @@ def build_checked_plan(
         if config.add_optimization_profile(profile) != 0:
             raise RuntimeError("TensorRT did not accept the first optimization profile")
         config.clear_flag(trt.BuilderFlag.TF32)
+        print(
+            f"Building TensorRT at optimization level {config.builder_optimization_level} with profile {profile_shapes}",
+            flush=True,
+        )
+    elif verbose:
+        print(
+            f"Building TensorRT at optimization level {config.builder_optimization_level} with static bindings",
+            flush=True,
+        )
     engine_bytes = builder.build_serialized_network(network, config)
     if engine_bytes is None:
         raise RuntimeError(f"TensorRT build failed for {onnx_file}")
@@ -490,6 +530,7 @@ def build_engine(
     expected_operations=None,
     profile_shapes=None,
     constant_operations=(),
+    builder_optimization_level=None,
 ):
     return build_checked_plan(
         onnx_file,
@@ -501,6 +542,7 @@ def build_engine(
             constant_operations=constant_operations,
         ),
         profile_shapes=profile_shapes,
+        builder_optimization_level=builder_optimization_level,
     )
 
 
@@ -515,6 +557,8 @@ def modelopt_ptq(
     nodes=None,
     external_data=False,
     disable_mha_qdq=False,
+    calibration_shapes=None,
+    restore_dynamic_shapes=False,
 ):
     import onnx
     from modelopt.onnx.quantization.quantize import quantize
@@ -527,6 +571,7 @@ def modelopt_ptq(
         str(graph),
         quantize_mode=mode,
         calibration_data={input_name: calibration},
+        calibration_shapes=calibration_shapes,
         calibration_method=method,
         calibration_eps=["cpu"],
         nodes_to_quantize=None
@@ -538,6 +583,10 @@ def modelopt_ptq(
         output_path=str(target),
     )
     model = onnx.load(target, load_external_data=False)
+    restored = restore_shape_inputs(model.graph) if restore_dynamic_shapes else 0
+    if restored:
+        onnx.checker.check_model(model)
+        onnx.save_model(model, target)
     ops = Counter(node.op_type for node in model.graph.node)
     if not ops["QuantizeLinear"] or not ops["DequantizeLinear"]:
         raise RuntimeError(f"{mode} PTQ produced no explicit Q/DQ pairs")
@@ -553,33 +602,63 @@ def modelopt_ptq(
         "Q": ops["QuantizeLinear"],
         "DQ": ops["DequantizeLinear"],
         "qdq_matrix_operations": len(matrix),
+        **({"shape_inputs_restored": restored} if restore_dynamic_shapes else {}),
     }
 
 
-def convert(condition, checkpoint, calibration, output):
+def convert(
+    condition,
+    checkpoint,
+    calibration,
+    output,
+    *,
+    batch_profile=None,
+    ptq_adapter=None,
+    ptq_recipe=None,
+):
     import onnx
     import torch
+    from batching import batch_profile_points, require_dynamic_axis
     from clipreid import BATCH_SHAPE, INPUT_NAME, OUTPUT_NAME, VisualFeatures
+    from inputs import CHECKPOINT_SHA256, sha256_file
+
+    profile_shapes = None
+    dynamic_axes = None
+    sample_shape = BATCH_SHAPE
+    if batch_profile is not None:
+        if condition != "2" and (ptq_adapter is None or not ptq_recipe):
+            raise ValueError("Dynamic CLIP PTQ requires an explicit calibrated recipe")
+        sizes = batch_profile_points(*batch_profile)
+        profile_shapes = {INPUT_NAME: [(size, *BATCH_SHAPE[1:]) for size in sizes]}
+        dynamic_axes = {name: {0: "batch"} for name in (INPUT_NAME, OUTPUT_NAME)}
+        sample_shape = profile_shapes[INPUT_NAME][1]
 
     torch.set_num_threads(4)
     dtype = torch.float16 if condition == "2" else torch.float32
-    model = VisualFeatures(checkpoint).to(dtype=dtype).eval()
-    graph = output / "export.onnx"
+    model = (
+        VisualFeatures(checkpoint, dynamic_batch=dynamic_axes is not None)
+        .to(dtype=dtype)
+        .eval()
+    )
+    exported = output / "export.onnx"
     with torch.no_grad():
         torch.onnx.export(
             model,
-            (torch.zeros(BATCH_SHAPE, dtype=dtype),),
-            str(graph),
+            (torch.zeros(sample_shape, dtype=dtype),),
+            str(exported),
             input_names=[INPUT_NAME],
             output_names=[OUTPUT_NAME],
+            dynamic_axes=dynamic_axes,
             opset_version=19,
             dynamo=False,
             external_data=False,
         )
-    onnx.checker.check_model(str(graph))
+    onnx.checker.check_model(str(exported))
     del model
+    graph = exported
     mode = TRT_PRECISIONS[condition]
     quantization = None
+    requirements = {"expected_operations": clipreid_precision_requirements(condition)}
     if condition in {"3a", "3b"}:
         if calibration is None:
             raise ValueError("PTQ requires the fixed calibration tensors")
@@ -591,15 +670,48 @@ def convert(condition, checkpoint, calibration, output):
         ):
             raise ValueError("Unexpected calibration tensor dtype or shape")
         target = output / "quantized.onnx"
-        quantization = modelopt_ptq(graph, target, data, mode, input_name=INPUT_NAME)
+        if ptq_adapter is None:
+            quantization = modelopt_ptq(
+                graph, target, data, mode, input_name=INPUT_NAME
+            )
+        else:
+            calibration_shapes = f"{INPUT_NAME}:{'x'.join(map(str, BATCH_SHAPE))}"
+            quantization, selected = ptq_adapter.quantize(
+                graph,
+                target,
+                data,
+                mode,
+                ptq_recipe,
+                calibration_shapes=calibration_shapes,
+            )
+            requirements = ptq_adapter.compute_requirements(exported, mode, selected)
         graph = target
+    plan = output / PLAN
+    precision_manifest = plan.with_suffix(".precision.json")
+    if dynamic_axes is not None:
+        model_graph = onnx.load(graph).graph
+        for value in (*model_graph.input, *model_graph.output):
+            require_dynamic_axis(value, 0, "batch")
+        precision_manifest.write_text(json.dumps(requirements, indent=2) + "\n")
     evidence = build_engine(
         graph,
-        output / PLAN,
+        plan,
         required_precision=mode,
-        expected_operations=clipreid_precision_requirements(condition),
+        profile_shapes=profile_shapes,
+        **requirements,
     )
     print(f"Engine compute precision: {evidence}", flush=True)
+    batch_metadata = (
+        {
+            "input_profile": profile_shapes,
+            "checkpoint_sha256": CHECKPOINT_SHA256,
+            "graph_sha256": sha256_file(graph),
+            "engine_sha256": sha256_file(plan),
+            "precision_manifest_sha256": sha256_file(precision_manifest),
+        }
+        if profile_shapes is not None
+        else {}
+    )
     (output / "conversion.json").write_text(
         json.dumps(
             {
@@ -607,6 +719,7 @@ def convert(condition, checkpoint, calibration, output):
                 "workspace_bytes": WORKSPACE_BYTES,
                 "compute_precision": evidence,
                 "quantization": quantization,
+                **batch_metadata,
             },
             indent=2,
         )
@@ -656,16 +769,35 @@ def main():
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--calibration", type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--batch-profile", type=int, nargs=2, metavar=("OPT", "MAX"))
     parser.add_argument("--adapter", type=Path)
     parser.add_argument("--model")
     parser.add_argument("--ptq-recipe")
     args = parser.parse_args()
     require_queue()
+    adapter = None
     if args.adapter:
         from benchmark import load_adapter
 
+        adapter = load_adapter(args.adapter, args.model)
+    if args.batch_profile is not None:
+        from inputs import MODEL
+
+        if adapter is not None and adapter.model != MODEL:
+            parser.error("The built-in batch export accepts only the CLIP adapter")
+        args.output.mkdir(parents=True)
+        convert(
+            args.condition,
+            args.checkpoint,
+            args.calibration,
+            args.output,
+            batch_profile=args.batch_profile,
+            ptq_adapter=adapter,
+            ptq_recipe=args.ptq_recipe,
+        )
+    elif adapter is not None:
         convert_adapter(
-            load_adapter(args.adapter, args.model),
+            adapter,
             args.condition,
             args.checkpoint,
             args.calibration,

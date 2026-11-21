@@ -76,7 +76,7 @@ CLIPは `OpenCVVideoFrameReader` でBGRを始端からdecodeする。選択済�
 - **nsys** 2026.5.2の `--trace=cuda-sw,nvtx` を使用。SQLiteの `CUPTI_ACTIVITY_KIND_KERNEL` から同期を含むNVTX範囲内のGPU activityを1行1件として数える。CUDA API呼び出し、memcpy、warm-upは除く。`sum_kernel_duration_ns` は並列実行区間も各カーネルの時間を足す。
 - **ncu** GB206（CC 12.0）で `dram__bytes_op_read.sum`、`dram__bytes_op_write.sum` を各kernelから合算する。`sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed` は各kernelの `gpu__time_duration.sum` で加重する。memory stallは `smsp__warp_issue_stalled_{long_scoreboard,short_scoreboard,lg_throttle,mio_throttle}_per_warp_active.pct` を理由別に同じ重みで記録する。long scoreboardはL1TEX依存、short scoreboardは主にMIO依存を示す。スロットルの2指標は各パイプの命令待ち。これらはkernelごとのstall率を時間で要約した値で、GPUが停止した壁時計時間の割合は表さない。
 - TensorRTの `ncu` 収集では実行contextの `nvtx_verbosity` を `NONE` にする。Nsight Compute 2025.3.1は詳細NVTXラベルのJSON内のカンマでraw CSVの列をずらすため、この設定で外側の `steady_inference` の範囲を収集する。同じplanと代表入力を使い、各条件で `nsys` の範囲内kernel数と照合する。`--profiles ncu --profile-from` の追測は元の `result.json` にある取得済み `nsys` の件数を使う。件数に差があれば `coverage_mismatch` を記録し、非ゼロで終了する。
-- `--ncu-timeout` はカウンタ取得の制限秒数を指定する。時間切れのCSVから得た途中の行数は診断に使い、指標は全カーネルを取得できたときに記録する。
+- `--ncu-timeout` はカウンタ取得の制限秒数を指定する。指標の集計には全カーネルの取得が必要。CLIP-ReIDの `--ncu-prefix` は、同じ計測記録から始めたkernel replayが時間切れしたとき、`--launch-skip` で残りのkernelを採取する。prefixと続きの順を含め、全kernelのgrid・blockをnsysと照合してから集計する。履歴には区割りと元の計測を記録する。
 - `ncu` のkernel replayは計測やキャッシュに影響し得るため、独立したlatencyの値と区別する。cacheとclock controlはnone。raw CSVの欠測と権限エラーは理由を残す。別GPUでは `ncu --query-metrics` で名前と単位を照合してから、同じ意味を持つ値として比較する。
 - 律速判断はDRAM bytesとkernel時間、warp stallの内訳、Tensor pipe、nsysのkernel数を合わせて行う。単一の比率から結論を出さない。層precisionはengine inspectorとtraceのkernel名も照合する。
 

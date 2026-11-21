@@ -5,10 +5,42 @@ import json
 from pathlib import Path
 
 import numpy as np
+from batching import batch_profile_points
 from inputs import sha256_file
 from model import CHECKPOINT, INPUT_WIDTHS, input_shapes
 
 HERE = Path(__file__).resolve().parent
+
+
+def sweep_profile(optimum, maximum, *, fixed_length=None):
+    profile = json.loads((HERE / "shape-profile.json").read_text())
+    del profile["batch"]
+    batches = batch_profile_points(optimum, maximum)
+    counts = profile["length_counts"]["eval"]
+    if maximum > min(counts.values()):
+        raise ValueError("GVHMR batch maximum exceeds an evaluation length bucket")
+    shortest, longest = sorted(map(int, counts))
+    if fixed_length is None:
+        lengths = (shortest, shortest, longest)
+    else:
+        if str(fixed_length) not in counts:
+            raise ValueError(f"No locked GVHMR evaluation bucket at L={fixed_length}")
+        lengths = (fixed_length,) * 3
+    bindings = [
+        input_shapes(length, size)
+        for size, length in zip(batches, lengths, strict=True)
+    ]
+    labels = ("min", "opt", "max")
+    return {
+        **profile,
+        "profile_batches": dict(zip(labels, batches, strict=True)),
+        "profile_lengths": dict(zip(labels, lengths, strict=True)),
+        "inputs": {
+            name: [list(bound[name]) for bound in bindings] for name in INPUT_WIDTHS
+        },
+        "outside_lengths": [lengths[0] - 1, lengths[-1] + 1],
+        **({"fixed_length": fixed_length} if fixed_length is not None else {}),
+    }
 
 
 def tensor_addresses(arrays):

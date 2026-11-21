@@ -25,6 +25,8 @@ def runtime_command(args, *, mode):
         args.condition,
         "--length",
         str(args.length),
+        "--batch-size",
+        str(getattr(args, "batch_size", 1)),
         "--inputs",
         str(args.inputs),
         "--checkpoints",
@@ -51,6 +53,8 @@ def measure(args):
         args.condition,
         "--length",
         str(args.length),
+        "--batch-size",
+        str(args.batch_size),
         "--inputs",
         str(args.inputs),
         "--checkpoints",
@@ -69,6 +73,7 @@ def collect_profiles(args):
     if (
         timing["condition"] != args.condition
         or timing["length"] != args.length
+        or timing.get("batch_size", 1) != getattr(args, "batch_size", 1)
         or timing["tensor_lock_sha256"] != sha256_file(HERE / "tensor-lock.json")
     ):
         raise ValueError("Profiling must use the measured condition and input identity")
@@ -88,7 +93,9 @@ def collect_profiles(args):
         tools = (("ncu", shutil.which("ncu")),)
     else:
         profiling = {}
-        tools = (("nsys", str(NSYS)), ("ncu", shutil.which("ncu")))
+        tools = [("nsys", str(NSYS))]
+        if args.profiles == "both":
+            tools.append(("ncu", shutil.which("ncu")))
     command = runtime_command(args, mode="profile")
     for tool, executable in tools:
         profiling[tool] = (
@@ -98,10 +105,10 @@ def collect_profiles(args):
             if executable is not None
             else {"status": "unavailable", "reason": f"{tool} not found"}
         )
-    nsys, ncu = profiling["nsys"], profiling["ncu"]
+    nsys, ncu = profiling["nsys"], profiling.get("ncu", {})
     if (
         nsys["status"] == "measured"
-        and ncu["status"] == "measured"
+        and ncu.get("status") == "measured"
         and nsys["gpu_kernels"] != ncu["profiled_kernels"]
     ):
         ncu["status"] = "coverage_mismatch"
@@ -109,7 +116,7 @@ def collect_profiles(args):
     profiling["queue_run_id"] = os.environ["TENNIS_RUN_ID"]
     profiling["measurement_sha256"] = measurement_hash
     write_json(args.output / "profiles.json", profiling)
-    return all(profiling[tool]["status"] == "measured" for tool in ("nsys", "ncu"))
+    return all(profiling[tool]["status"] == "measured" for tool, _ in tools)
 
 
 def probe_boundaries(args):
@@ -157,29 +164,39 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--condition", required=True, choices=CONDITIONS)
     parser.add_argument("--length", type=int)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--inputs", required=True, type=Path)
     parser.add_argument("--checkpoints", default=Path("ckpt"), type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--conversion", type=Path)
     parser.add_argument("--reference", type=Path)
-    parser.add_argument("--profiles", choices=("both", "ncu", "none"), default="both")
+    parser.add_argument(
+        "--profiles", choices=("both", "nsys", "ncu", "none"), default="both"
+    )
     parser.add_argument("--profile-from", type=Path)
     parser.add_argument("--ncu-timeout", type=int, default=900)
     parser.add_argument("--boundaries", action="store_true")
     args = parser.parse_args()
+    if args.batch_size < 1:
+        parser.error("--batch-size must be positive")
+    if args.batch_size > 1 and args.condition not in {"0", "1", "2"}:
+        parser.error("Batch sweeps support conditions 0, 1 and 2")
     if (args.condition in TRT_PRECISIONS) != (args.conversion is not None):
         parser.error("TensorRT conditions require a conversion directory")
     if args.boundaries:
-        if args.conversion is None or args.length is not None:
+        if args.conversion is None or args.length is not None or args.batch_size != 1:
             parser.error(
                 "Boundary probes require a TensorRT plan and use the pinned lengths"
             )
     elif args.length is None:
         parser.error("Measurement requires a sequence length")
     if not (
-        args.boundaries or args.profile_from or args.condition == "0" or args.reference
+        args.boundaries
+        or args.profile_from
+        or (args.condition, args.batch_size) == ("0", 1)
+        or args.reference
     ):
-        parser.error("Accuracy requires a condition 0 reference at the same length")
+        parser.error("Accuracy requires a FP32 batch 1 reference at the same length")
     if args.profile_from and args.profiles == "none":
         parser.error("Profiling follow-up requires profiling tools")
     if args.profiles == "ncu" and not args.profile_from:

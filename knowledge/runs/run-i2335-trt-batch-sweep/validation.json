@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "first_attempt": {
+    "clipreid": {
+      "queue_job": "0-8204817422666730453_2026-11-20T13-49-37-333269546Z_1038617_i2335-clipreid.job",
+      "output": "outputs/trt-batch-i2335/clipreid",
+      "build_exit_code": 1,
+      "build_log": "logs/build.log",
+      "build_error": "FileNotFoundError: engine/export.onnx の親ディレクトリが存在しなかった",
+      "export_warning": "CLS tokenの展開に使われるlen(x)がトレース時に固定値になる",
+      "retained_timing_accuracy_nsys": ["c0-b1", "c0-b4", "c0-b8", "c0-b16"],
+      "overlap_timing_nsys_excluded": ["c0-b32", "c1-b1", "c1-b4", "c1-b8", "c1-b16", "c1-b32"]
+    },
+    "gvhmr": {
+      "queue_job": "0-8204817422399039221_2026-11-20T13-49-37-600960778Z_1038674_i2335-gvhmr.job",
+      "output": "outputs/trt-batch-i2335/gvhmr",
+      "build_exit_code": -11,
+      "queue_exit_code": 1,
+      "build_log": "logs/build.log",
+      "build_log_sha256": "3048f38b6fda6712b909a744ee3917d0af23359c313dee3e44358d73e41bf26a",
+      "build_error": "ONNX生成とTensorRTのlength入出力警告の後でSIGSEGV。plan未生成",
+      "export_warning": "length_to_maskのlen(lengths)がトレース時に固定値になる",
+      "overlap_timing_nsys_excluded": ["c0-b1-l145", "c0-b2-l145", "c0-b4-l145", "c0-b1-l177", "c0-b2-l177", "c0-b4-l177"],
+      "ncu_reuse_candidates": ["c1-b4-l145", "c1-b4-l177"]
+    },
+    "late_ncu_output": [
+      {"case": "clipreid/c0-b16", "timeout_seconds": 900, "result_mtime_jst": "2026-11-20T23:11:21+09:00", "csv_mtime_jst": "2026-11-20T23:46:42+09:00", "csv_rows": 201, "nsys_kernels": 201},
+      {"case": "clipreid/c1-b16", "timeout_seconds": 900, "result_mtime_jst": "2026-11-20T23:28:50+09:00", "csv_mtime_jst": "2026-11-21T00:00:23+09:00", "csv_rows": 189, "nsys_kernels": 189},
+      {"case": "gvhmr/c0-b4-l145", "timeout_seconds": 2400, "result_mtime_jst": "2026-11-21T00:13:34+09:00", "csv_mtime_jst": "2026-11-21T00:39:02+09:00", "csv_rows": 713, "nsys_kernels": 713}
+    ],
+    "ncu_handling": "タイムアウト後にCSVが追記され、後続の計測区間と重なった。上記CSVのカウンタ値は採用せず再計測する。GVHMR FP32 L=177のncuも、L=145の子プロセスの残存期間に開始したため再計測する。GVHMR FP16のncuは再計測したnsysのkernel数と代表入力を照合した上で採否を決める"
+  },
+  "retry_2": {
+    "clipreid": {
+      "queue_job": "0-8204808791920653876_2026-11-20T16-13-28-079346123Z_2041184_i2335-r2-clip-timing.job",
+      "output": "outputs/trt-batch-i2335/retry-2/clipreid",
+      "timing_accuracy_nsys_cases": 20,
+      "verified_trt_profiles": {
+        "2": {"batch_min_opt_max": [1, 16, 32], "onnx_precision_each_endpoint": {"fp16": 74}, "rejected_batch_exit_codes": {"0": 1, "33": 1}},
+        "3a": {"batch_min_opt_max": [1, 16, 32], "onnx_precision_each_endpoint": {"fp16": 62, "int8": 12}, "rejected_batch_exit_codes": {"0": 1, "33": 1}}
+      },
+      "fp8_build_exit_code": 1,
+      "fp8_build_log": "logs/build-3b.log",
+      "fp8_error": "ModelOptが選定演算と同じ活性を参照する48個のShape演算へDequantizeLinearを接続し、Q/DQ範囲の検査が拒否した",
+      "fp8_cpu_check": "実際の失敗ONNXで48個のShape入力を元の活性へ戻すと、48個の選定積のQ/DQ照合とONNX checkerが通った",
+      "cumulative_queue_minutes": 152.46
+    },
+    "gvhmr": {
+      "queue_job": "0-8204808791649586360_2026-11-20T16-13-28-350413639Z_2041225_i2335-r2-gvhmr-timing.job",
+      "output": "outputs/trt-batch-i2335/retry-2/gvhmr",
+      "timing_accuracy_nsys_cases": 12,
+      "batch_min_opt_max": [1, 4, 4],
+      "length_min_opt_max": [145, 145, 177],
+      "build_exit_code": -11,
+      "queue_exit_code": 1,
+      "build_log": "logs/build-2.log",
+      "build_log_sha256": "5c0900cf44ac6ade81720cc8af87e2a5edd78b03704b0c6daa81b57839bec237",
+      "build_error": "TensorRTでBとLを両方可変にしたprofileのbuild_serialized_network中にSIGSEGV。動的batchのmask修正後も再現",
+      "fixed_length_retry": [145, 177],
+      "cumulative_queue_minutes": 113.36
+    },
+    "ncu_prefixes": [
+      {"case": "clipreid/c1-b16", "timeout_seconds": 1650, "prefix_kernels": 119, "nsys_kernels": 189},
+      {"case": "clipreid/c2-b16", "timeout_seconds": 1050, "prefix_kernels": 66, "nsys_kernels": 114}
+    ],
+    "ncu_prefix_evidence": "2件とも再計測した同一caseのnsysに対し、prefixのgridとblockが先頭から一致。残りを同じplan・shapeで採取し、範囲全体を照合するまで集計は保留",
+    "ncu_reused_gvhmr_fp16": {
+      "c1-b4-l145": {"ncu_kernels": 712, "original_nsys_kernels": 712, "retry_nsys_kernels": 712},
+      "c1-b4-l177": {"ncu_kernels": 745, "original_nsys_kernels": 745, "retry_nsys_kernels": 745}
+    }
+  },
+  "retry_3": {
+    "clipreid_fp8": {
+      "queue_job": "0-8204799080902372682_2026-11-20T18-55-19-097627317Z_2919771_i2335-r3-clip-fp8-timing.job",
+      "output": "outputs/trt-batch-i2335/retry-3/clipreid",
+      "timing_accuracy_nsys_cases": 5,
+      "conversion_receipt": "engine-3b/conversion.json",
+      "shape_inputs_restored": 48,
+      "batch_min_opt_max": [1, 16, 32],
+      "onnx_precision_each_endpoint": {"fp16": 26, "fp8": 48},
+      "rejected_batch_exit_codes": {"0": 1, "33": 1}
+    },
+    "completed_clipreid_ncu": {
+      "c1-b16": {"prefix_kernels": 119, "suffix_kernels": 70, "nsys_kernels": 189},
+      "c2-b16": {"prefix_kernels": 66, "suffix_kernels": 48, "nsys_kernels": 114},
+      "c3b-b16": {"ncu_kernels": 115, "nsys_kernels": 115}
+    },
+    "gvhmr_fixed_length_builds": {
+      "145": {
+        "queue_job": "0-8204799080648304534_2026-11-20T18-55-19-351695465Z_2919820_i2335-r3-gvhmr-fixed-timing-l145.job",
+        "output": "outputs/trt-batch-i2335/retry-3/gvhmr-l145",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "db5fde29c830a1071bf41bd187f48f60fabdf380e0425ae312344988ab32531f",
+        "batch_min_opt_max": [1, 4, 4]
+      },
+      "177": {
+        "queue_job": "0-8204799080397544024_2026-11-20T18-55-19-602455975Z_2919857_i2335-r3-gvhmr-fixed-timing-l177.job",
+        "output": "outputs/trt-batch-i2335/retry-3/gvhmr-l177",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "28a8314c48871b5029052b949992eaafc4807c86e4f93439fb3816fea80af266",
+        "batch_min_opt_max": [1, 4, 4]
+      }
+    },
+    "gvhmr_failure": "既定のビルダー設定で固定長でもbuild_serialized_networkのSIGSEGVを再現。planと測定記録は生成されず、後段のncuは測定記録を開く前に失敗",
+    "cumulative_queue_minutes": {"clipreid": 157.78, "gvhmr": 115.34}
+  },
+  "retry_4": {
+    "batch_min_opt_max": [1, 4, 4],
+    "builder_optimization_level": 0,
+    "gvhmr_fixed_length_builds": {
+      "145": {
+        "queue_job": "0-8204797946636145129_2026-11-20T19-14-13-363854870Z_3037453_i2335-r4-gvhmr-builder0-l145.job",
+        "output": "outputs/trt-batch-i2335/retry-4/gvhmr-l145",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "9ec537dd62e656fba782686f9c7d40bd17684b2b55cc58428ab1c8dfd9439bc2",
+        "plan_published": false
+      },
+      "177": {
+        "queue_job": "0-8204797946383013931_2026-11-20T19-14-13-616986068Z_3037497_i2335-r4-gvhmr-builder0-l177.job",
+        "output": "outputs/trt-batch-i2335/retry-4/gvhmr-l177",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "fd975be59dc799b38557c68dd99a87fa89f59fdf81b54ff1c9e93157672b24a4",
+        "plan_published": false
+      }
+    },
+    "last_verbose_timing_runner": "{ForeignNode[/network/Unsqueeze_7.../network/ScatterND]} (Myelin[0x80000023])",
+    "stage_at_signal": "build_serialized_network",
+    "cumulative_gvhmr_queue_minutes": 116.92
+  },
+  "representative_ncu_unavailable": {
+    "c2-b4-l145": {
+      "queue_job": "0-8204799079374224902_2026-11-20T18-55-20-625775097Z_2920221_i2335-r3-gvhmr-fixed-ncu-l145.job",
+      "queue_log_sha256": "5ecc43bbe938521a5a404c0b98be9b177f4cec1423b7e13fff956efd211a78b2",
+      "queue_exit_code": 1,
+      "nsys_kernels": null,
+      "ncu_kernels": null,
+      "failure": "TensorRTビルド失敗でmeasurement.jsonがなく、読込時にFileNotFoundError。ncu起動前に終了"
+    },
+    "c2-b4-l177": {
+      "queue_job": "0-8204799079111382642_2026-11-20T18-55-20-888617357Z_2920285_i2335-r3-gvhmr-fixed-ncu-l177.job",
+      "queue_log_sha256": "21c6ac2f5eef17fac05f6aaed42a12e50ad5a49edd5834a2cf65c90c9d924762",
+      "queue_exit_code": 1,
+      "nsys_kernels": null,
+      "ncu_kernels": null,
+      "failure": "TensorRTビルド失敗でmeasurement.jsonがなく、読込時にFileNotFoundError。ncu起動前に終了"
+    }
+  },
+  "historical_gvhmr_trt_fp16_batch1": {
+    "source_issue": 2305,
+    "source_case": "knowledge/runs/run-i2305-gvhmr-tensorrt/metrics.json:conditions.2",
+    "fixed_batch": 1,
+    "length_min_opt_max": [117, 145, 177],
+    "engine_sha256": "2474b55380f92b3b9f71d2f0304f3072c01593d5fbfe9da6028f9a8a76993185",
+    "fp32_decoded_reference_sha256": {
+      "145": "109f911c7d60b069916c6dba38f660c9e24b36aeca352759fb72bbb8b5a27e2c",
+      "177": "38dbcdbdcd5f83ebb98093277afa62d93769a88ef124d14c29342ae8a53202f1"
+    }
+  },
+  "retry_5": {
+    "model": "gvhmr",
+    "condition": "2",
+    "fixed_lengths": [145, 177],
+    "fixed_batches": [2, 4],
+    "optimization_profile_added": false,
+    "builder_optimization_level": 3,
+    "trt_log_verbosity": "VERBOSE",
+    "stage_at_signal": "build_serialized_network",
+    "last_verbose_timing_runner": "{ForeignNode[/network/Unsqueeze_3.../network/ScatterND]} (Myelin[0x80000023])",
+    "scatternd_parser_example": {
+      "case": "c2-b2-l145",
+      "onnx_node": "/network/ScatterND",
+      "data": {"name": "/network/Add_4_output_0", "shape": [2, 145, 3], "dtype": "FP16"},
+      "indices": {"name": "/network/Concat_1_output_0", "shape": [2, 145, 1, 3], "dtype": "INT64"},
+      "updates": {"name": "/network/Reshape_1_output_0", "shape": [2, 145, 1], "dtype": "FP16"},
+      "output": {"name": "pred_cam", "shape": [2, 145, 3], "dtype": "FP16"}
+    },
+    "gvhmr_static_builds": {
+      "c2-b2-l145": {
+        "queue_job": "0-8204797085800108978_2026-11-20T19-28-34-199891021Z_3059882_i2335-r5-gvhmr-static-b2-l145.job",
+        "output": "outputs/trt-batch-i2335/retry-5/gvhmr-b2-l145",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "e4c5adde777c263b8c8821257c10b84e26277fe6379eefe259cc7b942c102cc4",
+        "plan_published": false
+      },
+      "c2-b4-l145": {
+        "queue_job": "0-8204797085545995659_2026-11-20T19-28-34-454004340Z_3059921_i2335-r5-gvhmr-static-b4-l145.job",
+        "output": "outputs/trt-batch-i2335/retry-5/gvhmr-b4-l145",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "ff3a38baaed9779d36496e7b69104c91fd876bb7a4eb7c93d707a63defcdd4cb",
+        "plan_published": false
+      },
+      "c2-b2-l177": {
+        "queue_job": "0-8204797085268455169_2026-11-20T19-28-34-731544830Z_3060059_i2335-r5-gvhmr-static-b2-l177.job",
+        "output": "outputs/trt-batch-i2335/retry-5/gvhmr-b2-l177",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "e0ccd42913d4869f852ea3907fe425c1ac3210fa8e77f109bfa0595a7f08f895",
+        "plan_published": false
+      },
+      "c2-b4-l177": {
+        "queue_job": "0-8204797085017034634_2026-11-20T19-28-34-982965365Z_3060193_i2335-r5-gvhmr-static-b4-l177.job",
+        "output": "outputs/trt-batch-i2335/retry-5/gvhmr-b4-l177",
+        "build_exit_code": -11,
+        "queue_exit_code": 1,
+        "build_log": "logs/build-2.log",
+        "build_log_sha256": "44263184eb41908ed358388a05da390f0595617fdd8be585d653aa64be76ac86",
+        "plan_published": false
+      }
+    },
+    "cumulative_gvhmr_queue_minutes": 119.71
+  },
+  "gvhmr_trt_fp16_batch_outcome": {
+    "status": "build_unavailable",
+    "requested_shapes": {"batch_sizes": [2, 4], "lengths": [145, 177]},
+    "cuda_compute_capability": [12, 0],
+    "tensorrt": "10.14.1.48.post1",
+    "historical_batch1_available": true,
+    "build_attempts": 10,
+    "reason": "可変profileと固定shapeの全試行でビルド子がSIGSEGV。faulthandlerを有効にした試行はbuild_serialized_network内で停止し、B>1のplanは生成されなかった"
+  }
+}

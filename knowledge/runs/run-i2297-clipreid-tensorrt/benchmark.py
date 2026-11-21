@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from batching import batch_slices
 from convert import CONDITIONS, PLAN, TRT_PRECISIONS, require_queue
 from inputs import (
     CHECKPOINT,
@@ -138,6 +139,16 @@ def run_case(args):
     if sha256_file(args.checkpoint) != checkpoint_sha256:
         raise ValueError(f"Unexpected {args.model} checkpoint contents")
     profile_index = addresses.index(profile_address)
+    if adapter is None:
+        group = batch_slices(len(addresses), args.batch_size)[
+            profile_index // args.batch_size
+        ]
+        if group.stop - group.start != args.batch_size:
+            raise ValueError("The representative crop must belong to a full batch")
+        extra.update(
+            batch_size=args.batch_size,
+            profile_batch_addresses=[list(address) for address in addresses[group]],
+        )
     identity = {
         "model": args.model,
         "condition": args.condition,
@@ -146,18 +157,24 @@ def run_case(args):
         "profile_address": list(profile_address),
         **extra,
     }
-    comparable_keys = identity.keys() - {"condition"}
+    comparable_keys = identity.keys() - {
+        "condition",
+        "batch_size",
+        "profile_batch_addresses",
+    }
     adapter_args = (
         ["--adapter", str(args.adapter.resolve()), "--model", args.model]
         if adapter
         else []
     )
 
-    def verify_reference(path, expected_condition):
+    def verify_reference(path, expected_condition, batch_size):
         receipt = json.loads((path / "result.json").read_text())
         before = receipt["identity"]
-        if before["condition"] != expected_condition or any(
-            before[key] != identity[key] for key in comparable_keys
+        if (
+            before["condition"] != expected_condition
+            or before.get("batch_size", 1) != batch_size
+            or any(before[key] != identity[key] for key in comparable_keys)
         ):
             raise ValueError(f"Reference identity mismatch: {path}")
         if sha256_file(path / "features.npy") != receipt["features_sha256"]:
@@ -166,7 +183,9 @@ def run_case(args):
 
     output = args.output
     source = args.profile_from or args.measure_from
-    previous = verify_reference(source, args.condition) if source else None
+    previous = (
+        verify_reference(source, args.condition, args.batch_size) if source else None
+    )
     nsys_reference = {}
     if args.profile_from:
         result = {**previous, "profile_from": str(source)}
@@ -179,8 +198,9 @@ def run_case(args):
             result["nsys_comparison"] = {"gpu_kernels": nsys_reference["gpu_kernels"]}
     else:
         result = {"identity": identity}
-        if args.condition != "0":
-            verify_reference(args.reference, "0")
+        if args.reference:
+            reference = verify_reference(args.reference, "0", 1)
+            result["fp32_reference_features_sha256"] = reference["features_sha256"]
 
     if args.condition in TRT_PRECISIONS:
         if previous is not None:
@@ -191,6 +211,21 @@ def run_case(args):
             result["conversion"] = previous["conversion"]
             if args.measure_from:
                 result["measurement_from"] = str(source)
+        elif args.conversion:
+            plan = args.conversion / PLAN
+            receipt = json.loads((args.conversion / "conversion.json").read_text())
+            if (
+                receipt["condition"] != args.condition
+                or receipt["checkpoint_sha256"] != CHECKPOINT_SHA256
+                or receipt["engine_sha256"] != sha256_file(plan)
+                or set(receipt["compute_precision"]) != {"min", "opt", "max"}
+                or not receipt["input_profile"]
+            ):
+                raise ValueError(
+                    "CLIP conversion receipt differs from the requested dynamic engine"
+                )
+            result["conversion"] = receipt
+            result["engine_sha256"] = receipt["engine_sha256"]
         else:
             plan = output / (f"{args.model}.plan" if adapter else PLAN)
             run_stage(
@@ -235,18 +270,26 @@ def run_case(args):
         str(args.inputs / "eval.npy"),
         "--output",
         str(output),
+        "--batch-size",
+        str(args.batch_size),
     ]
     if args.condition in TRT_PRECISIONS:
         command += ["--plan", str(plan)]
+        if result["conversion"].get("input_profile") is not None:
+            command.append("--dynamic-batch")
     command.extend(adapter_args)
     if not args.profile_from:
-        run_stage(command, output / "measure.log", timeout=360)
+        run_stage(
+            command, output / "measure.log", timeout=900 if args.batch_size > 1 else 360
+        )
         result["measurement"] = json.loads((output / "measurement.json").read_text())
+        if result["measurement"]["batch_shape"][0] != args.batch_size:
+            raise ValueError("Measured CLIP batch size differs from the request")
         actual = np.load(output / "features.npy", allow_pickle=False)
         baseline = (
-            actual
-            if args.condition == "0"
-            else np.load(args.reference / "features.npy", allow_pickle=False)
+            np.load(args.reference / "features.npy", allow_pickle=False)
+            if args.reference
+            else actual
         )
         result["accuracy"] = compare(actual, baseline, addresses)
         result["features_sha256"] = sha256_file(output / "features.npy")
@@ -254,6 +297,35 @@ def run_case(args):
 
     result["profile_queue_job"] = os.environ["TENNIS_RUN_ID"]
     result["profiles"] = {}
+    ncu_options = {}
+    if args.profiles == "ncu" and args.ncu_prefix:
+        prefix = json.loads((args.ncu_prefix / "result.json").read_text())
+        profile = prefix["profiles"]["ncu"]
+        if (
+            Path(prefix["profile_from"]).resolve() != source.resolve()
+            or any(
+                prefix.get(key) != previous.get(key)
+                for key in (
+                    "identity",
+                    "features_sha256",
+                    "engine_sha256",
+                    "measurement_queue_job",
+                )
+            )
+            or prefix["nsys_comparison"]["gpu_kernels"] != nsys_reference["gpu_kernels"]
+            or profile["status"] != "unavailable"
+            or "timed out after" not in profile.get("reason", "")
+        ):
+            raise ValueError(
+                "ncu prefix is not a timed-out replay of this exact measurement"
+            )
+        prefix_csv = args.ncu_prefix / "ncu.csv"
+        ncu_options = {"ncu_prefix": prefix_csv, "nsys_trace": source / "nsys.sqlite"}
+        result["ncu_prefix"] = {
+            "queue_job": prefix["profile_queue_job"],
+            "csv_sha256": sha256_file(prefix_csv),
+            "source": str(args.ncu_prefix),
+        }
     write_json(output / "result.json", result)
     for tool, executable in {"nsys": str(args.nsys), "ncu": str(args.ncu)}.items():
         if args.profiles in {"all", tool}:
@@ -262,7 +334,12 @@ def run_case(args):
                 # ncu 2025.3.1 raw CSV misquotes TensorRT's JSON NVTX payloads.
                 profile_command.append("--omit-trt-layer-nvtx")
             result["profiles"][tool] = capture(
-                tool, executable, profile_command, output, ncu_timeout=args.ncu_timeout
+                tool,
+                executable,
+                profile_command,
+                output,
+                ncu_timeout=args.ncu_timeout,
+                **ncu_options,
             )
             if tool == "ncu":
                 result["profiles"][tool]["timeout_seconds"] = args.ncu_timeout
@@ -294,8 +371,11 @@ def main():
     parser.add_argument("--inputs", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, default=CHECKPOINT)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument(
-        "--reference", type=Path, help="condition 0 output for accuracy comparison"
+        "--reference",
+        type=Path,
+        help="condition 0, batch 1 output for accuracy comparison",
     )
     parser.add_argument(
         "--profiles", choices=("all", "none", "nsys", "ncu"), default="all"
@@ -303,7 +383,11 @@ def main():
     parser.add_argument("--nsys", type=Path, default=NSYS)
     parser.add_argument("--ncu", type=Path, default=Path("/usr/local/cuda/bin/ncu"))
     parser.add_argument("--ncu-timeout", type=int, default=900)
+    parser.add_argument(
+        "--ncu-prefix", type=Path, help="recover a matching timed-out ncu replay"
+    )
     reuse = parser.add_mutually_exclusive_group()
+    reuse.add_argument("--conversion", type=Path, help="reuse a dynamic CLIP engine")
     reuse.add_argument(
         "--profile-from",
         type=Path,
@@ -315,16 +399,33 @@ def main():
         help="repeat timing with the existing TensorRT engine from a result",
     )
     args = parser.parse_args()
+    if args.batch_size < 1:
+        parser.error("--batch-size must be positive")
+    if args.adapter and (args.batch_size != 1 or args.conversion):
+        parser.error("--batch-size and --conversion require the built-in CLIP runtime")
+    if not (args.reference or args.profile_from) and (
+        args.condition,
+        args.batch_size,
+    ) != ("0", 1):
+        parser.error("--reference is required for a comparison with FP32 batch 1")
+    if args.conversion and args.condition not in TRT_PRECISIONS:
+        parser.error("--conversion requires a TensorRT condition")
+    if (
+        args.condition in TRT_PRECISIONS
+        and args.batch_size != 1
+        and not (args.conversion or args.profile_from or args.measure_from)
+    ):
+        parser.error("Batched TensorRT measurement requires an existing dynamic engine")
     if args.ncu_timeout <= 0:
         parser.error("--ncu-timeout must be positive")
+    if args.ncu_prefix and (args.profiles != "ncu" or args.profile_from is None):
+        parser.error("--ncu-prefix requires --profiles ncu and --profile-from")
     if (args.model != MODEL or args.ptq_recipe) and args.adapter is None:
         parser.error("--adapter is required for this model or PTQ recipe")
     if args.ptq_recipe and (
         args.condition not in {"3a", "3b"} or args.profile_from or args.measure_from
     ):
         parser.error("--ptq-recipe requires a new quantized engine build")
-    if args.reference is None and args.condition != "0" and not args.profile_from:
-        parser.error("--reference is required for a comparison with FP32")
     if args.profile_from and args.profiles == "none":
         parser.error("--profile-from requires selecting a profiler")
     if args.measure_from and args.condition not in TRT_PRECISIONS:

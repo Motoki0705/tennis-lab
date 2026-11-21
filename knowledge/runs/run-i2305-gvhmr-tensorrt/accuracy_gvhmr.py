@@ -122,12 +122,13 @@ def read_outputs(path):
         return dict(archive)
 
 
-def checked_measurement(directory, condition, frames, rows):
+def checked_measurement(directory, condition, frames, rows, *, batch_size=1):
     report = json.loads((directory / "measurement.json").read_text())
     if (
         report["tensor_lock_sha256"] != sha256_file(HERE / "tensor-lock.json")
         or report["condition"] != condition
         or report["length"] != frames
+        or report.get("batch_size", 1) != batch_size
         or report["segments"] != [row["id"] for row in rows]
     ):
         raise ValueError(f"Measurement does not match the input identity: {directory}")
@@ -152,7 +153,9 @@ def evaluate(args):
         if row["split"] == "eval" and row["length"] == args.length
     ]
     rows = [row for row, _ in selected]
-    measure = checked_measurement(args.output, args.condition, args.length, rows)
+    measure = checked_measurement(
+        args.output, args.condition, args.length, rows, batch_size=args.batch_size
+    )
     prediction_file = args.output / "raw-outputs.npz"
     if sha256_file(prediction_file) != measure["raw_outputs_sha256"]:
         raise ValueError("Measured raw outputs failed digest verification")
@@ -174,7 +177,11 @@ def evaluate(args):
         .cuda()
     )
     joints = SmplCoco17Reconstructor(body_dir, device="cuda", smpl_assets=assets)
-    native = load_network(checkpoint).cuda().network if args.condition == "0" else None
+    native = (
+        load_network(checkpoint).cuda().network
+        if (args.condition, args.batch_size) == ("0", 1)
+        else None
+    )
     native_parity = {}
     decoded = {f"{space}_{name}": [] for space in SPACES for name in PARAMETERS}
     for index, (_, arrays) in enumerate(selected):
@@ -218,7 +225,7 @@ def evaluate(args):
     actual.update({key: raw[key] for key in ("mask_out", "length_out")})
     decoded_file = args.output / "decoded-outputs.npz"
     np.savez(decoded_file, **actual)
-    if args.condition == "0":
+    if args.reference is None:
         reference = actual
         reference_hash = sha256_file(decoded_file)
     else:
@@ -257,13 +264,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--condition", required=True, choices=CONDITIONS)
     parser.add_argument("--length", required=True, type=int)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--inputs", required=True, type=Path)
     parser.add_argument("--checkpoints", default=Path("ckpt"), type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--reference", type=Path)
     args = parser.parse_args()
-    if args.condition != "0" and args.reference is None:
-        parser.error("Conditions other than 0 require a measured FP32 reference")
+    if args.batch_size < 1:
+        parser.error("--batch-size must be positive")
+    if (args.condition, args.batch_size) != ("0", 1) and args.reference is None:
+        parser.error("Accuracy requires a measured FP32 batch 1 reference")
     require_queue()
     evaluate(args)
 
