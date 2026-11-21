@@ -197,6 +197,19 @@ def test_local_queue_policy_has_one_operational_source_and_preserves_colab() -> 
     assert "../../tennis-colab/SKILL.md" in {target for _, target, _ in _links(workers)}
 
 
+def test_agy_manual_worker_launch_is_reachable_from_parent_readme() -> None:
+    parent_readme = ROOT / ".agents/ops/parent/README.md"
+    workers = ROOT / ".agents/skills/parent-session/references/workers.md"
+    anchor = "agy手動親での起動と監視"
+    assert "agyの手動親" in _anchors(parent_readme)
+    assert anchor in _anchors(workers)
+    assert any(
+        (parent_readme.parent / target.partition("#")[0]).resolve() == workers
+        and target.partition("#")[2] == anchor
+        for _, target, _ in _links(parent_readme)
+    )
+
+
 def test_parent_cli_help_examples_match_the_parser(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

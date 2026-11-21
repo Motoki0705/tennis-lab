@@ -187,7 +187,8 @@ def caller_tui() -> AgyTui:
             ) from None
     if not any(name == "agy" for name, _ in engines):
         raise AgyVerificationError(
-            "agy host process ancestry is unavailable (terminal sandbox?)"
+            "agy host process ancestry is unavailable "
+            "(terminal sandbox or detached setsid/& shell?)"
         )
     if len(engines) != 1:
         raise AgyExcluded("nested agy parent operations are unsupported")
