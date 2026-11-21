@@ -81,6 +81,30 @@ def test_flip_runner_constructs_two_views_and_restores_left_joint():
     assert merged[0, 2, 0, 2].item() == 5
 
 
+def test_flip_runner_keeps_paired_crops_at_full_and_tail_batches():
+    class Graph:
+        def set_batch_size(self, batch_size):
+            self.pixels = torch.empty((2 * batch_size, 3, 1, 3))
+
+        def run(self):
+            output = torch.zeros((len(self.pixels), 17, 1, 3))
+            output[:, 0] = self.pixels[:, 0]
+            return output
+
+    graph = Graph()
+    graph.set_batch_size(2)
+    runner = FlipRunner(graph)
+    for rows in ([[1, 2, 4], [8, 16, 32]], [[101, 109, 117]]):
+        runner.set_batch_size(len(rows))
+        crops = torch.tensor(rows, dtype=torch.float32)
+        runner.pixels.copy_(crops[:, None, None, :].expand_as(runner.pixels))
+        restored = runner.run()
+        torch.testing.assert_close(
+            graph.pixels[:, 0, 0], torch.cat((crops, crops.flip(-1)))
+        )
+        torch.testing.assert_close(restored[:, 0, 0], crops)
+
+
 def test_udp_pixel_error_confidence_and_mask_use_the_same_reference():
     y, x = np.mgrid[:64, :48]
     base = np.zeros((1, 17, 64, 48), dtype=np.float32)
@@ -326,6 +350,8 @@ def test_attention_out_ptq_selects_one_weighted_projection_per_block(
             ("scores", "values"),
         ),
         ("__myl_ReshMoveMul_test", [[8, 1, 64], [1, 8, 1, 1]], ("values",)),
+        ("__myl_ReshMoveMul_test", [[128, 1, 64], [16, 8, 1, 1]], ("values",)),
+        ("__myl_ReshMoveMul_test", [[16, 8, 1, 64], [16, 8, 1, 1]], ("values",)),
     ],
 )
 def test_hmr2_attention_tactics_require_fp16_operands(tactic, shapes, names):
@@ -348,6 +374,13 @@ def test_hmr2_attention_tactics_require_fp16_operands(tactic, shapes, names):
         verify_compute_precision(
             {"Layers": [layer]}, "fp16", expected_operations=expected
         )
+    if tactic == "__myl_ReshMoveMul_test":
+        layer["Inputs"][-1]["Format/Datatype"] = "Half"
+        layer["Inputs"][-1]["Dimensions"] = [shapes[-1][0] + 1, 8, 1, 1]
+        with pytest.raises(RuntimeError, match="expected fp16 operands"):
+            verify_compute_precision(
+                {"Layers": [layer]}, "fp16", expected_operations=expected
+            )
 
 
 def test_static_onnx_ops_are_checked_if_executed_and_can_be_folded():

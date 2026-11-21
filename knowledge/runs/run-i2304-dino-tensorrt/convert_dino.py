@@ -8,6 +8,7 @@ import shutil
 from collections import Counter
 from pathlib import Path
 
+from batching import batch_profile_points, require_dynamic_axis
 from benchmark import write_json
 from benchmark_dino import CHECKPOINT_SHA256, verify_inputs
 from convert import (
@@ -229,48 +230,64 @@ def prepare(args, lock, export, source):
     )
 
 
-def build(args, source, typed, graph):
+def verify_layers(details, precision, requirements, sampling, method):
+    evidence = verify_compute_precision(
+        details,
+        precision,
+        expected_operations=requirements,
+        constant_operations=CONSTANT_OPERATIONS,
+    )
+    if unobserved := evidence.get("unobserved_constant_onnx_operations"):
+        raise RuntimeError(f"Missing DINO constant tactic evidence: {unobserved}")
+    layers = sampling_layers(details, sampling, method=method, precision=precision)
+    return {
+        **evidence,
+        "sampling_operation": PLUGIN if method == "plugin" else "GridSample",
+        "count": len(sampling),
+        "sampling_execution_layer_types": dict(
+            Counter(layer["type"] for layer in layers)
+        ),
+        "sampling_operand_formats": dict(
+            Counter(dtype for layer in layers for dtype in layer["inputs"])
+        ),
+        "sampling_output_formats": dict(
+            Counter(dtype for layer in layers for dtype in layer["outputs"])
+        ),
+    }
+
+
+def build(
+    args, source, typed, graph, *, batch_profile=None, builder_optimization_level=None
+):
     method = typed["method"]
     precision = TRT_PRECISIONS[args.condition]
     if args.condition in {"3a", "3b"}:
         verify_qdq(graph, typed["precision_requirements"], precision)
     plugin = method == "plugin"
-    count = 12 if plugin else 48
-    sampling = sampling_names(graph, method, count)
+    sampling = sampling_names(graph, method, 12 if plugin else 48)
 
-    def verify(details):
-        evidence = verify_compute_precision(
-            details,
-            precision,
-            expected_operations=typed["precision_requirements"],
-            constant_operations=CONSTANT_OPERATIONS,
-        )
-        if unobserved := evidence.get("unobserved_constant_onnx_operations"):
-            raise RuntimeError(f"Missing DINO constant tactic evidence: {unobserved}")
-        layers = sampling_layers(details, sampling, method=method, precision=precision)
-        return {
-            **evidence,
-            "sampling_operation": PLUGIN if plugin else "GridSample",
-            "count": count,
-            "sampling_execution_layer_types": dict(
-                Counter(layer["type"] for layer in layers)
-            ),
-            "sampling_operand_formats": dict(
-                Counter(dtype for layer in layers for dtype in layer["inputs"])
-            ),
-            "sampling_output_formats": dict(
-                Counter(dtype for layer in layers for dtype in layer["outputs"])
-            ),
+    profile = None
+    if batch_profile is not None:
+        for value in (*graph.input, *graph.output):
+            require_dynamic_axis(value, 0, "batch")
+        profile = {
+            INPUT_NAME: [
+                (size, *typed["input_shape"][1:])
+                for size in batch_profile_points(*batch_profile)
+            ]
         }
-
     plan = args.output / "dino.plan"
     performance = build_checked_plan(
         source,
         plan,
-        verify=verify,
+        verify=lambda details: verify_layers(
+            details, precision, typed["precision_requirements"], sampling, method
+        ),
         init_plugins=plugin,
         min_free_gib=MIN_BUILD_FREE_GIB,
         allow_tf32=False,
+        profile_shapes=profile,
+        builder_optimization_level=builder_optimization_level,
     )
     write_json(
         args.output / "conversion.json",
@@ -280,6 +297,11 @@ def build(args, source, typed, graph):
             "workspace_bytes": WORKSPACE_BYTES,
             "compute_precision": performance,
             "queue_job": os.environ["TENNIS_RUN_ID"],
+            **(
+                {"input_profile": profile, "sampling_nodes": sorted(sampling)}
+                if profile is not None
+                else {}
+            ),
         },
     )
 
@@ -293,7 +315,13 @@ def main():
     parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--checkpoint", default=CHECKPOINT, type=Path)
+    parser.add_argument("--batch-profile", nargs=2, type=int, metavar=("OPT", "MAX"))
+    parser.add_argument("--builder-optimization-level", type=int, choices=range(6))
     args = parser.parse_args()
+    if args.stage == "prepare" and (
+        args.batch_profile is not None or args.builder_optimization_level is not None
+    ):
+        parser.error("Profile and optimization level belong to the build stage")
     require_queue()
     stage = "export" if args.stage == "prepare" else "typed"
     source, receipt = load_manifest(args.source, stage)
@@ -303,6 +331,10 @@ def main():
         or receipt["tensor_set_sha256"] != lock["tensor_set_sha256"]
         or receipt["checkpoint_sha256"] != CHECKPOINT_SHA256
         or (stage == "typed" and receipt["condition"] != args.condition)
+        or (
+            stage == "typed"
+            and bool(receipt.get("dynamic_batch")) != bool(args.batch_profile)
+        )
     ):
         raise ValueError(
             "ONNX artifact does not match the specified model, inputs or condition"
@@ -313,7 +345,14 @@ def main():
     else:
         import onnx
 
-        build(args, source, receipt, onnx.load(source, load_external_data=False).graph)
+        build(
+            args,
+            source,
+            receipt,
+            onnx.load(source, load_external_data=False).graph,
+            batch_profile=args.batch_profile,
+            builder_optimization_level=args.builder_optimization_level,
+        )
 
 
 if __name__ == "__main__":

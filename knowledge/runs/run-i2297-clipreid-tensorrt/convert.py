@@ -233,6 +233,17 @@ def _residual_input_matches_output(layer):
     )
 
 
+def _hmr2_single_token_operands(tensors):
+    if len(tensors) != 2:
+        return False
+    shapes = [tuple(tensor["Dimensions"]) for tensor in tensors]
+    for scalar, value in (shapes, shapes[::-1]):
+        if len(scalar) == 4 and scalar[0] > 0 and scalar[1:] == (8, 1, 1):
+            batch = scalar[0]
+            return value in {(batch * 8, 1, 64), (batch, 8, 1, 64)}
+    return False
+
+
 def verify_compute_precision(
     details, required_precision, *, expected_operations=None, constant_operations=()
 ):
@@ -299,11 +310,10 @@ def verify_compute_precision(
         elif singleton_matmul:
             # HMR2 self-attention has one token. TensorRT lowers its value
             # MatMul to one scalar multiply per head and channel.
-            shapes = sorted(tuple(t["Dimensions"]) for t in layer["Inputs"])
             matches = (
                 precision == "fp16"
                 and len(operations) == 1
-                and shapes == [(1, 8, 1, 1), (8, 1, 64)]
+                and _hmr2_single_token_operands(tensors)
                 and all(pattern.search(dtype) for dtype in inputs)
             )
         else:
@@ -531,6 +541,7 @@ def build_engine(
     profile_shapes=None,
     constant_operations=(),
     builder_optimization_level=None,
+    min_free_gib=6,
 ):
     return build_checked_plan(
         onnx_file,
@@ -543,6 +554,7 @@ def build_engine(
         ),
         profile_shapes=profile_shapes,
         builder_optimization_level=builder_optimization_level,
+        min_free_gib=min_free_gib,
     )
 
 
@@ -585,8 +597,8 @@ def modelopt_ptq(
     model = onnx.load(target, load_external_data=False)
     restored = restore_shape_inputs(model.graph) if restore_dynamic_shapes else 0
     if restored:
-        onnx.checker.check_model(model)
         onnx.save_model(model, target)
+        onnx.checker.check_model(str(target))
     ops = Counter(node.op_type for node in model.graph.node)
     if not ops["QuantizeLinear"] or not ops["DequantizeLinear"]:
         raise RuntimeError(f"{mode} PTQ produced no explicit Q/DQ pairs")

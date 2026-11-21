@@ -42,6 +42,7 @@ OUTPUT_SHAPES = {
     BOXES: (1, DINO_NUM_QUERIES, 4),
 }
 MIN_FREE_GIB = 12
+TORCH_MEMORY_FRACTION = 0.60
 
 
 class EvaluationInputs:
@@ -71,7 +72,13 @@ class TorchDino:
         if self.detector._model is None:
             raise RuntimeError("DINO detector model failed to load")
         self.model = self.detector._model
-        self.pixels = torch.empty(shape, device="cuda", dtype=torch.float32)
+        self.input_shape = shape[1:]
+        self.set_batch_size(shape[0])
+
+    def set_batch_size(self, batch_size):
+        self.pixels = torch.empty(
+            (batch_size, *self.input_shape), device="cuda", dtype=torch.float32
+        )
 
     def run(self):
         dtype = self.detector._autocast_dtype
@@ -125,28 +132,36 @@ def setup_cuda(memory):
     if torch.cuda.device_count() != 1 or torch.cuda.get_device_capability() != (12, 0):
         raise RuntimeError("The fixed DINO run requires one CC 12.0 CUDA GPU")
     torch.cuda.init()
-    torch.cuda.set_per_process_memory_fraction(0.60)
+    torch.cuda.set_per_process_memory_fraction(TORCH_MEMORY_FRACTION)
     torch.cuda.reset_peak_memory_stats()
+
+
+def decode_batch(raw, rows):
+    outputs = {key: raw[key].float() for key in OUTPUT_SHAPES}
+    if not all(torch.isfinite(tensor).all() for tensor in outputs.values()):
+        raise ValueError(
+            f"Nonfinite DINO model outputs: {[row['file'] for row in rows]}"
+        )
+    detections = decode_person_detections(
+        outputs,
+        image_sizes=[tuple(row["original_hw"]) for row in rows],
+        confidence=CONFIDENCE,
+    )
+    return [
+        {
+            "file": row["file"],
+            "boxes": detection.boxes_xyxy.tolist(),
+            "scores": detection.scores.tolist(),
+        }
+        for row, detection in zip(rows, detections, strict=True)
+    ]
 
 
 def collect_decoded(runner, data, output):
     results = []
     for i, row in enumerate(data.rows):
         upload(runner, data[i])
-        raw = runner.run()
-        outputs = {key: raw[key].float() for key in OUTPUT_SHAPES}
-        if not all(torch.isfinite(tensor).all() for tensor in outputs.values()):
-            raise ValueError(f"Nonfinite DINO model outputs: {row['file']}")
-        (detection,) = decode_person_detections(
-            outputs, image_sizes=[tuple(row["original_hw"])], confidence=CONFIDENCE
-        )
-        results.append(
-            {
-                "file": row["file"],
-                "boxes": detection.boxes_xyxy.tolist(),
-                "scores": detection.scores.tolist(),
-            }
-        )
+        results.extend(decode_batch(runner.run(), [row]))
     write_json(output / "detections.json", results)
 
 

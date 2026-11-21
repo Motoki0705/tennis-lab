@@ -37,6 +37,10 @@ REPEATS_PER_BLOCK = 100
 
 class TorchRunner:
     def __init__(self, condition, checkpoint, adapter=None, *, batch_size=1):
+        self.input_shape = (BATCH_SHAPE if adapter is None else adapter.engine_shape)[
+            1:
+        ]
+        self.batch_multiplier = 1 if adapter is None else adapter.engine_shape[0]
         self.autocast = adapter is not None and adapter.autocast and condition == "1"
         self.dtype = (
             torch.float32 if condition == "0" or self.autocast else torch.float16
@@ -47,16 +51,13 @@ class TorchRunner:
             else adapter.torch_model(checkpoint)
         )
         self.model = model.to(dtype=self.dtype).eval().cuda()
-        if adapter is None:
-            self.set_batch_size(batch_size)
-        else:
-            self.pixels = torch.empty(
-                adapter.engine_shape, device="cuda", dtype=self.dtype
-            )
+        self.set_batch_size(batch_size)
 
     def set_batch_size(self, batch_size):
         self.pixels = torch.empty(
-            (batch_size, *BATCH_SHAPE[1:]), device="cuda", dtype=self.dtype
+            (batch_size * self.batch_multiplier, *self.input_shape),
+            device="cuda",
+            dtype=self.dtype,
         )
 
     def run(self):
@@ -69,7 +70,9 @@ class TorchRunner:
 
 
 class TensorRTContext:
-    def __init__(self, plan, *, omit_layer_nvtx=False, init_plugins=False):
+    def __init__(
+        self, plan, *, omit_layer_nvtx=False, init_plugins=False, reserve_bytes=0
+    ):
         import tensorrt as trt
 
         self.logger = trt.Logger(trt.Logger.WARNING)
@@ -79,6 +82,14 @@ class TensorRTContext:
         self.engine = self.runtime.deserialize_cuda_engine(plan.read_bytes())
         if self.engine is None:
             raise RuntimeError(f"TensorRT engine load failed: {plan}")
+        if reserve_bytes:
+            free, _ = torch.cuda.mem_get_info()
+            needed = self.engine.device_memory_size_v2
+            if needed + reserve_bytes > free:
+                raise MemoryError(
+                    f"TensorRT context needs {needed} GPU bytes; "
+                    f"free={free}, reserve={reserve_bytes} after deserializing {plan}"
+                )
         self.context = self.engine.create_execution_context()
         if self.context is None:
             raise RuntimeError("Could not create TensorRT execution context")

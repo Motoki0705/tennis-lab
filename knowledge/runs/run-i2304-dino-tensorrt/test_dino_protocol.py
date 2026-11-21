@@ -10,6 +10,8 @@ import measure_dino
 import numpy as np
 import pytest
 import torch
+from export_dino import batched_window_reverse
+from measure_dino import decode_batch
 from msda import PLUGIN, PluginCore, sampling_layers
 
 from src.submodules.models.dino.person_detector import PersonDetectionRequest
@@ -41,6 +43,38 @@ def test_tensor_digest_rejects_a_value_change_at_the_same_shape(tmp_path):
     np.save(path, data)
     with pytest.raises(ValueError, match="Fixed tensor digest changed"):
         fixed_inputs.tensor_digest(tmp_path, rows)
+
+
+def test_window_reverse_trace_at_batch_one_keeps_two_images_distinct():
+    class ReverseWindows(torch.nn.Module):
+        def forward(self, windows):
+            return batched_window_reverse(windows, 2, 2, 4)
+
+    windows = torch.arange(16.0).reshape(4, 2, 2, 1)
+    traced = torch.jit.trace(ReverseWindows(), (windows[:2],))
+    expected = torch.tensor(
+        [[[0, 1, 4, 5], [2, 3, 6, 7]], [[8, 9, 12, 13], [10, 11, 14, 15]]]
+    )
+    torch.testing.assert_close(traced(windows)[..., 0], expected.float())
+
+
+def test_batched_decode_pairs_each_image_with_its_own_geometry():
+    logits = torch.tensor(
+        [[[-10.0, 5.0], [-10.0, -15.0]], [[-10.0, -15.0], [-10.0, 8.0]]]
+    )
+    boxes = torch.tensor(
+        [
+            [[0.5, 0.5, 0.5, 0.5], [0.0, 0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0, 0.0], [0.5, 0.5, 0.25, 0.5]],
+        ]
+    )
+    rows = [
+        {"file": "frame-a", "original_hw": (20, 40)},
+        {"file": "frame-b", "original_hw": (40, 80)},
+    ]
+    results = decode_batch({"pred_logits": logits, "pred_boxes": boxes}, rows)
+    assert [row["file"] for row in results] == ["frame-a", "frame-b"]
+    assert [row["boxes"] for row in results] == [[[10, 5, 30, 15]], [[30, 10, 50, 30]]]
 
 
 @pytest.fixture
