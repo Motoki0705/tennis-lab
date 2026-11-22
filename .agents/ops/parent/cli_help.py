@@ -52,7 +52,7 @@ EXAMPLES = {
     "record-worker-ended": "record-worker-ended --child 1217 --worker quality --delegation-id DELEGATION_ID --evidence-file ended.md\nstatusで対象IDを取得し、runnerと子孫の終了・回収を照合した根拠を書く。",
     "record-result": "record-result --child 1217 --evidence-file verified.md\n統合HEAD、受入条件、対応するテスト結果を書く。",
     "review-request": "review-request --prs 1250 --instruction 品質比較を確認 --evidence-file - --wait\n検証結果をstdinで渡す。保存済みnoteは --evidence-ref SHA（またはURL）。成果の記録もこの操作が行う。同じPRの再送は既存runを返す。",
-    "merge-continue": "merge-continue --run-id RUN --instruction-file fixes.md --wait\nmajorごとの修正commit・検証結果・親の判断を記す。同じrunで現HEADのマージ条件へ進む。",
+    "merge-continue": "merge-continue --run-id RUN --instruction-file fixes.md --wait\nmajorごとの修正commit・検証結果・親の判断を記す。同じrunで現HEADのマージ条件へ進む。\n障害復旧は merge-continue --run-id RUN --retry-review ROUND --instruction-file recovery.md。終了したラウンド番号は merge-status の review.round を使う。",
     "merge-status": "merge-status --run-id RUN\nPRの段階・停止理由・review_usageを確認する。RUN省略時はこの親の最新run。",
     "wait-merge": "wait-merge --run-id RUN --after 1\n最後に受け取った通知ID以降のイベントを待つ。",
     "merge-confirm": "merge-confirm --prs 1250 --wait\n切替前にマージ済みのPRのmerge commit・Issue終了・main CIを後確認する。",

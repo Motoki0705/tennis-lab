@@ -55,7 +55,7 @@ def test_invalid_or_inconsistent_results_cannot_approve(mutation: str) -> None:
     elif mutation == "duplicate_pr":
         value["major"][0]["prs"] = [11, 11]
     elif mutation == "boolean_pr":
-        value["major"][0]["prs"] = [True]
+        value["major"][0]["prs"] = [11, True]
     elif mutation == "empty_detail":
         value["major"][0]["detail"] = " "
     else:
@@ -72,6 +72,13 @@ def test_output_has_only_approve_or_major_and_rejects_duplicate_keys() -> None:
         parse_output(
             '{"verdict":"major","verdict":"approve","summary":"x","major":[]}', [11]
         )
+
+
+def test_cross_finding_keeps_reviewed_prs_and_deduplicates_references() -> None:
+    value = output()
+    value["major"][0]["prs"] = [13, 12, 15, 13, 11, 15]
+    finding = parse_output(json.dumps(value), [11, 12])["major"][0]
+    assert finding == {**output()["major"][0], "prs": [12, 11], "related_prs": [13, 15]}
 
 
 @pytest.mark.parametrize(

@@ -244,6 +244,7 @@ def run_process_group(
     stdin_file: TextIO | None = None,
     cancel: Event | None = None,
     reap_descendants: bool = False,
+    pass_fds: tuple[int, ...] = (),
 ) -> str:
     """Run ``cmd`` in its own process group and return stdout.
 
@@ -257,6 +258,7 @@ def run_process_group(
     A supplied ``cancel`` event also interrupts communication and reaps the group.
     A dedicated job process can become a subreaper and also clean up detached children
     before waiting for inherited output pipes to close.
+    Use ``pass_fds`` for descriptors the immediate child must retain across exec.
     """
     if cancel is not None and cancel.is_set():
         raise ProcessCancelled("process cancelled before launch")
@@ -272,6 +274,7 @@ def run_process_group(
             stderr=subprocess.PIPE,
             start_new_session=True,
             env=None if env is None else dict(env),
+            pass_fds=pass_fds,
         )
     except FileNotFoundError as exc:
         raise CommandError(f"{cmd[0]}: command not found") from exc

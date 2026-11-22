@@ -2085,9 +2085,10 @@ events = [
     {"type":"item.completed", "item":{"type":"agent_message", "text":event_text}},
     {"type":"turn.completed", "usage":{"input_tokens":1,"output_tokens":1}},
 ]
+error = os.environ.get("REVIEW_RUNTIME_ERROR_MESSAGE")
 errors = []
 if exit_code and reason != "cli_error":
-    errors = [{"type":"error", "message":"transport failed after completed review"}]
+    errors = [{"type":"error", "message":error or "transport failed after completed review"}]
     events.extend(errors)
 (runtime / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
 choice = request.get("review_selection")
@@ -2098,7 +2099,7 @@ if os.environ.get("REVIEW_EFFECTIVE_UNAVAILABLE"):
 (runtime / "result.json").write_text(json.dumps({
     "schema_version": 1, "run_id": "review-" + request["review_run_id"],
     "result": "failed" if exit_code else "completed", "exit_code": exit_code, "cli_exit_code": exit_code,
-    "turn_end_reason": reason,
+    "turn_end_reason": reason, "error": error,
     "agent_spawned": True, "cleanup_complete": not bool(os.environ.get("REVIEW_UNCONFIRMED_CLEANUP")), "finished_at": 1,
     "prompt_sha256": hashlib.sha256(pathlib.Path(opt("--prompt-file")).read_bytes()).hexdigest(),
     "run_dir": str(runtime), "output_path": opt("--out"), "final_path": str(runtime / "final.md"),

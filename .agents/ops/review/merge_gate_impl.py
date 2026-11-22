@@ -218,17 +218,22 @@ def latest(store: Store, repo: str, parent: int, identifier: str | None = None) 
 
 def review_usage(path: Path, state: dict[str, Any]) -> dict[str, Any]:
     """One row per launch, including legacy rounds. Missing measurements stay null."""
+    attempts = {row["round"]: row for row in state.get("review_history", [])}
+    attempts[state["review"]["round"]] = state["review"]
     rounds = []
     for directory in sorted(path.parent.glob("review-*"), key=lambda d: d.name):
         if not (directory / "execution.json").exists():
             continue
+        number = int(directory.name.removeprefix("review-"))
+        attempt = attempts.get(number, {})
+        failure = attempt.get("failure", {})
         runtime = directory / "agent-runtime/result.json"
         try:
             record = read(runtime) if runtime.is_file() else {}
         except (OSError, ValueError):
             rounds.append(
                 {
-                    "round": int(directory.name.removeprefix("review-")),
+                    "round": number,
                     "started_at": None,
                     "error": "runtime_record_unavailable",
                 }
@@ -238,9 +243,16 @@ def review_usage(path: Path, state: dict[str, Any]) -> dict[str, Any]:
         start, finish = record.get("started_at"), record.get("finished_at")
         rounds.append(
             {
-                "round": int(directory.name.removeprefix("review-")),
+                "round": number,
                 "started_at": start,
-                "agent_spawned": record.get("agent_spawned"),
+                "agent_spawned": record.get(
+                    "agent_spawned", failure.get("agent_spawned")
+                ),
+                "turn_end_reason": record.get("turn_end_reason")
+                or failure.get("turn_end_reason"),
+                "error": record.get("error")
+                or failure.get("error")
+                or attempt.get("error"),
                 "duration_seconds": finish - start
                 if finish is not None and start is not None
                 else None,
@@ -271,6 +283,7 @@ def view(path: Path) -> dict[str, Any]:
         "status": state["status"],
         "kind": state["request"].get("kind", "review_and_merge"),
         "review": state["review"],
+        "review_history": state.get("review_history", []),
         "prs": [
             {k: v for k, v in t.items() if k != "worker"}
             for t in state["targets"].values()
@@ -320,12 +333,16 @@ def continue_progression(
     instruction: str,
     *,
     prs: list[int] | None = None,
+    retry_review: int | None = None,
 ) -> None:
+    from lib.ops_review.parent_review_impl import reserve_retry
     from lib.ops_review.progression_backend import LiveBackend
     from lib.ops_review.progression_workers import refresh
     from lib.ops_review.review_locks import lease_targets
     from parent.review_handoff import require_followup_ended
 
+    if retry_review is not None and (retry_review < 1 or prs is not None):
+        raise ValueError("--retry-review requires a positive round and the full PR set")
     with controller_lock(path):
         state = read(path)
         backend = LiveBackend(state, store)
@@ -358,10 +375,14 @@ def continue_progression(
                 state.update(owner=identity, generation=current["generation"])
                 state["request"]["authorization"] = current
         backend.authorize()
-        Engine(path, backend).continue_run(
-            instruction,
-            prs=prs,
-            prepare=lambda value: refresh(backend, value, prs, instruction),
+
+        def prepare(value: dict[str, Any]) -> None:
+            if retry_review is not None:
+                reserve_retry(value, path.parent, backend.gh, retry_review)
+            refresh(backend, value, prs, instruction)
+
+        Engine(path, backend, state=state).continue_run(
+            instruction, prs=prs, prepare=prepare
         )
     start(path)
 
@@ -415,7 +436,7 @@ def main() -> int:
     try:
         with controller_lock(path), ExitStack() as leases:
             state = read(path)
-            engine = Engine(path, LiveBackend(state, store))
+            engine = Engine(path, LiveBackend(state, store), state=state)
             try:
                 leases.enter_context(targets(store.directory, state))
             except PRLeaseConflict as exc:

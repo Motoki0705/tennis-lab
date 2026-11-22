@@ -101,7 +101,7 @@ class LiveBackend:
         from lib.ops_review.parent_review_impl import run_review
 
         self.authorize()
-        return run_review(state, directory, self.gh)
+        return run_review(state, directory, self.gh, authorize=self.authorize)
 
     def pr(self, number: int) -> dict[str, Any]:
         result = object_value(self.gh.get(f"repos/{self.repo}/pulls/{number}"))

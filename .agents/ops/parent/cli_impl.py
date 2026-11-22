@@ -388,7 +388,14 @@ def parser() -> argparse.ArgumentParser:
         required=True,
         help="majorごとの対処・検証または続行理由を記したファイル",
     )
-    resume.add_argument("--prs", nargs="+", type=int)
+    resume_scope = resume.add_mutually_exclusive_group()
+    resume_scope.add_argument("--prs", nargs="+", type=int)
+    resume_scope.add_argument(
+        "--retry-review",
+        type=int,
+        metavar="ROUND",
+        help="失敗した正式レビューのラウンドを指定して再試行（--run-id 必須）",
+    )
     resume.add_argument("--wait", action="store_true")
     waiting = commands.add_parser("wait-merge")
     waiting.add_argument("--run-id")
@@ -695,6 +702,8 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 wait,
             )
 
+            if args.retry_review is not None and args.run_id is None:
+                raise ValueError("--retry-review requires --run-id")
             path = latest(store, gh.repo, parent, args.run_id)
             after = len(view(path)["events"])
             continue_progression(
@@ -703,6 +712,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 nonempty(identity, "parent identity"),
                 read_text(args.instruction_file),
                 prs=args.prs,
+                retry_review=args.retry_review,
             )
             value = wait(path, after=after) if args.wait else view(path)
             value = continuation.complete(args, value)
