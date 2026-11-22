@@ -62,9 +62,10 @@ GPU和 `local_data and not cuda` 手动验收参见
 
 ## 固定的系统运行环境
 
-执行真实ffmpeg/rclone的测试声明 `system_deps`。每个PR、main push和manual运行都必须执行
-一个独立的 **System dependency tests** job，并保留普通CPU分片。
-标记case始终执行，即使同文件的普通case被路径策略推迟。只移动标记case；
+执行真实ffmpeg/rclone的测试声明 `system_deps`。普通CPU测试除CPU分片外，还会运行一个独立的
+**System dependency tests** job。[仅含知识记录的PR](../../.agents/ops/lib/README.md#ナレッジ記録専用prのci)
+在合并前运行Knowledge library检查。
+普通CPU测试会执行带标记的case，即使同文件的普通case被路径策略推迟。专用job只运行标记case。
 不需要这些程序的相邻case仍遵守文件注册表策略。Drive的两个配置拒绝case使用本地配置fixture，
 不再依赖rclone。独立job纳入必需的 `Python` 聚合。准备失败、证据缺失/重复、错误路由、
 skip和xfail都不能算成功。完整分区和artifact契约见[分片说明](sharding.zh-CN.md#证据与失败语义)。

@@ -23,6 +23,38 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 
 固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
 
+## ナレッジ記録専用PRのCI
+
+`PYTHONPATH=.agents/ops` で [`lib.knowledge_ci`](knowledge_ci.py) を利用できる。
+`classify_pr(root: Path, *, head_sha: str, base_sha: str, merge_sha: str) -> Scope` に
+PRのHEAD、現在のマージ先、GitHubのテスト用マージコミット（`refs/pull/<number>/merge`）の完全SHAを渡す。
+全履歴の取得済みリポジトリで、両親を照合し、分岐点からHEADまでとマージ先からテスト用マージコミットまでの
+全差分を調べる。renameの両端と削除を含む。`Scope.records_only` と `Scope.reason` を返し、範囲外の変更や
+比較を確定できない場合は理由付きで通常CIを選ぶ。対象は `knowledge/nodes/`、`runs/`、`Papers/`、
+`citation_map/`、`reports/` の通常ファイルと `knowledge/summary.md`。`.sequence` とrun同梱の再現スクリプトも含む。
+
+記録専用の `pull_request` では、`Knowledge library` の `knowledge` がテスト用マージコミットを検査する。
+`kg_validate.py --check-summary --base-ref <base_sha>` は構造・連番・履歴・保存規則を、`kg_repro_paths.py` は
+再現パスの参照を調べる。通常のPRはCPU結果を `Python` に集約し、`main` へのpushは通常のCPUテストと変更に応じた
+ナレッジ検査を実行する。
+
+照合には以下を使う。
+
+1. 対象リポジトリの `GET /repos/{repo}/actions/workflows/knowledge.yml/runs` を `event=pull_request` と `head_sha` で絞る。
+2. 対象runの `GET /repos/{repo}/actions/runs/{id}/artifacts` から、その最新attemptの
+   `artifact_name(run_id: int, run_attempt: int) -> str`（`knowledge-records-<run>-<attempt>`）に一致する
+   有効なartifactを一意に選び、`knowledge-records.json` を取得する。
+3. `verify_result(data: bytes | None, run: Mapping[str, object], *, pr_number: int, head_sha: str, base_sha: str, merge_sha: str) -> None`
+   に結果ファイルのバイト列、REST APIのrunオブジェクト、現在のPR番号・HEAD・マージ先SHAを渡す。
+   `merge_sha` には `classify_pr` で使ったテスト用マージSHAを指定する。runと個々の検査の成功、
+   PR番号、HEAD、比較元、テスト用マージSHA、run ID、attemptを照合する。`ValueError` は拒否理由を示す。
+
+JSONの `schema_version` は `1`。`scope` は `records-only`。識別情報は `pr_number`、`head_sha`、`base_sha`、
+`merge_sha`、`run_id`、`run_attempt`。`checks` に `kg_validate` と `kg_repro_paths` のstep outcomeを、
+`conclusion` に両方が成功した場合は `success`、それ以外は `failure` を記録する。比較元が進んだ場合は、
+新しい比較元SHAで発火したPRイベントの結果を照合する。GitHubのrerunは元イベントのSHAを利用する。
+[GitHub Actionsの再実行](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)
+
 ## メインcheckoutと運用jobの排他
 
 `checkout_lock.py` はGit共通ディレクトリの `ops-code.lock` を共有する。
