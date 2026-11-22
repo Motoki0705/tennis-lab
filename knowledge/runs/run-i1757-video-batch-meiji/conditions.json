@@ -1,0 +1,58 @@
+{
+  "dataset_id": "meiji_4cam",
+  "source_dataset": "data/tennis_multiview/processed/meiji_4cam/dataset",
+  "input_manifest": "../run-i1752-doubles-20261118/input-manifest.json",
+  "video_id": "video_000",
+  "clips": ["video_000/clip_000", "video_000/clip_027", "video_000/clip_037"],
+  "camera_ids": ["cam0", "cam1", "cam2", "cam3"],
+  "expected_view_half_turns": [false, false, true, true],
+  "pipeline_config": "pipeline_x3d_dpt",
+  "pipeline_overrides": [
+    "device=cuda",
+    "court_kp.mode=video_shared",
+    "court_kp.video_shared.action=load",
+    "court_kp.video_shared.directory=court-video-shared/tennis_scene/evaluate/court-video-shared-acceptance-20261117/store",
+    "court_kp.video_shared.dataset_id=meiji_4cam",
+    "court_kp.video_shared.video_id=video_000",
+    "court_kp.video_shared.artifact_digest=4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+    "court_kp.video_shared.drift_directory=court-video-shared/tennis_scene/evaluate/court-video-drift-lines-20261117/drift-store",
+    "court_kp.video_shared.drift_digest=7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+    "court_kp.video_shared.unobservable_policy=warn",
+    "court_side.mode=clip",
+    "court_side.evidence=player",
+    "player_association.players_per_side=2",
+    "people_models.runtime.dino_detector.precision=fp16",
+    "people_models.runtime.vitpose.precision=fp16",
+    "people_models.runtime.vitpose.batch_size=16",
+    "people_models.runtime.hmr2.batch_size=16",
+    "ball_detection.enabled=true",
+    "ball_detection.batch_size=1",
+    "ball_reconstruction.enabled=true"
+  ],
+  "conditions": {
+    "serial": {"entry": "TennisSceneOrchestrator.run per clip", "cross_scope_batch_limit": 1, "reuse_clip_embeddings": false},
+    "reuse": {"entry": "run_video_batch", "cross_scope_batch_limit": 1, "reuse_clip_embeddings": false},
+    "batched": {"entry": "run_video_batch", "cross_scope_batch_limit": "run_video_batch defaults from #2272", "reuse_clip_embeddings": false},
+    "embedding_reuse": {"entry": "run_video_batch", "cross_scope_batch_limit": 1, "reuse_clip_embeddings": true}
+  },
+  "native_batch_caps": {
+    "DINO": 1,
+    "ViTPose": 16,
+    "CLIP-ReID": 64,
+    "Ball": 1,
+    "HMR2": 16,
+    "GVHMR": 1
+  },
+  "seed": 42,
+  "regimes": ["first", "warm", "warm"],
+  "resources": {
+    "queue_resource": "all",
+    "allocator_limit_gib": 10,
+    "min_free_vram_mib": 12288,
+    "min_available_ram_gib": 12,
+    "min_free_disk_gib": 12,
+    "heartbeat_timeout_seconds": 180,
+    "probe_limit_seconds": 480,
+    "condition_limit_seconds": 10800
+  }
+}
