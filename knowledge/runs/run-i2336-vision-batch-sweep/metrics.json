@@ -3881,14 +3881,35 @@
           },
           "ncu_representative": {
             "batch_size": 16,
-            "artifact": "retry-2/hmr2-ncu-3a/ncu.json",
-            "queue_job": "0-8204680322695779406_2026-11-22T03-54-37-304220593Z_131443_i2336-r2-hmr2-ncu-3a.job",
-            "status": "unavailable",
-            "replay_mode": "kernel",
-            "timeout_seconds": 1320,
+            "artifact": "retry-3/hmr2-ncu-3a/ncu.json",
+            "queue_job": "0-8204664054813652569_2026-11-22T08-25-45-186347430Z_2321832_i2336-r3-hmr2-ncu-3a-app.job",
+            "status": "measured",
+            "replay_mode": "application",
+            "timeout_seconds": 1200,
             "nsys_kernels": 386,
-            "reason": "timeout",
-            "other_attempts": []
+            "profiled_kernels": 386,
+            "dram_read_bytes": 4303260672,
+            "dram_write_bytes": 3982033664,
+            "tensor_active_pct_time_weighted": 70.41489451994003,
+            "stall_pct_time_weighted": {
+              "long_scoreboard": 7.529119386102819,
+              "short_scoreboard": 1.9157974714992323,
+              "lg_throttle": 0.31427100804582647,
+              "mio_throttle": 1.4507945794231945
+            },
+            "raw_csv_sha256": "0658bd22927d47ddac0594233d120d572f731c328382a54da73fdb84bac60e15",
+            "ordered_launch_shapes_match": true,
+            "other_attempts": [
+              {
+                "artifact": "retry-2/hmr2-ncu-3a/ncu.json",
+                "queue_job": "0-8204680322695779406_2026-11-22T03-54-37-304220593Z_131443_i2336-r2-hmr2-ncu-3a.job",
+                "status": "unavailable",
+                "replay_mode": "kernel",
+                "timeout_seconds": 1320,
+                "nsys_kernels": 386,
+                "reason": "timeout"
+              }
+            ]
           }
         },
         "3b": {
@@ -5501,14 +5522,35 @@
           },
           "ncu_representative": {
             "batch_size": 4,
-            "artifact": "retry-2/dino-ncu-2/ncu.json",
-            "queue_job": "0-8204680322062664314_2026-11-22T03-54-37-937335685Z_131601_i2336-r2-dino-ncu-2.job",
-            "status": "unavailable",
-            "replay_mode": "kernel",
-            "timeout_seconds": 1560,
+            "artifact": "retry-3/dino-ncu-2/ncu.json",
+            "queue_job": "0-8204664054536945634_2026-11-22T08-25-45-463054365Z_2321888_i2336-r3-dino-ncu-2-app.job",
+            "status": "measured",
+            "replay_mode": "application",
+            "timeout_seconds": 1200,
             "nsys_kernels": 574,
-            "reason": "timeout",
-            "other_attempts": []
+            "profiled_kernels": 574,
+            "dram_read_bytes": 28883558912,
+            "dram_write_bytes": 22163242240,
+            "tensor_active_pct_time_weighted": 26.015609799739135,
+            "stall_pct_time_weighted": {
+              "long_scoreboard": 39.901533169621246,
+              "short_scoreboard": 4.068187602869213,
+              "lg_throttle": 0.5442746735862967,
+              "mio_throttle": 1.5290181492661947
+            },
+            "raw_csv_sha256": "ea904f3315bb66e7cfd041222d1574e953318da097b6bbe88bc6637c581c232a",
+            "ordered_launch_shapes_match": true,
+            "other_attempts": [
+              {
+                "artifact": "retry-2/dino-ncu-2/ncu.json",
+                "queue_job": "0-8204680322062664314_2026-11-22T03-54-37-937335685Z_131601_i2336-r2-dino-ncu-2.job",
+                "status": "unavailable",
+                "replay_mode": "kernel",
+                "timeout_seconds": 1560,
+                "nsys_kernels": 574,
+                "reason": "timeout"
+              }
+            ]
           }
         },
         "2-plugin": {
@@ -5898,14 +5940,35 @@
           },
           "ncu_representative": {
             "batch_size": 4,
-            "artifact": "retry-2/dino-ncu-2-plugin/ncu.json",
-            "queue_job": "0-8204680321780621081_2026-11-22T03-54-38-219378918Z_131673_i2336-r2-dino-ncu-2-plugin.job",
-            "status": "unavailable",
-            "replay_mode": "kernel",
-            "timeout_seconds": 1560,
+            "artifact": "retry-3/dino-ncu-2-plugin/ncu.json",
+            "queue_job": "0-8204664054236205593_2026-11-22T08-25-45-763794406Z_2321944_i2336-r3-dino-ncu-2-plugin-app.job",
+            "status": "measured",
+            "replay_mode": "application",
+            "timeout_seconds": 1200,
             "nsys_kernels": 562,
-            "reason": "timeout",
-            "other_attempts": []
+            "profiled_kernels": 562,
+            "dram_read_bytes": 23974380032,
+            "dram_write_bytes": 18151837952,
+            "tensor_active_pct_time_weighted": 34.37548430077473,
+            "stall_pct_time_weighted": {
+              "long_scoreboard": 35.110835592110476,
+              "short_scoreboard": 3.1764424930228228,
+              "lg_throttle": 0.6908843291574276,
+              "mio_throttle": 1.8891354136276113
+            },
+            "raw_csv_sha256": "41cbb6f2e85b36c7cd1933529fcacdd968c808ce4d18d86d78361ad29087320e",
+            "ordered_launch_shapes_match": true,
+            "other_attempts": [
+              {
+                "artifact": "retry-2/dino-ncu-2-plugin/ncu.json",
+                "queue_job": "0-8204680321780621081_2026-11-22T03-54-38-219378918Z_131673_i2336-r2-dino-ncu-2-plugin.job",
+                "status": "unavailable",
+                "replay_mode": "kernel",
+                "timeout_seconds": 1560,
+                "nsys_kernels": 562,
+                "reason": "timeout"
+              }
+            ]
           }
         }
       }

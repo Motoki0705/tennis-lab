@@ -8,7 +8,7 @@ title: ViTPose-H・HMR2・DINOのバッチサイズ別推論比較
 issue: 2336
 provider: codex
 date: '2026-11-22'
-status: running
+status: done
 summary_impact: none
 config:
   dataset: meiji_4cam
@@ -23,7 +23,7 @@ metrics:
   timing_accuracy_nsys_cases: 52
   trt_engines: 6
   trt_range_rejections: 12
-  ncu_with_matching_nsys: 9
+  ncu_with_matching_nsys: 12
   planned_ncu_cases: 12
   vitpose_h_b16:
     torch_fp32_median_ms: 815.244
@@ -124,7 +124,7 @@ RTX 5060 Tiで52ケースの計時・Peak VRAM・nsys・精度を採取した。
 
 ## GPU内部指標
 
-先行runのB=1では、そのprofileでのnsys件数とncu件数が一致した値を引用した。TensorRTはB=1固定planと今回の動的planの比較になる。DINOプラグイン版の先行B=1はnsysのみ。今回の代表はViTPose-H・HMR2でB=16、DINOでB=4。DRAMは1バッチの十進GB、stallはlong scoreboard・short scoreboard・LG throttle・MIO throttleの順で、Tensor Core activeとともにkernel時間加重の%。3件のkernel replayは時間切れで有効CSV行が0件だったため、同条件でapplication replayの追測を行う。 [GPUカウンタと採取条件](../../runs/run-i2336-vision-batch-sweep/metrics.json)
+先行runのB=1では、そのprofileでのnsys件数とncu件数が一致した値を引用した。TensorRTはB=1固定planと今回の動的planの比較になる。DINOプラグイン版の先行B=1はnsysのみ。今回の代表はViTPose-H・HMR2でB=16、DINOでB=4。DRAMは1バッチの十進GB、stallはlong scoreboard・short scoreboard・LG throttle・MIO throttleの順で、Tensor Core activeとともにkernel時間加重の%。3件のkernel replayは時間切れで有効CSV行が0件だった。同じplan・入力のapplication replayで全件を採り、12件すべてでnsysとカーネル数、グリッド・ブロック寸法の並びが一致した。 [GPUカウンタと採取条件](../../runs/run-i2336-vision-batch-sweep/metrics.json)
 
 | モデル | 条件 | 代表B | B=1 kernel | B=1 R / W (GB) | B=1 stall (%) | B=1 Tensor (%) | 代表 kernel | 代表 R / W (GB) | 代表 stall (%) | 代表 Tensor (%) | 代表のreplay |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -134,12 +134,14 @@ RTX 5060 Tiで52ケースの計時・Peak VRAM・nsys・精度を採取した。
 | HMR2 | 0 | 16 | 705 | 3.377 / 0.023 | 8.38 / 7.14 / 4.44 / 15.74 | 0.00 | 781 | 20.191 / 7.564 | 12.39 / 5.75 / 0.35 / 14.08 | 0.00 | kernel |
 | HMR2 | 1 | 16 | 1131 | 4.488 / 0.039 | 52.27 / 2.87 / 0.90 / 1.83 | 15.64 | 1261 | 15.830 / 2.575 | 29.20 / 2.70 / 0.62 / 2.49 | 30.75 | kernel |
 | HMR2 | 2 | 16 | 309 | 1.336 / 0.000 | 4.88 / 2.21 / 0.25 / 0.53 | 31.05 | 325 | 5.984 / 1.213 | 21.91 / 1.69 / 0.21 / 0.92 | 67.65 | kernel |
-| HMR2 | 3a | 16 | 341 | 1.286 / 0.000 | 4.10 / 1.81 / 0.20 / 0.55 | 24.44 | 386 (nsys) | — | — | — | kernel時間切れ |
+| HMR2 | 3a | 16 | 341 | 1.286 / 0.000 | 4.10 / 1.81 / 0.20 / 0.55 | 24.44 | 386 | 4.303 / 3.982 | 7.53 / 1.92 / 0.31 / 1.45 | 70.41 | application |
 | HMR2 | 3b | 16 | 341 | 0.709 / 0.000 | 5.58 / 3.22 / 0.69 / 0.86 | 26.24 | 356 | 4.483 / 1.009 | 21.29 / 1.65 / 0.20 / 0.95 | 36.56 | kernel |
 | DINO | 0 | 4 | 1862 | 26.359 / 12.496 | 28.36 / 5.78 / 0.74 / 11.33 | 0.00 | 1943 | 107.294 / 79.398 | 28.45 / 5.68 / 0.94 / 11.13 | 0.00 | kernel |
 | DINO | 1 | 4 | 2370 | 21.208 / 8.193 | 45.64 / 4.54 / 0.58 / 3.14 | 14.58 | 2463 | 87.704 / 60.384 | 50.40 / 4.58 / 0.71 / 3.29 | 13.71 | kernel |
-| DINO | 2 | 4 | 561 | 6.478 / 2.620 | 52.69 / 4.47 / 0.47 / 2.79 | 26.20 | 574 (nsys) | — | — | — | kernel時間切れ |
-| DINO | 2 plugin | 4 | 560 (nsys) | — | — | — | 562 (nsys) | — | — | — | kernel時間切れ |
+| DINO | 2 | 4 | 561 | 6.478 / 2.620 | 52.69 / 4.47 / 0.47 / 2.79 | 26.20 | 574 | 28.884 / 22.163 | 39.90 / 4.07 / 0.54 / 1.53 | 26.02 | application |
+| DINO | 2 plugin | 4 | 560 (nsys) | — | — | — | 562 | 23.974 / 18.152 | 35.11 / 3.18 / 0.69 / 1.89 | 34.38 | application |
+
+ViTPose-HのTensorRT FP16はcrop当たりDRAM readが1.479→0.842 GBとなり、Tensor Core activeは53.72→63.56%に上がった。DINOのPyTorch FP16は画像当たりDRAM readが21.208→21.926 GBで、Tensor Core activeは14.58→13.71%だった。DINOではB=4のthroughput増が小さく、画像当たりの読込量も同程度だった。TensorRTのB間比較にはplanの違いが含まれ、application replayの3件は先行B=1とreplay方式も異なる。 [GPUカウンタと同期計時](../../runs/run-i2336-vision-batch-sweep/metrics.json)
 
 ## E2Eへの引き継ぎ
 
