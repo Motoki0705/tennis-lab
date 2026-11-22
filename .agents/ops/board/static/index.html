@@ -104,14 +104,14 @@
           <button type="button" data-view="timeline" aria-pressed="true">
             会話
           </button>
+          <button type="button" data-view="execution" aria-pressed="false">
+            実行状況
+          </button>
           <button type="button" data-view="waiting" aria-pressed="false">
             応答待ち <span id="waiting-count" class="count">0</span>
           </button>
           <button type="button" data-view="issues" aria-pressed="false">
             配送の問題 <span id="issues-count" class="count">0</span>
-          </button>
-          <button type="button" data-view="execution" aria-pressed="false">
-            実行状況
           </button>
           <label class="direction-filter" id="direction-filter"
             >表示
@@ -167,6 +167,19 @@
               aria-labelledby="execution-drawer-heading"
               hidden
             >
+              <div
+                id="execution-drawer-resizer"
+                class="execution-drawer-resizer"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="詳細パネルの幅を調整"
+                aria-controls="execution-drawer"
+                aria-valuemin="320"
+                aria-valuemax="960"
+                aria-valuenow="420"
+                tabindex="0"
+                title="ドラッグまたは左右キーで詳細パネルの幅を調整"
+              ></div>
               <header class="execution-drawer-header">
                 <h2 id="execution-drawer-heading">詳細</h2>
                 <button

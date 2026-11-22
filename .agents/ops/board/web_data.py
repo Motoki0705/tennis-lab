@@ -13,11 +13,13 @@ from threading import Lock
 from typing import Any
 
 from herdr_labels.service import registry
+from worker_status.safety import Guard
 
 from . import activity
 from .errors import BoardError
 from .names import for_parent
 from .records import post_view
+from .runtime import session_summary
 from .safety import public
 from .service import agents
 from .storage import Store, directory
@@ -212,9 +214,14 @@ class BoardReader:
             ],
         }
 
-    def execution_names(self, observation: dict[str, Any]) -> dict[str, Any]:
-        """Join live board names without reading Herdr or refreshing the roster."""
+    def execution_names(
+        self, observation: dict[str, Any], herdr: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        """Join board names and read transcript tails using private session references."""
         parents = registry(self.env)
+        private = herdr["private"] if herdr else {}
+        session_ids = herdr["session_ids"] if herdr else {}
+        guard = Guard({**parents, **private}, self.env)
         with self.store.read() as connection:
             for parent in observation["parents"]:
                 assignment = for_parent(connection, parent["repo"], parent["parent"])
@@ -225,5 +232,27 @@ class BoardReader:
                     "identifier": assignment.identifier if assignment else None,
                     "source": "board_names / parent_registry",
                 }
+        for parent in observation["parents"]:
+            row = parents.get(f"{parent['repo']}#{parent['parent']}".casefold())
+            engine, session_id = None, None
+            if (
+                row
+                and row["generation"] == parent["generation"]
+                and row["status"] == parent["assignment"]
+            ):
+                engine, _, session_id = row["session"].partition(":")
+            parent["engine"] = engine
+            parent["summary"] = session_summary(
+                engine,
+                session_id
+                if parent["herdr"]["status"] not in {"absent", "ambiguous"}
+                else None,
+                guard,
+                self.env,
+            )
+        for session in observation["sessions"]:
+            session["summary"] = session_summary(
+                session["engine"], session_ids.get(session["key"]), guard, self.env
+            )
         public(observation, parents, self.env)
         return observation

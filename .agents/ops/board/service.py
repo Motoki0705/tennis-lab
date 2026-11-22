@@ -6,7 +6,7 @@ import re
 import sqlite3
 import subprocess
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
@@ -222,6 +222,8 @@ def _runtime_state(
     owner: dict[str, Any],
     agents: list[Any],
     client: Herdr,
+    *,
+    process_matches: Callable[[dict[str, Any], Any], bool] | None = None,
 ) -> str:
     candidates = [
         agent
@@ -242,15 +244,21 @@ def _runtime_state(
         return "unknown"
     if token != expected and (token or runtime is None):
         return "unknown"
+
+    def matches(stamps: object) -> bool:
+        if process_matches is not None:
+            return process_matches(agent, stamps)
+        return process_stamp(client, agent) == stamps
+
     engine, _, conversation = identity.partition(":")
     if engine == "agy":
         if runtime is None or "processes" not in runtime:
             return "unknown"
+        stamps = runtime["processes"]
         try:
-            stamps = process_stamp(client, agent)
+            if not matches(stamps):
+                return "unknown"
         except (ForegroundAgentUnavailable, FileNotFoundError, ProcessLookupError):
-            return "unknown"
-        if stamps != runtime["processes"]:
             return "unknown"
         try:
             if (
@@ -261,7 +269,7 @@ def _runtime_state(
         except (ValueError, FileNotFoundError, ProcessLookupError):
             return "unknown"
     elif runtime is not None and "processes" in runtime:
-        if process_stamp(client, agent) != runtime["processes"]:
+        if not matches(runtime["processes"]):
             return "unknown"
     elif token != expected:
         return "unknown"

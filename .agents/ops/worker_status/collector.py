@@ -253,6 +253,7 @@ def child_status(
                 "received_at": None,
                 "time_status": "unavailable",
             },
+            "messages": [],
             "tools": [],
             "tail_truncated": False,
         },

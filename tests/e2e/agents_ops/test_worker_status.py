@@ -511,17 +511,96 @@ def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> Non
     summary = f.child(tool_limit=2)["summary"]
     assert summary["message"]["text"] == ("完了" * 200)[:300]
     assert summary["message"]["truncated"] is True
+    assert [entry["text"] for entry in summary["messages"]] == [
+        "obsolete",
+        ("完了" * 200)[:300],
+    ]
+    assert summary["messages"][-1] == summary["message"]
     assert [t["kind"] for t in summary["tools"]] == ["mcp_tool_call", "file_change"]
     assert summary["tools"][0]["server"]["text"] == "docs"
     assert summary["tools"][1]["change_count"] == 1
     assert all(t["received_at"] == NOW.isoformat() for t in summary["tools"])
     serialized = json.dumps(summary)
     assert "never publish" not in serialized and "private output" not in serialized
-    f.events([item("command_execution", command="pytest -q")], receipts=False)
+    f.events(
+        [
+            item("command_execution", command="pytest -q"),
+            item("agent_message", text="旧ログの発言"),
+        ],
+        receipts=False,
+    )
     legacy = f.child()
     assert legacy["activity_time_status"] == "unavailable"
     assert legacy["last_activity_at"] is None
     assert legacy["summary"]["tools"][0]["time_status"] == "unavailable"
+    assert legacy["summary"]["messages"] == [
+        {
+            "status": "visible",
+            "text": "旧ログの発言",
+            "truncated": False,
+            "received_at": None,
+            "time_status": "unavailable",
+        }
+    ]
+
+
+def test_claude_summary_bounds_messages_and_deduplicates_unredacted_text(
+    fixture: Any,
+) -> None:
+    f = fixture
+    f.record()
+    path = f.run / "result.json"
+    record = json.loads(path.read_text())
+    record["contract"]["settings"]["agent"] = "claude"
+    path.write_text(json.dumps(record))
+    older = [{"type": "text", "text": f"途中報告 {i}"} for i in range(18)]
+    f.events(
+        [
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        *older,
+                        {"type": "thinking", "thinking": "テスト結果を確認する"},
+                        {"type": "text", "text": "検証を進めます"},
+                        {"type": "text", "text": "検証を進めます"},
+                        {"type": "tool_use", "input": {"text": "ツール入力は対象外"}},
+                        {
+                            "type": "text",
+                            "text": "手順確認 " * 70 + "later-claude-identity",
+                        },
+                        {
+                            "type": "text",
+                            "text": "手順確認 " * 70 + "/private/other-path",
+                        },
+                    ]
+                },
+            },
+            {
+                "type": "result",
+                "result": "確認が終わりました",
+                "session_id": "later-claude-identity",
+            },
+        ]
+    )
+    summary = f.child()["summary"]
+    assert [step["text"] for step in summary["messages"]] == [
+        *(f"途中報告 {i}" for i in range(3, 18)),
+        "テスト結果を確認する",
+        "検証を進めます",
+        None,
+        None,
+        "確認が終わりました",
+    ]
+    assert [step["status"] for step in summary["messages"][-3:]] == [
+        "hidden",
+        "hidden",
+        "visible",
+    ]
+    assert summary["message"] == summary["messages"][-1]
+    assert summary["message"]["received_at"] == NOW.isoformat()
+    assert summary["tools"] == []
+    assert summary["tail_truncated"] is False
 
 
 @pytest.mark.parametrize(
@@ -941,6 +1020,7 @@ def test_private_text_is_hidden_before_truncating(
     child = f.child()
     assert child["summary"]["message"]["status"] == "hidden"
     assert child["summary"]["message"]["text"] is None
+    assert child["summary"]["messages"] == [child["summary"]["message"]]
     assert all(
         tool["command"] == {"status": "hidden", "text": None, "truncated": False}
         for tool in child["summary"]["tools"]
