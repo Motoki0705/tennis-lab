@@ -30,12 +30,24 @@ bash "$queue" add "$command" --name i2363-trt-qualification-v1 --issue 2363 \
 
 `PHASE2_TENSORRT` は #2362 の `outputs/tensorrt`、`COURT_EVALUATION_ROOT` はrun 77・78の `outputs/tennis_scene/evaluate`。DINOはそのままのplan、ViTPose・HMR2・CLIP-ReIDは保存済みONNXと本番buildコマンドを使う。GVHMRは本番export・build・qualificationコマンドを使う。エンジンの識別と各コマンドの終了値を、worktreeの `outputs/i2363/<tag>/` に保存する。
 
+初回は5モデルのエンジン準備が完了した。GVHMRは24 shapeでONNXの全出力がビット一致し、B=1/4 × L=2/177/1055の6 shapeでTensorRT出力の有限性とFP16層精度を確認した。代表clipはHydraが絶対パスの `progress_directory` を拒否し、推論前に停止した。コマンド記録がGVHMRの計測JSONを上書きしたため、終了値・生の層情報・ログから初回の証拠を保存した。 [初回の終了状態とエンジン識別](qualification-v1.json)
+
+再試行ではHydraへの出力子パスを相対にし、コマンド記録を `*.command.json` に保存する。初回のエンジンをmanifestとSHA-256で再照合し、そのplanでGVHMR単体検証と代表clipを実行する。
+
+```bash
+printf -v command '%q ' env "PYTHONPATH=$PWD" .venv/bin/python -B "$bundle/run.py" \
+    i2363-qualification-v2 --dataset "$MEIJI_DATASET" representative \
+    --prepared outputs/i2363/i2363-qualification-v1 --court "$COURT_EVALUATION_ROOT"
+bash "$queue" add "$command" --name i2363-trt-qualification-v2 --issue 2363 \
+    --resource all --provider codex --session "$CODEX_THREAD_ID"
+```
+
 代表clipは #2362 と同じ `video_000/clip_037`。同一の映像・pass・profileを用い、ホスト計時、同期付き計時の順に実行する。各条件は別プロセスでcomponent cacheが空の状態から開始する。OSのファイルcacheを共有する。資源記録は両条件で0.5秒間隔とし、OMP・MKL・OpenBLASのスレッド上限を2に固定する。全件評価はホスト計時とし、`--progress` で実際に通ったGVHMRの全shapeをORTで照合する。元datasetのmanifestとmediaを評価用ディレクトリへ複製し、評価結果を同ディレクトリへ公開する。
 
 ```bash
 printf -v command '%q ' env "PYTHONPATH=$PWD" .venv/bin/python -B "$bundle/run.py" \
     i2363-all-v1 --dataset "$MEIJI_DATASET" all \
-    --prepared outputs/i2363/i2363-qualification-v1
+    --prepared outputs/i2363/i2363-qualification-v2
 bash "$queue" add "$command" --name i2363-trt-all-v1 --issue 2363 \
     --resource all --provider codex --session "$CODEX_THREAD_ID"
 ```

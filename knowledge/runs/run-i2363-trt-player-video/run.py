@@ -39,7 +39,7 @@ def run_module(module: str, args: list[str], log: Path) -> dict[str, Any]:
     with log.open("x") as stream:
         result = subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, check=False)
     row = {"command": command, "wall_seconds": perf_counter() - started, "exit_code": result.returncode, "log": str(log)}
-    write_json_atomic(log.with_suffix(".json"), row)
+    write_json_atomic(log.with_suffix(".command.json"), row)
     if result.returncode != 0:
         print(f"{log.stem}: exit {result.returncode} ({log})", flush=True)
     return row
@@ -134,22 +134,31 @@ def build_engines(args: argparse.Namespace, run_dir: Path, frames: int) -> dict[
     return engines
 
 
-def reconstruct(
+def reconstruction_arguments(
     target: Path, dataset: Path, engines: dict[str, str], *, synchronize: bool, clip: str | None = None,
-) -> dict[str, Any]:
-    target.mkdir()
+) -> list[str]:
+    progress = (target / "progress").relative_to(OUTPUTS)
     args = [
-        f"paths.data_root={dataset.parent}", "dataset_directory=dataset",
-        f"video_id={CONFIG['video_id']}", f"progress_directory={target / 'progress'}", "batching.enabled=true",
+        f"paths.data_root={dataset.parent}", f"dataset_directory={dataset.name}", f"paths.output_root={OUTPUTS}",
+        f"video_id={CONFIG['video_id']}", f"progress_directory={progress}", "batching.enabled=true",
         "record_cuda=true", f"record_cuda_synchronize={str(synchronize).lower()}",
         f"pipeline_overrides={json.dumps(engine_overrides(engines))}",
     ]
     if clip is not None:
         args.append(f"clip_ids=[{clip}]")
-    result = run_module(BATCH, args, target / "pipeline.log")
+    return args
+
+
+def reconstruct(
+    target: Path, dataset: Path, engines: dict[str, str], *, synchronize: bool, clip: str | None = None,
+) -> dict[str, Any]:
+    args = reconstruction_arguments(target, dataset, engines, synchronize=synchronize, clip=clip)
+    target.mkdir()
+    log = target / "pipeline.log"
+    result = run_module(BATCH, args, log)
     receipts = list(target.glob("progress/*/progress.json"))
     if len(receipts) != 1:
-        raise ValueError(f"Expected one progress receipt under {target}, found {receipts}")
+        raise RuntimeError(f"Video batch exit {result['exit_code']} produced {len(receipts)} progress receipts. See {log}")
     progress = receipts[0]
     document = json.loads(progress.read_text())
     result["progress"] = str(progress)
@@ -192,7 +201,12 @@ def representative(args: argparse.Namespace, run_dir: Path, clips: list[DatasetC
     frames = max(len(sampled_frame_indices(record.num_frames, record.fps, max_frames=2048)) for record in clips)
     if CONFIG["models"]["gvhmr"]["shape"] != f"l2-177-{frames}":
         raise ValueError(f"Registered clip lengths changed: largest GVHMR sequence is {frames} frames")
-    engines = build_engines(args, run_dir, frames)
+    if args.prepared is None:
+        engines = build_engines(args, run_dir, frames)
+    else:
+        previous = verify_prepared_engines(args.prepared)
+        engines = previous["directories"]
+        write_json_atomic(run_dir / "engines.json", previous)
     gvhmr = str(OUTPUTS / engines["gvhmr"])
     shapes = [part for batch in (1, 2, 3, 4) for length in (119, 120, 121, 145, 177)
               for part in ("--shape", str(batch), str(length))]
@@ -222,12 +236,19 @@ def representative(args: argparse.Namespace, run_dir: Path, clips: list[DatasetC
     return 0
 
 
-def all_clips(args: argparse.Namespace, run_dir: Path, clips: list[DatasetClipRecord]) -> int:
-    previous = json.loads((args.prepared / "engines.json").read_text())
+def verify_prepared_engines(prepared: Path) -> dict[str, Any]:
+    previous: dict[str, Any] = json.loads((prepared / "engines.json").read_text())
     engines = previous["directories"]
+    if engines.keys() != CONFIG["models"].keys() or engines.keys() != previous["manifests"].keys():
+        raise ValueError(f"Prepared run does not declare the five configured engines: {prepared}")
     for model, directory in engines.items():
         if EngineBundle.read(OUTPUTS / directory).engine.model_dump(mode="json") != previous["manifests"][model]:
             raise ValueError(f"Prepared engine identity changed: {model}")
+    return previous
+
+
+def all_clips(args: argparse.Namespace, run_dir: Path, clips: list[DatasetClipRecord]) -> int:
+    engines = verify_prepared_engines(args.prepared)["directories"]
     dataset = copy_dataset(args.dataset, run_dir / "inputs", clips)
     outcome = reconstruct(run_dir / "all", dataset, engines, synchronize=False)
     checked_run(QUALIFY, [
@@ -243,7 +264,9 @@ def main() -> int:
     parser.add_argument("--dataset", type=Path, required=True)
     modes = parser.add_subparsers(dest="mode", required=True)
     prepare = modes.add_parser("representative")
-    prepare.add_argument("--phase2", type=Path, required=True)
+    engine_source = prepare.add_mutually_exclusive_group(required=True)
+    engine_source.add_argument("--phase2", type=Path)
+    engine_source.add_argument("--prepared", type=Path)
     prepare.add_argument("--court", type=Path, required=True)
     full = modes.add_parser("all")
     full.add_argument("--prepared", type=Path, required=True)
