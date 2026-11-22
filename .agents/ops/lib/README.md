@@ -521,8 +521,9 @@ timer・systemd操作やagent起動は含まない。
 review以外では選択値と異なる実効値もエラーにする。他モデルへの振替や自動再試行はしない。
 
 `CODEX_CONTINUATION_MODELS` は保存済み実装workerの照合と同一sessionの再開に使えるモデルを追加する。
+`CODEX_SELECTABLE_MODELS` は、新しい実装workerを `--model` で明示したときだけ使えるモデルを追加する。既定値にはならず、`CODEX_MODEL`・`CODEX_CONTINUATION_MODELS` と重複させない。effortはmaxに固定する。
 `REVIEW_CODEX_CONTINUATION_PAIRS` は保存済みreviewの同一sessionで再開できるmodel:effortの組を追加する。
-新規起動は現行のモデルpinだけを使う。実装workerのsession付替えは委任に保存されたモデルが現行pinにもある場合に受理する。
+新規起動は `CODEX_MODEL` と `CODEX_SELECTABLE_MODELS` だけを使う。実装workerのsession付替えは委任に保存されたモデルが現行pinにもある場合に受理する。
 再開では前回の `selected.model` を固定し、`selection_sources.model` と `overrides.model` は元の選択を表す。
 reviewは保存済みの選択と方針を復元する。継続専用の許可を使ったターンでは `contract.settings.model_continuation` に根拠となるpin名を記録する。
 

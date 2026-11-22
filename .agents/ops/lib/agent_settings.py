@@ -13,6 +13,7 @@ from typing import Any
 DEFAULT_CONFIG = Path(__file__).with_name("agents.conf")
 MODEL_NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._:/-]*")
 CONTINUATION_MODELS_PIN = "CODEX_CONTINUATION_MODELS"
+SELECTABLE_MODELS_PIN = "CODEX_SELECTABLE_MODELS"
 
 
 def _parse_pins(raw: bytes) -> dict[str, str]:
@@ -36,11 +37,15 @@ def read_pins(config: Path) -> dict[str, str]:
 
 
 def implementation_models(config: Path | None = None) -> tuple[str, ...]:
-    """Current model choices for a new implementation worker."""
-    model = read_pins(config or DEFAULT_CONFIG).get("CODEX_MODEL")
+    """Current model choices for a new implementation worker, default first."""
+    pins = read_pins(config or DEFAULT_CONFIG)
+    model = pins.get("CODEX_MODEL")
     if not model or not MODEL_NAME.fullmatch(model):
         raise ValueError("agents.conf must set a valid CODEX_MODEL")
-    return (model,)
+    selectable = _model_list(pins, SELECTABLE_MODELS_PIN)
+    if model in selectable:
+        raise ValueError(f"{SELECTABLE_MODELS_PIN} must not repeat CODEX_MODEL")
+    return (model, *sorted(selectable))
 
 
 def check_saved_implementation_model(model: str) -> None:
@@ -49,15 +54,15 @@ def check_saved_implementation_model(model: str) -> None:
         implementation_model(None, previous=model)
 
 
-def _implementation_continuations(pins: dict[str, str]) -> set[str]:
-    raw = pins.get(CONTINUATION_MODELS_PIN)
+def _model_list(pins: dict[str, str], key: str) -> set[str]:
+    raw = pins.get(key)
     if raw is None:
         return set()
     models = raw.split(",")
     if len(models) != len(set(models)) or any(
         not MODEL_NAME.fullmatch(model) for model in models
     ):
-        raise ValueError(f"invalid model list: {CONTINUATION_MODELS_PIN}")
+        raise ValueError(f"invalid model list: {key}")
     return set(models)
 
 
@@ -153,8 +158,15 @@ def resolve(
         if selected["service_tier"] not in {"default", "fast", "flex", "priority"}:
             raise ValueError("invalid service tier")
         if profile is None:
-            continuations = _implementation_continuations(pins)
-            if selected["model"] != pins["CODEX_MODEL"]:
+            continuations = _model_list(pins, CONTINUATION_MODELS_PIN)
+            selectable = _model_list(pins, SELECTABLE_MODELS_PIN)
+            if selectable & continuations:
+                raise ValueError(
+                    f"{SELECTABLE_MODELS_PIN} and {CONTINUATION_MODELS_PIN} overlap"
+                )
+            if selected["model"] != pins["CODEX_MODEL"] and (
+                selected["model"] not in selectable
+            ):
                 if selected["model"] not in continuations:
                     raise ValueError(
                         "implementation model must be the configured Sol model"

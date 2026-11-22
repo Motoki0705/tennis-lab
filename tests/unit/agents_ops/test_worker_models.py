@@ -36,7 +36,8 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
         )
     )
     monkeypatch.setattr(settings, "DEFAULT_CONFIG", config)
-    assert settings.implementation_models() == ("configured-sol",)
+    repo_choices = settings.implementation_models(ops / "lib/agents.conf")
+    assert settings.implementation_models() == ("configured-sol", *repo_choices[1:])
     assert settings.implementation_model(None) == "configured-sol"
     assert settings.implementation_model(None, previous=OLD_SOL) == OLD_SOL
     for model in (OLD_ASTRA, WORKER_ALTERNATE_MODEL):
@@ -113,3 +114,72 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
         "effort": "xhigh",
         "service_tier": "default",
     }
+
+
+def test_selectable_models_are_explicit_new_worker_choices_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A selectable model starts and continues a worker but never becomes the default."""
+    ops = Path(__file__).resolve().parents[3] / ".agents/ops"
+    monkeypatch.syspath_prepend(str(ops))
+    settings = importlib.import_module("lib.agent_settings")
+    base = (ops / "lib/agents.conf").read_text()
+    config = tmp_path / "agents.conf"
+
+    def write(selectable: str) -> None:
+        lines = [
+            line
+            for line in base.splitlines()
+            if not line.startswith(settings.SELECTABLE_MODELS_PIN + "=")
+        ]
+        lines.append(f'{settings.SELECTABLE_MODELS_PIN}="{selectable}"')
+        config.write_text("\n".join(lines) + "\n")
+
+    write("chosen-b,chosen-a")
+    monkeypatch.setattr(settings, "DEFAULT_CONFIG", config)
+    assert settings.implementation_models() == (
+        WORKER_DEFAULT_MODEL,
+        "chosen-a",
+        "chosen-b",
+    )
+    assert settings.implementation_model(None) == WORKER_DEFAULT_MODEL
+    assert settings.implementation_model("chosen-a") == "chosen-a"
+    assert settings.implementation_model(None, previous="chosen-b") == "chosen-b"
+    with pytest.raises(ValueError, match="cannot change"):
+        settings.implementation_model("chosen-a", previous=WORKER_DEFAULT_MODEL)
+    with pytest.raises(ValueError, match="configured Sol"):
+        settings.implementation_model("unlisted-model")
+    assert settings.resolve(config, "codex", None, "chosen-a", None, "write")[
+        "selected"
+    ] == {"model": "chosen-a", "effort": "max", "service_tier": "default"}
+    with pytest.raises(ValueError, match="effort must be max"):
+        settings.resolve(config, "codex", None, "chosen-a", "high", "write")
+
+    root = importlib.import_module("parent.cli_impl").parser()
+    start = [
+        "--parent",
+        "1",
+        "start-worker",
+        "--child",
+        "10",
+        "--prompt-file",
+        "task.md",
+        "--branch",
+        "codex/worker",
+        "--worktree",
+        "/fixture",
+    ]
+    assert root.parse_args([*start, "--model", "chosen-b"]).model == "chosen-b"
+
+    for invalid, message in (
+        (WORKER_DEFAULT_MODEL, "must not repeat CODEX_MODEL"),
+        (OLD_SOL, "overlap"),
+        ("chosen-a,chosen-a", "invalid model list"),
+    ):
+        write(invalid)
+        with pytest.raises(ValueError, match=message):
+            if message == "overlap":
+                settings.implementation_model(None)
+            else:
+                settings.implementation_models()
