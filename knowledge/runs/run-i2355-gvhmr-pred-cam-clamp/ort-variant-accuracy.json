@@ -1,0 +1,35 @@
+{
+  "batch": 2,
+  "length": 145,
+  "fp32": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/campaign-1/fp32-equivalence/concat.onnx",
+  "fp16-source": {
+    "graph": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+    "pred_x_max_abs_vs_fp32": 0.03157627582550049,
+    "pred_cam_max_abs_vs_fp32": 0.000591278076171875,
+    "static_conf_logits_max_abs_vs_fp32": 0.10402870178222656
+  },
+  "additive": {
+    "graph": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-attention-1/variants/additive.onnx",
+    "pred_x_max_abs_vs_fp32": 0.03157627582550049,
+    "pred_cam_max_abs_vs_fp32": 0.000591278076171875,
+    "static_conf_logits_max_abs_vs_fp32": 0.10402870178222656
+  },
+  "pin-softmax": {
+    "graph": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-precision-1/variants/pin-softmax.onnx",
+    "pred_x_max_abs_vs_fp32": 0.03059971332550049,
+    "pred_cam_max_abs_vs_fp32": 0.000591278076171875,
+    "static_conf_logits_max_abs_vs_fp32": 0.10402870178222656
+  },
+  "pin-softmax-pv": {
+    "graph": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-precision-1/variants/pin-softmax-pv.onnx",
+    "pred_x_max_abs_vs_fp32": 0.03059971332550049,
+    "pred_cam_max_abs_vs_fp32": 0.000591278076171875,
+    "static_conf_logits_max_abs_vs_fp32": 0.10402870178222656
+  },
+  "pin-attention": {
+    "graph": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-precision-1/variants/pin-attention.onnx",
+    "pred_x_max_abs_vs_fp32": 0.03059971332550049,
+    "pred_cam_max_abs_vs_fp32": 0.000591278076171875,
+    "static_conf_logits_max_abs_vs_fp32": 0.10402870178222656
+  }
+}
