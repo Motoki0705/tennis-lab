@@ -7,6 +7,7 @@ from src.utils.video.prefetch import PrefetchIterator
 from src.utils.video.reader import (
     OpenCVVideoFrameReader,
     RandomAccessVideoReader,
+    VideoReadError,
     probe_video_info,
     read_video_frame,
     read_video_rgb,
@@ -17,7 +18,7 @@ from src.utils.video.sampling import (
     sample_step_seconds,
     sample_uniform_frame_indices,
 )
-from src.utils.video.transforms import BgrToTensorTransform
+from src.utils.video.transforms import BgrToRgbUint8Transform, BgrToTensorTransform
 from src.utils.video.types import FramePacket, TemporalBatch, TemporalWindow, VideoInfo
 from src.utils.video.windows import (
     build_window_starts,
@@ -37,6 +38,7 @@ __all__ = [
     "build_window_starts",
     "chunked",
     "BgrToTensorTransform",
+    "BgrToRgbUint8Transform",
     "encode_jpeg",
     "FramePacket",
     "OpenCVVideoFrameReader",
@@ -45,6 +47,7 @@ __all__ = [
     "TemporalBatch",
     "TemporalWindow",
     "VideoInfo",
+    "VideoReadError",
     "VideoWriter",
     "iter_temporal_batches",
     "iter_temporal_windows",

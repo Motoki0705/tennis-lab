@@ -11,6 +11,7 @@ from contextlib import AbstractContextManager, contextmanager, nullcontext
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import checkout_subprocess_options
 from parent.policy import object_value
 
 from .records import read_json
@@ -57,8 +58,9 @@ class Runtime:
         return self.stopping
 
     def inspect(
-        self, directory: Path, *, stop: bool = False, timeout: float | None = None
+        self, directory: Path, *, stop: bool = False, timeout: float | None = 60
     ) -> dict[str, Any]:
+        before = load(directory / "result.json")
         proc = subprocess.run(
             [
                 str(self.runner),
@@ -70,6 +72,7 @@ class Runtime:
             text=True,
             check=False,
             timeout=timeout,
+            **checkout_subprocess_options(),
         )
         if proc.returncode:
             raise ValueError(
@@ -80,8 +83,10 @@ class Runtime:
         if (
             summary.get("schema_version") != 1
             or record.get("schema_version") != 1
+            or not isinstance(summary.get("run_id"), str)
             or not summary.get("run_id")
             or summary["run_id"] != record.get("run_id")
+            or before.get("run_id") != record.get("run_id")
             or any(
                 type(summary.get(k)) is not bool
                 for k in ("runner_alive", "agent_alive", "agent_group_alive")
@@ -157,6 +162,18 @@ class Runtime:
             cmd += ["--branch", job["branch"]]
         if job.get("model"):
             cmd += ["--model", job["model"]]
+        if "repair" in job:
+            from lib.repair_turn import validate_request
+
+            validate_request(job["repair"])
+            cmd += [
+                "--repair-id",
+                job["repair"]["repair_id"],
+                "--repair-pr",
+                str(job["repair"]["pr"]),
+                "--effort",
+                "high",
+            ]
         from decision_logs.observations import job_environment
 
         with self.launch_context():

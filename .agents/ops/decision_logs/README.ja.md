@@ -105,12 +105,9 @@ outboxは非公開の配送入力であり、公開単位ではない。
 | `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | 候補観測・明示的な切り出し判断を正本コメント参照で記録し、提案公開・会話判断・まとめた取り出しの要求/結果へ接続。元親の担当中の操作だけを捕捉する |
 | `agree` / `basis-record` / `create-child` / `workflow-report` | 根拠記録・子作成・全体受入の既存結果。改善親のagreeは人間承認を観測した結果として出典コメントを参照し、実行済みと扱わない |
 | `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI結果と正本コメント。dispatcherの取消とrunnerの停止/復旧は別の事実 |
-| `review-prepare` / `review-request` / `review-state` | 固定要求、明示指示・状態の結果。親の受領/検証は明示操作でだけ記録する |
-| review `run` | 既存execution・output・result・公開状態。runtime失敗時の有効な出力、exceptionと先行reviewの公開キーも保持。公開で元resultを変えず、消費済みrunの取得は新しいAIレビューにしない |
-| review `recover` / `resume-publication` / `complete-evidence` / `resolve` | 既存の保存済み根拠の復旧、公開だけの再試行、親の明示検証。前回結果を保持し、新しいAI起動にしない |
-| review `close-interrupted` | final/result欠落時も既存の終了とcleanupを `verify` で捕捉。coverageと指摘を受理せず、元レビュー結果を検証済みにしない |
+| `review-request` / `merge-continue` | 親の明示要求・続行指示 |
+| 自動進行 | 大局レビュー・runtime/取得証拠・CI/修正/mergeの保存通知。observerはmachine |
 | reviewの取得tool | CI取得失敗を含む既存の取得receipt。同じreview対応・tool・引数の再試行を `retry_fetch` にする。変更なしと分かるのは取得指示であり、通信条件等を補完しない |
-| merge gate `merge` | PR別の判定、保存済みmerge試行/結果、全体結果。dry-runの合格と実mergeを分ける |
 | workerログの受信/公開、`worker-log-status` / `publish-worker-log` | 既存journalの状態、final/公開失敗、main保存確認。公開だけの再試行は `retry_publication` とし、前回結果を参照する |
 
 対応する要求には `--decision-id` と任意の `--plan-id` を渡せる。一致planが1件なら選び、
@@ -124,32 +121,14 @@ commitが同じだけで作業中コードも同じとは認定せず、未観�
 
 未対応は、任意のshell/HTTP/gh操作、このCLI文脈外のParentSession直接呼出し、
 親対応のないrunner、親namespaceが定まる前の引数parse・identity・repo解決失敗。
-過去の会話や任意の過去runは復元しない。reviewの修正確認・復旧・モデル選択方針を変えず、
+過去の会話や任意の過去runは復元しない。review・復旧・モデル選択は自動進行の契約に従い、
 捕捉のための定期poll・AI再起動・Git公開は追加しない。
 
 ## レビューの因果リンク
 
-既存の `decide`、journal、公開処理、README生成を使う。
-`decision-log-status` で元レビューの捕捉済み結果ID `R` を確認する。
-handoffの親判断は `decide.inputs` に `R` を含め、再利用と追加確認の範囲、
-`review` のnext-action planを指定する。
-`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R
---review-model gpt-6-astra --review-effort xhigh --model-reason-file model-reason.txt`
-で準備し、`review-request --run-id NEXT --instruction-file instruction.txt
---decision-id D --retry-of R` で指示する。planが1件なら `--plan-id` は不要。
-prepareはfetchなので、review planは後続runと結びつくreview-requestに渡す。
-通常設定selectで必須のモデルと1文の理由は[モデル選択手順](../parent/README.md#正式レビューのモデル選択)に従う。
-明示したhandoffの結果IDは、その元runの操作が捕捉した結果であり、判断のinputsにも含む必要がある。
-別runの結果や関連しない判断は拒否する。判断metadataのない既存handoffは、判断未記録のまま使える。
-
-`close-interrupted` もほかのcontrolと同じ判断ID、plan、前回結果、比較引数を受理する。
-`verify` planで終了とcleanupを確認しても、結果の `verifies` は空にし、元レビューを受入済みにしない。
-final/resultファイルのない中断も終結でき、正式レビューを公開しない。
-recoverは `retry_fetch`、公開だけの再試行は `retry_publication` とし、
-モデルの選択値と実効値は既存runnerの観測経路で保持する。
-元の結果、判断、行動、次の結果は、既存の公開envelopeと階層READMEのリンクにつながる。
-captureから自動公開しない。[非公開比較](../review/evaluation/README.ja.md)の人工結果と
-歴史的な観測を正式parent journalへ混ぜない。
+`decide` で観測した自動進行の結果と親の次の操作を結び、返された判断IDを `review-request` または `merge-continue` へ渡す。前回結果と比較のmetadataを指定すれば、その因果関係を明示して保存する。
+CLIのレビュー・CI・修正・merge・merge後確認は `machine` として捕捉し、親の確認に読み替えない。`merge-continue` は親の指示を記録し、`--rereview` が追加の大局レビューの明示要求になる。
+状態・復旧・モデル選択は [自動進行の契約](../review/README.md) に従う。capture自体は作業起動やGit公開を行わない。[非公開比較](../review/evaluation/README.ja.md)の歴史資料は分離して保持する。
 
 ## 親の判断を明示記録する
 
@@ -177,14 +156,14 @@ conditions/expected_resultを指定し、IDはCLIが割り当てる。初回判�
 | `review_reason` | `run_id`。固定review要求の理由 |
 | `improvement` | `key` と候補の `event_id`。元親の正本コメントにある切り出し判断 |
 
-`note` と `improvement` は[親の共通reader](../parent/README.md#機械証拠の保存共通reader)から検証し、実際の媒体のcomment URLを参照する。
+`note` と `improvement` は[親の共通reader](../parent/README.md#責務と状態の正本)から検証し、実際の媒体のcomment URLを参照する。
 理由本文を公開記録へ再コピーせず、参照/fingerprintを保持する。
 親のactorキーは私的sessionに対応するランダムな公開キーで、引継ぎで過去の判断者を変えない。
 次の対応CLI（review/mergeも含む）へ返された判断IDを渡すと、後続結果が行動を介してつながる。
 
 終了時改善の `improvement-decide` は候補正本への人間判断を記録するが、終了済み元親のjournal公開権限を広げない。
 改善親側のagreeで承認を観測し、別graphの記録IDを直接つなぐ代わりに元コメントURLを参照する。
-手順・人間確認の保証範囲は [終了時改善](../parent/improvements.md)を参照する。
+手順・人間確認の保証範囲は [終了時改善](../../skills/parent-session/references/finish.md#次回改善)を参照する。
 
 ## 捕捉失敗と復旧
 
@@ -270,8 +249,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N p
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --retry
 ```
 
-timer・定期poll・捕捉ごとの自動公開は追加しない。既存parent stateと担当sessionを照合し、
-issueのclose後の履歴公開も同じ本人確認を行う。新しい実装権限は与えない。
+timer・定期poll・捕捉ごとの自動公開は追加しない。通常入口は既存parent stateと元の担当sessionを照合し、
+担当終了後も元担当による公開続行を認める。新しい実装権限は与えない。
 `Journal.prepare()` で未準備の捕捉を変換し、`Journal.public_payloads()` のうちreadyかつ
 未公開の全記録を親ごとの1 batchへ固定する。blockedは状態に残し、独立して安全な記録は公開できる。
 未完了batchを照合してから次を作る。batchの途中で増えた捕捉は、そのbatchのmerge後の
@@ -282,6 +261,44 @@ release/handoffと自律親の終了時は、worker公開と今回の終了結�
 残件・担当・再開先を [終了checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint) に残す。
 mergeableがnullでも全検査後にHEAD指定mergeを要求し、falseとHTTP拒否は失敗として残す。
 statusとdry-runはcaptureもlockも作成しない。
+
+担当中の親は、別の担当なし親の判断記録を明示的に公開できる。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT --dry-run
+# プレビューの確認後に実行する。blockedの原因を修復した場合は --retry を付ける:
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT
+```
+
+dry-runも実行も、操作sessionが回収親を **active** で担当していることを要求する。
+対象は操作親と別の親で、registryに行がないか `ended`／`released` の場合だけ受け付ける。
+`active`／`handoff_pending` は拒否する。対象issueのopen／closeは照合せず、register・handoffや
+registryの更新を行わない。registryが破損・読取り不能なら拒否する。開始時の操作session・世代と
+対象の担当snapshotを固定し、prepare・commit・push・PR作成・merge前に再照合する。
+担当変更時は `log_owner_mismatch` で中断し、保存済みの進捗を保持する。journalをblockedへ変えず、
+新たに条件を満たした公開担当が続行できる。
+
+対象の既存 `parent-SOURCE_PARENT` journal・batch・retryを使う。公開する `publish` 行動には
+明示要求と回収親を記録し、対象親READMEから辿れる活動READMEに公開の担当を表示する。
+これは要求の記録で、受入やmerge成功とは区別する。sessionと世代は非公開の来歴に残し、
+記録ごとの公開事実は `publication_actor` でその要求を参照する。同じ要求のretryは記録を再利用する。
+既存の固定batchがあれば先に完了させ、要求と残りの記録を含む次のbatchまで最大2回で処理し、
+既存payload・PRを差し替えない。公開のbookkeepingは新たなcaptureを作らず、workerログの続行も行わない。
+dry-runは要求記録を作らない。自分の親の通常公開とrelease／handoff／supervisorの挙動は維持する。
+
+merge済みbatchの記録別公開事実を先に照合してから、新しい要求を求める。
+private batchに `publication_actor` を固定し、旧batchは既存の公開事実の担当を再利用する。
+参照が矛盾する場合は拒否し、要求自身がpublishedでも同じ要求で照合を完了する。
+別の担当親が未mergeのbatchを続行するときは本人の要求を記録し、merge済みの公開担当は付け替えない。
+実際のgit commit・batch保存・journal追記の直前、およびPR／mergeのintent保存後の送信直前にも担当を照合する。
+中断worktreeの変更・stage済みファイルは、固定planまたは未変更のbaseの内容と一致するときだけ再開する。
+それ以外の編集は残して拒否し、resetで消さない。
+
+`remaining_publications` はregistry行がない親も含め、対象のdecision_log残件を返す。
+親の `status`・`decision-log-status`・終了checkpointの `decision_resume_command` は、担当なしなら
+この入口を `RECOVERY_PARENT` 付きで示す。呼出sessionが担当するactiveな親番号に置き換えて使う。
 
 既存workerファイルを維持した公開構成:
 
@@ -461,6 +478,8 @@ merge確認後の記録別journal追記が中断しても、次のbatchを選ぶ
 dirty worktreeや破損journalを自動resetせず、影響する公開だけを確認・修復する。
 確認後はcleanな公開worktreeを削除し、dirtyまたは同一性未確認のものは保持して
 `retained_worktrees` の件数で返す。
+再開時はignore対象の未追跡ファイルも検査する。固定plan外のignoredファイルがあれば
+`worktree_dirty` で再開を拒否する。cleanupもignore指定を含む未追跡ファイルがあるworktreeを保持する。
 
 `--dry-run` は `Journal.preview_publication()` とローカル `origin/main` を使う。
 readyなenvelopeは固定版を保持し、未準備の捕捉は同じrenderer/guardで依存関係も含めて読み取り専用変換する。
@@ -492,7 +511,7 @@ GitHub native path filterの制約は残る。実workflowの省略とGitHub表�
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_capture_observations.py \
   tests/integration/agents_ops/test_decision_capture_delivery.py \
   tests/e2e/agents_ops/test_decision_capture.py \
-  tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
+  tests/e2e/agents_ops/test_progression_cli.py -n 2 --durations=10
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_navigation.py \
   tests/e2e/agents_ops/test_decision_publication.py \
   tests/e2e/agents_ops/test_worker_log_publication.py -n 2 --durations=10

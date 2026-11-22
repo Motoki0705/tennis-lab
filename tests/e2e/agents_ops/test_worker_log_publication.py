@@ -65,6 +65,26 @@ def test_publication_accepts_canonical_repo_url(
     assert logs.github.calls == ["create", "merge"]
 
 
+@pytest.mark.parametrize(
+    "repair_id", ["a", "f" * 32, "12345678-1234-1234-1234-123456789abc"]
+)
+def test_repair_turn_is_validated_and_published_with_high_effort(
+    logs: LogEnv, repair_id: str
+) -> None:
+    marker = {"schema_version": 1, "repair_id": repair_id, "pr": 42}
+    path = logs.ready(repair=marker, instruction=f"Repair request {repair_id}.")
+    result = logs.publisher(path).publish()
+    assert result["state"] == "merged" and result["saved_to_main"] is True, result
+    row = journal.read(path)
+    files = {k: v.encode() for k, v in row["files"].items()}
+    meta = schema.validate(files)
+    assert meta["turn"]["repair"] == {"pr": 42}
+    assert meta["worker"]["selected"] == {"model": "gpt-6.1-sol", "effort": "high"}
+    if len(repair_id) >= 32:
+        assert repair_id not in files["instruction.md"].decode()
+    assert logs.github.calls == ["create", "merge"]
+
+
 def test_capture_adapter_failure_preserves_successful_log_publication(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -622,3 +642,39 @@ def test_standalone_worker_uses_same_log_entry(
         public += git(logs.upstream, "show", "main:" + name)
     assert str(logs.root) not in public and "private-parent-session" not in public
     assert credential not in public
+
+
+@pytest.mark.parametrize("lost_response", [False, True])
+def test_ready_turns_share_one_pr_and_resume_its_frozen_members(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, lost_response: bool
+) -> None:
+    service = importlib.import_module("worker_logs.service")
+    monkeypatch.setattr(service, "Publisher", lambda root, path: logs.publisher(path))
+    first = logs.ready()
+    row = journal.read(first)
+    assert row["publication_mode"] == "delegation_batch"
+    row["source"].update(sequence=2, kind="resume", turn_id="private-next-turn")
+    row["files"] = {
+        k: raw.decode()
+        for k, raw in sources.render(row["source"], row["receipt"]).items()
+    }
+    second = first.parent.parent / "2" / "journal.json"
+    journal.atomic(second, row)
+    assert service.publish(first, milestone=False)["state"] == "ready"
+    assert logs.github.calls == []
+    if lost_response:
+        logs.github.failure = "create_response_lost"
+        assert not service.publish(first)["saved_to_main"]
+    assert service.publish(second)["saved_to_main"]
+    assert logs.github.calls == ["create", "merge"]
+    assert (
+        len(
+            [
+                name
+                for name in logs.main_files()
+                if name.startswith(schema.DIRECTORY + "/")
+            ]
+        )
+        == 6
+    )
+    assert journal.read(first)["pr_number"] == journal.read(second)["pr_number"]

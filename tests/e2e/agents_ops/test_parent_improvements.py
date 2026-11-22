@@ -707,9 +707,12 @@ def test_extract_recovers_parent_and_proposal_close(
     extract(p, ok=False)
     del p.env[key]
     # A sent extraction, including an uncertain POST, belongs to explicit recovery.
-    assert json.loads(
-        p.cli("improvement-expire", "--now", "2099-01-08T00:00:00Z").stdout
-    )["closed"] == []
+    assert (
+        json.loads(p.cli("improvement-expire", "--now", "2099-01-08T00:00:00Z").stdout)[
+            "closed"
+        ]
+        == []
+    )
     assert not p.state()["comments"].get("10")
     assert json.loads(extract(p).stdout)["issue"] == 11
     assert p.state()["issues"]["10"]["state"] == "closed" and post_count(p) == 2
@@ -809,6 +812,50 @@ def test_extracted_parent_agreement_keeps_snapshot_when_supplement_enabled(
             ok=False,
         ).stderr
     )
+
+
+def record_written(p: ParentEnv, **fields: Any) -> None:
+    p.env["PARENT_CREATED_AT"] = "2099-01-01T00:00:00Z"
+    spec = {**candidate_spec(), **fields}
+    p.cli("improvement", "--key", "result-access", "--spec", p.spec(spec))
+
+
+def test_extracted_parent_keeps_written_line_breaks_and_agrees(
+    parent_env: ParentEnv,
+) -> None:
+    # Approval snapshots collapse whitespace for comparison; the created parent
+    # must still show each acceptance item and scope line on its own line.
+    p = parent_env
+    p.agreed()
+    record_written(
+        p,
+        scope="取得入口。\n1. 一覧の表示\n2. 失敗の表示",
+        acceptance=["一つ目の条件。", "二つ目の条件。", "三つ目の条件。"],
+    )
+    publish(p)
+    approved = json.loads(decide(p, "approve").stdout)["decision_id"]
+    extract(p)
+    body = p.state()["issues"]["11"]["body"]
+    assert "- [ ] 一つ目の条件。\n- [ ] 二つ目の条件。\n- [ ] 三つ目の条件。" in body
+    assert "対象:\n取得入口。\n1. 一覧の表示\n2. 失敗の表示\n\n対象外:" in body
+    source_finished(p)
+    p.cli("register", parent="11")
+    p.cli("agree", "--improvement-approval", approved, parent="11")
+
+
+def test_extraction_rejects_written_text_that_changes_section_structure(
+    parent_env: ParentEnv,
+) -> None:
+    # A heading-like line inside a field would become a separate section once its
+    # line break is kept; the parent must not be created with a reshaped contract.
+    p = parent_env
+    p.agreed()
+    record_written(p, behavior="既定の動作。\n## 追加の節\n本文。")
+    publish(p)
+    decide(p, "approve")
+    denied = extract(p, ok=False)
+    assert "must not embed other ## sections" in denied.stderr
+    assert "11" not in p.state()["issues"] and post_count(p) == 1
 
 
 def test_multi_decision_response_loss_resumes_only_missing_candidate_events(
@@ -1125,3 +1172,27 @@ def test_extraction_response_loss_then_revocation_repairs_existing_parent_withou
             "agree", "--improvement-approval", approval, parent="11", ok=False
         ).stderr
     )
+
+
+def test_discovery_flags_do_not_block_a_detailed_proposal(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    args = (
+        "improvement",
+        "--key",
+        "quick",
+        "--purpose",
+        "結果表示",
+        "--evidence",
+        "表示に3操作",
+        "--scope",
+        "CLI",
+    )
+    first = json.loads(p.cli(*args).stdout)
+    again = json.loads(p.cli(*args).stdout)
+    assert first["key"] == "quick" and first["comment"] == again["comment"]
+    record(p)
+    proposal = json.loads(publish(p).stdout)
+    assert proposal["candidates"] == ["I-1-result-access"]

@@ -22,7 +22,7 @@
 
 この分類ラベルの付与から実行承認・担当予約は生成しない。既存の実行根拠・停止・レビュー・merge条件を維持し、
 `needs-human` は引き続き人間の承認待ちを意味する。提案のラベル操作・本文編集は承認にならない。
-改善提案の正本・公開・会話判断・取り出し・期限は [終了時改善](../parent/improvements.md) を参照する。
+改善提案の正本・公開・会話判断・取り出し・期限は [終了時改善](../../skills/parent-session/references/finish.md#次回改善) を参照する。
 親CLIの担当・委任・worker起動、dispatcher/supervisor、本文補足、Project表示、ops-report/triageの作業対象から提案を除外する。
 
 | 利用場面 | テンプレート |
@@ -101,7 +101,7 @@ repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:
 `issues.evidence.is_evidence_issue` は `parent-evidence` ラベルまたは本文先頭の
 `parent-evidence` マーカーで保存容器を識別する。open/closed、親子ラベルの誤付与、
 未知versionでも作業候補にしない。`require_work_issue` は明示対象や正式関係に混入した容器を拒否する。
-結び付きの認証・作成・履歴の契約は [parent reader](../parent/README.md#機械証拠の保存共通reader) が正本。
+結び付きの認証・作成・履歴の契約は [parent reader](../parent/README.md#責務と状態の正本) が正本。
 
 | 経路 | 除外境界 |
 |---|---|
@@ -126,7 +126,7 @@ repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:
 設定とGitHub上のラベル作成は管理者が別途行う。
 
 有効かつ現在 `issue:parent` を持ち、GitHubの `created_at` が有効化時刻**以降**のissueだけが対象。
-`issue:proposal` と [承認snapshotから取り出したparent](../parent/improvements.md#承認分の取り出しと復旧) は対象外。
+`issue:proposal` と [承認snapshotから取り出したparent](../../skills/parent-session/references/finish.md#次回改善) は対象外。
 呼出側はラベル・作成日時とともに `body` を渡す。それ以外の非対象も `not_target`。対象で確定ラベルがなければ `pending`、あれば以下の状態になる。
 確定ラベルが2種類以上付いていたら、非対象のissueでも例外にする。
 
@@ -175,7 +175,7 @@ state = supplement_state(
   定数・型・`read_enabled_since` は `issues` packageからも公開する。
   `from issues import supplement_state` は関数ではなく同名の**module**を返す。
 
-親CLIのgateと待機は [parent README](../parent/README.md#補足追加の確定待ち)、
+親CLIのgateと待機は [parent README](../../skills/parent-session/references/ownership.md)、
 自律着手の保留と再照合は [dispatcher README](../dispatcher/README.md#判断結果と保留コメント)を参照する。
 
 ## タイトル
@@ -232,7 +232,7 @@ open/closedとも1件1行で載せる。タスク名は子タイトルから親p
 ```
 
 未分割の場合は、一覧節の最初の非空行を `未分割（子issue未作成）` で始める。
-この状態でも親Issue自身を実行できる。分割と委任は別判断で、[parent CLIの単独実行](../parent/README.md#issue自身を実行する)へ進める。
+この状態でも親Issue自身を実行できる。分割と委任は別判断で、[parent CLIの単独実行](../../skills/parent-session/references/workers.md)へ進める。
 直後の句点「。」は任意で、同じ行の説明文や後続の分割候補の段落も記入できる。
 この欄は子が0件の一覧として扱い、説明中のissue参照を子として抽出しない。
 子issueのチェック行（書式が崩れた行を含む）との混在は拒否する。
@@ -313,7 +313,7 @@ parent_body = render_parent_body(
 親・子の `render` specでは役割ラベルを生成するため、任意の `labels` への4種の役割ラベルの混入を拒否する。
 
 レポート経由でも、親は**レポートissueではなく開発用の親issue**。採用、Issue整理、人間合意、自律着手の根拠を
-区別する。既存の手動親は [parent CLI](../parent/README.md#採用提案の受領)、未担当の採用提案は
+区別する。既存の手動親は [parent CLI](../../skills/parent-session/references/ownership.md#採用提案)、未担当の採用提案は
 [triage](../ops-report/README.md#採用提案の自動issue化) が扱う。書式・重複検出には以下を使う。
 
 1. `render_child_body(..., source=ProposalSource(proposal_id, report_number, option))` を使う。
@@ -330,7 +330,7 @@ parent_body = render_parent_body(
 候補の `issues.improvement.ImprovementSource(parent, key)` と構造化コメントreaderを使う。
 提案generationと取り出しの出典は `issues.improvement_proposals.Proposal` / `Extraction` が描画・解析する。
 新規公開は `parent improvement-propose`、会話の判断は `improvement-decide`、承認分の取り出しは `improvement-extract`。
-各マーカー・承認snapshot・冪等な復旧の正本は [終了時改善](../parent/improvements.md) に置く。
+各マーカー・承認snapshot・冪等な復旧の正本は [終了時改善](../../skills/parent-session/references/finish.md#次回改善) に置く。
 旧 `parent-improvement-source` とpublished/decision eventは読み続け、新方式の公開には使わない。
 
 `issues.creation.create_issue_once` は固定draft・送信前receipt・出典照合を共有する。
@@ -404,7 +404,7 @@ specは次の形。`role: parent` では `identifier` と任意の `children` �
 未分割なら空配列。`source` は任意で `{"proposal_id":"ID","report_number":90,"option":null}`。
 `labels` は作業種別・対象領域・起票元を指定する（親子ラベルは生成する）。未知のキーはエラー。
 
-`check` は `gh repo view`（`--repo` 省略時）とGETだけを使い、
+`check` はGETだけを使い、
 [GitHub REST sub-issues API](https://docs.github.com/en/rest/issues/sub-issues) の `.../parent` と
 `.../sub_issues`（100件ずつ全ページ）で直属の関係を取得する。指定したissueから祖先・兄弟・子孫を辿り、
 closed/取消を含む一式のラベル、prefix、本文参照、必須項目、子一覧の番号・要約・状態、循環を検査する。
@@ -420,23 +420,91 @@ closedの理由が不明な子を完了と推測しない。編集中に跨っ�
 役割の根拠がない無ラベルの自由形式では、重複節を従来どおり許容する。
 役割ラベルのない既存issueに新ラベルを要求する検査は行わない。
 
+### GitHub通信・認証・repo解決
+
+`issues.cli.GitHub` と派生するparent clientは `issues.transport.HTTPClient` の
+`requests.Session` でHTTPS接続を再利用する。REST GET・書込み・GraphQLで同じpoolを使い、
+`detached()` も接続を共有する。接続poolとGET cacheは別物で、transaction・鮮度・失効の境界は
+[parent README](../parent/README.md#排他とio)に従う。長生きする呼出元は `close()` でpoolを閉じる。
+
+認証は `GH_TOKEN`、`GITHUB_TOKEN`、`gh auth token --hostname github.com` の順。
+初回通信で解決し、ghで取得したtokenは同じプロセス・認証設定内で1回だけ取得する。
+API要求ごとのgh起動はない。tokenはエラー詳細・応答本文から無害化し、認証取得のstdout/stderrを
+診断へ含めない。環境のproxy設定を使い、`.netrc` によるtokenの上書きとHTTP redirectを許可しない。
+API hostは `api.github.com`、`GH_HOST` は未設定または `github.com` に限定する。
+
+`--repo` 省略時は `git remote get-url --all` と `--push --all` で全remoteの実効URLを読み、
+`insteadOf`・`pushInsteadOf` の適用後のfetch/push先が一意のGitHub `owner/repo` に
+決まる場合だけ採用する。HTTPS・SSH URL、scp形式、同じrepoの大小文字違いを扱い、
+linked worktreeの共有git設定も読む。remoteなし・複数repo・非GitHub・不正URLでは明示エラーとし、
+`--repo owner/repo` を要求する。originだけを優先したりghへフォールバックしたりしない。
+
 ### GitHub GETの接続断と再試行
 
-`issues.cli.GitHub.get()` は、ghが失敗終了しHTTP応答statusが得られないGETだけを合計3回まで試行し、
-2回目の前に1秒、3回目の前に2秒待つ。各試行のsubprocess timeoutは60秒。
-`error connecting` 等を伴うstatus欠落と、HTTP statusを受信する前のtimeoutが対象。
+`issues.cli.GitHub.get()` は、HTTP応答statusが得られないGETだけを合計3回まで試行し、
+2回目の前に1秒、3回目の前に2秒待つ。接続・読取timeoutは60秒。
+status欠落を伴う接続断と、HTTP statusを受信する前のtimeoutが対象。
 通信原因をDNS・TLS・回線などのいずれかと断定するものではない。
 
 HTTP statusを受信したら再試行しない。認証・権限の401/403、404、rate limitの403/429、5xxは
 `GitHubHTTPError` の実statusを保持して失敗させる。rate limitの解除待ちや自動再送は行わない。
-HTTP statusがある応答の本文不正・欠落も即失敗する。上記の文書化された「親なし」404だけは従来どおり扱う。
-ghが正常終了したのにHTTP statusがない応答は、接続断とみなさず不正応答として即失敗する。
-実行ファイルの欠落等のローカルエラー、`gh repo view`、POST/PATCH/PUT/DELETE、GraphQLのPOSTは再試行しない。
+header読取中のtimeoutや本文の切断・不正も、status受信後なら即失敗する。
+上記の文書化された「親なし」404だけは従来どおり扱う。
+ローカルの設定・認証取得エラー、POST/PATCH/PUT/DELETE、GraphQLのPOSTは再試行しない。
 
 上限に達したら `GitHubTransportError` にGET endpoint、`attempts`、`last_error_kind` と最後の詳細を保持する。
 エラー種別は `missing_http_response_status` または `timeout_without_http_response`。
 再試行後にHTTPエラーへ変わった場合も、HTTPエラーに累積試行回数と最終statusを残す。
-空配列や成功には置き換えない。親・dispatcher等の共有reader利用先にも同じGET契約が適用される。
+空配列や成功には置き換えない。既存のscripted GET用 `_run` 注入境界と診断形式は保持する。
+
+### 条件付きGETとjobログ（明示利用する追加API）
+
+既存の `get()` は上記の契約を維持する。待機する呼出元は
+`get_conditional(endpoint, *, clock=time.time)` を明示的に使う。
+`issues.polling.GETResponse` は実際の `status`、選別した小文字の `headers`、
+`body`（200/304はJSON、上限応答はエラー本文の文字列）、`etag_supported`、`rate_limit` を返す。
+上限応答の `etag_supported` は保存応答があればTrue、未確認ならNoneで、endpoint非対応とは扱わない。
+ヘッダーは `etag`・`x-ratelimit-*`・`retry-after`・`x-poll-interval`・`link`・`location`。
+低層の `HTTPClient.request_response(method, endpoint, payload=None, *, headers=None)` は
+同じmetadataと文字列のbody、I/O失敗の `error` を `HTTPResponse` で返す。
+通信失敗でstatusを受信していない場合だけ `status=None`、status前のtimeoutは
+既存と同じ `TimeoutExpired`。通常のHTTPエラーはbodyとstatusを保持する。
+
+- ETag付き200のJSONを完全URL（queryを含む）と認証tokenのdigestで分離してメモリに保存し、
+  次回は `If-None-Match` を送る。304のbodyだけを保存応答から復元し、
+  `status=304`・`from_cache=True`、headersは今回受信した値のまま返す。
+  呼出元によるbodyの変更は保存応答に影響しない。
+- 保存応答のない304は明示エラー。ETagのない200は `etag_supported=False` として記録し、
+  以前のvalidatorを破棄する。以後の要求は通常GETになる。
+  キャッシュはclientの生存期間内だけで、ディスクへ資格情報や応答を保存しない。
+- 403/429のprimaryはremaining=0またはprimaryの明示メッセージで識別し、
+  reset（UTC epoch秒）とRetry-Afterの遅い方を `rate_limit.resume_at` として返す。
+  resetがなくRetry-Afterが有効ならそれを使い、両方なければ明示エラー。
+  secondaryは429・Retry-After・secondary/abuseの明示メッセージで識別する。
+  権限不足403などは従来の `GitHubHTTPError`。
+- secondaryはRetry-After（秒またはHTTP date）を優先し、なければ最低60秒から
+  120・240・480・960秒へ延ばす。同じ認証情報で連続5回まで再開時刻を返し、
+  次は明示エラーにする。200/304成功で連続回数を消す。
+  remainingが非0のprimary resetはsecondaryの解除時刻には使わない。
+  不正な待機情報は明示エラー。指針は [GitHub公式](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api#handle-rate-limit-errors-appropriately)。
+
+追加API内ではsleep・自動再送を行わない。呼出元がdeadline・`x-poll-interval`・
+全体のtimeoutを使って待機する。通常の200/304以外、JSON不正、途中で切れた応答も成功にしない。
+parent clientでもtransaction/`detached()` のlock境界を守り、既存のtransaction内GET cacheは使わず
+毎回HTTPで検証する。プロセス再開時は新しいclientで200から検証を始める。
+
+`job_log(job_id, *, clock=time.time)` は `issues.polling.JobLog` を返す。
+jobログendpointの302からLocationを読み、専用の `HTTPClient.download_log(url)` で
+署名付きHTTPS URLを一度だけ取得する。APIの認証・Cookie・`.netrc` を転送せず、
+追加のredirectはたどらない。成功時は `body` にテキスト、失敗時は `body=None` と必ず `reason`、
+API上限なら `rate_limit` も返す。期限切れ・権限不足・空body・通信失敗・不正なLocationを
+空文字や空JSONへ置き換えない。署名付きURLをreasonへ含めない。
+
+親コマンドの `PARENT_METRICS_FILE` に、実際のGET送信数 `github_get_requests`、
+受信status別の `github_get_200` / `github_get_304`（他statusも同形式）、
+ETagなしの200件数 `github_get_without_etag` を追加する。
+既存GETの再試行と署名付きログのGETも実送信数に含む。本文・URL・認証情報は記録しない。
+親・dispatcher等の共有reader利用先にも同じGET契約が適用される。
 `parent.github.GitHub.rows()` の最大3回の取り直しはページ重複の整合対策であり、接続断の再試行とは別である。
 
 ## 新規起票と既存issueの段階移行

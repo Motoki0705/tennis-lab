@@ -1,0 +1,63 @@
+{
+  "previous_run": "0-8205033148662266457_2026-11-18T01-54-11-337733542Z_2126156_i1752-doubles-reference-20261118-a1",
+  "previous_commit": "2cf59a608132c2bf097976491b7b5806dfe26941",
+  "source_video_sha256_and_timeline_match": true,
+  "arrays_equal": {
+    "cam0": {
+      "person_detection": {
+        "boxes_xyxy": true,
+        "confidence": true,
+        "frame_offsets": true,
+        "source_rows": true
+      },
+      "pose_estimation": {
+        "confidence": true,
+        "local_track_ids": true,
+        "observed": true,
+        "uv_px": true
+      }
+    },
+    "cam1": {
+      "person_detection": {
+        "boxes_xyxy": true,
+        "confidence": true,
+        "frame_offsets": true,
+        "source_rows": true
+      },
+      "pose_estimation": {
+        "confidence": true,
+        "local_track_ids": true,
+        "observed": true,
+        "uv_px": true
+      }
+    },
+    "cam2": {
+      "person_detection": {
+        "boxes_xyxy": true,
+        "confidence": true,
+        "frame_offsets": true,
+        "source_rows": true
+      },
+      "pose_estimation": {
+        "confidence": true,
+        "local_track_ids": true,
+        "observed": true,
+        "uv_px": true
+      }
+    },
+    "cam3": {
+      "person_detection": {
+        "boxes_xyxy": true,
+        "confidence": true,
+        "frame_offsets": true,
+        "source_rows": true
+      },
+      "pose_estimation": {
+        "confidence": true,
+        "local_track_ids": true,
+        "observed": true,
+        "uv_px": true
+      }
+    }
+  }
+}

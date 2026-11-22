@@ -1,0 +1,7 @@
+{
+  "python_sources_unchanged": true,
+  "driver_unchanged": true,
+  "measured_config_sampling_max_frames": 1024,
+  "integrated_config_sampling_max_frames": 2048,
+  "dependency_commit": "1bef628a9"
+}

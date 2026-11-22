@@ -9,6 +9,7 @@ from typing import Any
 from issues import Issue
 
 from .policy import closing_issues, dependencies, nonempty, progress, raw_section
+from .worker_slots import workers
 
 DEFAULT_LAUNCH_POLICY = {
     "schema_version": 1,
@@ -36,6 +37,23 @@ def reason(code: str, message: str) -> dict[str, str]:
     return {"code": code, "message": message}
 
 
+def active_reservations(tasks: Mapping[str, Any]) -> list[int]:
+    reserved = []
+    for child, _, reservation in workers(tasks):
+        if "worker_ended" in reservation:
+            ended = reservation["worker_ended"]
+            if (
+                not isinstance(ended, dict)
+                or set(ended) != {"delegation_id", "evidence"}
+                or ended["delegation_id"] != reservation.get("delegation_id", "legacy")
+            ):
+                raise ValueError("malformed or stale worker-end evidence")
+            nonempty(ended["evidence"], "worker-end evidence")
+        elif reservation.get("delegated"):
+            reserved.append(child)
+    return sorted(reserved)
+
+
 def plan_launches(
     children: Mapping[int, Issue],
     tasks: Mapping[str, Any],
@@ -51,20 +69,7 @@ def plan_launches(
         n: [p for p in prs if n in closing_issues(p.get("body") or "", repo)]
         for n in children
     }
-    reserved = []
-    for task_key, reservation in tasks.items():
-        if "worker_ended" in reservation:
-            ended = reservation["worker_ended"]
-            if (
-                not isinstance(ended, dict)
-                or set(ended) != {"delegation_id", "evidence"}
-                or ended["delegation_id"] != reservation.get("delegation_id", "legacy")
-            ):
-                raise ValueError("malformed or stale worker-end evidence")
-            nonempty(ended["evidence"], "worker-end evidence")
-        elif reservation.get("delegated"):
-            reserved.append(int(task_key))
-    reserved.sort()
+    reserved = active_reservations(tasks)
     limit = policy["max_parallel_children"]
     available = None if limit is None else max(0, limit - len(reserved))
 

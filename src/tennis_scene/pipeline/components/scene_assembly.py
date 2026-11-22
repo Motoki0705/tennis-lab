@@ -29,22 +29,24 @@ class SceneAssemblyInput:
     alignment: CameraAlignmentOutput
     people: GroupedObservations
     skeleton: PlayerTriangulationOutput
-    ball: BallTriangulationOutput
+    ball: BallTriangulationOutput | None
     placement: BodyPlacementOutput
 
 
 class SceneAssemblyModule:
-    def __init__(self, camera_ids: tuple[str, ...], *, require_people: bool, require_ball: bool, require_body: bool) -> None:
+    def __init__(self, camera_ids: tuple[str, ...], *, require_people: bool, require_ball: bool, require_body: bool,
+                 include_ball: bool = True) -> None:
         self.require_people, self.require_ball, self.require_body = require_people, require_ball, require_body
         self.io = ComponentIO("scene_assembly", SceneAssemblyInput, SceneResult,
             {"calibration": InputPort("local_court_calibration"), "alignment": InputPort("aligned_cameras"),
              "identities": IDENTITIES_PORT, "skeleton": InputPort("player_skeletons"),
-             "ball": InputPort("ball_trajectory"), "placement": InputPort("placed_bodies"),
-             **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "scene_result", 2)
+             **({"ball": InputPort("ball_trajectory")} if include_ball else {}), "placement": InputPort("placed_bodies"),
+             **{f"pose_{c}": InputPort("person_poses", 2) for c in camera_ids}}, "scene_result", 2)
 
     def process(self, inputs: SceneAssemblyInput) -> SceneResult:
         source = inputs.source
-        geometry, skeleton, ball, players = inputs.alignment.geometry, inputs.skeleton.skeleton, inputs.ball.ball, inputs.placement.players
+        geometry, skeleton, players = inputs.alignment.geometry, inputs.skeleton.skeleton, inputs.placement.players
+        ball = None if inputs.ball is None else inputs.ball.ball
         active = tuple(v.source_index for v in inputs.calibration.calibration.views)
         if geometry is None:
             status = "empty"

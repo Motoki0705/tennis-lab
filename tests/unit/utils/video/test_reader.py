@@ -5,7 +5,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.utils.video.reader import RandomAccessVideoReader
+from src.utils.video.reader import (
+    OpenCVVideoFrameReader,
+    RandomAccessVideoReader,
+    VideoReadError,
+    probe_video_decoder,
+    probe_video_info,
+    read_video_frame,
+    read_video_rgb,
+)
 from src.utils.video.writer import save_video_rgb
 
 
@@ -59,14 +67,14 @@ class TestRandomAccessVideoReader:
         make_indexed_video(video, n=6)
         with (
             RandomAccessVideoReader(video) as reader,
-            pytest.raises(RuntimeError, match="Failed to read frame"),
+            pytest.raises(VideoReadError, match="Failed to read frame"),
         ):
             reader.read(1000)
 
     def test_missing_file_raises(self, tmp_path: Path) -> None:
         with (
             RandomAccessVideoReader(tmp_path / "missing.mp4") as reader,
-            pytest.raises(RuntimeError, match="Failed to open"),
+            pytest.raises(VideoReadError, match="Failed to open"),
         ):
             reader.read(0)
 
@@ -81,3 +89,10 @@ class TestRandomAccessVideoReader:
         reader.read(0)
         reader.close()
         reader.close()
+
+
+@pytest.mark.parametrize("read", [probe_video_info, probe_video_decoder, lambda path: read_video_frame(path, 0),
+    lambda path: next(iter(OpenCVVideoFrameReader(path))), read_video_rgb], ids=["probe", "decoder", "frame", "stream", "rgb"])
+def test_unreadable_media_has_a_distinct_error_type(tmp_path: Path, read) -> None:
+    with pytest.raises(VideoReadError, match="Failed to open"):
+        read(tmp_path / "missing.mp4")

@@ -11,6 +11,9 @@ record the measurements and completed parent adjudication. The result report
 contains the parent's policy decision; formal review acceptance remains pending.
 Normal pytest runs only offline contract tests; it never runs the comparison.
 
+Historical requests, outputs and measurements stay unchanged. Current executions use the broad approve/major output; archived outputs are read with their saved schema. Evaluation observations cannot authorize production merges.
+
+
 ## Frozen material
 
 [manifest.json](cases/manifest.json) is the snapshot authority: full head, base,
@@ -233,7 +236,7 @@ negatives are not proof of defect absence, model caching/order can affect timing
 and the restricted tool set differs from formal review. Historical reports retain
 the policy and evidence recorded at the time. The current formal-review policy,
 examples, usage queries and fixed-mode rollback are defined in the
-[parent model-selection procedure](../../parent/README.md#正式レビューのモデル選択).
+[parent model-selection procedure](../../../skills/parent-session/references/review.md).
 This harness explicitly selects each comparison model under either deployment
 mode, keeping the approved Astra/xhigh reference settings and immutable evidence.
 

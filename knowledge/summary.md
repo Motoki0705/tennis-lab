@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-11
+更新日: 2026-11-20
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -14,17 +14,25 @@
 
 標準のシーン再構成は、各カメラのコートkeypoint・人物box/pose・ボールの2D観測からカメラを校正し、人物の関節とボールを三角測量します。PLCS・BLCS・SLCSの学習モデルは標準pipelineに入っていません。
 
+- **clip長の上限**: 約30fpsの全長gridを2048点まで許容し、超過は切り詰めず拒否します。[1055点のCPU確認](nodes/tennis_scene/000047-run-frame-sampling-limit-20261117.md)ではcourt_side・camera_alignment・body_view_selectionが完了し、上限4096との出力も一致しました。下流2段は人物対応未生成のためballのみ・暫定ID・制御入力を区別した検証で、全69clipのGPU完走を示していません。
+- **明示profileのボール部品**: X3D/CSN＋DPT T32の[scene接続](nodes/tennis_scene/000043-run-scene-x3d-dpt-20261116.md)は、人間が現状の証拠で受入れました（2026-11-16）。学習時validationとの許容差超過は数値のまま保持し、既定i935は維持します。meiji_4camの通常4cameraはcourt推定で停止しており、3D比較は条件付き結果です。各clipの動画確認とcourt停止への対処は人間が判断します。
 - **動作確認**: 公開3カメラサンプル（Meiji clip_000）で、既定設定がSceneResult v2の保存まで完走しました（[標準pipeline](nodes/tennis_scene/000028-run-multiview-sample-standard-pipeline-20261021.md)、[クリーン導入](nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)）。1clipの動作確認であり、独立した3D精度や全frameの目視合格は示していません。
 - **ボール3Dの平滑化**: 三角測量の後、局所運動のconsensusで外れ値を除き、頑健な2次LOESSをかけます（既定で有効）。[導入時の比較](nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)では3D有効frameが821→859/1010に増え、隣接移動量のp95も下がりました。一方、元の2D観測への再投影中央値は3.554→4.810 pxに増えました。滑らかさと観測追従の交換関係であり、3D精度の向上とは扱いません。
 - **ボール3Dの評価基盤**（2026-11-03）: clip_000の人間参照を使い、[固定入力のCPU replay比較](nodes/tennis_scene/000032-run-ball3d-evaluation-foundation-20261103.md)を作りました。[レビュー修正後](nodes/tennis_scene/000033-run-ball3d-foundation-review-20261103.md)、全方式に共通の768点でのLOVO中央値/p90は、既定が8.97/25.40 px、LOESSなしが9.70/28.02 pxです。共通点は全対象の52.53%に限られ、可用性を条件とする比較です。[誤差分解](nodes/tennis_scene/000034-run-ball3d-error-decomposition-20261103.md)では、top-8候補にargmax失敗の約半数を回収できる候補がある一方、既存の採用maskを保つ3D候補oracleの改善は小さく、校正誤差と同期ずれも分離できていません。
 - **6方式の比較と採否**: [統合比較](nodes/tennis_scene/000041-run-ball3d-integrated-comparison-20261104.md)では後半LOVOとcoverageの一貫した改善は得られず、人間はbaseline維持を決定しました。後処理・三角測量側の追加改善はキャンセルされ、検出モデルの学習戦略の改善が必要と判断されました。比較は1 clip・近似校正・推定を含む2D参照に限られます。詳細は[凍結アーカイブ](history/summary-2026-11-05.md)を参照してください。
+
+- **動画一括推論の現行本番構成**: [player証拠と特徴分離のCPU統合](nodes/tennis_scene/000072-run-i1752-player-main-cpu-20261119.md)で、共有コートload・clip単位のplayer side判定・ball両機能off・ダブルス2・DINO/ViTPose fp16を明示します。ballありのbenchmarkも共通設定で選択可能です。保存済み3clipの単独/共有判定は#2270と完全一致しました。全69clipのplayer証拠の採否、新構成のGPU再測定と本番実行は未確認です。
+- **動画一括推論の過去GPU証拠**: C4の[共有court_side・明示fp16・ダブルス2](nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)で000/037/027の全114nodeが1計画で完了し、GVHMR配置・scene公開まで通りました。各side2 identity、C3管理7resourceは各1load/unload。CPU AFLinkの都度loadは別に記録しています。[同じfp16での単一027比較](nodes/tennis_scene/000065-run-i1752-shared-fp16-reference-20261118.md)は最終scene29配列・metadata・全離散値がexactですが、Ball補助evidence9配列が従来許容を超え、全component一致は未達です。原因と採否は親レビューに残します。69clipは未実行で、25.27〜25.88時間はballありの短い3clipからの条件付き投影で、現行player-only本番の時間ではありません。C1同期・初回compile等を含み、共有side・精度・profilerの差を単独の高速化率にはしません。
+
+- **TensorRTの人物モデル単体比較**　ViTPose-HはFP16が許容差内で中央値54.423→8.468 ms。INT8・FP8には最大5 pxの基準を超える関節があり、E2E候補はFP16です。HMR2はFP8も単体精度の基準を満たし、中央値5.399 msでした。CLIP-ReIDの新INT8・FP8は、同じ2クリップから設定選定用12 cropを除いた224件で、cosine P05が0.999602／0.995416、FP32とのID一致が両方224/224でした。下流の時系列・人物対応と速度はE2Eで確認します。[固定入力の全条件比較](nodes/tennis_scene/000077-run-i2303-vit-tensorrt.md)
 
 ## Court Detection
 
 - **現行**: `multiscale_depth3` のcheckpointと、画像だけによる領域探索を組み合わせ、各カメラの先頭frameだけを推論します。[Meiji 3cameraの校正が通った](nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)ことが採用の根拠です。このcheckpointを学習したrunのノードはなく、独立したheld-out testでの精度も未確立です。
 - **合成データのscene組合せ**（#1581）: [全6ペアと共通4scene評価](nodes/court_detection/000067-group-court-scene-pair-s42.md)が完了しました。固定5,500枚・33,160更新・seed42では、同群2ペアの実画像KP中央値平均57.36 pxに対し、異群4ペアは4.57 px（δ=+52.80 px）で、全5指標が同群側で悪い向きでした。P03（B00+B03）が実画像KP中央値で最良（2.97 px）、共通合成の4scene平均ではscene-4が最良です。単一seed・再開・会場とsurface等の交絡があり、一般的な因果効果や採用変更にはしません。旧[1〜4scene比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)は当時の4条件の証拠として保持します。
 - **backbone**（#983）: [凍結DINOv3 S/S+/B/Lの比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)では、出力ごとに最良のサイズが異なり、サイズによる一様な改善は見られませんでした（1 seed）。
-- **後処理**: KP・LINEの共同推定やPROSACは保存予測での診断までで、人手GTのある会場分離benchmarkはありません。Meijiの全frame処理ではCPUの幾何後処理が重く、並列化・batch化の余地があります（[時間分解](nodes/court_detection/000033-run-court-meiji-hybrid-cpu-profile-20260923.md)）。
+- **後処理**（#2190）: revision 4で1frameの精度目標を動画共有へ移した。[旧処理復元](nodes/court_detection/000075-run-court-legacy-default-20261117.md)は全3545画像・8530領域の採否・Hが旧処理と完全一致。clip既定は`legacy`・RGB無効のまま、白線・品質部品と[run 69〜74](nodes/court_detection/000074-run-court-semantic-support-20261117.md)の負の結果を保持する。
+- **動画共有**（#2191）: [人間が共通Hを承認](nodes/court_detection/000078-run-court-video-drift-lines-20261117.md)し、検査不能を警告にする明示方針 `unobservable_policy=warn` を既定にした。H・測定値・hashは維持し、全69clip×4cameraを利用可能（159/276件warning、失敗0）。確認範囲は3clip×4camera＋原寸crop。信頼できるmean10/max25px超過は失敗を維持する。自動診断は人工24/24一致だが、実データの隣接線誤抽出等が残り、clip途中のcamera移動を見逃す可能性がある。候補保持・線配置による対応検証は将来の改善。一括CLI接続は#1752が担当する。
 - **次の比較候補**: 収録を分けた実画像testで、従来のhomography推定・PROSAC・共同推定のKP距離、geometry valid率、失敗率、処理時間、下流E2Eを比べます。scene組合せは追加seed、3sceneから1つずつ抜く配置、会場を固定したsurface対照が候補ですが、今回追加実行はしていません。画像数スケーリングは実施しない判断を維持し、B/Lの複数seedも残っています。
 
 ## Ball Detection
@@ -53,9 +61,10 @@
 
 ## コートside（court_side）
 
-- **現行**: sideは学習モデルを使わず、ボールの2D観測だけを使う幾何的な仮説検定で決めます。閾値は[合成ベンチマーク](nodes/court_side/000001-run-i932-synthetic-side-thresholds.md)で決めました（min_margin 0.15）。誤判定を防いでいるのはmarginです。
-- **限界**: 決定できる割合は、ボール検出の見落としと誤検出に左右されます。ft-e13の時点では、Meiji 51clipのうち検出器のボールで決まったのは7clipでした（誤判定0、[記録](nodes/court_side/000002-run-i932-meiji-clips-side-20260927.md)）。現行の検出器での全clip評価は記録されていません。2026-10-02に信頼度フィルタを外す判断をしましたが、安全benchの全件は元datasetの欠測で未実施です（[記録](nodes/court_side/000006-run-i935-unfiltered-production-safety-20261002.md)）。
-- **次の実験**: 現行のボール検出器でのside決定率と誤判定の評価。
+- **現行**　既定はball観測を使うclip単位の判定です。固定カメラと共有コートでは動画単位を選べます。ballのmin_marginは両モードとも0.15です。[合成ベンチマーク](nodes/court_side/000001-run-i932-synthetic-side-thresholds.md)
+- **固定4カメラの実測**　meiji_4cam/video_000全69 clipでX3D/CSN+DPTの観測を統合すると、cam2・cam3がhalf-turn、margin 0.267。単独で一致51、margin不足18、矛盾0で、共有court sideは全69 clipで利用できました。[実測と全件表](nodes/court_side/000007-run-court-side-video-shared-20261118.md)
+- **選手の足元による判定**　`court_side.evidence=player` で選択できます。meiji_4camのclip_000・027・037でcam2・cam3のhalf-turnが単独・共有とも一致し、共有marginは0.237でした。この3clipで照合距離3.0 mを選びました。[3clipの実測](nodes/court_side/000008-run-i2269-player-court-side-20261119.md)
+- **限界と次の確認**　この動画での正解ラベルに対する誤判定率、別収録への一般化、全69 clipの人物対応以降は未検証です。旧ft-e13では別の51 clip中7 clipが確定しました（誤判定0、[過去の比較](nodes/court_side/000002-run-i932-meiji-clips-side-20260927.md)）。confidenceフィルタ廃止時の安全benchは元dataset欠測のため未完です。[安全benchの記録](nodes/court_side/000006-run-i935-unfiltered-production-safety-20261002.md)
 
 ## PLCS・BLCS・SLCS（研究用の推定モデル）
 

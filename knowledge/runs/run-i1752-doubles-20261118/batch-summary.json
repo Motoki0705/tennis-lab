@@ -1,0 +1,1491 @@
+{
+  "clips": [
+    {
+      "clip_id": "video_000/clip_000",
+      "marker_exists": true,
+      "scene_status": "ok",
+      "num_frames": 356,
+      "scene_players": 4,
+      "sides": {
+        "-1": {
+          "count": 2,
+          "identities": [
+            {
+              "candidates": [
+                0,
+                4,
+                9,
+                13
+              ],
+              "identity": 0,
+              "presence_frames": 354,
+              "seen_frames": 354,
+              "side": -1
+            },
+            {
+              "candidates": [
+                2,
+                5,
+                15,
+                16
+              ],
+              "identity": 2,
+              "presence_frames": 354,
+              "seen_frames": 354,
+              "side": -1
+            }
+          ],
+          "runner_up": null
+        },
+        "1": {
+          "count": 2,
+          "identities": [
+            {
+              "candidates": [
+                1,
+                7,
+                8,
+                11,
+                12,
+                17
+              ],
+              "identity": 1,
+              "presence_frames": 354,
+              "seen_frames": 354,
+              "side": 1
+            },
+            {
+              "candidates": [
+                3,
+                6,
+                10,
+                14
+              ],
+              "identity": 3,
+              "presence_frames": 354,
+              "seen_frames": 354,
+              "side": 1
+            }
+          ],
+          "runner_up": null
+        }
+      },
+      "validity_statistics": {
+        "ball_3d_frames": 158,
+        "player_joint_frames": [
+          354,
+          354,
+          354,
+          354
+        ],
+        "player_root_frames": [
+          353,
+          353,
+          353,
+          353
+        ],
+        "player_smpl_frames": [
+          353,
+          353,
+          353,
+          349
+        ]
+      },
+      "scene_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/datasets/batch/videos/video_000/clips/clip_000/annotations/tennis_scene/exports/c1c879529aac2beefdedff9b168e704a2297d063b26472525a8c59e2a4f32025/scene.npz",
+      "body_exports_present": true,
+      "mask_counts": {
+        "player_observed": {
+          "valid": 1416,
+          "total": 1424
+        },
+        "player_valid": {
+          "valid": 1412,
+          "total": 1424
+        },
+        "player_heading_valid": {
+          "valid": 1412,
+          "total": 1424
+        },
+        "player_kp_3d_vis": {
+          "valid": 23978,
+          "total": 24208
+        },
+        "player_smpl_valid": {
+          "valid": 1408,
+          "total": 1424
+        },
+        "ball_3d_valid": {
+          "valid": 158,
+          "total": 356
+        }
+      }
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "marker_exists": false
+    },
+    {
+      "clip_id": "video_000/clip_027",
+      "marker_exists": false
+    }
+  ],
+  "all_three_completed": false,
+  "doubles_identity_counts_ok": false,
+  "body_exports_present": false,
+  "comparison_strict": true,
+  "runtime_lifetimes_ok": true,
+  "cuda_anomaly": false,
+  "original_guard_alarm": true,
+  "guard_alarm_review": {
+    "classification": "guard_false_positive_expected_clip_failure_exit",
+    "checks": {
+      "engine_returned": true,
+      "only_expected_system_exit": true,
+      "traceback_has_no_cuda_error": true,
+      "all_runtime_resources_closed": true,
+      "known_guard_fallback": true,
+      "nvml_queries_succeeded": true,
+      "gpu_diagnostic_query_succeeded": true,
+      "exact_expected_clip_outcomes": true
+    },
+    "actual_cuda_exception_observed": false,
+    "original_alarm_preserved": true,
+    "mechanism": "SystemExit(1) prints no traceback. C3 guard scanned prior normal cuda model events and flagged the expected CLI failure exit.",
+    "raw_evidence_sha256": {
+      "anomaly.json": "c70c3aabd32e8cd746d152c29e8147c4cddaa4966cbfc1f07baec38fc3fed9fd",
+      "batch/entry.json": "16c86356465da8c243c5523aaae3a1a0edee047258f7658a8265eaf7b10d1787",
+      "batch.log": "95ec1bb1a57b4600c6c1818edae5e400518d0c61fc7999aadcd10a1fb6f7bb14",
+      "terminal.json": "d8f2ae915dd50e93da6851d00e0bca4661d5a5c1dc482bf024a7ed8935335b57",
+      "health/batch.json": "408e31fc5f9a8b212ae8d4b68afa044f642646ff763f05553564f7fc3aaabf0e",
+      "health/batch-threads.log": "6b07077dab5f83aec676643650daa65a88487f263344c67b075925d3e958ab48",
+      "health/batch-nvidia-smi-q.stdout.log": "b48e805ed983a3131f467defd2c4a52619625ffb68149022f2d5f458dda03684",
+      "health/batch-nvidia-smi-q.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reviewed_at_utc": "2026-11-18T01:54:20.647382+00:00"
+  },
+  "reference_terminal": {
+    "status": "complete",
+    "commit": "2cf59a608132c2bf097976491b7b5806dfe26941",
+    "batch_commit": "e296a5fb358bee9ed9974821943d055f31c1e360",
+    "source_tree_unchanged": true,
+    "reference_clip": "video_000/clip_000",
+    "outcomes": {
+      "single": {
+        "variant": "single",
+        "started_at_utc": "2026-11-18T01:54:20.648578+00:00",
+        "status": "complete",
+        "device_memory_sampling_ms": 1000,
+        "device_memory_samples": 1675,
+        "query_timeout_seconds": 10.0,
+        "heartbeat_timeout_seconds": 180.0,
+        "driver": "621.24",
+        "pid": 2127537,
+        "returncode": 0,
+        "finished_at_utc": "2026-11-18T02:23:42.915241+00:00",
+        "device_memory_peak_mib": 4974,
+        "device_memory_min_mib": 797
+      }
+    },
+    "queue_job": "0-8205033148662266457_2026-11-18T01-54-11-337733542Z_2126156_i1752-doubles-reference-20261118-a1",
+    "finished_at_utc": "2026-11-18T02:23:42.915766+00:00"
+  },
+  "runtime_lifetimes": {
+    "loads": {
+      "ball": 1,
+      "dino": 1,
+      "vitpose": 1,
+      "appearance": 1,
+      "hmr2": 1,
+      "gvhmr": 1,
+      "body_geometry": 1
+    },
+    "unloads": {
+      "ball": 1,
+      "dino": 1,
+      "vitpose": 1,
+      "appearance": 1,
+      "hmr2": 1,
+      "gvhmr": 1,
+      "body_geometry": 1
+    },
+    "unclosed": [],
+    "maximum_owned": 2,
+    "failed_events": [],
+    "each_target_loaded_once": true
+  },
+  "resources": {
+    "ram_rss_sampled_peak_bytes": 9004134400,
+    "temporary_disk_peak_bytes": 120311101,
+    "ram_process_lifetime_peak_bytes": 9003245568,
+    "cuda": {
+      "cuda:0": {
+        "allocated_peak_bytes": 3276657152,
+        "reserved_peak_bytes": 4202692608
+      }
+    }
+  },
+  "model_recording": [
+    {
+      "model": "ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt",
+          "sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242"
+        }
+      },
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 2.11698827,
+      "unload_seconds": 0.502746415
+    },
+    {
+      "model": "dino",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 16.283148406,
+      "unload_seconds": 1.035748781
+    },
+    {
+      "model": "AFLink",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/person_tracking/AFLink_epoch20.pth",
+          "sha256": "b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4"
+        }
+      },
+      "device": "cpu",
+      "dtype": "float32",
+      "load_count": 4,
+      "unload_count": 0,
+      "failed_count": 0,
+      "load_seconds": 0.570971659,
+      "unload_seconds": 0.0
+    },
+    {
+      "model": "vitpose",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 21.278156526,
+      "unload_seconds": 0.902458684
+    },
+    {
+      "model": "appearance",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 3.837308045,
+      "unload_seconds": 0.423498131
+    },
+    {
+      "model": "hmr2",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt",
+          "sha256": "2dcf79638109781d1ae5f5c44fee5f55bc83291c210653feead9b7f04fa6f20e"
+        },
+        "mean_params": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+          "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 19.888914203,
+      "unload_seconds": 0.879316263
+    },
+    {
+      "model": "gvhmr",
+      "weights": {
+        "gvhmr": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+          "sha256": "4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91"
+        },
+        "body_model": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+          "sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992"
+        },
+        "smpl_hmr2_mean_params": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+          "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+        },
+        "smpl_smplx_to_smpl": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+          "sha256": "0fc821a9e79ec3e76d6a9796b96d5bef8cd67055e18497bbe370d8aed9e07e06"
+        },
+        "smpl_smpl_coco17_regressor": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+          "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f"
+        },
+        "smpl_smplx_verts437": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+          "sha256": "ef0ea64c470a1fea80adb5e4b866c78a792a04f5f98744c9367b15e57bfb4a4d"
+        },
+        "smpl_smpl_neutral_joint_regressor": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt",
+          "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 2.518809587,
+      "unload_seconds": 0.832314081
+    },
+    {
+      "model": "body_geometry",
+      "weights": {
+        "body_model": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+          "sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992"
+        },
+        "smpl_hmr2_mean_params": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+          "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+        },
+        "smpl_smplx_to_smpl": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+          "sha256": "0fc821a9e79ec3e76d6a9796b96d5bef8cd67055e18497bbe370d8aed9e07e06"
+        },
+        "smpl_smpl_coco17_regressor": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+          "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f"
+        },
+        "smpl_smplx_verts437": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+          "sha256": "ef0ea64c470a1fea80adb5e4b866c78a792a04f5f98744c9367b15e57bfb4a4d"
+        },
+        "smpl_smpl_neutral_joint_regressor": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt",
+          "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 1.915435788,
+      "unload_seconds": 0.410026415
+    }
+  ],
+  "total_recorded_wall_seconds": 2344.355011246,
+  "entry_wall_seconds": 2351.6777486049978,
+  "nodes": {
+    "video_000/clip_000": {
+      "ball_detection/cam0": {
+        "seconds": 81.53464065599837,
+        "status": "executed"
+      },
+      "ball_detection/cam1": {
+        "seconds": 6.532649232998665,
+        "status": "executed"
+      },
+      "ball_detection/cam2": {
+        "seconds": 6.611801715000183,
+        "status": "executed"
+      },
+      "ball_detection/cam3": {
+        "seconds": 6.880355800996767,
+        "status": "executed"
+      },
+      "ball_points/cam0": {
+        "seconds": 4.407609220004815,
+        "status": "executed"
+      },
+      "ball_points/cam1": {
+        "seconds": 3.632505530003982,
+        "status": "executed"
+      },
+      "ball_points/cam2": {
+        "seconds": 4.819662365000113,
+        "status": "executed"
+      },
+      "ball_points/cam3": {
+        "seconds": 3.69919821700023,
+        "status": "executed"
+      },
+      "ball_triangulation": {
+        "seconds": 1.2689248809983837,
+        "status": "executed"
+      },
+      "body_placement": {
+        "seconds": 11.039098547997128,
+        "status": "executed"
+      },
+      "body_view_selection": {
+        "seconds": 0.25448114900063956,
+        "status": "executed"
+      },
+      "camera_alignment": {
+        "seconds": 0.40472991400019964,
+        "status": "executed"
+      },
+      "court_calibration": {
+        "seconds": 1.093857810999907,
+        "status": "executed"
+      },
+      "court_detection/cam0": {
+        "seconds": 23.94869432300038,
+        "status": "executed"
+      },
+      "court_detection/cam1": {
+        "seconds": 25.36287491499388,
+        "status": "executed"
+      },
+      "court_detection/cam2": {
+        "seconds": 28.513156441003957,
+        "status": "executed"
+      },
+      "court_detection/cam3": {
+        "seconds": 28.424757578002755,
+        "status": "executed"
+      },
+      "court_side": {
+        "seconds": 0.31317091500386596,
+        "status": "executed"
+      },
+      "gvhmr": {
+        "seconds": 78.41697525200289,
+        "status": "executed"
+      },
+      "person_detection/cam0": {
+        "seconds": 169.07720662200154,
+        "status": "executed"
+      },
+      "person_detection/cam1": {
+        "seconds": 125.58483854800579,
+        "status": "executed"
+      },
+      "person_detection/cam2": {
+        "seconds": 125.06704558699857,
+        "status": "executed"
+      },
+      "person_detection/cam3": {
+        "seconds": 127.13833270699979,
+        "status": "executed"
+      },
+      "person_tracking/cam0": {
+        "seconds": 284.1601999419945,
+        "status": "executed"
+      },
+      "person_tracking/cam1": {
+        "seconds": 138.90078976599762,
+        "status": "executed"
+      },
+      "person_tracking/cam2": {
+        "seconds": 112.1384429910031,
+        "status": "executed"
+      },
+      "person_tracking/cam3": {
+        "seconds": 132.2304678790024,
+        "status": "executed"
+      },
+      "player_association": {
+        "seconds": 9.520681826004875,
+        "status": "executed"
+      },
+      "player_selection/cam0": {
+        "seconds": 1.6803200089998427,
+        "status": "executed"
+      },
+      "player_selection/cam1": {
+        "seconds": 1.0875863609981025,
+        "status": "executed"
+      },
+      "player_selection/cam2": {
+        "seconds": 0.8400011909980094,
+        "status": "executed"
+      },
+      "player_selection/cam3": {
+        "seconds": 1.030999739006802,
+        "status": "executed"
+      },
+      "player_triangulation": {
+        "seconds": 153.60686915199767,
+        "status": "executed"
+      },
+      "pose_estimation/cam0": {
+        "seconds": 0.11394750099861994,
+        "status": "executed"
+      },
+      "pose_estimation/cam1": {
+        "seconds": 0.11642699799995171,
+        "status": "executed"
+      },
+      "pose_estimation/cam2": {
+        "seconds": 0.09578048300318187,
+        "status": "executed"
+      },
+      "pose_estimation/cam3": {
+        "seconds": 0.1198329369944986,
+        "status": "executed"
+      },
+      "scene_assembly": {
+        "seconds": 2.2282691639993573,
+        "status": "executed"
+      }
+    },
+    "video_000/clip_027": {
+      "ball_detection/cam0": {
+        "seconds": 4.837560447995202,
+        "status": "executed"
+      },
+      "ball_detection/cam1": {
+        "seconds": 4.872357385000214,
+        "status": "executed"
+      },
+      "ball_detection/cam2": {
+        "seconds": 5.059509322003578,
+        "status": "executed"
+      },
+      "ball_detection/cam3": {
+        "seconds": 5.126138826999522,
+        "status": "executed"
+      },
+      "ball_points/cam0": {
+        "seconds": 5.37236139500601,
+        "status": "executed"
+      },
+      "ball_points/cam1": {
+        "seconds": 2.818117804999929,
+        "status": "executed"
+      },
+      "ball_points/cam2": {
+        "seconds": 4.818191945996659,
+        "status": "executed"
+      },
+      "ball_points/cam3": {
+        "seconds": 3.432281232002424,
+        "status": "executed"
+      },
+      "ball_triangulation": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "body_placement": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "body_view_selection": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "camera_alignment": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "court_calibration": {
+        "seconds": 0.9438945410001907,
+        "status": "executed"
+      },
+      "court_detection/cam0": {
+        "seconds": 26.704589870001655,
+        "status": "executed"
+      },
+      "court_detection/cam1": {
+        "seconds": 26.111116074003803,
+        "status": "executed"
+      },
+      "court_detection/cam2": {
+        "seconds": 26.440129401002196,
+        "status": "executed"
+      },
+      "court_detection/cam3": {
+        "seconds": 25.13690305199998,
+        "status": "executed"
+      },
+      "court_side": {
+        "seconds": 0.23665741299919318,
+        "status": "failed"
+      },
+      "gvhmr": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_detection/cam0": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_detection/cam1": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_detection/cam2": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_detection/cam3": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_tracking/cam0": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_tracking/cam1": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_tracking/cam2": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_tracking/cam3": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_association": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_selection/cam0": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_selection/cam1": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_selection/cam2": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_selection/cam3": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_triangulation": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "pose_estimation/cam0": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "pose_estimation/cam1": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "pose_estimation/cam2": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "pose_estimation/cam3": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "scene_assembly": {
+        "seconds": null,
+        "status": "blocked"
+      }
+    },
+    "video_000/clip_037": {
+      "ball_detection/cam0": {
+        "seconds": 5.556723556001089,
+        "status": "executed"
+      },
+      "ball_detection/cam1": {
+        "seconds": 5.66191146899655,
+        "status": "executed"
+      },
+      "ball_detection/cam2": {
+        "seconds": 5.419851299004222,
+        "status": "executed"
+      },
+      "ball_detection/cam3": {
+        "seconds": 6.478593528998317,
+        "status": "executed"
+      },
+      "ball_points/cam0": {
+        "seconds": 3.9076941220046137,
+        "status": "executed"
+      },
+      "ball_points/cam1": {
+        "seconds": 2.25132911199762,
+        "status": "executed"
+      },
+      "ball_points/cam2": {
+        "seconds": 5.158770657995774,
+        "status": "executed"
+      },
+      "ball_points/cam3": {
+        "seconds": 3.676386671999353,
+        "status": "executed"
+      },
+      "ball_triangulation": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "body_placement": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "body_view_selection": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "camera_alignment": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "court_calibration": {
+        "seconds": 1.0160365470001125,
+        "status": "executed"
+      },
+      "court_detection/cam0": {
+        "seconds": 28.233142040997336,
+        "status": "executed"
+      },
+      "court_detection/cam1": {
+        "seconds": 28.800128020004195,
+        "status": "executed"
+      },
+      "court_detection/cam2": {
+        "seconds": 28.299851848998514,
+        "status": "executed"
+      },
+      "court_detection/cam3": {
+        "seconds": 26.586376881001343,
+        "status": "executed"
+      },
+      "court_side": {
+        "seconds": 0.25385061999986647,
+        "status": "failed"
+      },
+      "gvhmr": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_detection/cam0": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_detection/cam1": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_detection/cam2": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_detection/cam3": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_tracking/cam0": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_tracking/cam1": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_tracking/cam2": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "person_tracking/cam3": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_association": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_selection/cam0": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_selection/cam1": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_selection/cam2": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_selection/cam3": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "player_triangulation": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "pose_estimation/cam0": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "pose_estimation/cam1": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "pose_estimation/cam2": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "pose_estimation/cam3": {
+        "seconds": null,
+        "status": "blocked"
+      },
+      "scene_assembly": {
+        "seconds": null,
+        "status": "blocked"
+      }
+    }
+  },
+  "outcomes": {
+    "video_000/clip_000": {
+      "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/datasets/batch/videos/video_000/clips/clip_000/annotations/tennis_scene/annotation.json",
+      "clip_id": "video_000/clip_000",
+      "error": null,
+      "status": "generated"
+    },
+    "video_000/clip_027": {
+      "annotation_path": null,
+      "clip_id": "video_000/clip_027",
+      "diagnostics": {
+        "frames": 99,
+        "hypotheses": [
+          {
+            "cost": 0.7227009614977827,
+            "frames": 99,
+            "support": 0.25252525252525254,
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ]
+          },
+          {
+            "cost": 0.838964945086073,
+            "frames": 99,
+            "support": 0.16161616161616163,
+            "view_half_turns": [
+              false,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "cost": 0.8437821277191199,
+            "frames": 99,
+            "support": 0.08080808080808081,
+            "view_half_turns": [
+              false,
+              true,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.8503338903588551,
+            "frames": 99,
+            "support": 0.1111111111111111,
+            "view_half_turns": [
+              false,
+              false,
+              false,
+              true
+            ]
+          },
+          {
+            "cost": 0.8776729156251515,
+            "frames": 99,
+            "support": 0.10101010101010101,
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.8863141842176563,
+            "frames": 99,
+            "support": 0.06060606060606061,
+            "view_half_turns": [
+              false,
+              true,
+              false,
+              false
+            ]
+          },
+          {
+            "cost": 0.8873806797534574,
+            "frames": 99,
+            "support": 0.1111111111111111,
+            "view_half_turns": [
+              false,
+              true,
+              false,
+              true
+            ]
+          },
+          {
+            "cost": 0.9033381262033303,
+            "frames": 99,
+            "support": 0.0707070707070707,
+            "view_half_turns": [
+              false,
+              false,
+              false,
+              false
+            ]
+          }
+        ],
+        "pair_frames": {
+          "cam0-cam1": 60,
+          "cam0-cam2": 82,
+          "cam0-cam3": 63,
+          "cam1-cam2": 51,
+          "cam1-cam3": 52,
+          "cam2-cam3": 55
+        },
+        "sampled_frames": 118
+      },
+      "error": "ReconstructionUnavailable: ambiguous_margin: Runner-up is only 0.116 worse than the best [[False, False, True, True] cost=0.723 support=0.253; [False, True, True, True] cost=0.839 support=0.162; [False, True, True, False] cost=0.844 support=0.081; [False, False, False, True] cost=0.850 support=0.111; [False, False, True, False] cost=0.878 support=0.101; [False, True, False, False] cost=0.886 support=0.061; [False, True, False, True] cost=0.887 support=0.111; [False, False, False, False] cost=0.903 support=0.071]",
+      "reason": "court_side_ambiguous_margin",
+      "status": "failed"
+    },
+    "video_000/clip_037": {
+      "annotation_path": null,
+      "clip_id": "video_000/clip_037",
+      "diagnostics": {
+        "frames": 85,
+        "hypotheses": [
+          {
+            "cost": 0.5043593375626471,
+            "frames": 85,
+            "support": 0.5176470588235295,
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ]
+          },
+          {
+            "cost": 0.634662257747823,
+            "frames": 85,
+            "support": 0.3764705882352941,
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.716514064457882,
+            "frames": 85,
+            "support": 0.29411764705882354,
+            "view_half_turns": [
+              false,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "cost": 0.7328951957118318,
+            "frames": 85,
+            "support": 0.24705882352941178,
+            "view_half_turns": [
+              false,
+              true,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.8766670757470854,
+            "frames": 85,
+            "support": 0.08235294117647059,
+            "view_half_turns": [
+              false,
+              true,
+              false,
+              false
+            ]
+          },
+          {
+            "cost": 0.8917337505136345,
+            "frames": 85,
+            "support": 0.09411764705882353,
+            "view_half_turns": [
+              false,
+              true,
+              false,
+              true
+            ]
+          },
+          {
+            "cost": 0.908891434895423,
+            "frames": 85,
+            "support": 0.07058823529411765,
+            "view_half_turns": [
+              false,
+              false,
+              false,
+              true
+            ]
+          },
+          {
+            "cost": 0.9138634882177729,
+            "frames": 85,
+            "support": 0.08235294117647059,
+            "view_half_turns": [
+              false,
+              false,
+              false,
+              false
+            ]
+          }
+        ],
+        "pair_frames": {
+          "cam0-cam1": 38,
+          "cam0-cam2": 67,
+          "cam0-cam3": 41,
+          "cam1-cam2": 43,
+          "cam1-cam3": 29,
+          "cam2-cam3": 48
+        },
+        "sampled_frames": 146
+      },
+      "error": "ReconstructionUnavailable: ambiguous_margin: Runner-up is only 0.130 worse than the best [[False, False, True, True] cost=0.504 support=0.518; [False, False, True, False] cost=0.635 support=0.376; [False, True, True, True] cost=0.717 support=0.294; [False, True, True, False] cost=0.733 support=0.247; [False, True, False, False] cost=0.877 support=0.082; [False, True, False, True] cost=0.892 support=0.094; [False, False, False, True] cost=0.909 support=0.071; [False, False, False, False] cost=0.914 support=0.082]",
+      "reason": "court_side_ambiguous_margin",
+      "status": "failed"
+    }
+  },
+  "stage_wall_seconds": {
+    "artifact_load": 9.840025917,
+    "decode": 26.041004399,
+    "inference": 994.605473023,
+    "measurement": 108.800116114,
+    "model_load": 68.409732484,
+    "model_unload": 4.98610877,
+    "postprocess": 402.615569624,
+    "preprocess": 494.71297117,
+    "publication": 9.775330781,
+    "save": 13.693097502,
+    "transfer": 6.148296208,
+    "unattributed": 204.727285254
+  },
+  "full_video": {
+    "clips": 69,
+    "frames_per_camera": 46228
+  },
+  "stage_estimates": {
+    "ball_detection": {
+      "measured_node_seconds": 144.57209323999268,
+      "successful_node_seconds": 144.57209323999268,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 2.6197346849999996,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 7434.2999513103705
+    },
+    "ball_points": {
+      "measured_node_seconds": 47.99410827401152,
+      "successful_node_seconds": 47.99410827401152,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 2512.65191086184
+    },
+    "ball_triangulation": {
+      "measured_node_seconds": 1.2689248809983837,
+      "successful_node_seconds": 1.2689248809983837,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 2,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 164.77488595166653
+    },
+    "body_placement": {
+      "measured_node_seconds": 11.039098547997128,
+      "successful_node_seconds": 11.039098547997128,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 2.325462203,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 2,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 1133.8254087100988
+    },
+    "body_view_selection": {
+      "measured_node_seconds": 0.25448114900063956,
+      "successful_node_seconds": 0.25448114900063956,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 2,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 33.045377966296535
+    },
+    "camera_alignment": {
+      "measured_node_seconds": 0.40472991400019964,
+      "successful_node_seconds": 0.40472991400019964,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 2,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 52.555770967419186
+    },
+    "court_calibration": {
+      "measured_node_seconds": 3.05378889900021,
+      "successful_node_seconds": 3.05378889900021,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "clip_count",
+      "projection_ratio": 23.0,
+      "estimated_69clip_seconds": 70.23714467700484
+    },
+    "court_detection": {
+      "measured_node_seconds": 322.56172044501,
+      "successful_node_seconds": 322.56172044501,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "clip_count",
+      "projection_ratio": 23.0,
+      "estimated_69clip_seconds": 7418.91957023523
+    },
+    "court_side": {
+      "measured_node_seconds": 0.8036789480029256,
+      "successful_node_seconds": 0.31317091500386596,
+      "failed_node_seconds": 0.49050803299905965,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 2,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 40.66647488426606
+    },
+    "gvhmr": {
+      "measured_node_seconds": 78.41697525200289,
+      "successful_node_seconds": 78.41697525200289,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 24.119354133999998,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 2,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 7074.878986277364
+    },
+    "person_detection": {
+      "measured_node_seconds": 546.8674234640057,
+      "successful_node_seconds": 546.8674234640057,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 17.318897186999997,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 1424,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 4,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 8,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 68781.27752846066
+    },
+    "person_tracking": {
+      "measured_node_seconds": 667.4299005779976,
+      "successful_node_seconds": 667.4299005779976,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 26.588894913999997,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 1424,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 4,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 8,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 83242.31364164234
+    },
+    "player_association": {
+      "measured_node_seconds": 9.520681826004875,
+      "successful_node_seconds": 9.520681826004875,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0.423498131,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 2,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 1181.7285763688803
+    },
+    "player_selection": {
+      "measured_node_seconds": 4.6389073000027565,
+      "successful_node_seconds": 4.6389073000027565,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 1424,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 4,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 8,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 602.3803557992344
+    },
+    "player_triangulation": {
+      "measured_node_seconds": 153.60686915199767,
+      "successful_node_seconds": 153.60686915199767,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 2,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 19946.456031344238
+    },
+    "pose_estimation": {
+      "measured_node_seconds": 0.4459879189962521,
+      "successful_node_seconds": 0.4459879189962521,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 1424,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 4,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 8,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 57.91328516673805
+    },
+    "scene_assembly": {
+      "measured_node_seconds": 2.2282691639993573,
+      "successful_node_seconds": 2.2282691639993573,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000"
+      ],
+      "sample_frame_units": 356,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 1,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 2,
+      "scaling": "source_frames",
+      "projection_ratio": 129.85393258426967,
+      "estimated_69clip_seconds": 289.34951380157946
+    }
+  },
+  "estimated_69clip_node_hours": 55.565909559562556,
+  "overhead_estimates": {
+    "stages": [
+      {
+        "stage": "scene_export",
+        "measured_seconds": 6.580736055,
+        "successful_seconds": 6.580736055,
+        "successful_clip_ids": [
+          "video_000/clip_000"
+        ],
+        "sample_frame_units": 356,
+        "scaling": "clip_count_and_source_frame_scenarios",
+        "estimated_69clip_seconds_range": [
+          454.070787795,
+          854.5344560408427
+        ]
+      },
+      {
+        "stage": "clip_publication",
+        "measured_seconds": 1.660345859,
+        "successful_seconds": 1.660345859,
+        "successful_clip_ids": [
+          "video_000/clip_000"
+        ],
+        "sample_frame_units": 356,
+        "scaling": "clip_count_and_source_frame_scenarios",
+        "estimated_69clip_seconds_range": [
+          114.563864271,
+          215.6024392411573
+        ]
+      }
+    ],
+    "remaining_seconds": 341.006290378979,
+    "attempted_sample_clips": 3,
+    "estimated_69clip_remaining_seconds_range": [
+      341.006290378979,
+      7843.144678716516
+    ]
+  },
+  "estimated_69clip_wall_hours_range": [
+    55.8185875991306,
+    58.04182110789547
+  ],
+  "estimate_complete_sample": false,
+  "estimate_limits": "Conditional all-success projection from actually executed nodes: lifecycle fixed once, court/calibration by successful clip/camera units, other nodes by successful source-frame units. Export/publication has clip-linear to frame-linear scenarios; remaining preparation has video-fixed to clip-linear scenarios. Failed/blocked work is excluded from successful-stage rates. Includes first compile and global profiler overhead, no repeated trials. Entry import/preflight outside the recorder is additional. Not a confidence interval or a promise of full69 success; not a speedup ratio.",
+  "comparison": {
+    "strict": true,
+    "all_arrays_exact": true,
+    "all_discrete_exact": true,
+    "c3_policy_reference": false,
+    "ball_detection_error_px": [
+      {
+        "camera": "cam0",
+        "max_axis": 0.0,
+        "max_l2": 0.0
+      },
+      {
+        "camera": "cam1",
+        "max_axis": 0.0,
+        "max_l2": 0.0
+      },
+      {
+        "camera": "cam2",
+        "max_axis": 0.0,
+        "max_l2": 0.0
+      },
+      {
+        "camera": "cam3",
+        "max_axis": 0.0,
+        "max_l2": 0.0
+      }
+    ],
+    "ball_final_position_error_m": {
+      "max_axis": 0.0,
+      "max_l2": 0.0
+    }
+  }
+}

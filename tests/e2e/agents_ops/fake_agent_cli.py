@@ -39,6 +39,8 @@ def main() -> None:
         )
     agent = Path(sys.argv[0]).name
     scenario = os.environ.get("FAKE_SCENARIO", "success")
+    if scenario == "signal_before_session":
+        os.kill(os.getpid(), signal.SIGTERM)
     if scenario == "model_unavailable":
         print("selected model is not available", file=sys.stderr)
         raise SystemExit(7)
@@ -74,6 +76,8 @@ def main() -> None:
                 if scenario == "wrong_effort"
                 else "max"
                 if 'model_reasoning_effort="max"' in args
+                else "high"
+                if 'model_reasoning_effort="high"' in args
                 else "xhigh",
             }
             with path.open("a") as stream:
@@ -100,8 +104,13 @@ def main() -> None:
                 if scenario == "corrupt_transcript":
                     stream.write('{"type":"turn_context"}\n')
         emit({"type": "turn.started"})
-        if scenario == "web_search":
-            for kind in ("item.started", "item.completed"):
+        if scenario in {"web_search", "web_search_signal"}:
+            kinds = (
+                ("item.started",)
+                if scenario == "web_search_signal"
+                else ("item.started", "item.completed")
+            )
+            for kind in kinds:
                 # Codex 0.163.0 flattens WebSearchItem.id into ThreadItem.id.
                 print(
                     '{"type":' + json.dumps(kind) + ',"item":'
@@ -110,6 +119,8 @@ def main() -> None:
                     '"queries":["test query"]}}}',
                     flush=True,
                 )
+            if scenario == "web_search_signal":
+                os.kill(os.getpid(), signal.SIGTERM)
     else:
         emit(
             {
@@ -143,14 +154,18 @@ def main() -> None:
                 sys.stdout.close()
                 os.close(1)
             time.sleep(60)
-    if scenario == "malformed":
+    if scenario in {"malformed", "malformed_and_wait"}:
         print("not JSON", flush=True)
+        if scenario == "malformed_and_wait":
+            signal.pause()
         return
     if scenario == "duplicate_keys":
         print('{"type":"turn.completed","type":"turn.failed"}', flush=True)
         return
-    if scenario == "quota":
+    if scenario in {"quota", "runtime_error_signal"}:
         emit({"type": "turn.failed", "error": {"message": "usage limit exceeded"}})
+        if scenario == "runtime_error_signal":
+            os.kill(os.getpid(), signal.SIGTERM)
         return
     if scenario == "exit_error":
         print("configured model unavailable", file=sys.stderr)
@@ -172,9 +187,13 @@ def main() -> None:
             return
     structured = "--json-schema" in args or "--output-schema" in args
     payload = {"message": prompt.strip()}
+    if payload_file := os.environ.get("FAKE_STRUCTURED_OUTPUT_FILE"):
+        payload = json.loads(Path(payload_file).read_text(encoding="utf-8"))
     if scenario == "schema_mismatch":
         payload = {"message": 123}
     final = json.dumps(payload) if structured else prompt
+    if not structured and os.environ.get("FAKE_WORKER_RESULT"):
+        final += '\n\nPARENT_RESULT {"schema_version":1,"state":"done","wait":null}\n'
     if scenario == "schema_preamble":
         final = "I'm writing the final JSON now.\n\n" + final
     if agent == "codex":
@@ -216,10 +235,10 @@ def main() -> None:
             {
                 "type": "result",
                 "subtype": "error_max_structured_output_retries"
-                if scenario == "schema_retries"
+                if scenario in {"schema_retries", "schema_retries_signal"}
                 else "success",
                 "session_id": session,
-                "is_error": scenario == "schema_retries",
+                "is_error": scenario in {"schema_retries", "schema_retries_signal"},
                 "result": "I'm writing the final JSON now.\n\n" + final
                 if structured
                 else final,
@@ -234,6 +253,10 @@ def main() -> None:
                 "total_cost_usd": 0.01,
             }
         )
+    if scenario == "signal_after_completion":
+        os.kill(os.getpid(), signal.SIGKILL)
+    if scenario == "schema_retries_signal":
+        os.kill(os.getpid(), signal.SIGTERM)
 
 
 if __name__ == "__main__":

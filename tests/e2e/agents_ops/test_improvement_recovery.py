@@ -137,7 +137,7 @@ def test_publication_with_decision_link_recovers_after_response_loss_and_concurr
 
         store = importlib.import_module("parent.state").Store(state_dir(p))
         parsed = (
-            importlib.import_module("parent.cli")
+            importlib.import_module("parent.cli_impl")
             .parser()
             .parse_args(["--repo", "o/r", "--parent", "1", *args])
         )
@@ -448,6 +448,9 @@ def approved_gate(
             decisions=decisions,
         )
         first_approval.append(decisions["first"])
+        # Automatic progression follows this source parent by its saved binding,
+        # without discovering evidence through a repository-wide issue listing.
+        p.cli("evidence", "--create", parent="2")
         p.cli("agree", "--improvement-approval", decisions["first"])
 
     monkeypatch.setattr(p, "agreed", agreed_improvement)

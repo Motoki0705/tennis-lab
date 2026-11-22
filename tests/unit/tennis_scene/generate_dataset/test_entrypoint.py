@@ -30,6 +30,12 @@ def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
     calls: list[PathRole] = []
 
     def create(runtime: PipelineRuntimeConfig) -> SimpleNamespace:
+        archive: Path | None = None
+
+        def completed_export() -> Path:
+            assert archive is not None
+            return archive
+
         def run(
             *,
             video_paths: Sequence[Path],
@@ -39,6 +45,7 @@ def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
             clip_id: str,
             max_frames: int | None,
         ) -> SceneResult:
+            nonlocal archive
             del camera_ids, max_frames
             # Structured clips always own their store; it is passed explicitly.
             assert store_root == video_paths[0].parents[1] / "annotations" / "tennis_scene"
@@ -46,10 +53,11 @@ def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
             for path in video_paths:
                 runtime.resolver.validate(video_role, path)
             calls.append(video_role)
-            publish_scene_to_clip_store(store_root.parents[1], clip_id, valid_scene_result)
+            archive = publish_scene_to_clip_store(store_root.parents[1], clip_id, valid_scene_result)
             return valid_scene_result
 
-        return SimpleNamespace(run=run, publication_identity=lambda: {"test": "fixed"}, last_receipt={})
+        return SimpleNamespace(run=run, publication_identity=lambda: {"test": "fixed"}, last_receipt={},
+                               completed_scene_export=completed_export)
 
     monkeypatch.setattr(TennisSceneOrchestrator, "from_runtime_config", create)
     with initialize_config_dir(
@@ -84,8 +92,12 @@ from src.tennis_scene.pipeline import TennisSceneOrchestrator
 def fail(**kwargs):
     raise ValueError("deliberate clip failure")
 
+def no_export():
+    raise AssertionError("A failed clip must not reach publication")
+
 with patch.object(TennisSceneOrchestrator, "from_runtime_config",
-                  return_value=SimpleNamespace(run=fail, publication_identity=lambda: {"test": "fixed"}, last_receipt={})):
+                  return_value=SimpleNamespace(run=fail, publication_identity=lambda: {"test": "fixed"}, last_receipt={},
+                                               completed_scene_export=no_export)):
     runpy.run_module("src.tennis_scene.scripts.generate_dataset", run_name="__main__")
 """
     completed = subprocess.run(

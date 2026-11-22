@@ -226,6 +226,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.export_blender_placement": "tennis_scene.blender_placement",
     "src.tennis_scene.scripts.export_blender_rays": "tennis_scene.export_blender_rays",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
+    "src.tennis_scene.scripts.run_video_batch": "tennis_scene.run_video_batch",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
     "src.tennis_scene.scripts.preflight": "tennis_scene.preflight",
     "src.tennis_scene.scripts.visualization": "tennis_scene.visualization",
@@ -288,6 +289,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.export_blender_placement": "src.tennis_scene.configuration.validate_blender_placement_boundary",
     "src.tennis_scene.scripts.export_blender_rays": "src.tennis_scene.visualization.blender.export.rays_configuration.validate_rays_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
+    "src.tennis_scene.scripts.run_video_batch": "src.tennis_scene.configuration.validate_video_batch_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
     "src.tennis_scene.scripts.preflight": "src.tennis_scene.scripts.preflight.validate_preflight_boundary",
     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
@@ -403,6 +405,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     ),
     "src.tennis_scene.clip_studio.__main__": (
         "tennis_scene.clip_studio_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tennis_scene.scripts.tensorrt": (
+        "tennis_scene.tensorrt",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tasks.ball_refiner_3d.scripts.evaluate": (
@@ -612,6 +618,10 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         optional_policy="gvhmr_root is required when installing; --list may omit it, but any supplied checkout is validated",
     ),
     _non_hydra_boundary("src.tennis_scene.clip_studio.__main__", "main", domain="tennis_scene", executable_module=True),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.tensorrt", "main", domain="tennis_scene", executable_module=True,
+        optional_policy="build requires the ONNX export manifest in the caller-selected output directory",
+    ),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.evaluate", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.predict", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.review_dataset", "main", domain="ball_refiner_3d", executable_module=True),
@@ -878,6 +888,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_placement"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_rays"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_video_batch"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.preflight"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualization"),

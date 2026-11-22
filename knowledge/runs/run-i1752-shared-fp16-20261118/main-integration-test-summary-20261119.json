@@ -1,0 +1,17 @@
+{
+  "total": 1551,
+  "groups": {
+    "unit/tennis_scene": 1144,
+    "integration/tennis_scene": 212,
+    "unit/submodules": 193,
+    "e2e/tennis_scene": 2
+  },
+  "maximum_expansion": 30,
+  "wall_seconds": 148.99,
+  "precommit_python_files": 58,
+  "maximum_case_seconds": 14.54,
+  "maximum_case_node": "tests/e2e/tennis_scene/test_video_batch_cli.py::test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure[False]",
+  "maximum_setup_seconds": 0.62,
+  "gpu_run": false,
+  "independent_validators": 0
+}

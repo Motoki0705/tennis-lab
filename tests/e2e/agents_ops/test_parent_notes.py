@@ -4,23 +4,19 @@ from __future__ import annotations
 
 import importlib
 import json
-from typing import cast
 
 import pytest
 
 from tests.e2e.agents_ops.test_execution_basis import (
-    auto_gate,
     autonomous,
     ordinary_comment,
     registry,
 )
-from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
     evidence_comments,
     evidence_number,
-    review_setup,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
@@ -148,36 +144,6 @@ def test_note_character_limit_accepts_multibyte_text(parent_env: ParentEnv) -> N
     p.cli("status")
 
 
-def test_note_keeps_frozen_review_requirements_and_request(
-    parent_env: ParentEnv,
-) -> None:
-    p = parent_env
-    selected = review_setup(p)
-    args = ("review-prepare", *p.review_flags(), "--prs", *map(str, selected))
-    prepared = p.cli(*args).stdout
-    p.cli("note", "--body-file", p.note("対象PR群の確認を完了した。"))
-    assert p.cli(*args).stdout == prepared
-    run = json.loads(prepared)["review_run_id"]
-    instructed = p.cli(
-        "review-request",
-        "--run-id",
-        run,
-        "--instruction-file",
-        p.note("対象をレビューする。"),
-    ).stdout
-    p.cli("note", "--body-file", p.note("レビューを指示した。"))
-    assert (
-        p.cli(
-            "review-request",
-            "--run-id",
-            run,
-            "--instruction-file",
-            p.note("対象をレビューする。"),
-        ).stdout
-        == instructed
-    )
-
-
 def test_note_does_not_classify_existing_unclassified_comments(
     parent_env: ParentEnv,
 ) -> None:
@@ -190,66 +156,6 @@ def test_note_does_not_classify_existing_unclassified_comments(
     # The parent reads the instruction and suspends the affected authority.
     p.cli("basis-revoke", "--reason-file", p.note("範囲変更を確認するため保留。"))
     p.child("unclassified", ok=False)
-
-
-@pytest.mark.parametrize("kind", ["human", "autonomous"])
-@pytest.mark.parametrize("comment", ["same-body", "human-instruction"])
-def test_note_preserves_review_and_merge_but_ordinary_comments_block(
-    parent_env: ParentEnv,
-    monkeypatch: pytest.MonkeyPatch,
-    request: pytest.FixtureRequest,
-    kind: str,
-    comment: str,
-) -> None:
-    p = parent_env
-    g = (
-        auto_gate(p, monkeypatch)
-        if kind == "autonomous"
-        else cast(GateEnv, request.getfixturevalue("gate_env"))
-    )
-    inputs = p.cli("basis-input").stdout
-    frozen = registry(p).read_bytes(), (g.review.run_dir / "result.json").read_bytes()
-    text = "## 進捗\n\n親が結果・差分・CI・回帰テストを確認した。"
-    p.cli("note", "--body-file", p.note(text))
-    assert p.cli("basis-input").stdout == inputs
-    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert all(row["decision"] == "merge" for row in rows.values())
-    assert (
-        registry(p).read_bytes(),
-        (g.review.run_dir / "result.json").read_bytes(),
-    ) == frozen
-    child = str(p.state()["next"])
-    p.child("note-preserves-basis")
-    worktree = p.worktree("note-worker")
-    p.cli(
-        "delegate",
-        "--child",
-        child,
-        "--agent",
-        "codex",
-        "--branch",
-        "codex/note-worker",
-        "--worktree",
-        str(worktree),
-    )
-
-    added = ordinary_comment(
-        p,
-        text if comment == "same-body" else "作業を停止して要件を確認してください。",
-        "operator" if comment == "same-body" else "human",
-    )
-    current = json.loads(p.cli("basis-input").stdout)
-    assert current["comments"][-1]["id"] == added["id"]
-    notices = json.loads(p.cli("status").stdout)["input_changes"]["comments"]
-    assert any(c["id"] == added["id"] for c in notices)
-    if comment == "human-instruction":
-        p.cli("basis-revoke", "--reason-file", p.note("親が停止指示を確認した。"))
-        assert g.cli("merge").returncode == 2
-        p.child("unclassified", ok=False)
-    else:
-        rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-        assert all(row["decision"] == "merge" for row in rows.values())
-    assert not g.merge_calls() and len(g.review.calls()) == 1
 
 
 @pytest.mark.parametrize("change", ["body", "digest", "generation", "field"])

@@ -25,15 +25,47 @@ class TrustedCheckout:
         self.run_dir = run_dir.resolve()
         if self.run_dir.is_relative_to(self.root):
             raise WorkspaceError("private_directory_inside_checkout")
-        if (
-            Path(os.fsdecode(self.git("rev-parse", "--show-toplevel")).strip())
-            != self.root
-        ):
-            raise WorkspaceError("invalid_controller_checkout")
-        self.head = self.git("rev-parse", "HEAD").decode().strip()
+        try:
+            toplevel = Path(
+                os.fsdecode(self.git("rev-parse", "--show-toplevel")).strip()
+            )
+            if toplevel != self.root:
+                raise WorkspaceError("invalid_controller_checkout")
+            self.head = self.git("rev-parse", "HEAD").decode().strip()
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise WorkspaceError("invalid_controller_checkout") from exc
         # A model must start from the same committed code that performs checks.
-        self.git("diff", "--quiet", "--no-ext-diff", "--no-textconv", "HEAD", "--")
-        self.baseline = self.snapshot()
+        # Verify the index matches HEAD completely (including gitlinks), while
+        # ignoring submodule working trees that a self-hosted runner may retain
+        # at an older commit when actions/checkout runs with submodules: false.
+        try:
+            self.git(
+                "diff",
+                "--cached",
+                "--quiet",
+                "--no-ext-diff",
+                "--no-textconv",
+                "HEAD",
+                "--",
+            )
+            self.git(
+                "diff",
+                "--quiet",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--ignore-submodules=all",
+                "--",
+            )
+        except subprocess.CalledProcessError as exc:
+            if exc.returncode == 1:
+                raise WorkspaceError("dirty_controller_checkout") from exc
+            raise WorkspaceError("invalid_controller_checkout") from exc
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise WorkspaceError("invalid_controller_checkout") from exc
+        try:
+            self.baseline = self.snapshot()
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise WorkspaceError("invalid_controller_checkout") from exc
 
     def git(self, *args: str) -> bytes:
         return subprocess.run(
@@ -59,7 +91,7 @@ class TrustedCheckout:
                 continue
             metadata, name = entry.split(b"\t", 1)
             if metadata.startswith(b"160000 "):
-                continue  # Uninitialized submodules are not controller files.
+                continue  # Submodules are not controller files (submodules: false).
             path = self.root / os.fsdecode(name)
             mode = path.lstat().st_mode
             if stat.S_ISLNK(mode):
@@ -103,14 +135,23 @@ class TrustedCheckout:
             prefix="issue-supplement-", dir=self.run_dir.parent
         ) as temporary:
             checkout = Path(temporary) / "checkout"
+            created = False
             try:
-                self.git("worktree", "add", "--detach", str(checkout), self.head)
+                try:
+                    self.git("worktree", "add", "--detach", str(checkout), self.head)
+                except (OSError, subprocess.SubprocessError) as exc:
+                    raise WorkspaceError("model_workspace_setup_failed") from exc
+                created = True
                 yield checkout
             finally:
                 # --force removes model edits and untracked files on every
                 # exit, including schema errors and integrity check failures.
                 # Remove only this registration; never prune other worktrees.
-                try:
-                    self.git("worktree", "remove", "--force", str(checkout))
-                except (OSError, subprocess.SubprocessError) as exc:
-                    raise WorkspaceError("model_workspace_cleanup_failed") from exc
+                if created or checkout.exists():
+                    try:
+                        self.git("worktree", "remove", "--force", str(checkout))
+                    except (OSError, subprocess.SubprocessError) as exc:
+                        if created:
+                            raise WorkspaceError(
+                                "model_workspace_cleanup_failed"
+                            ) from exc

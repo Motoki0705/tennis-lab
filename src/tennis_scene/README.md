@@ -7,7 +7,7 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 
 1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正を作る。
 2. 全画面の人物検出にpose・外観特徴を付けて追跡し、コート座標で選手を選別する。各camera/frameの検出点と観測maskを保存する。
-3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
+3. court side（`court_side`）を多視点の幾何で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。証拠はballが既定で、`court_side.evidence=player` で選手の足元観測を使える。
 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
 5. ボールの動きの外れ値を除去し、頑健な2次LOESSで平滑化。人物の同一ID観測と、各カメラの採用した実ボール観測を三角測量。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
@@ -52,6 +52,98 @@ storeの採用済みartifactは、推論もstoreへの書き込みもせずにHT
 
 source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認する画面と、
 `--serve --port 8903`での起動方法は[visualization/review/README.md](visualization/review/README.md)を参照してください。
+
+## 登録済みvideoの一括再構成
+
+`run_video_batch`は`dataset.json`に登録された同じ`video_id`の全clipを1つの
+`ExecutionPlan`へまとめます。モデルを段階ごとに共有し、各推論はclip・cameraごとの
+既存windowとbatch設定を使うのが既定です。`batching.enabled=true`で互換なframe・検出crop・
+時間窓を複数clip/cameraから集めます。各上限と比較条件は
+[横断バッチの設定](pipeline/README.md#横断バッチの設定)を参照してください。
+既定のpipelineは`pipeline`です。
+構成は単一入口と同じ[設定](../tasks/court_side/README.md#プレーヤーから判定する)を
+`pipeline_overrides`で明示します。
+
+| 用途 | `court_side.evidence` | `ball_detection.enabled` | `ball_reconstruction.enabled` |
+|---|---|---|---|
+| プレーヤーのみの本番 | `player` | `false` | `false` |
+| ボール推論・再構成も含むbenchmark | `player` | `true` | `true` |
+
+ボールありでX3D/CSN＋DPT T32を使う場合は`pipeline_config=pipeline_x3d_dpt`も指定します。
+プレーヤーのみではball検出・2D点・三角測量のnodeとモデル読込を省き、sceneのballは無効maskになります。
+省いた段への個別`execution.<段>=load`は共通設定検証で拒否します。
+人物対応での保存CLIP再利用は共通の`player_association.reuse_clip_embeddings`を
+同じoverridesで指定できます。既定は`false`で、benchmarkの比較時に明示して切り替えます。
+
+meiji_4camの例です。
+この動画はダブルスなので、`player_association.players_per_side=2`も明示します。
+人物数の既定値は各side 1人です。
+`court_kp.mode=clip`を選ぶ例です。
+
+```bash
+# GPU実行はこのコマンドを共有training queueへ登録する。
+.venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
+  dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
+  video_id=video_000 \
+  batching.enabled=true \
+  pipeline_config=pipeline \
+  'pipeline_overrides=["court_kp.mode=clip","court_side.mode=clip","court_side.evidence=player","ball_detection.enabled=false","ball_reconstruction.enabled=false","player_association.players_per_side=2"]'
+```
+
+`court_kp.mode=video_shared`では、計画を組む前に`prepare_video_court`でvideo全体の
+共有コートをbuildまたはloadし、同じ成果物を全clipへ束縛します。次は準備済みbundleを
+ARTIFACT rootの`tennis_scene/court_shared/meiji_4cam`からloadする例です。
+`VIDEO_COURT_ARTIFACT_DIGEST`へ準備APIが返したdigestを設定して実行します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
+  dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
+  video_id=video_000 batching.enabled=true pipeline_config=pipeline \
+  "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"court_side.mode=clip\",\"court_side.evidence=player\",\"ball_detection.enabled=false\",\"ball_reconstruction.enabled=false\",\"player_association.players_per_side=2\"]"
+```
+
+dataset/videoのscopeと各clipのmediaを共有成果物へ照合します。build用request、診断成果物の
+選択と検査不能時の方針は、共有コートの設定を使います。取得の規則は
+[共有コートのREADME](pipeline/video_court/README.ja.md)を参照してください。
+
+`court_side.mode=video_shared`では、その後に`prepare_video_court_side`で共有の
+コート向きを1回buildまたはloadしてから、全clipの計画を作ります。
+`court_side.video_shared.action`と`directory`、load時の`artifact_digest`を同じ
+`pipeline_overrides`へ追加します。個別clipのmargin不足などは進捗の
+`video_court_side.clips`へ残し、共有判定との矛盾はclip固有の失敗になります。
+進捗には共有判定の証拠種別も記録します。player証拠のbuild/loadにはplayerの成果物を指定し、
+ball証拠の成果物は流用しません。全clipのplayer観測が未準備の場合は`court_side.mode=clip`で
+各clipの選別後に判定します。
+設定とpinの契約は[共有court_sideのREADME](pipeline/video_court_side/README.ja.md)を参照してください。
+
+meiji_4camでは、同じoverridesへ`people_models.runtime.dino_detector.precision=fp16`と
+`people_models.runtime.vitpose.precision=fp16`も明示します。両方の既定値は`fp32`です。
+精度を変更すると対応するcomponentと下流のcacheが更新されます。
+
+`clip_ids=[video_000/clip_000,video_000/clip_001]`で明示subsetを指定できます。
+別video・未知・重複・空の指定、manifestと実mediaのcamera対応・FPS・解像度・frame数の
+不一致は、推論の開始前に拒否します。対象と展開済み設定は開始時に固定します。
+実行中に登録されたclipは次回の対象になります。
+
+clipの全nodeが完成すると、共通のexportとdataset publisherがそのclipの
+`annotations/tennis_scene/annotation.json`を公開します。`continue_on_error=true`では、
+`clip_too_long`などの入力・再構成失敗を記録し、そのclipの未完了nodeをblockedにして
+他のclipを続けます。共有モデルの読込・解放失敗、CUDA/deviceエラー、中断は実行を停止します。
+失敗が残ると終了コードは非0です。`continue_on_error=false`で最初の失敗時に停止できます。
+
+同じコマンドの再実行では、同じ設定・入力の完成markerをskipし、markerがないclipでも
+完成済みのcomponentをcacheから再利用します。古い設定のmarkerは`overwrite=true`を要求します。
+componentの強制再計算には`pipeline_overrides=["cache.overwrite=true"]`を指定します。
+壊れたartifactとexportは理由付きで拒否します。復旧時は破損箇所を確認し、対応する
+再生成・新しいstoreを明示してください。
+
+OUTPUT配下の`progress_directory/<実行ID>/progress.json`へ対象・設定・node状態・clipの
+成功／skip／失敗／blocked、モデルload/unload、実batch shapeごとの件数を保存します。
+隣の`recording.json`には[C1 recorder](../utils/inference_recording.md)が充填率、
+clipをまたいだbatch数、実行passごとのモデルload回数・動画open回数、作業量のピークを記録します。
+`record_cuda=true`で同期付きCUDA計測とVRAMピークを有効にできます。
+再開時は新しい進捗記録を作り、component storeから状態を照合します。
+datasetの完成判定にはclipごとの`annotation.json`と採用中scene exportを使います。
 
 ## 座標・対応
 

@@ -1,15 +1,22 @@
 ---
-title: "src パッケージはインストールされておらず、カレントディレクトリから import される"
+title: 共有venvのpython -m srcは起動したcheckoutのソースを読む
+summary: 共有.venvで使われるsrcは実行時のカレントディレクトリで決まる。試すworktreeから実行・enqueueする。
 applies_to: all
-source: "#525 asym 実験の無効化（2026-06-20）、#507、#576"
+source: '#540のasym実験（2026-06-20、2026-06-21に撤回）、#535の再計測、#507、#576'
 created: 2026-06-20
-last_verified: 2026-10-10
-evidence: "repo外のディレクトリで `.venv/bin/python -c \"import src\"` を実行すると ModuleNotFoundError になる。worktree内で実行すると src.__file__ はそのworktreeを指す"
+last_verified: 2026-11-20
+evidence: '#540のdeep16・wideのknowledgeノードと2026-11-20の共有venvでのfind_spec(''src'')の観察。training queueはenqueue時のPWDを記録する。'
+citations:
+- path: knowledge/nodes/plcs/000038-run-i540-asym-deep16.md
+  symbol: 作業ディレクトリ取り違えによる no-op 計測
+- path: knowledge/nodes/plcs/000039-run-i540-asym-wide.md
+  symbol: 作業ディレクトリ取り違えによる no-op 計測
+- path: .agents/skills/training-queue/scripts/training_queue.sh
+  symbol: _json_str "$PWD"
+- path: .agents/ops/storage_tier/README.md
+  symbol: '#worktrees-and-service'
 ---
 
-`.venv` に tennis-lab の editable install はない。`python -m src....` は、カレントディレクトリの `src/` を import する。どの `.venv/bin/python` を使うかではなく、**どこで実行したか**で、使われるコードが決まる。
+共有 `.venv` のPythonでも、通常の `python -m src.…` は起動時のcheckoutから `src` を読む。2026-11-20は共有 `.venv` でrepo外から `src` が見つからず、作業worktreeからは `src.__file__` がそのworktreeを指した。
 
-- メインtreeで実行すると、worktreeで追加したオプションは存在しない。新しいconfigキーが既存コードに黙って無視されることがある（#535 の asym 実験は、メインtreeで実行されて無効になった）。
-- training-queue は、enqueue したときのカレントディレクトリをjobに記録する。worktreeのコードで学習したいときは、worktreeをカレントディレクトリにしてenqueueする。このとき `TRAINING_QUEUE_DIR` にメインtreeの `.training_queue` を明示しないと、worktree内に誰も処理しないqueueができる。`data/`・`run.output_dir`・初期重みはメインtreeの絶対パスで渡す（worktreeの `outputs/` は追跡されている実ディレクトリなので、symlinkを張ると中に入れ子になる）。
-
-**使い方:** worktreeのコードを試すときは、worktreeに `cd` してから実行する。学習の開始時ログ（パラメータ数など）で、意図したコードが動いているかを確かめる。新しいconfigキーは Hydra の struct モードのおかげで、古いコードでは読み込みエラーになる。これが古いコードの検出に使える。
+#540のasym 2 runはメインcheckoutから起動して非対称の設定が適用されず、2026-06-21に撤回された。#535で意図したworktreeから再計測した。直接実行もqueueへの投入も試すworktreeで行い、起動時の `src.__file__` やモデルのパラメータ数で実行版を確かめる。

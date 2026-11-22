@@ -4,20 +4,17 @@ from __future__ import annotations
 
 import importlib
 import json
-from typing import Any
 
 import pytest
 
 from tests.e2e.agents_ops.test_dispatcher_judgement import decision
 from tests.e2e.agents_ops.test_execution_basis import (
     ignored_comment,
-    ordinary_comment,
     record,
     registry,
     spec,
 )
 from tests.e2e.agents_ops.test_human_agreement import agreements, delegation_args
-from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
@@ -55,45 +52,6 @@ def publish(
         with store.locked():
             session = sessions.ParentSession(sessions.GitHub("o/r"), store, n, None)
             return str(judgement.publish_decision(session, d, snapshot))
-
-
-@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
-def test_judgement_publication_preserves_human_delegate_review_and_merge(
-    gate_env: GateEnv, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    g, p = gate_env, gate_env.review.p
-    frozen = (g.review.run_dir / "result.json").read_bytes(), registry(p).read_bytes()
-    for n, disposition in ((1, "human_hold"), (10, "existing_parent")):
-        assert publish(p, monkeypatch, n, disposition) == "created"
-        assert (
-            publish(p, monkeypatch, n, disposition, "判定理由の表示を更新した。")
-            == "updated"
-        )
-    assert (
-        (g.review.run_dir / "result.json").read_bytes(),
-        registry(p).read_bytes(),
-    ) == frozen
-    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert all(row["decision"] == "merge" for row in rows.values())
-    assert g.merge_calls() == [] and len(g.review.calls()) == 1
-    # Main's delegate is the reservation path also used by parallel child launch.
-    p.child("next")
-    launch = json.loads(p.cli(*delegation_args(p.worktree("next"), child=13)).stdout)
-    assert launch["action"] == "launch"
-    assert launch["assignment"]["authorization"] == g.review.request["authorization"]
-    prepared = json.loads(
-        p.cli(
-            "review-prepare",
-            *p.review_flags(),
-            "--prs",
-            "100",
-            "101",
-            "102",
-            "--reason-file",
-            p.note("判定表示の更新後もレビュー準備できることをfakeで検査する。"),
-        ).stdout
-    )
-    assert prepared["authorization"] == g.review.request["authorization"]
 
 
 @pytest.mark.parametrize("legacy_ignored", [False, True])
@@ -159,97 +117,3 @@ def test_legacy_human_snapshot_with_judgement_remains_executable(
     p.child("legacy")
     launch = json.loads(p.cli(*delegation_args(p.worktree("legacy"))).stdout)
     assert launch["action"] == "launch"
-
-
-@pytest.mark.parametrize(
-    "change",
-    [
-        "plain",
-        "quoted",
-        "prefix_only",
-        "appended",
-        "digest",
-        "publisher",
-        "issue",
-        "repo",
-    ],
-)
-@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
-def test_judgement_validation_and_parent_control_of_instructions(
-    gate_env: GateEnv, monkeypatch: pytest.MonkeyPatch, change: str
-) -> None:
-    g, p = gate_env, gate_env.review.p
-    publish(p, monkeypatch, 1, "human_hold")
-    state = p.state()
-    display = evidence_comments(state)[-1]
-    body = display["body"]
-    login = "operator"
-    if change == "plain":
-        body = "この作業を停止してください。"
-    elif change == "quoted":
-        body = "人間の指示: 作業停止。\n\n" + body
-    elif change == "prefix_only":
-        body = "<!-- issue-start-judgement:v1 作業停止 -->\n\n作業を止める。"
-    elif change == "appended":
-        body += "\n\n追加指示: 作業を停止してください。"
-    elif change == "publisher":
-        login = "another-publisher"
-    else:
-        records = importlib.import_module("dispatcher.records")
-        data: dict[str, Any] = json.loads(
-            body.splitlines()[0][len(records.PREFIX) : -4]
-        )
-        if change == "digest":
-            data["detail_sha256"] = "0" * 64
-            body = records.PREFIX + json.dumps(data) + " -->" + body[body.index("\n") :]
-        else:
-            body = records.comment_body(
-                "other/repository" if change == "repo" else "o/r",
-                2 if change == "issue" else 1,
-                data["detail"],
-            )
-    comment = ordinary_comment(p, body, login)
-    before = p.state(), registry(p).read_bytes()
-    if change not in {"plain", "quoted", "publisher"}:
-        # Corrupted publisher records still fail structural validation.
-        response = p.cli("status", ok=False)
-        assert response.returncode == 2
-        expected = "Expecting value" if change == "prefix_only" else "judgement comment"
-        assert expected in response.stderr
-        assert (p.state(), registry(p).read_bytes()) == before
-        assert g.merge_calls() == [] and len(g.review.calls()) == 1
-        return
-    notices = json.loads(p.cli("status").stdout)["input_changes"]
-    assert notices["comments"] == [
-        {
-            "id": comment["id"],
-            "change": "added",
-            "url": f"https://github.com/o/r/issues/1#issuecomment-{comment['id']}",
-        }
-    ]
-    assert (p.state(), registry(p).read_bytes()) == before
-    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert all(row["decision"] == "merge" for row in rows.values())
-    p.cli(
-        "review-prepare",
-        *p.review_flags(),
-        "--prs",
-        "100",
-        "101",
-        "102",
-        "--reason-file",
-        p.note("追加コメントを確認し、既存の対象と証拠が適用できると判断した。"),
-    )
-    # The parent interprets the notice and explicitly revokes execution authority.
-    p.cli("basis-revoke", "--reason-file", p.note("追加の停止指示を親が確認した。"))
-    before = p.state(), registry(p).read_bytes()
-    responses = [
-        p.cli(*delegation_args(p.worktree("blocked")), ok=False),
-        p.cli(
-            "review-prepare", *p.review_flags(), "--prs", "100", "101", "102", ok=False
-        ),
-        g.cli("merge"),
-    ]
-    assert all(response.returncode == 2 for response in responses)
-    assert (p.state(), registry(p).read_bytes()) == before
-    assert g.merge_calls() == [] and len(g.review.calls()) == 1

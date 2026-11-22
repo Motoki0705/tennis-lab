@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-acceptance-postprocess
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 23 items
+
+tests/unit/tasks/court_detection/inference/test_regions.py ............. [ 56%]
+                                                                         [ 56%]
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py ..........  [100%]
+
+============================== slowest durations ===============================
+0.82s call     tests/unit/tasks/court_detection/inference/test_regions.py::test_rgb_result_uses_full_frame_pixels_without_applying_crop_offset_twice
+0.38s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_failed_geometry_is_invisible_and_never_refit
+0.36s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_frame_size_must_match_the_source
+0.36s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_quality_rejection_cannot_publish_a_calibratable_homography
+0.33s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_component_infers_only_frame_zero_and_normalizes_by_last_pixel
+0.30s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_region_search_runs_on_frame_zero
+0.01s setup    tests/unit/tasks/court_detection/inference/test_regions.py::test_proposals_use_only_image_extent_and_exact_black_padding
+
+(62 durations < 0.005s hidden.  Use -vv to show these durations.)
+============================== 23 passed in 9.61s ==============================

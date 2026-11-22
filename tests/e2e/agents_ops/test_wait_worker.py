@@ -331,7 +331,9 @@ def test_killed_runner_is_liveness_unknown_without_rewriting_evidence(
         assert value["termination_recorded"] is False
         assert value["worker_ended_recorded"] is False
         assert value["final_file"] is None
-        assert value["recovery"].startswith(".agents/ops/lib/README.md#")
+        assert (
+            value["recovery"] == ".agents/skills/parent-session/references/recovery.md"
+        )
         assert json.loads((current / "result.json").read_text()) == record
 
 

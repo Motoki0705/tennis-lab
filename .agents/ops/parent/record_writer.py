@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any
 
@@ -18,7 +19,13 @@ if TYPE_CHECKING:
 
 
 def post_once(
-    session: ParentSession, issue: int, body: str, key: str, *, projection: bool = False
+    session: ParentSession,
+    issue: int,
+    body: str,
+    key: str,
+    *,
+    projection: bool = False,
+    validate: Callable[[list[dict[str, Any]]], None] | None = None,
 ) -> dict[str, Any]:
     """A lost response is reconciled. Absence after a sent intent never causes POST."""
     session.public(body)
@@ -63,9 +70,10 @@ def post_once(
             raise ValueError("comment outbox conflict; inspect the original operation")
         if saved is not None and saved["state"] == "bound":
             number(saved["comment_id"])
+        rows = gh.comments(issue)
         matches = [
             c
-            for c in gh.comments(issue)
+            for c in rows
             if c.get("user", {}).get("login") == session.login and c.get("body") == body
         ]
         if len(matches) > 1:
@@ -81,6 +89,11 @@ def post_once(
                 raise ValueError(
                     "comment publication uncertain; reconcile before any new POST"
                 )
+            if validate is not None:
+                # Validate the same fresh rows used for duplicate detection,
+                # after acquiring the outbox lock, rather than fetching them
+                # once for preparation and again here without intervening I/O.
+                validate(rows)
             atomic(path, {**identity, "state": "sent", "comment_id": None})
             try:
                 gh.write(
@@ -131,92 +144,35 @@ def _write_record(session: ParentSession, body: str) -> dict[str, Any]:
                     session, number(comment["_parent_record_issue"]), body, digest(body)
                 )
             return post_once(session, session.parent, body, digest(body))
-    issue = session.gh.evidence_issues().ensure(
-        session.parent,
-        session.login,
-        store=session.gh._store,
-    )
-    rows = session.gh.comments(issue.number)
-    cid = 1 + max((c["id"] for c in history.comments + rows), default=0)
-    parse_history(
-        session.gh.repo,
-        session.parent,
-        session.login,
-        history.parent_comments,
-        [*rows, {"id": cid, "body": body, "user": {"login": session.login}}],
-        evidence_issue=issue.number,
-    ).require_valid()
-    return post_once(session, issue.number, body, digest(body))
+    manager = session.gh.evidence_issues()
+    destination = history.evidence_issue
+    if destination is None or manager.needs_binding(session.parent, session.login):
+        destination = manager.ensure(
+            session.parent, session.login, store=session.gh._store
+        ).number
+    else:
+        # Keep ensure's work-issue check even though container creation is not
+        # needed. A parent relabelled as evidence/proposal cannot receive a new
+        # machine record merely because its old container still exists.
+        session.gh.issue(session.parent)
+    # read_history has just validated the listing AND the saved binding remotely.
+    # An existing container requires no creation lock or second identical find.
+    # First binding and absent/uncertain creation still need ensure's independent
+    # locked observation and durable journal update.
+
+    def validate(rows: list[dict[str, Any]]) -> None:
+        cid = 1 + max((c["id"] for c in history.comments + rows), default=0)
+        parse_history(
+            session.gh.repo,
+            session.parent,
+            session.login,
+            history.parent_comments,
+            [*rows, {"id": cid, "body": body, "user": {"login": session.login}}],
+            evidence_issue=destination,
+        ).require_valid()
+
+    return post_once(session, destination, body, digest(body), validate=validate)
 
 
 def url(session: ParentSession, comment: dict[str, Any]) -> str:
     return comment_url(session.gh.repo, session.parent, comment)
-
-
-def replace_pending(session: ParentSession, comment: dict[str, Any], body: str) -> None:
-    """Journal the sole mutable record transition before its idempotent PATCH."""
-    from review.parent_review_policy import records
-
-    session.public(body)
-    before = records([comment], session.login)
-    after = records([{"body": body, "user": {"login": session.login}}], session.login)
-    if (
-        len(before) != 1
-        or len(after) != 1
-        or before[0]["kind"] != "pending"
-        or after[0]["kind"] not in {"result", "adoption"}
-        or any(before[0][k] != after[0][k] for k in ("review_run_id", "request_sha256"))
-        or after[0]["request"]["parent_issue"] != session.parent
-    ):
-        raise ValueError("only a matching pending review can be finalized")
-    issue = number(comment.get("_parent_record_issue", session.parent))
-    cid = number(comment["id"])
-    row = {
-        "version": 1,
-        "repo": session.gh.repo.casefold(),
-        "parent": session.parent,
-        "issue": issue,
-        "publisher": session.login,
-        "comment_id": cid,
-        "from_sha256": digest(comment["body"]),
-        "to_sha256": digest(body),
-    }
-    path = (
-        session.store.directory
-        / "comment-updates"
-        / f"{digest([row['repo'], issue, cid])}.json"
-    )
-    with ExitStack() as locks, session.gh.fresh_reads():
-        with session.gh.io_scope():
-            locks.enter_context(locked(path))
-        saved = (
-            comment_journal.load(path, update=True)
-            if path.exists() or path.is_symlink()
-            else None
-        )
-        if saved is not None and any(saved[k] != v for k, v in row.items()):
-            raise ValueError("comment update journal conflict")
-        observed = [c for c in session.gh.comments(issue) if c["id"] == cid]
-        if (
-            len(observed) != 1
-            or observed[0].get("user", {}).get("login") != session.login
-        ):
-            raise ValueError("pending review changed or disappeared")
-        current = digest(observed[0].get("body") or "")
-        if current != row["to_sha256"]:
-            if current != row["from_sha256"] or (saved and saved["state"] == "bound"):
-                raise ValueError("pending review changed after publication")
-            atomic(path, {**row, "state": "sent"})
-            session.gh.write(
-                "PATCH",
-                f"repos/{session.gh.repo}/issues/comments/{cid}",
-                {"body": body},
-            )
-            observed = [c for c in session.gh.comments(issue) if c["id"] == cid]
-            if (
-                len(observed) != 1
-                or observed[0].get("user", {}).get("login") != session.login
-                or observed[0].get("body") != body
-            ):
-                raise ValueError("review update could not be verified")
-        atomic(path, {**row, "state": "bound"})

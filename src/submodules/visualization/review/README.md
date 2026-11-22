@@ -32,10 +32,10 @@ readerは以下のschemaを明示的に受け付ける。未知version・checksu
 
 | component | schema / version | 解釈 |
 |---|---|---|
-| pose_estimation | person_poses v1 | pixel pose、joint confidence、実観測mask |
+| pose_estimation | person_poses v1 / v2 | pixel pose、joint confidence、実観測mask。v2は保存特徴からの出力 |
 | player_association | person_identities v2 / v3 | v2は**履歴の固定track ID**、v3はframeごとのID |
 | body_view_selection | body_view_selection v1 | GVHMRが受けたpixel pose / box / source frame |
-| gvhmr | body_parameters v1 | camera-local translation m、rotation vector rad、betas |
+| gvhmr | body_parameters v1（履歴）/ v2（保存HMR2特徴に依存） | camera-local translation m、rotation vector rad、betas。保存版を維持して表示 |
 | player_triangulation | player_skeletons v1 | 推定COCO17 m、joint validity |
 | body_placement | placed_bodies v1 | root / heading / mesh mask、配置拒否code、保存local vertex |
 

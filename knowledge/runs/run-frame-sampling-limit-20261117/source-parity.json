@@ -1,0 +1,10 @@
+{
+  "base_commit": "486aa1ab09be857909d0fcf8c2b616c75a53f5b0",
+  "python_files_unchanged": true,
+  "sha256": {
+    "src/tennis_scene/pipeline/frame_sampling.py": "9005f3e73701d63f4cb2d4f7e962de53ab6d9691cbc16c9f1398b2ad653a6f4c",
+    "src/tennis_scene/pipeline/components/court_side.py": "88247667bf111c3586c300ccd93e9fabafc741e5b32398e360365b0281a67425",
+    "src/tennis_scene/pipeline/components/camera_alignment.py": "b42a3a9ab8c14a43300803778729369597693500e8ed571fe1a8228d711eeb2e",
+    "src/tennis_scene/pipeline/components/body_view_selection.py": "afb763b839cfbb968b133e7580dff29476f32b039b288857061acb6723b7e5d9"
+  }
+}

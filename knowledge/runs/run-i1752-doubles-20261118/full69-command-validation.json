@@ -1,0 +1,13 @@
+{
+  "command_only": true,
+  "gpu_initialized": false,
+  "dataset": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_4cam/dataset",
+  "video_id": "video_000",
+  "clip_ids": null,
+  "profile": "pipeline_x3d_dpt",
+  "players_per_side": 2,
+  "sampling_max_frames": 2048,
+  "court_action": "load",
+  "actual_full_inventory_clips": 69,
+  "actual_full_inventory_frames_per_camera": 46228
+}

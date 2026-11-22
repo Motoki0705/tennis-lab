@@ -17,6 +17,8 @@
 ## 明示実行と保存物
 
 Pythonのimport rootは `.agents/ops`。`--cwd` はcommit済みでtrackedファイルがcleanなgit checkoutを指定する。
+管理CLIの入口も本体import前にcheckoutを保護する。registry取得順と更新中の保守status/stopは
+[共通checkout lock](../lib/README.md#registryと保守呼出のlock順)に従う。
 `--run-dir` は毎回新規にする。run dirは0700、JSONは0600でatomic writeする。
 本文・ローカルパス等が入るため、保存物をそのまま公開issueへ貼らない。
 `--parent-state-dir` 省略時は [parent](../parent/README.md#責務と状態の正本) と同じregistryを使う。
@@ -80,18 +82,19 @@ GitHub GETの接続断は[共有readerの有限再試行](../issues/README.md#gi
   記録前の再取得でも同じ値との一致を確認する。設定が変わったら古い判断を延期し、別の境界へ黙って切り替えない。
 - `issues`（番号文字列→本文・コメント・state/state_reason・labels・assignees・正式parent/children・dependencies・source_reports）。
   証拠用Issueは作業subject/正式関係から[除外](../issues/README.md#証拠用issueの除外)する。
-  各作業Issueの機械コメントは [共通reader](../parent/README.md#機械証拠の保存共通reader) の投影を含む。
+  各作業Issueの機械コメントは [共通reader](../parent/README.md#責務と状態の正本) の投影を含む。
   証拠側のコメントだけに `_parent_record_source=evidence_issue` と実保存先 `_parent_record_issue` を保持し、
   固定snapshotの再読では同じparserで検証する。旧snapshotへ欠けたfieldを補わない。
   GitHubの `created_at` も保持し、ラベル・有効化時刻とともに[共有の補足追加判定](../issues/README.md#親issueの補足追加状態)へ渡す。
   親、子、先行依存、提案出典レポートはclosedも含め再帰的に収集する。別親に属する同repo依存も収集する。
 - `pulls`（全状態・全ページのPRとclosing指示・head・merge状態）、`owners`（既存registryの状態・generation・内容digest・委任予約の投影）。
+  自動進行の修正予約では明示seedの親子・依存閉包から番号指定timelineとPRを読む。通常の全体着手判定と異なりrepo全体一覧は取得しない。
   生session ID・ローカルworktreeは判定入力や公開コメントへ渡さない。別の担当台帳は作らない。
 - `code`（commitとgit treeのpath/mode/kind/oid）。agentが必要なtracked blobを調べ、そのcommit/pathを出典にする。
   gitlinkの先にある未固定ファイルやuntrackedファイルを着手根拠にしない。
 - `input_sha256`、`execution_inputs`（報告容器以外について `parent.execution.execution_input()` で生成した実行根拠用の入力）。
 - `improvement_extractions`（共有receiptから読む取り出し先parent番号と候補・承認群の索引）。本文の出典目印と照合し、
-  対象の索引もdigestへ固定する。索引がない旧snapshotは再収集する。承認の正本と復旧は[改善手順](../parent/improvements.md)を参照。
+  対象の索引もdigestへ固定する。索引がない旧snapshotは再収集する。承認の正本と復旧は[改善手順](../../skills/parent-session/references/finish.md#次回改善)を参照。
 
 ページは100件ずつ末尾まで読み、重複・欠落した型・正式関係の不一致・親循環・HTTP失敗を拒否する。
 `/parent` の「親なし」以外の404を成功や空配列に変換しない。
@@ -102,7 +105,7 @@ GitHub GETの接続断は[共有readerの有限再試行](../issues/README.md#gi
 
 `input_sha256` は `collect.material(snapshot)` のcanonical JSON（parent.policy.digest）のSHA-256。
 全タイトル・要件本文・指示コメント・正式関係・依存の状態・関連PR・担当/委任予約・コードを含む。
-本文の表示節とAcceptanceのチェックは [実行根拠の射影](../parent/README.md#自律着手の実行根拠と呼出契約) を使う。
+本文の表示節とAcceptanceのチェックは [実行根拠の射影](../../skills/parent-session/references/dispatch.md) を使う。
 publisherのparent-session/review進捗は除くが、checking/agreed/basis_revokedの制御記録は保持する。
 自律根拠の記録・自分の判断表示・GitHubのupdated_atだけではdigestを変えない。
 自然言語コメントを機械的に無関係と分類しない。新しい通常コメントは判断材料になる。
@@ -163,7 +166,7 @@ agentがstartableを返し、機械的阻害条件がある場合はrun全体を
 最新の判定と同内容なら書かず、変わった場合はrevisionを増やして追記する。過去の判断をPATCHで消さない。
 旧revisionなし記録もそのまま読み、欠けた値を補わない。他publisherの同形マーカーを自分の記録として扱わない。
 判断の保存と、人間への質問や全体影響の通知は別の操作。通知基準と入口は
-[parent-session](../../skills/parent-session/SKILL.md#親issueへ伝えること)と[親CLI](../parent/README.md#自由文の進捗連絡)を参照する。
+[parent-session](../../skills/parent-session/references/finish.md)と[親CLI](../../skills/parent-session/references/finish.md)を参照する。
 
 形式・識別は `parent/judgement_comments.py` が正本。共通readerを通し、人間合意後のコメント検査・
 自律根拠の指示射影・判定digestから同じ条件で除外する。先頭行のマーカー、publisher、repo・issue、
@@ -293,6 +296,24 @@ schedule/runの正本は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/di
 scheduleもregistryと同じ `Store.locked()` 内で保存し、長い判定の重複は別の `judgement.lock`、
 supervisorの重複は `supervisor.lock` で防ぐ。JSON破損・未知version・不正設定は停止し、初期化し直さない。
 
+GitHub clientは実際にtransactionを持つ同一の `DispatchStore` へ結び付ける。入口で別Storeへの
+結び付けを拒否し、内部でStoreを作り直さない。親ごとのclientはPRの範囲を共有せず、複数親の収集は
+repo全体を明示して毎回freshに読む。gitによるコード取得もregistryを解放して行う。
+dispatcherの観測は全担当を競合検査し、I/O前後でscheduleも照合する。disable・configure・capacity・
+担当変更を検出したtransactionでは予約もscheduleも保存しない。再実行は新しいtransactionから行う。
+
+runnerのstatus/stopは対象job/runのintentを保存してregistryを解放し、応答後に新しいtransactionで
+同じ担当・assignment・job・run・委任を照合する。停止intentは待機前に保存し、応答不明でも保持する。
+acceptと親の完了適用は、後続のGitHub authorization照合も終えてからruntime/result.jsonのrun IDを
+再照合する。その後は外部I/Oを挟まずに受理・終了状態を保存し、古いrunから担当や容量を変更しない。
+dispatcherからのrunner待機は1呼出し60秒を上限とし、timeout・runの置換・回収未確認を終了成功にしない。
+起動検査と監視の競合は親ごとのoperation lockで直列化し、最終Popenの短いadmissionだけregistry内に残す。
+workerログの受領・公開と、保存時に変わったjobの判断記録捕捉はregistry外で行う。
+
+予定判定のSIGTERM/SIGINTハンドラは停止要求のフラグだけを立てる。runnerの待機側がregistry外で
+通常のstopを送り、runner自身によるCLI・子孫の回収と終了を待ってから判定を中断として保存する。
+runnerが停止ハンドラを持つ前の要求は起動証拠を待って扱い、runner未起動なら照会や手動回収を要求しない。
+
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher init \
   --repo Motoki0705/tennis-lab --cwd "$PWD" --max-parents 1 --max-children 2
@@ -327,6 +348,10 @@ registry外側のversionは1を維持し、既存の親行にversion付き `disp
 
 初期予約はregistryのactive行に `session=dispatcher-reservation:<random token>` として保存する。
 これは起動権の予約であり、runtimeのsession identityではない。
+予約・実session結合・初期予約の取消によるreleased・親runtime完了によるendedは、
+[担当変更fence](../parent/README.md#排他とio)をregistryより先に取得する。
+runtime観測はロック外で行い、完了の適用前にfenceとregistryを取り直して保存済みintentを照合する。
+通常のstatus・子の進捗・未完了runtimeの観測はfenceに参加しない。
 worker自身が同じlockでreserved→startingを取得するため、Popen直後の応答喪失や複数launcherでも実runnerは1つだけ。
 取得時も保存したauthorization・担当generation・assignment ID・現在の委任IDと親/子の停止状態を検査し、
 parentの実行根拠検査、子の要件digest・正式関係と既存launch_planによる起動条件を再照合する。
@@ -340,10 +365,12 @@ parentの実行根拠検査、子の要件digest・正式関係と既存launch_p
 workerのlifetime lockはrunnerへFD継承する。workerが失われても起動途中のrunnerを見落として再起動しない。
 共通ランナーは親を `--role parent --mode write` で起動し、モデル値の正本は共通設定のまま使う。
 担当受理時だけ、観測した生存Claude runtimeとCLI環境のidentityを照合し、同じgenerationで予約に結合する。
+agyの親担当は[人間が起動する対話TUI](../parent/README.md#agyの手動親)で扱う。dispatcherと
+`agent_exec.sh` によるagy親の自律起動は対象外。
 
 初期の開発親上限は1、各親の実装runtime上限は2。これは手動親の `launch_policy` の既定nullとは別である。
 自律親だけ予約上限も2に揃え、実runtimeの上限はさらに `start-child` で検査する。
-子の選択・依存・予約上限は [parentのlaunch_plan](../parent/README.md#並列起動の選択と予約上限) を使う。
+子の選択・依存・予約上限は [parentのlaunch_plan](../../skills/parent-session/references/workers.md) を使う。
 dispatcherは起動選択を再実装せず、既存の委任予約を受け取って実runtimeと終了証拠を照合する。
 子の予約/停止/closeや親の待機だけでは枠を解放しない。taskの終了証拠と、過去の全runtime jobsを両方数える。
 再委任でdelegation_idやworker_endedを変えても、生存/終了未確認の旧jobを消せない。
@@ -351,7 +378,7 @@ dispatcherは起動選択を再実装せず、既存の委任予約を受け取�
 確認後に現在のdelegation_idへだけparentの `worker_ended` 形式の証拠を記録する。
 子の結果は親へ終了イベントとして戻す。exit 0や子の最終文を成果物の合格に読み替えない。
 
-子taskの任意の調査とターン来歴は [parentの契約](../parent/README.md#workerの調査親判断実装フェーズ) を使う。
+子taskの任意の調査とターン来歴は [parentの契約](../../skills/parent-session/references/workers.md) を使う。
 jobの `phase` はruntimeの状態、jobの `preflight.phase` は起動時のplanning/implementingである。
 start-childとworkerのclaimは予約したターン・実行対象・現在の操作権限を照合する。本文や依存の意味は親が判断する。
 未起動取消は履歴を保持し、そのターンに割り当てた回答を次の同session継続へ戻す。
@@ -363,7 +390,7 @@ start-childとworkerのclaimは予約したターン・実行対象・現在の�
 子終了イベントまたは明示resumeは既存親を再開待ちにし、枠とauthorizationを再確認して、最新runから同じsessionをresumeする。
 CI/人間判断待ちの解除はworkflow側の明示通知を使う。時間経過から解除しない。
 completedは子の終了確認後にだけ担当endedへ移す。GitHubのmerge/closeと受入条件の検証は親workflowの責務。
-単独issueのmerge/close後に中断した親の復帰条件は [開発workflowの終了照合](../parent/development_workflow.md#待機完了担当終了) に従う。
+単独issueのmerge/close後に中断した親の復帰条件は [開発workflowの終了照合](../../skills/parent-session/references/dispatch.md) に従う。
 
 ```bash
 # 自動の新規判定・割当・起動を無効化（既存runtimeは継続）
@@ -410,46 +437,8 @@ runner喪失時は、先に [共通ランナーの子孫回収確認](../lib/REA
 
 ## 親workflowへのbootstrap契約
 
-`parent_bootstrap.md` は担当受理・既存状態照合から [親の開発workflow](../parent/development_workflow.md) へ接続する。
-実装・検証・親による明示レビュー・mergeと実closeを照合し、成功・待機・失敗を最終イベントに分ける。
-各jobのprivateな `input.json` は追加キーなしのschema_version=1で、以下を渡す。
-
-- repo、parent、assignment_id、job_id、候補JSON、authorization。
-- parent_state_dir、dispatcher_state_dir、runtime_dir、max_implementation_children。
-
-親は `accept --input <path>` を自身のCLI環境から呼ぶ。引数でsession IDを渡さない。
-`AGENT_RUNTIME_RUN_DIR/TASK_ID`、観測session、実行契約、候補/予約/generation/根拠が一致する場合だけ受理する。
-同じsessionのresumeでも同じ入口を使う。parent CLIには `--state-dir` で入力と同じregistryを指定し、
-review/mergeも同じstateを使う。worker操作のPython APIでは同じregistryを指す `DispatchStore` を渡す。
-親workflowは外部依存・採用状態・正式関係を再取得し、委任・レビュー・merge前も根拠を再照合する。
-
-子の本文・worktree・モデル選定やdelegateはworkflowが行う。
-親workflowはparentの `launch_plan` から起動可能な子を選び、待機理由・stacked_onを引き継ぐ。
-delegateで予約した後、受理済みの親環境から次を呼ぶ。起動自体はsupervisorが行い、子を直接spawnしない。
-
-```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher start-child \
-  --parent 123 --child 124 --delegation-id <delegateが返すID> --prompt-file tmp/child.md
-# Astraを明示選択するときだけ --model gpt-6-astra を加える
-```
-
-モデル/effortの既定は共通ランナーを使う。既存子は終了照合後の証拠付き再delegateで新しいIDを得てからstart-childする。
-このとき以前の子の最新runから同じsessionをresumeする。モデル・worktree・branch・設定の不一致は共通ランナーが拒否する。
-起動前取消の修正予約は、保存した再開元runへ戻す。一度も起動していない取消予約は、
-全jobの起動証拠がなく既存PRもない場合だけ、同じ担当で明示的に再予約する。
-実行済みrunのsession欠落や取消記録の曖昧さを、別sessionへの振替で回避しない。
-pytestは [並列実行の手順](../parent/README.md#pytestの並列実行) に従い、共有lockなしで親・子間の並列実行を許可する。
-GPU・Blenderの資源調停はtraining queueの既存枠を使う。
-
-親の最終文は追加キーなしのJSON:
-
-```json
-{"schema_version":1,"state":"waiting","reason":"CI待ち","resume_condition":"CIが完了したら明示resume"}
-```
-
-stateはwaiting/completed/failed。finalの不正・担当未受理・runner失敗はfailed。
-子の生存中はcompletedを拒否する。待機理由と再開条件・イベントはregistryに保持する。
-判定・予約・supervisorはレビューを直接起動しない。
+[起動指示](parent_bootstrap.md) は [自律親の参照手順](../../skills/parent-session/references/dispatch.md) を使う。jobのprivateな `input.json` はschema_version=1。repo・親番号・assignment_id・job_id・候補・authorization、両stateの場所・runtime_dir・親の実装枠を渡す。
+supervisorは実行環境と予約を照合して担当を受理し、親の最終出力（schema_version・state・reason・resume_condition）から待機・終了・失敗を記録する。保存形式と実行契約は [supervisor.py](supervisor.py) と [state.py](state.py) を参照する。
 
 ## systemdへの導入・有効化・停止
 

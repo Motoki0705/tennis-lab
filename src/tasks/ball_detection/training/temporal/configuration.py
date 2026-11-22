@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import yaml
 
@@ -13,35 +13,46 @@ from src.tasks.ball_detection.model_io.mdd_temporal import TemporalConfig
 from src.tasks.ball_detection.models.mdd import (
     MDDHeatmapConfig,
     MDDHeatmapHybridConfig,
+    MDDMHCQueryConfig,
     MDDTemporalQueryConfig,
 )
+from src.tasks.ball_detection.models.mdd.multiscale_config import (
+    MDDMultiScaleQueryConfig,
+)
+from src.tasks.ball_detection.models.mdd.stage_config import MDDStageHeatmapConfig
 
 
 def load_model_config(path: Path, architecture: str) -> TemporalConfig:
     raw = yaml.safe_load(path.read_text())
-    names = dict(
-        dpt="mdd_dpt_heatmap", hybrid="mdd_heatmap_hybrid", query="mdd_temporal_query"
-    )
-    if (
-        architecture not in names
-        or not isinstance(raw, dict)
-        or raw.pop("name", None) != names[architecture]
-    ):
+    choices: dict[tuple[str, str], type[TemporalConfig]] = {
+        ("dpt", "mdd_dpt_heatmap"): MDDHeatmapConfig,
+        ("dpt", "mdd_stage_dpt_heatmap"): MDDStageHeatmapConfig,
+        ("hybrid", "mdd_heatmap_hybrid"): MDDHeatmapHybridConfig,
+        ("query", "mdd_temporal_query"): MDDTemporalQueryConfig,
+        ("query", "mdd_mhc_query"): MDDMHCQueryConfig,
+        ("query", "mdd_multiscale_query"): MDDMultiScaleQueryConfig,
+    }
+    name = raw.pop("name", None) if isinstance(raw, dict) else None
+    cls = choices.get((architecture, name)) if isinstance(name, str) else None
+    if cls is None:
         raise ValueError(
             "Model config must match the explicitly selected temporal architecture"
         )
-    cls = dict(
-        dpt=MDDHeatmapConfig,
-        hybrid=MDDHeatmapHybridConfig,
-        query=MDDTemporalQueryConfig,
-    )[architecture]
+    if cls is MDDMultiScaleQueryConfig:
+        raw.setdefault("checkpoint_scope", "encoder_msda")
     if set(raw) != set(cls.__dataclass_fields__):
         raise ValueError(
             "Declare every temporal model field, including frames and memory controls"
         )
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
         raw[key] = tuple(raw[key])
-    return cast(TemporalConfig, cls(**raw))
+    if cls is MDDStageHeatmapConfig:
+        raw["stage_blocks"] = tuple(raw["stage_blocks"])
+        raw["expansion_ratios"] = tuple(raw["expansion_ratios"])
+    if cls is MDDMultiScaleQueryConfig:
+        raw["spatial_layers"] = tuple(raw["spatial_layers"])
+        raw["msda_levels"] = tuple(raw["msda_levels"])
+    return cls(**raw)
 
 
 @dataclass(frozen=True)

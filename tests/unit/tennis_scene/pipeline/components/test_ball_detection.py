@@ -22,7 +22,11 @@ from src.tennis_scene.pipeline.components.ball_detection import (
 from src.tennis_scene.pipeline.contracts import SourceVideo
 from src.utils.data.heatmaps import heatmaps_to_argmax
 from src.utils.video import FramePacket
-from tests.unit.tennis_scene.pipeline.config_factories import make_ball_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_ball_config,
+    make_x3d_ball_config,
+    materialize_model_weights,
+)
 
 
 class _TypedBallPredictor:
@@ -76,9 +80,9 @@ def test_predict_video_consumes_typed_task_prediction(
     )
     config = replace(make_ball_config(tmp_path), image_size=(4, 6))
     module = BallDetectionModule(config)
-    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+    predictor = _TypedBallPredictor()
 
-    coords, confidence, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4))
+    coords, confidence, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4), predictor)
 
     np.testing.assert_allclose(coords, [[0.1, 0.2], [0.3, 0.4]])
     np.testing.assert_allclose(confidence, [0.6, 0.8])
@@ -94,9 +98,10 @@ def _process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, num_frames: int
     base = make_ball_config(tmp_path)
     module = BallDetectionModule(replace(base, image_size=(4, 6), score_threshold=0.7, tail_policy=tail_policy,
                                          trajectory_gate=replace(base.trajectory_gate, enabled=False)))
-    monkeypatch.setattr(module, "load", lambda: setattr(module, "_pipeline", _TypedBallPredictor()))
+    materialize_model_weights(module)
+    monkeypatch.setattr(module, "_load_predictor", _TypedBallPredictor)
     output = module.process(BallDetectionInput(SourceVideo("near", tmp_path / "near.mp4", "hash", num_frames, 30.0, 6, 4)))
-    assert not module.is_loaded
+    assert isinstance(output, BallDetectionOutput)
     return output
 
 
@@ -136,8 +141,8 @@ def test_video_to_predictor_is_always_raw_rgb(
 
     module = BallDetectionModule(replace(make_ball_config(tmp_path), image_size=(4, 6),
                                          normalize_imagenet=expected_normalization))
-    module._pipeline = CapturingPredictor()  # type: ignore[assignment]
-    module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4))
+    predictor = CapturingPredictor()
+    module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4), predictor)
 
 
 @pytest.mark.parametrize("policy,expected", [("max_score", .9), ("last_window_wins", .4)])
@@ -157,8 +162,8 @@ def test_overlapping_windows_select_all_evidence_atomically(
 
     config = replace(make_ball_config(tmp_path), image_size=(4, 6), overlap_aggregation=policy)
     module = BallDetectionModule(config)
-    module._pipeline = OverlappingPredictor()  # type: ignore[assignment]
-    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 3, 30., 6, 4))
+    predictor = OverlappingPredictor()
+    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 3, 30., 6, 4), predictor)
     assert scores[1] == pytest.approx(expected)
     assert evidence.candidate_scores[1, 0] == pytest.approx(expected)
     assert evidence.heatmaps[1].max() == pytest.approx(expected)
@@ -170,9 +175,9 @@ def test_overlapping_windows_select_all_evidence_atomically(
 
 def test_stride_cannot_leave_silent_holes(tmp_path: Path) -> None:
     module = BallDetectionModule(replace(make_ball_config(tmp_path), window_stride=3))
-    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+    predictor = _TypedBallPredictor()
     with pytest.raises(ValueError, match="cover every frame"):
-        module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 5, 30., 6, 4))
+        module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 5, 30., 6, 4), predictor)
 
 
 def test_checkpoint_normalization_mismatch_is_rejected_before_inference(
@@ -184,8 +189,7 @@ def test_checkpoint_normalization_mismatch_is_rejected_before_inference(
     monkeypatch.setattr(ball_component.BallDetectionPredictor, "load_from_checkpoint", lambda *args, **kwargs: fake)
     module = BallDetectionModule(replace(make_ball_config(tmp_path), normalize_imagenet=True))
     with pytest.raises(ValueError, match="does not match the saved checkpoint"):
-        module.load()
-    assert not module.is_loaded
+        module._load_predictor()
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
@@ -209,8 +213,8 @@ def test_centre_policy_matches_training_owners_without_score_selection(
     config = replace(make_ball_config(tmp_path), image_size=(4, 6), window_stride=3, batch_size=batch_size,
                      overlap_aggregation="nearest_window_centre_then_earlier_start")
     module = BallDetectionModule(config)
-    module._pipeline = Predictor()  # type: ignore[assignment]
-    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", 11, 30., 6, 4))
+    predictor = Predictor()
+    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", 11, 30., 6, 4), predictor)
     starts = (0, 3, 6, 7)  # stride 3 with an irregular final backfill
     # Independent oracle: nearest window centre, ties to the earlier start.
     centres = np.asarray(starts) + 1.5
@@ -232,6 +236,105 @@ def test_centre_policy_rejects_padding_and_drop(tmp_path: Path, frames: int, tai
     config = replace(make_ball_config(tmp_path), tail_policy=tail,
                      overlap_aggregation="nearest_window_centre_then_earlier_start")
     module = BallDetectionModule(config)
-    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+    predictor = _TypedBallPredictor()
     with pytest.raises(ValueError, match="short-clip padding is forbidden"):
-        module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", frames, 30., 6, 4))
+        module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", frames, 30., 6, 4), predictor)
+
+
+@pytest.mark.parametrize("batch_size", [1, 3])
+def test_x3d_windows_keep_native_rgb_and_reset_mdd_per_window(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, batch_size: int) -> None:
+    from src.tasks.ball_detection.preprocessing.rgb_mdd import RGBToRGBMDD
+    from src.utils.video.transforms import BgrToRgbUint8Transform
+
+    # Spatial resize is tested separately; keep this owner/MDD test tiny.
+    monkeypatch.setattr(ball_component, "BgrToRgbUint8Transform", lambda **_: BgrToRgbUint8Transform(image_size=(4, 6)))
+    packets = [FramePacket(index=i, frame=np.full((4, 6, 3), i, np.uint8), original_size=(6, 4)) for i in range(69)]
+    monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *a, **kw: packets)
+    seen = []
+
+    class Predictor:
+        configured_frames = 32
+
+        def predict(self, images: torch.Tensor, *, candidate_config: BallCandidateConfig) -> BallPrediction:
+            assert images.dtype == torch.uint8
+            features = RGBToRGBMDD()(images)
+            assert features[:, 3:, 0].count_nonzero() == 0
+            assert (features[:, 3:, 1] > 0).all()
+            torch.testing.assert_close(features[:, :3], images.float().transpose(1, 2) / 255)
+            maps = torch.full((len(images), 32, 6, 10), .01)
+            for b, first in enumerate(images[:, 0, 0, 0, 0].tolist()):
+                seen.append(first)
+                maps[b, :, 3, 2] = (first + 50) / 100
+            return _prediction(maps, candidate_config)
+
+    module = BallDetectionModule(replace(make_x3d_ball_config(tmp_path), batch_size=batch_size))
+    predictor = Predictor()
+    uv, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", 69, 30., 43, 31), predictor)
+    assert seen == [0, 16, 32, 37]
+    # Independent explicit owner intervals, including a centre-distance tie and tail.
+    expected: NDArray[np.int64] = np.repeat([0, 16, 32, 37], [24, 16, 11, 18])
+    np.testing.assert_array_equal(evidence.selected_window_start, expected)
+    np.testing.assert_array_equal(evidence.selected_time_index, np.arange(69) - expected)
+    np.testing.assert_allclose(scores, (expected + 50) / 100)
+    np.testing.assert_allclose(uv, np.tile([2 / 9, 3 / 5], (69, 1)))
+    np.testing.assert_allclose(evidence.candidate_uv_px[:, 0], np.tile([2 / 9 * 42, 3 / 5 * 30], (69, 1)))
+    np.testing.assert_array_equal(evidence.candidate_scores[:, 0], scores)
+
+
+@pytest.mark.parametrize("changes", [dict(model_type="auto"), dict(input_channels=2), dict(num_frames=16),
+    dict(image_size=(1280, 720)), dict(normalize_imagenet=True), dict(window_stride=32),
+    dict(tail_policy="drop"), dict(overlap_aggregation="max_score"), dict(checkpoint_strict=False),
+    dict(checkpoint_weights_only=False), dict(precision="fp16")])
+def test_x3d_settings_disagreement_is_rejected_before_load(tmp_path: Path, changes: dict) -> None:
+    with pytest.raises(ValueError):
+        replace(make_x3d_ball_config(tmp_path), **changes)
+
+
+def test_x3d_explicit_loader_does_not_try_convnext_on_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    called = []
+    def fail(*args, **kwargs):
+        called.append("x3d")
+        raise ValueError("bad native artifact")
+    def forbidden(*args, **kwargs):
+        pytest.fail("ConvNeXt loader must not run for x3d_csn_dpt")
+    monkeypatch.setattr(ball_component.X3DDPTPredictor, "load_from_checkpoint", fail)
+    monkeypatch.setattr(ball_component.BallDetectionPredictor, "load_from_checkpoint", forbidden)
+    module = BallDetectionModule(make_x3d_ball_config(tmp_path))
+    with pytest.raises(ValueError, match="bad native artifact"):
+        module._load_predictor()
+    assert called == ["x3d"]
+
+
+@pytest.mark.parametrize("precision,dtype", [("fp32", "float32"), ("bf16", "bfloat16")])
+def test_x3d_runtime_factory_preserves_precision_and_returns_predictor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, precision: str, dtype: str,
+) -> None:
+    predictor = object()
+    calls = []
+
+    def load(checkpoint, **kwargs):
+        calls.append((checkpoint, kwargs))
+        return predictor
+
+    monkeypatch.setattr(ball_component.X3DDPTPredictor, "load_from_checkpoint", load)
+    config = replace(make_x3d_ball_config(tmp_path), precision=precision)
+    spec = BallDetectionModule(config).model_specs()["ball"]
+    assert spec.dtype == dtype
+    assert spec.architecture == "x3d_csn_dpt"
+    assert spec.factory() is predictor
+    assert len(calls) == 1
+    assert calls[0][0] == config.checkpoint
+    assert calls[0][1]["precision"] == precision
+    assert calls[0][1]["compile_mode"] == config.compile_mode
+
+
+def test_fixed_presence_threshold_is_inclusive(tmp_path: Path) -> None:
+    base = make_x3d_ball_config(tmp_path)
+    threshold = np.float32(.5380124449729919)
+    module = BallDetectionModule(replace(base, score_threshold=float(threshold),
+                                         trajectory_gate=replace(base.trajectory_gate, enabled=False)))
+    scores = np.asarray([np.nextafter(threshold, np.float32(0)), threshold, np.nextafter(threshold, np.float32(1))])
+    uv, score, observed = module._accept_detections(np.full((3, 2), 7, np.float32), scores)
+    np.testing.assert_array_equal(observed, [False, True, True])
+    np.testing.assert_array_equal(uv[:, 0], [0, 7, 7])
+    assert score[0] == 0 and score[1] == threshold

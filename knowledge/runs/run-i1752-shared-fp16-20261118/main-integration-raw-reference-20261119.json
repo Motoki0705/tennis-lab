@@ -1,0 +1,13 @@
+{
+  "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-main-cpu-20261119/pytest-full.txt",
+  "size_bytes": 643388,
+  "sha256": "761fb3ea33abe76fc5391b47786c9c8578cb4e212fc015166a65a945f62b26ea",
+  "retained": true,
+  "note": "The oversized Git copy was removed under the storage policy; the original raw CPU validation log is retained in OUTPUT.",
+  "unmerged_git_copy": {
+    "path": "main-integration-cpu-20261119.txt",
+    "introduced_at_commit": "e0c30560990bc0ef2c1315f93b53757f83c13dc9",
+    "reason": "table-or-log-over-256KiB",
+    "note": "The oversized file was first introduced in this unmerged PR and never belonged to the main knowledge baseline. Its net PR change is removed; the complete raw is retained in OUTPUT."
+  }
+}

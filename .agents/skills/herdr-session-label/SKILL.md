@@ -18,7 +18,7 @@ parent CLIの`register` / `reconcile` / `sync` / `handoff` / `release`が同期�
 PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync
 ```
 
-表示する要約は親自身が作り、parent CLIで保存する（[parent-session](../parent-session/SKILL.md#担当と実行根拠)）。
+表示する要約は親自身が作り、parent CLIで保存する（[parent-session](../parent-session/references/ownership.md)）。
 保存済みの要約がない `register` / `handoff --accept` は、担当を書き込む前に拒否される。
 `register --summary` / `handoff --accept --summary` で指定して再実行する。
 既に担当中の親の表示同期で要約不足になった場合は、`parent summary --text` で保存・同期する。
@@ -29,6 +29,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync
 通常はHerdr環境変数が必要。欠落する実行基盤では、READMEの明示bind手順で
 自分の会話であることを照合する。フォーカスや一覧順から対象を選ばない。
 `not_configured`は表示未設定であり、成功ではない。
+agyは[専用ランチャー](../../ops/herdr_labels/README.md#agyの手動起動と表示)で端末から起動し、
+同じ端末の会話で登録・再開する。切替は会話ロックを確認したstatusLine、終了はランチャーで同期する。
 
 Claudeの起動・再開・終了hookは表示の復元・解除だけを行う。担当登録・解除は親の明示操作を使う。
 別画面で再開した登録済みClaudeの担当は、旧端末が空いたと確認できれば表示先が自動で移る。

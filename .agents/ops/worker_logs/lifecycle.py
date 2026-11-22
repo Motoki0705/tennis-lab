@@ -12,6 +12,7 @@ from .journal import PublicationError, atomic, locked
 from .reconciliation import (
     continue_workers,
     decision_journal,
+    decision_resume_command,
     remaining_publications,
     require_batch_captures,
 )
@@ -38,7 +39,11 @@ def unavailable_exit(
         "remaining_complete": False,
         "publication_actor": publication_actor,
         "resume_command": f"parent --repo {repo} --parent {parent} publish-worker-log --all-parents --source-parent {parent}",
-        "decision_resume_command": f"parent --repo {repo} --parent {parent} publish-decision-log",
+        "decision_resume_command": decision_resume_command(
+            repo,
+            parent,
+            assigned=publication_actor != "unassigned" or event == "handoff_pending",
+        ),
         "error": "journal_unavailable",
     }
 

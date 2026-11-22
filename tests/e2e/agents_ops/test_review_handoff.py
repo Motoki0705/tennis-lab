@@ -40,8 +40,10 @@ def test_handoff_accepts_only_completed_current_worker(
         ],
     }
     saved: list[bool] = []
+    tasks = {"10": task}
     session = SimpleNamespace(
-        row={"tasks": {"10": task}},
+        row={"tasks": tasks},
+        worker_task=lambda number: tasks[str(number)],
         gh=SimpleNamespace(io_scope=nullcontext),
         store=SimpleNamespace(directory=tmp_path, save=lambda: saved.append(True)),
     )

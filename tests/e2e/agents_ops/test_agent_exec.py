@@ -12,6 +12,11 @@ from pathlib import Path
 
 import pytest
 
+from tests.support.agents_ops.model_pins import (
+    REVIEW_FIXED_MODEL,
+    WORKER_DEFAULT_MODEL,
+)
+
 ROOT = Path(__file__).resolve().parents[3]
 AGENT_EXEC = ROOT / ".agents/ops/lib/agent_exec.sh"
 
@@ -82,7 +87,7 @@ def test_prompt_round_trips_to_output(
         tools = args[args.index("--tools") + 1 : args.index("--permission-mode")]
         assert tools == ["Read", "Grep", "Glob"]
     model = args[args.index("--model") + 1]
-    assert model == ("claude-opus-5-5" if agent == "claude" else "gpt-6.1-sol")
+    assert model == ("claude-opus-5-5" if agent == "claude" else WORKER_DEFAULT_MODEL)
     if agent == "claude":
         assert (tmp_path / "cwd.txt").read_text(encoding="utf-8").strip() == str(work)
     else:
@@ -175,11 +180,18 @@ def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     args = (tmp_path / "args.txt").read_text(encoding="utf-8").splitlines()
-    assert args[args.index("--model") + 1] == "gpt-6-astra"
+    assert args[args.index("--model") + 1] == REVIEW_FIXED_MODEL
     # xhigh, not the default CODEX_EFFORT (max): the profile's own pin is used.
     assert 'model_reasoning_effort="xhigh"' in args
     assert 'service_tier="default"' in args
     assert "profile=review" in result.stderr
+
+
+def test_memory_autodream_profile_refuses_write_mode(tmp_path: Path) -> None:
+    result = _codex_args(tmp_path, "--profile", "memory_autodream", "--mode", "write")
+    assert result.returncode == 2
+    assert "memory_autodream requires read-only mode" in result.stderr
+    assert not (tmp_path / "args.txt").exists()
 
 
 def test_audit_parent_uses_claude_with_read_only_tools(
@@ -503,7 +515,7 @@ def _review_selection(
         json.dumps(
             settings.choose(
                 settings.load_policy(),
-                model="gpt-6-astra",
+                model=REVIEW_FIXED_MODEL,
                 reason="取得ツールと実行権限の境界を確認するためAstraを選ぶ。",
             )
         )
@@ -545,7 +557,7 @@ def test_review_mcp_is_read_only_and_records_frozen_configuration(
 
 @pytest.mark.parametrize(
     "profile,model,effort",
-    [(None, "gpt-6.1-sol", "max"), ("review", "gpt-6-astra", "xhigh")],
+    [(None, WORKER_DEFAULT_MODEL, "max"), ("review", REVIEW_FIXED_MODEL, "xhigh")],
 )
 def test_audit_mcp_does_not_change_other_profile_or_implementation_argv(
     tmp_path: Path,
@@ -579,7 +591,11 @@ def test_audit_mcp_does_not_change_other_profile_or_implementation_argv(
         f'model_reasoning_effort="{effort}"',
         "-c",
         'service_tier="default"',
-    ] + (["--disable", "multi_agent"] if profile == "review" else []) + ["-"]
+    ] + (
+        ["-c", 'web_search="disabled"', "--disable", "multi_agent"]
+        if profile == "review"
+        else []
+    ) + ["-"]
 
 
 def test_audit_mcp_arguments_are_after_exec_on_read_only_scout_profile(

@@ -18,6 +18,13 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.utils.device import resolve_device
+from src.utils.inference_recording import model_action, span
+from src.utils.models.tensorrt_artifacts import PLAN_FILE, EngineBundle
+from src.utils.models.tensorrt_runtime import TensorRTRunner
+
+CLIP_REID_PROFILE = "clipreid_vitb16_market1501"
+
 
 class AppearanceEncoder(Protocol):
     name: str
@@ -120,7 +127,7 @@ class _ClipVisual(nn.Module):
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         x = self.conv1(x).flatten(2).transpose(1, 2)
-        x = torch.cat((self.class_embedding.expand(len(x), 1, -1), x), 1) + self.positional_embedding
+        x = torch.cat((self.class_embedding.expand(x.shape[0], 1, -1), x), 1) + self.positional_embedding
         x = self.transformer(self.ln_pre(x).transpose(0, 1)).transpose(0, 1)
         cls = self.ln_post(x[:, 0])
         return cls, cls @ self.proj
@@ -134,18 +141,41 @@ class ClipReIDEncoder:
     checkpoint: Path
     device: str = "cpu"
     input_size: tuple[int, int] = (256, 128)
+    engine: EngineBundle | None = None
 
+    @model_action("load", "CLIP-ReID", weights=lambda owner: owner.recording_assets(),
+                  device=lambda owner: owner.device)
     def __post_init__(self) -> None:
+        self._runner: TensorRTRunner | None = None
+        if self.engine is not None:
+            self._runner = TensorRTRunner(self.engine, resolve_device(self.device))
+            return
         self.model = _ClipVisual((self.input_size[0] // 16, self.input_size[1] // 16))
         prefix = "image_encoder."
         state = {key.removeprefix(prefix): value for key, value in _load_state(self.checkpoint).items() if key.startswith(prefix)}
         _load_checked(self.model, state, optional_missing=())
         self.model.eval().to(self.device)
 
+    def recording_assets(self) -> dict[str, Path]:
+        if self.engine is not None:
+            return {"engine": self.engine.root / PLAN_FILE}
+        return {"checkpoint": self.checkpoint}
+
     def embed(self, crops: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
-            cls, projected = self.model(_normalized(crops.to(self.device), (0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
-        return F.normalize(torch.cat((cls, projected), -1).float(), dim=-1).cpu()
+            with span("transfer", model="CLIP-ReID"):
+                pixels = crops.to(self.device)
+            with span("preprocess", model="CLIP-ReID", device=self.device):
+                pixels = _normalized(pixels, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            with span("inference", model="CLIP-ReID", batch_shape=list(pixels.shape)):
+                features = (
+                    self._runner({"pixels": pixels})["features"]
+                    if self._runner is not None
+                    else torch.cat(self.model(pixels), dim=-1)
+                )
+            del pixels
+        with span("postprocess", model="CLIP-ReID"):
+            return F.normalize(features.float(), dim=-1).cpu()
 
 
 @dataclass
@@ -190,8 +220,12 @@ def encoder_weights(name: str, *, checkpoint_root: Path, external_root: Path) ->
     return weights[name]
 
 
-def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, device: str) -> AppearanceEncoder:
-    weights = encoder_weights(name, checkpoint_root=checkpoint_root, external_root=external_root)
+def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, device: str,
+                  checkpoint: Path | None = None) -> AppearanceEncoder:
+    default = encoder_weights(name, checkpoint_root=checkpoint_root, external_root=external_root)
+    # A pipeline declaration has already resolved and SHA-bound its checkpoint.
+    # Standalone callers may still explicitly select the profile's default.
+    weights = default if checkpoint is None else checkpoint
     if not weights.is_file():
         raise FileNotFoundError(f"Required appearance checkpoint is missing: {weights}")
     if name == "osnet_ain_x1_0_msmt17":

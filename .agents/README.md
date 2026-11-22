@@ -29,7 +29,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | `.agents/README.md`（このファイル） | AI運用の原則、置き場所の地図、GitHub運用、研究ループの概要 | 各自動運用の実装詳細 |
 | [.agents/skills/](skills/) | 繰り返し使う作業手順（`SKILL.md` + scripts） | 一度きりの経緯 |
 | [parent-board skill](skills/parent-board/SKILL.md) | 担当中の親同士の連絡、投稿する場面、受信時の判断と応答 | CLIの引数・状態・配送仕様（board README） |
-| [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない再利用できる観察。共有5層と、全体調査が必要時に読む独立した [ops-report専用領域](memory/ops-report/SUMMARY.md)（境界はmemory skill） | コードやREADMEで確認できる事実、作業の進捗 |
+| [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない再利用できる観察。共有4層と、全体調査が必要時に読む独立した [ops-report専用領域](memory/ops-report/SUMMARY.md)（境界はmemory skill） | コードやREADMEで確認できる事実、作業の進捗 |
 | [.agents/ops/](#自動運用) | 自動運用（systemd --user timer、headless agent）と共通の決定的ツール | 対話作業の手順 |
 | [knowledge/](../knowledge/README.md) | 実験結果・考察・関連論文（1 run = 1ノード） | 運用ルール |
 | 各ディレクトリの `README.md` | モジュールの仕様・使い方・設計判断 | 横断的な運用ルール |
@@ -48,22 +48,24 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 | パス | 内容 |
 |---|---|
-| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | Claude（親、既定Opus）/ Codex（実装子、既定Sol・明示でAstra）を read-only または write で headless 起動・同一session継続・状態確認・停止する共通ランナー。既定値・選択値・実効値と終了理由をrun dirへ記録し、`task_success` は判定しない。`--profile` で job 別の固定値を選ぶ。契約は [ops/lib/README.md](ops/lib/README.md) |
+| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | Claude（親、既定Opus）/ Codex（実装子、Sol固定）を read-only または write で headless 起動・同一session継続・状態確認・停止する共通ランナー。既定値・選択値・実効値と終了理由をrun dirへ記録し、`task_success` は判定しない。`--profile` で job 別の固定値を選ぶ。契約は [ops/lib/README.md](ops/lib/README.md) |
 | [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する。job 別のプロファイル（例: レビュー用の `REVIEW_CODEX_*`）もここに置く |
 | [ops/lib/opsproc.py](ops/lib/opsproc.py) | ops job 共通のサブプロセス実行。agent はプロセスグループごと起動・停止し、子孫プロセスを残さない |
 | [ops/ops_control/](ops/ops_control/README.md) | `spin ops` の対象表と実処理。運用unitの状態・導入・対象ごとのON/OFF・単発実行・ログを扱う |
 | [ops/install_units.sh](ops/install_units.sh) | `spin ops install` が使うunit導入処理。`ops/*/systemd/` を `~/.config/systemd/user` へリンクしdaemon-reloadする。有効化は `spin ops on <target>` |
 | [ops/ops-report/](ops/ops-report/README.md) | Claude親とCodex調査子の並列全体調査、3日周期の運用レポート（未完了回は部分公開・再開）、採用提案の日次triage |
-| [ops/review/](ops/review/README.md) | 親が明示起動する1回の統合Codexレビュー、指摘解消・coverageの記録、依存を照合する順次merge gate、共有基盤パスの一覧 |
+| [ops/review/](ops/review/README.md) | 親の1回の明示要求から大局レビュー・CI待機・作成workerによる修正・軽いgate・merge後確認までの自動進行、共有基盤パスの一覧 |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、期限前のcleanなworktreeの手動削除・候補一覧 |
+| [ops/storage_tier/](ops/storage_tier/README.md) | D:作業実体とE:正本ミラーの配置規約、SHA-256照合・手動取得・atimeによる単位削除と日次user timer |
 | [ops/worktree_cleanup/](ops/worktree_cleanup/README.md) | `.claude/worktrees/` の登録worktreeを作成から336時間で強制削除し、管理jobの停止と状態を照合する |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/issue_supplement/](ops/issue_supplement/README.md) | 作成直後の親issueにGeminiで背景を補足するworkflow。不変条件・独立した意味検査・照合付きの書き込みを行う |
 | [ops/explain_html/](ops/explain_html/README.md) | 説明HTMLの共通契約・版store、指定Geminiの候補生成/意味検査、ローカルHTTP/job runtime |
-| [ops/parent/](ops/parent/README.md) | 親セッションの担当・実行根拠・子の進捗・明示レビュー要求を管理するCLI。[開発workflow](ops/parent/development_workflow.md) がCodex workerの起動・継続・停止・結果照合と既存レビュー/mergeを接続する。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
+| [ops/parent/](ops/parent/README.md) | 親セッションの担当・実行根拠・子の進捗・明示レビュー要求を管理するCLI。[開発workflow](skills/parent-session/references/dispatch.md) がCodex workerの起動・継続・停止・結果照合とレビューからmerge後確認までの自動進行を接続する。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
 | [ops/worker_status/](ops/worker_status/README.md) | 親registry・共通ランナー記録から子の実行状況・根拠・鮮度・秘匿済み要約を返す読み取り専用Python API/JSON CLI。GitHub取得は明示指定時のみ |
-| [ops/worker_logs/](ops/worker_logs/README.md) | workerの具体指示・最終報告・来歴を無害化し、ターン別のログ専用PRへ追記する。公開検査・追加専用merge・CI除外の限定例外と復旧の正本 |
+| [ops/worker_logs/](ops/worker_logs/README.md) | workerの具体指示・最終報告・来歴を無害化し、委任の節目にログ専用PRへまとめて追記する。公開検査・追加専用merge・CI除外の限定例外と復旧の正本 |
 | [ops/decision_logs/](ops/decision_logs/README.ja.md) | 結果・判断・行動の非公開捕捉と復旧、親ごとのGit公開、階層READMEの決定的生成。新形式の限定例外と公開復旧の正本 |
+| [ops/shared_memory/](ops/shared_memory/README.md) | 共有memory 4層の公開CLI、索引生成、機械検査とマージ、[AutoDream](ops/shared_memory/README.md#autodream) による定期保守 |
 | [ops/board/](ops/board/README.md) | 親issueに結び付く名前・名簿・投稿と状態・呼び鈴を管理する掲示板CLI |
 | [ops/herdr_labels/](ops/herdr_labels/README.md) | 親担当をHerdrの表示へ同期する。会話からの設定・修復は [herdr-session-label](skills/herdr-session-label/SKILL.md) |
 
@@ -75,9 +77,10 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **放置PR**: N日動きのないPRは、運用レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **親子issueの書式**: タイトル・ラベル・本文・正式なsub-issue関係・進捗更新と段階移行は [親子issue規約](ops/issues/README.md) に従う。手動起票・親からの分割・レポートtriageで同じ規約を使う。
 - **親セッションの担当**: 担当登録の規則は [AGENTS.md](../AGENTS.md#開発ルール)、手順は [parent-session](skills/parent-session/SKILL.md) を参照する。担当指定と要件合意を区別する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
-- **自律割当された親**: dispatcherのbootstrapで予約と実行根拠を受理し、[開発workflow](ops/parent/development_workflow.md) で実装子から実merge/closeまで照合する。自律根拠を人間合意に読み替えない。委任先の既定とdshの明示指定は [AGENTS.md](../AGENTS.md#開発ルール) に従う。
+- **自律割当された親**: dispatcherのbootstrapで予約と実行根拠を受理し、[開発workflow](skills/parent-session/references/dispatch.md) で実装子から実merge/closeまで照合する。自律根拠を人間合意に読み替えない。委任先の既定とdshの明示指定は [AGENTS.md](../AGENTS.md#開発ルール) に従う。
+- **ワーカーのCI・ローカルqueue**: 結果の受け渡しと手動委任の自動再開は [parent-session](skills/parent-session/references/workers.md#ciローカルqueueの待機) に従う。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
-- **merge**: PRへのpushごとにCIを実行し、対象HEADの `Python` check runの成功、親が明示起動した統合Codexレビューと指摘解消を必須条件とする。コミットに `[skip ci]` を付けない。blocker/majorの解消は親が修正差分・回帰テストで確認し、自動再レビューを行わない。親の明示mergeコマンドで各PRのcoverage・最新head/base/merge-base/diff・CI・依存関係・競合を照合し、合格した独立PRから順次進める。merge後のmainのCIも確認する。既定はdry-run、人間の有効化判断後に呼出元環境の `AGENT_AUTO_MERGE=1` で実mergeする。変更パスによる追加承認は不要。記録・判定・停止/復旧の正本は [merge gate](ops/review/README.md#merge-gate)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
+- **merge**: pushごとにCIを実行し、コミットに `[skip ci]` を付けない。親がレビュー依頼を1回出し、大局レビュー、現headのPython CI、軽いgate、merge後確認をCLIが自動進行する。親がmajorの対応を確認したらマージを続行する。人間の有効化判断後の `AGENT_AUTO_MERGE=1` とneeds-humanの制御を維持する。状態・修正上限・停止/復旧の正本は [自動進行](ops/review/README.md)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
 
 ## 研究ループ（概要）
 
@@ -91,5 +94,6 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 - ルールは仮説である。合わなくなったら、運用レポートの提案として改訂する。
 - `AGENTS.md` と `.agents/**` を含む変更も通常のレビュー・merge条件で扱う。
-- 公開ログの限定例外は形式別に検査する。[workerログ3ファイル](ops/worker_logs/README.md#専用prと限定merge例外)と[判断記録・生成README](ops/decision_logs/README.ja.md#限定公開例外と復旧)を参照する。保存実装・検査・workflowを変えるコードPRは通常条件で扱う。
+- 公開ログの限定例外は形式別に検査する。[各ターンのworkerログ3ファイル](ops/worker_logs/README.md#専用prと限定merge例外)と[判断記録・生成README](ops/decision_logs/README.ja.md#限定公開例外と復旧)を参照する。保存実装・検査・workflowを変えるコードPRは通常条件で扱う。
+- 共有memoryの4層と `SUMMARY.md` は、専用CLIが機械検査とマージを行い、対象パスだけの差分をフルCIから除外する。専用CLI・検査・workflowの実装変更には通常のPR条件を適用する。[共有memoryの限定公開例外](ops/shared_memory/README.md#限定公開例外)
 - 規則を追加する前に、memoryの観察で済まないか、既存の規則を消せないかを先に検討する。

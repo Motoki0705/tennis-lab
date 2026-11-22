@@ -32,10 +32,12 @@ user managerが停止していても、過去のjournalは読める。
 | `report` | 運用レポートの予定確認timer/service |
 | `triage` | 採用提案のissue化timer/service |
 | `agents` | dispatcher・report・triageの集合。同じ個別操作を順番に行う |
-| `proposal-expiry` | 改善提案の[期限切れclose](../parent/improvements.md#期限切れcloseとunit導入)を日次実行するtimer/service。agentsに含めない |
+| `proposal-expiry` | 改善提案の[期限切れclose](../parent/README.md#改善提案の期限)を日次実行するtimer/service。agentsに含めない |
+| `memory-autodream` | [共有memoryの定期保守](../shared_memory/README.md#autodream)を点検するtimer/service。agentsに含めない |
 | `cleanup` | 既存のmerge済みbranch整理timer/service。agentsに含めない。worktreeの期限削除とは別 |
 | `git-sync` | [メインcheckoutの30分周期fast-forward](../git_sync/README.md)。agentsに含めない |
 | `worktree-cleanup` | [作成から336時間のworktree強制削除](../worktree_cleanup/README.md)。毎日04:30 Asia/Tokyo。agentsに含めない |
+| `storage-tier` | [D:/E:のミラー・取得・未使用単位の削除](../storage_tier/README.md)。失敗はjournalと監査記録のみ。agentsに含めない |
 
 `on` は `enable --now` を実行し、永続的な `enabled` と `active` を照合する。
 dispatcherは先に既存CLIの `enable` を実行する。初回だけ [dispatcherの導入手順](../dispatcher/README.md#systemdへの導入有効化停止)

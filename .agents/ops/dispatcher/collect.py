@@ -20,6 +20,8 @@ from parent.improvement_receipts import bound_extraction
 from parent.policy import closing_issues, digest, nonempty, number, object_value
 from parent.state import Store
 
+from .state import client_for, repository_scope
+
 
 class InputsChanged(ValueError):
     """A collected subject changed; collection/validation failures remain fatal."""
@@ -92,7 +94,8 @@ def body_dependencies(body: str, repo: str) -> list[int]:
 def collect(
     gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
 ) -> dict[str, Any]:
-    with gh.history_read_scope():
+    gh = client_for(gh, store)
+    with repository_scope(store), gh.fresh_reads(), gh.history_read_scope():
         return _collect(gh, store, root, seeds)
 
 
@@ -100,7 +103,7 @@ def _collect(
     gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
 ) -> dict[str, Any]:
     """Caller holds Store.locked(). Every page/failure is significant."""
-    login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
+    login = gh.authenticated_login()
     extractions = gh.improvement_extractions(store)
     with gh.fresh_reads():
         enabled_since = read_enabled_since(gh)
@@ -121,32 +124,11 @@ def _collect(
                 raise ValueError("open issue listing returned a non-open issue")
     else:
         subjects = sorted(set(number(n) for n in seeds))
-    # ParentSession leaves gh.parent focused on its last subject. A dispatcher
-    # snapshot must keep repository-wide PRs across every freshness check.
-    pulls = gh.rows(f"repos/{gh.repo}/pulls?state=all")
-    unique_numbers(pulls, "PRs")
-    prs = []
-    for p in pulls:
-        if p.get("state") not in {"open", "closed"} or "merged_at" not in p:
-            raise ValueError("PR state/merged_at missing or invalid")
-        if p.get("body") is not None and not isinstance(p["body"], str):
-            raise ValueError("PR body must be text")
-        if p["merged_at"] is not None and not isinstance(p["merged_at"], str):
-            raise ValueError("PR merged_at must be a timestamp or null")
-        head = object_value(p.get("head"))
-        prs.append(
-            {
-                "number": number(p["number"]),
-                "body": p.get("body") or "",
-                "state": p["state"],
-                "merged_at": p["merged_at"],
-                "head": {
-                    "ref": nonempty(head.get("ref"), "PR branch"),
-                    "sha": nonempty(head.get("sha"), "PR head SHA"),
-                },
-                "issues": sorted(closing_issues(p.get("body") or "", gh.repo)),
-            }
-        )
+    # Normal dispatcher discovery collects all PRs in the repository; a
+    # progression collects only its explicit family and numbered PR relations.
+    if gh.targeted_history and seeds is None:
+        raise ValueError("targeted collection requires explicit issue seeds")
+    pulls = None if gh.targeted_history else gh.rows(f"repos/{gh.repo}/pulls?state=all")
     issues: dict[str, Any] = {}
     pending = list(subjects)
     while pending:
@@ -185,7 +167,15 @@ def _collect(
         for row in [*children_raw, *formal_deps]:
             require_work_issue(row)
             gh.identity(row)
-        comments = gh.parent_comments(n, login)
+        comments = (
+            gh.record_history(
+                n,
+                login,
+                unregistered_subject=f"{gh.repo.casefold()}#{n}" not in store.parents,
+            ).comments
+            if gh.targeted_history
+            else gh.parent_comments(n, login)
+        )
         ids = [comment_snapshot(c)["id"] for c in comments]
         if len(set(ids)) != len(ids):
             raise ValueError("duplicate comments within/across pages")
@@ -282,12 +272,37 @@ def _collect(
             if issues[str(child)]["parent"] != int(issue_key):
                 raise ValueError("formal child/parent endpoints disagree")
         route(issues, int(issue_key))  # Detect cycles before the agent runs.
+    if pulls is None:
+        pulls = gh.pulls({int(n) for n in issues})
+    unique_numbers(pulls, "PRs")
+    prs = []
+    for p in pulls:
+        if p.get("state") not in {"open", "closed"} or "merged_at" not in p:
+            raise ValueError("PR state/merged_at missing or invalid")
+        if p.get("body") is not None and not isinstance(p["body"], str):
+            raise ValueError("PR body must be text")
+        if p["merged_at"] is not None and not isinstance(p["merged_at"], str):
+            raise ValueError("PR merged_at must be a timestamp or null")
+        head = object_value(p.get("head"))
+        prs.append(
+            {
+                "number": number(p["number"]),
+                "body": p.get("body") or "",
+                "state": p["state"],
+                "merged_at": p["merged_at"],
+                "head": {
+                    "ref": nonempty(head.get("ref"), "PR branch"),
+                    "sha": nonempty(head.get("sha"), "PR head SHA"),
+                },
+                "issues": sorted(closing_issues(p.get("body") or "", gh.repo)),
+            }
+        )
     owners = {}
     for key, row in store.parents.items():
-        repo, _, n = key.rpartition("#")
+        repo, _, owner_number = key.rpartition("#")
         if repo == gh.repo.casefold():
-            number(int(n))
-            owners[n] = {
+            number(int(owner_number))
+            owners[owner_number] = {
                 "status": row["status"],
                 "generation": row["generation"],
                 "record_sha256": digest(row),
@@ -301,13 +316,18 @@ def _collect(
         "repo": gh.repo.casefold(),
         "publisher": login,
         "supplement_enabled_since": enabled_since,
-        "code": code_snapshot(root),
+        "code": unlocked_code_snapshot(gh, root),
         "subjects": subjects,
         "issues": issues,
         "pulls": sorted(prs, key=lambda x: x["number"]),
         "owners": owners,
         "improvement_extractions": extractions,
     }
+
+
+def unlocked_code_snapshot(gh: GitHub, root: Path) -> dict[str, Any]:
+    with gh.io_scope():
+        return code_snapshot(root)
 
 
 def route(issues: Mapping[str, Any], n: int) -> int:
@@ -492,6 +512,11 @@ class SnapshotGitHub(GitHub):
         self.snapshot = snapshot
         self.repo = snapshot["repo"]
 
+    def authenticated_login(self) -> str:
+        # Identity belongs to the frozen observation too. This adapter has no
+        # transport/authentication context and must never resolve ambient auth.
+        return nonempty(self.snapshot.get("publisher"), "gh login")
+
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         if endpoint == "user":
             return {"login": self.snapshot["publisher"]}
@@ -500,7 +525,7 @@ class SnapshotGitHub(GitHub):
     def improvement_extractions(self, store: Store) -> dict[str, Any]:
         return deepcopy(object_value(self.snapshot["improvement_extractions"]))
 
-    def issue(self, number: int) -> dict[str, Any]:
+    def issue(self, number: int, *, allow_proposal: bool = False) -> dict[str, Any]:
         return deepcopy(object_value(self.snapshot["issues"][str(number)]))
 
     def comments(self, parent: int) -> list[dict[str, Any]]:

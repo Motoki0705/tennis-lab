@@ -9,6 +9,9 @@
 保留实测与父任务完成的问题判定。采用判断已记录于结果报告，正式审查实机验收仍待父任务完成。
 常规 pytest 只运行离线契约测试，不启动比较。
 
+历史请求、输出与测量保持不变。当前执行使用approve/major整体审查输出，历史输出按其保存的schema读取。比较观察不授予生产merge权限。
+
+
 ## 固定资料与隔离
 
 [manifest.json](cases/manifest.json) 固定每个案例的完整 head、base、merge-base、
@@ -172,7 +175,7 @@ repo-root ignore 规则按文档例验证，不豁免真实服务的凭证 URL�
 
 最小方案没有 gold blocker，且仅重复一次。暂定负例不证明不存在缺陷；缓存、顺序和工具差异仍有不确定性。
 历史比较报告保留当时的策略和证据。当前正式审查策略、示例、用量查询及 fixed 回退以
-[父级模型选择步骤](../../parent/README.md#正式レビューのモデル選択)为准。
+[父级模型选择步骤](../../../skills/parent-session/references/review.md)为准。
 此 harness 在部署设置为 fixed 或 select 时都显式选择比较模型，
 保留已批准的 Astra/xhigh 参考设置和不可变证据。
 

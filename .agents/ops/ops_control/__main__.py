@@ -80,7 +80,11 @@ def main(argv: list[str] | None = None) -> int:
     result = {
         "manager": "unavailable" if unavailable else "available",
         "action": args.action,
-        "outcome": "unavailable" if unavailable else "partial_failure" if failed else "ok",
+        "outcome": "unavailable"
+        if unavailable
+        else "partial_failure"
+        if failed
+        else "ok",
         "targets": reports,
     }
     if unavailable:

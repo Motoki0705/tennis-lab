@@ -6,6 +6,7 @@ import hashlib
 import importlib
 import json
 import os
+import subprocess
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -20,6 +21,34 @@ schema: Any = importlib.import_module("explain_html.schema")
 document_api: Any = importlib.import_module("explain_html.document")
 store_api: Any = importlib.import_module("explain_html.store")
 paths_api: Any = importlib.import_module("explain_html.paths")
+
+
+def require_playwright(*candidates: str) -> None:
+    """Fail in CI or skip locally when Playwright is unavailable to Node."""
+    targets = candidates or ("playwright",)
+    probe = (
+        "const explicit = process.env.PLAYWRIGHT_MODULE;"
+        "const candidates = explicit ? [explicit] : JSON.parse(process.argv[1]);"
+        "let found = false;"
+        "for (const target of candidates) {"
+        "  try { require.resolve(target); found = true; break; }"
+        "  catch (err) { if (!err || err.code !== 'MODULE_NOT_FOUND') throw err; }"
+        "}"
+        "if (!found) process.exit(1);"
+    )
+    available = subprocess.run(
+        ["node", "-e", probe, json.dumps(list(targets))],
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+    if available.returncode:
+        unavailable = (
+            pytest.fail if os.environ.get("CI_REQUIRE_BROWSER") == "1" else pytest.skip
+        )
+        unavailable(
+            "Install the optional Playwright package and set NODE_PATH or PLAYWRIGHT_MODULE"
+        )
 
 
 @contextmanager

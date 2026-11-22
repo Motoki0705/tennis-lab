@@ -101,6 +101,25 @@ class EvidenceIssues:
             self.gh.repo.casefold(), parent, n, url, login, raw["state"]
         )
 
+    def find_bound(
+        self, parent: int, login: str, *, required: bool = True
+    ) -> EvidenceIssue | None:
+        """Read only a saved relation; an absent optional binding is explicit."""
+        saved = self._saved(number(parent), login)
+        if saved is None and not required:
+            return None
+        if saved is None or saved["state"] != "bound":
+            raise ValueError(
+                "automatic progression requires a saved evidence issue binding; use evidence --create first"
+            )
+        pinned = self._binding(
+            object_value(self.gh.get(f"repos/{self.gh.repo}/issues/{saved['number']}")),
+            login,
+        )
+        if pinned.parent != parent or pinned.number != saved["number"]:
+            raise ValueError("saved evidence issue binding changed")
+        return pinned
+
     def find(self, parent: int, login: str) -> EvidenceIssue | None:
         """Inspect labelled issues in all states; never create or repair on read.
 
@@ -109,6 +128,8 @@ class EvidenceIssues:
         """
         number(parent)
         saved = self._saved(parent, login)
+        if self.gh.targeted_history:
+            return self.find_bound(parent, login)
         matches = []
         for raw in self.gh.evidence_rows():
             if "pull_request" not in raw and is_evidence_issue(raw):
@@ -136,6 +157,11 @@ class EvidenceIssues:
                 "evidence issue creation uncertain; reconcile GitHub before any new POST"
             )
         return matches[0] if matches else None
+
+    def needs_binding(self, parent: int, login: str) -> bool:
+        """Keep first-time binding and lost-creation recovery under ensure's lock."""
+        saved = self._saved(parent, login)
+        return saved is None or saved["state"] == "sent"
 
     def ensure(
         self, parent: int, login: str, *, store: Store | None = None

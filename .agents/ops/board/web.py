@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from lib.checkout_lock import registry_checkout_lock
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -21,7 +22,14 @@ from .execution_data import ExecutionReader
 from .web_data import BoardReader, InvalidQuery, MissingPost
 
 STATIC = Path(__file__).parent / "static"
-ASSETS = {"app.js", "execution.js", "style.css"}
+ASSETS = {
+    "app.js",
+    "execution.js",
+    "style.css",
+    "icon-claude.svg",
+    "icon-gemini.svg",
+    "icon-codex.svg",
+}
 WRITE_PATH = re.compile(r"/api/posts(?:/[^/]+/(?:replies|read|reactions/[^/]+))?")
 CSP = (
     "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
@@ -108,7 +116,17 @@ def create_app(
                 status_code=403,
             )
         else:
-            response = await call_next(request)
+            # An updater stops this resident while holding checkout exclusively.
+            # Never leave an in-flight HTTP worker waiting on that same lock.
+            with registry_checkout_lock(blocking=False) as code_fd:
+                response = (
+                    JSONResponse(
+                        {"detail": "Board maintenance in progress; retry shortly."},
+                        status_code=503,
+                    )
+                    if code_fd is None
+                    else await call_next(request)
+                )
         response.headers.update(
             {
                 "Content-Security-Policy": CSP,

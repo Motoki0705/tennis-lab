@@ -61,7 +61,10 @@ def test_pytest_runs_concurrently_even_when_old_lock_is_held(
     with lock.open("a") as held:
         fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
         try:
-            for label, wrapper in (("first", first_wrapper), ("second", second_wrapper)):
+            for label, wrapper in (
+                ("first", first_wrapper),
+                ("second", second_wrapper),
+            ):
                 process = subprocess.Popen(
                     ["bash", str(wrapper), f"tests/{label}.py", "-q"],
                     env={**env, "FAKE_LABEL": label},

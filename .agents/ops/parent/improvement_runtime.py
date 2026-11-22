@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -13,8 +14,11 @@ from decision_logs.capture import runtime_environment
 from dispatcher.runtime import Runtime, alive, process_identity
 from issues.improvement import human_state
 
+from parent import worker_followup, worker_slots
+
 from .execution import authorization
 from .improvements import get, lock_key, require
+from .repair_admission import require_repair_labels
 from .session import ParentSession
 
 if TYPE_CHECKING:
@@ -26,6 +30,8 @@ if TYPE_CHECKING:
 class ManualExecution:
     completed: subprocess.CompletedProcess[bytes]
     spawned: bool
+    reused: bool = False
+    repair_claim: str | None = None
 
 
 def execute_manual(
@@ -39,6 +45,7 @@ def execute_manual(
     delegation: str,
     *,
     generation: int,
+    worker: str = "primary",
     reserved_run: dict[str, Any],
     reserved_turn: dict[str, Any],
 ) -> ManualExecution:
@@ -46,14 +53,28 @@ def execute_manual(
 
     directory = Path(command[command.index("--run-dir") + 1])
     process: subprocess.Popen[bytes] | None = None
+    repair_claim = None
     try:
         with (
             store.operation(lock_key(gh.repo)),
             store.operation(f"{gh.repo.casefold()}#{parent}"),
             store.locked(),
         ):
-            session = ParentSession(gh, store, parent, identity)
+            session = ParentSession(gh, store, parent, identity, worker=worker)
             task = current_task(session, child)
+            attempt = None
+            if "--repair-id" in command:
+                repair_id = command[command.index("--repair-id") + 1]
+                attempt = task["repair_attempts"][repair_id]
+                if (
+                    attempt["command"] != command
+                    or attempt["instruction"] != instruction
+                ):
+                    raise ValueError("repair launch differs from its reservation")
+                if attempt["launch_state"] != "reserved":
+                    return ManualExecution(
+                        subprocess.CompletedProcess(command, 0, b"", b""), False, True
+                    )
             require(session, fresh=True)
             current = authorization(session)
             require(session, child, fresh=True)
@@ -68,11 +89,34 @@ def execute_manual(
                 or latest_run(session, task) != directory
                 or task.get("worker_ended")
                 or task.get("stopped")
+                or session.row["tasks"][str(child)].get("stopped")
                 or task.get("authorization") != current
             ):
                 raise ValueError(
                     "manual reservation/authority changed before runtime admission"
                 )
+            if attempt is not None:
+                # Save intent before Popen. An interrupted starting claim is
+                # recovered by inspection, never by resubmitting the launch.
+                repair_claim = uuid.uuid4().hex
+                attempt.update(launch_state="starting", launch_claim=repair_claim)
+                store.save()
+                require_repair_labels(session, child, attempt["request"]["pr"])
+            followup = worker_followup.current(task)
+            if followup and followup["run_dir"] == str(directory):
+                if followup["state"] != "running":
+                    raise ValueError(
+                        "worker follow-up no longer authorizes this launch"
+                    )
+                wait = followup["wait"]
+                if followup["monitor_started"] and wait and wait["kind"] == "ci":
+                    from .policy import object_value
+                    from .worker_wait_sources import require_ci_target
+
+                    with session.gh.fresh_reads():
+                        pr = session.gh.get(f"repos/{gh.repo}/pulls/{wait['pr']}")
+                    require_ci_target(object_value(pr), gh.repo, task["branch"], wait)
+                    require_repair_labels(session, child, wait["pr"])
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
@@ -95,6 +139,7 @@ def execute_manual(
         return ManualExecution(
             subprocess.CompletedProcess(command, process.returncode, stdout, stderr),
             True,
+            repair_claim=repair_claim,
         )
     except (Exception, KeyboardInterrupt) as exc:
         if process is not None:
@@ -105,11 +150,18 @@ def execute_manual(
             raise ValueError(
                 "manual launcher started but admission persistence failed; inspect its runtime and cleanup before retrying"
             ) from exc
+        if repair_claim is not None and not isinstance(exc, (OSError, ValueError)):
+            # An interruption inside Popen can leave a child even though its
+            # constructor never returned. Retain the durable starting claim.
+            raise ValueError(
+                "repair launch is unconfirmed; inspect the saved reservation and cleanup"
+            ) from exc
         return ManualExecution(
             subprocess.CompletedProcess(
                 command, 127 if isinstance(exc, OSError) else 2, b"", str(exc).encode()
             ),
             False,
+            repair_claim=repair_claim,
         )
 
 
@@ -126,7 +178,7 @@ def reconcile_stop(
     The explicit human decision authorizes this targeted stop. Source completion,
     target ownership, logs and the old execution evidence are never reset.
     """
-    manual: list[tuple[int, str, Path, dict[str, Any] | None]] = []
+    manual: list[tuple[int, str, str, Path, dict[str, Any] | None]] = []
     with store.operation(lock_key(gh.repo)), store.locked():
         source_session = ParentSession(gh, store, source_parent, identity)
         source, observed = get(source_session, candidate)
@@ -163,7 +215,7 @@ def reconcile_stop(
         if not managed:
             from .manual_workers import run_directory, worker_runs
 
-            for n, task in row["tasks"].items():
+            for n, name, task in worker_slots.workers(row["tasks"]):
                 run_entries = [
                     run
                     for run in worker_runs(task)
@@ -178,7 +230,9 @@ def reconcile_stop(
                         if launcher.get("directory") == str(directory)
                         else None
                     )
-                    manual.append((int(n), task["delegation_id"], directory, process))
+                    manual.append(
+                        (int(n), name, task["delegation_id"], directory, process)
+                    )
         store.save()
     errors: list[str] = []
     if managed:
@@ -202,7 +256,7 @@ def reconcile_stop(
         from .manual_workers import RUNNER, validate_run
 
         complete = True
-        for n, delegation, directory, process in manual:
+        for n, name, delegation, directory, process in manual:
             try:
                 if process is not None and alive(process):
                     os.kill(process["pid"], signal.SIGTERM)
@@ -212,7 +266,7 @@ def reconcile_stop(
                     complete = False
                     continue
                 current_row = store.read_data()["parents"][target_key]
-                task = current_row["tasks"][str(n)]
+                task = worker_slots.record(current_row, n, name)
                 if task.get("delegation_id") != delegation:
                     raise ValueError("manual delegation changed during stop")
                 validate_run(task, directory)
@@ -223,7 +277,7 @@ def reconcile_stop(
                     continue
                 with store.operation(target_key), store.locked():
                     store.focus(target_key)
-                    task = store.parents[target_key]["tasks"][str(n)]
+                    task = worker_slots.record(store.parents[target_key], n, name)
                     current_entries = [
                         entry
                         for entry in worker_runs(task)

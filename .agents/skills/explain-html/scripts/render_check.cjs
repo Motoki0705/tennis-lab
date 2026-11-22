@@ -1,8 +1,22 @@
 // Real browser qualification of the exact private bundle; no service credentials.
 const path = require('node:path');
 const { pathToFileURL, fileURLToPath } = require('node:url');
-const { chromium } = require(process.env.PLAYWRIGHT_MODULE ||
-  path.resolve(__dirname, '../../../../scripts/ci_metrics/node_modules/playwright'));
+function resolvePlaywrightPath() {
+  if (process.env.PLAYWRIGHT_MODULE) {
+    return process.env.PLAYWRIGHT_MODULE;
+  }
+  const pinned = path.resolve(__dirname, '../../../../scripts/ci_metrics/node_modules/playwright');
+  try {
+    return require.resolve(pinned);
+  } catch (error) {
+    if (error && error.code === 'MODULE_NOT_FOUND') {
+      return require.resolve('playwright');
+    }
+    throw error;
+  }
+}
+
+const { chromium } = require(resolvePlaywrightPath());
 
 async function check(index) {
   const issues = [];

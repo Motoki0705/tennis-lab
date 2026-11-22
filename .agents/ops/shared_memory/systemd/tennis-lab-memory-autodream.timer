@@ -1,0 +1,11 @@
+[Unit]
+Description=Check tennis-lab shared memory daily
+
+[Timer]
+OnCalendar=*-*-* 05:00:00 Asia/Tokyo
+Persistent=true
+AccuracySec=1s
+Unit=tennis-lab-memory-autodream.service
+
+[Install]
+WantedBy=timers.target

@@ -27,6 +27,7 @@ from src.submodules.models.dino.extension import load_dino_extension
 # player checkpoints keep the 91-way head and reuse this id for "player".
 COCO_PERSON_CLASS_ID = 1
 DINO_NUM_CLASSES = 91
+DINO_NUM_QUERIES = 900
 DINO_SWIN_BACKBONE = "swin_L_384_22k"
 DINO_IMAGE_MEAN = (0.485, 0.456, 0.406)
 DINO_IMAGE_STD = (0.229, 0.224, 0.225)
@@ -68,7 +69,7 @@ def dino_4scale_swin_args(
         hidden_dim=256,
         dropout=0.0,
         nheads=8,
-        num_queries=900,
+        num_queries=DINO_NUM_QUERIES,
         query_dim=4,
         num_patterns=0,
         num_feature_levels=4,
@@ -130,11 +131,53 @@ def build_dino(
     """Build the official model and its training criterion (unloaded weights)."""
     build_function = load_dino_build_function(repository)
     model, criterion, _ = build_function(args)
+    _validate_dino_imports(repository)
     if not isinstance(model, torch.nn.Module) or not isinstance(
         criterion, torch.nn.Module
     ):
         raise TypeError("Official build_dino did not return torch modules.")
     return model, criterion
+
+
+class _FP32DeformableAttention(torch.nn.Module):
+    """Run the pinned CUDA op and its attention block with FP32 operands."""
+
+    def __init__(self, attention: torch.nn.Module) -> None:
+        super().__init__()
+        self.attention = attention
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        reference_points: torch.Tensor,
+        input_flatten: torch.Tensor,
+        input_spatial_shapes: torch.Tensor,
+        input_level_start_index: torch.Tensor,
+        input_padding_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        with torch.autocast(query.device.type, enabled=False):
+            return self.attention(
+                query.float(), reference_points.float(), input_flatten.float(),
+                input_spatial_shapes, input_level_start_index, input_padding_mask,
+            )
+
+
+def use_fp32_deformable_attention(model: torch.nn.Module) -> None:
+    """Wrap this model's attention after strict checkpoint load.
+
+    The pinned kernel dispatches only float/double. Keeping the whole block in
+    FP32 also keeps its sampling locations and attention weights in the same
+    dtype as its values. The upstream package and training path stay untouched.
+    """
+    upstream = sys.modules[f"{_DINO_MODELS_PACKAGE}.dino.ops.modules"]
+    attention_type = upstream.MSDeformAttn
+    layers = [(name, module) for name, module in model.named_modules()
+              if isinstance(module, attention_type)]
+    if not layers:
+        raise RuntimeError("Mixed precision DINO requires the pinned MSDeformAttn layers")
+    for name, attention in layers:
+        parent, _, attribute = name.rpartition(".")
+        setattr(model.get_submodule(parent), attribute, _FP32DeformableAttention(attention))
 
 
 def load_dino_state_dict(checkpoint: Path) -> dict[str, torch.Tensor]:
@@ -196,6 +239,7 @@ def load_dino_build_function(repository: Path) -> Callable[[Any], tuple[Any, ...
         raise RuntimeError(
             f"Official DINO module has no build_dino function: {models_init}"
         )
+    _validate_dino_imports(repository)
     return cast(Callable[[Any], tuple[Any, ...]], build_dino_function)
 
 
@@ -210,6 +254,21 @@ def validate_dino_repository(repository: Path) -> tuple[Path, Path]:
             f"(missing: {', '.join(str(path) for path in missing)})"
         )
     return models_init, util_init
+
+
+def dino_source_assets(repository: Path) -> dict[str, Path]:
+    """The external Python implementation actually imported by DINO."""
+    from src.utils.models.loading.source_assets import python_source_assets
+
+    validate_dino_repository(repository)
+    assets: dict[str, Path] = python_source_assets(repository, prefix="dino_source")
+    return assets
+
+
+def _validate_dino_imports(repository: Path) -> None:
+    from src.utils.models.loading.source_assets import validate_source_modules
+
+    validate_source_modules(repository, dino_source_assets(repository), (_DINO_MODELS_PACKAGE, 'util'))
 
 
 def _load_dino_util_package(util_init: Path) -> None:
@@ -272,6 +331,17 @@ def dino_resized_shape(
     if max(height, width) * scale > max_long_side:
         scale = max_long_side / max(height, width)
     return int(round(height * scale)), int(round(width * scale))
+
+
+def dino_batch_item_requirements(
+    height: int, width: int, *, short_side: int, max_long_side: int
+) -> tuple[tuple[int, int], int]:
+    """Return the compatibility shape and estimated explicit arrays per image."""
+    resized = dino_resized_shape(height, width, short_side=short_side, max_long_side=max_long_side)
+    # Decoded BGR/RGB and full-resolution normalization, resized float32
+    # copies including the batch stack, and the detection heads for one image.
+    head_bytes = DINO_NUM_QUERIES * (DINO_NUM_CLASSES + 4) * 8
+    return resized, height * width * 18 + resized[0] * resized[1] * 3 * 4 * 3 + head_bytes
 
 
 def preprocess_frame(

@@ -763,8 +763,6 @@ class CourtRawPoseOutput:
             raise ValueError("Raw Court pose batch size must be positive.")
         if not self.values.is_floating_point():
             raise TypeError("Raw Court pose must be floating point.")
-        if not bool(torch.isfinite(self.values).all()):
-            raise ValueError("Raw Court pose must contain only finite values.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -773,7 +771,7 @@ class CourtModelOutput:
 
     ``pose`` is optional so the dense-only target/loss path keeps the original
     mapping contract.  Pose-enabled models must return the typed raw output;
-    model-I/O validates the target/loss combination before computing losses.
+    model-I/O validates the values and target/loss combination.
     """
 
     dense_logits: Mapping[CourtTargetKind, Tensor]
@@ -790,8 +788,6 @@ class CourtModelOutput:
                 raise ValueError(f"Court {kind} logits must be rank-4 Tensor.")
             if not value.is_floating_point():
                 raise TypeError(f"Court {kind} logits must be floating point.")
-            if not bool(torch.isfinite(value).all()):
-                raise ValueError(f"Court {kind} logits must be finite.")
             if self.pose is not None and value.shape[0] != self.pose.values.shape[0]:
                 raise ValueError(
                     f"Court {kind} logits batch must match the pose output batch."

@@ -6,14 +6,16 @@ import copy
 import hashlib
 import os
 import signal
+import subprocess
 import uuid
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from parent import worker_preflight
+from lib.agent_settings import check_saved_implementation_model, implementation_model
+from parent import worker_preflight, worker_slots
 from parent.adopted_tasks import check_task_adoptions
 from parent.execution import (
     authorization,
@@ -23,7 +25,7 @@ from parent.execution import (
 from parent.github import GitHub
 from parent.policy import closing_issues, digest, nonempty, number
 from parent.session import ParentSession
-from parent.state import Store, session_identity
+from parent.state import RegistryConflict, Store, session_identity
 from parent.worker_instruction import prepare_instruction
 from worker_logs import service as worker_logs
 from worker_logs import sources as log_sources
@@ -40,7 +42,7 @@ from .collect import (
 from .outcomes import read_result
 from .runtime import Runtime, alive, gate, load, process_identity
 from .schedule import Schedule, latest_slot, next_slot
-from .state import DispatchStore
+from .state import DispatchStore, client_for, progression_reads, require_client
 
 PHASES = {
     "reserved",
@@ -97,12 +99,12 @@ def children_pending(row: dict[str, Any]) -> list[int]:
     # Reuse the reservation/end-evidence contract from parent.launch. A stopped
     # or closed task still counts until the current delegation has ended.
     pending = set()
-    for key, task in row["tasks"].items():
+    for key, name, task in worker_slots.workers(row["tasks"]):
         if not task.get("delegated"):
             continue
         ended = task.get("worker_ended")
         if ended is None:
-            pending.add(number(int(key)))
+            pending.add((number(int(key)), name))
         elif (
             not isinstance(ended, dict)
             or set(ended) != {"delegation_id", "evidence"}
@@ -116,11 +118,11 @@ def children_pending(row: dict[str, Any]) -> list[int]:
         # Keep old runtime records as well: replacing a delegation must never
         # erase a live worker from the capacity calculation.
         pending.update(
-            job["child"]
+            (job["child"], job.get("worker_name", "primary"))
             for job in dispatch["jobs"].values()
             if job["role"] == "implementation" and job["phase"] != "ended"
         )
-    return sorted(pending)
+    return [n for n, _ in sorted(pending)]
 
 
 def occupies(row: dict[str, Any]) -> bool:
@@ -178,26 +180,109 @@ def released_reservation(row: dict[str, Any]) -> bool:
     )
 
 
+def job_snapshot(row: dict[str, Any], job: dict[str, Any]) -> dict[str, Any]:
+    dispatch = row["dispatch"]
+    return copy.deepcopy(
+        {
+            "owner": {k: row[k] for k in ("session", "status", "generation")},
+            "dispatch": {
+                k: dispatch.get(k)
+                for k in (
+                    "assignment_id",
+                    "session",
+                    "authorization",
+                    "active_job",
+                    "phase",
+                    "controller_mode",
+                )
+            },
+            "job": job,
+            "task": {
+                k: v
+                for k, v in worker_slots.job_record(row, job).items()
+                if k != "helpers"
+            }
+            if job["child"] is not None
+            else None,
+        }
+    )
+
+
+def current_job(
+    store: Store,
+    key: str,
+    expected: dict[str, Any],
+    *,
+    run_id: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    row = store.parents.get(key)
+    job = ((row or {}).get("dispatch") or {}).get("jobs", {}).get(expected["job"]["id"])
+    actual = job_snapshot(row, job) if row is not None and job is not None else None
+    comparison = copy.deepcopy(expected)
+    # The worker may report its exit while status is in flight. This fact does
+    # not change which runtime was inspected and must be preserved.
+    if actual is not None:
+        actual["job"].pop("runner_exit", None)
+    comparison["job"].pop("runner_exit", None)
+    if actual != comparison:
+        store.conflict("worker job/run/delegation or owner changed during observation")
+    assert row is not None and job is not None
+    if run_id is None:
+        run_id = expected["job"].get("observation", {}).get("run_id")
+    if run_id is not None:
+        try:
+            current_run = load(Path(job["directory"]) / "runtime/result.json")["run_id"]
+        except (ValueError, OSError, KeyError, TypeError):
+            store.conflict("runtime run could not be revalidated")
+        if current_run != run_id:
+            store.conflict("runtime run changed before applying its observation")
+    if job.get("cancelled_before_start") and not unstarted(job):
+        store.conflict("cancelled job acquired launch evidence during observation")
+    return row, job
+
+
+def observation_intent(
+    store: Store, row: dict[str, Any], job: dict[str, Any], kind: str
+) -> dict[str, Any]:
+    path = Path(job["directory"]) / "runtime/result.json"
+    run_id = (
+        nonempty(load(path).get("run_id"), "runtime run ID") if path.exists() else None
+    )
+    if job.get("runtime_run_id") is not None and job["runtime_run_id"] != run_id:
+        store.conflict("saved runtime run identity changed")
+    kind = "stop" if kind == "stop" else "status"
+    previous = job.get("observation", {})
+    if previous.get("kind") != kind or previous.get("run_id") != run_id:
+        job["observation"] = {"id": uuid.uuid4().hex, "kind": kind, "run_id": run_id}
+    store.save()
+    return job_snapshot(row, job)
+
+
+def check_observation(job: dict[str, Any], evidence: dict[str, Any]) -> None:
+    if job["observation"]["run_id"] != evidence["record"]["run_id"]:
+        raise ValueError("runtime run changed during observation")
+
+
 class Supervisor:
     def __init__(self, gh: GitHub, store: Store, schedule: Schedule) -> None:
-        if (
-            isinstance(store, DispatchStore)
-            and store.schedule.directory != schedule.directory
-        ):
-            raise ValueError("dispatcher store and schedule differ")
-        self.gh, self.store, self.schedule = (
-            gh,
-            store
-            if isinstance(store, DispatchStore)
-            else DispatchStore(store.directory, schedule),
-            schedule,
-        )
+        if not isinstance(store, DispatchStore) or store.schedule.path != schedule.path:
+            raise ValueError(
+                "dispatcher requires the supplied DispatchStore and its schedule"
+            )
+        require_client(gh, store)
+        self.gh, self.store, self.schedule = gh, store, schedule
 
-    def _session(self, key: str, row: dict[str, Any]) -> ParentSession:
+    def _session(
+        self, key: str, row: dict[str, Any], worker: str = "primary"
+    ) -> ParentSession:
         if key.rpartition("#")[0] != self.gh.repo.casefold():
             raise ValueError("managed repository mismatch")
         return ParentSession(
-            self.gh, self.store, number(int(key.rpartition("#")[2])), row["session"]
+            client_for(self.gh, self.store, targeted_history=progression_reads(row)),
+            self.store,
+            number(int(key.rpartition("#")[2])),
+            row["session"],
+            worker=worker,
         )
 
     def _authorized(self, key: str, row: dict[str, Any]) -> None:
@@ -275,6 +360,18 @@ class Supervisor:
 
         verify_completion(session)
 
+    def _validate_repair_registration(
+        self, key: str, row: dict[str, Any], job: dict[str, Any]
+    ) -> None:
+        from .repairs import require_registration
+
+        registration = require_registration(self, key, row, job["progression_id"])
+        if (
+            job["child"] != registration["child"]
+            or job["repair"]["pr"] != registration["pr"]
+        ):
+            raise ValueError("repair job differs from its registered target")
+
     def _validate_start(
         self, key: str, row: dict[str, Any], job: dict[str, Any]
     ) -> None:
@@ -291,7 +388,9 @@ class Supervisor:
                 "runtime assignment/generation/authorization changed or stopped"
             )
         self._authorized(key, row)
-        session = self._session(key, row)
+        session = self._session(key, row, job.get("worker_name", "primary"))
+        if "repair" in job:
+            self._validate_repair_registration(key, row, job)
         if job["role"] == "parent" and dispatch.get("controller_mode") == "handoff":
             raise ValueError("parent runtime was handed off to the current owner")
         issue = self.gh.issue(session.parent)
@@ -304,7 +403,7 @@ class Supervisor:
             if dispatch["active_job"] != job["id"]:
                 raise ValueError("parent reservation was superseded")
         else:
-            task = row["tasks"].get(str(job["child"]), {})
+            task = worker_slots.job_record(row, job)
             if (
                 not task.get("delegated")
                 or task.get("delegation_id") != job["delegation_id"]
@@ -340,10 +439,15 @@ class Supervisor:
                 if t["child"] == job["child"]
             )
             reasons = planned["reasons"]
-            if job["resume_from"] is not None and task.get("restart_evidence"):
+            if session.worker != "primary":
+                reasons = [r for r in reasons if r["code"] != "existing_pr"]
+            elif (
+                job["resume_from"] is not None
+                or task.get("astra_handoff", {}).get("to") == job["delegation_id"]
+            ) and task.get("restart_evidence"):
                 related = [
                     p
-                    for p in self.gh.pulls()
+                    for p in self.gh.pulls({job["child"]})
                     if job["child"] in closing_issues(p.get("body") or "", self.gh.repo)
                 ]
                 if related and (
@@ -395,50 +499,112 @@ class Supervisor:
             ]
         assert_material_fresh(snapshot, current, session.parent, sources)
 
-    def claim(self, key: str, job_id: str) -> dict[str, Any] | None:
-        """Validate and acquire a reservation in one parent registry lock."""
-        with self.store.locked():
-            row = self.store.parents[key]
-            dispatch = row["dispatch"]
-            job: dict[str, Any] = dispatch["jobs"][job_id]
-            if job["phase"] != "reserved" or not self.schedule.read()["enabled"]:
-                return None
-            try:
-                self._validate_start(key, row, job)
-            except (ValueError, OSError, KeyError, TypeError) as exc:
-                reason = f"{exc}; 次の予定回または明示実行で再判断する"
-                self.cancel_reservation(row, job, reason)
+    def _cancel_admission(
+        self, key: str, expected: dict[str, Any], reason: str, *, claimed: bool = False
+    ) -> None:
+        """Rollback only this unstarted job, using no remote authorization."""
+        with (
+            self.store.ownership()
+            if expected["job"]["role"] == "parent"
+            else nullcontext(),
+            self.store.locked(),
+        ):
+            row = self.store.parents.get(key)
+            saved = expected["job"]
+            dispatch = managed(row) if row else None
+            job = dispatch["jobs"].get(saved["id"]) if dispatch else None
+            if (
+                job is None
+                or row is None
+                or dispatch is None
+                or row["session"] != expected["owner"]["session"]
+                or row["generation"] != expected["owner"]["generation"]
+                or dispatch["assignment_id"] != saved["assignment_id"]
+                or job["delegation_id"] != saved["delegation_id"]
+                or job["phase"] != ("starting" if claimed else "reserved")
+                or job["worker"] != saved["worker"]
+            ):
+                self.store.conflict(
+                    "admission reservation changed; reconcile the saved job"
+                )
+            assert row is not None and dispatch is not None and job is not None
+            if claimed:
+                if (Path(job["directory"]) / "runtime").exists():
+                    self.store.conflict("launch evidence appeared during admission")
+                job["worker"] = None
+            self.cancel_reservation(row, job, reason)
+            if (
+                job["role"] == "parent"
+                and job["phase"] == "ended"
+                and dispatch["phase"] != "stopped"
+            ):
+                dispatch.update(phase="failed", reason=reason)
                 if (
-                    job["role"] == "parent"
-                    and job["phase"] == "ended"
-                    and dispatch["phase"] != "stopped"
+                    row["session"] == f"dispatcher-reservation:{job['assignment_id']}"
+                    and row["generation"] == job["authorization"]["generation"]
                 ):
-                    dispatch.update(phase="failed", reason=reason)
-                    if (
-                        row["session"]
-                        == f"dispatcher-reservation:{job['assignment_id']}"
-                        and row["generation"] == job["authorization"]["generation"]
-                    ):
-                        row["status"] = "released"
-                self.store.save()
-                return None
-            job.update(phase="starting", worker=process_identity(os.getpid()))
-            event(dispatch, "runtime_starting", job_id=job_id)
+                    row["status"] = "released"
             self.store.save()
-            return job
+
+    def claim(self, key: str, job_id: str) -> dict[str, Any] | None:
+        with self.store.operation(f"dispatcher:{key}"):
+            return self._claim(key, job_id)
+
+    def _claim(self, key: str, job_id: str) -> dict[str, Any] | None:
+        """Observe with the bound client, then acquire the current reservation."""
+        expected = None
+        try:
+            with self.store.locked(), self.gh.fresh_reads():
+                row = self.store.parents[key]
+                dispatch = row["dispatch"]
+                job: dict[str, Any] = dispatch["jobs"][job_id]
+                if job["phase"] != "reserved" or not self.schedule.read()["enabled"]:
+                    return None
+                expected = job_snapshot(row, job)
+                self._validate_start(key, row, job)
+                if not self.schedule.read()["enabled"]:
+                    self.store.conflict("dispatcher disabled before claim")
+                job.update(phase="starting", worker=process_identity(os.getpid()))
+                event(dispatch, "runtime_starting", job_id=job_id)
+                self.store.save()
+                return copy.deepcopy(job)
+        except (
+            ValueError,
+            OSError,
+            KeyError,
+            TypeError,
+            subprocess.SubprocessError,
+        ) as exc:
+            if expected is None:
+                raise
+            self._cancel_admission(
+                key, expected, f"{exc}; 次の予定回または明示実行で再判断する"
+            )
+            if isinstance(exc, RegistryConflict):
+                raise
+            return None
 
     @contextmanager
     def launch_admission(self, key: str, job_id: str) -> Iterator[None]:
-        """Recheck a claimed job immediately around Popen, not around its wait."""
+        """Keep the final Popen fence; rollback pre-Popen failures in a new transaction."""
         from parent.improvements import lock_key, require
 
-        with self.store.operation(lock_key(self.gh.repo)), self.store.locked():
-            row = self.store.parents[key]
-            dispatch = row["dispatch"]
-            job = dispatch["jobs"][job_id]
-            try:
+        expected = None
+        admitted = False
+        try:
+            with (
+                self.store.operation(lock_key(self.gh.repo)),
+                self.store.operation(f"dispatcher:{key}"),
+                self.store.locked(),
+                self.gh.fresh_reads(),
+            ):
+                row = self.store.parents[key]
+                dispatch = row["dispatch"]
+                job = dispatch["jobs"][job_id]
+                expected = job_snapshot(row, job)
                 if (
-                    dispatch["phase"] in {"stopped", "recovery_required"}
+                    not self.schedule.read()["enabled"]
+                    or dispatch["phase"] in {"stopped", "recovery_required"}
                     or job["phase"] != "starting"
                 ):
                     raise ValueError("claimed runtime stopped before launch")
@@ -449,29 +615,31 @@ class Supervisor:
                     raise ValueError("human improvement approval changed after claim")
                 if job["child"] is not None:
                     require(session, job["child"], fresh=True)
-                    task = row["tasks"][str(job["child"])]
+                    task = worker_slots.job_record(row, job)
                     if (
                         task.get("stopped")
                         or task.get("delegation_id") != job["delegation_id"]
                     ):
                         raise ValueError("claimed implementation stopped before launch")
-            except ValueError as exc:
-                # This worker owns its lifetime lock and has not reached Popen.
-                # Do not use this path to clear evidence of an actual runner.
-                if (Path(job["directory"]) / "runtime").exists():
-                    raise
-                job["worker"] = None
-                self.cancel_reservation(row, job, str(exc))
-                if job["phase"] == "ended" and job["role"] == "parent":
-                    dispatch.update(phase="failed", reason=str(exc))
-                    if (
-                        row["session"]
-                        == f"dispatcher-reservation:{job['assignment_id']}"
-                    ):
-                        row["status"] = "released"
-                self.store.save()
-                raise
-            yield
+                if "repair" in job:
+                    from parent.repair_admission import require_repair_labels
+
+                    self._validate_repair_registration(key, row, job)
+                    require_repair_labels(session, job["child"], job["repair"]["pr"])
+                if not self.schedule.read()["enabled"]:
+                    self.store.conflict("dispatcher disabled before launch")
+                admitted = True
+                yield
+        except (
+            ValueError,
+            OSError,
+            KeyError,
+            TypeError,
+            subprocess.SubprocessError,
+        ) as exc:
+            if not admitted and expected is not None:
+                self._cancel_admission(key, expected, str(exc), claimed=True)
+            raise
 
     def resume_source(
         self, row: dict[str, Any], previous: dict[str, Any]
@@ -505,6 +673,8 @@ class Supervisor:
                 if str(Path(j["directory"]) / "runtime") == source
                 and j["role"] == previous["role"]
                 and j["child"] == previous["child"]
+                and j.get("worker_name", "primary")
+                == previous.get("worker_name", "primary")
                 and j["sequence"] < previous["sequence"]
             ]
             if len(matches) != 1:
@@ -527,7 +697,7 @@ class Supervisor:
             return
         job.update(phase="ended", cancelled_before_start=True, diagnostic=reason)
         event(dispatch, "runtime_cancelled", job_id=job["id"], reason=reason)
-        task = row["tasks"].get(str(job["child"]), {})
+        task = worker_slots.job_record(row, job)
         if (
             "preflight" in job
             and "preflight" in task
@@ -556,6 +726,7 @@ class Supervisor:
         row: dict[str, Any],
         *,
         child: int | None = None,
+        worker: str = "primary",
         delegation_id: str | None = None,
         prompt: str | None = None,
         model: str | None = None,
@@ -563,7 +734,8 @@ class Supervisor:
     ) -> dict[str, Any]:
         dispatch = row["dispatch"]
         config = self.schedule.read()["config"]
-        task = row["tasks"][str(child)] if child is not None else {}
+        gh = client_for(self.gh, self.store, targeted_history=progression_reads(row))
+        task = worker_slots.record(row, child, worker) if child is not None else {}
         cwd = (
             config["cwd"]
             if child is None
@@ -588,7 +760,7 @@ class Supervisor:
             snapshot = load(Path(previous["directory"]) / "start-input.json")
             cited_issues, _, _ = source_references(self.gh.repo.casefold(), sources)
             snapshot = collect(
-                self.gh,
+                gh,
                 self.store,
                 Path(config["cwd"]),
                 [parent, *(history_owner(snapshot, n) for n in cited_issues)],
@@ -604,6 +776,7 @@ class Supervisor:
             "phase": "reserved",
             "role": "implementation" if child is not None else "parent",
             "child": child,
+            "worker_name": worker,
             "delegation_id": delegation_id,
             "directory": str(directory),
             "runner": config["runner"],
@@ -611,12 +784,14 @@ class Supervisor:
             "cwd": cwd,
             "branch": branch,
             "task_id": f"development:{key}:generation:{row['generation']}"
-            + (f":child:{child}" if child is not None else ""),
+            + (f":child:{child}" if child is not None else "")
+            + (f":worker:{worker}" if worker != "primary" else ""),
             "model": model,
             "resume_from": resume_from,
             "worker": None,
             "runner_exit": None,
             "diagnostic": None,
+            "targeted_history": gh.targeted_history,
             "authorization": dict(dispatch["authorization"]),
             "assignment_id": dispatch["assignment_id"],
             "candidate_sha256": digest(dispatch["candidate"]),
@@ -699,7 +874,7 @@ class Supervisor:
     def assign(self) -> list[int]:
         """No model invocation. Consume only committed candidates, in priority order."""
         assigned: list[int] = []
-        with self.store.locked():
+        with self.store.ownership(), self.store.locked():
             state = self.schedule.read()
             if not state["enabled"]:
                 return assigned
@@ -756,10 +931,14 @@ class Supervisor:
                             snapshot,
                             candidate,
                         )
-                        session = ParentSession(self.gh, self.store, n, None)
+                        session = ParentSession(
+                            client_for(self.gh, self.store), self.store, n, None
+                        )
                         auth = validate_candidate(
                             session, candidate["basis_sha256"], candidate["generation"]
                         )
+                    except RegistryConflict:
+                        raise
                     except ValueError as exc:
                         run["candidates"][str(n)] = {
                             "state": "stale",
@@ -861,9 +1040,14 @@ class Supervisor:
                 or env.get("AGENT_RUNTIME_TASK_ID") != job["task_id"]
             ):
                 raise ValueError("bootstrap runtime/assignment mismatch")
-            evidence = Runtime(Path(job["runner"])).inspect(
-                Path(job["directory"]) / "runtime"
-            )
+            expected = observation_intent(self.store, row, job, "accept")
+        evidence = Runtime(Path(job["runner"])).inspect(
+            Path(job["directory"]) / "runtime"
+        )
+        check_observation(expected["job"], evidence)
+        with self.store.ownership(), self.store.locked():
+            row, job = current_job(self.store, key, expected)
+            dispatch = row["dispatch"]
             self._check_contract(job, evidence["record"])
             actual = evidence["record"]["runtime"].get("session_id")
             if identity != f"claude:{actual}" or not evidence["summary"]["agent_alive"]:
@@ -876,6 +1060,8 @@ class Supervisor:
             ):
                 raise ValueError("never replace an existing runtime session")
             self._authorized(key, row)
+            row, job = current_job(self.store, key, expected)
+            dispatch = row["dispatch"]
             if any(
                 k != key
                 and r["session"] == identity
@@ -907,6 +1093,31 @@ class Supervisor:
             != ("claude" if job["role"] == "parent" else "codex")
         ):
             raise ValueError("runner contract does not match the reserved job")
+        if contract.get("repair") != job.get("repair"):
+            raise ValueError("runner repair contract does not match the reserved job")
+        if job["role"] == "implementation":
+            model = nonempty(
+                settings.get("selected", {}).get("model"), "saved worker model"
+            )
+            check_saved_implementation_model(model)
+            if job.get("model") and job["model"] != model:
+                raise ValueError("worker runtime model differs from its reservation")
+        if "repair" in contract:
+            from lib.repair_turn import validate_contract
+
+            validate_contract(contract)
+
+    def start_repair(
+        self, parent: int, progression_id: str, repair_id: str, details: str
+    ) -> str:
+        from .repairs import reserve
+
+        bounded = Supervisor(
+            client_for(self.gh, self.store, targeted_history=True),
+            self.store,
+            self.schedule,
+        )
+        return reserve(bounded, parent, progression_id, repair_id, details)
 
     def start_child(
         self,
@@ -916,6 +1127,8 @@ class Supervisor:
         prompt: str,
         env: dict[str, str],
         model: str | None = None,
+        *,
+        worker: str | None = None,
     ) -> str:
         with self.store.locked():
             key = f"{self.gh.repo.casefold()}#{parent}"
@@ -937,7 +1150,8 @@ class Supervisor:
                 )
             self._authorized(key, row)
             check_handoff_capacity(self.store.parents, self.schedule, key)
-            task = row["tasks"].get(str(child), {})
+            worker = worker_slots.select(row, child, worker)
+            task = worker_slots.record(row, child, worker)
             if (
                 not task.get("delegated")
                 or task.get("delegation_id") != delegation_id
@@ -947,7 +1161,11 @@ class Supervisor:
                 or task.get("agent") != "codex"
             ):
                 raise ValueError("current Codex delegation reservation is required")
-            related = [j for j in dispatch["jobs"].values() if j["child"] == child]
+            related = [
+                j
+                for j in dispatch["jobs"].values()
+                if j["child"] == child and j.get("worker_name", "primary") == worker
+            ]
             if any(j["phase"] != "ended" for j in related):
                 raise ValueError(
                     "previous child runtime is still reserved/live/unreconciled"
@@ -967,9 +1185,22 @@ class Supervisor:
             if len(children_pending(row)) > dispatch["child_limit"]:
                 raise ValueError("implementation reservation limit exceeded")
             resume_from = None
-            if related:
+            if related and task.get("astra_handoff", {}).get("to") != delegation_id:
                 previous = max(related, key=lambda j: j["sequence"])
                 resume_from = self.resume_source(row, previous)
+            if resume_from is None:
+                implementation_model(model)
+            else:
+                settings = load(Path(resume_from) / "result.json")["contract"][
+                    "settings"
+                ]
+                implementation_model(
+                    model,
+                    previous=nonempty(
+                        settings["selected"]["model"], "saved worker model"
+                    ),
+                )
+                model = settings["overrides"].get("model")
             cwd = nonempty(task.get("worktree"), "delegated worktree")
             nonempty(task.get("branch"), "delegated branch")
             if not Path(cwd).is_absolute():
@@ -977,11 +1208,12 @@ class Supervisor:
             phase = worker_preflight.state(task)
             if not phase["turns"]:
                 # The dispatcher CLI is also an initial entry, never a planning bypass.
-                session = self._session(key, row)
+                session = self._session(key, row, worker)
                 prepared, specific = worker_preflight.prepare_turn(
                     session, child, prompt, resume=False
                 )
-                turn = worker_preflight.commit_turn(task, prepared)
+                with session.gh.io_scope():
+                    turn = worker_preflight.commit_turn(task, prepared)
                 _, items = session.work_items()
                 prepared_instruction = prepare_instruction(
                     parent,
@@ -991,13 +1223,23 @@ class Supervisor:
                     items[child].body,
                     specific,
                     turn,
+                    worker=session.worker,
                 )
                 prompt = prepared_instruction.text
                 worker_logs.capture(
                     session, child, items[child].body, prepared_instruction
                 )
+            else:
+                expected = phase["turns"][-1].get("prompt_sha256")
+                if (
+                    expected
+                    and hashlib.sha256(prompt.encode("utf-8")).hexdigest() != expected
+                ):
+                    raise ValueError(
+                        "dispatcher prompt differs from the reserved worker turn"
+                    )
             worker_preflight.check_admission(
-                self._session(key, row),
+                self._session(key, row, worker),
                 child,
                 phase["turns"][-1]["snapshot"]
                 if phase["turns"]
@@ -1008,6 +1250,7 @@ class Supervisor:
                 row,
                 child=child,
                 delegation_id=delegation_id,
+                worker=worker,
                 prompt=prompt,
                 model=model,
                 resume_from=resume_from,
@@ -1058,6 +1301,56 @@ class Supervisor:
         dispatch = row["dispatch"]
         record = evidence["record"]
         self._check_contract(job, record)
+        expected = job_snapshot(row, job)
+        response = None
+        diagnostic = None
+        if (
+            job["role"] != "implementation"
+            and dispatch.get("controller_mode") != "handoff"
+            and job["id"] == dispatch["active_job"]
+            and job["authorization"]["generation"] == row["generation"]
+            and dispatch["phase"] != "stopped"
+            and record["result"] == "completed"
+            and not row["session"].startswith("dispatcher-reservation:")
+        ):
+            try:
+                response = load(Path(job["directory"]) / "runtime/final.md")
+                if (
+                    set(response)
+                    != {"schema_version", "state", "reason", "resume_condition"}
+                    or type(response["schema_version"]) is not int
+                    or response["schema_version"] != 1
+                    or response["state"] not in {"waiting", "completed", "failed"}
+                ):
+                    raise ValueError("invalid parent event schema")
+                nonempty(response["reason"], "parent event reason")
+                nonempty(response["resume_condition"], "parent resume condition")
+                if response["state"] == "completed":
+                    from parent.completion import require_report_receipt
+
+                    self._authorized(key, row)
+                    require_report_receipt(
+                        row, job, response, authorization(self._session(key, row))
+                    )
+                    if children_pending(row):
+                        raise ValueError(
+                            "cannot finish a parent while child reservations/runtimes remain"
+                        )
+            except RegistryConflict:
+                raise
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                diagnostic = str(exc)
+
+        # Authorization releases registry.lock for GitHub I/O. Revalidate the
+        # observed runtime after the LAST such read, before applying any result.
+        row, job = current_job(
+            self.store,
+            key,
+            expected,
+            run_id=nonempty(record.get("run_id"), "runtime run ID"),
+        )
+        dispatch = row["dispatch"]
+        job["runtime_run_id"] = record["run_id"]
         job["phase"] = "ended"
         event(
             dispatch,
@@ -1067,19 +1360,21 @@ class Supervisor:
             reason=record["turn_end_reason"],
         )
         if job["role"] == "implementation":
-            if job.get("log_journal"):
-                worker_logs.finish(
-                    Path(job["log_journal"]), evidence, publish_now=False
-                )
-            task = row["tasks"].get(str(job["child"]), {})
+            task = worker_slots.job_record(row, job)
             if task.get("delegation_id") == job["delegation_id"]:
                 task["worker_ended"] = {
                     "delegation_id": job["delegation_id"],
                     "evidence": f"dispatcher runtime {record['run_id']}: terminal result, cleanup_complete, no live runner/CLI/group",
                 }
+            if job.get("repair") and job.get("progression_id"):
+                # The progression consumes the repair report; it wakes the
+                # parent only for a decision or final notification.
+                return
             dispatch["wake_requested"] = True
             if dispatch.get("controller_mode") == "handoff":
-                dispatch.update(phase="waiting", wake_requested=False)
+                dispatch["wake_requested"] = False
+                if dispatch["phase"] not in {"stopped", "recovery_required"}:
+                    dispatch["phase"] = "waiting"
                 return
             if dispatch["phase"] == "waiting":
                 dispatch.update(
@@ -1103,123 +1398,149 @@ class Supervisor:
                 reason="親runtime失敗または担当未受理。記録を確認して明示再開する",
             )
             return
-        try:
-            response = load(Path(job["directory"]) / "runtime/final.md")
-            if (
-                set(response)
-                != {"schema_version", "state", "reason", "resume_condition"}
-                or type(response["schema_version"]) is not int
-                or response["schema_version"] != 1
-                or response["state"] not in {"waiting", "completed", "failed"}
-            ):
-                raise ValueError("invalid parent event schema")
-            nonempty(response["reason"], "parent event reason")
-            nonempty(response["resume_condition"], "parent resume condition")
-            if response["state"] == "completed":
-                from parent.completion import require_report_receipt
-
-                self._authorized(key, row)
-                require_report_receipt(
-                    row, job, response, authorization(self._session(key, row))
-                )
+        if diagnostic is not None:
+            dispatch.update(phase="failed", reason=diagnostic)
+            return
+        assert response is not None
+        dispatch.update(
+            phase=response["state"],
+            reason=response["reason"],
+            resume_condition=response["resume_condition"],
+        )
+        if response["state"] == "waiting" and dispatch.get("wake_requested"):
             dispatch.update(
-                phase=response["state"],
-                reason=response["reason"],
-                resume_condition=response["resume_condition"],
+                phase="resume_pending", reason="子runtimeの終了イベントを確認する"
             )
-            if response["state"] == "waiting" and dispatch.get("wake_requested"):
-                dispatch.update(
-                    phase="resume_pending", reason="子runtimeの終了イベントを確認する"
-                )
-            if response["state"] == "completed":
-                if children_pending(row):
-                    raise ValueError(
-                        "cannot finish a parent while child reservations/runtimes remain"
+        if response["state"] == "completed":
+            row["status"] = "ended"
+            row["publication_exit_pending"] = {
+                "generation": row["generation"],
+                "root": job["cwd"],
+            }
+        event(
+            dispatch,
+            "parent_" + response["state"],
+            job_id=job["id"],
+            reason=response["reason"],
+        )
+
+    def _observe_job(
+        self, key: str, identifier: str, *, stop: bool
+    ) -> tuple[Path, Callable[[], bool]] | None:
+        with self.store.operation(f"dispatcher:{key}"):
+            return self._observe_job_locked(key, identifier, stop=stop)
+
+    def _observe_job_locked(
+        self, key: str, identifier: str, *, stop: bool
+    ) -> tuple[Path, Callable[[], bool]] | None:
+        with self.store.locked():
+            row = self.store.parents[key]
+            job = row["dispatch"]["jobs"][identifier]
+            if job["phase"] in {"ended", "reserved"}:
+                return None
+            expected = observation_intent(
+                self.store, row, job, "stop" if stop else "status"
+            )
+        saved = expected["job"]
+        directory = Path(saved["directory"])
+        evidence = None
+        runtime = Runtime(Path(saved["runner"]))
+        if saved["observation"]["run_id"] is not None:
+            evidence = runtime.inspect(directory / "runtime", stop=stop)
+            check_observation(saved, evidence)
+            self._check_contract(saved, evidence["record"])
+        elif stop and alive(saved["worker"]):
+            os.kill(saved["worker"]["pid"], signal.SIGTERM)
+        with gate(directory / "lifetime.lock") as fd:
+            busy = fd is None
+        worker_alive = alive(saved["worker"])
+        terminated = (
+            evidence is not None
+            and runtime.ended(evidence)
+            and not busy
+            and not worker_alive
+        )
+        if terminated and saved.get("log_journal"):
+            assert evidence is not None
+            worker_logs.finish(Path(saved["log_journal"]), evidence, publish_now=False)
+        with (
+            self.store.ownership()
+            if terminated and saved["role"] != "implementation"
+            else nullcontext(),
+            self.store.locked(),
+        ):
+            row, job = current_job(self.store, key, expected)
+            dispatch = row["dispatch"]
+            if evidence is None:
+                if not busy and not worker_alive:
+                    job.update(
+                        phase="recovery_required",
+                        diagnostic="起動結果欠落。別sessionを起動せず実プロセスを照合する",
                     )
-                row["status"] = "ended"
-                row["publication_exit_pending"] = {
-                    "generation": row["generation"],
-                    "root": job["cwd"],
-                }
-            event(
-                dispatch,
-                "parent_" + response["state"],
-                job_id=job["id"],
-                reason=response["reason"],
-            )
-        except (ValueError, OSError, KeyError, TypeError) as exc:
-            dispatch.update(phase="failed", reason=str(exc))
+                    dispatch.update(phase="recovery_required", reason=job["diagnostic"])
+            else:
+                if terminated:
+                    self._finish(key, row, job, evidence)
+                else:
+                    job["runtime_run_id"] = evidence["record"]["run_id"]
+            self.store.save()
+            if terminated and saved.get("log_journal"):
+                return (
+                    Path(saved["log_journal"]),
+                    publication_owner(
+                        self.store,
+                        key.rpartition("#")[0],
+                        int(key.rpartition("#")[2]),
+                        row["session"],
+                        row["generation"],
+                    ),
+                )
+        return None
 
     def reconcile(self, *, stop: bool = False, parent: int | None = None) -> None:
         publications = []
         exits = []
         with self.store.locked():
-            state = self.schedule.read()
-            for key, row in self.store.parents.items():
-                dispatch = managed(row)
-                if not dispatch or (
-                    parent is not None and key != f"{self.gh.repo.casefold()}#{parent}"
-                ):
-                    continue
-                if stop:
+            keys = [
+                key
+                for key, row in self.store.parents.items()
+                if managed(row)
+                and (parent is None or key == f"{self.gh.repo.casefold()}#{parent}")
+            ]
+            if stop:
+                for key in keys:
+                    row = self.store.parents[key]
+                    dispatch = row["dispatch"]
                     dispatch.update(phase="stopped", reason="明示停止。担当は保持する")
                     event(dispatch, "stop_requested")
-                for job in dispatch["jobs"].values():
-                    if job["phase"] == "ended":
-                        continue
-                    directory = Path(job["directory"])
-                    if job["phase"] == "reserved":
-                        if stop:
+                    for job in dispatch["jobs"].values():
+                        if job["phase"] == "reserved":
                             self.cancel_reservation(
                                 row, job, "cancelled before runtime launch"
                             )
-                        continue
-                    # A live worker (or inherited launcher FD) may still be in
-                    # Popen/save. Absence of a runtime file is never end evidence.
-                    with gate(directory / "lifetime.lock") as fd:
-                        busy = fd is None
-                    path = directory / "runtime/result.json"
-                    if not path.exists():
-                        if stop and alive(job["worker"]):
-                            os.kill(job["worker"]["pid"], signal.SIGTERM)
-                        if not busy and not alive(job["worker"]):
-                            job.update(
-                                phase="recovery_required",
-                                diagnostic="起動結果欠落。別sessionを起動せず実プロセスを照合する",
-                            )
-                            dispatch.update(
-                                phase="recovery_required", reason=job["diagnostic"]
-                            )
-                        continue
-                    runtime = Runtime(Path(job["runner"]))
-                    evidence = runtime.inspect(directory / "runtime", stop=stop)
-                    if (
-                        runtime.ended(evidence)
-                        and not busy
-                        and not alive(job["worker"])
-                    ):
-                        self._finish(key, row, job, evidence)
-                        if job.get("log_journal"):
-                            publications.append(
-                                (
-                                    key,
-                                    Path(job["log_journal"]),
-                                    publication_owner(
-                                        self.store,
-                                        key.rpartition("#")[0],
-                                        int(key.rpartition("#")[2]),
-                                        row["session"],
-                                        row["generation"],
-                                    ),
-                                )
-                            )
+                        elif job["phase"] != "ended":
+                            job["stop_requested"] = True
+                self.store.save()
+            jobs = [
+                (key, job["id"])
+                for key in keys
+                for job in self.store.parents[key]["dispatch"]["jobs"].values()
+                if job["phase"] not in {"ended", "reserved"}
+            ]
+        for key, identifier in jobs:
+            publication = self._observe_job(key, identifier, stop=stop)
+            if publication:
+                publications.append((key, *publication))
+        for key in keys:
+            with self.store.locked(), self.gh.fresh_reads():
+                state = self.schedule.read()
+                row = self.store.parents[key]
+                dispatch = row["dispatch"]
                 if (
                     not stop
                     and state["enabled"]
                     and dispatch["phase"] == "resume_pending"
                 ):
-                    # A parent's live children retain its slot. An idle parent
-                    # without children must reacquire capacity before resuming.
                     used = sum(
                         occupies(r) for k, r in self.store.parents.items() if k != key
                     )
@@ -1232,25 +1553,25 @@ class Supervisor:
                                 raise ValueError(
                                     "previous runtime has no resumable session"
                                 )
-                            self._job(
-                                key,
-                                row,
-                                resume_from=resume_from,
-                            )
+                            self._job(key, row, resume_from=resume_from)
+                        except RegistryConflict:
+                            raise
                         except (ValueError, OSError) as exc:
                             dispatch.update(phase="failed", reason=str(exc))
+                        self.store.save()
                 if (
                     row.get("publication_exit_pending")
                     and key.rpartition("#")[0] == self.gh.repo.casefold()
                 ):
                     exits.append((key, dict(row["publication_exit_pending"])))
-            self.store.save()
         # GitHub/Git publication must not hold a registry/parent-operation lock.
         exiting = {key for key, _ in exits}
         transferred: set[str] = set()
         for key, path, owner_check in publications:
             if key not in exiting | transferred:
-                result = worker_logs.publish(path, owner_check=owner_check)
+                result = worker_logs.publish(
+                    path, owner_check=owner_check, milestone=False
+                )
                 if result.get("error") == "log_owner_mismatch":
                     transferred.add(key)
         for key, pending in exits:
@@ -1297,22 +1618,24 @@ class Supervisor:
         with self.store.locked():
             if not self.schedule.read()["enabled"]:
                 return
-            for key, row in self.store.parents.items():
-                dispatch = managed(row)
-                if not dispatch or dispatch["phase"] in {
-                    "stopped",
-                    "recovery_required",
-                }:
-                    continue
-                for job in dispatch["jobs"].values():
-                    if job["phase"] == "reserved":
-                        Runtime(Path(job["runner"])).spawn(
-                            self.store.directory.resolve(),
-                            key,
-                            job["id"],
-                            Path(job["directory"]),
-                            schedule_dir=self.schedule.directory,
-                        )
+            jobs = [
+                (key, copy.deepcopy(job))
+                for key, row in self.store.parents.items()
+                if (dispatch := managed(row))
+                and dispatch["phase"] not in {"stopped", "recovery_required"}
+                for job in dispatch["jobs"].values()
+                if job["phase"] == "reserved"
+            ]
+        for key, job in jobs:
+            # The worker itself rechecks enable/configuration, capacity, owner
+            # and delegation at claim and again at final Popen admission.
+            Runtime(Path(job["runner"])).spawn(
+                self.store.directory.resolve(),
+                key,
+                job["id"],
+                Path(job["directory"]),
+                schedule_dir=self.schedule.directory,
+            )
 
     def status(self, now: datetime) -> dict[str, Any]:
         with self.store.locked():

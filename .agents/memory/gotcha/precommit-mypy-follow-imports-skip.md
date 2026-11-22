@@ -1,16 +1,21 @@
 ---
-title: "pre-commit の mypy は staged ファイルだけを --follow-imports=skip で検査する"
+title: pre-commit の mypy は staged ファイルだけを --follow-imports=skip で検査する
+summary: pre-commitのmypyは対象のstagedファイルをfollow-imports=skipで検査する。全体検査と違う型エラーは同じ対象で再現する。
 applies_to: all
-source: "PR #613, PR #614, PR #627 (2026-07)"
+source: 'PR #613, PR #614, PR #627 (2026-07)'
 created: 2026-07-06
-last_verified: 2026-10-10
-evidence: ".pre-commit-config.yaml の mypy hook の entry、pyproject.toml の disallow_untyped_decorators override"
+last_verified: 2026-11-22
+evidence: .pre-commit-config.yamlのmypy entryと、pyproject.tomlのfollow_importsおよびdisallow_untyped_decoratorsのoverrideを照合する。
+citations:
+- path: .pre-commit-config.yaml
+  symbol: mypy --follow-imports=skip
+- path: pyproject.toml
+  symbol: follow_imports = "normal"
+  note: importの追跡を戻す例外
+- path: pyproject.toml
+  symbol: disallow_untyped_decorators = false
 ---
 
-pre-commit の mypy hook は `mypy --follow-imports=skip` を staged ファイルだけに実行する。同じコミットに含まれないモジュールは `Any` 扱いになるため、全体の `mypy` では出ないエラーが出る。
+pre-commitのmypyは対象のstaged Pythonファイルを `--follow-imports=skip` で渡す。個別のoverrideで追跡するモジュールもある。追跡されないrepo内の依存から来る値は `Any` になり、`no-any-return` や未型付けデコレータの指摘が、全体検査や依存ファイルもstageした場合と異なることがある。
 
-- `@hydra_main`（`src/utils/hydra.py`）などのデコレータが untyped decorator 扱いになる。scripts 系モジュールには `pyproject.toml` で `disallow_untyped_decorators = false` の override がある。
-- cv2 / PIL / 一緒にstageしていない `src.utils.*` からの戻り値は `Any` になり、`no-any-return` が出る。
-- 同じファイルでも、一緒にstageしたファイルによって結果が変わる。
-
-**使い方:** 中間値に型注釈（`x: np.ndarray = ...`）を付けるか `cast("Type", value)` を使う。モジュール全体の作法に関わる規則は、`[[tool.mypy.overrides]]` をスコープを絞って追加する。hook を通すかどうかが本当の関門で、全体の `mypy` には既存のエラーが残っている。
+同じファイル集合とhookの引数で再現し、型が分かっている中間値には型注釈を付ける。スクリプトなどの未型付けデコレータと `src.utils.inference_recording` の追跡には個別のmypy overrideがある。

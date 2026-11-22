@@ -6,6 +6,8 @@ import hashlib
 import math
 import os
 import re
+from collections import deque
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,7 @@ END_REASONS = {
     "runtime_error",
     "usage_limit",
     "cli_error",
+    "cli_signal",
     "startup_failed",
     "timeout",
     "stopped",
@@ -224,8 +227,36 @@ def command_summary(value: Any, guard: Guard) -> dict[str, Any]:
     return shown
 
 
+def claude_messages(event: dict[str, Any]) -> Iterator[tuple[str, str]]:
+    """Read text and thinking blocks from a Claude assistant message."""
+    message = event.get("message") if event.get("type") == "assistant" else None
+    content = message.get("content") if isinstance(message, dict) else None
+    if not isinstance(content, list):
+        return
+    for block in content:
+        kind = block.get("type") if isinstance(block, dict) else None
+        if kind in ("text", "thinking"):
+            value = block.get(kind)
+            if isinstance(value, str) and value.strip():
+                yield kind, value
+
+
+def timed_text(guard: Guard, value: str | None, when: str | None) -> dict[str, Any]:
+    return {
+        **guard.text(value, limit=300),
+        "received_at": when,
+        "time_status": "observed" if when else "unavailable",
+    }
+
+
 def summarize(
-    directory: Path, guard: Guard, *, agent: str, bound: int, tool_limit: int
+    directory: Path,
+    guard: Guard,
+    *,
+    agent: str,
+    bound: int,
+    tool_limit: int,
+    message_limit: int = 20,
 ) -> dict[str, Any]:
     lines, truncated, updated, event_size = tail(directory / "events.jsonl", bound)
     times: dict[tuple[int, int], tuple[str, str]] = {}
@@ -277,7 +308,16 @@ def summarize(
             # those later receipts for the next observation.
             if end <= event_size:
                 times[key] = (receipt["sha256"], received)
-    message = {**guard.text(None), "received_at": None, "time_status": "unavailable"}
+    message: tuple[str | None, str | None] = (None, None)
+    messages: deque[tuple[str, str | None]] = deque(maxlen=message_limit)
+    previous: str | None = None
+
+    def append(value: str, when: str | None) -> None:
+        nonlocal previous
+        if value.strip() and value != previous:
+            messages.append((value, when))
+            previous = value
+
     tools: dict[str, dict[str, Any]] = {}
     # Activity also includes receipts for oversized events outside the tail;
     # the event's reasoning/output body never needs to be loaded to show time.
@@ -293,18 +333,30 @@ def summarize(
         when = timing[1] if timing else None
         if event["type"] == "thread.started":
             guard.remember(event.get("thread_id"))
+        if agent == "claude":
+            guard.remember(event.get("session_id"))
+            for message_kind, claude_text in claude_messages(event):
+                append(claude_text, when)
+                if message_kind == "text":
+                    message = (claude_text, when)
+            result = event.get("result") if event["type"] == "result" else None
+            if isinstance(result, str) and result.strip():
+                append(result, when)
+                message = (result, when)
         if not event["type"].startswith("item."):
             continue
         item = event.get("item")
         if not isinstance(item, dict):
             raise ValueError("invalid CLI item")
         kind = item.get("type")
-        if kind == "agent_message" and event["type"] == "item.completed":
-            message = {
-                **guard.text(item.get("text")),
-                "received_at": when,
-                "time_status": "observed" if when else "unavailable",
-            }
+        if kind in {"agent_message", "reasoning"} and event["type"] == "item.completed":
+            value = item.get("text")
+            if value is not None and not isinstance(value, str):
+                raise ValueError("invalid free text")
+            if kind == "agent_message":
+                message = (value, when)
+            if value is not None:
+                append(value, when)
         elif kind in {"command_execution", "mcp_tool_call", "file_change"}:
             tool: dict[str, Any] = {
                 "kind": kind,
@@ -328,7 +380,8 @@ def summarize(
             tools[key] = tool
     return {
         "summary": {
-            "message": message,
+            "message": timed_text(guard, *message),
+            "messages": [timed_text(guard, value, when) for value, when in messages],
             "tools": list(tools.values())[-tool_limit:],
             "tail_truncated": truncated,
         },

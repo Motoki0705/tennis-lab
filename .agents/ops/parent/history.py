@@ -51,6 +51,7 @@ class History:
     diagnostics: tuple[Diagnostic, ...]
     parent_comments: list[dict[str, Any]]
     _comments: list[dict[str, Any]]
+    evidence_issue: int | None
 
     def require_valid(self) -> None:
         if self.diagnostics:
@@ -94,7 +95,7 @@ def _payload(
         parsed = events([comment], login, parent)[0]
         return "parent-session", {k: v for k, v in parsed.items() if k != "body"}
     if line.startswith("<!-- parent-review:v"):
-        from review.parent_review_policy import records
+        from lib.ops_review.parent_review_policy import records
 
         parsed = records([comment], login)[0]
         target = parsed.get("parent_issue", parsed.get("parent"))
@@ -230,7 +231,11 @@ def _parse_history(
             record = Record(family, data, source, cid, url, publisher, verified, body)
             key = _logical_key(family, data)
             previous = keys.get(key)
-            if previous is not None:
+            if (
+                previous is not None
+                and family != "parent-review"
+                and not (family == "parent-session" and data.get("event") == "review")
+            ):
                 if previous.payload != data:
                     raise ValueError(
                         f"conflicting parent evidence record: {previous.url} / {url}"
@@ -293,6 +298,7 @@ def _parse_history(
         tuple(diagnostics),
         [dict(c) for c in parent_comments],
         sorted(comments, key=lambda c: c["id"]),
+        evidence_issue,
     )
 
 
@@ -324,12 +330,21 @@ def read_history(
     login: str,
     *,
     parent_comments: Sequence[Mapping[str, Any]] | None = None,
+    unregistered_subject: bool = False,
 ) -> History:
     from .comment_journal import verify
 
     manager = gh.evidence_issues()
-    evidence = manager.find(parent, login)
-    legacy = gh.comments(parent) if parent_comments is None else list(parent_comments)
+    evidence = (
+        manager.find_bound(parent, login, required=False)
+        if unregistered_subject and gh.targeted_history
+        else manager.find(parent, login)
+    )
+    legacy = (
+        gh.comments(parent)
+        if parent_comments is None
+        else [dict(c) for c in parent_comments]
+    )
     machine = gh.comments(evidence.number) if evidence else []
     history = parse_history(
         gh.repo,

@@ -467,6 +467,8 @@ def test_launcher_disables_unpinned_tools_and_execution_is_explicit(
             "gpt-6.1-sol",
             "-c",
             'mcp_servers.review_evaluation.command="python"',
+            "-c",
+            'web_search="disabled"',
             "-",
         ],
         ["live_github"],
@@ -484,6 +486,7 @@ def test_launcher_disables_unpinned_tools_and_execution_is_explicit(
         assert args[args.index(feature) - 1] == "--disable"
     for overrides in (
         ["-c", 'web_search="live"'],
+        ["-c", 'web_search="cached"'],
         ["--enable", "apps"],
         ['--config=web_search="live"'],
         ["-c", 'mcp_servers.review_evaluation.url="https://example.invalid/live"'],
@@ -638,7 +641,7 @@ def test_private_execution_builds_the_shared_runner_contract_without_a_live_agen
     small_case: Any, modules: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     opsproc: Any = importlib.import_module("lib.opsproc")
-    command: Any = importlib.import_module("lib.agent_settings").command
+    agent_settings: Any = importlib.import_module("lib.agent_settings")
 
     e, c = modules.execution, modules.catalog
     e.initialize(small_case.state, data=small_case.data)
@@ -683,9 +686,27 @@ def test_private_execution_builds_the_shared_runner_contract_without_a_live_agen
         assert argv[argv.index("--timeout") + 1] == "1800"
         connection = Path(argv[argv.index("--mcp-config") + 1])
         assert set(c.read(connection)) == {"review_evaluation"}
-        selection = c.read(directory / "review-selection.json")["selected"]
-        raw = command(
-            {"agent": "codex", "profile": "review", "selected": selection},
+        choice = c.read(directory / "review-selection.json")
+        settings = agent_settings.resolve(
+            Path(argv[argv.index("--config-file") + 1]),
+            "codex",
+            "review",
+            None,
+            None,
+            "read-only",
+            review_selection=choice,
+        )
+        assert choice["policy"]["fixed"] == {
+            "model": "gpt-6-astra",
+            "effort": "xhigh",
+            "service_tier": "default",
+        }
+        assert {p["model"] for p in choice["policy"]["allowed_pairs"]} == {
+            "gpt-6-astra",
+            "gpt-6.1-sol",
+        }
+        raw = agent_settings.command(
+            settings,
             "read-only",
             cwd,
             directory / "agent_output.md",
@@ -697,7 +718,7 @@ def test_private_execution_builds_the_shared_runner_contract_without_a_live_agen
         guarded = modules.restrictions.restricted_arguments(raw[1:], ["live_github"])
         assert "project_doc_max_bytes=0" in guarded
         assert 'mcp_servers."live_github".enabled=false' in guarded
-        runner_evidence(directory, selection["model"])
+        runner_evidence(directory, settings["selected"]["model"])
 
     monkeypatch.setattr(opsproc, "run_process_group", fake_runner)
     row = e.execute(
@@ -869,9 +890,7 @@ def test_runtime_failure_before_agent_start_is_counted(modules: Any) -> None:
         output=None,
         output_sha256=None,
     )
-    result = modules.metrics.summarize(
-        [row], {"schema_version": 1, "cases": [gold]}
-    )
+    result = modules.metrics.summarize([row], {"schema_version": 1, "cases": [gold]})
     cost = result["conditions"]["astra_fixed"]
     assert cost["runtime_failures"] == 1
     assert cost["agent_invocations"] == 0
@@ -903,7 +922,7 @@ def test_direct_serve_rejects_formal_capture_without_writing(
     c.prepare(
         small_case.repo, small_case.state / "evaluation", 1699, data=small_case.data
     )
-    cli = importlib.import_module(c.__package__ + ".__main__")
+    cli = importlib.import_module(c.__package__ + ".cli_impl")
     actual = modules.transport.FrozenRetrieval
     monkeypatch.setattr(
         modules.transport,

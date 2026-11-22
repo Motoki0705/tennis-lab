@@ -1,0 +1,7 @@
+#2305 は `codex/trt-gvhmr` の `5611c61fc` まで進みました。FP32・177フレームのncu追測が完了し、nsysと867 kernelで一致しました。PyTorchの4組すべてで速度・Peak VRAM・GPU内部指標・単体精度が揃いました。 [metrics.json](https://github.com/Motoki0705/tennis-lab/blob/5611c61fccc81a156e7baa7a2a64ab1c22749fdd/knowledge/runs/run-i2305-gvhmr-tensorrt/metrics.json)
+
+TensorRTの3条件はONNXのparseを通過しました。その後の起動エラーに対応し、profile設定はshapeの読み戻しで検証し、PTQはModelOpt標準の入力providerを使うよう修正しました。固定した117フレームの4系列を、providerがB=1で順番どおり返すことを確認しました。pytestは71件成功し、Ruffとknowledge検証も通過しました。 [validation.json](https://github.com/Motoki0705/tennis-lab/blob/5611c61fccc81a156e7baa7a2a64ab1c22749fdd/knowledge/runs/run-i2305-gvhmr-tensorrt/validation.json)
+
+`i2305-gvhmr-build-and-measure-2-r4`、`i2305-gvhmr-build-and-measure-3a-r4`、`i2305-gvhmr-build-and-measure-3b-r4` を登録しました。各ジョブは変換、層精度、系列長の境界を検証し、通過した条件で145・177フレームを計測します。再開後に終了記録と計測を照合し、残る検証を判断します。knowledge runノード、PR、対象HEADのCIは残っています。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204842394767435082_2026-11-20T06-53-25-232564917Z_2678642_i2305-gvhmr-build-and-measure-2-r4.job","0-8204842394013169528_2026-11-20T06-53-25-986830471Z_2679362_i2305-gvhmr-build-and-measure-3a-r4.job","0-8204842393308061770_2026-11-20T06-53-26-691938229Z_2679639_i2305-gvhmr-build-and-measure-3b-r4.job"]}}

@@ -1,0 +1,120 @@
+{
+  "base_bundle_digest": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "drift_bundle_digest": "7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+  "base_camera_digests": {
+    "cam0": "c6aa4182f2532846160c983c7dc2312b382607c4a6020389fefb95a2c8f569e1",
+    "cam1": "486ae330629487e7e9e17bf3e7558a33ccb672624787f4a96fe6620ec82cc1a0",
+    "cam2": "42823f7bba7a6408c37bcdc241c47ccba90a0f8b2b982cd9870319379255df5a",
+    "cam3": "c5c343c9d27fb5f3283c7f5fc0950e717f8754a5ff887efe6de573a585c570f4"
+  },
+  "drift_camera_digests": {
+    "cam0": "9eb00044883746d08cc7123153b4d70b8d641c37c38ab06f76959785d46440e6",
+    "cam1": "e9bbe6965c3f4529ad9a374b53052b9fd2ea25f6d2b2f4cf1ee94c7ab8d59236",
+    "cam2": "d066fd7a0d96ba389f1870724c9e96d726a24f551a8a3e3e71dd32ce92b54c6c",
+    "cam3": "0ad8920ac4386c050dcabc0a1f597b676fb02c8953ad63c66f62f5a03994d193"
+  },
+  "base_artifact_bytes_unchanged": true,
+  "numeric_sources_unchanged": true,
+  "seconds": 550.7369017939782,
+  "cameras": {
+    "cam0": {
+      "clips": 69,
+      "frames": 345,
+      "clip_status_counts": {
+        "failed": 48,
+        "ok": 21
+      },
+      "clip_reason_counts": {
+        "drift_unobservable": 48,
+        "None": 21
+      },
+      "frame_status_counts": {
+        "ok": 217,
+        "failed": 128
+      },
+      "frame_reason_counts": {
+        "None": 217,
+        "drift_unobservable": 128
+      },
+      "geometry_reason_counts": {
+        "non_similarity_or_conflicting_line": 128
+      },
+      "usable_clips": 21
+    },
+    "cam1": {
+      "clips": 69,
+      "frames": 345,
+      "clip_status_counts": {
+        "ok": 57,
+        "failed": 8,
+        "warning": 4
+      },
+      "clip_reason_counts": {
+        "None": 57,
+        "drift_unobservable": 8,
+        "camera_moved_possible": 4
+      },
+      "frame_status_counts": {
+        "ok": 304,
+        "failed": 11,
+        "warning": 30
+      },
+      "frame_reason_counts": {
+        "None": 304,
+        "drift_unobservable": 11,
+        "camera_moved_possible": 30
+      },
+      "geometry_reason_counts": {
+        "non_similarity_or_conflicting_line": 11
+      },
+      "usable_clips": 61
+    },
+    "cam2": {
+      "clips": 69,
+      "frames": 345,
+      "clip_status_counts": {
+        "ok": 39,
+        "failed": 30
+      },
+      "clip_reason_counts": {
+        "None": 39,
+        "drift_unobservable": 30
+      },
+      "frame_status_counts": {
+        "ok": 294,
+        "failed": 51
+      },
+      "frame_reason_counts": {
+        "None": 294,
+        "drift_unobservable": 51
+      },
+      "geometry_reason_counts": {
+        "non_similarity_or_conflicting_line": 51
+      },
+      "usable_clips": 39
+    },
+    "cam3": {
+      "clips": 69,
+      "frames": 345,
+      "clip_status_counts": {
+        "failed": 69
+      },
+      "clip_reason_counts": {
+        "drift_unobservable": 69
+      },
+      "frame_status_counts": {
+        "failed": 247,
+        "ok": 98
+      },
+      "frame_reason_counts": {
+        "drift_unobservable": 247,
+        "None": 98
+      },
+      "geometry_reason_counts": {
+        "non_similarity_or_conflicting_line": 247
+      },
+      "usable_clips": 0
+    }
+  },
+  "complete_four_camera_clips": 0
+}

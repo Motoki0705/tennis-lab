@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import importlib
 import json
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -14,9 +15,16 @@ from typing import Any
 import pytest
 
 from tests.e2e.agents_ops.test_human_agreement import delegation_args
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
+from tests.e2e.agents_ops.test_parent_session import OPS, ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.directory_seed import DirectorySeed
+from tests.support.agents_ops.model_pins import (
+    OLD_ASTRA,
+    OLD_SOL,
+    WORKER_ALTERNATE_MODEL,
+    WORKER_DEFAULT_MODEL,
+    previous_config,
+)
 
 ENTRY = """
 import os, sys
@@ -52,13 +60,11 @@ if os.environ.get("MANUAL_ADMISSION_FAILURE"):
             raise ValueError("injected admission rejection before Popen")
         return original_popen(command, *args, **kwargs)
     subprocess.Popen = rejected_popen
-from parent.cli import main
+from parent.cli_impl import main
 sys.exit(main(sys.argv[2:]))
 """
 MANUAL_SEED = pytest.StashKey[DirectorySeed]()
-WORKER_PROMPT = (
-    Path(__file__).resolve().parents[3] / ".agents/ops/parent/worker_prompt.md"
-)
+WORKER_PROMPT = OPS / "parent/worker_prompt.md"
 
 
 def state_dir(p: ParentEnv) -> Path:
@@ -219,7 +225,7 @@ def test_manual_completion_preserves_worker_exit_after_publication_handoff(
     assert owner["tasks"]["10"]["worker_ended"]
 
 
-@pytest.mark.parametrize("version,model", [(1, None), (2, "gpt-6-astra")])
+@pytest.mark.parametrize("version,model", [(1, None), (2, WORKER_DEFAULT_MODEL)])
 def test_launch_is_durable_private_and_preserves_registry(
     reserved: ParentEnv, version: int, model: str | None
 ) -> None:
@@ -240,9 +246,12 @@ def test_launch_is_durable_private_and_preserves_registry(
     extra: tuple[str, ...] = ()
     reason = "未解決の幾何アルゴリズムを設計するため。"
     if model:
-        # A parent must supply a reason before an alternate can be admitted.
+        # Explicit Astra is refused before reserving the run.
         registry = store(p).read_data()
-        assert "reason" in run(p, "--model", model, ok=False).stderr
+        assert (
+            "configured Sol"
+            in run(p, "--model", WORKER_ALTERNATE_MODEL, ok=False).stderr
+        )
         assert store(p).read_data() == registry
         assert not (p.root / "runner-calls.jsonl").exists()
         reason_file = p.root / "model-reason.md"
@@ -254,7 +263,14 @@ def test_launch_is_durable_private_and_preserves_registry(
         k: v
         for k, v in after.items()
         if k
-        not in {"worker_runs", "model", "model_reason", "preflight", "worker_ended"}
+        not in {
+            "worker_runs",
+            "model",
+            "model_reason",
+            "preflight",
+            "worker_ended",
+            "manual_followup",
+        }
     } == {k: v for k, v in before.items() if k not in {"worker_runs", "preflight"}}
     assert after["preflight"]["phase"] == "implementing"
     assert after["worker_runs"][-1]["preflight"]["phase"] == "implementing"
@@ -269,7 +285,7 @@ def test_launch_is_durable_private_and_preserves_registry(
         "model_reason",
         "preflight",
     }
-    expected = model or "gpt-6.1-sol"
+    expected = model or WORKER_DEFAULT_MODEL
     assert after["model"] == record["model"] == expected
     assert after["model_reason"] == record["model_reason"]
     if model:
@@ -298,6 +314,7 @@ def test_launch_is_durable_private_and_preserves_registry(
     summary = json.loads(result.stdout)
     assert summary["runner_summary"]["result"] == "completed"
     assert summary["exit_code"] == 0
+    assert summary["followup"]["state"] == "done"
     assert store(p).read_data()["version"] == version
     for command in ("status", "reconcile", "sync"):
         output = p.cli(command).stdout
@@ -348,18 +365,36 @@ def test_run_paths_in_evidence_are_private_across_redelegation(
         run["delegation_id"] == current["delegation_id"]
         for run in current["worker_runs"]
     )
-    # A new delegation can select a different model; its old run keeps its own.
-    run(p, "--model", "gpt-6-astra", "--model-reason-file", p.note("統合設計のため。"))
-    assert task(p)["model"] == "gpt-6-astra"
+    # A new delegation retains the Sol policy; its old run keeps its own.
+    run(
+        p,
+        "--model",
+        WORKER_DEFAULT_MODEL,
+        "--model-reason-file",
+        p.note("統合設計のため。"),
+    )
+    assert task(p)["model"] == WORKER_DEFAULT_MODEL
     assert [r["model"] for r in task(p)["worker_runs"]] == [
-        "gpt-6.1-sol",
-        "gpt-6-astra",
+        WORKER_DEFAULT_MODEL,
+        WORKER_DEFAULT_MODEL,
     ]
     for command in ("status", "reconcile"):
         assert "worker_runs" not in p.cli(command).stdout
     before = p.state()
     assert "private" in p.cli("note", "--body-file", p.note(evidence), ok=False).stderr
     assert p.state() == before
+
+
+def test_manual_initial_worker_rejects_continuation_models(reserved: ParentEnv) -> None:
+    p = reserved
+    for model, diagnostic in (
+        (OLD_SOL, "continuation-only"),
+        (OLD_ASTRA, "configured Sol"),
+    ):
+        result = run(p, "--model", model, ok=False)
+        assert diagnostic in result.stderr
+        assert task(p)["worker_runs"] == []
+    assert not (p.root / "runner-calls.jsonl").exists()
 
 
 def test_legacy_reservation_gains_run_tracking_only_when_redelegated(
@@ -497,6 +532,7 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
         assert entry["prompt_file"] == "-"
         text = entry["prompt"]
         assert text.startswith(WORKER_PROMPT.read_text(encoding="utf-8"))
+        assert "PARENT_RESULT" in text
         assert "親issue: #1\n担当issue: #10\n" in text
         assert f"branch: {task(p)['branch']}\n" in text
         assert f"## 担当issueの原文\n\n{body}\n" in text
@@ -509,11 +545,10 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
     assert plan["active_reservations"] == []
 
 
-@pytest.mark.parametrize("model", ["gpt-6.1-sol", "gpt-6-astra"])
 def test_resume_uses_latest_run_without_implicitly_releasing_slot(
     reserved: ParentEnv,
-    model: str,
 ) -> None:
+    model = WORKER_DEFAULT_MODEL
     p = reserved
     run(
         p,
@@ -546,7 +581,11 @@ def test_resume_uses_latest_run_without_implicitly_releasing_slot(
         json.loads((first / "result.json").read_text())["runtime"]["session_id"]
         == json.loads((latest(p) / "result.json").read_text())["runtime"]["session_id"]
     )
-    opposite = "gpt-6-astra" if model == "gpt-6.1-sol" else "gpt-6.1-sol"
+    opposite = (
+        WORKER_ALTERNATE_MODEL
+        if model == WORKER_DEFAULT_MODEL
+        else WORKER_DEFAULT_MODEL
+    )
     before = store(p).read_data()
     before_calls = (p.root / "runner-calls.jsonl").read_bytes()
     assert "cannot change" in run(p, "--resume", "--model", opposite, ok=False).stderr
@@ -563,23 +602,29 @@ def test_resume_uses_latest_run_without_implicitly_releasing_slot(
     assert first != latest(p)
 
 
-@pytest.mark.parametrize("mode", ["running", "ended", "invocation_only"])
+@pytest.mark.parametrize(
+    "mode", ["running", "ended", "invocation_only", "legacy_ended"]
+)
 def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
     reserved: ParentEnv, mode: str
 ) -> None:
     p = reserved
     path = p.root / "private-existing-run"
     path.mkdir()
+    legacy = mode == "legacy_ended"
+    config = importlib.import_module("lib.agent_settings").DEFAULT_CONFIG
+    if legacy:
+        config = previous_config(p.root / "previous.conf")
     contract = {
         "task_id": task(p)["delegation_id"],
         "cwd": task(p)["worktree"],
         "branch": task(p)["branch"],
         "mode": "write",
         "settings": importlib.import_module("lib.agent_settings").resolve(
-            Path(__file__).resolve().parents[3] / ".agents/ops/lib/agents.conf",
+            config,
             "codex",
             None,
-            "gpt-6-astra" if mode == "invocation_only" else None,
+            WORKER_DEFAULT_MODEL if mode == "invocation_only" else None,
             None,
             "write",
         ),
@@ -613,7 +658,7 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
                 }
             )
         )
-    if mode == "ended":
+    if mode in {"ended", "legacy_ended"}:
         ended(p)
     args = ("record-worker-run", "--child", "10", "--run-dir", str(path))
     before = copy.deepcopy(task(p))
@@ -627,23 +672,35 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
         for k, v in task(p).items()
         if k not in {"worker_runs", "model", "model_reason"}
     } == before
-    assert (
-        task(p)["model"]
-        == record["model"]
-        == ("gpt-6-astra" if mode == "invocation_only" else "gpt-6.1-sol")
-    )
+    expected = {
+        "invocation_only": WORKER_DEFAULT_MODEL,
+        "legacy_ended": OLD_SOL,
+    }.get(mode, WORKER_DEFAULT_MODEL)
+    assert task(p)["model"] == record["model"] == expected
     assert task(p)["model_reason"] is record["model_reason"] is None
     assert str(path) not in output.stdout + output.stderr + p.cli("status").stdout
     assert str(path) not in json.dumps(p.state())
-    if mode == "ended":
+    if mode in {"ended", "legacy_ended"}:
         before_registry = store(p).read_data()
+        if legacy:
+            for model_args in ((), ("--model", expected)):
+                result = run(
+                    p,
+                    "--replace-session",
+                    "--restart-evidence-file",
+                    p.note(),
+                    *model_args,
+                    ok=False,
+                )
+                assert "continuation-only" in result.stderr
+                assert store(p).read_data() == before_registry
         assert (
             "cannot change"
             in run(
                 p,
                 "--resume",
                 "--model",
-                "gpt-6-astra",
+                WORKER_ALTERNATE_MODEL,
                 "--restart-evidence-file",
                 p.note(),
                 ok=False,
@@ -652,13 +709,16 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
         assert (
             store(p).read_data() == before_registry
         )  # The released slot stays released.
-        run(
-            p, "--resume", "--model", "gpt-6.1-sol", "--restart-evidence-file", p.note()
-        )
+        run(p, "--resume", "--model", expected, "--restart-evidence-file", p.note())
         calls = json.loads((p.root / "runner-calls.jsonl").read_text())
         assert (
             "--model" not in calls
         )  # Preserve the legacy default's override provenance.
+        if legacy:
+            settings = json.loads((latest(p) / "result.json").read_text())["contract"][
+                "settings"
+            ]
+            assert settings["model_continuation"] == "CODEX_CONTINUATION_MODELS"
     # A settings-less legacy record must not be guessed as today's default.
     broken = p.root / "legacy-unknown-model"
     broken.mkdir()
@@ -926,17 +986,19 @@ def test_review_request_uses_current_registry_run(
         p.note(),
         "--evidence-file",
         p.note(),
+        "--wait",
+        AGENT_AUTO_MERGE="0",
         ok=mode == "completed",
     )
     if mode == "completed":
-        assert json.loads(response.stdout)["review_state"] == "instructed"
+        assert json.loads(response.stdout)["status"] == "parent_wait"
         assert (
             json.loads(p.cli("status").stdout)["launch_plan"]["active_reservations"]
             == []
         )
         assert str(latest(p)) not in response.stdout + json.dumps(p.state())
     else:
-        assert not (state_dir(p) / "reviews").exists()
+        assert not (state_dir(p) / "progressions").exists()
 
 
 @pytest.mark.parametrize("option", ["--effort", "--worker-runs"])
@@ -945,7 +1007,14 @@ def test_removed_or_unsupported_overrides_are_not_cli_options(
 ) -> None:
     command = "review-request" if option == "--worker-runs" else "run-worker"
     required = (
-        ("--prs", "100", "--instruction-file", parent_env.note())
+        (
+            "--prs",
+            "100",
+            "--instruction-file",
+            parent_env.note(),
+            "--evidence-file",
+            parent_env.note(),
+        )
         if command == "review-request"
         else ("--child", "10", "--prompt-file", parent_env.note())
     )
@@ -1012,6 +1081,7 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
     ]
     assert answer in prompts[-1] and "## 親の追加指示" in prompts[-1]
     assert len(prompts) == 2
+    assert all("PARENT_RESULT" in prompt for prompt in prompts)
     log_rows = [
         json.loads(Path(t["log"]["journal"]).read_text())
         for t in current["preflight"]["turns"]
@@ -1024,7 +1094,10 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
         "\n対象外の学習は起動しない。\r\n"
     ]
     assert meta["turn"]["phase"] == current["preflight"]["phase"]
-    assert meta["worker"]["selected"] == {"model": "gpt-6.1-sol", "effort": "max"}
+    assert meta["worker"]["selected"] == {
+        "model": WORKER_DEFAULT_MODEL,
+        "effort": "max",
+    }
     assert meta["decision"] == {"action": action, "source_sequence": 1}
     assert (
         json.loads((first / "result.json").read_text())["runtime"]
@@ -1055,7 +1128,19 @@ def test_parent_can_verify_artifacts_independent_of_planning_phase(
         p.note("実差分とテストを親が確認した。"),
     )
     assert json.loads(p.cli("reconcile").stdout)["tasks"][0]["artifacts_accepted"]
-    manual(p, "review-prepare", *p.review_flags(), "--prs", "100")
+    manual(
+        p,
+        "review-request",
+        *p.review_flags(),
+        "--prs",
+        "100",
+        "--instruction-file",
+        p.note(),
+        "--evidence-file",
+        p.note(),
+        "--wait",
+        AGENT_AUTO_MERGE="0",
+    )
     assert len(task(p)["worker_runs"]) == 1
 
 
@@ -1126,3 +1211,173 @@ def test_legacy_phase_records_are_optional_for_continuation(
     assert store(p).read_data() == before
     run(p, *(["--resume"] if started else []))
     assert task(p)["preflight"]["decisions"] == []
+
+
+def test_named_helpers_share_issue_but_have_separate_runtime_and_commit(
+    reserved: ParentEnv,
+) -> None:
+    p = reserved
+    primary = task(p)
+    remote = p.state()
+    remote["prs"].append(p.pr(100, 10, branch=primary["branch"]))
+    p.save(remote)
+    tree = p.worktree("quality")
+    args = (
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/quality",
+        "--worktree",
+        str(tree),
+    )
+    p.cli(*args, "--worker", "quality")
+    assert "dedicated" in p.cli(*args, "--worker", "duplicate", ok=False).stderr
+    assert "--worker is required" in run(p, ok=False).stderr
+    run(p, "--worker", "quality")
+    saved = task(p)
+    assert saved["delegation_id"] == primary["delegation_id"]
+    assert not saved["worker_runs"]
+    helper = saved["helpers"]["quality"]
+    assert helper["worker_ended"]["delegation_id"] == helper["delegation_id"]
+    assert helper["worker_runs"][-1]["model"] == WORKER_DEFAULT_MODEL
+    wait = json.loads(
+        manual(p, "wait-worker", "--child", "10", "--worker", "quality").stdout
+    )
+    assert wait["delegation_id"] == helper["delegation_id"]
+    another = p.worktree("verify")
+    p.cli(*delegation_args(another), "--worker", "verify")
+    run(p, "--worker", "verify")
+    run(p, "--worker", "quality", "--resume")
+    assert len(task(p)["helpers"]["quality"]["worker_runs"]) == 2
+    assert len(task(p)["helpers"]["verify"]["worker_runs"]) == 1
+    assert len(p.state()["prs"]) == 1
+    # Two helpers may legitimately touch the same path. Only the integration
+    # checkout sees the conflict, and its owner can resolve it before merging.
+    integration = Path(primary["worktree"])
+    for checkout, value in ((tree, "measurement"), (another, "verification")):
+        (checkout / "evidence.txt").write_text(value)
+        run_git(checkout, "add", "evidence.txt")
+        run_git(checkout, "commit", "-m", value)
+    run_git(integration, "cherry-pick", run_git(tree, "rev-parse", "HEAD"))
+    conflict = subprocess.run(
+        ["git", "cherry-pick", run_git(another, "rev-parse", "HEAD")],
+        cwd=integration,
+        capture_output=True,
+    )
+    assert conflict.returncode == 1 and "evidence.txt" in run_git(
+        integration, "diff", "--name-only", "--diff-filter=U"
+    )
+    (integration / "evidence.txt").write_text("measurement and verification")
+    run_git(integration, "add", "evidence.txt")
+    run_git(integration, "cherry-pick", "--continue")
+    assert (tree / "evidence.txt").read_text() == "measurement"
+    assert (another / "evidence.txt").read_text() == "verification"
+
+
+def test_retired_creator_handoff_reuses_branch_without_resuming_astra(
+    reserved: ParentEnv,
+) -> None:
+    p = reserved
+    run(p)
+    old_run = latest(p)
+    previous = task(p)
+    # Materialize the old runner contract as it existed before the Sol-only pin.
+    settings = importlib.import_module("lib.agent_settings").resolve(
+        previous_config(p.root / "old.conf", worker_model=OLD_ASTRA),
+        "codex",
+        None,
+        OLD_ASTRA,
+        None,
+        "write",
+    )
+    for filename in ("result.json", "invocation.json"):
+        file = old_run / filename
+        saved = json.loads(file.read_text())
+        saved["contract"]["settings"] = settings
+        file.write_text(json.dumps(saved))
+    update(p, model=OLD_ASTRA)
+    remote = p.state()
+    remote["prs"].append(p.pr(100, 10, branch=previous["branch"]))
+    p.save(remote)
+    assert run(p, "--resume", ok=False).returncode != 0
+    args = delegation_args(Path(previous["worktree"]))
+    result = manual(
+        p,
+        *args,
+        "--handoff-from-astra",
+        previous["delegation_id"],
+        "--restart-evidence-file",
+        p.note("同じPRの未処理majorをSolに引き継ぐ。"),
+    )
+    assert json.loads(result.stdout)["action"] == "launch"
+    run(p)
+    current = task(p)
+    assert (
+        current["model"] == WORKER_DEFAULT_MODEL
+        and current["delegation_id"] != previous["delegation_id"]
+    )
+    assert current["astra_handoff"]["from"] == previous["delegation_id"]
+    assert current["astra_handoff"]["prs"] == [100]
+    assert latest(p) != old_run and old_run.is_dir()
+    assert len(current["worker_runs"]) == 2
+    assert current["worker_runs"][-1]["kind"] == "initial"
+
+
+def test_from_commit_prepares_and_starts_separate_manual_workers(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("worker")
+    for name in ("data", "outputs", "ckpt", ".venv"):
+        (p.repo / name).mkdir(exist_ok=True)
+
+    # The CLI loads storage config from its own runtime. Point a private copy
+    # at the test mirror so the real checkout launcher can prepare the links.
+    ops = p.repo / ".agents/ops"
+    shutil.copytree(OPS, ops, ignore=shutil.ignore_patterns("__pycache__"))
+    mount = p.root / "E"
+    config = ops / "storage_tier/config.toml"
+    config.write_text(
+        "\n".join(
+            f"mirror_mount = {json.dumps(str(mount))}"
+            if line.startswith("mirror_mount =")
+            else line
+            for line in config.read_text().splitlines()
+        )
+        + "\n"
+    )
+    local_outputs = p.repo / ".worktree-outputs"
+    mirror_outputs = mount / p.repo.relative_to("/") / local_outputs.name
+    mirror_outputs.mkdir(parents=True)
+    local_outputs.symlink_to(mirror_outputs, target_is_directory=True)
+
+    # Worker log capture checks the prompt against the runtime checkout's HEAD.
+    run_git(p.repo, "add", "--", ".agents/ops/parent/worker_prompt.md")
+    run_git(p.repo, "commit", "-m", "record worker prompt in fixture")
+    p.env["PYTHONPATH"] = str(ops)
+    base = run_git(p.repo, "rev-parse", "HEAD")
+    for worker in ("primary", "quality"):
+        args = (
+            "run-worker",
+            "--child",
+            "10",
+            "--worker",
+            worker,
+            "--from",
+            base,
+            "--prompt-file",
+            p.note("Compare recorded observations."),
+        )
+        manual(p, *args)
+        assert "already" in manual(p, *args, ok=False).stderr
+        checkout = p.repo / ".claude/worktrees" / f"parent-1-issue-10-{worker}"
+        assert run_git(checkout, "rev-parse", "HEAD") == base
+        assert (checkout / ".venv").resolve() == p.repo / ".venv"
+        output = checkout / "outputs"
+        assert output.readlink() == local_outputs / checkout.name
+        assert output.resolve(strict=True) == mirror_outputs / checkout.name
+    assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2

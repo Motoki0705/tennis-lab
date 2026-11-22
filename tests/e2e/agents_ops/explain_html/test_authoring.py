@@ -20,6 +20,7 @@ import pytest
 
 from tests.support.agents_ops.explain_editor import candidate, schema
 from tests.support.agents_ops.explain_editor import editor_env as editor_env
+from tests.support.agents_ops.explain_html import require_playwright
 from tests.support.agents_ops.explain_html_visuals import images, png
 
 REPO = Path(__file__).resolve().parents[4]
@@ -78,6 +79,10 @@ def review_for(created: Any) -> Any:
 def test_brief_create_open_update_reopen_stop_and_export(
     editor_env: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    require_playwright(
+        str(REPO / "scripts/ci_metrics/node_modules/playwright"),
+        "playwright",
+    )
     env = editor_env
     monkeypatch.setenv("FAKE_EXPLAIN_BIND_REQUEST", "1")
     root = env.root / "author-runtime"
@@ -296,6 +301,10 @@ def test_brief_create_open_update_reopen_stop_and_export(
 def test_failed_codex_review_requires_new_writer_and_all_checks(
     editor_env: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    require_playwright(
+        str(REPO / "scripts/ci_metrics/node_modules/playwright"),
+        "playwright",
+    )
     env = editor_env
     monkeypatch.setenv("FAKE_EXPLAIN_BIND_REQUEST", "1")
     root = env.root / "review-runtime"

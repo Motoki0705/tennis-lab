@@ -1,0 +1,86 @@
+[2026-11-18 19:19:19,523][src.tennis_scene.pipeline.components.ball_detection][INFO] - Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+{"action": "load", "model": "ball", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt"}, "device": "cuda", "dtype": "bfloat16", "instance": "134646489918096:1", "status": "complete", "seconds": 0.9822303010005271, "at_utc": "2026-11-18T10:19:20.043088+00:00"}
+[2026-11-18 19:19:36,715][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 1 frame(s): [92]
+[2026-11-18 19:19:41,674][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+[2026-11-18 19:19:46,511][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+[2026-11-18 19:19:51,587][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+[2026-11-18 19:19:55,727][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 16 frame(s): [49, 50, 51, 52, 54, 55, 56, 104, 107, 109, 110, 111, 251, 254, 105, 108]
+[2026-11-18 19:19:59,734][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+[2026-11-18 19:20:03,626][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+[2026-11-18 19:20:07,695][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 1 frame(s): [188]
+[2026-11-18 19:20:10,907][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 3 frame(s): [105, 171, 172]
+[2026-11-18 19:20:14,141][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+[2026-11-18 19:20:17,358][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 3 frame(s): [52, 137, 140]
+[2026-11-18 19:20:20,583][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 0 frame(s): []
+{"action": "unload", "model": "ball", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt"}, "device": "cuda", "dtype": "bfloat16", "instance": "134646489918096:1", "status": "complete", "seconds": 0.42018471300252713, "at_utc": "2026-11-18T10:20:21.328881+00:00"}
+/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/TensorShape.cpp:4215.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+{"action": "load", "model": "dino", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth"}, "device": "cuda", "dtype": "float16", "instance": "134646489918096:2", "status": "complete", "seconds": 28.68905305500084, "at_utc": "2026-11-18T10:21:15.220699+00:00"}
+{"action": "unload", "model": "dino", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth"}, "device": "cuda", "dtype": "float16", "instance": "134646489918096:2", "status": "complete", "seconds": 0.9693121840100503, "at_utc": "2026-11-18T10:32:59.085125+00:00"}
+{"action": "load", "model": "vitpose", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth"}, "device": "cuda", "dtype": "float16", "instance": "134646489918096:3", "status": "complete", "seconds": 42.70640618499601, "at_utc": "2026-11-18T10:34:17.552080+00:00"}
+{"action": "load", "model": "appearance", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth"}, "device": "cuda", "dtype": "float32", "instance": "134646489918096:4", "status": "complete", "seconds": 5.725071934008156, "at_utc": "2026-11-18T10:34:23.280637+00:00"}
+person_tracking/cam0: 0/356 frames
+person_tracking/cam0: 123/356 frames
+person_tracking/cam0: 249/356 frames
+person_tracking/cam0: 356/356 frames
+person_tracking/cam1: 0/356 frames
+person_tracking/cam1: 189/356 frames
+person_tracking/cam1: 356/356 frames
+person_tracking/cam2: 0/356 frames
+person_tracking/cam2: 233/356 frames
+person_tracking/cam2: 356/356 frames
+person_tracking/cam3: 0/356 frames
+person_tracking/cam3: 204/356 frames
+person_tracking/cam3: 356/356 frames
+person_tracking/cam0: 0/292 frames
+person_tracking/cam0: 114/292 frames
+person_tracking/cam0: 230/292 frames
+person_tracking/cam0: 292/292 frames
+person_tracking/cam1: 0/292 frames
+person_tracking/cam1: 180/292 frames
+person_tracking/cam1: 292/292 frames
+person_tracking/cam2: 0/292 frames
+person_tracking/cam2: 234/292 frames
+person_tracking/cam2: 292/292 frames
+person_tracking/cam3: 0/292 frames
+person_tracking/cam3: 191/292 frames
+person_tracking/cam3: 292/292 frames
+person_tracking/cam0: 0/235 frames
+person_tracking/cam0: 133/235 frames
+person_tracking/cam0: 235/235 frames
+person_tracking/cam1: 0/235 frames
+person_tracking/cam1: 188/235 frames
+person_tracking/cam1: 235/235 frames
+person_tracking/cam2: 0/235 frames
+person_tracking/cam2: 219/235 frames
+person_tracking/cam2: 235/235 frames
+person_tracking/cam3: 0/235 frames
+person_tracking/cam3: 204/235 frames
+person_tracking/cam3: 235/235 frames
+{"action": "unload", "model": "vitpose", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth"}, "device": "cuda", "dtype": "float16", "instance": "134646489918096:3", "status": "complete", "seconds": 1.1270093380007893, "at_utc": "2026-11-18T10:44:50.122135+00:00"}
+{"action": "unload", "model": "appearance", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth"}, "device": "cuda", "dtype": "float32", "instance": "134646489918096:4", "status": "complete", "seconds": 0.511525776993949, "at_utc": "2026-11-18T10:44:56.612872+00:00"}
+{"action": "load", "model": "hmr2", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt", "mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz"}, "device": "cuda", "dtype": "float32", "instance": "134646489918096:5", "status": "complete", "seconds": 36.60768959800771, "at_utc": "2026-11-18T10:47:49.655097+00:00"}
+[2026-11-18 19:47:53,359][src.submodules.vendor.gvhmr.pipeline][INFO] - Loading GVHMR checkpoint: /home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt
+{"action": "load", "model": "gvhmr", "weights": {"gvhmr": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt", "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz", "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz", "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt", "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt", "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt", "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"}, "device": "cuda", "dtype": "float32", "instance": "134646489918096:6", "status": "complete", "seconds": 3.828740203010966, "at_utc": "2026-11-18T10:47:53.487497+00:00"}
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.13it/s]HMR2 features: 2it [00:01,  1.55it/s]HMR2 features: 3it [00:01,  1.77it/s]HMR2 features: 4it [00:02,  1.90it/s]HMR2 features: 5it [00:02,  1.95it/s]HMR2 features: 6it [00:03,  2.00it/s]HMR2 features: 7it [00:03,  2.03it/s]HMR2 features: 8it [00:04,  2.05it/s]HMR2 features: 9it [00:04,  2.07it/s]HMR2 features: 10it [00:05,  2.10it/s]HMR2 features: 11it [00:05,  2.13it/s]HMR2 features: 12it [00:05,  2.11it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.88it/s]HMR2 features: 2it [00:01,  2.02it/s]HMR2 features: 3it [00:01,  2.07it/s]HMR2 features: 4it [00:01,  2.09it/s]HMR2 features: 5it [00:02,  2.10it/s]HMR2 features: 6it [00:02,  2.11it/s]HMR2 features: 7it [00:03,  2.12it/s]HMR2 features: 8it [00:03,  2.12it/s]HMR2 features: 9it [00:04,  2.13it/s]HMR2 features: 10it [00:04,  2.13it/s]HMR2 features: 11it [00:05,  2.14it/s]HMR2 features: 12it [00:05,  2.28it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.91it/s]HMR2 features: 2it [00:00,  2.03it/s]HMR2 features: 3it [00:01,  2.07it/s]HMR2 features: 4it [00:01,  2.09it/s]HMR2 features: 5it [00:02,  2.13it/s]HMR2 features: 6it [00:02,  2.13it/s]HMR2 features: 7it [00:03,  2.14it/s]HMR2 features: 8it [00:03,  2.13it/s]HMR2 features: 9it [00:04,  2.14it/s]HMR2 features: 10it [00:04,  2.13it/s]HMR2 features: 11it [00:05,  2.14it/s]HMR2 features: 12it [00:05,  2.29it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.94it/s]HMR2 features: 2it [00:00,  2.08it/s]HMR2 features: 3it [00:01,  2.11it/s]HMR2 features: 4it [00:01,  2.14it/s]HMR2 features: 5it [00:02,  2.15it/s]HMR2 features: 6it [00:02,  2.16it/s]HMR2 features: 7it [00:03,  2.17it/s]HMR2 features: 8it [00:03,  2.14it/s]HMR2 features: 9it [00:04,  2.14it/s]HMR2 features: 10it [00:04,  2.14it/s]HMR2 features: 11it [00:05,  2.15it/s]HMR2 features: 12it [00:05,  2.31it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.90it/s]HMR2 features: 2it [00:00,  2.02it/s]HMR2 features: 3it [00:01,  2.06it/s]HMR2 features: 4it [00:01,  2.08it/s]HMR2 features: 5it [00:02,  2.10it/s]HMR2 features: 6it [00:02,  2.12it/s]HMR2 features: 7it [00:03,  2.11it/s]HMR2 features: 8it [00:03,  2.09it/s]HMR2 features: 9it [00:04,  2.11it/s]HMR2 features: 10it [00:04,  2.30it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.87it/s]HMR2 features: 2it [00:01,  2.01it/s]HMR2 features: 3it [00:01,  2.06it/s]HMR2 features: 4it [00:01,  2.08it/s]HMR2 features: 5it [00:02,  2.07it/s]HMR2 features: 6it [00:02,  2.08it/s]HMR2 features: 7it [00:03,  2.10it/s]HMR2 features: 8it [00:03,  2.09it/s]HMR2 features: 9it [00:04,  2.11it/s]HMR2 features: 10it [00:04,  2.29it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.93it/s]HMR2 features: 2it [00:00,  2.06it/s]HMR2 features: 3it [00:01,  2.09it/s]HMR2 features: 4it [00:01,  2.12it/s]HMR2 features: 5it [00:02,  2.14it/s]HMR2 features: 6it [00:02,  2.16it/s]HMR2 features: 7it [00:03,  2.17it/s]HMR2 features: 8it [00:03,  2.14it/s]HMR2 features: 9it [00:04,  2.16it/s]HMR2 features: 10it [00:04,  2.34it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.91it/s]HMR2 features: 2it [00:00,  2.04it/s]HMR2 features: 3it [00:01,  2.08it/s]HMR2 features: 4it [00:01,  2.13it/s]HMR2 features: 5it [00:02,  2.13it/s]HMR2 features: 6it [00:02,  2.14it/s]HMR2 features: 7it [00:03,  2.14it/s]HMR2 features: 8it [00:03,  2.13it/s]HMR2 features: 9it [00:04,  2.15it/s]HMR2 features: 10it [00:04,  2.33it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.85it/s]HMR2 features: 2it [00:01,  2.00it/s]HMR2 features: 3it [00:01,  2.05it/s]HMR2 features: 4it [00:01,  2.09it/s]HMR2 features: 5it [00:02,  2.10it/s]HMR2 features: 6it [00:02,  2.11it/s]HMR2 features: 7it [00:03,  2.12it/s]HMR2 features: 8it [00:03,  2.72it/s]HMR2 features: 8it [00:03,  2.28it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.92it/s]HMR2 features: 2it [00:00,  2.05it/s]HMR2 features: 3it [00:01,  2.12it/s]HMR2 features: 4it [00:01,  2.14it/s]HMR2 features: 5it [00:02,  2.13it/s]HMR2 features: 6it [00:02,  2.14it/s]HMR2 features: 7it [00:03,  2.15it/s]HMR2 features: 8it [00:03,  2.76it/s]HMR2 features: 8it [00:03,  2.32it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.93it/s]HMR2 features: 2it [00:00,  2.01it/s]HMR2 features: 3it [00:01,  2.08it/s]HMR2 features: 4it [00:01,  2.09it/s]HMR2 features: 5it [00:02,  2.11it/s]HMR2 features: 6it [00:02,  2.12it/s]HMR2 features: 7it [00:03,  2.12it/s]HMR2 features: 8it [00:03,  2.73it/s]HMR2 features: 8it [00:03,  2.29it/s]
+HMR2 features: 0it [00:00, ?it/s]HMR2 features: 1it [00:00,  1.90it/s]HMR2 features: 2it [00:00,  2.02it/s]HMR2 features: 3it [00:01,  2.05it/s]HMR2 features: 4it [00:01,  2.06it/s]HMR2 features: 5it [00:02,  2.05it/s]HMR2 features: 6it [00:02,  2.08it/s]HMR2 features: 7it [00:03,  2.09it/s]HMR2 features: 8it [00:03,  2.68it/s]HMR2 features: 8it [00:03,  2.26it/s]
+{"action": "unload", "model": "hmr2", "weights": {"checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt", "mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz"}, "device": "cuda", "dtype": "float32", "instance": "134646489918096:5", "status": "complete", "seconds": 0.9312637289986014, "at_utc": "2026-11-18T10:48:53.459828+00:00"}
+{"action": "unload", "model": "gvhmr", "weights": {"gvhmr": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt", "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz", "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz", "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt", "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt", "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt", "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"}, "device": "cuda", "dtype": "float32", "instance": "134646489918096:6", "status": "complete", "seconds": 0.8464259640022647, "at_utc": "2026-11-18T10:48:54.306866+00:00"}
+{"action": "load", "model": "body_geometry", "weights": {"body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz", "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz", "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt", "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt", "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt", "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"}, "device": "cuda", "dtype": "float32", "instance": "134646489918096:7", "status": "complete", "seconds": 1.8620365199894877, "at_utc": "2026-11-18T10:48:56.250713+00:00"}
+{"action": "unload", "model": "body_geometry", "weights": {"body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz", "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz", "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt", "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt", "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt", "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"}, "device": "cuda", "dtype": "float32", "instance": "134646489918096:7", "status": "complete", "seconds": 0.440591634993325, "at_utc": "2026-11-18T10:49:11.245291+00:00"}
+[2026-11-18 19:49:37,476][src.tennis_scene.scripts.run_video_batch][INFO] - video_000/clip_000 generated
+[2026-11-18 19:49:37,477][src.tennis_scene.scripts.run_video_batch][INFO] - video_000/clip_037 generated
+[2026-11-18 19:49:37,477][src.tennis_scene.scripts.run_video_batch][INFO] - video_000/clip_027 generated
+[2026-11-18 19:49:37,477][src.tennis_scene.scripts.run_video_batch][INFO] - Video progress /home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/batch/progress/fd3921035f4a495cab7cbda27e73afc6/progress.json

@@ -183,6 +183,7 @@ def item(kind: str, **fields: Any) -> dict[str, Any]:
         ("running", "running"),
         ("completed", "turn_completed"),
         ("failed", "failed"),
+        ("cli_signal", "failed"),
         ("stopped", "stopped"),
         ("dependency", "dependency_wait"),
         ("reserved", "not_started"),
@@ -194,16 +195,20 @@ def test_states_have_sources_and_never_imply_task_acceptance(
     fixture: Any, setup: str, expected: str
 ) -> None:
     f = fixture
-    if setup in {"running", "completed", "failed", "lost"}:
+    if setup in {"running", "completed", "failed", "cli_signal", "lost"}:
         identity = importlib.import_module("lib.opsproc").process_identity(os.getpid())
         f.record(
-            "running" if setup in {"running", "lost"} else setup,
-            runner=identity if setup == "running" else None,
-            turn_end_reason="usage_limit"
-            if setup == "failed"
+            "running"
+            if setup in {"running", "lost"}
             else "completed"
             if setup == "completed"
-            else None,
+            else "failed",
+            runner=identity if setup == "running" else None,
+            turn_end_reason={
+                "completed": "completed",
+                "failed": "usage_limit",
+                "cli_signal": "cli_signal",
+            }.get(setup),
         )
     elif setup == "stopped":
         f.task.update(
@@ -227,6 +232,8 @@ def test_states_have_sources_and_never_imply_task_acceptance(
     assert child["github"]["status"] == "not_requested"
     if setup == "failed":
         assert child["run"]["turn_end_reason"] == "usage_limit"
+    if setup == "cli_signal":
+        assert child["run"]["turn_end_reason"] == "cli_signal"
 
 
 @pytest.mark.parametrize(
@@ -490,7 +497,8 @@ def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> Non
     f.events(
         [
             item("agent_message", text="obsolete"),
-            item("reasoning", text="never publish this"),
+            item("reasoning", text="照合した結果を整理する"),
+            item("reasoning", text="確認手順 " * 80 + "/private/reasoning"),
             item(
                 "command_execution",
                 command="pytest -q\nsecond line",
@@ -499,22 +507,107 @@ def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> Non
             item("mcp_tool_call", server="docs", tool="search"),
             item("file_change", changes=[{"path": "/private/file", "kind": "add"}]),
             item("agent_message", text="完了" * 200),
+            item("reasoning", text="次の確認を準備する"),
         ]
     )
     summary = f.child(tool_limit=2)["summary"]
     assert summary["message"]["text"] == ("完了" * 200)[:300]
     assert summary["message"]["truncated"] is True
+    assert [entry["text"] for entry in summary["messages"]] == [
+        "obsolete",
+        "照合した結果を整理する",
+        None,
+        ("完了" * 200)[:300],
+        "次の確認を準備する",
+    ]
+    assert summary["messages"][-2] == summary["message"]
+    assert summary["messages"][2]["status"] == "hidden"
+    assert all(step["received_at"] == NOW.isoformat() for step in summary["messages"])
     assert [t["kind"] for t in summary["tools"]] == ["mcp_tool_call", "file_change"]
     assert summary["tools"][0]["server"]["text"] == "docs"
     assert summary["tools"][1]["change_count"] == 1
     assert all(t["received_at"] == NOW.isoformat() for t in summary["tools"])
     serialized = json.dumps(summary)
-    assert "never publish" not in serialized and "private output" not in serialized
-    f.events([item("command_execution", command="pytest -q")], receipts=False)
+    assert "/private/reasoning" not in serialized and "private output" not in serialized
+    f.events(
+        [
+            item("command_execution", command="pytest -q"),
+            item("agent_message", text="旧ログの発言"),
+        ],
+        receipts=False,
+    )
     legacy = f.child()
     assert legacy["activity_time_status"] == "unavailable"
     assert legacy["last_activity_at"] is None
     assert legacy["summary"]["tools"][0]["time_status"] == "unavailable"
+    assert legacy["summary"]["messages"] == [
+        {
+            "status": "visible",
+            "text": "旧ログの発言",
+            "truncated": False,
+            "received_at": None,
+            "time_status": "unavailable",
+        }
+    ]
+
+
+def test_claude_summary_bounds_messages_and_deduplicates_unredacted_text(
+    fixture: Any,
+) -> None:
+    f = fixture
+    f.record()
+    path = f.run / "result.json"
+    record = json.loads(path.read_text())
+    record["contract"]["settings"]["agent"] = "claude"
+    path.write_text(json.dumps(record))
+    older = [{"type": "text", "text": f"途中報告 {i}"} for i in range(18)]
+    f.events(
+        [
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        *older,
+                        {"type": "thinking", "thinking": "テスト結果を確認する"},
+                        {"type": "text", "text": "検証を進めます"},
+                        {"type": "text", "text": "検証を進めます"},
+                        {"type": "tool_use", "input": {"text": "ツール入力は対象外"}},
+                        {
+                            "type": "text",
+                            "text": "手順確認 " * 70 + "later-claude-identity",
+                        },
+                        {
+                            "type": "text",
+                            "text": "手順確認 " * 70 + "/private/other-path",
+                        },
+                    ]
+                },
+            },
+            {
+                "type": "result",
+                "result": "確認が終わりました",
+                "session_id": "later-claude-identity",
+            },
+        ]
+    )
+    summary = f.child()["summary"]
+    assert [step["text"] for step in summary["messages"]] == [
+        *(f"途中報告 {i}" for i in range(3, 18)),
+        "テスト結果を確認する",
+        "検証を進めます",
+        None,
+        None,
+        "確認が終わりました",
+    ]
+    assert [step["status"] for step in summary["messages"][-3:]] == [
+        "hidden",
+        "hidden",
+        "visible",
+    ]
+    assert summary["message"] == summary["messages"][-1]
+    assert summary["message"]["received_at"] == NOW.isoformat()
+    assert summary["tools"] == []
+    assert summary["tail_truncated"] is False
 
 
 @pytest.mark.parametrize(
@@ -934,6 +1027,7 @@ def test_private_text_is_hidden_before_truncating(
     child = f.child()
     assert child["summary"]["message"]["status"] == "hidden"
     assert child["summary"]["message"]["text"] is None
+    assert child["summary"]["messages"] == [child["summary"]["message"]]
     assert all(
         tool["command"] == {"status": "hidden", "text": None, "truncated": False}
         for tool in child["summary"]["tools"]

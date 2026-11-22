@@ -90,6 +90,19 @@ def test_gallery_renderers_keep_gaps_on_the_source_frame_axis(tmp_path: Path, mo
         "root_valid": valid[None], "heading_valid": valid[None], "smpl_valid": np.zeros((1, 5), bool), "vertices_local": None}})
     review.render_scene_assembly("scene_assembly", "", {"player_position": position[None], "player_valid": valid[None],
         "ball_3d": position, "ball_3d_valid": valid, "metadata": {"status": "partial"}})
+    features: np.ndarray = np.zeros((4, 1024), np.float32)
+    features[:, 0] = [3, 4, 6, 8]
+    _, details = review.render_hmr2_features("hmr2_features", "", {"clip_id": "clip-a", "bodies": [
+        {"person_id": 9, "camera_id": "cam1", "segments": [
+            {"segment_index": 0, "source_frames": np.array([1, 4]), "features": features[:2]},
+            {"segment_index": 1, "source_frames": np.array([9, 12]), "features": features[2:]},
+        ]},
+    ]})
+    assert dict(details) == {"clip": "clip-a", "player 9": "cam1; 2 segments; 4 feature frames"}
+    norms = captured["hmr2_feature_norms.png"]
+    assert len(norms) == 2  # No line joins the two independent temporal segments.
+    np.testing.assert_array_equal(norms[0], [[1, 3], [4, 4]])
+    np.testing.assert_array_equal(norms[1], [[9, 6], [12, 8]])
     height = captured["ball_triangulation_height.png"][0]
     assert height[:, 0].tolist() == list(range(5))
     assert np.isnan(height[~valid, 1]).all()

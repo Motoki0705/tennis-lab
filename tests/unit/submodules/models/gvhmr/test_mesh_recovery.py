@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
 import torch
 
+from src.submodules.configuration import SmplAssetPaths
 from src.submodules.models import GvhmrMeshRecovery, GvhmrRequest, GvhmrResult
+from src.submodules.models.gvhmr import mesh_recovery
+from src.submodules.vendor.gvhmr import pipeline
+from src.utils.models.tensorrt_artifacts import EngineBundle
 
 
 def _request(num_frames: int = 3) -> GvhmrRequest:
@@ -135,3 +140,69 @@ def test_valid_request_reaches_vendor_with_documented_shapes() -> None:
     assert vendor.calls[0]["kp2d"].shape == (3, 17, 3)
     assert vendor.calls[0]["bbx_xys"].shape == (3, 3)
     assert vendor.calls[0]["f_imgseq"].shape == (3, 1024)
+
+
+@pytest.mark.parametrize("corrupted", [None, "length", "mask"])
+def test_tensorrt_sequence_validation_precedes_fp32_decode(
+    corrupted: str | None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def run(inputs: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        torch.testing.assert_close(inputs["length"], torch.tensor([3]))
+        return {
+            "length_out": torch.tensor([2 if corrupted == "length" else 3]),
+            "mask_out": torch.tensor([[True, corrupted != "mask", True]]),
+            "pred_x": torch.full((1, 3, 151), 0.25, dtype=torch.float16),
+            "pred_cam": torch.full((1, 3, 3), 1.5, dtype=torch.float16),
+            "static_conf_logits": torch.full((1, 3, 6), 2.0, dtype=torch.float16),
+        }
+
+    decoder_calls: list[dict[str, torch.Tensor]] = []
+
+    def decode(
+        _pipeline: pipeline.Pipeline,
+        _inputs: dict[str, torch.Tensor],
+        prediction: dict[str, torch.Tensor],
+        *,
+        static_cam: bool,
+    ) -> dict[str, dict[str, torch.Tensor]]:
+        assert static_cam is True
+        decoder_calls.append(prediction)
+        assert prediction.keys() == {"pred_x", "pred_cam", "static_conf_logits"}
+        assert all(value.dtype == torch.float32 for value in prediction.values())
+        parameters = {
+            "body_pose": torch.zeros((1, 3, 63)),
+            "betas": torch.zeros((1, 3, 10)),
+            "global_orient": torch.zeros((1, 3, 3)),
+            "transl": prediction["pred_cam"],
+        }
+        return {
+            "pred_smpl_params_incam": parameters,
+            "pred_smpl_params_global": parameters,
+        }
+
+    monkeypatch.setattr(mesh_recovery, "TensorRTRunner", lambda _bundle, _device: run)
+    monkeypatch.setattr(pipeline, "EnDecoder", lambda **_options: torch.nn.Module())
+    monkeypatch.setattr(pipeline.Pipeline, "decode_prediction", decode)
+    model = GvhmrMeshRecovery.__new__(GvhmrMeshRecovery)
+    model.checkpoint = tmp_path / "gvhmr.ckpt"
+    model.checkpoint.touch()
+    model.body_models_dir = tmp_path
+    model.smpl_assets = SmplAssetPaths(
+        hmr2_mean_params=tmp_path / "mean.npz",
+        smplx_to_smpl=tmp_path / "convert.pt",
+        smpl_coco17_regressor=tmp_path / "coco17.pt",
+        smplx_verts437=tmp_path / "vertices.pt",
+        smpl_neutral_joint_regressor=tmp_path / "joints.pt",
+    )
+    model.engine = cast(EngineBundle, object())
+    model._device = torch.device("cpu")
+    model._load_impl()
+
+    if corrupted is not None:
+        with pytest.raises(ValueError, match="changed the complete sequence length or mask"):
+            model._predict_impl(_request())
+        assert decoder_calls == []
+    else:
+        result = model._predict_impl(_request())
+        assert len(decoder_calls) == 1
+        torch.testing.assert_close(result.smpl_params_incam["transl"], torch.full((3, 3), 1.5))

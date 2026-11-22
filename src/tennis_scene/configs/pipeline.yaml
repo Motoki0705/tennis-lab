@@ -27,6 +27,8 @@ execution:
   court_detection: execute
   court_calibration: execute
   person_detection: execute
+  person_pose_features: execute
+  person_appearance_features: execute
   person_tracking: execute
   player_selection: execute
   pose_estimation: execute
@@ -38,20 +40,69 @@ execution:
   player_triangulation: execute
   ball_triangulation: execute
   body_view_selection: execute
+  hmr2_features: execute
   gvhmr: execute
   body_placement: execute
   scene_assembly: execute
 court_kp:
+  mode: clip
+  video_shared:
+    unobservable_policy: warn
+    action: null
+    directory: null
+    dataset_id: null
+    video_id: null
+    request: null
+    request_sha256: null
+    artifact_digest: null
+    drift_directory: null
+    drift_digest: null
+    rebuild: false
   checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt
   subpixel_refine: true
   # Only frame 0 of each fixed camera is inferred. The region search picks the court
   # crop on that frame from the image alone.
   region_search:
     enabled: true
+    acceptance_method: legacy
     min_inliers: 8
     inlier_distance_ratio: 0.005
+    refinement_method: model
+    paint:
+      version: semantic_consensus_v2
+      radius_px: 48.0
+      fine_radius_px: 6.0
+      sample_spacing_px: 8.0
+      profile_step_px: 0.5
+      profile_sigma_px: 0.6
+      min_gradient: 2.0
+      min_contrast: 6.0
+      min_width_px: 1.0
+      max_width_px: 18.0
+      line_angle_limit_degrees: 8.0
+      line_inlier_distance_px: 1.5
+      ransac_trials: 500
+      min_line_locations: 8
+      min_coverage: 0.35
+      min_court_lines: 5
+      max_line_residual_px: 3.0
+      ambiguity_support_ratio: 0.8
+      ambiguity_separation_px: 3.0
+      max_projection_std_px: 5.0
+      max_leave_line_out_px: 10.0
+      max_normalized_condition: 10000.0
+      max_nfev: 200
     min_area_ratio: 0.01
+    line_tolerance_ratio: 0.005
+    min_line_support: 0.55
+    min_visible_segment_support: 0.25
+    min_line_coverage: 0.5
+    max_normalized_condition: 10000.0
+    max_projection_std_ratio: 0.005
+    max_leave_line_out_ratio: 0.01
   postprocess:
+    support_method: legacy
+    max_support_candidates: 8
     min_score: 0.05
     threshold_diagonal_ratio: 0.005
     line_probability_threshold: 0.5
@@ -66,6 +117,8 @@ court_kp:
     min_line_support: 0.55
     ambiguity_gap: 0.02
     ambiguity_displacement_ratio: 0.03
+    boundary_margin_cells: 1.0
+    duplicate_distance_cells: 1.0
 people_models:
   # Explicit trial only; comparison pending. Keep the higher score at IoU >= .8.
   merge_duplicate_person_boxes: false
@@ -90,9 +143,16 @@ people_models:
       confidence: 0.3
       short_side: 800
       max_long_side: 1333
+      precision: fp32
+      backend: pytorch
+      engines: []
+      batch_size: 1
     vitpose:
       flip_test: true
       batch_size: 16
+      precision: fp32
+      backend: pytorch
+      engines: []
       head:
         in_channels: 1280
         out_channels: 17
@@ -108,6 +168,19 @@ people_models:
         num_conv_kernels: []
     hmr2:
       batch_size: 16
+      precision: fp32
+      backend: pytorch
+      engines: []
+    clip_reid:
+      batch_size: 64
+      precision: fp32
+      backend: pytorch
+      engines: []
+    gvhmr:
+      batch_size: 1
+      precision: fp32
+      backend: pytorch
+      engines: []
     static_cam: true
 person_tracking:
   # The adopted run-10 pose/CLIP profile; comparison methods use benchmark entrypoints.
@@ -124,6 +197,11 @@ person_observations:
   max_tracks_per_camera: 6
 ball_detection:
   method: model
+  model_type: conv_next_unet
+  input_channels: 2
+  num_frames: 8
+  precision: fp32
+  compile_mode: "off"
   checkpoint: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
   enabled: true
   batch_size: 4
@@ -162,7 +240,7 @@ ball_smoothing:
   seed: 42
 # ~30 fps full-clip grid for camera alignment and body-view selection; longer clips are rejected.
 frame_sampling:
-  max_frames: 1024
+  max_frames: 2048
 # camera_alignment's absolute check of the decided sides with player and ball evidence.
 camera_geometry:
   reference_camera: null
@@ -170,19 +248,39 @@ camera_geometry:
   side_min_frames: 8
   side_max_cost: 0.5
   side_min_support: 0.5
-# Ball-only half-turn hypothesis test (src/tasks/court_side). Pixels at 1920x1080. Thresholds
-# from the synthetic benchmark (knowledge court_side/000001, #932).
+# Half-turn hypothesis test (src/tasks/court_side). Ball thresholds use 1920x1080 pixels
+# and were selected in the synthetic benchmark (knowledge court_side/000001, #932).
 court_side:
+  mode: clip
+  evidence: ball
+  video_shared:
+    action: null
+    directory: null
+    request: null
+    request_sha256: null
+    artifact_digest: null
+    rebuild: false
+    unobservable_policy: warn
   reprojection_px: 20.0
   min_motion_px: 5.0
   min_frames: 8
   max_cost: 0.8
   min_support: 0.2
   min_margin: 0.15
+  player:
+    match_distance_m: 3.0
+    symmetry_distance_m: 0.5
+    min_motion_m: 0.15
+    bottom_border_px: 4.0  # source-scaled from 1920x1080
+    min_frames: 8
+    max_cost: 0.7
+    min_support: 0.2
+    min_margin: 0.05
 # Cross-camera association of the person tracks (src/tasks/player_association, #933). The
 # task owns the adopted parameter file; the game format is the clip's.
 player_association:
   players_per_side: 1  # 1 = singles, 2 = doubles
+  reuse_clip_embeddings: false  # evaluate saved detection embeddings as a separate condition
 player_reconstruction:
   enabled: true
   reprojection_px: 40.0

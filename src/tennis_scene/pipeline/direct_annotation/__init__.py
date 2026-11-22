@@ -13,16 +13,19 @@ from src.tennis_scene.pipeline.artifacts import (
     json_value,
     write_json_atomic,
 )
+from src.tennis_scene.pipeline.body_artifacts import require_current_body_artifacts
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.imports import (
     BallAnnotationImporter,
     FixedGeometryImporter,
 )
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
 from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
 
 if TYPE_CHECKING:
+    from src.submodules.configuration import InferencePrecision, SubmoduleRuntimeConfig
     from src.tasks.annotation.scene_workflow import SceneAnnotationWorkflow
     from src.tasks.base.annotation.paths import AnnotationLayout
 
@@ -75,8 +78,21 @@ class DirectAnnotationConfig:
         )
 
 
+def _person_precision(runtime: SubmoduleRuntimeConfig) -> dict[str, InferencePrecision]:
+    return {
+        "dino_detector": runtime.dino_detector.precision,
+        "vitpose": runtime.vitpose.precision,
+    }
+
+
 def scene_receipt(
-    store: ClipStore, config: DirectAnnotationConfig, request_digest: str, archive: Path
+    store: ClipStore,
+    config: DirectAnnotationConfig,
+    request_digest: str,
+    archive: Path,
+    *,
+    people_runtime: SubmoduleRuntimeConfig,
+    model_identity: str | None = None,
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "status": "complete",
@@ -84,6 +100,8 @@ def scene_receipt(
         "request_sha256": request_digest,
         "bundle_sha256": config.bundle_sha256,
         "court_detection": config.court_detection,
+        "person_precision": _person_precision(people_runtime),
+        **({"model_identity": model_identity} if model_identity is not None else {}),
         "scene_artifact": json_value(store.references()["scene_assembly"]),
         "archive": str(archive),
         "archive_sha256": dual_sha256(archive),
@@ -94,7 +112,12 @@ def scene_receipt(
 
 
 def saved_scene(
-    store: ClipStore, config: DirectAnnotationConfig, request_digest: str
+    store: ClipStore,
+    config: DirectAnnotationConfig,
+    request_digest: str,
+    *,
+    people_runtime: SubmoduleRuntimeConfig,
+    model_identity: str | None = None,
 ) -> tuple[SceneResult, dict[str, object]]:
     receipt = json.loads((store.root / "scene-completion.json").read_text())
     if (
@@ -107,7 +130,23 @@ def saved_scene(
         != document_digest(json_value(store.references()["scene_assembly"]))
     ):
         raise ValueError("Saved scene completion differs from the selected workflow")
+    if "person_precision" in receipt:
+        saved_precision = receipt["person_precision"]
+    else:
+        # Receipts written before precision was configurable used FP32 for both models.
+        saved_precision = {"dino_detector": "fp32", "vitpose": "fp32"}
+    requested_precision = _person_precision(people_runtime)
+    if saved_precision != requested_precision:
+        raise ValueError(
+            "Saved scene person precision differs from the selected workflow "
+            f"(saved {saved_precision!r}, requested {requested_precision!r})"
+        )
+    if receipt.get("model_identity") != model_identity:
+        raise ValueError("Saved scene model identity differs from the selected workflow")
     archive = Path(receipt["archive"])
+    required = require_current_body_artifacts(store.root, json_value(store.references()['scene_assembly']))
+    if indexed_scene_path(store.root / 'scene.json', required_components=required) != archive.resolve():
+        raise ValueError('Saved scene archive differs from its current component export')
     if (
         dual_sha256(archive) != receipt["archive_sha256"]
         or dual_sha256(archive.with_suffix(".metadata.json"))

@@ -24,6 +24,7 @@ class _FakePose(torch.nn.Module):
         self.dtype = dtype
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
+        assert torch.is_autocast_enabled(images.device.type) == (self.dtype == torch.bfloat16)
         self.batch_shapes.append(tuple(images.shape))
         return torch.zeros(
             (images.shape[0], 17, 64, 48),
@@ -45,7 +46,7 @@ def _head_config() -> ViTPoseHeadConfig:
     )
 
 
-@pytest.mark.parametrize("precision", ["float32", "bfloat16"])
+@pytest.mark.parametrize("precision", ["float32", "bfloat16", "bf16"])
 def test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -104,7 +105,7 @@ def test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17(
         "keypoints_from_heatmaps",
         _fake_keypoints_from_heatmaps,
     )
-    fake_pose = _FakePose(torch.bfloat16 if precision == "bfloat16" else torch.float32)
+    fake_pose = _FakePose(torch.bfloat16 if precision in {"bf16", "bfloat16"} else torch.float32)
     model = ViTPosePose2D(
         checkpoint=tmp_path / "unused.ckpt",
         device="cpu",

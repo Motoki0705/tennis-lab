@@ -25,6 +25,35 @@ class Busy(CleanupError):
     pass
 
 
+def valid_file_identity(value: Any, *, administration: bool = False) -> bool:
+    if not isinstance(value, dict):
+        return False
+    key = "filesystem_id" if "filesystem_id" in value else "device"
+    required = {key, "inode"}
+    if administration or key == "filesystem_id":
+        required.add("birth_time_ns")
+    optional = {"token"} if administration else {"birth_time_ns"}
+    born = value.get("birth_time_ns")
+    return (
+        required <= value.keys() <= required | optional
+        and type(value.get("inode")) is int
+        and value["inode"] >= 0
+        and (
+            (key == "device" and type(value[key]) is int and value[key] >= 0)
+            or (
+                key == "filesystem_id"
+                and isinstance(value[key], str)
+                and re.fullmatch(r"ext4-fsid:[0-9a-f]{16}", value[key]) is not None
+            )
+        )
+        and (born is None or (type(born) is int and born >= 0))
+        and (
+            value.get("token") is None
+            or re.fullmatch(r"[0-9a-f]{32}", str(value["token"])) is not None
+        )
+    )
+
+
 def state_root() -> Path:
     root = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
     if not root.is_absolute():
@@ -98,7 +127,7 @@ class State:
             read_json(self.path)
             if self.path.exists()
             else {
-                "schema_version": 1,
+                "schema_version": 2,
                 "repo": str(repo),
                 "records": {},
             }
@@ -106,7 +135,7 @@ class State:
         if (
             set(self.data) != {"schema_version", "repo", "records"}
             or type(self.data["schema_version"]) is not int
-            or self.data["schema_version"] != 1
+            or self.data["schema_version"] not in {1, 2}
             or self.data["repo"] != str(repo)
             or not isinstance(self.data["records"], dict)
         ):
@@ -119,22 +148,10 @@ class State:
                 or not isinstance(row.get("path"), str)
                 or not isinstance(row.get("admin"), str)
                 or not {"admin_identity", "directory_identity", "head"} <= row.keys()
-                or not isinstance(row.get("admin_identity"), dict)
-                or set(row["admin_identity"])
-                not in (
-                    {"device", "inode", "birth_time_ns"},
-                    {"device", "inode", "birth_time_ns", "token"},
-                )
+                or not valid_file_identity(row["admin_identity"], administration=True)
                 or (
-                    row["admin_identity"].get("token") is not None
-                    and re.fullmatch(
-                        r"[0-9a-f]{32}", str(row["admin_identity"]["token"])
-                    )
-                    is None
-                )
-                or any(
-                    type(row["admin_identity"].get(k)) is not int
-                    for k in ("device", "inode")
+                    row["directory_identity"] is not None
+                    and not valid_file_identity(row["directory_identity"])
                 )
                 or type(row.get("created_at_ns")) is not int
                 or row["created_at_ns"] < 0

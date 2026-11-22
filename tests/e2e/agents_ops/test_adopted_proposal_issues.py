@@ -18,6 +18,8 @@ from urllib.parse import parse_qs
 
 import pytest
 
+from tests.support.agents_ops.model_pins import WORKER_DEFAULT_MODEL
+
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
 sys.path.insert(0, str(OPS))
@@ -50,6 +52,11 @@ def raw_issue(n: int, **changes: Any) -> dict[str, Any]:
 
 class FakeGitHub:
     repo = "o/r"
+    targeted_history = False
+
+    def authenticated_login(self) -> str:
+        return str(self.get("user")["login"])
+
     rows = github.GitHub.rows
     issue_rows = github.GitHub.issue_rows
     issue = github.GitHub.issue
@@ -428,7 +435,9 @@ class Harness:
         monkeypatch.setenv("FAKE_JUDGEMENT_RESPONSE", str(tmp / "judgement.json"))
         monkeypatch.setenv("FAKE_JUDGEMENT_CALLS", str(tmp / "judgement-calls.jsonl"))
         monkeypatch.delenv("OPS_REPORT_ORGANIZER_EXEC", raising=False)
+        self.store = state.Store(self.tmp / "state/parent")
         self.gh = FakeGitHub()
+        self.gh._store = self.store
         self.run_number = 0
         self.response(plan())
         self.report()
@@ -495,17 +504,16 @@ class Harness:
         work_dir = self.tmp / f"run-{self.run_number}"
         work_dir.mkdir()
         result = triage.TriageResult()
-        with state.Store(self.tmp / "state/parent").locked() as store:
-            apply.run(
-                gh=self.gh,
-                store=store,
-                root=self.root,
-                work_dir=work_dir,
-                candidates=self.candidates(),
-                dry_run=dry_run,
-                result=result,
-                journal_path=self.tmp / "triage.json",
-            )
+        apply.run(
+            gh=self.gh,
+            store=self.store,
+            root=self.root,
+            work_dir=work_dir,
+            candidates=self.candidates(),
+            dry_run=dry_run,
+            result=result,
+            journal_path=self.tmp / "triage.json",
+        )
         return result
 
     def calls(self) -> list[Any]:
@@ -532,7 +540,7 @@ class Harness:
             patch.setenv("PATH", str(self.judgement_bin) + ":" + os.environ["PATH"])
             result: dict[str, Any] = judgement.run(
                 self.gh,
-                state.Store(self.tmp / "state/parent"),
+                self.store,
                 self.root,
                 self.tmp / name,
                 apply=True,
@@ -573,7 +581,7 @@ def test_parentless_adoption_creates_normal_standalone_once(harness: Harness) ->
     assert not h.run().errors
     assert len(h.calls()) == 1 and len(h.gh.writes) == count
     args = h.calls()[0]["args"]
-    assert "gpt-6.1-sol" in args and 'model_reasoning_effort="max"' in args
+    assert WORKER_DEFAULT_MODEL in args and 'model_reasoning_effort="max"' in args
     assert "read-only" in args and "--profile" not in args
     runtime = json.loads(
         h.tmp.joinpath("run-1/organization-runtime/result.json").read_text()
@@ -1175,7 +1183,7 @@ def test_existing_owner_conflict_requires_reasoned_hold(
             }
         ]
     else:
-        with state.Store(h.tmp / "state/parent").locked() as store:
+        with h.store.locked() as store:
             store.parents["o/r#1"] = {
                 "status": "active",
                 "session": "claude:existing",
@@ -1361,7 +1369,7 @@ def test_cross_report_group_is_visible_through_unchanged_dispatcher_collection(
     )
     h.run()
     collector: Any = importlib.import_module("dispatcher.collect")
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         snapshot = collector.collect(h.gh, store, h.root)
     assert snapshot["issues"]["102"]["source_reports"] == [90]
     assert snapshot["issues"]["103"]["source_reports"] == [100]
@@ -1409,7 +1417,7 @@ def test_context_sources_remain_in_split_inputs_after_index_anchors_move(
     assert not fmt.check_consistency(h.gh.family(1))
     collector: Any = importlib.import_module("dispatcher.collect")
     agent_input: Any = importlib.import_module("dispatcher.agent_input")
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         fixed = collector.collect(h.gh, store, h.root, [101])
         fixed["input_sha256"] = policy.digest(collector.material(fixed))
         assert collector.related(fixed, 101) == {90, 100, 101}
@@ -1496,7 +1504,7 @@ def test_source_change_defers_only_its_subject_closure_in_v2(
     assert [c["parent"] for c in result["candidates"]] == [1]
     assert len(h.tmp.joinpath("judgement-calls.jsonl").read_text().splitlines()) == 1
     fixed = json.loads(h.tmp.joinpath("changed-source/input.json").read_text())
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         judgement.assert_candidate_fresh(
             h.gh, store, h.root, fixed, result["candidates"][0]
         )
@@ -1546,7 +1554,7 @@ def test_autonomous_parent_notes_preserve_adopted_task_delegation(
         capture_output=True,
     )
     monkeypatch.chdir(h.root)
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         session = sessions.ParentSession(h.gh, store, 101, "claude:fixture")
         judgement.assert_candidate_fresh(h.gh, store, h.root, fixed, candidate)
         auth = execution.validate_candidate(
@@ -1589,7 +1597,7 @@ def test_autonomous_parent_notes_preserve_adopted_task_delegation(
         session.revoke_basis("親が追加要件を確認し、再合意まで停止する。")
         with pytest.raises(ValueError, match="有効な実行根拠"):
             session.agreed()
-    history = policy.events(h.gh.parent_comments(101), "operator", 101)
+    history = policy.events(h.gh.detached().parent_comments(101), "operator", 101)
     assert any(e["event"] == "note" for e in history)
     assert not any(
         e["event"] in {"agreed", "proposal_received", "proposal_agreed"}
@@ -1617,7 +1625,7 @@ def test_task_provenance_requires_separate_autonomous_basis_and_current_adoption
     sessions: Any = importlib.import_module("parent.session")
     execution: Any = importlib.import_module("parent.execution")
     proposals_module: Any = importlib.import_module("parent.proposals")
-    with state.Store(h.tmp / "state/parent").locked() as store:
+    with h.store.locked() as store:
         store.parents["o/r#101"] = {
             "status": "active",
             "session": "claude:fixture",
@@ -1892,7 +1900,7 @@ def test_triage_publishes_only_until_the_scheduled_judgement_entry_runs(
         for c in calls
     )
     assert len(h.calls()) == 1  # Only the proposal organizer used a runtime here.
-    comments = h.gh.parent_comments(101)
+    comments = h.gh.detached().parent_comments(101)
     basis = next(
         e["basis"]
         for e in reversed(policy.events(comments, "operator", 101))
@@ -1906,9 +1914,42 @@ def test_triage_publishes_only_until_the_scheduled_judgement_entry_runs(
     h.gh.issues[100]["body"] = h.gh.issues[100]["body"].replace("- [x] **", "- [ ] **")
     snapshot = json.loads(h.tmp.joinpath("scheduled-20/input.json").read_text())
     with (
-        state.Store(h.tmp / "state/parent").locked() as store,
+        h.store.locked() as store,
         pytest.raises(ValueError, match="changed"),
     ):
         judgement.assert_candidate_fresh(
             h.gh, store, h.root, snapshot, results[-1]["candidates"][0]
         )
+
+
+def test_organization_keeps_concurrent_delegation_and_rejects_old_plan(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.support.agents_ops.registry_io import probe
+
+    h = harness
+    execute = org.execute
+
+    def concurrent_delegation(root: Path, work_dir: Path) -> Any:
+        plan = execute(root, work_dir)
+        probe(h.store.directory / "registry.lock")
+        with state.Store(h.store.directory).locked() as peer:
+            peer.parents["o/r#1"] = {
+                "session": "claude:concurrent-owner",
+                "status": "active",
+                "generation": 1,
+                "tasks": {"2": {"delegated": True, "delegation_id": "new-delegation"}},
+                "reviews": [],
+            }
+            peer.save()
+        return plan
+
+    monkeypatch.setattr(org, "execute", concurrent_delegation)
+    with pytest.raises(ValueError, match="inputs changed before publication"):
+        h.run()
+    assert h.gh.writes == []
+    with h.store.locked():
+        assert (
+            h.store.parents["o/r#1"]["tasks"]["2"]["delegation_id"] == "new-delegation"
+        )
+    assert h.tmp.joinpath("run-1/organization-intent.json").is_file()

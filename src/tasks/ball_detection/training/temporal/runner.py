@@ -11,7 +11,7 @@ import time
 from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 import torch
@@ -47,6 +47,7 @@ from src.tasks.ball_detection.evaluation.temporal_heatmap import (
     evaluate_temporal_heatmap,
 )
 from src.tasks.ball_detection.model_io.mdd_temporal import (
+    QUERY_CONFIG_TYPES,
     TemporalConfig,
     build_temporal_model,
     restore_temporal_model,
@@ -57,8 +58,11 @@ from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
     MDDHeatmapConfig,
     MDDHeatmapHybridConfig,
-    MDDTemporalQueryConfig,
 )
+from src.tasks.ball_detection.models.mdd.multiscale_config import (
+    MDDMultiScaleQueryConfig,
+)
+from src.tasks.ball_detection.models.mdd.stage_config import MDDStageHeatmapConfig
 from src.tasks.ball_detection.training.runtime.compilation import (
     compile_coordinate_model,
     coordinate_compile_scope,
@@ -90,6 +94,14 @@ IDENTITY_KEYS = (
     "scored_frame_sha256",
     "training_packs_sha256",
 )
+
+
+class UpdateObserver(Protocol):
+    """Optional admission and resource telemetry, outside the numerical update."""
+
+    def before_update(self, update: int) -> None: ...
+
+    def metrics(self) -> dict[str, Any]: ...
 
 
 def _data_recipe(
@@ -157,13 +169,14 @@ def train_temporal_model(
     resume: Path | None = None,
     stop_after_update: int | None = None,
     persist: Callable[[Path, str], None] | None = None,
+    update_observer: UpdateObserver | None = None,
 ) -> dict[str, Any]:
-    expected_type = dict(
-        dpt=MDDHeatmapConfig,
-        hybrid=MDDHeatmapHybridConfig,
-        query=MDDTemporalQueryConfig,
+    expected_types = dict(
+        dpt=(MDDHeatmapConfig, MDDStageHeatmapConfig),
+        hybrid=(MDDHeatmapHybridConfig,),
+        query=QUERY_CONFIG_TYPES,
     ).get(architecture)
-    if type(model_config) is not expected_type or phase not in {"pretrain", "finetune"}:
+    if expected_types is None or type(model_config) not in expected_types or phase not in {"pretrain", "finetune"}:
         raise ValueError("Declare architecture and training phase explicitly")
     if phase == "pretrain" and model_config.frames != 32:
         raise ValueError("Direct pretraining requires T=32")
@@ -301,6 +314,7 @@ def train_temporal_model(
         model,
         mode=runtime.compile_mode,
         recompile_limit=runtime.compile_recompile_limit,
+        fullgraph=not isinstance(model_config, MDDMultiScaleQueryConfig),
     )
     groups = optimizer_parameter_names(model)
     parameters = dict(model.named_parameters())
@@ -315,6 +329,7 @@ def train_temporal_model(
         eps=1e-8,
     )
     completed, position = 0, parent["sample_position"] if parent else 0
+    inherited_rng = None
     parent_updates = parent["cumulative_updates"] if parent else 0
     parent_input_frames = parent["cumulative_input_frames"] if parent else 0
     if saved is not None:
@@ -333,7 +348,7 @@ def train_temporal_model(
             raise ValueError(
                 "Stage learning-rate schedule is discontinuous at its parent boundary"
             )
-        inherit_optimizer(initial_artifact, optimizer, model, parent)
+        inherited_rng = inherit_optimizer(initial_artifact, optimizer, model, parent)
     output.mkdir(parents=True, exist_ok=True)
     log = output / "train.jsonl"
     if saved is not None:
@@ -375,7 +390,13 @@ def train_temporal_model(
     augmenter = VideoAugmenter(augmentation, budget.seed) if augmentation else None
     if saved is not None:
         restore_rng(saved["rng"], device)
+    elif inherited_rng is not None and parent is not None and parent["mode"] == "full_temporal_weights":
+        # Model/loader construction must not consume the next stage's dropout
+        # stream. Encoder-only transfers intentionally keep fresh query RNG.
+        restore_rng(inherited_rng, device)
     for update in range(completed + 1, target + 1):
+        if update_observer is not None:
+            update_observer.before_update(update)
         if device.type == "cuda":
             torch.cuda.synchronize(device)
             torch.cuda.reset_peak_memory_stats(device)
@@ -494,6 +515,8 @@ def train_temporal_model(
             if device.type == "cuda"
             else None,
         )
+        if update_observer is not None:
+            record["resources"] = update_observer.metrics()
         with log.open("ab") as stream:
             stream.write(json_bytes(record))
             stream.flush()

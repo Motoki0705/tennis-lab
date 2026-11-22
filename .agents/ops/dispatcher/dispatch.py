@@ -1,10 +1,15 @@
-"""File entry for systemd; module callers use python -m dispatcher."""
+"""Lock the source checkout before loading the CLI implementation."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dispatcher.cli import main  # noqa: E402
+from lib.checkout_lock import run_cli  # noqa: E402
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    run_cli(
+        "dispatcher.cli_impl",
+        root_options=("--state-dir", "--parent-state-dir"),
+        finite_commands=("run",),
+        maintenance_commands=("status",),
+    )

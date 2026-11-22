@@ -66,7 +66,10 @@ annotations/
 !scripts/ci_metrics/package.json
 !scripts/ci_metrics/package-lock.json
 !/.claude/settings.json
+!/.agents/ops/herdr_labels/agy_board_hooks.json
 !/tests/support/development/ci_attempts.json
+!/tests/support/agents_ops/fixtures/storage-crash-boundaries.json
+!/tests/support/agents_ops/fixtures/storage-recovery-boundaries.json
 !/scripts/ci_metrics/lanes.json
 !/scripts/ci_metrics/system-deps.json
 *.xml
@@ -180,6 +183,8 @@ Thumbs.db
 # Agent workspace
 agents_workspace/tmp_cache/
 .worktrees/
+.storage-tier/
+.worktree-outputs/
 
 # Large files that should be tracked separately
 *.zip

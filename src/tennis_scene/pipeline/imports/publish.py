@@ -36,6 +36,7 @@ def bind_import(nodes: Sequence[ComponentNode], name: str, store: ClipStore) -> 
     if name not in by_name:
         raise ValueError(f"Unknown import target: {name}")
     node = by_name[name]
+    node.require_importable()
     if node.source != "load":
         raise ValueError(f"{name} must be declared load-only (execution.{name.split('/')[0]}=load) to receive an import")
     references: dict[str, ArtifactRef] = {}
@@ -65,6 +66,7 @@ def publish_import(bound: BoundImport, store: ClipStore, value: Any, *, importer
     import_identity = {"importer": importer, "importer_version": version, "source_sha256": store.source_key, **identity}
     node.validate_import_identity(import_identity,
                                   {"origin": IMPORT_ORIGIN, **provenance})
+    node.validate_output(value)
     return store.publish(node.name, value, ArtifactCodec(node.io.output_type), schema=node.io.output_schema,
         version=node.io.version, identity=import_identity,
         dependencies=bound.references,

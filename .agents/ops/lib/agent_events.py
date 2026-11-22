@@ -16,18 +16,21 @@ class EvidenceError(ValueError):
     """Runtime configuration evidence is missing or disagrees with the selection."""
 
 
-def reconnect_notice(event: Any) -> bool:
+def reconnect_notice(event: Any, *, review: bool = False) -> bool:
     """Only the observed routing retry diagnostic is eligible for recovery."""
     if not isinstance(event, dict) or set(event) != {"type", "message"}:
         return False
     if event["type"] != "error" or not isinstance(event["message"], str):
         return False
     match = re.fullmatch(
-        r"Reconnecting\.\.\. ([1-9][0-9]*)/([1-9][0-9]*) "
-        r"\(workspace routing discovery timed out\)",
-        event["message"],
+        r"Reconnecting\.\.\. ([1-9][0-9]*)/([1-9][0-9]*) \(([^()]+)\)", event["message"]
     )
-    return bool(match and int(match[1]) <= int(match[2]))
+    if not match or int(match[1]) > int(match[2]):
+        return False
+    return match[3] == "workspace routing discovery timed out" or (
+        review
+        and match[3] == "Selected model is at capacity. Please try a different model."
+    )
 
 
 def runtime_errors_failed(record: dict[str, Any]) -> bool:
@@ -64,7 +67,13 @@ def runtime_errors_failed(record: dict[str, Any]) -> bool:
         info = record["runtime"]
         identifier(info["session_id"])
         identifier(info["turn_id"])
-        events = Events("codex", settings["selected"], info["session_id"])
+        events = Events(
+            "codex",
+            settings["selected"],
+            info["session_id"],
+            verify_settings=settings.get("profile") != "review",
+            review=settings.get("profile") == "review",
+        )
         for line in raw.read_bytes().splitlines():
             if line.strip():
                 events.feed(line)
@@ -284,7 +293,12 @@ class Events:
         selected: dict[str, str],
         expected_session: str | None,
         output_schema: OutputSchema | None = None,
+        *,
+        verify_settings: bool = True,
+        review: bool = False,
     ) -> None:
+        self.review = review
+        self.verify_settings = verify_settings
         self.agent, self.selected = agent, selected
         self.expected_session = expected_session
         self.session: str | None = None
@@ -320,7 +334,7 @@ class Events:
         if not isinstance(value, str) or not value:
             raise EvidenceError(f"runtime did not report effective {key}")
         self.effective[key] = {"value": value, "status": "observed", "source": source}
-        if value != self.selected[key]:
+        if self.verify_settings and value != self.selected[key]:
             raise EvidenceError(f"effective {key} differs from selected setting")
 
     def token_usage(self, value: Any, source: str) -> None:
@@ -371,7 +385,10 @@ class Events:
                     and self.started
                     and self._turn_starts == 1
                     and self._retry_order_valid
-                    and all(reconnect_notice(error) for error in self.errors)
+                    and all(
+                        reconnect_notice(error, review=self.review)
+                        for error in self.errors
+                    )
                     and self._error_index < self._message_index < self._event_index
                     and isinstance(self.final, str)
                     and self.final.strip()

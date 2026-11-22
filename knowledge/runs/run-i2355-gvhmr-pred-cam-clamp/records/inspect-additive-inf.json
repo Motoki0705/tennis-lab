@@ -1,0 +1,271 @@
+{
+  "queue_job": "0-8204657520894800588_2026-11-22T10-14-39-105199411Z_3266453_i2355-gvhmr-inspect-outputs-1",
+  "conversion": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive",
+  "shapes": {
+    "any:1:145": {
+      "length_out": [
+        145
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.0263671875
+      },
+      "pred_cam": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.0009765625
+      },
+      "static_conf_logits": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.03125
+      }
+    },
+    "any:4:177": {
+      "length_out": [
+        177,
+        177,
+        177,
+        177
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 106908,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 13.1796875
+      },
+      "pred_cam": {
+        "nonfinite": 1416,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 1.1826171875
+      },
+      "static_conf_logits": {
+        "nonfinite": 4248,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 23.015625
+      }
+    },
+    "eval:1:145": {
+      "length_out": [
+        145
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.0263671875
+      },
+      "pred_cam": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.0009765625
+      },
+      "static_conf_logits": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.03125
+      }
+    },
+    "eval:2:145": {
+      "length_out": [
+        145,
+        145
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0,
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.0263671875
+      },
+      "pred_cam": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.0009765625
+      },
+      "static_conf_logits": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.03125
+      }
+    },
+    "eval:4:145": {
+      "length_out": [
+        145,
+        145,
+        145,
+        145
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.0263671875
+      },
+      "pred_cam": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.0009765625
+      },
+      "static_conf_logits": {
+        "nonfinite": 0,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 0.046875
+      }
+    },
+    "eval:1:177": {
+      "length_out": [
+        177
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 26727,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 4.4375
+      },
+      "pred_cam": {
+        "nonfinite": 354,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 1.1826171875
+      },
+      "static_conf_logits": {
+        "nonfinite": 1062,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 14.3828125
+      }
+    },
+    "eval:2:177": {
+      "length_out": [
+        177,
+        177
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0,
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 53454,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 13.1796875
+      },
+      "pred_cam": {
+        "nonfinite": 708,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 1.1826171875
+      },
+      "static_conf_logits": {
+        "nonfinite": 2124,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 23.015625
+      }
+    },
+    "eval:4:177": {
+      "length_out": [
+        177,
+        177,
+        177,
+        177
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 106908,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 13.1796875
+      },
+      "pred_cam": {
+        "nonfinite": 1416,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 1.1826171875
+      },
+      "static_conf_logits": {
+        "nonfinite": 4248,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 23.015625
+      }
+    },
+    "any:1:177": {
+      "length_out": [
+        177
+      ],
+      "length_ok": true,
+      "mask_all": true,
+      "mask_false_per_sequence": [
+        0
+      ],
+      "mask_equal_onnx": true,
+      "onnx_mask_all": true,
+      "pred_x": {
+        "nonfinite": 26727,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 4.4375
+      },
+      "pred_cam": {
+        "nonfinite": 354,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 1.1826171875
+      },
+      "static_conf_logits": {
+        "nonfinite": 1062,
+        "onnx_nonfinite": 0,
+        "max_abs_vs_onnx": 14.3828125
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-"""Read-only, explicitly requested waits for a pinned manual worker run."""
+"""Read-only waits for a pinned worker run or manual follow-up."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from typing import Any
 
 from dispatcher.runtime import Runtime
 
-from . import manual_workers
+from . import manual_workers, worker_followup, worker_slots
 from .policy import object_value
 from .state import Store
 
-RECOVERY = ".agents/ops/lib/README.md#状態確認停止中断からの復旧"
+RECOVERY = ".agents/skills/parent-session/references/recovery.md"
 LIVE_KEYS = ("runner_alive", "agent_alive", "agent_group_alive")
 
 
@@ -25,15 +25,23 @@ LIVE_KEYS = ("runner_alive", "agent_alive", "agent_group_alive")
 class Target:
     task: dict[str, Any]
     directory: Path
+    job: dict[str, Any] | None = None
+
+    @property
+    def followup(self) -> dict[str, Any] | None:
+        record = worker_followup.current(self.task) if self.job is None else None
+        return record if record and record["run_dir"] == str(self.directory) else None
 
     @property
     def binding(self) -> tuple[Any, ...]:
+        followup = self.followup
         return (
             self.task["delegation_id"],
             self.task["worktree"],
             self.task["branch"],
             self.task.get("model"),
-            self.directory,
+            followup["id"] if followup else self.directory,
+            self.job["id"] if self.job else None,
         )
 
     @property
@@ -45,7 +53,7 @@ class Target:
         )
 
 
-def target(store: Store, key: str, child: int) -> Target:
+def target(store: Store, key: str, child: int, worker: str | None = None) -> Target:
     # Atomic registry files are sufficient for observation. No operation,
     # registry or session locks, network calls, or state writes are needed.
     data = store.read_data()
@@ -62,7 +70,17 @@ def target(store: Store, key: str, child: int) -> Target:
     ]
     if len(rows) != 1:
         raise ValueError("manual worker parent is missing or ambiguous")
-    task = manual_workers.reserved_task(object_value(rows[0]), child)
+    row = object_value(rows[0])
+    name = worker_slots.select(row, child, worker)
+    if row.get("dispatch"):
+        from .development import worker_jobs
+
+        task = worker_slots.record(row, child, name)
+        jobs = worker_jobs(row["dispatch"], child, name)
+        if not jobs or jobs[-1]["delegation_id"] != task.get("delegation_id"):
+            raise ValueError("no job for the current worker delegation")
+        return Target(task, Path(jobs[-1]["directory"]) / "runtime", jobs[-1])
+    task = manual_workers.reserved_task(row, child, name)
     runs = [
         run
         for run in manual_workers.worker_runs(task)
@@ -109,6 +127,7 @@ def wait_worker(
     key: str,
     child: int,
     *,
+    worker: str | None = None,
     timeout: float | None = None,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
@@ -118,11 +137,19 @@ def wait_worker(
     ):
         raise ValueError("--timeout must be a finite positive number of seconds")
     deadline = None if timeout is None else clock() + timeout
-    pinned = target(store, key, child)
-    runtime = Runtime(manual_workers.RUNNER)
+    pinned = target(store, key, child, worker)
+    runtime = Runtime(
+        Path(pinned.job["runner"]) if pinned.job else manual_workers.RUNNER
+    )
     run_id = None
     proof: dict[str, Any] | None = None
     current = pinned
+
+    def read_bound() -> Target:
+        observed = target(store, key, child, worker)
+        if observed.binding != pinned.binding:
+            raise ValueError("manual worker delegation/latest run changed during wait")
+        return observed
 
     def response(state: str, error: str | None = None) -> dict[str, Any]:
         record = proof["record"] if proof is not None else {}
@@ -147,46 +174,82 @@ def wait_worker(
         }
         if error is not None:
             value.update(error=error, recovery=RECOVERY)
+        if current.followup:
+            value["followup"] = worker_followup.public_view(current.followup)
         return value
 
     while True:
-        current = target(store, key, child)
-        if current.binding != pinned.binding:
-            raise ValueError("manual worker delegation/latest run changed during wait")
+        current = read_bound()
+        if current.directory != pinned.directory:
+            pinned, run_id, proof = current, None, None
         remaining = None if deadline is None else deadline - clock()
         if remaining is not None and remaining <= 0:
             return 124, response("timeout", "wait_timeout")
-        try:
-            settings = manual_workers.validate_run(pinned.task, pinned.directory)
-            remaining = None if deadline is None else deadline - clock()
-            if remaining is not None and remaining <= 0:
+        followup = current.followup
+        if followup and not (pinned.directory / "result.json").exists():
+            if followup["state"] != "running" or not worker_followup.live(followup):
+                latest = read_bound()
+                if (
+                    latest.followup != followup
+                    or (pinned.directory / "result.json").exists()
+                ):
+                    continue
+                return 2, response("liveness_unknown", "followup_runtime_unconfirmed")
+            sleep(1.0 if remaining is None else min(1.0, remaining))
+            continue
+        # While the CLI monitors a job, the recovered runtime cannot change.
+        # Inspect again only if the current turn is still live or a resume
+        # created a new run directory.
+        if proof is None or not runtime.ended(proof):
+            try:
+                settings = (
+                    None
+                    if pinned.job
+                    else manual_workers.validate_run(pinned.task, pinned.directory)
+                )
+                remaining = None if deadline is None else deadline - clock()
+                if remaining is not None and remaining <= 0:
+                    return 124, response("timeout", "wait_timeout")
+                observed = runtime.inspect(pinned.directory, timeout=remaining)
+                record = observed["record"]
+                validate_evidence(record)
+                if pinned.job:
+                    from dispatcher.supervisor import Supervisor
+
+                    Supervisor._check_contract(pinned.job, record)
+                elif manual_workers.model_settings(pinned.task, record) != settings:
+                    raise ValueError("runner settings changed during observation")
+                if run_id is not None and record["run_id"] != run_id:
+                    raise ValueError("runner run ID changed during wait")
+            except subprocess.TimeoutExpired:
                 return 124, response("timeout", "wait_timeout")
-            observed = runtime.inspect(pinned.directory, timeout=remaining)
-            record = observed["record"]
-            validate_evidence(record)
-            if manual_workers.model_settings(pinned.task, record) != settings:
-                raise ValueError("runner settings changed during observation")
-            if run_id is not None and record["run_id"] != run_id:
-                raise ValueError("runner run ID changed during wait")
-        except subprocess.TimeoutExpired:
-            return 124, response("timeout", "wait_timeout")
-        except (OSError, ValueError, KeyError, TypeError, OverflowError):
-            # In particular, a reservation without result.json is not proof
-            # that a runtime started. Never wait on an unverified launch.
-            proof = None
-            return 2, response(
-                "liveness_unknown", "runner_records_unavailable_or_invalid"
-            )
-        proof, run_id = observed, record["run_id"]
-        current = target(store, key, child)
-        if current.binding != pinned.binding:
-            raise ValueError("manual worker delegation/latest run changed during wait")
+            except (OSError, ValueError, KeyError, TypeError, OverflowError):
+                proof = None
+                return 2, response(
+                    "liveness_unknown", "runner_records_unavailable_or_invalid"
+                )
+            proof, run_id = observed, record["run_id"]
+        current = read_bound()
+        if current.directory != pinned.directory:
+            continue
         if runtime.ended(proof):
-            return 0, response("ended")
-        if not proof["summary"]["runner_alive"]:
+            followup = current.followup
+            if not followup or followup["state"] not in worker_followup.ACTIVE:
+                if followup and followup["state"] == "error":
+                    return 2, response("followup_error", followup["reason"])
+                return 0, response("ended")
+            if not worker_followup.live(followup):
+                # The controller writes its terminal state before exiting.
+                # A negative liveness result may therefore race its final save.
+                if read_bound().followup != followup:
+                    continue
+                return 2, response(
+                    "liveness_unknown", "followup_controller_unconfirmed"
+                )
+        elif not proof["summary"]["runner_alive"]:
             state = (
                 "cleanup_unconfirmed"
-                if record["result"] in {"completed", "failed"}
+                if proof["record"]["result"] in {"completed", "failed"}
                 else "liveness_unknown"
             )
             return 2, response(state, "runner_termination_or_cleanup_unconfirmed")

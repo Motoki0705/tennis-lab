@@ -10,6 +10,7 @@ from typing import Any
 
 from board.errors import BoardError
 from board.safety import public
+from parent.worker_slots import workers
 
 PRIVATE_ENV_KEYS = (
     "CLAUDE_CODE_SESSION_ID",
@@ -27,9 +28,11 @@ class StatusError(ValueError):
 
 
 class Guard:
-    def __init__(self, parents: Mapping[str, Any]) -> None:
+    def __init__(
+        self, parents: Mapping[str, Any], env: Mapping[str, str] | None = None
+    ) -> None:
         self.parents = parents
-        self.env = dict(os.environ)
+        self.env = dict(os.environ if env is None else env)
         self.private: set[str] = set()
         # Logs can quote arbitrary environment values. Do not expose them just
         # because their variable name is not one of the board's identity keys.
@@ -41,7 +44,7 @@ class Guard:
         """Keep all observed owners/run references private across a handoff retry."""
         for row in parents.values():
             self.remember(row["session"].partition(":")[2])
-            for task in row["tasks"].values():
+            for _, _, task in workers(row.get("tasks", {})):
                 self.remember(task.get("delegation_id"))
                 self.remember_path(task.get("worktree"))
                 runs = task.get("worker_runs", [])

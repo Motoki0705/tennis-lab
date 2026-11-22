@@ -1,0 +1,2136 @@
+{
+  "diagnosis-block0-1": {
+    "queue_job": "0-8204662471714297878_2026-11-22T08-52-08-285702121Z_2605418_i2355-gvhmr-block0-diagnosis-1",
+    "output": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-block0-1",
+    "builds": {
+      "fp16-b2-local-mask-only": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 19,
+        "graph_inputs": [],
+        "last_foreign_node": null
+      },
+      "fp16-b2-padding-mask-only": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "length"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/Not_2]"
+      },
+      "fp16-b2-block0-norm1": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/norm1/LayerNormalization]"
+      },
+      "fp16-b2-block0-query-rope": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 48,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Concat_1]"
+      },
+      "fp16-b2-block0-key-rope": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 48,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Concat_3]"
+      },
+      "fp16-b2-block0-qk-score": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 99,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Div]"
+      },
+      "fp16-b2-block0-local-mask-applied": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 112,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/Where_1]"
+      },
+      "fp16-b2-block0-padding-mask-applied": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 125,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/Where_3]"
+      },
+      "fp16-b2-block0-softmax": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 126,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/Softmax]"
+      },
+      "fp16-b2-block0-weighted-value": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 132,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "fp16-b2-block0-attention-projection": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 137,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/proj/Add]"
+      },
+      "fp16-b2-block0-attention-residual": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 139,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add]"
+      },
+      "fp16-b2-block0-norm2": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 140,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/norm2/LayerNormalization]"
+      },
+      "fp16-b2-block0-mlp-fc1": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 142,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/fc1/Add]"
+      },
+      "fp16-b2-block0-mlp-activation": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 155,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/act/Mul_5]"
+      },
+      "fp16-b2-block0-mlp-fc2": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 157,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/fc2/Add]"
+      },
+      "fp16-b2-block0-output": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 159,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-qk-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 4,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Transpose_3.../network/blocks.0/attn/Div]"
+      },
+      "fp16-b2-local-mask-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/Where_1]"
+      },
+      "fp16-b2-padding-mask-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_1_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/Where_3]"
+      },
+      "fp16-b2-softmax-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Softmax]"
+      },
+      "fp16-b2-weighted-value-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Softmax_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/MatMul_1]"
+      },
+      "fp16-b2-generated-masks-plus-block": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 191,
+        "graph_inputs": [
+          "length",
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-embedding-plus-block-promoted-masks": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 224,
+        "graph_inputs": [
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 256,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-block0-output-opt0": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 0
+        },
+        "graph_nodes": 159,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-opt0": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 0
+        },
+        "graph_nodes": 256,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp32-b2-local-mask-only": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 19,
+        "graph_inputs": [],
+        "last_foreign_node": null
+      },
+      "fp32-b2-padding-mask-only": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "length"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/Not_2]"
+      },
+      "fp32-b2-block0-norm1": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/norm1/LayerNormalization]"
+      },
+      "fp32-b2-block0-query-rope": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 48,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Concat_1]"
+      },
+      "fp32-b2-block0-key-rope": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 48,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Concat_3]"
+      },
+      "fp32-b2-block0-qk-score": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 99,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Div]"
+      },
+      "fp32-b2-block0-local-mask-applied": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 112,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/Where_1]"
+      },
+      "fp32-b2-block0-padding-mask-applied": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 125,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/Where_3]"
+      },
+      "fp32-b2-block0-softmax": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 126,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/Softmax]"
+      },
+      "fp32-b2-block0-weighted-value": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 132,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "fp32-b2-block0-attention-projection": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 137,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/proj/Add]"
+      },
+      "fp32-b2-block0-attention-residual": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 139,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add]"
+      },
+      "fp32-b2-block0-norm2": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 140,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/norm2/LayerNormalization]"
+      },
+      "fp32-b2-block0-mlp-fc1": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 142,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/fc1/Add]"
+      },
+      "fp32-b2-block0-mlp-activation": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 155,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/act/Mul_5]"
+      },
+      "fp32-b2-block0-mlp-fc2": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 157,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/fc2/Add]"
+      },
+      "fp32-b2-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 159,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp32-b2-qk-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 4,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Transpose_3.../network/blocks.0/attn/Div]"
+      },
+      "fp32-b2-local-mask-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/Where_1]"
+      },
+      "fp32-b2-padding-mask-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_1_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/Where_3]"
+      },
+      "fp32-b2-softmax-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Softmax]"
+      },
+      "fp32-b2-weighted-value-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Softmax_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/MatMul_1]"
+      },
+      "fp32-b2-generated-masks-plus-block": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 191,
+        "graph_inputs": [
+          "length",
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp32-b2-embedding-plus-block-promoted-masks": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 223,
+        "graph_inputs": [
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp32-b2-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 255,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp32-b2-block0-output-opt0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 0
+        },
+        "graph_nodes": 159,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp32-b2-full-prefix-block0-opt0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 0
+        },
+        "graph_nodes": 255,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b1-local-mask-only": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 19,
+        "graph_inputs": [],
+        "last_foreign_node": null
+      },
+      "fp16-b1-padding-mask-only": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "length"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/Not_2]"
+      },
+      "fp16-b1-block0-norm1": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/norm1/LayerNormalization]"
+      },
+      "fp16-b1-block0-query-rope": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 48,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Concat_1]"
+      },
+      "fp16-b1-block0-key-rope": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 48,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Concat_3]"
+      },
+      "fp16-b1-block0-qk-score": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 99,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/Div]"
+      },
+      "fp16-b1-block0-local-mask-applied": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 112,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/Where_1]"
+      },
+      "fp16-b1-block0-padding-mask-applied": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 125,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/Where_3]"
+      },
+      "fp16-b1-block0-softmax": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 126,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/Softmax]"
+      },
+      "fp16-b1-block0-weighted-value": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 132,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "fp16-b1-block0-attention-projection": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 137,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/proj/Add]"
+      },
+      "fp16-b1-block0-attention-residual": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 139,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add]"
+      },
+      "fp16-b1-block0-norm2": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 140,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/norm2/LayerNormalization]"
+      },
+      "fp16-b1-block0-mlp-fc1": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 142,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/fc1/Add]"
+      },
+      "fp16-b1-block0-mlp-activation": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 155,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/act/Mul_5]"
+      },
+      "fp16-b1-block0-mlp-fc2": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 157,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/mlp/fc2/Add]"
+      },
+      "fp16-b1-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 159,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp16-b1-qk-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 4,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Transpose_3.../network/blocks.0/attn/Div]"
+      },
+      "fp16-b1-local-mask-core": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/Where_1]"
+      },
+      "fp16-b1-padding-mask-core": {
+        "exit_code": 1,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 13,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_1_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": null
+      },
+      "fp16-b1-softmax-core": {
+        "exit_code": 1,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_3_output_0"
+        ],
+        "last_foreign_node": null
+      },
+      "fp16-b1-weighted-value-core": {
+        "exit_code": 1,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 1,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Softmax_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": null
+      },
+      "fp16-b1-generated-masks-plus-block": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 191,
+        "graph_inputs": [
+          "length",
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b1-embedding-plus-block-promoted-masks": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 224,
+        "graph_inputs": [
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp16-b1-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 256,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b1-block0-output-opt0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 0
+        },
+        "graph_nodes": 159,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "fp16-b1-full-prefix-block0-opt0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 0
+        },
+        "graph_nodes": 256,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-opt1": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 1
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-opt2": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 2
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-opt4": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 4
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-opt5": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 5
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-no-tactic-sources": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "tactic_sources": []
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-no-aux-streams": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "max_aux_streams": 0
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-one-tactic": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "max_num_tactics": 1
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-tiling-fast": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "tiling_optimization_level": "FAST"
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-distributive-independence": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "set_flags": [
+            "DISTRIBUTIVE_INDEPENDENCE"
+          ]
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "fp16-b2-full-prefix-block0-no-compilation-cache": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "set_flags": [
+            "DISABLE_COMPILATION_CACHE"
+          ]
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      }
+    },
+    "sources": {
+      "fp16-b2": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+      "fp32-b2": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/campaign-1/fp32-equivalence/concat.onnx",
+      "fp16-b1": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/exports/fp16-b1-l145/concat.onnx"
+    }
+  },
+  "diagnosis-attention-1": {
+    "queue_job": "0-8204660915302780275_2026-11-22T09-18-04-697219724Z_2802176_i2355-gvhmr-attention-diagnosis-1",
+    "output": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-attention-1",
+    "builds": {
+      "source-pv-from-embedding": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 132,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "source-pv-from-qkv": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 32,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "source-pv-from-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 28,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "source-pv-from-masked-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 2,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Softmax.../network/blocks.0/attn/MatMul_1]"
+      },
+      "source-block0-output": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 159,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "source-full-prefix-block0": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 256,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "source-full-graph": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      },
+      "drop-expand-pv-from-embedding": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 114,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "drop-expand-pv-from-qkv": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 14,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "drop-expand-pv-from-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 10,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "drop-expand-pv-from-masked-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 2,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Softmax.../network/blocks.0/attn/MatMul_1]"
+      },
+      "drop-expand-block0-output": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 141,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "drop-expand-full-prefix-block0": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 238,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "drop-expand-full-graph": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      },
+      "additive-pv-from-embedding": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 116,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "additive-pv-from-qkv": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 16,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "additive-pv-from-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 12,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "additive-pv-from-masked-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 2,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Softmax.../network/blocks.0/attn/MatMul_1]"
+      },
+      "additive-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 143,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "additive-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 240,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "additive-full-graph": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      },
+      "no-local-mask-pv-from-embedding": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 119,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-local-mask-pv-from-qkv": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 19,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-local-mask-pv-from-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 15,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-local-mask-pv-from-masked-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 2,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Where_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Softmax.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-local-mask-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 146,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "no-local-mask-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 224,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "no-local-mask-full-graph": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      },
+      "no-padding-mask-pv-from-embedding": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 119,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-padding-mask-pv-from-qkv": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 19,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-padding-mask-pv-from-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 15,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-padding-mask-pv-from-masked-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 198,
+        "graph_inputs": [
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": null
+      },
+      "no-padding-mask-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 146,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_7.../network/blocks.0/Add_1]"
+      },
+      "no-padding-mask-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 230,
+        "graph_inputs": [
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": null
+      },
+      "no-padding-mask-full-graph": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      },
+      "no-masks-pv-from-embedding": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 106,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-masks-pv-from-qkv": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 6,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Concat_1_output_0",
+          "/network/blocks.0/attn/Concat_3_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Transpose_3.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-masks-pv-from-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 2,
+        "graph_inputs": [
+          "/network/blocks.0/attn/Div_output_0",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Softmax.../network/blocks.0/attn/MatMul_1]"
+      },
+      "no-masks-pv-from-masked-scores": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 166,
+        "graph_inputs": [
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq",
+          "/network/blocks.0/attn/Transpose_2_output_0"
+        ],
+        "last_foreign_node": null
+      },
+      "no-masks-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 133,
+        "graph_inputs": [
+          "/network/Add_3_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[network.blocks.0.norm1.weight + ONNXTRT_Broadcast.../network/blocks.0/Add_1]"
+      },
+      "no-masks-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 198,
+        "graph_inputs": [
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": null
+      },
+      "no-masks-full-graph": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      }
+    },
+    "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+    "variants": {
+      "source": {
+        "equivalent": true
+      },
+      "drop-expand": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-attention-1/variants/drop-expand.onnx",
+        "source_sha256": "68ea838f341415362aca4022a35a0ac9c69900bf57de7b339cd00cebb473186e",
+        "target_sha256": "84a94893d3da3dd9334e8821a9ee4e9ecaccfc45623b5b13997751ecc9e95917",
+        "mode": "drop-expand",
+        "rewritten_masks": 24,
+        "pruned_nodes": 216,
+        "target_nodes": 1872,
+        "equivalent": true
+      },
+      "additive": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-attention-1/variants/additive.onnx",
+        "source_sha256": "68ea838f341415362aca4022a35a0ac9c69900bf57de7b339cd00cebb473186e",
+        "target_sha256": "075f384f5a5be29682b70f647c78dcf8787a762dfbb1ed939d4482b9816e1b2d",
+        "mode": "additive",
+        "rewritten_masks": 24,
+        "pruned_nodes": 216,
+        "target_nodes": 1896,
+        "equivalent": true
+      },
+      "no-local-mask": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-attention-1/variants/no-local-mask.onnx",
+        "target_sha256": "81131c8608374d9cc2c0d6b21c726641bf9df6828b250eb059ee1cf699e2fa3a",
+        "mode": "diagnostic-remove-Where_1",
+        "equivalent": false,
+        "bypassed_masks": 12,
+        "pruned_nodes": 175
+      },
+      "no-padding-mask": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-attention-1/variants/no-padding-mask.onnx",
+        "target_sha256": "7aafd20bb647589d64e301c627d09a6466ab532593d47b6cfb849977b8ff3956",
+        "mode": "diagnostic-remove-Where_3",
+        "equivalent": false,
+        "bypassed_masks": 12,
+        "pruned_nodes": 156
+      },
+      "no-masks": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-attention-1/variants/no-masks.onnx",
+        "target_sha256": "0849ef1edb2b7c3ea49b13b4c8fdfe4311ad970b2ac3933177e1b06cbafd7bd2",
+        "mode": "diagnostic-remove-Where_1-Where_3",
+        "equivalent": false,
+        "bypassed_masks": 24,
+        "pruned_nodes": 331
+      }
+    },
+    "dropped_boundaries": {
+      "no-local-mask-pv-from-embedding": [
+        "/Or_output_0"
+      ],
+      "no-local-mask-pv-from-qkv": [
+        "/Or_output_0"
+      ],
+      "no-local-mask-pv-from-scores": [
+        "/Or_output_0"
+      ],
+      "no-local-mask-block0-output": [
+        "/Or_output_0"
+      ],
+      "no-padding-mask-pv-from-masked-scores": [
+        "/network/blocks.0/attn/Where_3_output_0"
+      ],
+      "no-masks-pv-from-embedding": [
+        "/Or_output_0"
+      ],
+      "no-masks-pv-from-qkv": [
+        "/Or_output_0"
+      ],
+      "no-masks-pv-from-scores": [
+        "/Or_output_0"
+      ],
+      "no-masks-pv-from-masked-scores": [
+        "/network/blocks.0/attn/Where_3_output_0"
+      ],
+      "no-masks-block0-output": [
+        "/Or_output_0"
+      ]
+    }
+  },
+  "diagnosis-precision-1": {
+    "queue_job": "0-8204660542530346843_2026-11-22T09-24-17-469653156Z_2847709_i2355-gvhmr-precision-diagnosis-1",
+    "output": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-precision-1",
+    "builds": {
+      "pin-pv-pv-from-embedding": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 134,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "pin-pv-block0-output": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 162,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "pin-pv-full-prefix-block0": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 259,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "pin-pv-full-graph": {
+        "exit_code": -11,
+        "plan_published": false,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      },
+      "pin-softmax-pv-from-embedding": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 134,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "pin-softmax-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 161,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "pin-softmax-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 258,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "pin-softmax-full-graph": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      },
+      "pin-softmax-pv-pv-from-embedding": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 134,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "pin-softmax-pv-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 162,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "pin-softmax-pv-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 259,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "pin-softmax-pv-full-graph": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      },
+      "pin-attention-pv-from-embedding": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 138,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/attn/MatMul_1]"
+      },
+      "pin-attention-block0-output": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 166,
+        "graph_inputs": [
+          "/network/Add_3_output_0",
+          "/Or_output_0",
+          "/network/Not_2_output_0"
+        ],
+        "last_foreign_node": "ForeignNode[/network/blocks.0/attn/Reshape_8.../network/blocks.0/Add_1]"
+      },
+      "pin-attention-full-prefix-block0": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": 263,
+        "graph_inputs": [
+          "length",
+          "obs",
+          "f_cliffcam",
+          "f_cam_angvel",
+          "f_imgseq"
+        ],
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_1.../network/blocks.0/Add_1]"
+      },
+      "pin-attention-full-graph": {
+        "exit_code": 0,
+        "plan_published": true,
+        "options": {
+          "builder_optimization_level": 3
+        },
+        "graph_nodes": null,
+        "graph_inputs": null,
+        "last_foreign_node": "ForeignNode[/network/Unsqueeze_3...__pred_cam_clamp_concat/Concat]"
+      }
+    },
+    "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+    "variants": {
+      "pin-pv": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-precision-1/variants/pin-pv.onnx",
+        "target_sha256": "cdeea30901231985e0d996b90599440556545cc34664fb5adbdc01cafdd47071",
+        "mode": "pin-fp32-MatMul_1",
+        "pinned_operators": 12,
+        "casts_to_fp32": 24,
+        "casts_to_fp16": 12
+      },
+      "pin-softmax": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-precision-1/variants/pin-softmax.onnx",
+        "target_sha256": "586591bfea7a9a7608883c88e428148dafcaffe7c59eb7607ef2051cd4effbc3",
+        "mode": "pin-fp32-Softmax",
+        "pinned_operators": 12,
+        "casts_to_fp32": 12,
+        "casts_to_fp16": 12
+      },
+      "pin-softmax-pv": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-precision-1/variants/pin-softmax-pv.onnx",
+        "target_sha256": "66d18c401db1727845cbfa0d6d32e917a680c8fc532bf62e9f11b4509e0d04c8",
+        "mode": "pin-fp32-Softmax-MatMul_1",
+        "pinned_operators": 24,
+        "casts_to_fp32": 24,
+        "casts_to_fp16": 12
+      },
+      "pin-attention": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/preflight/actual-b2-l145-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/diagnosis-precision-1/variants/pin-attention.onnx",
+        "target_sha256": "e1a0cb6c947951260cdd158d2546d2ebd001f18355d7a218b16f1e8f9e274bc3",
+        "mode": "pin-fp32-MatMul-Div-Where_1-Where_3-Softmax-MatMul_1",
+        "pinned_operators": 72,
+        "casts_to_fp32": 72,
+        "casts_to_fp16": 12
+      }
+    }
+  }
+}

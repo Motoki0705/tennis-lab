@@ -5,14 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from . import worker_followup
 from .policy import closing_issues, object_value
 from .session import ParentSession
-from .snapshot import prepare, transition
-from .worker_preflight import require_implementation
 
 
 def runner_ended(session: ParentSession, child: int, *, persist: bool = True) -> None:
-    task = session.row["tasks"].get(str(child), {})
+    task = session.worker_task(child)
     if not task.get("delegated"):
         return
     from .development import Runtime, managed, worker_jobs
@@ -24,7 +23,7 @@ def runner_ended(session: ParentSession, child: int, *, persist: bool = True) ->
             "delegation_id"
         ):
             return
-        jobs = worker_jobs(dispatch, child)
+        jobs = worker_jobs(dispatch, child, session.worker)
         if not jobs or jobs[-1]["delegation_id"] != task["delegation_id"]:
             raise ValueError("no runtime for the current delegation")
         job = jobs[-1]
@@ -72,21 +71,43 @@ def request(
     evidence: str,
     reason: str | None,
     *,
-    review_selection: dict[str, Any] | None = None,
+    review_selection: dict[str, Any],
+    options: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    session.gh.targeted_history = True
     session.agreed()
+    from lib.ops_review.merge_gate_impl import registered
+
+    previous = registered(session, prs)
+    if previous:
+        return previous
     parent, children = session.work_items()
     targets = set(children)
     linked: set[int] = set()
     for n in prs:
         pr = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
+        from .work_targets import require_separate_self_prs
+
+        require_separate_self_prs(parent, [pr], session.gh.repo)
         relevant = closing_issues(pr.get("body") or "", session.gh.repo) & targets
         if pr.get("number") != n or not relevant or pr.get("state") != "open":
             raise ValueError("review requires related open PRs")
         linked.update(relevant)
     for child in sorted(linked):
-        require_implementation(session, child)
+        require_followup_ended(session.row, child)
         runner_ended(session, child)
-        session.record_result(child, evidence)
-    fixed = prepare(session, prs, reason, review_selection=review_selection)
-    return transition(session, fixed["review_run_id"], "instructed", instruction)
+    session.record_results(sorted(linked), evidence)
+    from lib.ops_review.merge_gate_impl import register
+
+    return register(session, prs, instruction, reason, review_selection, options or {})
+
+
+def require_followup_ended(row: dict[str, Any], child: int) -> None:
+    task = row.get("tasks", {}).get(str(child), {})
+    followup = worker_followup.current(task)
+    if (
+        followup
+        and followup["state"] in worker_followup.ACTIVE
+        and worker_followup.same_owner(row, followup)
+    ):
+        raise ValueError(f"#{child}: worker follow-up is active; use wait-worker")

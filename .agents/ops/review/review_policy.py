@@ -15,9 +15,9 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-AGENTS = ("claude", "codex")
-BRANCH_PREFIXES: Mapping[str, str] = {"claude/": "claude", "codex/": "codex"}
-AGENT_LABELS: Mapping[str, str] = {"agent:claude": "claude", "agent:codex": "codex"}
+AGENTS = ("claude", "codex", "agy")
+BRANCH_PREFIXES: Mapping[str, str] = {f"{name}/": name for name in AGENTS}
+AGENT_LABELS: Mapping[str, str] = {f"agent:{name}": name for name in AGENTS}
 
 # Explicit parent runs always use the review profile with Codex.
 REVIEWER = "codex"

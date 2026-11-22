@@ -1,0 +1,63 @@
+{
+  "detected_at_jst": "2026-11-18T01:43:07.588166+09:00",
+  "anomaly": {
+    "at_utc": "2026-11-17T16:43:07.588166+00:00",
+    "kind": "worker_heartbeat_timeout",
+    "variant": "main",
+    "detail": {
+      "pid": 164183,
+      "timeout_seconds": 180.0,
+      "last_heartbeat": {
+        "at_utc": "2026-11-17T16:40:06.610112+00:00",
+        "monotonic": 4447.649044184,
+        "phase": "pipeline_run",
+        "model": "dino",
+        "operation": "_tennis_lab_third_party_dino_models.dino.deformable_transformer.DeformableTransformer.forward",
+        "file": "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/deformable_transformer.py",
+        "line": 289,
+        "event": "c_return"
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/bin/python",
+        "-u",
+        "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/benchmark.py",
+        "--directory",
+        "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/main",
+        "--pin",
+        "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/inputs.json"
+      ]
+    },
+    "log": "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/main.log",
+    "pid": 164183
+  },
+  "health": {
+    "variant": "main",
+    "started_at_utc": "2026-11-17T16:32:49.466511+00:00",
+    "status": "failed",
+    "device_memory_sampling_ms": 1000,
+    "device_memory_samples": 585,
+    "query_timeout_seconds": 10.0,
+    "heartbeat_timeout_seconds": 180.0,
+    "driver": "621.24",
+    "pid": 164183,
+    "error_kind": "worker_heartbeat_timeout",
+    "error": "{\"pid\": 164183, \"timeout_seconds\": 180.0, \"last_heartbeat\": {\"at_utc\": \"2026-11-17T16:40:06.610112+00:00\", \"monotonic\": 4447.649044184, \"phase\": \"pipeline_run\", \"model\": \"dino\", \"operation\": \"_tennis_lab_third_party_dino_models.dino.deformable_transformer.DeformableTransformer.forward\", \"file\": \"/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/deformable_transformer.py\", \"line\": 289, \"event\": \"c_return\"}, \"command\": [\"/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/bin/python\", \"-u\", \"/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/benchmark.py\", \"--directory\", \"/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/main\", \"--pin\", \"/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/inputs.json\"]}",
+    "termination_pending": false,
+    "returncode": -15,
+    "finished_at_utc": "2026-11-17T16:43:08.355009+00:00",
+    "device_memory_peak_mib": 3102,
+    "device_memory_min_mib": 757
+  },
+  "runtime_started": false,
+  "completed_comparisons": 0,
+  "main_partial_backend_return_calls": {
+    "court": 3,
+    "ball": 3,
+    "dino": 1
+  },
+  "explicit_cuda_exception": null,
+  "faulthandler_stack_obtained": false,
+  "last_nvml_sample": "2026-11-17T16:43:06.587643+00:00,3102",
+  "acceptance_evidence": false,
+  "retries_after_anomaly": 0
+}

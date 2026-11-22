@@ -21,6 +21,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.model_pins import WORKER_DEFAULT_MODEL
 
 
 @dataclass
@@ -41,7 +42,7 @@ class CompletionWorkflow:
         directory = Path(job["directory"]) / "runtime"
         directory.mkdir(exist_ok=True)
         parent = job["role"] == "parent"
-        record = {
+        record: dict[str, Any] = {
             "schema_version": 1,
             "run_id": job["id"],
             "result": "running"
@@ -80,6 +81,11 @@ class CompletionWorkflow:
                 (Path(job["directory"]) / "prompt.md").read_bytes()
             ).hexdigest(),
         }
+        if not parent:
+            record["contract"]["settings"].update(
+                selected={"model": WORKER_DEFAULT_MODEL, "effort": "max"},
+                overrides={},
+            )
         (directory / "result.json").write_text(json.dumps(record))
         (directory / "final.md").write_text(
             json.dumps(
@@ -125,10 +131,14 @@ class CompletionWorkflow:
         )
         assert merged.returncode == 0, merged.stderr + merged.stdout
         self.finish(self.parent, state)
-        assert self.row()["dispatch"]["phase"] == state
         assert self.row()["status"] == "active"
-        self.control.resume(1, "確認済みのmerge/closeの後、完了照合へ戻る。")
-        self.control.reconcile()
+        if state == "waiting":
+            assert self.row()["dispatch"]["phase"] == "reserved"
+            assert self.row()["progression_notifications"]
+        else:
+            assert self.row()["dispatch"]["phase"] == state
+            self.control.resume(1, "確認済みのmerge/closeの後、完了照合へ戻る。")
+            self.control.reconcile()
         row = self.row()
         return dict(row["dispatch"]["jobs"][row["dispatch"]["active_job"]])
 
@@ -192,7 +202,7 @@ def completion_workflow(
         Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions",
         schedule.directory,
     )
-    gh = importlib.import_module("parent.github").GitHub("o/r")
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
     control = mod.Supervisor(gh, store, schedule)
     with store.locked():
         schedule.initialize(
@@ -479,7 +489,7 @@ def test_closed_parent_resume_checks_execution_evidence(
     if change == "basis":
         p.cli("basis-revoke", "--reason-file", p.note("実行根拠を取り消す。"))
     elif change == "journal":
-        attempts = list((control.store.directory / "merges").rglob("*.json"))
+        attempts = list((control.store.directory / "progressions").glob("*/state.json"))
         assert len(attempts) == 1
         for path in attempts:
             path.unlink()
@@ -590,26 +600,7 @@ def test_legacy_result_migration_preserves_review_and_completion(
         state = p.state()
         state["prs"][0]["head"]["sha"] = head
         p.save(state)
-        flow.gate.review.cli(
-            "resolve",
-            "--run",
-            flow.gate.review.request["review_run_id"],
-            "--pr",
-            "100",
-            "--fixed-head",
-            head,
-            "--finding",
-            "changes",
-            "--evidence",
-            p.spec(
-                {
-                    "ci": "対象headのPython成功。",
-                    "regression_tests": "代表回帰が成功。",
-                    "resolution": "親が旧委任の修正差分を確認。",
-                    "reviewed_paths": ["change.txt"],
-                }
-            ),
-        )
+
         response = flow.gate.cli("merge")
         assert response.returncode == 0, response.stderr + response.stdout
     else:
@@ -675,5 +666,6 @@ def test_legacy_result_migration_preserves_review_and_completion(
             )
     else:
         response = flow.gate.cli("merge", AGENT_AUTO_MERGE="0")
-        assert response.returncode == 1
+        assert response.returncode == 2
+        assert "auto_merge_disabled" in response.stderr
         assert not flow.gate.merge_calls()

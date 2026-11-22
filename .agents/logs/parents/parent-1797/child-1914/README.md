@@ -2,27 +2,36 @@
 
 結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
 
-反映範囲: このHEADの記録集合 9 件。記録時刻 2026-11-13T01:40:30.593205+00:00 〜 2026-11-13T02:14:30.074916+00:00。
+反映範囲: このHEADの記録集合 22 件。記録時刻 2026-11-13T01:40:30.593205+00:00 〜 2026-11-13T04:12:08.728753+00:00。
 
 公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。
 
 [上の階層](../README.md) · [親一覧](../../README.md)
 
-9 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 2 件。親の確認未記録: 2 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 2 件。
+22 記録 / 判断 0 件。失敗・拒否の結果: 5 件。未判断の結果: 7 件。親の確認未記録: 6 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 6 件（結果イベント単位）。
 
-直近の観測（受入の判定とは別）: [結果 688](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-0ddaab73cbf948c79f1fb9474dedb617) unknown / machine: runner.result: agent started / completion and task acceptance unknown<br>[行動 687](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-f25a671cca7847219c01cf2bdd156c04) 新しいAIの起動 / 実行中
+公開workerログ: 1 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 1 ターン。イベントのみ: 1 ターン。和集合: 2 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。
+
+対応数は公開worker3ファイルのあるターンを分母にしたものです。イベントのみのターンを加えた和集合とは分けます。対応イベントの存在は、親判断の記録・受入・網羅性を保証しません。
+
+直近の観測（受入の判定とは別）: [結果 792](../activity-d7fa9c1d11104494bfb565b60bd2084a/README.md#record-fe5f142b4c8d43d5b15d50bc221a156c) failure / machine: parent.publish-worker-log: failure / 担当issue: 1914<br>[行動 793](../activity-d7fa9c1d11104494bfb565b60bd2084a/README.md#record-2cddce278f5e489d8c74e7154a7d955d) 公開 / 終了（成果受入とは別）
 
 ## 下の階層
 
 | 対象・期間 | 件数と未確認 | 最新の記録 |
 | --- | --- | --- |
-| [担当issue &#35;1914 の委任](d-c5dc9eabdb7e469abfdcc841136b4849/README.md)<br>2026-11-13T02:07:30.851174+00:00 〜 2026-11-13T02:14:30.074916+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。 | [結果 688](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-0ddaab73cbf948c79f1fb9474dedb617) unknown / machine: runner.result: agent started / completion and task acceptance unknown<br>[行動 687](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-f25a671cca7847219c01cf2bdd156c04) 新しいAIの起動 / 実行中 |
+| [担当issue &#35;1914 の委任](d-3b81d789c8364a8e9fe1ee21964b2df8/README.md)<br>記録なし | 0 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 0 件。親の確認未記録: 0 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 1 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | 結果・行動の記録なし |
+| [担当issue &#35;1914 の委任](d-c5dc9eabdb7e469abfdcc841136b4849/README.md)<br>2026-11-13T02:07:30.851174+00:00 〜 2026-11-13T03:29:02.655777+00:00 | 10 記録 / 判断 0 件。失敗・拒否の結果: 3 件。未判断の結果: 4 件。親の確認未記録: 3 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 3 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 1 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 779](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-345e1f4fbd8e4769817cd4caf768eb92) failure / machine: parent.run-worker: failure / 担当issue: 1914 / 終了値: 1<br>[行動 780](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-f9c8e6d2944d4d0eb8e2380a9acbfbdc) 新しいAIの起動 / 終了（成果受入とは別） |
 
 ## 活動別の結果と判断
 
 | 対象・期間 | 件数と未確認 | 最新の記録 |
 | --- | --- | --- |
-| [parent.delegate / 担当issue &#35;1914](../activity-1d93cd072ae94432aaf6303b97e9a3d6/README.md)<br>2026-11-13T01:40:30.593205+00:00 〜 2026-11-13T01:40:30.621852+00:00 | 2 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 0 件。親の確認未記録: 0 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 0 件。 | [行動 677](../activity-1d93cd072ae94432aaf6303b97e9a3d6/README.md#record-d4f32a1b5e0440f4aef4e50312ad017c) 記録 / 実行中 |
-| [parent.delegate / 担当issue &#35;1914](../activity-d40e1b73e02d4737aefbd7f6b32e538c/README.md)<br>2026-11-13T02:04:14.337700+00:00 〜 2026-11-13T02:07:30.021451+00:00 | 4 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。 | [結果 683](../activity-d40e1b73e02d4737aefbd7f6b32e538c/README.md#record-15d79bfee5c745439d9e5e953fda89eb) success / machine: parent.delegate: success / 操作: launch / agent: codex / branch: codex/ci-system-deps-resilience / 担当issue: 1914 / 委任: はい / 親issue: 1797<br>[行動 684](../activity-d40e1b73e02d4737aefbd7f6b32e538c/README.md#record-c72c1eeee6fa4608afec63fa8452985f) 記録 / 終了（成果受入とは別） |
-| [parent.run-worker・runner.result / 担当issue &#35;1914](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md)<br>2026-11-13T02:07:30.851174+00:00 〜 2026-11-13T02:14:30.074916+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。 | [結果 688](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-0ddaab73cbf948c79f1fb9474dedb617) unknown / machine: runner.result: agent started / completion and task acceptance unknown<br>[行動 687](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-f25a671cca7847219c01cf2bdd156c04) 新しいAIの起動 / 実行中 |
+| [parent.delegate / 担当issue &#35;1914](../activity-1d93cd072ae94432aaf6303b97e9a3d6/README.md)<br>2026-11-13T01:40:30.593205+00:00 〜 2026-11-13T01:40:30.621852+00:00 | 2 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 0 件。親の確認未記録: 0 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 0 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [行動 677](../activity-1d93cd072ae94432aaf6303b97e9a3d6/README.md#record-d4f32a1b5e0440f4aef4e50312ad017c) 記録 / 実行中 |
+| [parent.delegate / 担当issue &#35;1914](../activity-d40e1b73e02d4737aefbd7f6b32e538c/README.md)<br>2026-11-13T02:04:14.337700+00:00 〜 2026-11-13T02:07:30.021451+00:00 | 4 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 1 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 0 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 683](../activity-d40e1b73e02d4737aefbd7f6b32e538c/README.md#record-15d79bfee5c745439d9e5e953fda89eb) success / machine: parent.delegate: success / 操作: launch / agent: codex / branch: codex/ci-system-deps-resilience / 担当issue: 1914 / 委任: はい / 親issue: 1797<br>[行動 684](../activity-d40e1b73e02d4737aefbd7f6b32e538c/README.md#record-c72c1eeee6fa4608afec63fa8452985f) 記録 / 終了（成果受入とは別） |
+| [worker&#95;logs.receive / 担当issue &#35;1914](../activity-afafbc3920a34be182b9dd80ba57fe27/README.md)<br>2026-11-13T03:29:01.236031+00:00 〜 2026-11-13T03:29:01.715389+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 1 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 1 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 1 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 775](../activity-afafbc3920a34be182b9dd80ba57fe27/README.md#record-0494f68a13ce4ac6b98f728756047d4c) failure / machine: worker&#95;logs.receive: delegation&#95;key=d-c5dc9eabdb7e469abfdcc841136b4849 / ターン: 1 / 状態: worker&#95;failed<br>[行動 777](../activity-afafbc3920a34be182b9dd80ba57fe27/README.md#record-100bc45635cf45399f00af05675dd1b3) 記録 / 終了（成果受入とは別） |
+| [parent.run-worker・runner.result / 担当issue &#35;1914](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md)<br>2026-11-13T02:07:30.851174+00:00 〜 2026-11-13T03:29:02.655777+00:00 | 7 記録 / 判断 0 件。失敗・拒否の結果: 2 件。未判断の結果: 3 件。親の確認未記録: 2 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 2 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 1 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 779](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-345e1f4fbd8e4769817cd4caf768eb92) failure / machine: parent.run-worker: failure / 担当issue: 1914 / 終了値: 1<br>[行動 780](../activity-e4448da6cfa84983b34b316b865c8ce3/README.md#record-f9c8e6d2944d4d0eb8e2380a9acbfbdc) 新しいAIの起動 / 終了（成果受入とは別） |
+| [parent.publish-worker-log・worker&#95;logs.publish / 担当issue &#35;1914](../activity-d7fa9c1d11104494bfb565b60bd2084a/README.md)<br>2026-11-13T04:12:07.586184+00:00 〜 2026-11-13T04:12:08.728753+00:00 | 6 記録 / 判断 0 件。失敗・拒否の結果: 2 件。未判断の結果: 2 件。親の確認未記録: 2 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 2 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 0 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 792](../activity-d7fa9c1d11104494bfb565b60bd2084a/README.md#record-fe5f142b4c8d43d5b15d50bc221a156c) failure / machine: parent.publish-worker-log: failure / 担当issue: 1914<br>[行動 793](../activity-d7fa9c1d11104494bfb565b60bd2084a/README.md#record-2cddce278f5e489d8c74e7154a7d955d) 公開 / 終了（成果受入とは別） |
+
+対応イベントなし: 1 ターン。下の階層で既存の指示と最終報告を参照。
 

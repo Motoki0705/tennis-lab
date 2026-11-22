@@ -1,0 +1,222 @@
+{
+  "tests_passed": 1722,
+  "wall_seconds": 162.08,
+  "pytest_workers": 4,
+  "cuda_visible_devices": "",
+  "case_counts": {
+    "unit_tennis_scene": 1209,
+    "integration_tennis_scene": 266,
+    "unit_submodules": 197,
+    "unit_court_side": 48,
+    "cli_e2e": 2
+  },
+  "max_function_expansion": 30,
+  "max_case_seconds": 10.72,
+  "max_setup_seconds": 0.43,
+  "new_video_batch_parameter_cases": 2,
+  "slow_cases": [
+    {
+      "node": "tests/e2e/tennis_scene/test_video_batch_cli.py::test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure[False]",
+      "seconds": 10.72,
+      "phases": {
+        "call": 10.71,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/e2e/tennis_scene/test_video_batch_cli.py::test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure[True]",
+      "seconds": 10.21,
+      "phases": {
+        "call": 10.21,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/clip_studio/test_review_cli.py::test_review_package_help_without_dataset",
+      "seconds": 7.78,
+      "phases": {
+        "call": 7.78,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/review/test_gallery.py::test_gallery_renders_every_declared_component_without_writing_the_store",
+      "seconds": 7.33,
+      "phases": {
+        "call": 7.33,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/generate_dataset/test_entrypoint.py::test_real_hydra_cli_fails_when_a_clip_fails",
+      "seconds": 7.23,
+      "phases": {
+        "call": 7.22,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_one_plan_reuses_each_model_once_and_records_real_batch_sizes[3]",
+      "seconds": 7.04,
+      "phases": {
+        "call": 7.04,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[build-ball]",
+      "seconds": 6.87,
+      "phases": {
+        "call": 6.87,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[load-ball]",
+      "seconds": 6.66,
+      "phases": {
+        "call": 6.66,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry[build]",
+      "seconds": 6.22,
+      "phases": {
+        "call": 6.22,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_batch_matches_single_entry_and_reuses_mixed_cache",
+      "seconds": 6.17,
+      "phases": {
+        "call": 6.17,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry[load]",
+      "seconds": 6.12,
+      "phases": {
+        "call": 6.12,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[load-player]",
+      "seconds": 5.95,
+      "phases": {
+        "call": 5.95,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_clip_too_long_isolated_and_other_clip_publishes_immediately",
+      "seconds": 5.62,
+      "phases": {
+        "call": 5.62,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[build-player]",
+      "seconds": 5.54,
+      "phases": {
+        "call": 5.54,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure2-False]",
+      "seconds": 5.31,
+      "phases": {
+        "call": 5.31,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure1-True]",
+      "seconds": 5.28,
+      "phases": {
+        "call": 5.28,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs",
+      "seconds": 5.17,
+      "phases": {
+        "call": 5.17,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure0-True]",
+      "seconds": 5.16,
+      "phases": {
+        "call": 5.16,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_clip_studio_web.py::test_batch_skips_verified_outputs_but_rejects_changed_edits",
+      "seconds": 5.08,
+      "phases": {
+        "call": 5.03,
+        "setup": 0.05,
+        "teardown": 0.0
+      }
+    }
+  ],
+  "raw_references": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-player-main-20261119/validation/c4-player-full-final.txt",
+      "bytes": 716614,
+      "sha256": "8087b9e6f661deed50a484dedf3cb30cd3951b06f250b85aafadcbe0943b4fde"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-player-main-20261119/validation/c4-player-focused.txt",
+      "bytes": 28792,
+      "sha256": "0173a2ed6e632b58a7e2bd2f44ecba581c461489a55f6bd105e30a7321897061"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-player-main-20261119/validation/c4-player-focused-fixed.txt",
+      "bytes": 25327,
+      "sha256": "4e6e129efd1dc5de0855f4ee52937c2fdec9c2334538b0c04268a89a2b8a9206"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-player-main-20261119/validation/c4-player-full.txt",
+      "bytes": 719248,
+      "sha256": "abe96af026bf8482bd1ffd2f412f73d3c73bdbc5ca03fcd270bfa6a0686ea541"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-player-main-20261119/validation/c4-player-nodes.txt",
+      "bytes": 212259,
+      "sha256": "5c7403f00ef5cbcdd58be9a2ca6f1a23c5d6865214a5d69f314b1bba250d7a0d"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-player-main-20261119/validation/c4-player-precommit-fixed.txt",
+      "bytes": 160,
+      "sha256": "07344231f7bc70cb54597693d3865a54833fdf19ddf3015c9732495819ad83e7"
+    }
+  ]
+}

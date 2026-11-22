@@ -25,3 +25,10 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/training.py --help
 保存・再開・freeze/unfreezeは `tests/integration/tasks/ball_detection/` の本番CLIテストが担当する。
 過去の試行の正本はknowledgeのrun ID・commit・再現bundle。記録済みのコマンドは当時のcommitで実行する。
 ベンチマークの少数窓の速度・loss低下を精度や長時間安定性の証拠と解釈しない。
+
+`efficiency.py` supplies CUDA Events/synchronized wall phases, raw samples,
+cold starts, memory/state bytes and explicit Conv/Linear/attention MAC contracts.
+The fixed architecture matrix, reordered three-block execution and resume/Drive
+persistence belong to the campaign under `knowledge/runs/`; this module does not
+choose architecture conditions. MSDA sampling has a separate upper bound and
+uncounted coordinate/memory operations, rather than being reported as zero.

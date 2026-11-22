@@ -1,0 +1,32 @@
+defaults:
+- paths: default
+- _self_
+dataset_directory: ???
+video_id: ???
+clip_ids: null
+overwrite: false
+continue_on_error: true
+pipeline_config: pipeline
+pipeline_overrides: []
+batching:
+  enabled: false
+  sizes:
+    court: 2
+    dino: 2
+    vitpose: 4
+    clip: 16
+    hmr2: 4
+    ball: 1
+  max_sources: 4
+  max_pending_items: 32
+  max_working_bytes: 3221225472
+  store_cache_bytes: 0
+  clips_per_pass: null
+record_cuda: false
+progress_directory: ${tennis_output:tennis_scene,generate,video_batch,${tennis_run_id:}}
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${progress_directory}/hydra}
+  output_subdir: null
+  job:
+    chdir: false

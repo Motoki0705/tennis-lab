@@ -6,6 +6,7 @@ import hashlib
 import math
 import re
 import subprocess
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -253,6 +254,7 @@ def child_status(
                 "received_at": None,
                 "time_status": "unavailable",
             },
+            "messages": [],
             "tools": [],
             "tail_truncated": False,
         },
@@ -439,11 +441,13 @@ def collect_status(
     now: datetime | None = None,
     tail_bytes: int = 262144,
     tool_limit: int = 5,
+    secrets: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return JSON-serializable parent/child observations; see README for fields.
 
     GitHub is opt-in. All sources are read without taking an operation/registry/
     session lock. A failed observation raises StatusError; no partial success.
+    Additional private session records are retained by the guard across rereads.
     """
     if (
         type(stale_after) not in {int, float}
@@ -468,7 +472,7 @@ def collect_status(
     try:
         store = Store(Path(state_dir) if state_dir is not None else state_directory())
         parents = registry(store)
-        guard = Guard(parents)
+        guard = Guard({**parents, **(secrets or {})})
         directory = (
             Path(dispatcher_state_dir)
             if dispatcher_state_dir is not None
@@ -533,10 +537,14 @@ def collect_status(
                     "children": [],
                 }
                 for child in sorted({int(k) for k in row["tasks"]} | set(remote)):
-                    record["children"].append(
-                        child_status(
+                    primary = row["tasks"].get(str(child), {})
+                    for name, task in [
+                        ("primary", primary),
+                        *primary.get("helpers", {}).items(),
+                    ]:
+                        observation = child_status(
                             child,
-                            row["tasks"].get(str(child), {}),
+                            task,
                             row,
                             guard,
                             state=store.directory,
@@ -547,7 +555,9 @@ def collect_status(
                             tail_bytes=tail_bytes,
                             tool_limit=tool_limit,
                         )
-                    )
+                        if primary.get("helpers"):
+                            observation["worker_name"] = guard.text(name)["text"]
+                        record["children"].append(observation)
                 if not github:
                     fresh = registry(store)
                     guard.observe_parents(fresh)

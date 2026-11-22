@@ -1,0 +1,12 @@
+{
+  "cases": 8,
+  "adopted": 8,
+  "within_tolerance": 8,
+  "negative_adopted": 0,
+  "max_mean_reference_px": 0.6127567928418567,
+  "max_max_reference_px": 2.0261680219052063,
+  "motion_matches": 20,
+  "motion_cases": 24,
+  "seconds": 67.37014581399853,
+  "protocol_sha256": "91866415fb9b50236fd13f14d9baa445f3194eb7d141a52bb5c6c4c4327417ff"
+}

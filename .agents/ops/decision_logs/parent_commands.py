@@ -49,9 +49,9 @@ COMMANDS = {
     "stop-worker": "stop",
     "handoff": "handoff",
     "release": "handoff",
-    "review-prepare": "record",
     "review-request": "review",
-    "review-state": "verify",
+    "merge-continue": "resume",
+    "merge-confirm": "verify",
     "inspect-worker": "fetch",
     "publish-worker-log": "publish",
     "worker-log-status": "fetch",
@@ -75,7 +75,7 @@ def add_parsers(commands: Any) -> None:
             type=Path,
             help="explicit code/requirements/instruction/conditions/verified_scope comparison",
         )
-        if name in {"record-result", "review-state"}:
+        if name == "record-result":
             sub.add_argument(
                 "--verifies",
                 nargs="+",
@@ -174,10 +174,6 @@ def _begin(
     # input error; storage failures without supplied links remain best effort.
     journal = Journal(store.directory, repo, parent)
     previous = args.retry_of
-    if args.command in {"review-prepare", "review-request"}:
-        from .review_capture import validate_handoff_link
-
-        validate_handoff_link(args, store, repo, parent)
     request_context = None
     decision_id = args.decision_id
     plan_id = args.plan_id
@@ -200,7 +196,7 @@ def _begin(
     verifies = list(getattr(args, "verifies", None) or [])
     task: dict[str, Any] = {}
     specified_by = "parent_choice" if getattr(args, "model", None) else "settings"
-    if args.command in {"review-prepare", "review-request"}:
+    if args.command in {"review-request"}:
         specified_by = (
             "human_instruction"
             if getattr(args, "human_review_model", None)
@@ -212,11 +208,14 @@ def _begin(
         )
     try:
         data = store.read_data()
+        from parent.worker_slots import record
+
+        row = data.get("parents", {}).get(f"{repo.casefold()}#{parent}", {})
+        child = getattr(args, "child", None)
         task = (
-            data.get("parents", {})
-            .get(f"{repo.casefold()}#{parent}", {})
-            .get("tasks", {})
-            .get(str(getattr(args, "child", None)), {})
+            record(row, child, getattr(args, "worker", None) or "primary")
+            if child is not None
+            else {}
         )
         runtime = None
         if task.get("worker_runs"):
@@ -225,8 +224,6 @@ def _begin(
         if not runtime:
             turns = task.get("preflight", {}).get("turns", [])
             runtime = turns[-1].get("source") if turns else None
-        if args.command == "review-state":
-            runtime = str(store.directory / "reviews" / args.run_id / "agent-runtime")
         predecessors = (
             capture_for_runtime(store.directory, repo, parent, runtime)
             if runtime
@@ -238,23 +235,10 @@ def _begin(
             selected = predecessors[0]["data"]["auxiliary"]["selected_model"]
             if selected["status"] == "observed":
                 specified_by = selected["value"]["specified_by"]
-        if (
-            args.command in {"record-result", "record-worker-ended", "review-state"}
-            and not verifies
-        ):
+        if args.command in {"record-result", "record-worker-ended"} and not verifies:
             verifies = [
                 p["id"] for p in predecessors if p["data"]["status"] != "unknown"
             ]
-        if args.command == "review-state" and not verifies:
-            from .review_capture import previous_run
-
-            mapped = previous_run(store.directory, repo, parent, args.run_id)
-            if mapped:
-                verifies = [
-                    r["id"]
-                    for r in mapped.records("result")
-                    if r["data"]["status"] != "unknown"
-                ]
     except Exception:
         warn()
     scope = None
@@ -442,7 +426,6 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
         in {
             "record-result",
             "record-worker-ended",
-            "review-state",
         }
         or (args.command == "release" and bool(getattr(args, "spec", None)))
         or (
@@ -633,9 +616,7 @@ def reason_reference(
             "content_sha256": sha(comment["body"].encode()),
         }
     elif kind == "worker_plan":
-        decisions = session.row["tasks"][str(reference["child"])]["preflight"][
-            "decisions"
-        ]
+        decisions = session.worker_task(reference["child"])["preflight"]["decisions"]
         original = next(
             d for d in decisions if d["decision_id"] == reference["decision_id"]
         )
@@ -643,7 +624,7 @@ def reason_reference(
             "parent.decide-worker-plan", "saved planning answer", original
         )
     elif kind == "model_reason":
-        original = session.row["tasks"][str(reference["child"])]
+        original = session.worker_task(reference["child"])
         require(bool(original.get("model_reason")), "reference_unavailable")
         evidence = source(
             "parent.run-worker", "saved model_reason", original["model_reason"]
@@ -654,7 +635,7 @@ def reason_reference(
             for r in session.row["reviews"]
             if r["request"]["review_run_id"] == reference["run_id"]
         )
-        evidence = source("parent.review-prepare", "request.json reason", request)
+        evidence = source("parent.review-request", "request reason", request)
     else:
         raise ValueError("unknown reason_ref kind")
     return f"See existing {kind} reason in referenced evidence", [evidence]

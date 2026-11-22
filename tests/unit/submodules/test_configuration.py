@@ -16,6 +16,7 @@ from src.utils.configuration import ConfigurationError, PathResolver, RuntimePat
 
 
 def _runtime_mapping() -> dict[str, object]:
+    fp32 = {"backend": "pytorch", "precision": "fp32", "engines": ()}
     return {
         "device": "cpu",
         "tracking": {"bbox_enlarge": 1.2},
@@ -23,10 +24,13 @@ def _runtime_mapping() -> dict[str, object]:
             "confidence": 0.35,
             "short_side": 800,
             "max_long_side": 1333,
+            "batch_size": 1,
+            **fp32,
         },
         "vitpose": {
             "flip_test": True,
             "batch_size": 8,
+            **fp32,
             "head": {
                 "in_channels": 1280,
                 "out_channels": 17,
@@ -38,7 +42,9 @@ def _runtime_mapping() -> dict[str, object]:
                 "num_conv_kernels": [],
             },
         },
-        "hmr2": {"batch_size": 8},
+        "hmr2": {"batch_size": 8, **fp32},
+        "clip_reid": {"batch_size": 64, **fp32},
+        "gvhmr": {"batch_size": 1, **fp32},
         "static_cam": True,
     }
 
@@ -63,6 +69,51 @@ def test_runtime_rejects_removed_device_fallback_toggle() -> None:
     mapping["allow_device_fallback"] = False
 
     with pytest.raises(ConfigurationError, match="allow_device_fallback"):
+        SubmoduleRuntimeConfig.from_mapping(mapping)
+
+
+@pytest.mark.parametrize("name", ["dino_detector", "vitpose", "hmr2", "clip_reid", "gvhmr"])
+def test_explicit_tensorrt_fp16_and_batch_configuration(name: str, tmp_path: Path) -> None:
+    mapping = _runtime_mapping()
+    mapping["device"] = "cuda:0"
+    options = mapping.setdefault(name, {})
+    assert isinstance(options, dict)
+    batch_size = 1 if name == "gvhmr" else 3
+    options.update(backend="tensorrt", precision="fp16",
+                   engines=[str(tmp_path / name)], batch_size=batch_size)
+    runtime = SubmoduleRuntimeConfig.from_mapping(mapping)
+    selected = getattr(runtime, name)
+    engines = selected.engines if name in {"dino_detector", "vitpose"} else selected.backend.engines
+    assert runtime.uses_tensorrt
+    assert engines == (tmp_path / name,)
+    assert selected.batch_size == batch_size
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"backend": "native"}, "backend must be"),
+        ({"backend": "pytorch"}, "engines require"),
+        ({"precision": "fp32"}, "requires fp16"),
+        ({"engines": []}, "explicit engine directories"),
+        ({"batch_size": 2}, "GVHMR TensorRT requires batch_size=1"),
+        ({"batch_size": 0}, "batch_size must be positive"),
+        ({"batch_size": True}, "expected int"),
+    ],
+)
+def test_gvhmr_invalid_tensorrt_options_fail_during_composition(
+    changes: dict[str, object], message: str, tmp_path: Path
+) -> None:
+    mapping = _runtime_mapping()
+    mapping["device"] = "cuda:0"
+    mapping["gvhmr"] = {
+        "backend": "tensorrt",
+        "precision": "fp16",
+        "engines": [str(tmp_path / "engine")],
+        "batch_size": 1,
+        **changes,
+    }
+    with pytest.raises(ConfigurationError, match=message):
         SubmoduleRuntimeConfig.from_mapping(mapping)
 
 

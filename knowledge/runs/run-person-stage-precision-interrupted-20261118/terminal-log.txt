@@ -1,0 +1,18 @@
+vitpose_fp16/video_000/clip_000 nominal ball_points/cam1
+vitpose_fp16/video_000/clip_000 nominal ball_detection/cam2
+vitpose_fp16/video_000/clip_000 nominal ball_points/cam2
+vitpose_fp16/video_000/clip_000 nominal ball_detection/cam3
+vitpose_fp16/video_000/clip_000 nominal ball_points/cam3
+vitpose_fp16/video_000/clip_000 nominal court_calibration
+vitpose_fp16/video_000/clip_000 nominal person_detection/cam0
+vitpose_fp16/video_000/clip_000 nominal person_tracking/cam0
+person_tracking/cam0: 0/356 frames
+person_tracking/cam0: 106/356 frames
+person_tracking/cam0: 238/356 frames
+person_tracking/cam0: 356/356 frames
+vitpose_fp16/video_000/clip_000 nominal player_selection/cam0
+vitpose_fp16/video_000/clip_000 nominal pose_estimation/cam0
+vitpose_fp16/video_000/clip_000 nominal person_detection/cam1
+vitpose_fp16/video_000/clip_000 nominal person_tracking/cam1
+person_tracking/cam1: 0/356 frames
+exit_code=143

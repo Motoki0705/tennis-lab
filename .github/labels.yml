@@ -12,7 +12,7 @@ hierarchy:
 
   - name: "issue:proposal"
     color: "C4B5FD"
-    description: "未判断を含む改善候補を元親ごとに列挙する改善提案Issue。作業対象ではない（.agents/ops/parent/improvements.md）"
+    description: "未判断を含む改善候補を元親ごとに列挙する改善提案Issue。作業対象ではない（.agents/skills/parent-session/references/finish.md）"
 
 work-type:
   - name: bug
@@ -41,6 +41,9 @@ origin:
   - name: "agent:codex"
     color: "0E8A16"
     description: "Codex が作成"
+  - name: "agent:agy"
+    color: "1D76DB"
+    description: "Antigravity CLI が作成"
 
 area:
   - name: "module: base"

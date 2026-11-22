@@ -41,6 +41,8 @@ def dispatch_post(
         if "failed" in outcomes
         else "notified"
         if "notified" in outcomes
+        else "awaiting_hook"
+        if any(row["skip_reason"] == "awaiting_hook" for row in recipients)
         else "no_targets"
     )
     return {"post_id": post_id, "status": status, "recipients": recipients}

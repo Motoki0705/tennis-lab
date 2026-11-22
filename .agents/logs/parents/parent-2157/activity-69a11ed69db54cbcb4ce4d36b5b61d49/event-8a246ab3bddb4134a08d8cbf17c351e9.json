@@ -1,0 +1,88 @@
+{
+  "record": {
+    "data": {
+      "action_id": "34dbe473c3614dce8bf66fc27ee41b54",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=saved parent verification; content_sha256=f6b979ced793d66b002967f4919f867e9470afbb11b5394a9a4850296118f015; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=f6b979ced793d66b002967f4919f867e9470afbb11b5394a9a4850296118f015; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2178]; PR #2178（HEAD fe40e8105）。作成workerの同じsession・モデルを修正ターンだけeffort=highで再開（通常はmaxのまま）、修正IDから予約を再取得して二重起動を防止、修正報告JSON（8キー）の厳密parser、dispatcher起動の親が登録した自動進行に限る修正起動経路、highの修正ログの公開検証、AGENTS.md・parent-session skillの例外記述。worker報告: 関連770件成功、追加36ケース、ruff・mypy・pre-commit成功。実Codexでの修正ターン起動は未検証。CIは実行中。",
+      "verifies": [
+        "45014616acc14dcaaae8fb838a3c1a31"
+      ]
+    },
+    "id": "8a246ab3bddb4134a08d8cbf17c351e9",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "69a11ed69db54cbcb4ce4d36b5b61d49",
+      "delegation": {
+        "key": "d-88a5385adb264c13a5987472bdfbc10a",
+        "turn": 1
+      },
+      "issue": 2175,
+      "parent": 2157,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-16T01:20:18.133095+00:00"
+      },
+      "recorded_at": "2026-11-16T01:20:18.133113+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

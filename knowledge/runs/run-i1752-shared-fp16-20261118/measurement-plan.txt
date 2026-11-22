@@ -1,0 +1,8 @@
+Measurement source: ba0fbdf1c16bd56d0852328db7e9f462f21b5ec3
+Dependency heads: C3 e311c078a; court-side 53cb2bd1ef474a2ac59e4a2fddb73708281baec0; precision 38b83a8b452c83f7ee581791c2d122864e11ceb4.
+GPU input: clip_000/037/027, 356/292/235 frames/camera, 4 cameras, 883 total frames/camera.
+Single plan/runtime, full end-to-end, no global sys.setprofile.
+Existing C1 recorder synchronization/resource sampling, heartbeat/NVML guard remain.
+All69 not enqueued. The only GPU registration with full HEAD is 0-8205002942712217463_2026-11-18T10-17-37-287782536Z_3032097_i1752-shared-fp16-three-20261118-a1.job.
+The earlier short-HEAD registration 0-8205002962368188400_2026-11-18T10-17-17-631811599Z_3031218_i1752-shared-fp16-three-20261118-a1.job was cancelled before starting.
+Post-processing estimator rules changed only in new analysis, not measured pipeline.

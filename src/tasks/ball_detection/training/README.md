@@ -43,7 +43,8 @@ position_validはheatmap_validの部分集合で、位置教師は有限の[0,1]
 
 `--stage temporal`は存在headを持たないDPT/hybridのheatmapと、query-onlyの直接座標を扱う。
 DPT事前学習からqueryへはCNNのみ、それ以外の同構成の逐次段階へは全重みを継承する。
-queryは`model/mdd_temporal_query.yaml`を使い、DPTやpresence headを構築しない。
+queryは`model/mdd_temporal_query.yaml`（単一query）または`model/mdd_mhc_query.yaml`
+（4ストリームmHC）を明示し、DPTやpresence headを構築しない。
 実験行列・本学習の予算は呼出側で決める。
 学習・評価・比較動画のCLIは、任意入力を含む全pathに絶対pathを要求し、共通の
 `NonHydraPathBoundary`で存在・role・入力/出力方向を処理開始前に検証する。
@@ -60,6 +61,15 @@ peakまで線形warmupした後、最小LR比までcosineで減衰する。継�
 `--freeze-updates`は各段階のCNN凍結更新数、`--encoder-lr-ratio`は解除後のheadに対する倍率。
 凍結中のCNN LRは0で、既存AdamW状態は変更しない。いずれも明示必須。
 AdamWのbetas=(0.9,0.999)、eps=1e-8と、linear warmup後のcosine scheduleをrecipeへ保存する。
+
+X3D/CSNの共通DPT T32からmHC query T64へは、encoderの入力ch・variant・時間処理・幅・深さを
+照合し、CNNの全stateだけをstrict転送する。dim・heads・FFN幅・層数・DPT幅はこの転送では
+一致を要求せず、Transformerと座標headを新規初期化する。`optimizer_transfer=inherit`は
+一致するencoder parameterのAdamW momentだけを継承し、新規Transformerの状態は初回更新まで空に保つ。
+従来のDPT→単一queryはT32→T32と全構成の照合を維持する。
+同じmHCモデルのT64→T128などは全設定（Tと明示メモリ制御を除く）と全stateを照合する。
+元artifactは保存Tのまま検証し、resumeはT・recipe・ソース・optimizer・RNG・pack位置を保存どおりに復元する。
+encoderのhaloとmHC span・readoutの仕様は[MDDモデル](../models/mdd/README.md#x3dcsn-encoderと4ストリームmhc座標モデル)を参照。
 
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.train --stage temporal \
@@ -369,3 +379,9 @@ DPT/事後学習は`--preview-clips`で各epochのGIFを保存する。描画実
 直接座標の可変T評価も`--mode temporal`を使う。保存されたモデル種別で評価objectiveを選び、
 heatmapと同じowner・observed集合・source pixel位置指標を記録する。直接座標は存在判定を持たず、
 不在frameのcoverageを保持するがFPR/FNRや較正閾値を作らない。
+
+Python APIの`train_temporal_model(..., update_observer=...)`は、数値計算の外で
+`before_update(update)`と`metrics()`を呼べる任意の資源監視hookを持つ。既定はNoneで、
+学習recipeやCLIの挙動を変更しない。admissionはCUDA同期・計測開始・sampler消費より前、
+metricsは更新時間の計測後に呼び、返り値を各train.jsonl行の`resources`へ保存する。
+hookの例外は伝播し、次の更新や完了markerへ進まない。

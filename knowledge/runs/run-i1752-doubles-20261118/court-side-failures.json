@@ -1,0 +1,220 @@
+{
+  "video_000/clip_027": {
+    "annotation_path": null,
+    "clip_id": "video_000/clip_027",
+    "diagnostics": {
+      "frames": 99,
+      "hypotheses": [
+        {
+          "cost": 0.7227009614977827,
+          "frames": 99,
+          "support": 0.25252525252525254,
+          "view_half_turns": [
+            false,
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "cost": 0.838964945086073,
+          "frames": 99,
+          "support": 0.16161616161616163,
+          "view_half_turns": [
+            false,
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "cost": 0.8437821277191199,
+          "frames": 99,
+          "support": 0.08080808080808081,
+          "view_half_turns": [
+            false,
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "cost": 0.8503338903588551,
+          "frames": 99,
+          "support": 0.1111111111111111,
+          "view_half_turns": [
+            false,
+            false,
+            false,
+            true
+          ]
+        },
+        {
+          "cost": 0.8776729156251515,
+          "frames": 99,
+          "support": 0.10101010101010101,
+          "view_half_turns": [
+            false,
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "cost": 0.8863141842176563,
+          "frames": 99,
+          "support": 0.06060606060606061,
+          "view_half_turns": [
+            false,
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "cost": 0.8873806797534574,
+          "frames": 99,
+          "support": 0.1111111111111111,
+          "view_half_turns": [
+            false,
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "cost": 0.9033381262033303,
+          "frames": 99,
+          "support": 0.0707070707070707,
+          "view_half_turns": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "pair_frames": {
+        "cam0-cam1": 60,
+        "cam0-cam2": 82,
+        "cam0-cam3": 63,
+        "cam1-cam2": 51,
+        "cam1-cam3": 52,
+        "cam2-cam3": 55
+      },
+      "sampled_frames": 118
+    },
+    "error": "ReconstructionUnavailable: ambiguous_margin: Runner-up is only 0.116 worse than the best [[False, False, True, True] cost=0.723 support=0.253; [False, True, True, True] cost=0.839 support=0.162; [False, True, True, False] cost=0.844 support=0.081; [False, False, False, True] cost=0.850 support=0.111; [False, False, True, False] cost=0.878 support=0.101; [False, True, False, False] cost=0.886 support=0.061; [False, True, False, True] cost=0.887 support=0.111; [False, False, False, False] cost=0.903 support=0.071]",
+    "reason": "court_side_ambiguous_margin",
+    "status": "failed"
+  },
+  "video_000/clip_037": {
+    "annotation_path": null,
+    "clip_id": "video_000/clip_037",
+    "diagnostics": {
+      "frames": 85,
+      "hypotheses": [
+        {
+          "cost": 0.5043593375626471,
+          "frames": 85,
+          "support": 0.5176470588235295,
+          "view_half_turns": [
+            false,
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "cost": 0.634662257747823,
+          "frames": 85,
+          "support": 0.3764705882352941,
+          "view_half_turns": [
+            false,
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "cost": 0.716514064457882,
+          "frames": 85,
+          "support": 0.29411764705882354,
+          "view_half_turns": [
+            false,
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "cost": 0.7328951957118318,
+          "frames": 85,
+          "support": 0.24705882352941178,
+          "view_half_turns": [
+            false,
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "cost": 0.8766670757470854,
+          "frames": 85,
+          "support": 0.08235294117647059,
+          "view_half_turns": [
+            false,
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "cost": 0.8917337505136345,
+          "frames": 85,
+          "support": 0.09411764705882353,
+          "view_half_turns": [
+            false,
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "cost": 0.908891434895423,
+          "frames": 85,
+          "support": 0.07058823529411765,
+          "view_half_turns": [
+            false,
+            false,
+            false,
+            true
+          ]
+        },
+        {
+          "cost": 0.9138634882177729,
+          "frames": 85,
+          "support": 0.08235294117647059,
+          "view_half_turns": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "pair_frames": {
+        "cam0-cam1": 38,
+        "cam0-cam2": 67,
+        "cam0-cam3": 41,
+        "cam1-cam2": 43,
+        "cam1-cam3": 29,
+        "cam2-cam3": 48
+      },
+      "sampled_frames": 146
+    },
+    "error": "ReconstructionUnavailable: ambiguous_margin: Runner-up is only 0.130 worse than the best [[False, False, True, True] cost=0.504 support=0.518; [False, False, True, False] cost=0.635 support=0.376; [False, True, True, True] cost=0.717 support=0.294; [False, True, True, False] cost=0.733 support=0.247; [False, True, False, False] cost=0.877 support=0.082; [False, True, False, True] cost=0.892 support=0.094; [False, False, False, True] cost=0.909 support=0.071; [False, False, False, False] cost=0.914 support=0.082]",
+    "reason": "court_side_ambiguous_margin",
+    "status": "failed"
+  }
+}

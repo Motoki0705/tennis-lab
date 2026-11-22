@@ -1,0 +1,27 @@
+{
+  "classification": "guard_false_positive_expected_clip_failure_exit",
+  "checks": {
+    "engine_returned": true,
+    "only_expected_system_exit": true,
+    "traceback_has_no_cuda_error": true,
+    "all_runtime_resources_closed": true,
+    "known_guard_fallback": true,
+    "nvml_queries_succeeded": true,
+    "gpu_diagnostic_query_succeeded": true,
+    "exact_expected_clip_outcomes": true
+  },
+  "actual_cuda_exception_observed": false,
+  "original_alarm_preserved": true,
+  "mechanism": "SystemExit(1) prints no traceback. C3 guard scanned prior normal cuda model events and flagged the expected CLI failure exit.",
+  "raw_evidence_sha256": {
+    "anomaly.json": "c70c3aabd32e8cd746d152c29e8147c4cddaa4966cbfc1f07baec38fc3fed9fd",
+    "batch/entry.json": "16c86356465da8c243c5523aaae3a1a0edee047258f7658a8265eaf7b10d1787",
+    "batch.log": "95ec1bb1a57b4600c6c1818edae5e400518d0c61fc7999aadcd10a1fb6f7bb14",
+    "terminal.json": "d8f2ae915dd50e93da6851d00e0bca4661d5a5c1dc482bf024a7ed8935335b57",
+    "health/batch.json": "408e31fc5f9a8b212ae8d4b68afa044f642646ff763f05553564f7fc3aaabf0e",
+    "health/batch-threads.log": "6b07077dab5f83aec676643650daa65a88487f263344c67b075925d3e958ab48",
+    "health/batch-nvidia-smi-q.stdout.log": "b48e805ed983a3131f467defd2c4a52619625ffb68149022f2d5f458dda03684",
+    "health/batch-nvidia-smi-q.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "reviewed_at_utc": "2026-11-18T01:54:20.647382+00:00"
+}

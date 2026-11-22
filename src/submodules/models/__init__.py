@@ -8,7 +8,12 @@ Each model exposes ``load()`` / ``unload()`` / ``predict(request) -> result``:
 - :class:`GvhmrMeshRecovery` — keypoints + boxes + features -> SMPL-X params
 """
 
+from src.submodules.models._base.crops import iter_frame_person_crops
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.models.dino.architecture import (
+    dino_batch_item_requirements,
+    dino_source_assets,
+)
 from src.submodules.models.dino.extension import validate_dino_extension
 from src.submodules.models.dino.person_detector import (
     DinoPersonDetector,
@@ -60,7 +65,10 @@ __all__ = [
     "TrackRequest",
     "TrackResult",
     "ViTPosePose2D",
+    "dino_batch_item_requirements",
+    "dino_source_assets",
     "filter_detections_by_footpoint",
+    "iter_frame_person_crops",
     "select_and_complete_tracks",
     "validate_dino_extension",
 ]

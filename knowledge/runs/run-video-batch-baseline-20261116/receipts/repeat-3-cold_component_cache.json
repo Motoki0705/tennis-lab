@@ -1,0 +1,211 @@
+[
+  {
+    "schema": "tennis_scene_run_v3",
+    "status": "failed",
+    "clip_id": "video_000/clip_000",
+    "source": {
+      "clip_id": "video_000/clip_000",
+      "videos": [
+        {
+          "camera_id": "cam0",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_000/media/cam0.mp4",
+          "sha256": "33823be69af8a6940e85f10876781f616d8054d95e4ba3cea35f20700d37a759",
+          "num_frames": 356,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam1",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_000/media/cam1.mp4",
+          "sha256": "49f70bef419efe8e75ed3275458fd86aa0a5832d19df04c3941e298b9eae148e",
+          "num_frames": 356,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam2",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_000/media/cam2.mp4",
+          "sha256": "0fdd6844265b1c796e066bffbbde76af2d87ee667ec7687bbf64cacc97de32e0",
+          "num_frames": 356,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam3",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_000/media/cam3.mp4",
+          "sha256": "1f2150db8799a2b33e089e40a9537b68e344e436512436308fbf0e9b16697c18",
+          "num_frames": 356,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        }
+      ]
+    },
+    "scene_index": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.json",
+    "error": "No Court region meets model support/geometry requirements: [{'region_xyxy': [0, 0, 1920, 1080], 'status': 'ok', 'accepted': False, 'inliers': 5, 'inlier_score': 3.356461524963379, 'area_ratio': 0.06814233740557253, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 0, 1920, 810], 'status': 'ok', 'accepted': False, 'inliers': 5, 'inlier_score': 2.7984538078308105, 'area_ratio': 0.07156664394509464, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 270, 1920, 1080], 'status': 'ok', 'accepted': False, 'inliers': 5, 'inlier_score': 3.1395955085754395, 'area_ratio': 0.05004451877940651, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 0, 1440, 540], 'status': 'insufficient_line_support', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [0, 270, 1440, 810], 'status': 'ok', 'accepted': False, 'inliers': 5, 'inlier_score': 3.1961259841918945, 'area_ratio': 0.07395295056763845, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 540, 1440, 1080], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [240, 0, 1680, 540], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [240, 270, 1680, 810], 'status': 'ok', 'accepted': False, 'inliers': 7, 'inlier_score': 4.173257350921631, 'area_ratio': 0.07440756088507902, 'convex': True, 'inside_content': True}, {'region_xyxy': [240, 540, 1680, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [480, 0, 1920, 540], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [480, 270, 1920, 810], 'status': 'ok', 'accepted': False, 'inliers': 6, 'inlier_score': 3.2373368740081787, 'area_ratio': 0.07304491899189919, 'convex': True, 'inside_content': True}, {'region_xyxy': [480, 540, 1920, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}]",
+    "error_type": "CourtRegionUnavailable",
+    "active_stage": "court_detection/cam0",
+    "stage_status": {
+      "court_detection/cam0": "failed"
+    },
+    "stage_seconds": {},
+    "artifacts": {}
+  },
+  {
+    "schema": "tennis_scene_run_v3",
+    "status": "failed",
+    "clip_id": "video_000/clip_001",
+    "source": {
+      "clip_id": "video_000/clip_001",
+      "videos": [
+        {
+          "camera_id": "cam0",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_001/media/cam0.mp4",
+          "sha256": "200921df6f780821098d514eea70a2f12d7da9ffcd650cc68441cced6b8ec29b",
+          "num_frames": 561,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam1",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_001/media/cam1.mp4",
+          "sha256": "2d0f829f4311d0f586d0e7f35adc821eadabbd8f908c4062a544b8a6b061beb2",
+          "num_frames": 561,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam2",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_001/media/cam2.mp4",
+          "sha256": "4349b4daa2e89bf2f53de95d1642bfb2c593c09323b513402602cb7b443af5e4",
+          "num_frames": 561,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam3",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_001/media/cam3.mp4",
+          "sha256": "c36459423e3ab66bb8d8170221943a94a65b929bb191410922485362c22a307c",
+          "num_frames": 561,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        }
+      ]
+    },
+    "scene_index": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_001/annotations/tennis_scene/scene.json",
+    "error": "No Court region meets model support/geometry requirements: [{'region_xyxy': [0, 0, 1920, 1080], 'status': 'ok', 'accepted': False, 'inliers': 4, 'inlier_score': 3.1688947677612305, 'area_ratio': 0.10607712263012645, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 0, 1920, 810], 'status': 'ok', 'accepted': False, 'inliers': 6, 'inlier_score': 4.781946182250977, 'area_ratio': 0.10752289159077379, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 270, 1920, 1080], 'status': 'ok', 'accepted': False, 'inliers': 4, 'inlier_score': 3.223721504211426, 'area_ratio': 0.10155042726107544, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 0, 1440, 540], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [0, 270, 1440, 810], 'status': 'ok', 'accepted': False, 'inliers': 6, 'inlier_score': 4.792525291442871, 'area_ratio': 0.10596822136893429, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 540, 1440, 1080], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [240, 0, 1680, 540], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [240, 270, 1680, 810], 'status': 'ok', 'accepted': False, 'inliers': 7, 'inlier_score': 4.663131237030029, 'area_ratio': 0.10438942079279963, 'convex': True, 'inside_content': True}, {'region_xyxy': [240, 540, 1680, 1080], 'status': 'insufficient_line_support', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [480, 0, 1920, 540], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [480, 270, 1920, 810], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [480, 540, 1920, 1080], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}]",
+    "error_type": "CourtRegionUnavailable",
+    "active_stage": "court_detection/cam1",
+    "stage_status": {
+      "court_detection/cam0": "executed",
+      "court_detection/cam1": "failed"
+    },
+    "stage_seconds": {
+      "court_detection/cam0": 34.308419928995136
+    },
+    "artifacts": {
+      "court_detection/cam0": {
+        "artifact_id": "60b4c6a061dc17ceba9252870d117972cd98ec635ffd3aac0995cf5a06d32791",
+        "path": "components/court_detection/60b4c6a061dc17ceba9252870d117972cd98ec635ffd3aac0995cf5a06d32791/court_detection.json",
+        "sha256": "f34d1cee256d869e5a850a4c1f96a4b0ebcdf2dd2b2cb541c104a49d488b65e5",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "c4b84b83f85d779c4aa885b6545b50549a3c598bfb1375a91c0a3fd1183c3b63"
+      }
+    }
+  },
+  {
+    "schema": "tennis_scene_run_v3",
+    "status": "failed",
+    "clip_id": "video_000/clip_002",
+    "source": {
+      "clip_id": "video_000/clip_002",
+      "videos": [
+        {
+          "camera_id": "cam0",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_002/media/cam0.mp4",
+          "sha256": "467f44f38104b4134b9c1425f0022515c9f2b2fa3b8309116ebd1bee35585113",
+          "num_frames": 1516,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam1",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_002/media/cam1.mp4",
+          "sha256": "bcb1df13e99605297a427e77db5e59bd53744b87146d31156e17b7a727787fc7",
+          "num_frames": 1516,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam2",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_002/media/cam2.mp4",
+          "sha256": "f4a216010f607157ea14d3ab62f617460452c175c5ffcc697a79f63a19114a5d",
+          "num_frames": 1516,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        },
+        {
+          "camera_id": "cam3",
+          "path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_002/media/cam3.mp4",
+          "sha256": "2de4983837d196d0aa8bc2d92f86b9f4642db36fa020d7eada34a318691ca274",
+          "num_frames": 1516,
+          "fps": 59.94005994005994,
+          "width": 1920,
+          "height": 1080
+        }
+      ]
+    },
+    "scene_index": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/tennis_scene/video_batch_baseline/20261116/datasets/repeat-3/videos/video_000/clips/clip_002/annotations/tennis_scene/scene.json",
+    "error": "No Court region meets model support/geometry requirements: [{'region_xyxy': [0, 0, 1920, 1080], 'status': 'ok', 'accepted': False, 'inliers': 5, 'inlier_score': 3.508751153945923, 'area_ratio': 0.0717915433131413, 'convex': True, 'inside_content': True}, {'region_xyxy': [0, 0, 1920, 810], 'status': 'ok', 'accepted': False, 'inliers': 4, 'inlier_score': 2.56396484375, 'area_ratio': 0.0761136059527039, 'convex': True, 'inside_content': False}, {'region_xyxy': [0, 270, 1920, 1080], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [0, 0, 1440, 540], 'status': 'ok', 'accepted': False, 'inliers': 5, 'inlier_score': 3.169912815093994, 'area_ratio': 0.20134531772050168, 'convex': True, 'inside_content': False}, {'region_xyxy': [0, 270, 1440, 810], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [0, 540, 1440, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [240, 0, 1680, 540], 'status': 'ok', 'accepted': False, 'inliers': 4, 'inlier_score': 2.212334632873535, 'area_ratio': 0.07362055047610346, 'convex': True, 'inside_content': True}, {'region_xyxy': [240, 270, 1680, 810], 'status': 'ok', 'accepted': False, 'inliers': 4, 'inlier_score': 2.561708927154541, 'area_ratio': 0.07198496630411008, 'convex': True, 'inside_content': False}, {'region_xyxy': [240, 540, 1680, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}, {'region_xyxy': [480, 0, 1920, 540], 'status': 'ok', 'accepted': False, 'inliers': 5, 'inlier_score': 3.5342719554901123, 'area_ratio': 0.07458254414335516, 'convex': True, 'inside_content': True}, {'region_xyxy': [480, 270, 1920, 810], 'status': 'ok', 'accepted': False, 'inliers': 6, 'inlier_score': 3.5130248069763184, 'area_ratio': 0.07095218972463897, 'convex': True, 'inside_content': True}, {'region_xyxy': [480, 540, 1920, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': True}]",
+    "error_type": "CourtRegionUnavailable",
+    "active_stage": "court_detection/cam3",
+    "stage_status": {
+      "court_detection/cam0": "executed",
+      "court_detection/cam1": "executed",
+      "court_detection/cam2": "executed",
+      "court_detection/cam3": "failed"
+    },
+    "stage_seconds": {
+      "court_detection/cam0": 45.11517588800052,
+      "court_detection/cam1": 38.5786865379996,
+      "court_detection/cam2": 38.829089710001426
+    },
+    "artifacts": {
+      "court_detection/cam0": {
+        "artifact_id": "2c66b6f406cc38b7907c82d61a7e57380f310a06f3df8418c6976d77a880e87d",
+        "path": "components/court_detection/2c66b6f406cc38b7907c82d61a7e57380f310a06f3df8418c6976d77a880e87d/court_detection.json",
+        "sha256": "6d0f283714e679472eb35cfe92f0969be9a704cc3d0521584d85e95e627b056d",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "4a566f732d124ef98b4ded5d67d652f41661beb4379558f0e62f253abca388ba"
+      },
+      "court_detection/cam1": {
+        "artifact_id": "b6877e86caac18aacbd783356bbf9d564d6071abd25cbc3ea0633dfd2d3960e7",
+        "path": "components/court_detection/b6877e86caac18aacbd783356bbf9d564d6071abd25cbc3ea0633dfd2d3960e7/court_detection.json",
+        "sha256": "624dacc2d8db310ec17993a4ea9bd0d078ba44d0b42a496e02787bc9552c1434",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "28ec11f3fa89f3879a531a4593c10eda00e83cf49c889d9baea8c69e18e60b5c"
+      },
+      "court_detection/cam2": {
+        "artifact_id": "6b70649d1931ce553bcbf659c48a3eaaaf94ab662db84b816c516317820b9759",
+        "path": "components/court_detection/6b70649d1931ce553bcbf659c48a3eaaaf94ab662db84b816c516317820b9759/court_detection.json",
+        "sha256": "125bf5196fa3fb9f38b2673e0156a0ce778e560d9d6547d24a4605c47cf80a80",
+        "schema": "court_observations",
+        "version": 2,
+        "execution_key": "6e42dd776a4f145a092257738697522f68478cc9f3dfaccc7ed023afeee9e7f5"
+      }
+    }
+  }
+]

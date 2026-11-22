@@ -8,6 +8,7 @@ import os
 import stat
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -22,6 +23,108 @@ from tests.support.agents_ops.decision_logs import (
     result,
     schema,
 )
+
+
+@pytest.mark.parametrize("fault", ["different_parent", "non_request", "unknown_field"])
+def test_publication_actor_must_reference_its_frozen_request(
+    tmp_path: Path, fault: str
+) -> None:
+    log = journal.Journal(tmp_path, "o/r", 1)
+    item = result()
+    log.capture("original", item)
+    actor = {"parent": 1900, "session": "codex:private-publisher", "generation": 7}
+    attribution = log.publication_request(actor, at=AT)
+    before = log.path.read_bytes()
+    assert log.publication_request(actor, at="2026-11-11T08:00:00+00:00") == attribution
+    assert log.path.read_bytes() == before
+    private = next(
+        e
+        for e in log.read()["entries"]
+        if e["key"].startswith("unassigned-publication:")
+    )["private"]
+    assert private["publication_actor"] == actor
+    for row in log.status():
+        log.prepare(row["id"], key="prepare:" + row["id"], at=AT)
+    assert "private-publisher" not in json.dumps(log.public_payloads())
+    wrong = dict(attribution)
+    if fault == "different_parent":
+        wrong["parent"] = 1901
+    elif fault == "non_request":
+        wrong["request_id"] = item["id"]
+    else:
+        wrong["session"] = "codex:private-publisher"
+    before = log.path.read_bytes()
+    with pytest.raises(PublicationError):
+        log.publication(
+            item["id"],
+            key="refused",
+            status="pending",
+            at=AT,
+            evidence=[],
+            publication_actor=wrong,
+        )
+    assert log.path.read_bytes() == before
+    log.publication(
+        item["id"],
+        key="valid",
+        status="pending",
+        at=AT,
+        evidence=[],
+        publication_actor=attribution,
+    )
+    assert (
+        next(r for r in log.status() if r["id"] == item["id"])["publication_actor"]
+        == attribution
+    )
+
+
+@pytest.mark.parametrize("writer", ["prepare", "request", "publication"])
+def test_publication_journal_rechecks_owner_after_validation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    writer: str,
+) -> None:
+    log = journal.Journal(tmp_path, "o/r", 1)
+    item = result()
+    log.capture("source", item)
+    if writer == "publication":
+        log.prepare(item["id"], key="prepared", at=AT)
+    before = log.path.read_bytes()
+    allowed = True
+    validate = log._validate
+
+    def racing(row: Any) -> Any:
+        nonlocal allowed
+        value = validate(row)
+        latest = row["entries"][-1]
+        if (
+            latest["key"] == "guarded"
+            or latest["event"] == "capture"
+            and "publication_actor" in latest["private"]
+        ):
+            allowed = False
+        return value
+
+    monkeypatch.setattr(log, "_validate", racing)
+    with pytest.raises(PublicationError, match="log_owner_mismatch"):
+        if writer == "prepare":
+            log.prepare(item["id"], key="guarded", at=AT, owner_check=lambda: allowed)
+        elif writer == "request":
+            log.publication_request(
+                {"parent": 1900, "session": "codex:publisher", "generation": 3},
+                at=AT,
+                owner_check=lambda: allowed,
+            )
+        else:
+            log.publication(
+                item["id"],
+                key="guarded",
+                status="pending",
+                at=AT,
+                evidence=[],
+                owner_check=lambda: allowed,
+            )
+    assert not allowed and log.path.read_bytes() == before
 
 
 def test_capture_replay_and_publication_are_independent_and_private(

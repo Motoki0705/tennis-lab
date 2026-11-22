@@ -21,14 +21,12 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 )
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
-    ReviewEnv,
     evidence_number,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_parent_session import (
     single_review_env as single_review_env,
 )
-from tests.e2e.agents_ops.test_review_recovery import inject_lost_response
 from tests.support.agents_ops.decision_logs import graph
 
 C = importlib.import_module("decision_logs.capture")
@@ -186,7 +184,14 @@ def test_worker_planning_judgement_continuation_and_explicit_verification(
 
 
 @pytest.mark.parametrize(
-    "failure", ["input", "runner_rejection", "runtime_failure", "final_missing"]
+    "failure",
+    [
+        "input",
+        "runner_rejection",
+        "runtime_failure",
+        "final_missing",
+        "declaration_missing",
+    ],
 )
 def test_failures_never_become_success_or_parent_acceptance(
     reserved: ParentEnv, failure: str
@@ -198,8 +203,11 @@ def test_failures_never_become_success_or_parent_acceptance(
         )
         expected = 2
     elif failure == "final_missing":
-        response = run(p, MANUAL_PLANNING_FINAL="")
-        expected = 0
+        response = run(p, ok=False, MANUAL_PLANNING_FINAL="")
+        expected = 2
+    elif failure == "declaration_missing":
+        response = run(p, ok=False, MANUAL_FINAL_SEQUENCE=json.dumps(["成果の報告。"]))
+        expected = 2
     else:
         response = run(
             p,
@@ -220,6 +228,16 @@ def test_failures_never_become_success_or_parent_acceptance(
         "partial",
         "unknown",
     }
+    if failure in {"final_missing", "declaration_missing"}:
+        outcome = json.loads(response.stdout)
+        assert outcome["runner_summary"]["exit_code"] == 0
+        assert outcome["followup"]["state"] == "error"
+        assert results[-1]["data"]["status"] == "failure"
+        waited = manual(p, "wait-worker", "--child", "10", "--timeout", "5", ok=False)
+        assert waited.returncode == 2
+        waited_outcome = json.loads(waited.stdout)
+        assert waited_outcome["wait_state"] == "followup_error"
+        assert waited_outcome["followup"] == outcome["followup"]
     if failure == "final_missing":
         assert not any(r["data"]["status"] == "success" for r in results)
         assert any(
@@ -227,6 +245,8 @@ def test_failures_never_become_success_or_parent_acceptance(
             == {"status": "unavailable", "reason": "missing_final"}
             for r in results
         )
+    elif failure == "declaration_missing":
+        assert any(r["data"]["final_report"]["status"] == "observed" for r in results)
     assert not any(
         r["kind"] == "result" and r["data"]["observer"] == "parent_verification"
         for r in rows
@@ -240,7 +260,7 @@ def test_failures_never_become_success_or_parent_acceptance(
         "unknown"
         if failure == "runner_rejection"
         else "ended"
-        if failure in {"runtime_failure", "final_missing"}
+        if failure in {"runtime_failure", "final_missing", "declaration_missing"}
         else "rejected_before_start"
     )
     assert all(
@@ -303,93 +323,6 @@ def test_note_reference_stop_resume_handoff_and_release_are_captured(
     assert all(r["acceptance"]["state"] == "unverified" for r in exits)
 
 
-def test_review_execution_publication_reuse_and_explicit_receipt(
-    single_review_env: ReviewEnv,
-) -> None:
-    r = single_review_env
-    before = captured(state_dir(r.p))
-    requested = sourced(before, "parent.review-request")[-1]
-    decision = json.loads(
-        r.p.cli(
-            "decide",
-            "--spec",
-            r.p.spec(
-                {
-                    "inputs": [requested["id"]],
-                    "evaluation": "investigate",
-                    "reason": "Review the fixed targets before accepting the result",
-                    "next_actions": [
-                        {
-                            "operation": "review",
-                            "summary": "Review fixed PRs",
-                            "actor": "external",
-                            "target": "PR 100",
-                            "instruction": "Use the fixed request",
-                            "conditions": "Pinned targets",
-                            "expected_result": "A review result",
-                        }
-                    ],
-                }
-            ),
-        ).stdout
-    )
-    r.p.cli(
-        "review-request",
-        "--run-id",
-        r.request["review_run_id"],
-        "--instruction-file",
-        r.p.note("固定した要求でreviewを実行する。"),
-        "--decision-id",
-        decision["decision_id"],
-    )
-    r.run()
-    initial = captured(state_dir(r.p))
-    linked = {
-        v["id"]
-        for v in initial
-        if v["kind"] == "action" and v["data"]["decision_id"] == decision["decision_id"]
-    }
-    assert linked and all(
-        v["data"]["action_id"] in linked for v in sourced(initial, "review.run")
-    )
-    raw = [
-        v
-        for v in sourced(initial, "review.run")
-        if "review.result.json:" in v["data"]["summary"]
-    ][-1]
-    assert raw["data"]["status"] == "success"
-    assert any(
-        "status=published" in v["data"]["summary"]
-        for v in sourced(initial, "review.run")
-    )
-    r.run()
-    rows = captured(state_dir(r.p))
-    roots = [
-        v["data"]["operation"]
-        for v in rows
-        if v["kind"] == "action" and v["data"]["previous_action_id"] is None
-    ]
-    assert roots.count("fetch") == 1
-    assert len(r.calls()) == 1
-    assert all(
-        s["parent_confirmation"] == "unrecorded" for s in graph.states(rows).values()
-    )
-    r.p.cli(
-        "review-state",
-        "--run-id",
-        r.request["review_run_id"],
-        "--state",
-        "result_received",
-        "--evidence-file",
-        r.p.note("レビューを受領した。"),
-    )
-    rows = captured(state_dir(r.p))
-    received = sourced(rows, "parent.review-state")[-1]
-    assert received["data"]["observer"] == "parent_verification"
-    assert received["data"]["verifies"]
-    assert sourced(rows, "parent.review-request")
-
-
 @pytest.mark.parametrize("exit_code", [0, 17])
 @pytest.mark.parametrize("failure_mode", ["journal", "outbox_lock"])
 def test_journal_fault_never_changes_worker_exit_or_launches_a_retry(
@@ -424,7 +357,8 @@ capture_module.locked = broken_outbox_lock
         worker_tests,
         "ENTRY",
         worker_tests.ENTRY.replace(
-            "from parent.cli import main", injection + "\nfrom parent.cli import main"
+            "from parent.cli_impl import main",
+            injection + "\nfrom parent.cli_impl import main",
         ),
     )
     p = reserved
@@ -489,7 +423,8 @@ Journal.read = broken_journal_read
         worker_tests,
         "ENTRY",
         worker_tests.ENTRY.replace(
-            "from parent.cli import main", injection + "\nfrom parent.cli import main"
+            "from parent.cli_impl import main",
+            injection + "\nfrom parent.cli_impl import main",
         ),
     )
     response = run(p, "--decision-id", selected["decision_id"])
@@ -521,7 +456,8 @@ capture_module.locked = broken_lock
         worker_tests,
         "ENTRY",
         worker_tests.ENTRY.replace(
-            "from parent.cli import main", injection + "\nfrom parent.cli import main"
+            "from parent.cli_impl import main",
+            injection + "\nfrom parent.cli_impl import main",
         ),
     )
     response = run(reserved, "--decision-id", "invalid", ok=False)
@@ -529,56 +465,3 @@ capture_module.locked = broken_lock
     assert not (reserved.root / "runner-calls.jsonl").exists()
     view = json.loads(reserved.cli("decision-log-status", ok=False).stdout)
     assert view["status"] == "incomplete" and view["failures"]
-
-
-def test_review_publication_failure_keeps_observed_result_and_new_run_predecessor(
-    single_review_env: ReviewEnv,
-) -> None:
-    r = single_review_env
-    inject_lost_response(r, target="repos/o/r/issues/100/comments", method="POST")
-    failed = json.loads(r.run(ok=False).stdout)
-    assert failed["publication"] == "publication_failed"
-    rows = captured(state_dir(r.p))
-    assert any(
-        v["data"]["status"] == "success"
-        and "review.result.json:" in v["data"]["summary"]
-        for v in sourced(rows, "review.run")
-    )
-    assert any(
-        "publication_failed" in v["data"]["summary"]
-        for v in sourced(rows, "review.run")
-    )
-    assert json.loads(r.run(ok=False).stdout)["reused"]
-    assert len(r.calls()) == 1
-    manifest = json.loads(
-        r.p.cli(
-            "review-prepare",
-            *r.p.review_flags(),
-            "--prs",
-            "100",
-            "--reason-file",
-            r.p.note("公開済みの有効結果が得られず、新規レビューが必要。"),
-        ).stdout
-    )
-    request = json.loads(
-        r.p.cli(
-            "review-request",
-            "--run-id",
-            manifest["review_run_id"],
-            "--instruction-file",
-            r.p.note("前runの取得結果を引き継いで確認する。"),
-        ).stdout
-    )
-    r.request_path.write_text(json.dumps(request))
-    r.run()
-    rows = captured(state_dir(r.p))
-    exceptions = [
-        v
-        for v in sourced(rows, "review.run")
-        if "exception=True" in v["data"]["summary"]
-    ]
-    assert exceptions and "previous_review_keys=['" in exceptions[-1]["data"]["summary"]
-    assert len(r.calls()) == 2
-    assert all(
-        s["parent_confirmation"] == "unrecorded" for s in graph.states(rows).values()
-    )

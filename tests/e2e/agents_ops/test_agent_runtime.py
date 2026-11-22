@@ -15,6 +15,15 @@ from typing import Any
 
 import pytest
 
+from tests.support.agents_ops.model_pins import (
+    OLD_ASTRA,
+    OLD_SOL,
+    REVIEW_FIXED_MODEL,
+    WORKER_ALTERNATE_MODEL,
+    WORKER_DEFAULT_MODEL,
+    previous_config,
+)
+
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / ".agents/ops/lib/agent_exec.sh"
 CONFIG = ROOT / ".agents/ops/lib/agents.conf"
@@ -146,6 +155,170 @@ class Harness:
 @pytest.fixture
 def h(tmp_path: Path) -> Harness:
     return Harness(tmp_path)
+
+
+@pytest.mark.parametrize("legacy_default", [False, True])
+def test_repair_resumes_same_model_session_then_returns_to_max(
+    h: Harness, legacy_default: bool
+) -> None:
+    model = OLD_SOL if legacy_default else WORKER_DEFAULT_MODEL
+    initial_options = (
+        ("--config-file", str(previous_config(h.root / "previous.conf")))
+        if legacy_default
+        else ("--model", model)
+    )
+    assert h.run(extra=("--mode", "write", *initial_options)).returncode == 0
+    initial = h.result()
+    proc = h.run(
+        "repair",
+        action="resume",
+        extra=(
+            "--mode",
+            "write",
+            "--resume-from",
+            str(h.root / "initial"),
+            "--repair-id",
+            "ci-1",
+            "--repair-pr",
+            "42",
+            "--effort",
+            "high",
+            "--model",
+            model,
+        ),
+    )
+    assert proc.returncode == 0, proc.stderr
+    repaired = h.result("repair")
+    settings = repaired["contract"]["settings"]
+    assert settings["selected"]["model"] == model
+    if legacy_default:
+        assert settings["overrides"] == {"effort": "high"}
+        assert settings["selection_sources"]["model"] == "CODEX_MODEL"
+        assert settings["model_continuation"] == "CODEX_CONTINUATION_MODELS"
+    assert repaired["runtime"]["session_id"] == initial["runtime"]["session_id"]
+    assert repaired["runtime"]["effective"]["effort"]["value"] == "high"
+    assert repaired["contract"]["repair"] == {
+        "schema_version": 1,
+        "repair_id": "ci-1",
+        "pr": 42,
+    }
+    proc = h.run(
+        "normal",
+        action="resume",
+        extra=("--mode", "write", "--resume-from", str(h.root / "repair")),
+    )
+    assert proc.returncode == 0, proc.stderr
+    normal = h.result("normal")
+    assert normal["runtime"]["session_id"] == initial["runtime"]["session_id"]
+    assert normal["runtime"]["effective"]["effort"]["value"] == "max"
+    assert normal["runtime"]["effective"]["model"]["value"] == model
+    duplicate = h.run(
+        "duplicate",
+        action="resume",
+        extra=(
+            "--mode",
+            "write",
+            "--resume-from",
+            str(h.root / "normal"),
+            "--repair-id",
+            "ci-1",
+            "--repair-pr",
+            "42",
+        ),
+    )
+    assert duplicate.returncode == 2 and "already has" in duplicate.stderr
+    assert not (h.root / "duplicate").exists()
+
+
+@pytest.mark.parametrize("override", [None, OLD_ASTRA], ids=["default", "alternate"])
+def test_worker_resume_keeps_saved_model_after_pin_change(
+    h: Harness, override: str | None
+) -> None:
+    old_model = override or OLD_SOL
+    config = previous_config(h.root / "previous.conf", worker_model=old_model)
+    options = ["--mode", "write", "--config-file", str(config)]
+    if override is not None:
+        options += ["--model", override]
+    initial = h.run(extra=tuple(options))
+    assert initial.returncode == 0, initial.stderr
+    before = h.result()
+    proc = h.run(
+        "continued",
+        action="resume",
+        extra=("--mode", "write", "--resume-from", str(h.root / "initial")),
+    )
+    if old_model == OLD_ASTRA:
+        assert proc.returncode == 2 and not (h.root / "continued").exists()
+        return
+    assert proc.returncode == 0, proc.stderr
+    result = h.result("continued")
+    saved = result["contract"]["settings"]
+    assert result["runtime"]["session_id"] == before["runtime"]["session_id"]
+    assert result["runtime"]["effective"]["model"]["value"] == old_model
+    assert h.args()[h.args().index("--model") + 1] == old_model
+    assert saved["selected"]["model"] == old_model
+    assert saved["defaults"]["model"] == WORKER_DEFAULT_MODEL
+    assert saved["overrides"] == ({} if override is None else {"model": override})
+    assert (
+        saved["selection_sources"]
+        == before["contract"]["settings"]["selection_sources"]
+    )
+    assert saved["model_continuation"] == "CODEX_CONTINUATION_MODELS"
+
+
+@pytest.mark.parametrize("model", [OLD_SOL, OLD_ASTRA])
+def test_initial_worker_rejects_continuation_model(h: Harness, model: str) -> None:
+    proc = h.run(extra=("--mode", "write", "--model", model))
+    diagnostic = "continuation-only" if model == OLD_SOL else "configured Sol"
+    assert proc.returncode == 2 and diagnostic in proc.stderr
+    assert not (h.root / "initial").exists() and not (h.root / "args.txt").exists()
+
+
+def test_worker_resume_rejects_unlisted_saved_model(h: Harness) -> None:
+    config = previous_config(h.root / "unlisted.conf")
+    config.write_text(
+        config.read_text().replace(
+            f'CODEX_MODEL="{OLD_SOL}"', 'CODEX_MODEL="retired-model"'
+        )
+    )
+    assert h.run(extra=("--config-file", str(config))).returncode == 0
+    proc = h.run(
+        "rejected",
+        action="resume",
+        extra=("--resume-from", str(h.root / "initial")),
+    )
+    assert proc.returncode == 2 and "configured Sol model" in proc.stderr
+    assert not (h.root / "rejected").exists()
+
+
+@pytest.mark.parametrize(
+    "mutation", ["initial", "readonly", "model", "effort", "missing_pr", "no_marker"]
+)
+def test_repair_exception_cannot_change_other_contracts(
+    h: Harness, mutation: str
+) -> None:
+    assert h.run(extra=("--mode", "write")).returncode == 0
+    options = ["--mode", "write", "--repair-id", "ci-1", "--repair-pr", "42"]
+    action = "resume"
+    if mutation == "initial":
+        action = "run"
+    else:
+        options += ["--resume-from", str(h.root / "initial")]
+    if mutation == "readonly":
+        options[1] = "read-only"
+    elif mutation == "model":
+        options += ["--model", WORKER_ALTERNATE_MODEL]
+    elif mutation == "effort":
+        options += ["--effort", "max"]
+    elif mutation == "missing_pr":
+        options[4:6] = []
+    elif mutation == "no_marker":
+        options[2:6] = ["--effort", "high"]
+    before = (h.root / "args.txt").read_bytes()
+    proc = h.run("invalid-repair", action=action, extra=tuple(options))
+    assert proc.returncode == 2, proc.stderr
+    assert (h.root / "args.txt").read_bytes() == before
+    assert not (h.root / "invalid-repair").exists()
 
 
 @pytest.mark.parametrize("scenario", ["success", "web_search", "malformed"])
@@ -435,8 +608,8 @@ def test_unpinned_schema_reference_fails_without_fetch(
 @pytest.mark.parametrize(
     ("agent", "extra", "model", "effort"),
     [
-        ("codex", (), "gpt-6.1-sol", "max"),
-        ("codex", ("--model", "gpt-6-astra"), "gpt-6-astra", "max"),
+        ("codex", (), WORKER_DEFAULT_MODEL, "max"),
+        ("codex", ("--model", WORKER_DEFAULT_MODEL), WORKER_DEFAULT_MODEL, "max"),
         ("claude", (), "claude-opus-5-5", "xhigh"),
         ("claude", ("--effort", "high"), "claude-opus-5-5", "high"),
     ],
@@ -452,7 +625,7 @@ def test_role_pins_and_runtime_evidence(
     assert settings["selected"]["model"] == model
     assert settings["selected"]["effort"] == effort
     assert settings["defaults"]["model"] == (
-        "gpt-6.1-sol" if agent == "codex" else "claude-opus-5-5"
+        WORKER_DEFAULT_MODEL if agent == "codex" else "claude-opus-5-5"
     )
     assert settings["selection_sources"]["model"] == (
         "task" if "--model" in extra else agent.upper() + "_MODEL"
@@ -512,7 +685,7 @@ def test_resume_preserves_identity_settings_and_new_prompt(
     h: Harness, agent: str, mode: str
 ) -> None:
     extra = (
-        ("--mode", mode, "--model", "gpt-6-astra")
+        ("--mode", mode, "--model", WORKER_DEFAULT_MODEL)
         if agent == "codex"
         else ("--mode", mode)
     )
@@ -536,7 +709,7 @@ def test_resume_preserves_identity_settings_and_new_prompt(
     assert initial["runtime"]["session_id"] in h.args()
     if agent == "codex":
         assert second["runtime"]["turn_id"] != initial["runtime"]["turn_id"]
-        assert h.args()[h.args().index("--model") + 1] == "gpt-6-astra"
+        assert h.args()[h.args().index("--model") + 1] == WORKER_DEFAULT_MODEL
         if mode == "read-only":
             assert h.args().index("--sandbox") < h.args().index("resume")
     stale = h.run(
@@ -574,7 +747,7 @@ def test_resume_refuses_changed_contract_before_launch(h: Harness, change: str) 
     elif change == "mode":
         extra += ("--mode", "write")
     elif change == "model":
-        extra += ("--model", "gpt-6-astra")
+        extra += ("--model", WORKER_ALTERNATE_MODEL)
     else:
         transcript = next((h.root / "codex-home/sessions").rglob("*.jsonl"))
         with transcript.open("a") as stream:
@@ -723,7 +896,7 @@ def test_read_dirs_do_not_change_codex_profile_arguments(
     if profile == "review":
         from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
-        _, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+        _, path, _ = choice_files(h, monkeypatch, REVIEW_FIXED_MODEL, mode="fixed")
         extra += ("--review-selection-file", str(path))
     initial = h.run(extra=extra)
     assert initial.returncode == 0, initial.stderr
@@ -753,7 +926,7 @@ def test_read_dirs_do_not_change_codex_profile_arguments(
         ("--timeout", "0"),
         ("--task-id", ""),
         ("--branch", "other-branch"),
-        ("--profile", "review", "--model", "gpt-6-astra"),
+        ("--profile", "review", "--model", WORKER_ALTERNATE_MODEL),
     ],
 )
 def test_invalid_selection_does_not_launch(h: Harness, extra: tuple[str, ...]) -> None:
@@ -771,18 +944,20 @@ def test_configuration_is_literal_complete_and_validated_before_overrides(
 ) -> None:
     text = CONFIG.read_text()
     if mutation == "missing":
-        text = text.replace('CODEX_MODEL="gpt-6.1-sol"', "")
+        text = text.replace(f'CODEX_MODEL="{WORKER_DEFAULT_MODEL}"', "")
     elif mutation == "empty":
         text = text.replace('CODEX_SERVICE_TIER="default"', 'CODEX_SERVICE_TIER=""', 1)
     elif mutation == "bad_effort":
         text = text.replace('CODEX_EFFORT="max"', 'CODEX_EFFORT="invalid"', 1)
     elif mutation == "duplicate":
-        text += '\nCODEX_MODEL="gpt-6-astra"\n'
+        text += f'\nCODEX_MODEL="{WORKER_ALTERNATE_MODEL}"\n'
     else:
         text += f"\ntouch {h.root / 'shell-executed'}\n"
     config = h.root / "invalid.conf"
     config.write_text(text)
-    proc = h.run(extra=("--config-file", str(config), "--model", "gpt-6-astra"))
+    proc = h.run(
+        extra=("--config-file", str(config), "--model", WORKER_ALTERNATE_MODEL)
+    )
     assert proc.returncode == 2
     assert (
         not (h.root / "args.txt").exists() and not (h.root / "shell-executed").exists()
@@ -793,6 +968,7 @@ def test_configuration_is_literal_complete_and_validated_before_overrides(
     ("scenario", "reason", "code"),
     [
         ("malformed", "invalid_output", 1),
+        ("malformed_and_wait", "invalid_output", 1),
         ("duplicate_keys", "invalid_output", 1),
         ("missing_completion", "invalid_output", 1),
         ("different_final", "invalid_output", 1),
@@ -815,6 +991,13 @@ def test_failed_turns_preserve_evidence_and_never_claim_task_success(
     result = h.result()
     assert result["turn_end_reason"] == reason
     assert result["result"] == "failed" and result["task_success"] is None
+    if scenario == "malformed_and_wait":
+        # The runner sent this signal after a parser failure. It is cleanup,
+        # rather than a CLI signal that caused the turn to fail.
+        assert result["cli_exit_signal"] == signal.SIGTERM
+        assert result["cli_exit_code"] == -signal.SIGTERM
+    elif scenario == "exit_error":
+        assert result["cli_exit_signal"] is None
     assert (h.root / "initial/events.jsonl").exists()
     assert (h.root / "initial/stderr.log").exists()
     assert result["runtime"]["session_id"]
@@ -826,11 +1009,13 @@ def test_failed_turns_preserve_evidence_and_never_claim_task_success(
 def test_web_search_completes_and_resumes_without_losing_raw_events(
     h: Harness, profile: str | None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The fake deliberately emits searches even when disabled, to retain support
+    # for historical/unexpected CLI events without weakening output validation.
     extra: tuple[str, ...] = ("--profile", profile) if profile else ()
     if profile == "review":
         from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
-        _, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+        _, path, _ = choice_files(h, monkeypatch, REVIEW_FIXED_MODEL, mode="fixed")
         extra += ("--review-selection-file", str(path))
     proc = h.run(scenario="web_search", extra=extra)
     assert proc.returncode == 0, proc.stderr
@@ -850,6 +1035,74 @@ def test_web_search_completes_and_resumes_without_losing_raw_events(
     assert resumed["runtime"]["session_id"] == initial["runtime"]["session_id"]
     assert resumed["runtime"]["turn_id"] != initial["runtime"]["turn_id"]
     assert resumed["runtime"]["effective"]["model"]["status"] == "observed"
+    for name in ("initial", "continued"):
+        argv = json.loads((h.root / name / "invocation.json").read_text())["argv"]
+        if profile == "review":
+            assert argv[argv.index('web_search="disabled"') - 1] == "-c"
+            assert h.result(name)["contract"]["settings"]["web_search"] == "disabled"
+        else:
+            assert not any(arg.startswith("web_search=") for arg in argv)
+
+
+@pytest.mark.parametrize("web_search", [None, "cached"])
+def test_review_resume_rejects_missing_or_changed_search_contract_before_launch(
+    h: Harness, web_search: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.e2e.agents_ops.test_review_model_selection import choice_files
+
+    _, path, _ = choice_files(h, monkeypatch, REVIEW_FIXED_MODEL, mode="fixed")
+    extra = ("--profile", "review", "--review-selection-file", str(path))
+    assert h.run(extra=extra).returncode == 0
+    previous = h.result()
+    if web_search is None:
+        del previous["contract"]["settings"]["web_search"]
+    else:
+        previous["contract"]["settings"]["web_search"] = web_search
+    (h.root / "initial/result.json").write_text(json.dumps(previous))
+    (h.root / "args.txt").unlink()
+    proc = h.run(
+        "rejected",
+        action="resume",
+        extra=(*extra, "--resume-from", str(h.root / "initial")),
+    )
+    assert proc.returncode == 2 and "saved contract" in proc.stderr
+    assert not (h.root / "rejected").exists() and not (h.root / "args.txt").exists()
+
+
+@pytest.mark.parametrize(
+    ("agent", "scenario", "signum"),
+    [
+        ("codex", "signal_before_session", signal.SIGTERM),
+        ("codex", "web_search_signal", signal.SIGTERM),
+        ("codex", "runtime_error_signal", signal.SIGTERM),
+        ("codex", "signal_after_completion", signal.SIGKILL),
+        ("claude", "schema_retries_signal", signal.SIGTERM),
+    ],
+)
+def test_cli_signal_takes_precedence_over_incomplete_failed_or_completed_output(
+    h: Harness, output_schema: Path, agent: str, scenario: str, signum: int
+) -> None:
+    out = h.root / "accepted.json"
+    proc = h.run(
+        agent=agent,
+        scenario=scenario,
+        extra=("--json-schema", str(output_schema), "--out", str(out)),
+    )
+    assert proc.returncode == 128 + signum, proc.stderr
+    result = h.result()
+    assert result["result"] == "failed" and result["task_success"] is None
+    assert result["turn_end_reason"] == "cli_signal"
+    assert result["cli_exit_code"] == -signum
+    assert result["cli_exit_signal"] == signum
+    assert result["cleanup_complete"] is True
+    assert f"signal {signum}" in result["error"]
+    assert not out.exists()
+    assert json.loads(proc.stdout)["turn_end_reason"] == "cli_signal"
+    raw = (h.root / "initial/events.jsonl").read_bytes()
+    if scenario == "web_search_signal":
+        assert b'"type":"web_search"' in raw
+    elif scenario == "signal_before_session":
+        assert raw == b"" and result["runtime"]["session_id"] is None
 
 
 @pytest.mark.parametrize("agent", ["codex", "claude"])
@@ -916,11 +1169,36 @@ def test_timeout_reaps_uncooperative_descendants(h: Harness, scenario: str) -> N
     proc = h.run(scenario=scenario, extra=("--timeout", "1"))
     assert proc.returncode == 124, proc.stderr
     assert h.result()["turn_end_reason"] == "timeout"
+    assert h.result()["cli_exit_signal"] == signal.SIGKILL
     assert not process_alive(int((h.root / "child.pid").read_text()))
 
 
-@pytest.mark.parametrize("operation", ["stop", "signal"])
+@pytest.mark.parametrize("operation", ["stop", "signal", "repeated-signal"])
 def test_stop_and_signal_recovery(h: Harness, operation: str) -> None:
+    previous_pythonpath = h.env.get("PYTHONPATH")
+    repeated = h.root / "second-stop-signal"
+    if operation == "repeated-signal":
+        # Keep the real entry, capture and process-group cleanup. A profile
+        # hook schedules another ordinary stop exactly after capture returns,
+        # before the caller can persist the terminal result.
+        hook = h.root / "stop-hook"
+        hook.mkdir()
+        (hook / "sitecustomize.py").write_text(
+            "import os, signal, sys\n"
+            "from pathlib import Path\n"
+            "def stop_after_capture(frame, event, value):\n"
+            "    if event == 'return' and frame.f_code.co_name == 'capture' and "
+            "Path(frame.f_code.co_filename).name in "
+            "{'agent_runtime.py', 'agent_runtime_impl.py'}:\n"
+            "        sys.setprofile(None)\n"
+            f"        Path({str(repeated)!r}).touch()\n"
+            "        os.kill(os.getpid(), signal.SIGTERM)\n"
+            "if Path(sys.argv[0]).name == 'agent_runtime.py':\n"
+            "    sys.setprofile(stop_after_capture)\n"
+        )
+        h.env["PYTHONPATH"] = str(hook) + (
+            os.pathsep + previous_pythonpath if previous_pythonpath else ""
+        )
     proc = subprocess.Popen(
         h.cmd(extra=("--timeout", "15")),
         env={**h.env, "FAKE_SCENARIO": "hang"},
@@ -933,15 +1211,22 @@ def test_stop_and_signal_recovery(h: Harness, operation: str) -> None:
         running = h.query("status")
         assert running.returncode == 0
         assert json.loads(running.stdout)["agent_alive"]
-        if operation == "signal":
+        if operation in {"signal", "repeated-signal"}:
             proc.send_signal(signal.SIGINT)
         else:
             stopped = h.query("stop")
             assert stopped.returncode == 0, stopped.stderr
         proc.communicate(timeout=10)
+        if operation == "repeated-signal":
+            assert repeated.exists(), "the post-capture stop signal was not injected"
+            if previous_pythonpath is None:
+                h.env.pop("PYTHONPATH")
+            else:
+                h.env["PYTHONPATH"] = previous_pythonpath
         assert not process_alive(child)
         result = h.result()
         assert result["turn_end_reason"] == "stopped" and result["result"] == "failed"
+        assert result["cli_exit_signal"] == signal.SIGKILL
         assert result["task_success"] is None
         resumed = h.run(
             "continued",
@@ -1311,7 +1596,7 @@ def test_cleanup_confirmation_cannot_override_live_processes(
     h: Harness, lost_turn: dict[str, Any]
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     sleeper = subprocess.Popen(
         [sys.executable, "-c", "import time;time.sleep(20)"], start_new_session=True
     )
@@ -1454,7 +1739,7 @@ def test_missing_executable_saves_a_failed_attempt(
     h: Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     monkeypatch.setattr(runtime, "enable_child_subreaper", lambda: None)
     monkeypatch.setattr(
         runtime, "command", lambda *args: [str(h.root / "missing-executable")]
@@ -1489,7 +1774,7 @@ def test_existing_or_reused_process_identity_prevents_unsafe_actions(
     h: Harness, operation: str
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     assert h.run().returncode == 0
     sleeper = subprocess.Popen(
         [sys.executable, "-c", "import time;time.sleep(20)"], start_new_session=True

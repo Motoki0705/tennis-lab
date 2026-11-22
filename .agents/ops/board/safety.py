@@ -53,7 +53,14 @@ def public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> No
     secrets = [row["session"].partition(":")[2] for row in parents.values()]
     secrets.extend(
         env.get(key, "")
-        for key in ("CLAUDE_CODE_SESSION_ID", "CODEX_SESSION_ID", "CODEX_THREAD_ID")
+        for key in (
+            "CLAUDE_CODE_SESSION_ID",
+            "CODEX_SESSION_ID",
+            "CODEX_THREAD_ID",
+            "ANTIGRAVITY_CONVERSATION_ID",
+            "ANTIGRAVITY_TRAJECTORY_ID",
+            "ANTIGRAVITY_CSRF_TOKEN",
+        )
     )
 
     def check(item: Any) -> None:

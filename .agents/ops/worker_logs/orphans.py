@@ -11,6 +11,7 @@ import hashlib
 import re
 import subprocess
 from collections.abc import Callable
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, cast
 
@@ -28,7 +29,7 @@ from .reconciliation import continue_workers
 from .safety import Guard
 from .sources import location
 
-BRANCH = re.compile(r"worker-log/(d-[a-f0-9]{32})/([0-9]{4,})")
+BRANCH = re.compile(r"worker-log(?:-batch)?/(d-[a-f0-9]{32})/([0-9]{4,})")
 TRANSPORT_ERRORS = {
     "github_failed",
     "github_invalid_response",
@@ -187,40 +188,147 @@ class OrphanRecovery:
             and changes.get("total_commits") == 1,
             "unexpected_commit_parent",
         )
+        from .batches import MAX_TURNS
+
+        is_batch = branch.startswith("worker-log-batch/")
         files_list = changes.get("files")
-        require(isinstance(files_list, list) and len(files_list) == 3, "unsafe_diff")
-        files_list = cast(list[dict[str, Any]], files_list)
+        require(
+            isinstance(files_list, list)
+            and 3 <= len(files_list) <= 3 * MAX_TURNS
+            and (is_batch or len(files_list) == 3),
+            "unsafe_diff",
+        )
         names = [r.get("filename") for r in files_list if isinstance(r, dict)]
         require(
-            len(names) == 3 and all(isinstance(n, str) for n in names), "unsafe_diff"
+            len(names) == len(files_list) and all(isinstance(n, str) for n in names),
+            "unsafe_diff",
         )
-        directory = str(names[0]).rsplit("/", 1)[0]
-        scope = re.fullmatch(
-            rf"\.agents/logs/parents/parent-([1-9][0-9]*)/child-([1-9][0-9]*)/{key}/"
-            rf"{sequence:04d}-(initial|resume)",
-            directory,
+        dirs = sorted({n.rsplit("/", 1)[0] for n in names})
+        turns = {}
+        parent = issue = None
+        for directory in dirs:
+            scope = re.fullmatch(
+                rf"\.agents/logs/parents/parent-([1-9][0-9]*)/child-([1-9][0-9]*)/{key}/([0-9]{{4,}})-(initial|resume)",
+                directory,
+            )
+            if scope is None:
+                raise PublicationError("publication_identity_changed")
+            n = int(scope[3])
+            require(
+                n > 0 and scope[3] == f"{n:04d}" and n not in turns,
+                "publication_identity_changed",
+            )
+            if parent is None:
+                parent, issue = int(scope[1]), int(scope[2])
+            require(
+                (parent, issue) == (int(scope[1]), int(scope[2])),
+                "publication_identity_changed",
+            )
+            turns[n] = directory
+        if parent is None or issue is None:
+            raise PublicationError("unsafe_diff")
+        require(
+            min(turns) == sequence and (len(turns) > 1) == is_batch,
+            "publication_identity_changed",
         )
-        if scope is None:
-            raise PublicationError("publication_identity_changed")
-        original = location(
-            self.state_dir, self.repo, int(scope[1]), int(scope[2]), key[2:], sequence
-        )
-        safe_private(original)
-        if original.exists() or original.is_symlink():
+        expected = {d + "/" + name for d in dirs for name in schema.FILENAMES}
+        schema.pr_additions(files_list, expected)
+        originals = [
+            location(self.state_dir, self.repo, int(parent), int(issue), key[2:], n)
+            for n in sorted(turns)
+        ]
+        for original in originals:
+            safe_private(original)
+        if any(path.exists() for path in originals):
+            require(all(path.exists() for path in originals), "journal_unavailable")
+            if is_batch:
+                manifest = originals[0].parent.parent / "batches" / f"{sequence}.json"
+                safe_private(manifest)
+                require(
+                    manifest.is_file()
+                    and journal.read(manifest).get("members") == sorted(turns),
+                    "journal_unavailable",
+                )
             return {
                 "source": {
-                    "parent": int(scope[1]),
-                    "issue": int(scope[2]),
+                    "parent": parent,
+                    "issue": issue,
                     "public_key": key[2:],
                     "sequence": sequence,
                 },
+                "members": sorted(turns),
                 "journal_present": True,
             }
-        expected = {directory + "/" + n for n in schema.FILENAMES}
-        schema.pr_additions(files_list, expected)
+        directory = str(Path(dirs[0]).parent) if is_batch else dirs[0]
+        files = {}
+        for n in sorted(turns):
+            turn_files = self.read_turn(commit["tree"]["sha"], turns[n], key, n)
+            for name, raw in turn_files.items():
+                files[str(Path(turns[n], name).relative_to(directory))] = raw
+        source = {
+            "repo": self.repo,
+            "parent": parent,
+            "issue": issue,
+            "public_key": key[2:],
+            "sequence": sequence,
+        }
+        expected_body = (
+            f"<!-- worker-log:v1 key={key} turn={sequence} head={head} -->\n\n"
+            f"Refs #{parent}, #{issue}\n\n"
+            "検査済みworkerログ3ファイルの追加。専用入口が固定HEADとmainへの保存を照合する。\n"
+        )
+        if is_batch:
+            expected_body = f"<!-- worker-log:v2 key={key} turns={','.join(map(str, sorted(turns)))} head={head} -->\n\nRefs #{parent}, #{issue}\n"
+        Guard().check([expected_body, pr.get("body"), branch, directory])
+        row = {
+            "source": source,
+            "head": head,
+            "base": base,
+            "branch": branch,
+            "directory": directory,
+            "pr_body": expected_body,
+            "pr_number": number,
+            "files": {n: raw.decode("utf-8") for n, raw in files.items()},
+        }
+        schema.identity(pr, row, self.repo)
+        require(pr.get("changed_files") == len(expected), "unsafe_diff")
+        schema.pr_additions(self.github.files(number), expected)
+        row["members"] = sorted(turns)
+        if any(path.exists() for path in originals):
+            row["journal_present"] = True
+            return row
+        main = self.main()
+        ancestry = self.request(f"compare/{base}...{main}?per_page=1")
+        require(
+            isinstance(ancestry, dict)
+            and ancestry.get("merge_base_commit", {}).get("sha") == base,
+            "base_not_ancestor",
+        )
+        main_commit = self.commit(main)
+        present = any(
+            self.entry(main_commit["tree"]["sha"], d) is not None for d in dirs
+        )
+        if confirmed and pr.get("merged") is True:
+            require(
+                confirmed.get("head") == head
+                and confirmed.get("files") == row["files"],
+                "prepared_content_changed",
+            )
+            self.confirm(row, pr)
+        else:
+            require(not present, "record_already_exists")
+            require(
+                pr.get("state") == "open" and pr.get("merged") is False,
+                "closed_unmerged",
+            )
+        return row
+
+    def read_turn(
+        self, tree: str, directory: str, key: str, sequence: int
+    ) -> dict[str, bytes]:
         files = {}
         for name in sorted(schema.FILENAMES):
-            entry = self.entry(commit["tree"]["sha"], directory + "/" + name)
+            entry = self.entry(tree, directory + "/" + name)
             if entry is None:
                 raise PublicationError("unsafe_file_type")
             require(
@@ -258,61 +366,7 @@ class OrphanRecovery:
             and schema.path(meta) == directory,
             "publication_identity_changed",
         )
-        source = {
-            "repo": self.repo,
-            "parent": meta["parent"],
-            "issue": meta["issue"],
-            "public_key": key[2:],
-            "sequence": sequence,
-        }
-        expected_body = (
-            f"<!-- worker-log:v1 key={key} turn={sequence} head={head} -->\n\n"
-            f"Refs #{meta['parent']}, #{meta['issue']}\n\n"
-            "検査済みworkerログ3ファイルの追加。専用入口が固定HEADとmainへの保存を照合する。\n"
-        )
-        Guard().check([expected_body, pr.get("body"), branch, directory])
-        row = {
-            "source": source,
-            "head": head,
-            "base": base,
-            "branch": branch,
-            "directory": directory,
-            "pr_body": expected_body,
-            "pr_number": number,
-            "files": {n: raw.decode("utf-8") for n, raw in files.items()},
-        }
-        schema.identity(pr, row, self.repo)
-        require(pr.get("changed_files") == 3, "unsafe_diff")
-        schema.pr_additions(self.github.files(number), expected)
-        path = location(
-            self.state_dir, self.repo, meta["parent"], meta["issue"], key[2:], sequence
-        )
-        if path.exists() or path.is_symlink():
-            row["journal_present"] = True
-            return row
-        main = self.main()
-        ancestry = self.request(f"compare/{base}...{main}?per_page=1")
-        require(
-            isinstance(ancestry, dict)
-            and ancestry.get("merge_base_commit", {}).get("sha") == base,
-            "base_not_ancestor",
-        )
-        main_commit = self.commit(main)
-        present = self.entry(main_commit["tree"]["sha"], directory)
-        if confirmed and pr.get("merged") is True:
-            require(
-                confirmed.get("head") == head
-                and confirmed.get("files") == row["files"],
-                "prepared_content_changed",
-            )
-            self.confirm(row, pr)
-        else:
-            require(present is None, "record_already_exists")
-            require(
-                pr.get("state") == "open" and pr.get("merged") is False,
-                "closed_unmerged",
-            )
-        return row
+        return files
 
     def confirm(self, row: dict[str, Any], pr: dict[str, Any]) -> None:
         schema.identity(pr, row, self.repo)
@@ -439,7 +493,9 @@ class OrphanRecovery:
                     s["parent"],
                     state_dir=self.state_dir,
                     dry_run=dry_run,
-                    only={(s["issue"], "d-" + s["public_key"], s["sequence"])},
+                    only={
+                        (s["issue"], "d-" + s["public_key"], n) for n in row["members"]
+                    },
                     owner_check=owner_check,
                 )
                 return {
@@ -479,8 +535,12 @@ class OrphanRecovery:
                     s["sequence"],
                 )
                 safe_private(original)
-                with journal.locked(original):
-                    require(not original.exists(), "source_changed")
+                with ExitStack() as locks:
+                    for n in row["members"]:
+                        target = original.parent.parent / str(n) / "journal.json"
+                        safe_private(target)
+                        locks.enter_context(journal.locked(target))
+                        require(not target.exists(), "source_changed")
                     fresh = self.github.get(number)
                     schema.identity(fresh, row, self.repo)
                     require(fresh.get("state") == "open", "closed_unmerged")

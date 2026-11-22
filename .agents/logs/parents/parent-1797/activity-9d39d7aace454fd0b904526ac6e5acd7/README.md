@@ -8,7 +8,7 @@
 
 [上の階層](../README.md) · [親一覧](../../README.md)
 
-4 記録 / 判断 0 件。失敗・拒否の結果: 1 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。
+4 記録 / 判断 0 件。失敗・拒否の結果: 1 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 1 件（結果イベント単位）。
 
 直近の観測（受入の判定とは別）: [結果 672](README.md#record-d0c35b39d8ab4fb9a69ed34b8f851ac7) failure / machine: parent.delegate: post-start failure / ValueError / details in private evidence<br>[行動 673](README.md#record-33ff3f4b6b9945d19dab8abbe6c48e29) 記録 / 終了（成果受入とは別）
 

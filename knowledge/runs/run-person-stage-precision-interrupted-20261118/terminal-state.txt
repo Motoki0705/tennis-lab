@@ -1,0 +1,6 @@
+state=failed
+resource=all
+slot=all
+pid=2339212
+pgid=2339212
+wait=signal

@@ -61,6 +61,7 @@ class RenameRace:
             stop=stop,
             stop_moved=lambda root, original, stamp: self.moved_stops.append(root),
             finish_legacy=lambda *args, **kwargs: None,
+            confirm_references=lambda *args, **kwargs: None,
         )
         self.cleaner = lab.module.Cleaner(
             lab.repo, directory=lab.state, clock=lambda: lab.now, stopper=stopper
@@ -120,7 +121,7 @@ def test_quarantine_recovery_keeps_occupied_origin_and_retries_before_any_stop(
     "point",
     ["registry", "registry_missing_ancestor", "discovery", "capture_interruption"],
 )
-def test_parent_exit_during_stop_preparation_keeps_new_orphan_failure_on_retry(
+def test_parent_exit_only_gates_observed_children_and_retries_interrupted_capture(
     lab: Lab, monkeypatch: pytest.MonkeyPatch, point: str
 ) -> None:
     path = lab.add()
@@ -163,28 +164,13 @@ def test_parent_exit_during_stop_preparation_keeps_new_orphan_failure_on_retry(
     if point == "capture_interruption":
         with pytest.raises(Interruption):
             lab.run(cleanup=True)
-    for _ in range(2):
-        code, report = lab.cleaner().run(cleanup=True)
-        assert code == 1
-        assert report["results"][0]["deleted"] is False
-        assert path.is_dir()
-        assert 103 in forest.nodes
-        assert not any(pid == 103 for pid, _ in forest.signals)
-    forest.nodes.pop(103)
-    if point == "capture_interruption":
-        # An incomplete root capture is insufficient proof even after this
-        # particular orphan ends; retries must not silently reset the baseline.
-        assert lab.cleaner().run(cleanup=True)[0] == 1
-        assert path.is_dir()
+    lab.run(cleanup=True)
+    assert not path.exists() and 103 in forest.nodes
+    assert not any(pid == 103 for pid, _ in forest.signals)
+    if point in {"registry", "registry_missing_ancestor"}:
+        assert 102 not in forest.nodes  # Observed edge is retained after parent exit.
     else:
-        if point == "discovery":
-            # This child was already in the first baseline. Its vanished
-            # parent's cwd was never observed, so it must not be guessed safe.
-            assert 102 in forest.nodes
-            assert lab.cleaner().run(cleanup=True)[0] == 1
-            forest.nodes.pop(102)
-        lab.run(cleanup=True)
-        assert not path.exists()
+        assert 102 in forest.nodes  # No reference/root was observed; no global guess.
 
 
 def test_empty_target_scope_preserves_an_unrelated_new_orphan(
@@ -212,6 +198,7 @@ class SnapshotRace:
         path: Path,
         point: str,
         child_first: bool = False,
+        order: list[int] | None = None,
     ) -> None:
         self.point = point
         self.fired = False
@@ -227,7 +214,7 @@ class SnapshotRace:
         self.original = copy.deepcopy(self.forest.nodes)
         if point == "new_child":
             self.forest.nodes.pop(102)
-        order = [1, 900, 102, 101] if child_first else [1, 900, 101, 102]
+        order = order or ([1, 900, 102, 101] if child_first else [1, 900, 101, 102])
         read_text, stat, iterdir, readlink = (
             Path.read_text,
             Path.stat,
@@ -298,7 +285,9 @@ class SnapshotRace:
                 self.exit()
             if pid not in self.forest.nodes:
                 raise FileNotFoundError(str(pid))
-            return SimpleNamespace(st_uid=os.getuid())
+            return SimpleNamespace(
+                st_uid=self.forest.nodes[pid].get("uid", os.getuid())
+            )
 
         def cwd(candidate: Any, *args: Any, **kwargs: Any) -> Any:
             pid = proc_pid(candidate, "cwd")
@@ -360,7 +349,7 @@ class SnapshotRace:
         ("identity_permission", False),
     ],
 )
-def test_snapshot_exit_boundaries_never_leave_a_live_child_after_deletion(
+def test_snapshot_exit_preserves_observed_children_without_an_orphan_absence_gate(
     lab: Lab, monkeypatch: pytest.MonkeyPatch, point: str, child_first: bool
 ) -> None:
     path = lab.add()
@@ -381,20 +370,9 @@ def test_snapshot_exit_boundaries_never_leave_a_live_child_after_deletion(
         assert code == 0 and not path.exists()
         assert (102, race.forest.proc.signal.SIGKILL) in race.forest.signals
     else:
-        assert code == 1 and not report["results"][0]["deleted"]
-        assert path.is_dir() and 102 in race.forest.nodes
-        assert not race.forest.signals, (
-            "unconfirmed provenance must never select a process by guess"
-        )
-        proof = lab.cleaner().stopper.native_proof(path)
-        saved = race.forest.proc.read_stop_proof(proof)
-        assert race.original[101]["identity"] in saved["unconfirmed"]
-        assert lab.cleaner().run(cleanup=True)[0] == 1
-        race.forest.nodes.pop(102)
-        if point == "reuse":
-            race.forest.nodes.pop(101)
-        lab.run(cleanup=True)
-        assert not path.exists()
+        assert code == 0 and report["results"][0]["deleted"]
+        assert not path.exists() and 102 in race.forest.nodes
+        assert not race.forest.signals  # No target reference or trusted edge remains.
     assert 900 in race.forest.nodes
 
 
@@ -408,6 +386,30 @@ def test_snapshot_exit_of_other_worktree_does_not_block_cleanup(
     assert race.fired and not path.exists()
     assert 102 in race.forest.nodes and 900 in race.forest.nodes
     assert not race.forest.signals
+
+
+@pytest.mark.parametrize("state", ["Z", "X"])
+def test_snapshot_ignores_other_worktree_zombies_without_reading_their_cwd(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, state: str
+) -> None:
+    path = lab.add()
+    race = SnapshotRace(lab, monkeypatch, path, "already_dead")
+    for pid in (101, 102):
+        race.forest.nodes[pid].update(state=state, cwd="/tmp/other-worktree")
+    readlink = os.readlink
+
+    def cwd(candidate: Any, *args: Any, **kwargs: Any) -> Any:
+        if str(candidate) in {"/proc/101/cwd", "/proc/102/cwd"}:
+            pytest.fail("an already terminated zombie has no cwd to classify")
+        return readlink(candidate, *args, **kwargs)
+
+    monkeypatch.setattr(os, "readlink", cwd)
+    assert set(lab.real_snapshot()) == {1, 900}
+    monkeypatch.setattr(os, "readlink", readlink)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert not path.exists() and not race.forest.signals
+    assert {101, 102} <= race.forest.nodes.keys()
 
 
 @pytest.mark.parametrize("published", [False, True])
@@ -471,6 +473,11 @@ def test_migration_seals_old_records_without_reusing_unproven_fallback_age(
     old = state["records"].pop(first["id"])
     ident = old["admin_identity"]
     ident.pop("token")
+    ident.pop("filesystem_id")
+    ident["device"] = 42
+    old["directory_identity"].pop("filesystem_id")
+    old["directory_identity"]["device"] = 42
+    old["directory_identity"].pop("birth_time_ns")
     legacy_id = hashlib.sha256(
         f"{old['admin']}:{ident['device']}:{ident['inode']}:{ident['birth_time_ns']}".encode()
     ).hexdigest()
@@ -480,8 +487,10 @@ def test_migration_seals_old_records_without_reusing_unproven_fallback_age(
     lab.now += LIFETIME
     report = lab.run(cleanup=True)
     current = report["entries"][0]
-    assert current["id"] != legacy_id
-    assert current["identity_migration"] == "unsealed_generation"
+    assert (current["id"] == legacy_id) is has_birth
+    assert report["filesystem_migrations"][0]["result"] == (
+        "migrated" if has_birth else "retired"
+    )
     assert current["selected"] is has_birth
     assert path.exists() is not has_birth
     assert current["created_at"] == (

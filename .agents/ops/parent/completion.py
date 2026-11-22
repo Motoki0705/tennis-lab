@@ -23,17 +23,48 @@ def snapshot(body: str) -> dict[str, str]:
     }
 
 
-def _criteria(section: str) -> list[str]:
-    criteria: list[str] = []
+def _criteria(section: str) -> list[dict[str, str]]:
+    criteria: list[dict[str, str]] = []
+    group: str | None = None
+    groups: dict[str, int] = {}
     for line in visible_lines(section):
+        heading = re.fullmatch(
+            r"### (I-[1-9][0-9]*-[a-z0-9][a-z0-9-]{0,63})[ \t]*", line
+        )
+        if heading:
+            if criteria and group is None:
+                raise ValueError(
+                    "acceptance snapshot mixes grouped and ungrouped criteria"
+                )
+            group = heading[1]
+            if group in groups:
+                raise ValueError("acceptance snapshot repeats a candidate group")
+            groups[group] = 0
+            continue
         match = re.fullmatch(r"[-*] \[[ xX]\] (\S.*)", line)
         if match:
-            criteria.append(match[1].strip())
+            identifier = f"ac-{len(criteria) + 1}"
+            criterion = match[1].strip()
+            if group is not None:
+                groups[group] += 1
+                identifier = f"ac-{group}-{groups[group]}"
+                criterion = f"[{group}] {criterion}"
+            criteria.append({"id": identifier, "criterion": criterion})
         elif line.strip():
-            if not criteria:
+            # candidate_sections retains indentation within multiline criteria.
+            if not criteria or (
+                group is not None
+                and (
+                    groups[group] == 0
+                    or not line[0].isspace()
+                    or re.match(r"#{1,6}(?:\s|$)", line.lstrip())
+                )
+            ):
                 raise ValueError("acceptance snapshot is not an explicit checklist")
-            criteria[-1] += " " + line.strip()
-    if not criteria or len(set(criteria)) != len(criteria):
+            criteria[-1]["criterion"] += " " + line.strip()
+    if any(count == 0 for count in groups.values()):
+        raise ValueError("acceptance snapshot has an empty candidate group")
+    if not criteria or len({item["criterion"] for item in criteria}) != len(criteria):
         raise ValueError("acceptance snapshot has no unique identifiable criteria")
     return criteria
 
@@ -90,10 +121,7 @@ def requirements(session: ParentSession) -> dict[str, Any]:
         )
     agreement = basis["agreement"] if basis["event"] == "agreed" else basis["basis"]
     items = [{"id": "agreement", "criterion": text(agreement["acceptance"])}]
-    items.extend(
-        {"id": f"ac-{i}", "criterion": criterion}
-        for i, criterion in enumerate(criteria, 1)
-    )
+    items.extend(criteria)
     return {
         "basis_ref": digest(
             {
@@ -275,14 +303,91 @@ def record(
     return receipt
 
 
-def release(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
+def submit(
+    session: ParentSession, submission: dict[str, Any], *, managed_report: bool
+) -> dict[str, Any]:
+    """Publish a completion and consume the same acceptance input on either path."""
+    from .development import report, verify_completion
+    from .improvements import candidates
+    from .notifications import notify
+
+    finish = dict(submission)
+    evidence = finish.pop("evidence", None)
+    artifacts = finish.pop("artifacts", [])
+    resolves = finish.pop("resolves", [])
+    finish["schema_version"] = 1
+    if submission.get("schema_version") != 2 or finish.get("state") != "completed":
+        raise ValueError("combined completion requires version 2 and state=completed")
+    signature = digest(submission)
+    if not managed_report and session.row.get("status") == "ended":
+        if session.row.get("completion_submission") != signature:
+            raise ValueError("ended parent has a different completion submission")
+        return release(session, finish)
+    session.owner()
+    session.public(submission)
+    auth = authorization(session)
+    required = requirements(session)
+    validate_finish(finish, required, candidates(session), session.parent)
+    prs = verify_completion(session)
+    from .notifications import strings
+
+    urls = strings(artifacts, "artifacts", empty=True)
+    urls = list(
+        dict.fromkeys(
+            [*urls, *(f"https://github.com/{session.gh.repo}/pull/{n}" for n in prs)]
+        )
+    )
+    criteria = {item["id"]: item["criterion"] for item in required["criteria"]}
+    notice = {
+        "schema_version": 1,
+        "key": "completion",
+        "kind": "completion",
+        "summary": finish["summary"],
+        "evidence": evidence,
+        "resolves": resolves,
+        "details": {
+            "achievements": [
+                f"{criteria[item['id']]} — {item['evidence']}"
+                for item in finish["acceptance"]
+            ],
+            "artifacts": urls,
+            "remaining": finish["remaining_required"],
+        },
+    }
+    published = notify(session, notice)
+    if authorization(session) != auth:
+        raise ValueError("completion authorization changed during notification")
+    session.row["completion_submission"] = signature
+    session.store.save()
+    if managed_report:
+        return report(
+            session,
+            {
+                "schema_version": 2,
+                "state": "completed",
+                "reason": finish["summary"],
+                "resume_condition": "全条件を受入済み",
+                "evidence": published["url"],
+                "finish": finish,
+            },
+            verified_prs=prs,
+        )
+    return release(session, finish, verified_prs=prs)
+
+
+def release(
+    session: ParentSession,
+    spec: dict[str, Any],
+    *,
+    verified_prs: list[int] | None = None,
+) -> dict[str, Any]:
     previous = session.row.get("completion", {})
     if session.row.get("status") == "ended" and previous.get("finish_sha256") == digest(
         spec
     ):
         # Replay repairs no execution and never revives the ended source owner.
         return dict(session.status())
-    record(session, spec)
+    record(session, spec, prs=verified_prs)
     return dict(session.lifecycle("ended", spec["summary"]))
 
 

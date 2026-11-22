@@ -1,15 +1,20 @@
 ---
-title: "Claude Code配下でローカル実行した tests/e2e/agents_ops は、変更と無関係な失敗を含む"
-applies_to: claude
-source: "PR #1621 (2026-10-31)"
+title: 親CLIのローカルE2Eは実セッションのAGY識別子を引き継ぐと登録に失敗する
+summary: 親CLIのE2Eで識別子の曖昧さが出たら、pytestから実セッションIDを外して同じテストを比べる。
+applies_to: all
+source: '#2324 の棚卸しでの再現（2026-11-20）、以前のローカル失敗調査は PR #1621'
 created: 2026-10-31
-last_verified: 2026-10-31
-evidence: "origin/main を一時worktreeで取り出し、同じテストIDを `-n 0` で実行して比較する"
+last_verified: 2026-11-22
+evidence: test_execution_basis.py の test_valid_autonomous_basis_allows_split_delegation_and_result を同じ環境で origin/main と比較する。ANTIGRAVITY_CONVERSATION_ID の有無も比較する。
+citations:
+- path: .agents/ops/lib/identity.py
+  symbol: def session_identity
+- path: tests/e2e/agents_ops/test_parent_session.py
+  symbol: def parent_env
+- path: tests/e2e/agents_ops/test_execution_basis.py
+  symbol: test_valid_autonomous_basis_allows_split_delegation_and_result
 ---
 
-Claude Code のセッションから `tests/e2e/agents_ops` を実行すると、CIでは合格するテストが変更と無関係に失敗する。
+親CLIはセッション識別子が一つに定まるときに登録する。親のE2E fixtureはテスト用の `CLAUDE_CODE_SESSION_ID` を入れるため、実行元の `ANTIGRAVITY_CONVERSATION_ID` も引き継ぐと、`parent register` が識別子の曖昧さを報告する。2026-11-20に作業treeと同じ版の `origin/main` で再現した。
 
-- `test_agy_headless.py` の permission smoke、`test_dispatcher_supervisor.py`・`test_execution_basis.py` の一部は origin/main でも失敗した。
-- 全体を `-n 8` で回すと30分近くかかり、`wait_until` 系（`test_merge_gate.py`・`test_parent_development.py`）が待機タイムアウトで落ちる。並列数を下げて再実行すると合格する。
-
-**使い方:** 失敗を変更の退行と判断する前に、同じテストIDを origin/main の一時worktree（`.claude/worktrees/` 配下、終わったら削除）でも実行して比べる。全体実行は `timeout` を1時間程度にし、`-v` で失敗IDを逐次記録する。最終判断はPRのCIで行う。
+**使い方:** このエラーが出たら、`env -u ANTIGRAVITY_CONVERSATION_ID -u CODEX_SESSION_ID -u CLAUDE_CODE_SESSION_ID .venv/bin/python -m pytest <node>` で、テストの呼び出しだけから実セッションIDを外して比較する。

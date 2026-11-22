@@ -1,0 +1,7 @@
+{
+  "lost_status_counts": {
+    "joint_optimization_failed": 114
+  },
+  "lost_with_boundary_censoring": 0,
+  "lost_with_duplicate_censoring": 0
+}

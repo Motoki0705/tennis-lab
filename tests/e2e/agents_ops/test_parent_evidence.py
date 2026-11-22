@@ -8,6 +8,7 @@ import json
 import multiprocessing
 import os
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -15,7 +16,6 @@ from typing import Any
 import pytest
 import yaml
 
-from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
@@ -23,6 +23,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.github_http import install
 
 
 def evidence_issue(env: ParentEnv, n: int = 9, *, state: str = "open") -> dict:
@@ -81,29 +82,38 @@ def _ensure_in_process(
 ) -> None:
     for key in ("PATH", "PARENT_GH_STATE", "PARENT_GH_CALLS", "XDG_STATE_HOME"):
         os.environ[key] = p.env[key]
-    store = importlib.import_module("parent.state").Store(directory)
-    gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
-    original_get = gh.get
-    synchronized = False
+    # A fork has its own fake-gh environment; use a server in that process
+    # instead of inheriting the parent pytest server and its environment.
+    with closing(install(importlib.import_module("issues.transport"))):
+        store = importlib.import_module("parent.state").Store(directory)
+        gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
+        original_get = gh.get
+        synchronized = False
 
-    def get(endpoint: str, *, missing_parent: bool = False) -> Any:
-        nonlocal synchronized
-        if role == "first" and endpoint == "repos/o/r/issues/1" and not synchronized:
-            synchronized = True
-            with store.unlocked_read():
-                ready.set()
-                assert contender.wait(10), "second process never entered its registry"
-        return original_get(endpoint, missing_parent=missing_parent)
+        def get(endpoint: str, *, missing_parent: bool = False) -> Any:
+            nonlocal synchronized
+            if (
+                role == "first"
+                and endpoint == "repos/o/r/issues/1"
+                and not synchronized
+            ):
+                synchronized = True
+                with store.unlocked_read():
+                    ready.set()
+                    assert contender.wait(10), (
+                        "second process never entered its registry"
+                    )
+            return original_get(endpoint, missing_parent=missing_parent)
 
-    gh.get = get
+        gh.get = get
 
-    if role == "second":
-        assert ready.wait(10), "first process never reached GitHub I/O"
-    with store.locked():
-        store.focus("o/r#1")
         if role == "second":
-            contender.set()
-        results.put(gh.evidence_issues().ensure(1, "operator").number)
+            assert ready.wait(10), "first process never reached GitHub I/O"
+        with store.locked():
+            store.focus("o/r#1")
+            if role == "second":
+                contender.set()
+            results.put(gh.evidence_issues().ensure(1, "operator").number)
 
 
 def test_creation_releases_registry_before_waiting_for_another_creator(
@@ -280,57 +290,6 @@ def test_evidence_agreement_keeps_state_and_same_login_human_input(
     assert p.state() == state
 
 
-def test_review_gate_and_inspection_read_evidence_permalink_without_new_agent(
-    gate_env: GateEnv,
-) -> None:
-    g, p = gate_env, gate_env.review.p
-    before = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    moved = move_machine_records(p)
-    execution_path = g.review.run_dir / "execution.json"
-    execution = json.loads(execution_path.read_text())
-    old_url = execution["parent_run_url"]
-    cid = moved[int(old_url.rsplit("-", 1)[1])]
-    new_url = (
-        f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-{cid}"
-    )
-    execution["parent_run_url"] = new_url
-    execution["stages"]["publication"].update(
-        parent_comment_id=cid, parent_run_url=new_url
-    )
-    execution_path.write_text(json.dumps(execution))
-    state = p.state()
-    for rows in state["comments"].values():
-        for c in rows:
-            records = g.policy.records([c], "operator")
-            if records and records[0]["kind"] == "pr":
-                c["body"] = g.policy.marker({**records[0], "parent_run_url": new_url})
-    p.save(state)
-    assert g.results(g.cli("merge", AGENT_AUTO_MERGE="0")) == before
-    view = json.loads(p.cli("review-inspect", "--prs", "100").stdout)
-    run = view["prs"][0]["history"][0]
-    assert run["parent_run_url"] == new_url and run["publication_errors"] == []
-    assert len(g.review.calls()) == 1 and not g.merge_calls()
-    state = p.state()
-    result = next(
-        c
-        for c in state["comments"][str(evidence_number(state))]
-        if g.policy.records([c], "operator")
-        and g.policy.records([c], "operator")[0]["kind"] == "result"
-    )
-    state["comments"]["1"].append(
-        {
-            **result,
-            "id": max(c["id"] for rows in state["comments"].values() for c in rows) + 1,
-        }
-    )
-    p.save(state)
-    blocked = g.cli("merge", AGENT_AUTO_MERGE="0")
-    assert (
-        blocked.returncode == 2 and "duplicate parent evidence record" in blocked.stderr
-    )
-    assert len(g.review.calls()) == 1 and not g.merge_calls()
-
-
 @pytest.mark.parametrize("state", ["open", "closed"])
 def test_listings_and_explicit_work_consumers_exclude_evidence(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, state: str
@@ -349,9 +308,10 @@ def test_listings_and_explicit_work_consumers_exclude_evidence(
         gh.family(9)
     store = importlib.import_module("parent.state").Store(p.root / "collection")
     collector = importlib.import_module("dispatcher.collect")
+    transaction_gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
     before = len(p.calls())
     with store.locked():
-        snapshot = collector.collect(gh, store, p.repo)
+        snapshot = collector.collect(transaction_gh, store, p.repo)
     assert (
         sum(
             "repos/o/r/issues?state=all&labels=parent-evidence&per_page=100&page=1"

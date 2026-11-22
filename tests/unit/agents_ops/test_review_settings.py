@@ -11,6 +11,13 @@ from typing import Any
 
 import pytest
 
+from tests.support.agents_ops.model_pins import (
+    OLD_ASTRA,
+    OLD_SOL,
+    REVIEW_FIXED_MODEL,
+    REVIEW_OTHER_MODEL,
+)
+
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 
 
@@ -43,26 +50,28 @@ def test_fixed_rollback_and_matching_choice_preserve_astra(
     policy = settings.load_policy(config)
     implicit = settings.choose(policy)
     assert implicit["selected"] == {
-        "model": "gpt-6-astra",
+        "model": REVIEW_FIXED_MODEL,
         "effort": "xhigh",
         "service_tier": "default",
     }
     assert implicit["specified_by"] == "settings"
-    explicit = settings.choose(policy, model="gpt-6-astra", reason="固定値を明示")
+    explicit = settings.choose(policy, model=REVIEW_FIXED_MODEL, reason="固定値を明示")
     assert explicit["selected"] == implicit["selected"]
     assert explicit["specified_by"] == "parent_choice"
-    with pytest.raises(ValueError, match="fixed"):
-        settings.choose(policy, model="gpt-6.1-sol", reason="通常の確認")
+    with pytest.raises(ValueError, match="allowed pair|fixed"):
+        settings.choose(policy, model=REVIEW_OTHER_MODEL, reason="通常の確認")
 
 
-def test_repository_defaults_require_explicit_model_and_reason(settings: Any) -> None:
+def test_repository_defaults_pin_sol_without_a_reason(settings: Any) -> None:
     policy = settings.load_policy()
-    assert policy["mode"] == "select"
-    with pytest.raises(ValueError, match="--review-model.*--model-reason-file"):
-        settings.choose(policy)
+    assert policy["mode"] == "fixed"
+    assert settings.choose(policy)["selected"]["model"] == "gpt-6.2-sol"
     for reason in (None, "", " \n"):
         with pytest.raises(ValueError, match="--model-reason-file"):
-            settings.choose(policy, model="gpt-6.1-sol", reason=reason)
+            settings.choose(policy, model=REVIEW_OTHER_MODEL, reason=reason)
+    for model in (OLD_SOL, OLD_ASTRA):
+        with pytest.raises(ValueError, match="allowed pair"):
+            settings.choose(policy, model=model, effort="xhigh", reason="旧モデル")
 
 
 def test_fixed_effort_stays_pinned_when_select_would_be_ambiguous(
@@ -222,121 +231,6 @@ def test_handoff_candidate_envelope_cannot_claim_coverage_or_approval(
         handoff["candidates"].append(copy.deepcopy(candidate))
     with pytest.raises(ValueError):
         settings.choose(settings.policy_from_pins(pins()), handoff=handoff)
-
-
-@pytest.mark.parametrize("kind", ["finding", "wait", "cross"])
-def test_candidate_issues_block_only_the_affected_pr(
-    monkeypatch: pytest.MonkeyPatch, kind: str
-) -> None:
-    monkeypatch.syspath_prepend(str(OPS))
-    monkeypatch.syspath_prepend(str(OPS / "review"))
-    policy = importlib.import_module("parent_review_policy")
-    # This pure policy reads the issue projection, whose source/schema proof is
-    # exercised by the parent CLI E2E cases.
-    candidate = {
-        "cross_findings": [{"prs": [100]}] if kind == "cross" else [],
-        "prs": [
-            {
-                "number": 100,
-                "findings": [{"id": "pr-100-1"}] if kind == "finding" else [],
-                "evidence_waits": [
-                    {"question": "必要な実証", "required_evidence": "テスト結果"}
-                ]
-                if kind == "wait"
-                else [],
-            },
-            {"number": 101, "findings": [], "evidence_waits": []},
-        ],
-    }
-    result = {"request": {"review_selection": {"handoff": {"candidates": [candidate]}}}}
-    assert policy.pending_handoff_candidates(result, 100) is True
-    assert policy.pending_handoff_candidates(result, 101) is False
-
-
-@pytest.mark.parametrize("version", [1, 2, 3])
-def test_requirements_check_is_preserved_for_both_authorized_versions(
-    monkeypatch: pytest.MonkeyPatch, version: int
-) -> None:
-    monkeypatch.syspath_prepend(str(OPS))
-    execution = importlib.import_module("parent.execution")
-    request = {
-        "schema_version": version,
-        "parent_issue": 1,
-        "requirements": {"1": "a" * 64},
-    }
-    if version == 1:
-        execution.require_requirement_targets(request, {2})
-    else:
-        with pytest.raises(ValueError, match="missing"):
-            execution.require_requirement_targets(request, {2})
-
-
-def test_unknown_request_version_cannot_skip_requirements(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.syspath_prepend(str(OPS))
-    execution = importlib.import_module("parent.execution")
-    with pytest.raises(ValueError, match="unknown"):
-        execution.require_requirement_targets({"schema_version": 4}, {2})
-
-
-@pytest.mark.parametrize("change", ["model", "effort", "missing", "tier"])
-def test_runtime_must_match_the_frozen_choice(settings: Any, change: str) -> None:
-    choice = settings.choose(
-        settings.policy_from_pins(pins("select")),
-        model="gpt-6.1-sol",
-        reason="定型的な確認",
-    )
-    runtime = {
-        "contract": {
-            "mode": "read-only",
-            "review_selection": choice,
-            "settings": {
-                "agent": "codex",
-                "profile": "review",
-                "selected": choice["selected"],
-            },
-        },
-        "runtime": {
-            "effective": {
-                "model": {
-                    "status": "observed",
-                    "value": "gpt-6.1-sol",
-                    "source": "transcript",
-                },
-                "effort": {
-                    "status": "observed",
-                    "value": "xhigh",
-                    "source": "transcript",
-                },
-                "service_tier": {
-                    "status": "unavailable",
-                    "value": None,
-                    "reason": "not exposed",
-                },
-            }
-        },
-    }
-    request = {"schema_version": 3, "review_selection": choice}
-    settings.verify_runtime(request, runtime)
-    altered = copy.deepcopy(runtime)
-    effective = altered["runtime"]["effective"]
-    if change == "missing":
-        effective["model"] = {
-            "status": "unavailable",
-            "value": None,
-            "reason": "missing",
-        }
-    elif change == "tier":
-        effective["service_tier"] = {
-            "status": "observed",
-            "value": "priority",
-            "source": "transcript",
-        }
-    else:
-        effective[change]["value"] = "gpt-6-astra" if change == "model" else "max"
-    with pytest.raises(ValueError, match="effective"):
-        settings.verify_runtime(request, altered)
 
 
 @pytest.mark.parametrize(

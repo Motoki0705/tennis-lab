@@ -1,0 +1,26 @@
+{
+  "checkpoint": "court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+  "subpixel_refine": true,
+  "region_search": {
+    "enabled": true,
+    "min_inliers": 8,
+    "inlier_distance_ratio": 0.005,
+    "min_area_ratio": 0.01
+  },
+  "postprocess": {
+    "min_score": 0.05,
+    "threshold_diagonal_ratio": 0.005,
+    "line_probability_threshold": 0.5,
+    "max_kp": 8,
+    "max_candidates": 1001,
+    "refine_candidates": 6,
+    "samples_per_line": 40,
+    "max_line_observations": 768,
+    "max_selection_rounds": 4,
+    "max_nfev": 70,
+    "kp_weight": 0.25,
+    "min_line_support": 0.55,
+    "ambiguity_gap": 0.02,
+    "ambiguity_displacement_ratio": 0.03
+  }
+}

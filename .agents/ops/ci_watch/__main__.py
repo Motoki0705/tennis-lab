@@ -1,5 +1,12 @@
-"""PYTHONPATH=.agents/ops .venv/bin/python -m ci_watch."""
+"""Lock the source checkout before loading the CLI implementation."""
 
-from .cli import main
+import sys
+from pathlib import Path
 
-raise SystemExit(main())
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lib.checkout_lock import run_cli  # noqa: E402
+
+if __name__ == "__main__":
+    run_cli(
+        "ci_watch.cli",
+    )

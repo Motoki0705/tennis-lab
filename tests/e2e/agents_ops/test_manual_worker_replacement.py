@@ -25,6 +25,10 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.model_pins import (
+    WORKER_ALTERNATE_MODEL,
+    WORKER_DEFAULT_MODEL,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / ".agents/ops/lib/agent_exec.sh"
@@ -160,7 +164,11 @@ def test_session_replacement_rejects_without_changing_reservation(
     else:
         response = replacement(
             p,
-            *(["--model", "gpt-6-astra"] if condition == "changed_model" else []),
+            *(
+                ["--model", WORKER_ALTERNATE_MODEL]
+                if condition == "changed_model"
+                else []
+            ),
             ok=False,
             **extra,
         )
@@ -177,7 +185,13 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
     reserved: ParentEnv, missing_session: bool, legacy_phase: bool
 ) -> None:
     p = reserved
-    run(p, "--model", "gpt-6-astra", "--model-reason-file", p.note("幾何の設計。"))
+    run(
+        p,
+        "--model",
+        WORKER_DEFAULT_MODEL,
+        "--model-reason-file",
+        p.note("幾何の設計。"),
+    )
     directory = corrupt_record(p)
     if missing_session:
         with store(p).locked() as registry:
@@ -207,7 +221,7 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
     replacement(p)
     saved = task(p)
     assert saved["delegation_id"] == before["delegation_id"]
-    assert saved["model"] == "gpt-6-astra"
+    assert saved["model"] == WORKER_DEFAULT_MODEL
     assert saved["model_reason"] == before["model_reason"]
     assert saved["worker_runs"][:-1] == before["worker_runs"]
     assert saved["preflight"]["turns"][:-1] == before.get("preflight", {}).get(
@@ -351,8 +365,10 @@ def test_legacy_session_replacement_retries_rejected_launch_and_requests_review(
         p.note(),
         "--evidence-file",
         p.note(),
+        "--wait",
+        AGENT_AUTO_MERGE="0",
     )
-    assert json.loads(review.stdout)["review_state"] == "instructed"
+    assert json.loads(review.stdout)["status"] == "parent_wait"
     phase = task(p)["preflight"]
     assert phase["accepted_turn_id"] == phase["turns"][-1]["snapshot"]["turn_id"]
     assert phase["accepted_turn_id"] != cancelled["snapshot"]["turn_id"]
@@ -394,6 +410,7 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
         FAKE_ARGS=str(p.root / "codex-args.txt"),
         FAKE_CWD=str(p.root / "codex-cwd.txt"),
         FAKE_INVOCATIONS=str(p.root / "codex-calls.jsonl"),
+        FAKE_WORKER_RESULT="1",
     )
 
     def real(*options: str, ok: bool = True, session_id: str = "old-session") -> Any:
@@ -552,6 +569,7 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
         str(evidence),
         session_id="replacement-session",
     )
+    assert "PARENT_RESULT" in (latest(p) / "prompt.md").read_text()
     saved = task(p)
     assert saved["worker_runs"][:-1] == before["worker_runs"]
     assert saved["preflight"]["turns"][:-1] == before["preflight"]["turns"]
@@ -573,9 +591,11 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
         p.note(),
         "--evidence-file",
         p.note(),
+        "--wait",
+        AGENT_AUTO_MERGE="0",
         runner=RUNNER,
     )
-    assert json.loads(response.stdout)["review_state"] == "instructed"
+    assert json.loads(response.stdout)["status"] == "parent_wait"
     assert (
         task(p)["preflight"]["accepted_turn_id"]
         == task(p)["preflight"]["turns"][-1]["snapshot"]["turn_id"]

@@ -30,7 +30,7 @@ class CameraAlignmentInput:
     calibration: CourtCalibrationOutput
     side: CourtSideOutput
     people: GroupedObservations
-    balls: GroupedObservations
+    balls: GroupedObservations | None
 
 
 @dataclass(frozen=True)
@@ -38,23 +38,24 @@ class CameraAlignmentOutput:
     geometry: CameraGeometryResult | None
 
 
-def observation_ports(camera_ids: tuple[str, ...]) -> dict[str, InputPort]:
+def observation_ports(camera_ids: tuple[str, ...], *, include_ball: bool = True) -> dict[str, InputPort]:
     return {"calibration": InputPort("local_court_calibration"), "identities": IDENTITIES_PORT,
-        **{f"pose_{c}": InputPort("person_poses") for c in camera_ids},
-        **{f"ball_{c}": BALL_POINTS_PORT for c in camera_ids}}
+        **{f"pose_{c}": InputPort("person_poses", 2) for c in camera_ids},
+        **({f"ball_{c}": BALL_POINTS_PORT for c in camera_ids} if include_ball else {})}
 
 
 class CameraAlignmentModule:
     def __init__(self, camera_ids: tuple[str, ...], config: CameraGeometryConfig, *, player_reprojection_px: float,
-                 ball_reprojection_px: float, joint_confidence: float, max_frames: int) -> None:
+                 ball_reprojection_px: float, joint_confidence: float, max_frames: int, include_ball: bool = True) -> None:
         self.config = config
         self.player_reprojection_px, self.ball_reprojection_px = player_reprojection_px, ball_reprojection_px
         self.joint_confidence, self.max_frames = joint_confidence, max_frames
         self.io = ComponentIO("camera_alignment", CameraAlignmentInput, CameraAlignmentOutput,
-            {**observation_ports(camera_ids), "side": SIDE_PORT}, "aligned_cameras")
+            {**observation_ports(camera_ids, include_ball=include_ball), "side": SIDE_PORT}, "aligned_cameras")
 
     def process(self, inputs: CameraAlignmentInput) -> CameraAlignmentOutput:
-        if not inputs.people.visibility.any() and not inputs.balls.visibility.any():
+        balls = inputs.balls
+        if not inputs.people.visibility.any() and (balls is None or not balls.visibility.any()):
             return CameraAlignmentOutput(None)
         if inputs.side.camera_ids != inputs.calibration.calibration.camera_ids or inputs.side.reference_camera != inputs.calibration.reference_camera:
             raise ValueError("Camera alignment requires side results for the declared cameras/reference")
@@ -66,8 +67,8 @@ class CameraAlignmentModule:
             torso = [5, 6, 11, 12]
             evidence.append(SideEvidence("plcs", inputs.people.uv_px[:, :, sample][:, :, :, torso],
                 (inputs.people.visibility & (inputs.people.confidence >= self.joint_confidence))[:, :, sample][:, :, :, torso], self.player_reprojection_px * scale))
-        if inputs.balls.visibility.any():
-            evidence.append(SideEvidence("ball", inputs.balls.uv_px[:, :, sample], inputs.balls.visibility[:, :, sample], self.ball_reprojection_px * scale))
+        if balls is not None and balls.visibility.any():
+            evidence.append(SideEvidence("ball", balls.uv_px[:, :, sample], balls.visibility[:, :, sample], self.ball_reprojection_px * scale))
         geometry = resolve_camera_geometry(inputs.calibration.calibration, inputs.calibration.reference_camera,
             inputs.side.view_half_turns, tuple(evidence), config=self.config)
         return CameraAlignmentOutput(geometry)

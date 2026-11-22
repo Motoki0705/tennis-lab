@@ -1,0 +1,129 @@
+{
+  "batch_root": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118",
+  "reference_clip": "video_000/clip_000",
+  "measurement_commit": "e296a5fb358bee9ed9974821943d055f31c1e360",
+  "verified_scene": {
+    "clip_id": "video_000/clip_000",
+    "marker_exists": true,
+    "scene_status": "ok",
+    "num_frames": 356,
+    "scene_players": 4,
+    "sides": {
+      "-1": {
+        "count": 2,
+        "identities": [
+          {
+            "candidates": [
+              0,
+              4,
+              9,
+              13
+            ],
+            "identity": 0,
+            "presence_frames": 354,
+            "seen_frames": 354,
+            "side": -1
+          },
+          {
+            "candidates": [
+              2,
+              5,
+              15,
+              16
+            ],
+            "identity": 2,
+            "presence_frames": 354,
+            "seen_frames": 354,
+            "side": -1
+          }
+        ],
+        "runner_up": null
+      },
+      "1": {
+        "count": 2,
+        "identities": [
+          {
+            "candidates": [
+              1,
+              7,
+              8,
+              11,
+              12,
+              17
+            ],
+            "identity": 1,
+            "presence_frames": 354,
+            "seen_frames": 354,
+            "side": 1
+          },
+          {
+            "candidates": [
+              3,
+              6,
+              10,
+              14
+            ],
+            "identity": 3,
+            "presence_frames": 354,
+            "seen_frames": 354,
+            "side": 1
+          }
+        ],
+        "runner_up": null
+      }
+    },
+    "validity_statistics": {
+      "ball_3d_frames": 158,
+      "player_joint_frames": [
+        354,
+        354,
+        354,
+        354
+      ],
+      "player_root_frames": [
+        353,
+        353,
+        353,
+        353
+      ],
+      "player_smpl_frames": [
+        353,
+        353,
+        353,
+        349
+      ]
+    },
+    "scene_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/datasets/batch/videos/video_000/clips/clip_000/annotations/tennis_scene/exports/c1c879529aac2beefdedff9b168e704a2297d063b26472525a8c59e2a4f32025/scene.npz",
+    "body_exports_present": true,
+    "mask_counts": {
+      "player_observed": {
+        "valid": 1416,
+        "total": 1424
+      },
+      "player_valid": {
+        "valid": 1412,
+        "total": 1424
+      },
+      "player_heading_valid": {
+        "valid": 1412,
+        "total": 1424
+      },
+      "player_kp_3d_vis": {
+        "valid": 23978,
+        "total": 24208
+      },
+      "player_smpl_valid": {
+        "valid": 1408,
+        "total": 1424
+      },
+      "ball_3d_valid": {
+        "valid": 158,
+        "total": 356
+      }
+    }
+  },
+  "original_input_manifest_sha256": "8009fb1befa7ed8c3c89402fa9808acc1f48e025f6eac274869b7b06ecfdbd3b",
+  "data_root": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118",
+  "output_root": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/reference",
+  "additional_batch_attempts": 0
+}

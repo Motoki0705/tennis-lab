@@ -17,6 +17,8 @@ class WorkTargetsChanged(ValueError):
 
 
 def worker_ended(task: Mapping[str, Any]) -> bool:
+    if any(not worker_ended(helper) for helper in task.get("helpers", {}).values()):
+        return False
     if not task.get("delegated"):
         return True
     proof = task.get("worker_ended")
