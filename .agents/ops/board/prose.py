@@ -1,8 +1,7 @@
-"""Remove code while tracking CommonMark quote and list containers.
+"""Find code while tracking CommonMark quote and list containers.
 
-This is a block scanner for board addressing, not a Markdown renderer. Container
-continuation must be checked before a fence: a missing quote marker or list
-indentation ends even an unclosed fence in that container.
+Container continuation must be checked before a fence. A missing quote marker
+or list indentation ends even an unclosed fence in that container.
 """
 
 from __future__ import annotations
@@ -17,7 +16,19 @@ FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 THEMATIC = re.compile(r"^ {0,3}(?:\*(?: *\*){2,}|-(?: *-){2,}|_(?: *_){2,}) *$")
 HEADING = re.compile(r"^ {0,3}#{1,6}(?: |$)")
 SETEXT = re.compile(r"^ {0,3}(?:=+|-+) *$")
-INLINE_CODE = re.compile(r"(?<![\\`])(?:\\\\)*(`+)(?!`).*?(?<!`)\1(?!`)", re.DOTALL)
+SOURCE_LINE = re.compile(r"[^\r\n]*(?:\r\n?|\n)|[^\r\n]+$")
+BACKTICKS = re.compile(r"(?<!\\)(\\*)(`+)")
+HTML_MARKUP = re.compile(r"<(?:[!?]|/?[A-Za-z][A-Za-z0-9-]*(?=[\s/>]|$))")
+AMBIGUOUS_INDENT = re.compile(
+    r"^(?:[ >]|(?:[-+*]|[0-9]{1,9}[.)])(?=[ \t]))*(?: {4,}|\t)"
+)
+
+
+@dataclass(frozen=True)
+class _Line:
+    offset: int
+    raw: str
+    content: str
 
 
 @dataclass(frozen=True)
@@ -56,25 +67,36 @@ def _opening_fence(line: str) -> re.Match[str] | None:
 
 
 def _interrupts(line: str) -> bool:
+    # This is called when the container markers change. A setext underline
+    # only applies to a paragraph in the same container.
     return bool(
         not line.strip(" ")
         or QUOTE.match(line)
         or _opening_fence(line)
         or THEMATIC.fullmatch(line)
         or HEADING.match(line)
-        or SETEXT.fullmatch(line)
         or _list_start(line, paragraph=True)
     )
 
 
-def _blocks(body: str) -> Iterator[str]:
+def _blocks(body: str, *, check_layout: bool = False) -> Iterator[list[_Line] | None]:
     containers: list[Container] = []
-    paragraph: list[str] = []
+    paragraph: list[_Line] = []
     fence: str | None = None
     # A tab contributes columns at stops of four when matching container
     # indentation. Only the scan uses expanded text; the saved body is untouched.
-    for raw in re.split(r"\r\n?|\n", body):
+    for source in SOURCE_LINE.finditer(body):
+        raw = source[0].rstrip("\r\n")
         line = raw.expandtabs(4)
+        if check_layout and AMBIGUOUS_INDENT.match(raw):
+            root_code = not containers and (
+                fence is not None or (not paragraph and line.startswith("    "))
+            )
+            if not root_code:
+                # Deep indentation and tabs can change whether a container
+                # continues or whether a later line belongs to a code block.
+                yield None
+                return
         matched = 0
         for container in containers:
             if container.indent == 0:
@@ -117,11 +139,11 @@ def _blocks(body: str) -> Iterator[str]:
             # A missing quote or a different list marker stays lazy prose.
             if item is None or item[0].marker != containers[matched].marker:
                 # Lazy continuation never continues a code block.
-                paragraph.append(line.lstrip(" "))
+                paragraph.append(_Line(source.start(), raw, line.lstrip(" ")))
                 continue
         if not continued:
-            yield "\n".join(paragraph)
-            paragraph.clear()
+            yield paragraph
+            paragraph = []
             del containers[matched:]
 
         while True:
@@ -129,8 +151,8 @@ def _blocks(body: str) -> Iterator[str]:
             item = _list_start(line, paragraph=bool(paragraph))
             if quote is None and item is None:
                 break
-            yield "\n".join(paragraph)
-            paragraph.clear()
+            yield paragraph
+            paragraph = []
             if quote is not None:
                 containers.append(Container())
                 line = line[quote.end() :]
@@ -141,25 +163,99 @@ def _blocks(body: str) -> Iterator[str]:
 
         marker = _opening_fence(line)
         if marker is not None:
-            yield "\n".join(paragraph)
-            paragraph.clear()
+            yield paragraph
+            paragraph = []
             fence = marker[1]
         elif not line.strip(" ") or THEMATIC.fullmatch(line):
-            yield "\n".join(paragraph)
-            paragraph.clear()
+            yield paragraph
+            paragraph = []
         elif HEADING.match(line) or (paragraph and SETEXT.fullmatch(line)):
-            yield "\n".join(paragraph)
-            paragraph.clear()
-            yield line
+            yield paragraph
+            paragraph = []
+            yield [_Line(source.start(), raw, line)]
         elif not paragraph and line.startswith("    "):
             # Four remaining columns start indented code, rather than a fence
             # or a new container. Indented code cannot interrupt a paragraph.
             continue
         else:
-            paragraph.append(line.lstrip(" "))
-    yield "\n".join(paragraph)
+            paragraph.append(_Line(source.start(), raw, line.lstrip(" ")))
+    yield paragraph
+
+
+def _inline_spans(block: str) -> Iterator[tuple[int, int, int]]:
+    """Yield offsets and delimiter widths for the code spans in one block."""
+    runs = [
+        (run.start(2), len(run[2]), len(run[1]) % 2)
+        for run in BACKTICKS.finditer(block)
+    ]
+    closers: list[int | None] = [None] * len(runs)
+    next_run: dict[int, int] = {}
+    for index in reversed(range(len(runs))):
+        _, width, escaped = runs[index]
+        # An odd backslash escapes the first opening tick in prose. Within
+        # code, a closing run counts every tick regardless of backslashes.
+        closers[index] = next_run.get(width - escaped)
+        next_run[width] = index
+
+    index = 0
+    while index < len(runs):
+        closer = closers[index]
+        if closer is None:
+            index += 1
+            continue
+        start, width, escaped = runs[index]
+        end, closing_width, _ = runs[closer]
+        yield start + escaped, end + closing_width, width - escaped
+        index = closer + 1
+
+
+def single_backtick_openers(body: str) -> set[int]:
+    """Find source offsets where a single-backtick code span is established."""
+    # Raw HTML blocks can extend across blank lines. Keep path checks on the
+    # full text whenever HTML makes the inline context uncertain.
+    if HTML_MARKUP.search(body):
+        return set()
+    openers: set[int] = set()
+    for lines in _blocks(body, check_layout=True):
+        if lines is None:
+            return set()
+        block = "\n".join(line.content for line in lines)
+        # Link targets, titles and reference labels can contain literal ticks.
+        link = block.find("](")
+        reference = block.find("][")
+        if (
+            "]:" in block
+            or (link >= 0 and "`" in block[link : block.rfind(")") + 1])
+            or (reference >= 0 and "`" in block[reference : block.rfind("]") + 1])
+        ):
+            continue
+        starts = {start for start, _, width in _inline_spans(block) if width == 1}
+        if not starts:
+            continue
+        offset = 0
+        for line in lines:
+            # Container prefix removal and tab expansion preserve the order of
+            # the backticks on this line. Use that order to recover raw offsets.
+            for raw, scanned in zip(
+                re.finditer("`", line.raw),
+                re.finditer("`", line.content),
+                strict=True,
+            ):
+                if offset + scanned.start() in starts:
+                    openers.add(line.offset + raw.start())
+            offset += len(line.content) + 1
+    return openers
 
 
 def without_code(body: str) -> str:
     """Return text outside code, keeping inline spans within their own block."""
-    return "\n".join(INLINE_CODE.sub(" ", block) for block in _blocks(body))
+    visible: list[str] = []
+    for lines in _blocks(body):
+        assert lines is not None
+        block = "\n".join(line.content for line in lines)
+        offset = 0
+        for start, end, _ in _inline_spans(block):
+            visible.extend((block[offset:start], " "))
+            offset = end
+        visible.extend((block[offset:], "\n"))
+    return "".join(visible).removesuffix("\n")

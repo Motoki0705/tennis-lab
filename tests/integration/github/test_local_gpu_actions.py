@@ -7,10 +7,12 @@ import importlib
 import json
 import os
 import re
+import selectors
 import shlex
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, cast
 
@@ -151,6 +153,11 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert "TimeoutStopSec=infinity" in installer
     assert "sha256sum --check --status" in installer
     assert 'bash "$SCRIPT_DIR/install_queue_bundle.sh" "$TOOL_ROOT/bin"' in installer
+    assert 'readonly CAPACITY_STATE_DIR="/run/tennis-lab-d-capacity"' in installer
+    assert "d $CAPACITY_STATE_DIR 0755 $watchdog_uid root -" in installer
+    assert 'systemd-tmpfiles --create "$CAPACITY_TMPFILES"' in installer
+    assert "Environment=TRAINING_QUEUE_CAPACITY_STATUS_FILE=$CAPACITY_STATE_DIR/status.json" in installer
+    assert "ReadOnlyPaths=$STATE_ROOT/assets -$CAPACITY_STATE_DIR" in installer
 
     enqueue = (SCRIPTS / "enqueue_training.sh").read_text(encoding="utf-8")
     assert 'TRAINING_QUEUE_DIR="$STATE_ROOT/training-queue"' in enqueue
@@ -370,3 +377,94 @@ def test_installed_queue_runs_outside_repository_with_system_python_only(
                 if path.is_dir():
                     path.chmod(0o755)
             binary_directory.chmod(0o755)
+
+
+def test_installed_ci_queue_holds_job_until_fresh_watchdog_verdict(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "installed"
+    subprocess.run(
+        ["bash", str(SCRIPTS / "install_queue_bundle.sh"), str(bin_dir)], check=True
+    )
+    queue = tmp_path / "queue"
+    status = tmp_path / "watchdog-status.json"
+    done = tmp_path / "payload"
+    environment = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(tmp_path),
+        "TRAINING_QUEUE_DIR": str(queue),
+        "TRAINING_QUEUE_LOCK_FILE": str(tmp_path / "gpu.lock"),
+        "TRAINING_QUEUE_CAPACITY_STATUS_FILE": str(status),
+        "GIT_CEILING_DIRECTORIES": str(tmp_path.parent),
+    }
+    command = ["bash", str(bin_dir / "training_queue.sh")]
+    result = subprocess.run(
+        [*command, "add", f"touch {shlex.quote(str(done))}"],
+        cwd=tmp_path,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    job = result.stdout.strip().removeprefix("queued: ")
+    worker = subprocess.Popen(
+        [*command, "serve", "--idle-timeout", "0"],
+        cwd=tmp_path,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert worker.stderr is not None
+        with selectors.DefaultSelector() as selector:
+            selector.register(worker.stderr, selectors.EVENT_READ)
+            assert selector.select(timeout=5)
+            assert "D: watchdog status is missing" in worker.stderr.readline()
+        assert (queue / "jobs" / job).is_file()
+        assert not done.exists()
+
+        def publish(available: int, age_seconds: int, decision: str) -> None:
+            temporary = status.with_suffix(".tmp")
+            temporary.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "measured_at_ns": time.time_ns() - age_seconds * 10**9,
+                        "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
+                        "boottime_ns": time.clock_gettime_ns(time.CLOCK_BOOTTIME)
+                        - age_seconds * 10**9,
+                        "available_bytes": available,
+                        "threshold_bytes": 21_474_836_480,
+                        "decision": decision,
+                        "error": None,
+                    }
+                )
+            )
+            temporary.replace(status)
+
+        for available, age, decision, diagnostic in [
+            (21_474_836_480, 91, "allow", "older than 90 seconds"),
+            (21_474_836_479, 0, "blocked", "below the"),
+        ]:
+            publish(available, age, decision)
+            verdict = subprocess.run(
+                ["python3", "-I", "-S", str(bin_dir / "d_capacity.py"), "--state-file", str(status)],
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=5,
+            )
+            assert verdict.returncode == 75
+            assert diagnostic in verdict.stderr
+            assert (queue / "jobs" / job).is_file()
+            assert not done.exists()
+        publish(21_474_836_480, 0, "allow")
+        stdout, stderr = worker.communicate(timeout=8)
+    finally:
+        if worker.poll() is None:
+            worker.terminate()
+            worker.communicate(timeout=8)
+    assert worker.returncode == 0, (stdout, stderr)
+    assert done.is_file() and (queue / "done" / job).is_file()

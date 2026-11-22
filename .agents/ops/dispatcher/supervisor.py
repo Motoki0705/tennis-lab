@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.agent_settings import check_saved_implementation_model, implementation_model
+from lib.d_capacity import REFUSED, CapacityError, require_capacity
 from lib.state_files import StateFileError
 from parent import worker_preflight, worker_slots
 from parent.adopted_tasks import check_task_adoptions
@@ -42,7 +43,7 @@ from .collect import (
 )
 from .diagnostics import report_failure
 from .outcomes import read_result
-from .runtime import Runtime, alive, gate, load, process_identity
+from .runtime import Runtime, alive, capacity_refusal, gate, load, process_identity
 from .schedule import Schedule, latest_slot, next_slot
 from .state import DispatchStore, client_for, progression_reads, require_client
 
@@ -501,8 +502,14 @@ class Supervisor:
             ]
         assert_material_fresh(snapshot, current, session.parent, sources)
 
-    def _cancel_admission(
-        self, key: str, expected: dict[str, Any], reason: str, *, claimed: bool = False
+    def _rollback_admission(
+        self,
+        key: str,
+        expected: dict[str, Any],
+        reason: str,
+        *,
+        claimed: bool = False,
+        retry: bool = False,
     ) -> None:
         """Rollback only this unstarted job, using no remote authorization."""
         with (
@@ -534,6 +541,15 @@ class Supervisor:
                 if (Path(job["directory"]) / "runtime").exists():
                     self.store.conflict("launch evidence appeared during admission")
                 job["worker"] = None
+            if retry:
+                if not unstarted(job):
+                    self.store.conflict(
+                        "launch evidence appeared during capacity refusal"
+                    )
+                job.update(phase="reserved", diagnostic=reason)
+                event(dispatch, "runtime_deferred", job_id=job["id"], reason=reason)
+                self.store.save()
+                return
             self.cancel_reservation(row, job, reason)
             if (
                 job["role"] == "parent"
@@ -579,7 +595,7 @@ class Supervisor:
         ) as exc:
             if expected is None:
                 raise
-            self._cancel_admission(
+            self._rollback_admission(
                 key, expected, f"{exc}; 次の予定回または明示実行で再判断する"
             )
             if isinstance(exc, RegistryConflict):
@@ -630,6 +646,7 @@ class Supervisor:
                     require_repair_labels(session, job["child"], job["repair"]["pr"])
                 if not self.schedule.read()["enabled"]:
                     self.store.conflict("dispatcher disabled before launch")
+                require_capacity()
                 admitted = True
                 yield
         except (
@@ -640,7 +657,13 @@ class Supervisor:
             subprocess.SubprocessError,
         ) as exc:
             if not admitted and expected is not None:
-                self._cancel_admission(key, expected, str(exc), claimed=True)
+                self._rollback_admission(
+                    key,
+                    expected,
+                    str(exc),
+                    claimed=True,
+                    retry=isinstance(exc, CapacityError),
+                )
             raise
 
     def resume_source(
@@ -1426,6 +1449,66 @@ class Supervisor:
             reason=response["reason"],
         )
 
+    def _requeue_capacity_refusal(
+        self, key: str, row: dict[str, Any], job: dict[str, Any], *, stop: bool
+    ) -> None:
+        dispatch = row["dispatch"]
+        directory = Path(job["directory"])
+        # Reconciliation can resume after any of the moves. The registry keeps
+        # the job claimed until all launch evidence is out of the active paths.
+        run_id = str(uuid.UUID(job["capacity_refusal"]))
+        archive = directory / "capacity-refusals" / run_id
+        runtime = directory / "runtime"
+        source = runtime if runtime.exists() else archive / "runtime"
+        record = load(source / "result.json")
+        reason = capacity_refusal(record)
+        if (
+            reason is None
+            or record["run_id"] != run_id
+            or record["run_dir"] != str(runtime)
+        ):
+            self.store.conflict("capacity refusal evidence changed before requeue")
+        self._check_contract(job, record)
+        archive.mkdir(parents=True, exist_ok=True, mode=0o700)
+        for name in ("runner.stdout", "runner.stderr", "runtime"):
+            active, saved = directory / name, archive / name
+            if active.exists() or active.is_symlink():
+                if saved.exists() or saved.is_symlink():
+                    self.store.conflict(
+                        "duplicate evidence while archiving capacity refusal"
+                    )
+                active.rename(saved)
+        for path in (archive, archive.parent, directory):
+            fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        job.pop("capacity_refusal")
+        job.pop("observation", None)
+        job.update(
+            phase="reserved",
+            worker=None,
+            runner_exit=None,
+            runtime_run_id=None,
+            diagnostic=reason,
+        )
+        if stop or dispatch["phase"] == "stopped" or job.get("stop_requested"):
+            self.cancel_reservation(row, job, "cancelled after capacity refusal")
+        else:
+            if job.get("decision_capture"):
+                from decision_logs.observations import bind_job
+
+                bind_job(self.store, key, row, job)
+            event(
+                dispatch,
+                "runtime_deferred",
+                job_id=job["id"],
+                run_id=run_id,
+                reason=reason,
+            )
+        self.store.save()
+
     def _observe_job(
         self, key: str, identifier: str, *, stop: bool
     ) -> tuple[Path, Callable[[], bool]] | None:
@@ -1439,6 +1522,9 @@ class Supervisor:
             row = self.store.parents[key]
             job = row["dispatch"]["jobs"][identifier]
             if job["phase"] in {"ended", "reserved"}:
+                return None
+            if job.get("capacity_refusal"):
+                self._requeue_capacity_refusal(key, row, job, stop=stop)
                 return None
             expected = observation_intent(
                 self.store, row, job, "stop" if stop else "status"
@@ -1462,6 +1548,14 @@ class Supervisor:
             and not busy
             and not worker_alive
         )
+        if terminated and evidence is not None and capacity_refusal(evidence["record"]):
+            with self.store.locked():
+                row, job = current_job(self.store, key, expected)
+                if job["runner_exit"] in (None, REFUSED):
+                    job["capacity_refusal"] = evidence["record"]["run_id"]
+                    self.store.save()
+                    self._requeue_capacity_refusal(key, row, job, stop=stop)
+                    return None
         if terminated and saved.get("log_journal"):
             assert evidence is not None
             worker_logs.finish(Path(saved["log_journal"]), evidence, publish_now=False)
@@ -1633,6 +1727,7 @@ class Supervisor:
         for key, job in jobs:
             # The worker itself rechecks enable/configuration, capacity, owner
             # and delegation at claim and again at final Popen admission.
+            require_capacity()
             Runtime(Path(job["runner"])).spawn(
                 self.store.directory.resolve(),
                 key,

@@ -491,6 +491,44 @@ def test_staleness_uses_received_time_and_never_stops_a_live_runner(
     assert f.child(stale_after=301)["updates_stalled"] is False
 
 
+@pytest.mark.parametrize("separator", ["/", "／"])
+def test_identifier_lists_at_display_limits_keep_worker_status_visible(
+    fixture: Any, separator: str
+) -> None:
+    f = fixture
+    guard = importlib.import_module("worker_status.safety").Guard({}, env={})
+    title_prefix = "件" * 191
+    message_prefix = "確" * 291
+    identifiers = f"`foo`{separator}`bar`"
+    f.task["title"] = f"{title_prefix} {identifiers}"
+    message = f"{message_prefix} {identifiers} 確認済み"
+    f.record()
+    f.events([item("agent_message", text=message)])
+
+    title = {"status": "visible", "text": title_prefix, "truncated": True}
+    summary = {"status": "visible", "text": message_prefix, "truncated": True}
+    for value, limit, expected in (
+        (f.task["title"], 200, title),
+        (message, 300, summary),
+    ):
+        assert guard.text(value, limit=len(value)) == {
+            "status": "visible",
+            "text": value,
+            "truncated": False,
+        }
+        assert guard.text(value, limit=limit) == expected
+        guard.check(expected["text"])
+
+    child = f.child()
+    assert child["title"] == {**title, "source": "parent_registry.task"}
+    assert child["summary"]["message"] == {
+        **summary,
+        "received_at": NOW.isoformat(),
+        "time_status": "observed",
+    }
+    assert child["summary"]["messages"] == [child["summary"]["message"]]
+
+
 def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> None:
     f = fixture
     f.record()
@@ -1640,6 +1678,27 @@ def test_standard_run_directory_name_does_not_mask_the_run_kind(fixture: Any) ->
     f.record()
     child = f.child()
     assert child["status"] == "turn_completed" and child["run"]["kind"] == "initial"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "```text\n/ `reports`/`plan` draft.txt\n```",
+        "`` / `reports`/`plan` draft.txt ``",
+    ],
+    ids=["fence", "long-span"],
+)
+def test_worker_status_hides_quoted_paths_inside_code(fixture: Any, value: str) -> None:
+    f = fixture
+    f.record()
+    f.events([item("agent_message", text=value)])
+    assert f.child()["summary"]["message"] == {
+        "status": "hidden",
+        "text": None,
+        "truncated": False,
+        "received_at": NOW.isoformat(),
+        "time_status": "observed",
+    }
 
 
 def test_structural_private_field_fails_without_partial_stdout(fixture: Any) -> None:

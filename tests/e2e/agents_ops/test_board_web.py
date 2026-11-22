@@ -1134,11 +1134,22 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
 
 
+@pytest.mark.parametrize(
+    ("title", "displayed"),
+    [
+        ("実験の確認", "実験の確認"),
+        ("確" * 191 + " `foo`/`bar`", "確" * 191),
+        ("確" * 201 + " /private/title", ""),
+    ],
+    ids=["short-title", "identifier-list-at-limit", "private-path-after-limit"],
+)
 def test_runtime_includes_unregistered_agents_without_changing_membership(
     world: World,
     client: TestClient,
     web: SimpleNamespace,
     monkeypatch: pytest.MonkeyPatch,
+    title: str,
+    displayed: str,
 ) -> None:
     observed = []
     secret = "f08ef56a-0296-4706-9a8c-88a9366ef922"
@@ -1162,7 +1173,7 @@ def test_runtime_includes_unregistered_agents_without_changing_membership(
                     {
                         "agent": "codex",
                         "agent_status": "working",
-                        "terminal_title_stripped": "実験の確認"
+                        "terminal_title_stripped": title
                         if self.session == "main"
                         else f"/private/work {secret}",
                         "terminal_id": "private-terminal",
@@ -1180,7 +1191,10 @@ def test_runtime_includes_unregistered_agents_without_changing_membership(
     data = response.json()
     assert data["observed_at"]
     assert [row["label"] for row in data["agents"]] == ["codex 1", "codex 2"]
-    assert data["agents"][0]["title"] == "実験の確認"
+    assert data["agents"][0]["title"] == displayed
+    assert data["agents"][0]["title_status"] == (
+        "available" if displayed else "redacted"
+    )
     assert data["agents"][1]["title"] == ""
     assert data["agents"][1]["title_status"] == "redacted"
     assert all(row["state"] == "working" for row in data["agents"])
@@ -1747,6 +1761,66 @@ def test_invalid_queries_have_no_input_in_errors(
     assert response.json() == {"detail": "Invalid board query."}
     assert client.get("/api/thread/invalid").status_code == 422
     assert client.get("/api/thread/" + "0" * 32).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("body", "status"),
+    [
+        ("`cli.py`（`_state_dir`／`_issue_lock` 付近）", 200),
+        ("Use `start`/`stop`.", 200),
+        ("保存先：`／資料/x`", 503),
+        ("```text\n/ `reports`/`plan` draft.txt\n```", 503),
+        ("`` / `reports`/`plan` draft.txt ``", 503),
+        ("Use `a`/`b`/file", 503),
+        ("Use `a`/`b`.txt", 503),
+    ],
+    ids=[
+        "legacy-identifier-separator",
+        "sentence-ending",
+        "private-path",
+        "fenced-path",
+        "long-span-path",
+        "attached-path",
+        "attached-extension",
+    ],
+)
+def test_saved_post_is_checked_before_web_publication(
+    world: World, client: TestClient, body: str, status: int
+) -> None:
+    other = world.post()
+    saved_id = "1" * 32
+    # Model an already saved row, independent of today's write validation.
+    with world.store.transaction() as connection:
+        connection.execute(
+            """INSERT INTO posts (
+                   id, created_at, sender_assignment_id, sender_name, sender_repo,
+                   sender_parent, kind, broadcast, subject, body, thread_id
+               )
+               SELECT ?, created_at, sender_assignment_id, sender_name, sender_repo,
+                      sender_parent, 'info', 0, 'Saved post', ?, ?
+               FROM posts WHERE id=?""",
+            (saved_id, body, saved_id, other["id"]),
+        )
+
+    changes = client.get("/api/changes", params={"refresh_roster": "true"})
+    thread = client.get(f"/api/thread/{saved_id}")
+    assert changes.status_code == thread.status_code == status
+    if status == 503:
+        assert (
+            changes.json()
+            == thread.json()
+            == {
+                "detail": "Board data unavailable or inconsistent; check the local configuration."
+            }
+        )
+        return
+
+    posts = {post["id"]: post["body"] for post in changes.json()["posts"]}
+    assert posts == {saved_id: body, other["id"]: other["body"]}
+    assert changes.json()["agents"]
+    assert [(post["id"], post["body"]) for post in thread.json()["posts"]] == [
+        (saved_id, body)
+    ]
 
 
 def test_private_sources_and_corrupt_database_never_leak_or_become_empty(

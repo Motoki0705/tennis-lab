@@ -1711,12 +1711,34 @@ def test_cli_argument_errors_do_not_echo_private_inputs(
     private_output_absent(result.stderr, parent_env.env)
 
 
+@pytest.mark.parametrize("separator", ["/", "／"])
+def test_parent_register_synchronizes_inline_identifier_lists(
+    board: SimpleNamespace, parent_env: ParentEnv, separator: str
+) -> None:
+    p = parent_env
+    identifier = f"`_state_dir`{separator}`_issue_lock`"
+    state = p.state()
+    state["issues"]["1"]["title"] = f"[{identifier}] 名前"
+    p.save(state)
+
+    synced = json.loads(p.cli("register").stdout)["board_sync"]
+    assert synced["status"] == "assigned"
+    store = board.storage.Store(board.storage.directory(p.env))
+    with store.read() as connection:
+        assignment = board.names.for_parent(connection, "o/r", 1)
+        assert assignment.identifier == identifier
+        assert assignment.name == synced["name"]
+
+
 def test_public_identifier_rejects_private_id_or_path(parent_env: ParentEnv) -> None:
     p = parent_env
     for identifier in (
         p.env["CLAUDE_CODE_SESSION_ID"],
         "/private/identifier",
         "調査 `/private/identifier`",
+        "保存先：／資料/x",
+        "`reports`/`plan`/file",
+        "制御\u200b文字",
     ):
         state = p.state()
         state["issues"]["1"]["title"] = f"[{identifier}] 名前"

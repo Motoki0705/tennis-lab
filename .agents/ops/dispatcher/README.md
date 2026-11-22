@@ -304,6 +304,10 @@ dispatcherの観測は全担当を競合検査し、I/O前後でscheduleも照�
 
 runnerのstatus/stopは対象job/runのintentを保存してregistryを解放し、応答後に新しいtransactionで
 同じ担当・assignment・job・run・委任を照合する。停止intentは待機前に保存し、応答不明でも保持する。
+supervisorは[物理D:の空き](../d_capacity/README.md)を起動直前に確認する。容量不足や測定エラーでは
+予約を保持し、起動を保留する。既存runtimeの状態照合は続く。`supervise --once` の保留は終了コード75で理由を返す。
+共通ランナー側で容量の拒否が起きたときは、CLI未起動の記録とランナーの終了を照合する。拒否された試行の記録は
+job配下の `capacity-refusals/` に残す。同じ予約は容量回復後に起動できる。途中で明示停止を受けた予約は取り消す。
 acceptと親の完了適用は、後続のGitHub authorization照合も終えてからruntime/result.jsonのrun IDを
 再照合する。その後は外部I/Oを挟まずに受理・終了状態を保存し、古いrunから担当や容量を変更しない。
 dispatcherからのrunner待機は1呼出し60秒を上限とし、timeout・runの置換・回収未確認を終了成功にしない。
