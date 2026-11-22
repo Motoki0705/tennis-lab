@@ -683,13 +683,23 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
             }
         owner["dispatch"] = {"phase": "waiting", "jobs": jobs}
         journal.atomic(logs.state / "registry.json", document)
-        schedule = importlib.import_module("dispatcher.schedule").Schedule(
-            logs.state / "schedule"
-        )
-        monkeypatch.setattr(schedule, "read", lambda: {"enabled": False})
+        schedule_module = importlib.import_module("dispatcher.schedule")
+        schedule = schedule_module.Schedule(logs.state / "schedule")
         store = importlib.import_module("dispatcher.state").DispatchStore(
             logs.state, schedule
         )
+        with store.locked():
+            schedule.initialize(
+                {
+                    "repo": "o/r",
+                    "cwd": str(logs.root),
+                    "runner": str(logs.root / "unused-runner"),
+                    "max_parents": 1,
+                    "max_children": 2,
+                    "judgement_timeout": 10,
+                },
+                schedule_module.local_time("2026-10-22T07:00:00+09:00"),
+            )
         control = supervisor.Supervisor(
             importlib.import_module("parent.github").GitHub("o/r", store=store),
             store,
