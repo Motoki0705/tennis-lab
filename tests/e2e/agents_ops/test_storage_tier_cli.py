@@ -62,6 +62,16 @@ def cli(tmp_path: Path) -> Cli:
         ops / "storage_tier",
         ignore=shutil.ignore_patterns("__pycache__"),
     )
+    # The default D: layout; E:-resident tests opt in through their own config.
+    config = ops / "storage_tier/config.toml"
+    config.write_text(
+        "\n".join(
+            line
+            for line in config.read_text().splitlines()
+            if not line.startswith("worktree_outputs_on_mirror")
+        )
+        + "\n"
+    )
     environment = {
         **os.environ,
         "PYTHONPATH": str(ops),
@@ -238,3 +248,79 @@ def test_linked_checkout_cli_uses_its_config_with_explicit_main_repo(cli: Cli) -
     assert cli.git("rev-parse", "HEAD") == before_head
     assert (cli.repo / "README.md").read_bytes() == before
     assert not (worktree / "outputs").exists()
+
+
+def _on_mirror(cli: Cli, tmp_path: Path, *, link: bool = True) -> Path:
+    """Opt the fixture into E:-resident outputs with a real mount directory."""
+    mount = tmp_path / "E"
+    mount.mkdir()
+    config = cli.repo / ".agents/ops/storage_tier/config.toml"
+    lines = [
+        f'mirror_mount = "{mount}"' if line.startswith("mirror_mount") else line
+        for line in config.read_text().splitlines()
+    ]
+    config.write_text("\n".join([*lines, "worktree_outputs_on_mirror = true"]) + "\n")
+    root = mount / cli.repo.relative_to("/") / ".worktree-outputs"
+    root.mkdir(parents=True)
+    if link:
+        (cli.repo / ".worktree-outputs").symlink_to(root, target_is_directory=True)
+    return root
+
+
+def test_prepare_worktree_creates_e_resident_outputs_through_exact_link(
+    cli: Cli, tmp_path: Path
+) -> None:
+    root = _on_mirror(cli, tmp_path)
+    worktree = cli.repo / ".claude/worktrees/e-worker"
+    cli.git("worktree", "add", "-qb", "e-worker", str(worktree))
+    preview = cli.run("prepare-worktree", str(worktree), "--dry-run")
+    assert preview.returncode == 0, preview.stderr
+    assert not (root / "e-worker").exists()
+    result = cli.run("prepare-worktree", str(worktree))
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout)
+    assert report["output_root"] == str(root / "e-worker")
+    assert report["mirror_output_root"] is None
+    # The worktree link keeps naming the main checkout path, so existing
+    # worktrees and the later D: layout agree on the same link text.
+    assert os.readlink(worktree / "outputs") == str(
+        cli.repo / ".worktree-outputs/e-worker"
+    )
+    assert (worktree / "outputs").resolve() == root / "e-worker"
+    assert (root / "e-worker").is_dir() and not (root / "e-worker").is_symlink()
+    assert cli.run("prepare-worktree", str(worktree)).returncode == 0
+
+
+@pytest.mark.parametrize("shape", ["real-directory", "wrong-target", "missing"])
+def test_e_resident_outputs_refuse_any_other_root_shape(
+    cli: Cli, tmp_path: Path, shape: str
+) -> None:
+    root = _on_mirror(cli, tmp_path, link=False)
+    if shape == "real-directory":
+        (cli.repo / ".worktree-outputs").mkdir()
+    elif shape == "wrong-target":
+        other = tmp_path / "elsewhere"
+        other.mkdir()
+        (cli.repo / ".worktree-outputs").symlink_to(other, target_is_directory=True)
+    worktree = cli.repo / ".claude/worktrees/refused"
+    cli.git("worktree", "add", "-qb", "refused", str(worktree))
+    result = cli.run("prepare-worktree", str(worktree))
+    assert result.returncode == 1, result.stdout
+    assert "worktree" in result.stderr and "outputs" in result.stderr
+    assert not os.path.lexists(worktree / "outputs")
+    assert not (worktree / "data").exists()
+    assert list(root.iterdir()) == []
+
+
+def test_default_layout_still_refuses_a_linked_outputs_root(
+    cli: Cli, tmp_path: Path
+) -> None:
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (cli.repo / ".worktree-outputs").symlink_to(elsewhere, target_is_directory=True)
+    worktree = cli.repo / ".claude/worktrees/default"
+    cli.git("worktree", "add", "-qb", "default", str(worktree))
+    result = cli.run("prepare-worktree", str(worktree))
+    assert result.returncode == 1 and "real directory required" in result.stderr
+    assert not os.path.lexists(worktree / "outputs")
+    assert list(elsewhere.iterdir()) == []

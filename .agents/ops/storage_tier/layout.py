@@ -39,6 +39,8 @@ class Config:
     datasets: tuple[str, ...] = ()
     residents: tuple[str, ...] = ()
     external_links: tuple[str, ...] = ()
+    # Persistent worktree outputs live only on E:; D: holds the exact link.
+    worktree_outputs_on_mirror: bool = False
 
     @property
     def mirror(self) -> Path:
@@ -59,8 +61,12 @@ class Config:
         if not required <= data.keys() or data.keys() - required - {
             "resident_units",
             "unmanaged_data_links",
+            "worktree_outputs_on_mirror",
         }:
             raise StorageError(f"unknown/missing storage configuration keys: {path}")
+        on_mirror = data.get("worktree_outputs_on_mirror", False)
+        if not isinstance(on_mirror, bool):
+            raise StorageError("worktree_outputs_on_mirror must be a boolean")
         mount = Path(data["mirror_mount"])
         if not mount.is_absolute() or mount == Path("/") or mount.resolve() != mount:
             raise StorageError("mirror_mount must be a real absolute non-root path")
@@ -90,7 +96,45 @@ class Config:
                 raise StorageError(
                     "dataset/resident/reference boundaries must not overlap"
                 )
-        return cls(repo.resolve(), mount, *lists)
+        return cls(repo.resolve(), mount, *lists, worktree_outputs_on_mirror=on_mirror)
+
+
+WORKTREE_OUTPUTS = ".worktree-outputs"
+
+
+def worktree_outputs_root(config: Config) -> Path:
+    """Return the validated real root of persistent worktree outputs.
+
+    The default keeps them in a real D: directory. With
+    ``worktree_outputs_on_mirror`` the D: name must be a symlink whose literal
+    target is the exact E: counterpart, itself a real directory on the mount.
+    Any other shape is an error; neither layout is accepted for the other.
+    """
+    link = config.repo / WORKTREE_OUTPUTS
+    if not config.worktree_outputs_on_mirror:
+        return link
+    expected = config.mirror / WORKTREE_OUTPUTS
+    try:
+        info = link.lstat()
+    except FileNotFoundError as exc:
+        raise StorageError(
+            f"worktree_outputs_on_mirror requires a symlink to {expected}: {link}"
+        ) from exc
+    if not stat.S_ISLNK(info.st_mode):
+        raise StorageError(
+            f"worktree_outputs_on_mirror requires a symlink to {expected}: {link}"
+        )
+    if os.readlink(link) != str(expected):
+        raise StorageError(f"worktree outputs link target mismatch: {link}")
+    after = link.lstat()
+    if (after.st_dev, after.st_ino, after.st_ctime_ns) != (
+        info.st_dev,
+        info.st_ino,
+        info.st_ctime_ns,
+    ):
+        raise StorageError(f"worktree outputs link changed while reading: {link}")
+    real_directory(expected, config.mount)
+    return expected
 
 
 @dataclass(frozen=True, order=True)
@@ -201,7 +245,17 @@ def discover(config: Config, base: Path) -> Inventory:
         except (OSError, StorageError) as exc:
             errors.append(str(exc))
     output_roots = ["outputs"]
-    output_roots.extend(directories(".worktree-outputs"))
+    if config.worktree_outputs_on_mirror:
+        # E:-resident outputs are outside mirror/evict/hydrate: D: and E: are
+        # the same bytes through the link, so treating them as units could
+        # delete the only copy. On D: only the link itself is validated.
+        if base != config.mirror and os.path.lexists(base / WORKTREE_OUTPUTS):
+            try:
+                worktree_outputs_root(config)
+            except (OSError, StorageError) as exc:
+                errors.append(str(exc))
+    else:
+        output_roots.extend(directories(WORKTREE_OUTPUTS))
     # Worktree links are references, never separate units. Do not read their
     # targets: even stat-through-symlink changes an old symlink's atime.
     for worktree in directories(".claude/worktrees"):
@@ -324,28 +378,38 @@ def prepare_worktree(
         real_directory(config.repo / name, config.repo)
     actions = []
     output = worktree / "outputs"
-    persistent = config.repo / ".worktree-outputs" / worktree.name
-    for path in (persistent.parent, persistent):
-        if os.path.lexists(path):
-            real_directory(path, config.repo)
-            if path.stat().st_dev != config.repo.stat().st_dev:
-                raise StorageError("persistent worktree outputs are not on D:")
+    # The worktree link always names the main checkout path; with E:-resident
+    # outputs that path resolves through the validated root link.
+    persistent = config.repo / WORKTREE_OUTPUTS / worktree.name
+    tier = "E:" if config.worktree_outputs_on_mirror else "D:"
+    if config.worktree_outputs_on_mirror:
+        real_root = worktree_outputs_root(config)
+        resolved = real_root / worktree.name
+        if os.path.lexists(resolved):
+            real_directory(resolved, config.mount)
+    else:
+        resolved = persistent
+        for path in (persistent.parent, persistent):
+            if os.path.lexists(path):
+                real_directory(path, config.repo)
+                if path.stat().st_dev != config.repo.stat().st_dev:
+                    raise StorageError("persistent worktree outputs are not on D:")
     if os.path.lexists(output):
         if dry_run and output.is_symlink():
             raise StorageError(
                 "dry-run cannot inspect an existing outputs symlink target without changing its atime; use actual prepare-worktree for validation"
             )
         if not output.is_symlink() or output.resolve() not in {
-            persistent,
+            resolved,
             config.repo / "outputs",
         }:
             raise StorageError(
-                "existing worktree outputs must point to its persistent D: directory or main outputs"
+                f"existing worktree outputs must point to its persistent {tier} directory or main outputs"
             )
         target = output.resolve()
     else:
-        target = persistent
-        actions.append(f"link outputs to persistent D: {persistent}")
+        target = resolved
+        actions.append(f"link outputs to persistent {tier} {resolved}")
     for name in ("data", "ckpt", ".venv"):
         destination = worktree / name
         source = config.repo / name
@@ -365,10 +429,15 @@ def prepare_worktree(
             actions.append(f"link {name} to main checkout")
     # Validate the complete plan before making any changes.
     if not dry_run:
-        if target == persistent:
-            persistent.mkdir(parents=True, exist_ok=True)
+        if target == resolved:
+            if config.worktree_outputs_on_mirror:
+                # The validated root exists; never create E: ancestors.
+                resolved.mkdir(exist_ok=True)
+                real_directory(resolved, config.mount)
+            else:
+                persistent.mkdir(parents=True, exist_ok=True)
         if not os.path.lexists(output):
-            output.symlink_to(target, target_is_directory=True)
+            output.symlink_to(persistent, target_is_directory=True)
         for name in ("data", "ckpt", ".venv"):
             if not os.path.lexists(worktree / name):
                 (worktree / name).symlink_to(
@@ -377,7 +446,10 @@ def prepare_worktree(
     return {
         "worktree": str(worktree),
         "output_root": str(target),
-        "mirror_output_root": str(config.mirror / target.relative_to(config.repo)),
+        # E:-resident outputs have no separate mirror copy.
+        "mirror_output_root": None
+        if config.worktree_outputs_on_mirror and target == resolved
+        else str(config.mirror / target.relative_to(config.repo)),
         "dry_run": dry_run,
         "actions": actions,
     }

@@ -1,0 +1,125 @@
+{
+  "initial_commit": "af205aa9c976543eb914efe294641ddf2c19f4a6",
+  "initial_output": "outputs/trt-batch-i2336",
+  "environment": {
+    "tensorrt": "10.14.1.48.post1",
+    "modelopt": "0.48.0",
+    "torch": "2.13.0+cu130",
+    "driver": "621.24",
+    "wsl_pid_1_started_jst": "2026-11-22T12:00:14+09:00",
+    "outputs_before": "/dev/sdd",
+    "outputs_after": "/dev/sde ext4 (E:, 3.2 TiB available at recheck)",
+    "crash_cause": null
+  },
+  "initial_jobs": {
+    "vitpose_h": {
+      "job": "0-8204694588545189554_2026-11-21T23-56-51-454810445Z_4147028_i2336-vitpose-timing.job",
+      "exit_code": 124,
+      "verified_batches": {"0": [1, 4, 8, 16, 32], "1": [1, 4, 8, 16]},
+      "stopped_stage": "c1-b32",
+      "evidence": "vitpose_h/c1-b32/measure.log",
+      "measurement_complete": false,
+      "trt_build_started": false
+    },
+    "hmr2": {
+      "job": "0-8204694588289761695_2026-11-21T23-56-51-710238304Z_4147065_i2336-hmr2-timing.job",
+      "queue_state_at_recheck": "running",
+      "wrapper_pid_at_recheck": 494118,
+      "wrapper_present_at_recheck": false,
+      "verified_batches": {"0": [1, 4, 8, 16, 32], "1": [1, 4, 8, 16, 32]},
+      "failures": [
+        {
+          "stage": "build-2",
+          "exit_code": 1,
+          "evidence": "hmr2/logs/build-2.log",
+          "reason": "Serialized build and deserialization reached inspector; dynamic SMPL head packed K/V exposed two FP16 inputs for _gemv_mha_v1_*."
+        },
+        {
+          "stage": "prepare-3a",
+          "exit_code": 1,
+          "evidence": "hmr2/logs/prepare-3a.log",
+          "reason": "ModelOpt PrecisionConverter KeyError in _convert_subgraph_precision with the token squeeze If."
+        },
+        {
+          "stage": "prepare-3b",
+          "exit_code": null,
+          "evidence": "hmr2/logs/prepare-3b.log",
+          "reason": "Last log covers calibration setup before the WSL restart; no graph receipt or terminal status."
+        }
+      ]
+    },
+    "dino_4scale_swin_l": {
+      "job": "0-8204694588023825357_2026-11-21T23-56-51-976174642Z_4147159_i2336-dino-timing.job",
+      "exit_code": 1,
+      "verified_batches": {"0": [1, 2, 4], "1": [1, 2, 4]},
+      "failures": [
+        {
+          "stage": "build-2",
+          "exit_code": 1,
+          "evidence": "dino_4scale_swin_l/logs/build-2.log",
+          "workspace_bytes": 536870912,
+          "tactic_requested_bytes": 994425132,
+          "reason": "TensorRT skipped the tactic with an insufficient memory diagnostic and reported Error Code 10 for ForeignNode."
+        },
+        {
+          "stage": "build-2-plugin",
+          "exit_code": 1,
+          "evidence": "dino_4scale_swin_l/logs/build-2-plugin.log",
+          "reason": "Serialized build and deserialization reached inspector; symbolic leading axes prevented recognition of the two shifted-window mask views."
+        }
+      ]
+    }
+  },
+  "retry_2": {
+    "commit": "8f8bd508b43f32a5f469c44b2c632edccfc6e4a1",
+    "verified_timing_accuracy_nsys_cases_total": 52,
+    "verified_trt_engines": 6,
+    "verified_trt_rejections": 12,
+    "verified_ncu_cases": 9,
+    "ncu_timeouts": [
+      {
+        "artifact": "retry-2/hmr2-ncu-3a/ncu.json",
+        "job": "0-8204680322695779406_2026-11-22T03-54-37-304220593Z_131443_i2336-r2-hmr2-ncu-3a.job",
+        "exit_code": 3,
+        "replay_mode": "kernel",
+        "timeout_s": 1320,
+        "nsys_kernels": 386,
+        "ncu_kernel_rows": 0,
+        "ncu_csv_sha256": "e4f8672b8b9210ca5293889eed9f032e5b64433e4d4460c7a0f24446e2fa8f53"
+      },
+      {
+        "artifact": "retry-2/dino-ncu-2/ncu.json",
+        "job": "0-8204680322062664314_2026-11-22T03-54-37-937335685Z_131601_i2336-r2-dino-ncu-2.job",
+        "exit_code": 3,
+        "replay_mode": "kernel",
+        "timeout_s": 1560,
+        "nsys_kernels": 574,
+        "ncu_kernel_rows": 0,
+        "ncu_csv_sha256": "0bf905daac22b2eb301cdd462dc33ac422906bb394d8988c9291a13e34d8a15d"
+      },
+      {
+        "artifact": "retry-2/dino-ncu-2-plugin/ncu.json",
+        "job": "0-8204680321780621081_2026-11-22T03-54-38-219378918Z_131673_i2336-r2-dino-ncu-2-plugin.job",
+        "exit_code": 3,
+        "replay_mode": "kernel",
+        "timeout_s": 1560,
+        "nsys_kernels": 562,
+        "ncu_kernel_rows": 0,
+        "ncu_csv_sha256": "d52a15a824eea3320d69c6fe9817b836d17dd630a3548ea718c4f0515609079b"
+      }
+    ]
+  },
+  "retry_3": {
+    "commit": "87893cc290baa8a1718bd34c9b0f2fdb1239598f",
+    "replay_mode": "application",
+    "app_replay_match": "all",
+    "app_replay_mode": "strict",
+    "complete_ncu_cases_total": 12,
+    "result_reference": "metrics.json",
+    "jobs": [
+      "0-8204664054813652569_2026-11-22T08-25-45-186347430Z_2321832_i2336-r3-hmr2-ncu-3a-app.job",
+      "0-8204664054536945634_2026-11-22T08-25-45-463054365Z_2321888_i2336-r3-dino-ncu-2-app.job",
+      "0-8204664054236205593_2026-11-22T08-25-45-763794406Z_2321944_i2336-r3-dino-ncu-2-plugin-app.job"
+    ]
+  }
+}

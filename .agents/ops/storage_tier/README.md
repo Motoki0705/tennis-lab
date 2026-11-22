@@ -43,6 +43,15 @@ symlinks inside a unit are rejected. Linux readlink updates old symlink atimes e
 with an O_PATH descriptor; rejecting them before readlink keeps dry-runs read-only.
 Use ordinary files/hardlinks for managed payloads; this tool never rewrites existing links.
 
+With `worktree_outputs_on_mirror = true` in [config.toml](config.toml), persistent
+worktree outputs live only on E:. D: `<main>/.worktree-outputs` must then be a symlink
+whose literal target is its exact E: counterpart, a real directory on the mount; a
+real D: directory, another target or a missing link is an error. Worktree `outputs`
+links still name `<main>/.worktree-outputs/<name>`. Because D: and E: name the same
+bytes through the link, these outputs are never mirror/evict/hydrate units on either
+tier, and hardlinks between them and D: data fail with `EXDEV`. Without the key the
+D: layout above is required and a linked root is rejected.
+
 Hardlinks work within D: and within E:, never across them. Copies preserve hardlinks
 **within** one unit, but use independent inodes between units and tiers. Eviction
 removes only that unit's names. The audit separates logical bytes, unique allocated
@@ -280,6 +289,57 @@ only to diagnose the missing input; they never read or fetch its payload. A miss
 mount is a separate error. Custom roots outside this repository and consumers
 bypassing the shared boundary retain their existing missing-file errors. Creating
 new OUTPUT paths remains possible. No training entrypoints or queue commands are patched.
+
+## Temporary hot copies
+
+Read the E: original directly when its throughput is sufficient. For a temporary
+D: copy, use a versioned, read-only input under the main checkout's `data/`.
+Reuse a version in a `dataset_containers` entry or declare a standalone version
+root in `dataset_units` in [config.toml](config.toml). Apply the declaration in the
+checkout used by the daily cycle before copying. If the source lives elsewhere on
+E:, prepare a stable version at the matching E: repo-relative path and verify its
+file list and SHA-256 hashes against the source before hydration. Use
+`resident_units` for permanent D: inputs only. On 2026-11-14, a roughly 147 GiB copy at
+`~/tennis-hot` fell outside the unit inventory and had no release date. It remained
+on D: until the [capacity incident](https://github.com/Motoki0705/tennis-lab/issues/2361).
+
+1. Before copying, record the owner, job or run, reason for using D:, E: source and
+   D: destination, estimated bytes, last planned use and release-check date (with
+   time zone) in the issue that owns the work. Set the check for 14 days after the
+   last planned use. The owner ends use by the recorded last-use time or updates
+   it beforehand after rechecking capacity. Reserve space through release.
+2. Use the [CLI](#cli) to confirm that `scan` finds the expected E: dataset version
+   and the D: destination is absent. Estimate its size with `index --dry-run`.
+   Confirm `/mnt/d` is the Windows D: mount and read both physical D: and guest
+   availability. Allow for the entire copy, filesystem and VHDX overhead, and
+   peak outstanding writes from other jobs. Proceed only if the guest can fit
+   those writes and physical D: will retain at least the watchdog reserve
+   (20 GiB by default). The watchdog gates new starts. Active jobs and manual
+   copies can still consume space.
+
+   ```bash
+   unit=data/ball_detection/example-v1
+   "${S[@]}" scan
+   "${S[@]}" index "$unit" --dry-run
+   findmnt --mountpoint /mnt/d
+   df -B1 / /mnt/d
+   ```
+
+3. Run `"${S[@]}" hydrate "$unit"` after the space check. Keep the `hydrated`
+   result and the unit's `.storage-tier/audit.jsonl` record in the owning issue.
+   Hydrate verifies both sides and records the manifest. Consumers read the
+   copy and write results to E: worktree outputs.
+4. At completion or cancellation, remove queued references and temporary
+   hardlink aliases outside the unit, and record the last use in the issue.
+   Keep the space charged to the copy while other aliases retain its blocks.
+   At the release check, confirm that the daily cycle evicted it or run
+   `"${S[@]}" evict "$unit" --dry-run`. If it reports `would_evict`, run
+   `"${S[@]}" evict "$unit"` and confirm `evicted` or use `scan` to confirm
+   that only the E: copy is present. If the unit is still in use, too recent, or
+   fails verification, record the reason and the next check in the same issue.
+   Eviction follows the [regular 14-day atime and verification rules](#verification-and-exclusion).
+   Record the observed Linux and Windows free space separately. Recovering
+   Windows space may require [trim and compact](wsl-vhdx.md).
 
 ## Verification and exclusion
 
@@ -668,7 +728,8 @@ the mount itself. Installation only links units. Enablement is a separate deploy
    Confirm consumer loading, own-UID inspection and failure journal/audit records
    before enabling the timer. Queue state and other UIDs do not protect units.
    Roll back by restoring saved symlink entries only while consumers are paused;
-   preserve new D: writes separately. Root VHDX relocation/compaction is outside scope.
+   preserve new D: writes separately. For Windows disk maintenance, see
+   [Ubuntu VHDX maintenance](wsl-vhdx.md).
 
 Validation uses temporary real files and simulated mount/process inputs in
 `tests/integration/agents_ops/test_storage_tier.py`; native FD and hardlink behavior

@@ -84,7 +84,7 @@ const scrollBottom = (node) => {
   node.scrollTop = node.scrollHeight;
 };
 
-function avatar(name, presence) {
+function avatar(name, presence, engine = null) {
   const code =
     [...(name || "?")].reduce(
       (hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0,
@@ -96,6 +96,7 @@ function avatar(name, presence) {
     `avatar ${name === "human" ? "color-human" : `color-${code}`}`,
   );
   node.setAttribute("aria-hidden", "true");
+  if (engine) addBrandIcon(node, engine);
   if (presence) node.append(element("span", "", `presence ${presence}`));
   return node;
 }
@@ -874,7 +875,7 @@ async function refreshRuntime() {
     const cards = data.agents.map((row) => {
       const card = element("div", "", "runtime-card");
       card.title = `${row.label} · ${labels[row.state] || row.state}\n${row.title}`;
-      card.append(avatar(row.engine, row.state));
+      card.append(avatar(row.engine, row.state, row.engine));
       const info = element("div", "", "runtime-info");
       info.append(
         element("strong", `${row.label} · ${labels[row.state] || row.state}`),

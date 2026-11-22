@@ -352,12 +352,30 @@ async function main() {
       true,
     );
     await page.locator('[data-view="execution"]').click();
-    await page.locator(".graph-child-node").first().waitFor();
+    assert.deepEqual(
+      await page.locator(".tabs [data-view]").evaluateAll((nodes) => nodes.map((node) => node.dataset.view)),
+      ["timeline", "execution", "waiting", "issues"],
+    );
     assert.equal(await page.locator("#thread-pane").isVisible(), false);
     assert.equal(await page.locator("#compose").isVisible(), false);
     const parentNode = page.locator(".graph-parent-node").first();
+    await parentNode.waitFor();
     assert.ok((await parentNode.textContent()).includes("子の進行管理"));
-    assert.equal(await page.locator("#execution-graph img").count(), 0);
+    assert.equal(await page.locator(".graph-child-node").count(), 0);
+    await page.locator(".graph-fold.fold-children").click();
+    await page.waitForFunction(() => {
+      const sources = new Set([...document.querySelectorAll("#execution-graph img")]
+        .filter((image) => image.complete && image.naturalWidth > 0)
+        .map((image) => image.getAttribute("src")));
+      return ["claude", "gemini", "codex"].every((engine) => sources.has(`/static/icon-${engine}.svg`));
+    });
+    await page.locator("#toggle-runtime").click();
+    await page.waitForFunction(() => {
+      const icons = [...document.querySelectorAll("#runtime-agents img")];
+      return icons.some((img) => img.getAttribute("src") === "/static/icon-gemini.svg")
+        && icons.every((img) => img.complete && img.naturalWidth > 0);
+    });
+    await page.locator("#toggle-runtime").click();
     // Tree connector: the first child's branch starts under the parent icon.
     const icon = await parentNode.locator(".graph-icon").boundingBox();
     const branch = await page
@@ -371,10 +389,12 @@ async function main() {
     assert.ok(Math.abs(branch + 1 - (icon.x + icon.width / 2)) <= 2);
     const child = page.locator(".graph-child-node").first();
     const drawer = page.locator("#execution-drawer");
+    const resizer = page.locator("#execution-drawer-resizer");
     // Narrow screens (still 390px here): the drawer overlays the graph and
     // closes with Escape, without horizontal page scroll.
     await child.click();
     await drawer.waitFor();
+    assert.equal(await resizer.isVisible(), false);
     assert.equal(
       await drawer.evaluate((node) => getComputedStyle(node).position),
       "absolute",
@@ -401,18 +421,39 @@ async function main() {
     const graphBox = await page.locator("#execution-graph").boundingBox();
     const drawerBox = await drawer.boundingBox();
     assert.ok(drawerBox.x >= graphBox.x + graphBox.width - 1);
+    const width = () => drawer.evaluate((node) => node.getBoundingClientRect().width);
+    await resizer.press("ArrowLeft");
+    assert.equal(await width(), drawerBox.width + 24);
+    await resizer.press("ArrowRight");
+    assert.equal(await width(), drawerBox.width);
+    const grip = await resizer.boundingBox();
+    const x = grip.x + grip.width / 2;
+    const y = grip.y + grip.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 100, y, { steps: 4 });
+    await page.mouse.up();
+    const resized = await width();
+    assert.equal(resized, drawerBox.width + 100);
+    await parentNode.click();
+    assert.equal(await width(), resized);
+    await child.click();
+    assert.equal(await width(), resized);
     assert.ok(
       (await drawer.textContent()).includes(
         "<img src=x onerror=alert(1)> を文字として表示",
       ),
     );
     assert.equal(await drawer.locator("img").count(), 0);
+    assert.equal(await drawer.locator("dl, .execution-evidence").count(), 0);
+    assert.equal(await drawer.locator(".execution-steps li").count(), 3);
     await page.locator("#refresh-execution").click();
     await drawer
       .getByText("Issue 未完了（OPEN）", { exact: true })
       .first()
       .waitFor();
     await page.getByText("+2 完了", { exact: true }).waitFor();
+    assert.equal(await width(), resized);
     assert.equal(
       await child.getAttribute("aria-pressed"),
       "true",

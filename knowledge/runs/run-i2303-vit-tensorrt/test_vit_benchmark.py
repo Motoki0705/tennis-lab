@@ -81,6 +81,30 @@ def test_flip_runner_constructs_two_views_and_restores_left_joint():
     assert merged[0, 2, 0, 2].item() == 5
 
 
+def test_flip_runner_keeps_paired_crops_at_full_and_tail_batches():
+    class Graph:
+        def set_batch_size(self, batch_size):
+            self.pixels = torch.empty((2 * batch_size, 3, 1, 3))
+
+        def run(self):
+            output = torch.zeros((len(self.pixels), 17, 1, 3))
+            output[:, 0] = self.pixels[:, 0]
+            return output
+
+    graph = Graph()
+    graph.set_batch_size(2)
+    runner = FlipRunner(graph)
+    for rows in ([[1, 2, 4], [8, 16, 32]], [[101, 109, 117]]):
+        runner.set_batch_size(len(rows))
+        crops = torch.tensor(rows, dtype=torch.float32)
+        runner.pixels.copy_(crops[:, None, None, :].expand_as(runner.pixels))
+        restored = runner.run()
+        torch.testing.assert_close(
+            graph.pixels[:, 0, 0], torch.cat((crops, crops.flip(-1)))
+        )
+        torch.testing.assert_close(restored[:, 0, 0], crops)
+
+
 def test_udp_pixel_error_confidence_and_mask_use_the_same_reference():
     y, x = np.mgrid[:64, :48]
     base = np.zeros((1, 17, 64, 48), dtype=np.float32)
@@ -326,6 +350,8 @@ def test_attention_out_ptq_selects_one_weighted_projection_per_block(
             ("scores", "values"),
         ),
         ("__myl_ReshMoveMul_test", [[8, 1, 64], [1, 8, 1, 1]], ("values",)),
+        ("__myl_ReshMoveMul_test", [[128, 1, 64], [16, 8, 1, 1]], ("values",)),
+        ("__myl_ReshMoveMul_test", [[16, 8, 1, 64], [16, 8, 1, 1]], ("values",)),
     ],
 )
 def test_hmr2_attention_tactics_require_fp16_operands(tactic, shapes, names):
@@ -348,6 +374,13 @@ def test_hmr2_attention_tactics_require_fp16_operands(tactic, shapes, names):
         verify_compute_precision(
             {"Layers": [layer]}, "fp16", expected_operations=expected
         )
+    if tactic == "__myl_ReshMoveMul_test":
+        layer["Inputs"][-1]["Format/Datatype"] = "Half"
+        layer["Inputs"][-1]["Dimensions"] = [shapes[-1][0] + 1, 8, 1, 1]
+        with pytest.raises(RuntimeError, match="expected fp16 operands"):
+            verify_compute_precision(
+                {"Layers": [layer]}, "fp16", expected_operations=expected
+            )
 
 
 def test_static_onnx_ops_are_checked_if_executed_and_can_be_folded():
@@ -376,6 +409,67 @@ def test_static_onnx_ops_are_checked_if_executed_and_can_be_folded():
     )
     with pytest.raises(RuntimeError, match="Compute layer constant expected fp16"):
         verify_compute_precision(details, "fp16", **requirements)
+
+
+def test_hmr2_packed_kv_requires_matching_projection_producer():
+    prefix = "/hmr/smpl_head/transformer/transformer/layers.0.1/fn/"
+    projection = prefix + "to_kv/MatMul"
+
+    def half(name, shape):
+        return {"Name": name, "Dimensions": shape, "Format/Datatype": "Half"}
+
+    expected = dict.fromkeys(
+        (projection, prefix + "MatMul", prefix + "MatMul_1"), "fp16"
+    )
+    gemm = {
+        "Name": "kv projection",
+        "LayerType": "gemm",
+        "TacticName": "sm80_xmma_gemm_f16f16_f16f16_f16_tn",
+        "Metadata": f"[ONNX Layer: {projection}]",
+        "Inputs": [half("context", [-1, 1280])],
+        "Outputs": [half("kv", [-1, 6144])],
+    }
+    fusion = {
+        "Name": "packed cross attention",
+        "LayerType": "kgen",
+        "TacticName": "_gemv_mha_v1_test_vec",
+        "Metadata": "".join(f"[ONNX Layer: {name}]" for name in expected),
+        "Inputs": [half("kv", [-1, 1024]), half("query", [-1, 1, 64])],
+        "Outputs": [half("attention", [-1, 1, 64])],
+    }
+    details = {"Layers": [gemm, fusion]}
+    report = verify_compute_precision(details, "fp16", expected_operations=expected)
+    assert report["onnx_operations_by_precision"] == {"fp16": 3}
+    assert report["packed_hmr2_attention_layers"] == 1
+    gemm["Outputs"][0]["Name"] = "different projection"
+    with pytest.raises(RuntimeError, match="Packed K/V.*lacks an FP16 GEMM"):
+        verify_compute_precision(details, "fp16", expected_operations=expected)
+    fusion["Inputs"][1]["Format/Datatype"] = "Float"
+    with pytest.raises(RuntimeError, match="expected fp16 operands"):
+        verify_compute_precision(details, "fp16", expected_operations=expected)
+
+
+def test_hmr2_packed_self_attention_rejects_different_token_count():
+    operation = "/hmr/smpl_head/transformer/transformer/layers.2.0/fn/MatMul_1"
+    layer = {
+        "Name": "single token self attention",
+        "LayerType": "kgen",
+        "TacticName": "__myl_SlicReshReshReshMul_test",
+        "Metadata": f"[ONNX Layer: {operation}]",
+        "Inputs": [
+            {"Dimensions": [-1, 1, 1536], "Format/Datatype": "Half"},
+            {"Dimensions": [-1, 8, 1, 1], "Format/Datatype": "Half"},
+        ],
+        "Outputs": [{"Dimensions": [-1, 1, 64], "Format/Datatype": "Half"}],
+    }
+    details = {"Layers": [layer]}
+    expected = {operation: "fp16"}
+    assert verify_compute_precision(details, "fp16", expected_operations=expected)[
+        "onnx_operations_by_precision"
+    ] == {"fp16": 1}
+    layer["Inputs"][0]["Dimensions"] = [-1, 2, 1536]
+    with pytest.raises(RuntimeError, match="expected fp16 operands"):
+        verify_compute_precision(details, "fp16", expected_operations=expected)
 
 
 def test_cublas_gemvx_uses_adjacent_operand_codes_before_accumulator():

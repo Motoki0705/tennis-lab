@@ -2,10 +2,13 @@
 
 import argparse
 import os
+from contextlib import nullcontext
+from importlib import import_module
 from pathlib import Path
+from unittest.mock import patch
 
-import onnx
 import torch
+from batching import require_dynamic_axis
 from benchmark import write_json
 from benchmark_dino import (
     CHECKPOINT_SHA256,
@@ -23,7 +26,7 @@ from fixed_inputs import (
     sha256_file,
 )
 from measure_dino import BOXES, INPUT_NAME, LOGITS
-from msda import export_onnx, export_sampling
+from msda import export_onnx, export_sampling, upstream_modules
 
 from src.submodules.models.dino.architecture import (
     build_dino,
@@ -49,7 +52,23 @@ class ExportModel(torch.nn.Module):
         return outputs[LOGITS], outputs[BOXES]
 
 
+def batched_window_reverse(windows, window_size, height, width):
+    # The upstream int() captures the example batch in the legacy ONNX trace.
+    channels = windows.shape[-1]
+    tiles = windows.reshape(
+        -1,
+        height // window_size,
+        width // window_size,
+        window_size,
+        window_size,
+        channels,
+    )
+    return tiles.permute(0, 1, 3, 2, 4, 5).reshape(-1, height, width, channels)
+
+
 def graph_files(path):
+    import onnx
+
     model = onnx.load(path, load_external_data=False)
     files = {path.name}
     for tensor in model.graph.initializer:
@@ -61,6 +80,8 @@ def graph_files(path):
 
 def run(args):
     import subprocess
+
+    import onnx
 
     lock = verify_inputs(args.inputs, args.bucket, args.checkpoint)
     check_extension()
@@ -84,12 +105,27 @@ def run(args):
     wrapper = ExportModel(model, NestedTensor).eval()
     graph = args.output / "export.onnx"
     print(f"Exporting {args.method} at {shape} to {graph}", flush=True)
-    with export_sampling(args.method):
+    window_reverse = nullcontext()
+    if args.dynamic_batch:
+        layer, _ = upstream_modules()
+        prefix = layer.__name__.split(".ops.")[0]
+        swin = import_module(f"{prefix}.swin_transformer")
+        window_reverse = patch.object(swin, "window_reverse", batched_window_reverse)
+    with export_sampling(args.method, dynamic_batch=args.dynamic_batch), window_reverse:
         export_onnx(
-            wrapper, (sample,), graph, inputs=[INPUT_NAME], outputs=[LOGITS, BOXES]
+            wrapper,
+            (sample,),
+            graph,
+            inputs=[INPUT_NAME],
+            outputs=[LOGITS, BOXES],
+            dynamic_batch=args.dynamic_batch,
         )
     del wrapper, model
     onnx.checker.check_model(str(graph))
+    if args.dynamic_batch:
+        metadata = onnx.load(graph, load_external_data=False).graph
+        for value in (*metadata.input, *metadata.output):
+            require_dynamic_axis(value, 0, "batch")
     write_json(
         args.output / "export.json",
         {
@@ -105,6 +141,7 @@ def run(args):
             "opset": 19,
             "files": graph_files(graph),
             "queue_job": os.environ["TENNIS_RUN_ID"],
+            **({"dynamic_batch": True} if args.dynamic_batch else {}),
         },
     )
 
@@ -116,6 +153,7 @@ def main():
     parser.add_argument("--inputs", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--checkpoint", default=CHECKPOINT, type=Path)
+    parser.add_argument("--dynamic-batch", action="store_true")
     args = parser.parse_args()
     require_queue()
     run(args)

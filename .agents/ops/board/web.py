@@ -22,7 +22,14 @@ from .execution_data import ExecutionReader
 from .web_data import BoardReader, InvalidQuery, MissingPost
 
 STATIC = Path(__file__).parent / "static"
-ASSETS = {"app.js", "execution.js", "style.css"}
+ASSETS = {
+    "app.js",
+    "execution.js",
+    "style.css",
+    "icon-claude.svg",
+    "icon-gemini.svg",
+    "icon-codex.svg",
+}
 WRITE_PATH = re.compile(r"/api/posts(?:/[^/]+/(?:replies|read|reactions/[^/]+))?")
 CSP = (
     "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
