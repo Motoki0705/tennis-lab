@@ -1,4 +1,4 @@
-"""Fence board operations with the existing parent registry writer lock."""
+"""Short registry validation and the common owner-change/send fence."""
 
 from __future__ import annotations
 
@@ -18,6 +18,12 @@ from .storage import Store, directory
 
 
 @contextmanager
+def ownership_fence(env: Mapping[str, str]) -> Iterator[None]:
+    with ParentStore(directory(env).parent / "parent-sessions").ownership():
+        yield
+
+
+@contextmanager
 def parent_state(env: Mapping[str, str]) -> Iterator[dict[str, Any]]:
     # Never save the registry here. Parent actions release this lock before
     # board synchronization, so the lock order is parent -> board everywhere.
@@ -30,6 +36,14 @@ def as_parent(
     env: Mapping[str, str], *, write: bool = False
 ) -> Iterator[tuple[sqlite3.Connection, Assignment, dict[str, Any]]]:
     identity = session_identity(env)  # Reject nested/missing identity before IO.
+    with _as_registered_parent(env, identity, write=write) as context:
+        yield context
+
+
+@contextmanager
+def _as_registered_parent(
+    env: Mapping[str, str], identity: str, *, write: bool = False
+) -> Iterator[tuple[sqlite3.Connection, Assignment, dict[str, Any]]]:
     with parent_state(env) as parents:
         owned = [
             key

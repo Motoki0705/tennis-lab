@@ -1,4 +1,4 @@
-初回のL4割当拒否はこのrunのfailed履歴として保持しています。再開attempt2では4秒比較を生成・Drive保存・回収・配信監査・L4停止まで完了しました。現在の結果と人間用動画は[delivery run](../run-player-camera-stabilization-delivery-20261109/review.md)、元管理jobの保存失敗と復旧は[full-render run](../../nodes/tennis_scene/000051-run-player-camera-stabilization-full-render-20261109.md)を参照してください。強度選択・人間受入・全1010frame再描画は未了です。
+初回のL4割当拒否はこのrunのfailed履歴として保持しています。再開attempt2では4秒比較を生成・Drive保存・回収・配信監査・L4停止まで完了しました。現在の結果と人間用動画は[delivery run](../run-player-camera-stabilization-delivery-20261109/review.md)、元管理jobの保存失敗と復旧は[full-render run](../../nodes/tennis_scene/000089-run-player-camera-stabilization-full-render-20261109.md)を参照してください。強度選択・人間受入・全1010frame再描画は未了です。
 
 以下は初回run時点の実装・検証と再開手順の記録です。
 

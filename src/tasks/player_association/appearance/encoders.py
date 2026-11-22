@@ -18,6 +18,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.utils.inference_recording import model_action, span
+
 
 class AppearanceEncoder(Protocol):
     name: str
@@ -135,6 +137,8 @@ class ClipReIDEncoder:
     device: str = "cpu"
     input_size: tuple[int, int] = (256, 128)
 
+    @model_action("load", "CLIP-ReID", weights=lambda owner: {"checkpoint": owner.checkpoint},
+                  device=lambda owner: owner.device)
     def __post_init__(self) -> None:
         self.model = _ClipVisual((self.input_size[0] // 16, self.input_size[1] // 16))
         prefix = "image_encoder."
@@ -144,8 +148,15 @@ class ClipReIDEncoder:
 
     def embed(self, crops: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
-            cls, projected = self.model(_normalized(crops.to(self.device), (0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
-        return F.normalize(torch.cat((cls, projected), -1).float(), dim=-1).cpu()
+            with span("transfer", model="CLIP-ReID"):
+                pixels = crops.to(self.device)
+            with span("preprocess", model="CLIP-ReID", device=self.device):
+                pixels = _normalized(pixels, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            with span("inference", model="CLIP-ReID", batch_shape=list(pixels.shape)):
+                cls, projected = self.model(pixels)
+            del pixels
+        with span("postprocess", model="CLIP-ReID"):
+            return F.normalize(torch.cat((cls, projected), -1).float(), dim=-1).cpu()
 
 
 @dataclass
@@ -190,8 +201,12 @@ def encoder_weights(name: str, *, checkpoint_root: Path, external_root: Path) ->
     return weights[name]
 
 
-def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, device: str) -> AppearanceEncoder:
-    weights = encoder_weights(name, checkpoint_root=checkpoint_root, external_root=external_root)
+def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, device: str,
+                  checkpoint: Path | None = None) -> AppearanceEncoder:
+    default = encoder_weights(name, checkpoint_root=checkpoint_root, external_root=external_root)
+    # A pipeline declaration has already resolved and SHA-bound its checkpoint.
+    # Standalone callers may still explicitly select the profile's default.
+    weights = default if checkpoint is None else checkpoint
     if not weights.is_file():
         raise FileNotFoundError(f"Required appearance checkpoint is missing: {weights}")
     if name == "osnet_ain_x1_0_msmt17":

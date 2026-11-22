@@ -5,20 +5,32 @@ from __future__ import annotations
 import json
 import subprocess
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-from issues import parse_title
+from lib.agy_session import AGY_LAUNCH_ENV, AgyTui, caller_tui
 from lib.identity import session_identity
-from parent.github import GitHub
+from parent.policy import digest
 from parent.state import Store
 
 from .client import Herdr
 from .coordination import Guard, owner_token, process_stamp, state_root
 
-TOKEN_KEYS = ("tl_name", "tl_parent", "tl_topic", "tl_engine", "tl_owner")
+TOKEN_KEYS = (
+    "tl_name",
+    "tl_parent",
+    "tl_issue",
+    "tl_topic",
+    "tl_engine",
+    "tl_owner",
+)
 INBOX_KEYS = ("tl_inbox", "tl_inbox_label")
+
+
+def issue_label(parent: int) -> str:
+    """Short sidebar cell; ``tl_parent`` keeps the full ``owner/repo#N`` key."""
+    return f"#{parent}"
 
 
 class VerifiedSessionStartError(ValueError):
@@ -41,15 +53,17 @@ def board_name(env: Mapping[str, str], repo: str, parent: int) -> str | None:
         return canonical_name(assignment.name)
 
 
-def clear_inbox(client: Herdr, pane: dict[str, Any], guard: Guard) -> dict[str, Any]:
+def clear_inbox(
+    client: Herdr, pane: dict[str, Any], validate: Callable[[], None]
+) -> dict[str, Any]:
     """Lifecycle cleanup uses the board source while holding the pane guard."""
     if any(key in pane.get("tokens", {}) for key in INBOX_KEYS):
         client.publish(
             pane,
-            agent=pane["agent"],
+            agent=pane.get("agent"),
             display=pane.get("display_agent"),
             tokens={key: "" for key in INBOX_KEYS},
-            validate=guard.check,
+            validate=validate,
             source="tennis-board",
             tokens_only=True,
         )
@@ -57,24 +71,56 @@ def clear_inbox(client: Herdr, pane: dict[str, Any], guard: Guard) -> dict[str, 
     return pane
 
 
-def short_topic(text: str, columns: int = 20) -> str:
+SUMMARY_COLUMNS = 24
+
+
+def display_columns(text: str) -> int:
+    return sum(
+        0
+        if unicodedata.combining(char)
+        else (2 if unicodedata.east_asian_width(char) in "WF" else 1)
+        for char in text
+    )
+
+
+def validate_summary(text: str) -> str:
+    """The parent writes the sidebar summary; never truncate or rewrite it."""
     if (
-        not text
+        not isinstance(text, str)
+        or not text
         or text != text.strip()
         or any(unicodedata.category(c).startswith("C") for c in text)
     ):
-        raise ValueError("topic must be nonempty text without control characters")
-    used = 0
-    for index, char in enumerate(text):
-        width = (
-            0
-            if unicodedata.combining(char)
-            else (2 if unicodedata.east_asian_width(char) in "WF" else 1)
+        raise ValueError("summary must be nonempty text without control characters")
+    columns = display_columns(text)
+    if columns > SUMMARY_COLUMNS:
+        raise ValueError(
+            f"summary is {columns} display columns; shorten it to {SUMMARY_COLUMNS} "
+            "or fewer (full-width characters count as 2)"
         )
-        if used + width > columns:
-            return short_topic(text[:index], columns - 1) + "…"
-        used += width
     return text
+
+
+def parent_summary(env: Mapping[str, str], key: str, owner: Mapping[str, Any]) -> str:
+    """Read the summary saved with the parent record matching the ownership index."""
+    if "tasks" in owner:  # version 1 keeps the full record in the index
+        record: Mapping[str, Any] = owner
+    else:
+        path = state_root(env) / "parent-sessions/parents" / (digest(key) + ".json")
+        record = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(record, dict) or any(
+            record.get(field) != owner.get(field)
+            for field in ("session", "status", "generation")
+        ):
+            raise ValueError("parent record disagrees with its index; retry sync")
+    value = record.get("display_summary")
+    if value is None:
+        number = key.rpartition("#")[2]
+        raise ValueError(
+            f"parent #{number} has no sidebar summary; register one with "
+            f"`python -m parent --parent {number} summary --text <summary>`"
+        )
+    return validate_summary(value)
 
 
 def registry(env: Mapping[str, str]) -> dict[str, Any]:
@@ -114,6 +160,8 @@ def bind(
 ) -> dict[str, Any]:
     """Explicit setup for a tool runner that does not inherit Herdr pane variables."""
     identity = session_identity(dict(env))
+    if identity.startswith("agy:"):
+        raise ValueError("agy display requires its inherited Herdr TUI context")
     client = Herdr(env, session)
     pane = client.pane(pane_id)
     if (
@@ -172,7 +220,6 @@ def target(
 def sync(
     env: Mapping[str, str],
     *,
-    topic: str | None = None,
     expected_parent: int | None = None,
     clear: bool = False,
     session_start: bool = False,
@@ -183,6 +230,11 @@ def sync(
     if bind_native and (not session_start or session_end):
         raise ValueError("native binding requires a SessionStart event")
     identity = session_identity(dict(env))
+    if identity.startswith("agy:") and env.get(AGY_LAUNCH_ENV) != "1":
+        return {
+            "status": "not_configured",
+            "reason": "start agy with .agents/ops/herdr_labels/agy-parent.sh",
+        }
     destination = target(env, identity)
     if destination is None:
         return {
@@ -193,6 +245,8 @@ def sync(
     if (session_start or session_end) and env.get("HERDR_ENV") != "1":
         raise ValueError("lifecycle events require the inherited Herdr caller context")
     guard = Guard(env, identity, client, pane)
+    if identity.startswith("agy:"):
+        guard.require_agy_tui(caller_tui())
     if session_start or session_end:
         guard.require_native_ancestor()
     try:
@@ -203,7 +257,6 @@ def sync(
                 client,
                 guard.pane,
                 guard,
-                topic=topic,
                 expected_parent=expected_parent,
                 clear=clear,
                 session_start=session_start,
@@ -222,6 +275,31 @@ def sync(
         if session_start and identity.startswith("claude:") and guard.native_verified:
             raise VerifiedSessionStartError(str(exc)) from exc
         raise
+
+
+def agy_session_changed(env: Mapping[str, str], tui: AgyTui, conversation: str) -> None:
+    """Sync a status-line event backed by the pane's live conversation lock."""
+    tui.require_conversation(conversation)
+    identity = f"agy:{conversation}"
+    destination = target(env, identity)
+    if destination is None:
+        return
+    client, pane = destination
+    guard = Guard(env, identity, client, pane)
+    guard.require_agy_tui(tui)
+    guard.require_native_ancestor()
+    with guard.hold(start=True):
+        _sync(
+            env,
+            identity,
+            client,
+            guard.pane,
+            guard,
+            expected_parent=None,
+            clear=False,
+            session_start=True,
+            confirm_parent=False,
+        )
 
 
 def _bind_native(
@@ -262,7 +340,6 @@ def _sync(
     pane: dict[str, Any],
     guard: Guard,
     *,
-    topic: str | None,
     expected_parent: int | None,
     clear: bool,
     session_start: bool,
@@ -295,7 +372,7 @@ def _sync(
             return {"status": "unassigned", "pane": pane["pane_id"]}
         if registry(env) != snapshot:
             raise ValueError("parent registry changed before label cleanup; retry sync")
-        pane = clear_inbox(client, pane, guard)
+        pane = clear_inbox(client, pane, guard.check)
         if not has_label:
             return {"status": "updated", "pane": pane["pane_id"]}
         return client.publish(
@@ -326,38 +403,24 @@ def _sync(
         )
     guard.claim(
         allow_create=confirm_parent,
-        allow_move=session_start and identity.startswith("claude:"),
+        allow_move=session_start and identity.partition(":")[0] in {"claude", "agy"},
     )
-    if topic is None:
-        if existing.get("tl_owner") == token and existing.get("tl_parent") == key:
-            topic = existing.get("tl_topic")
-        if not topic:
-            issue = GitHub(repo).issue(int(number))
-            if issue["state"] != "open":
-                raise ValueError(
-                    "registered parent is closed; release ownership before relabelling"
-                )
-            parsed = parse_title(issue["title"])
-            if not parsed.identifier:
-                raise ValueError(
-                    "parent title has no short identifier; pass --topic explicitly"
-                )
-            topic = parsed.identifier
-    label = short_topic(topic)
+    summary = parent_summary(env, key, row)
     name = board_name(env, repo, int(number))
-    # Do not project an assignment that changed while fetching its issue title.
+    # Do not project an assignment that changed while reading its record.
     if registry(env) != snapshot:
         raise ValueError("parent registry changed during label preparation; retry sync")
     if session_start and previous_owner != token:
-        pane = clear_inbox(client, pane, guard)
+        pane = clear_inbox(client, pane, guard.check)
     result = client.publish(
         pane,
         agent=identity.split(":", 1)[0],
-        display=f"{name} · #{number} · 親" if name else f"#{number} · 親",
+        display=f"{name} · {summary}" if name else summary,
         tokens={
             "tl_name": name or "",
             "tl_parent": key,
-            "tl_topic": label,
+            "tl_issue": issue_label(int(number)),
+            "tl_topic": summary,
             "tl_engine": identity.split(":", 1)[0],
             "tl_owner": token,
         },
@@ -366,7 +429,7 @@ def _sync(
     return {
         **result,
         "parent": int(number),
-        "topic": label,
+        "summary": summary,
         "name": name,
         "name_status": "assigned" if name else "unassigned",
     }

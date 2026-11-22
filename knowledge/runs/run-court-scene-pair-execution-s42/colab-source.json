@@ -1,0 +1,10 @@
+{
+  "commit": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "excluded": [],
+  "storage_excluded": [],
+  "exclusion_reasons": {},
+  "untracked": [
+    "knowledge/runs/run-court-scene-pair-colab-s42/recovery_adapter.py",
+    "knowledge/runs/run-court-scene-pair-colab-s42/recovery_bootstrap.sh"
+  ]
+}

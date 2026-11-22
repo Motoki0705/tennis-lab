@@ -1,0 +1,32 @@
+{
+  "pytest": {
+    "collected": 145,
+    "passed": 144,
+    "skipped": [
+      {
+        "node": "tests.unit.tasks.court_detection.geometry.test_pose.test_cuda_tf32_does_not_reject_recovered_bfloat16_rotation",
+        "reason": {
+          "type": "pytest.skip",
+          "message": "CUDA bf16 is required for the Lightning runtime regression."
+        }
+      }
+    ],
+    "failures": 0,
+    "max_case_seconds": 4.391
+  },
+  "added_cases": 4,
+  "validator_requested": 0,
+  "validator_attempted": 0,
+  "validator_completed": 0,
+  "precommit": "ruff/mypy passed at 2caa8c59b, 4abbee48f, 3049e2158",
+  "CUDA_VISIBLE_DEVICES": "",
+  "GPU_used": true,
+  "model_forward": false,
+  "public_region_api_checks": 6,
+  "public_region_api_matches": 6,
+  "mutations_caught": 2,
+  "mutations_restored_passed": 2,
+  "acceptance_evaluation_GPU_used": false,
+  "unintended_CUDA_unit_cases": 1,
+  "execution_incident": "execution-incident.json"
+}

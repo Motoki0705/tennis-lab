@@ -12,14 +12,16 @@ import torch
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from src.submodules.configuration import require_absolute_path
+from src.submodules.configuration import InferencePrecision, require_absolute_path
 from src.submodules.models._base.crops import iter_frame_person_crops, iter_person_crops
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.models._base.precision import autocast_dtype
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
 from src.submodules.vendor.gvhmr.vitpose import build_vitpose_huge
 from src.submodules.vendor.gvhmr.vitpose.flip_utils import flip_heatmap_coco17
 from src.submodules.vendor.gvhmr.vitpose.heatmap_head import ViTPoseHeadConfig
 from src.submodules.vendor.gvhmr.vitpose.kp2d_utils import keypoints_from_heatmaps
+from src.utils.inference_recording import span
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,7 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         flip_test: bool,
         batch_size: int,
         head_config: ViTPoseHeadConfig,
-        precision: Literal["float32", "bfloat16"] = "float32",
+        precision: InferencePrecision | Literal["float32", "bfloat16"] = "float32",
         show_progress: bool = True,
     ) -> None:
         super().__init__(device)
@@ -95,13 +97,19 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         self.flip_test = flip_test
         self.batch_size = batch_size
         self.show_progress = show_progress
-        if precision not in {"float32", "bfloat16"}:
-            raise ValueError(f"Unsupported ViTPose precision: {precision}")
         self.precision = precision
+        if precision == "float32":
+            precision = "fp32"
+        elif precision == "bfloat16":
+            precision = "bf16"
+        self._autocast_dtype = autocast_dtype(precision, self.device)
         if not isinstance(head_config, ViTPoseHeadConfig):
             raise TypeError("head_config must be a validated ViTPoseHeadConfig.")
         self.head_config = head_config
         self._pose: torch.nn.Module | None = None
+
+    def recording_assets(self) -> dict[str, Path]:
+        return {"checkpoint": self.checkpoint}
 
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
@@ -134,35 +142,41 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         keypoints = []
         batch_iterator = tqdm(batches, desc="ViTPose") if self.show_progress else batches
         for images, bbx_xys_batch in batch_iterator:
-            imgs_batch = images[:, :, :, 32:224].to(self._device)
-            with torch.autocast(
-                self.device.type,
-                dtype=torch.bfloat16,
-                enabled=self.precision == "bfloat16",
-            ):
-                if self.flip_test:
-                    heatmap, heatmap_flipped = self._pose(
-                        torch.cat([imgs_batch, imgs_batch.flip(3)], dim=0)
-                    ).chunk(2)
-                    heatmap_flipped = flip_heatmap_coco17(heatmap_flipped)
-                    heatmap = (heatmap + heatmap_flipped) * 0.5
-                    del heatmap_flipped
-                else:
-                    heatmap = self._pose(imgs_batch.clone())  # (B, J, 64, 48)
+            keypoints.append(self._predict_crop_batch(images, bbx_xys_batch))
 
-            # mmpose-style UDP post-processing back to full-image pixels
+        return Pose2DResult(keypoints=torch.cat(keypoints, dim=0).float() if keypoints else torch.empty(0, 17, 3))
+
+    def predict_crops(self, images: torch.Tensor, boxes_xys: torch.Tensor) -> Pose2DResult:
+        """Infer one externally bounded batch of prepared ImageNet person crops."""
+        self.load()
+        with torch.no_grad():
+            return Pose2DResult(self._predict_crop_batch(images, boxes_xys).float())
+
+    def _predict_crop_batch(self, images: torch.Tensor, boxes: torch.Tensor) -> torch.Tensor:
+        if self._pose is None:
+            raise RuntimeError("ViTPose model did not load before prediction.")
+        with span("transfer", model="ViTPose"):
+            imgs_batch = images[:, :, :, 32:224].to(self._device)
+        with span("inference", model="ViTPose", batch_shape=[len(images) * (2 if self.flip_test else 1), *imgs_batch.shape[1:]],
+                  batch_items=len(images), flip_test=self.flip_test), torch.autocast(
+            self.device.type, dtype=self._autocast_dtype, enabled=self._autocast_dtype is not None,
+        ):
+            if self.flip_test:
+                heatmap, heatmap_flipped = self._pose(
+                    torch.cat([imgs_batch, imgs_batch.flip(3)], dim=0)
+                ).chunk(2)
+                heatmap_flipped = flip_heatmap_coco17(heatmap_flipped)
+                heatmap = (heatmap + heatmap_flipped) * 0.5
+                del heatmap_flipped
+            else:
+                heatmap = self._pose(imgs_batch.clone())  # (B, J, 64, 48)
+
+        with span("postprocess", model="ViTPose"):
+            # MMPose-style UDP post-processing back to full-image pixels.
             heatmap_np = heatmap.float().cpu().numpy()
-            center = bbx_xys_batch[:, :2].numpy()
-            scale = (
-                torch.cat(
-                    (bbx_xys_batch[:, [2]] * 24 / 32, bbx_xys_batch[:, [2]]), dim=1
-                )
-                / 200
-            ).numpy()
+            center = boxes[:, :2].numpy()
+            scale = (torch.cat((boxes[:, [2]] * 24 / 32, boxes[:, [2]]), dim=1) / 200).numpy()
             preds, maxvals = keypoints_from_heatmaps(
                 heatmaps=heatmap_np, center=center, scale=scale, use_udp=True
             )
-            kp2d = np.concatenate((preds, maxvals), axis=-1)
-            keypoints.append(torch.from_numpy(kp2d))
-
-        return Pose2DResult(keypoints=torch.cat(keypoints, dim=0).float() if keypoints else torch.empty(0, 17, 3))
+            return torch.from_numpy(np.concatenate((preds, maxvals), axis=-1))

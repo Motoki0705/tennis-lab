@@ -1,22 +1,28 @@
-"""Read-only gh adapter and local draft renderer. No GitHub mutation commands."""
+"""Read-only GitHub adapter and local draft renderer. No GitHub mutation commands."""
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import subprocess
 import sys
+import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 from typing import cast
 from urllib.parse import urlsplit
 
 from .consistency import Issue, check_consistency
+from .evidence import EVIDENCE_LABEL, require_work_issue
 from .format import (
     CHILD_LABEL,
     PARENT_LABEL,
+    PROPOSAL_LABEL,
+    STANDALONE_LABEL,
     ChildTask,
     ParentRef,
     ProposalSource,
@@ -26,6 +32,11 @@ from .format import (
     render_child_body,
     render_parent_body,
 )
+from .polling import GETResponse, JobLog, RateLimit, rate_limit
+from .transport import HTTPClient, HTTPResponse
+
+_HTTP_STATUS = re.compile(r"HTTP/\S+ ([0-9]{3})(?:\s|$)")
+_GET_RETRY_DELAYS = (1.0, 2.0)
 
 
 def _object(value: object, field: str) -> dict[str, object]:
@@ -101,6 +112,9 @@ def render_spec(value: object) -> dict[str, object]:
     if (
         PARENT_LABEL in labels
         or CHILD_LABEL in labels
+        or STANDALONE_LABEL in labels
+        or PROPOSAL_LABEL in labels
+        or EVIDENCE_LABEL in labels
         or len(set(labels)) != len(labels)
     ):
         raise ValueError(
@@ -156,60 +170,319 @@ def _repo_name(value: str) -> str:
     return value
 
 
-class GitHubHTTPError(ValueError):
-    """A failed gh api response with its actual HTTP status preserved."""
+def local_repository() -> str:
+    """Resolve every effective fetch/push URL without contacting GitHub."""
 
-    def __init__(self, endpoint: str, status: int, detail: str) -> None:
+    def git_lines(*args: str) -> list[str]:
+        try:
+            result = subprocess.run(
+                ["git", *args],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            raise ValueError(
+                "cannot resolve a GitHub remote; specify --repo owner/repo"
+            ) from None
+        if result.returncode or not result.stdout.strip():
+            raise ValueError(
+                "cannot resolve a GitHub remote; specify --repo owner/repo"
+            )
+        return result.stdout.splitlines()
+
+    urls = []
+    for remote in git_lines("remote"):
+        # Ask git to apply insteadOf/pushInsteadOf, including the fallback to
+        # fetch URLs when pushurl is absent. Inspect every URL, not just origin
+        # or the first destination, so a rewritten push cannot pick another repo.
+        urls.extend(git_lines("remote", "get-url", "--all", "--", remote))
+        urls.extend(git_lines("remote", "get-url", "--push", "--all", "--", remote))
+    repos: dict[str, str] = {}
+    for url in urls:
+        scp = re.fullmatch(r"git@github\.com:([^?#]+)", url, re.IGNORECASE)
+        if scp:
+            path = scp[1]
+        else:
+            try:
+                parsed = urlsplit(url)
+                github = (
+                    parsed.scheme in {"https", "ssh"}
+                    and parsed.hostname is not None
+                    and parsed.hostname.casefold() == "github.com"
+                    and parsed.port in {None, 22 if parsed.scheme == "ssh" else 443}
+                    and not parsed.query
+                    and not parsed.fragment
+                    and not parsed.password
+                )
+            except ValueError:
+                github = False
+            if not github:
+                raise ValueError("non-GitHub git remote; specify --repo owner/repo")
+            path = parsed.path.removeprefix("/")
+        name = _repo_name(path.removesuffix(".git"))
+        repos.setdefault(name.casefold(), name)
+    if len(repos) != 1:
+        raise ValueError("ambiguous GitHub remotes; specify --repo owner/repo")
+    return next(iter(repos.values()))
+
+
+class GitHubHTTPError(ValueError):
+    """A failed GET response with its actual HTTP status preserved."""
+
+    def __init__(
+        self, endpoint: str, status: int, detail: str, *, attempts: int = 1
+    ) -> None:
         self.status = status
-        super().__init__(f"gh api {endpoint}: HTTP {status} ({detail})")
+        self.attempts = attempts
+        super().__init__(
+            f"gh api GET {endpoint}: HTTP {status}; attempts={attempts}; "
+            f"last_error_kind=http_{status} ({detail})"
+        )
+
+
+class GitHubTransportError(ValueError):
+    """A GET exhausted its bounded retries without an HTTP response status."""
+
+    def __init__(
+        self, endpoint: str, attempts: int, error_kind: str, detail: str
+    ) -> None:
+        self.endpoint = endpoint
+        self.attempts = attempts
+        self.error_kind = error_kind
+        super().__init__(
+            f"gh api GET {endpoint}: attempts={attempts}; "
+            f"last_error_kind={error_kind} ({detail})"
+        )
 
 
 class GitHub:
     def __init__(self, repo: str | None) -> None:
-        if repo is None:
-            result = self._run("repo", "view", "--json", "nameWithOwner")
-            if result.returncode:
-                raise ValueError(f"gh repo view failed: {result.stderr.strip()}")
-            repo = _string(
-                _object(json.loads(result.stdout), "repository").get("nameWithOwner"),
-                "nameWithOwner",
-            )
-        self.repo = _repo_name(repo)
+        self.repo = _repo_name(repo) if repo is not None else local_repository()
+        self._http = HTTPClient()
+        self._conditional_cache: dict[tuple[str, str], tuple[str, object]] = {}
+        self._secondary_limits: dict[str, int] = {}
 
-    @staticmethod
-    def _run(*args: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            ["gh", *args], text=True, capture_output=True, timeout=60, check=False
+    def close(self) -> None:
+        self._http.close()
+
+    def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
+        """Scripted GET injection boundary retained for existing callers/tests."""
+        return self._http.request("GET", args[-1], include=True)
+
+    def _get_response(
+        self, endpoint: str
+    ) -> tuple[subprocess.CompletedProcess[str], int]:
+        # Only REST GET reaches this loop. An HTTP response ends transport
+        # retries even for auth/rate-limit/server errors or malformed bodies.
+        for attempt, delay in enumerate((0.0, *_GET_RETRY_DELAYS), start=1):
+            if delay:
+                time.sleep(delay)
+            try:
+                result = self._run(
+                    "api",
+                    "--include",
+                    "--method",
+                    "GET",
+                    "--header",
+                    "Accept: application/vnd.github+json",
+                    "--header",
+                    "X-GitHub-Api-Version: 2022-11-28",
+                    endpoint,
+                )
+            except subprocess.TimeoutExpired as exc:
+                partial: str | bytes = exc.stdout or b""
+                if isinstance(partial, bytes):
+                    partial = partial.decode("utf-8", errors="replace")
+                status = _HTTP_STATUS.match(partial)
+                if status:
+                    raise GitHubHTTPError(
+                        self._http.redact(endpoint),
+                        int(status[1]),
+                        f"timeout after {exc.timeout}s after HTTP response status",
+                        attempts=attempt,
+                    ) from exc
+                error_kind = "timeout_without_http_response"
+                detail = f"timeout after {exc.timeout}s without HTTP response status"
+            else:
+                if _HTTP_STATUS.match(result.stdout):
+                    return result, attempt
+                if result.returncode == 0:
+                    raise ValueError(
+                        f"gh api GET {self._http.redact(endpoint)}: attempts={attempt}; "
+                        "last_error_kind=invalid_http_response "
+                        "(gh exited successfully without HTTP response status)"
+                    )
+                error_kind = "missing_http_response_status"
+                detail = f"missing HTTP response status ({result.stderr.strip()})"
+        raise GitHubTransportError(
+            self._http.redact(endpoint), attempt, error_kind, self._http.redact(detail)
         )
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
-        result = self._run(
-            "api",
-            "--include",
-            "--method",
-            "GET",
-            "--header",
-            "Accept: application/vnd.github+json",
-            "--header",
-            "X-GitHub-Api-Version: 2022-11-28",
-            endpoint,
-        )
+        result, attempts = self._get_response(endpoint)
         headers, separator, body = result.stdout.replace("\r\n", "\n").partition("\n\n")
-        status = re.match(r"HTTP/\S+ ([0-9]{3})(?:\s|$)", headers)
-        if not separator or not status:
-            raise ValueError(
-                f"gh api {endpoint}: missing HTTP response status ({result.stderr.strip()})"
-            )
-        payload: object = json.loads(body)
+        status = _HTTP_STATUS.match(headers)
+        assert status is not None  # _get_response requires an HTTP status.
         if status[1] == "404" and result.returncode != 0 and missing_parent:
-            error = _object(payload, "parent 404")
-            if error.get("message") == "No parent issue found":
+            try:
+                error = json.loads(body)
+            except json.JSONDecodeError:
+                error = None
+            if (
+                isinstance(error, dict)
+                and error.get("message") == "No parent issue found"
+            ):
                 return None
         if result.returncode or status[1] != "200":
-            raise GitHubHTTPError(endpoint, int(status[1]), result.stderr.strip())
+            raise GitHubHTTPError(
+                self._http.redact(endpoint),
+                int(status[1]),
+                self._http.redact(result.stderr.strip()),
+                attempts=attempts,
+            )
+        context = f"gh api GET {self._http.redact(endpoint)}: attempts={attempts};"
+        if not separator:
+            raise ValueError(f"{context} last_error_kind=missing_http_body_separator")
+        try:
+            payload: object = json.loads(self._http.redact_json(body))
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"{context} last_error_kind=invalid_json_response ({exc})"
+            ) from exc
         if payload is None:
-            raise ValueError(f"gh api {endpoint}: unexpected null response")
+            raise ValueError(f"{context} last_error_kind=unexpected_null_response")
         return payload
+
+    def _poll_response(self, endpoint: str, headers: dict[str, str]) -> HTTPResponse:
+        """A polling request never sleeps or retries inside the acquisition layer."""
+        try:
+            response = self._http.request_response("GET", endpoint, headers=headers)
+        except subprocess.TimeoutExpired:
+            raise GitHubTransportError(
+                self._http.redact(endpoint),
+                1,
+                "timeout_without_http_response",
+                "GitHub polling request timed out before HTTP status",
+            ) from None
+        if response.status is None:
+            raise GitHubTransportError(
+                self._http.redact(endpoint),
+                1,
+                "missing_http_response_status",
+                response.error,
+            )
+        if response.error:
+            raise GitHubHTTPError(
+                self._http.redact(endpoint), response.status, response.error
+            )
+        return response
+
+    def _poll_limit(
+        self, response: HTTPResponse, principal: str, clock: Callable[[], float]
+    ) -> RateLimit | None:
+        limit = rate_limit(
+            response,
+            now=clock(),
+            secondary_attempt=self._secondary_limits.get(principal, 0) + 1,
+        )
+        if limit is not None and limit.kind == "secondary":
+            self._secondary_limits[principal] = limit.secondary_attempt
+        elif response.status in {200, 304}:
+            self._secondary_limits.pop(principal, None)
+        return limit
+
+    def get_conditional(
+        self, endpoint: str, *, clock: Callable[[], float] = time.time
+    ) -> GETResponse:
+        """Opt-in ETag GET. Rate limits return deadlines; other failures raise."""
+        from parent import metrics
+
+        key = self._http.cache_key(endpoint)
+        cached = self._conditional_cache.get(key)
+        response = self._poll_response(
+            endpoint, {"If-None-Match": cached[0]} if cached else {}
+        )
+        assert response.status is not None
+        limit = self._poll_limit(response, key[1], clock)
+        if limit is not None:
+            return GETResponse(
+                response.status,
+                response.headers,
+                response.body,
+                True if cached else None,
+                limit,
+            )
+        if response.status == 304:
+            if cached is None:
+                raise ValueError(
+                    "GitHub 304 has no saved response for this URL and authentication"
+                )
+            cached_etag = response.headers.get("etag") or cached[0]
+            self._conditional_cache[key] = (cached_etag, cached[1])
+            return GETResponse(304, response.headers, copy.deepcopy(cached[1]), True)
+        if response.status != 200:
+            raise GitHubHTTPError(
+                self._http.redact(endpoint), response.status, response.http_error()
+            )
+        try:
+            payload: object = json.loads(response.body)
+        except ValueError:
+            raise ValueError("GitHub conditional GET returned invalid JSON") from None
+        if payload is None:
+            raise ValueError("GitHub conditional GET returned unexpected null")
+        etag = response.headers.get("etag")
+        if etag:
+            self._conditional_cache[key] = (etag, copy.deepcopy(payload))
+        else:
+            self._conditional_cache.pop(key, None)
+            metrics.count("github_get_without_etag")
+        return GETResponse(200, response.headers, payload, bool(etag))
+
+    def job_log(self, job_id: int, *, clock: Callable[[], float] = time.time) -> JobLog:
+        """Resolve the job log redirect once; report missing/expired logs explicitly."""
+        if type(job_id) is not int or job_id < 1:
+            raise ValueError("job_id must be a positive integer")
+        endpoint = f"repos/{self.repo}/actions/jobs/{job_id}/logs"
+        try:
+            response = self._poll_response(endpoint, {})
+        except (GitHubHTTPError, GitHubTransportError) as exc:
+            return JobLog(getattr(exc, "status", None), None, str(exc))
+        key = self._http.cache_key(endpoint)
+        try:
+            limit = self._poll_limit(response, key[1], clock)
+        except ValueError as exc:
+            return JobLog(response.status, None, str(exc))
+        if limit is not None:
+            return JobLog(response.status, None, f"{limit.kind}_rate_limit", limit)
+        if response.status != 302:
+            return JobLog(
+                response.status,
+                None,
+                "GitHub job log expected HTTP 302; " + response.http_error(),
+            )
+        location = response.headers.get("location")
+        if not location:
+            return JobLog(302, None, "GitHub job log redirect has no Location header")
+        try:
+            downloaded = self._http.download_log(location)
+        except subprocess.TimeoutExpired:
+            return JobLog(None, None, "GitHub job log download timed out")
+        except ValueError as exc:
+            return JobLog(302, None, str(exc))
+        if downloaded.error:
+            return JobLog(downloaded.status, None, downloaded.error)
+        if downloaded.status != 200:
+            return JobLog(
+                downloaded.status,
+                None,
+                f"GitHub job log download HTTP {downloaded.status}",
+            )
+        if not downloaded.body:
+            return JobLog(200, None, "GitHub job log download returned an empty body")
+        self._secondary_limits.pop(key[1], None)
+        return JobLog(200, downloaded.body)
 
     def identity(self, value: object) -> int:
         issue = _object(value, "issue")
@@ -231,6 +504,7 @@ class GitHub:
                 continue
             base = f"repos/{self.repo}/issues/{current}"
             raw = _object(self.get(base), "issue")
+            require_work_issue(raw, allow_proposal=True)
             if self.identity(raw) != current:
                 raise ValueError("issue response number differs from request")
             # Only this endpoint's documented 404 means no parent. All other
@@ -245,6 +519,8 @@ class GitHub:
                     raise ValueError(
                         "sub_issues response must be a page of at most 100 issues"
                     )
+                for row in rows:
+                    require_work_issue(_object(row, "sub-issue"), allow_proposal=True)
                 page_children = [self.identity(row) for row in rows]
                 if len(set(page_children)) != len(page_children) or set(
                     children
@@ -288,7 +564,7 @@ def main(argv: list[str] | None = None) -> int:
         "check", help="read the entire related issue family and report inconsistencies"
     )
     check.add_argument("--issue", type=int, required=True)
-    check.add_argument("--repo", help="owner/repo (default: gh repo view)")
+    check.add_argument("--repo", help="owner/repo (default: unique GitHub remote)")
     render = commands.add_parser(
         "render", help="print a local draft as JSON; never write to GitHub"
     )

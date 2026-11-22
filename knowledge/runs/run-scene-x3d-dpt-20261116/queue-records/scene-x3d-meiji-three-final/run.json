@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205241245145059334_2026-11-15T16-05-54-854940665Z_721921_scene-x3d-meiji-three-final",
+  "name": "scene-x3d-meiji-three-final",
+  "command": "PYTHONPATH=. OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 .venv/bin/python knowledge/runs/run-scene-x3d-dpt-20261116/compare_meiji.py --dataset data/tennis_multiview/processed/meiji_4cam/dataset --output outputs/tennis_scene/evaluate/x3d-dpt-20261116/meiji-three-camera-final --external-assets /home/kamimura/projects/tennis-lab/third_party --variant x3d --clips clip_000 clip_018 --camera-ids cam1 cam2 cam3",
+  "provider": "codex",
+  "session": "01a1dfbe-8da3-7440-9833-340a1ae044c1",
+  "issue": "2151",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "9a8263d50516c3e8acea08fa59bdf88934ab698f",
+  "branch": "codex/scene-x3d-dpt-ball",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-x3d-dpt-ball",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-x3d-dpt-ball",
+  "captured_at": "2026-11-16T01:12:46+09:00"
+}

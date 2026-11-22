@@ -49,9 +49,8 @@ class ClipSource:
     offset_sec: float = 0.0
 
     def to_dict(self, resolver: PathResolver) -> dict[str, Any]:
-        resolved = resolver.validate(PathRole.DATA, self.path)
         return {
-            "path": resolved.relative_to(resolver.roots.data_root).as_posix(),
+            "path": resolver.relative(PathRole.DATA, self.path).as_posix(),
             "camera_id": self.camera_id,
             "offset_sec": float(self.offset_sec),
         }

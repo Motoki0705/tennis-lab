@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "repository": "Motoki0705/tennis-lab",
+  "approval_url": "https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605",
+  "cases": [
+    {
+      "case_id": "pr-1699",
+      "pr": 1699,
+      "cutoff": "2026-11-07T00:49:44.919121+00:00",
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "5f8d4a3f00b825cb99aec8a710fbad6b47893dce",
+        "branch": "codex/worker-log-publication",
+        "diff_sha256": "06d3b7df6964a95374e70d4681830e527c11cd7126241903af61a910a80e5eef",
+        "head_sha": "43e3218c9dee401374f1f925bec1fb6d50eaf0cd",
+        "merge_base_sha": "5f8d4a3f00b825cb99aec8a710fbad6b47893dce",
+        "number": 1699
+      },
+      "input_file": "inputs/pr-1699.json",
+      "input_sha256": "f12bb694d77797d0fc7bee64b912cae1925b28693e2096c2ee09f315f16737d5"
+    },
+    {
+      "case_id": "pr-1766",
+      "pr": 1766,
+      "cutoff": "2026-11-08T21:46:52.549157+00:00",
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "2e55f4dbe0331591af9f7695ee01cdf2b0cb9d9f",
+        "branch": "codex/automatic-annotation-continuation",
+        "diff_sha256": "f8eaaeaeabc8458998f3354e288d57aff2f1b0f4219af4b381c07633e781ff3b",
+        "head_sha": "d3d59cf13f7eb89aa61033b27105a4b8c76efdab",
+        "merge_base_sha": "2e55f4dbe0331591af9f7695ee01cdf2b0cb9d9f",
+        "number": 1766
+      },
+      "input_file": "inputs/pr-1766.json",
+      "input_sha256": "64ea33a055d4d676835df1d4ead24a07fd110ecedccbbc23f9023c9eace3cbea"
+    },
+    {
+      "case_id": "pr-1867",
+      "pr": 1867,
+      "cutoff": "2026-11-10T11:46:11.505839+00:00",
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "16b0c3c72c0ef0d8b0e305e2b4dd01b7fdf82609",
+        "branch": "codex/review-stage-recovery",
+        "diff_sha256": "519099df6eba8c71fa169d52349225d96ec02f306324c432526f49be2b800c1d",
+        "head_sha": "24231e6f85ab2523fa766acb46ce47617c8ed313",
+        "merge_base_sha": "16b0c3c72c0ef0d8b0e305e2b4dd01b7fdf82609",
+        "number": 1867
+      },
+      "input_file": "inputs/pr-1867.json",
+      "input_sha256": "9103806390cfa69e6887b4b2477e8b3a14a50f16c34654b1d98a16cac73c6b90"
+    },
+    {
+      "case_id": "pr-1872",
+      "pr": 1872,
+      "cutoff": "2026-11-10T15:44:38.215369+00:00",
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "f986f8c7fd09c2f7c13e16f90bd6d4aae23c8779",
+        "branch": "codex/review-reuse-adoption",
+        "diff_sha256": "064bde29fb5ad2c400ac2e07233d7a1fddb37b5128558bda9c628e3ef2ec3d95",
+        "head_sha": "16787647294822335f6f16496f2c452516e6a34e",
+        "merge_base_sha": "f986f8c7fd09c2f7c13e16f90bd6d4aae23c8779",
+        "number": 1872
+      },
+      "input_file": "inputs/pr-1872.json",
+      "input_sha256": "441e2e9908e745e100c61c997d6c09d4340654cd5591df6eaad5b5d0e25b0ca2"
+    },
+    {
+      "case_id": "pr-1888",
+      "pr": 1888,
+      "cutoff": "2026-11-11T01:58:54.599449+00:00",
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "cc5738a2c64143785c9cf6772902e77ec0b7b4e4",
+        "branch": "codex/review-model-selection",
+        "diff_sha256": "153566aa7b2af449fb2e0e54db5d88aa7846408eb528ac0b6f50f5a35ca2566e",
+        "head_sha": "8bd2f159f4db95736f80d15e9574fce4f1aa87b4",
+        "merge_base_sha": "cc5738a2c64143785c9cf6772902e77ec0b7b4e4",
+        "number": 1888
+      },
+      "input_file": "inputs/pr-1888.json",
+      "input_sha256": "a1a935bd2de493baf99fb65b03522fd25083a5517ae2d27067b03586377e5a66"
+    },
+    {
+      "case_id": "pr-1686",
+      "pr": 1686,
+      "cutoff": "2026-11-06T01:46:53.155604+00:00",
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "0efa24754d68041df20f61013a89e748e4ea6142",
+        "branch": "codex/memory-instruction-attribution",
+        "diff_sha256": "06bc61055c2dde4d02c8a1dc3be253b99cd0b4baf08c6da43c1b3564c5cb7542",
+        "head_sha": "566dca48cd532e235c13db3a9de06004c8959ecf",
+        "merge_base_sha": "0efa24754d68041df20f61013a89e748e4ea6142",
+        "number": 1686
+      },
+      "input_file": "inputs/pr-1686.json",
+      "input_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200",
+      "input_publication": {
+        "published_sha256": "edd461bdde8fa44d6979d7af63c213690a9c9503430e56e29bb1a36e07fb63b5",
+        "rules": {
+          "local_paths": 0,
+          "native_identifiers": 0,
+          "worktree_paths": 2
+        },
+        "source_commit": "3de0c95c3df0fb76bf61fc71d57818a6b3e10a29",
+        "source_path": ".agents/ops/review/evaluation/cases/inputs/pr-1686.json",
+        "source_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200",
+        "version": 1
+      }
+    },
+    {
+      "case_id": "pr-1744",
+      "pr": 1744,
+      "cutoff": "2026-11-08T14:35:23.204032+00:00",
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "f63af48b0c34c13171ab487ce0c4c508ecee1fba",
+        "branch": "codex/player-view-scene-bundle",
+        "diff_sha256": "9c6985b1e7da0bb4bee318223530fa58ef53f812c74086917cde9f24eaceeaec",
+        "head_sha": "3795afd9f55affcabb1ecb16f5faab86f5e6d2a0",
+        "merge_base_sha": "f63af48b0c34c13171ab487ce0c4c508ecee1fba",
+        "number": 1744
+      },
+      "input_file": "inputs/pr-1744.json",
+      "input_sha256": "025acc5c400d6df05c1a61d03c405ce30ef83adefa4333478e130cefcdbcccb7"
+    }
+  ]
+}

@@ -24,6 +24,7 @@ END_REASONS = {
     "runtime_error",
     "usage_limit",
     "cli_error",
+    "cli_signal",
     "startup_failed",
     "timeout",
     "stopped",

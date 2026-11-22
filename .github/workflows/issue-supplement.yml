@@ -21,7 +21,7 @@ env:
   ISSUE_SUPPLEMENT_ENABLED_SINCE: ${{ vars.ISSUE_SUPPLEMENT_ENABLED_SINCE }}
 jobs:
   prepare:
-    if: ${{ github.actor == github.repository_owner && vars.ISSUE_SUPPLEMENT_ENABLED_SINCE != '' && github.ref
+    if: ${{ !contains(github.event.issue.labels.*.name, 'issue:proposal') && !startsWith(github.event.issue.body, '<!-- parent-improvement-proposal:') && !contains(github.event.issue.labels.*.name, 'parent-evidence') && !startsWith(github.event.issue.body, '<!-- parent-evidence:') && github.actor == github.repository_owner && vars.ISSUE_SUPPLEMENT_ENABLED_SINCE != '' && github.ref
       == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.action == 'opened'
       && contains(github.event.issue.labels.*.name, 'issue:parent')) || (github.event.action == 'labeled' &&
       github.event.label.name == 'issue:parent')) }}
@@ -55,7 +55,7 @@ jobs:
         if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
           manual_args+=(--manual)
         fi
-        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
+        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
           python -m issue_supplement prepare \
           --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
           --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" "${manual_args[@]}"
@@ -90,7 +90,7 @@ jobs:
       run: |
         set -euo pipefail
         task_root="${RUNNER_TEMP}/issue-supplement-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-1"
-        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
+        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
           python -m issue_supplement supplement \
           --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
           --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt 1 \
@@ -137,7 +137,7 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
+        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
           python -m issue_supplement apply \
           --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
           --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt 1 \
@@ -176,7 +176,7 @@ jobs:
       run: |
         set -euo pipefail
         task_root="${RUNNER_TEMP}/issue-supplement-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-2"
-        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
+        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
           python -m issue_supplement supplement \
           --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
           --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt 2 \
@@ -223,7 +223,7 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
+        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
           python -m issue_supplement apply \
           --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
           --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt 2 \
@@ -267,7 +267,7 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
+        uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
           python -m issue_supplement fail \
           --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
           --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt "$SUPPLEMENT_ATTEMPT" \

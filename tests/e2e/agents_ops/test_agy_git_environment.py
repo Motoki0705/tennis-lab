@@ -224,7 +224,11 @@ def test_grep_environment_keeps_option_values_from_becoming_files(
         ["git", "init", "--quiet", "--template="],
         cwd=work,
         env={
-            **{key: value for key, value in hostile.items() if not key.startswith("GIT_")},
+            **{
+                key: value
+                for key, value in hostile.items()
+                if not key.startswith("GIT_")
+            },
             "GIT_CONFIG_GLOBAL": "/dev/null",
             "GIT_CONFIG_NOSYSTEM": "1",
         },

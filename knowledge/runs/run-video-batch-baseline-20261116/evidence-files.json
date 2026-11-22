@@ -1,0 +1,92 @@
+[
+  {
+    "path": "recordings/repeat-1-cold_component_cache.json",
+    "sha256": "c9546cbfbe63daf8132ca5e9fa0f6d296a2980e5a7ab4bcdeb42219f08267ec0",
+    "bytes": 146287
+  },
+  {
+    "path": "receipts/repeat-1-cold_component_cache.json",
+    "sha256": "7366cc3845042938e643d9bc3837a0fbc4eba0bff08c81310e713a5fa11b46c9",
+    "bytes": 16868
+  },
+  {
+    "path": "outcomes/repeat-1-cold_component_cache.json",
+    "sha256": "1d562a50bb17883b28dfc3f926d064af64ff9ad11086cb5660844b54e29ceb2a",
+    "bytes": 7554
+  },
+  {
+    "path": "recordings/repeat-1-cache_hit.json",
+    "sha256": "06a37135ccb89c66fb36aaacb8af6c18db0606eb6838b669c41433b4f86eed4e",
+    "bytes": 62828
+  },
+  {
+    "path": "receipts/repeat-1-cache_hit.json",
+    "sha256": "f91b5ee0bc165c774e79e65456c460c3c652633e05b37c85dead30559370652c",
+    "bytes": 16872
+  },
+  {
+    "path": "outcomes/repeat-1-cache_hit.json",
+    "sha256": "1d562a50bb17883b28dfc3f926d064af64ff9ad11086cb5660844b54e29ceb2a",
+    "bytes": 7554
+  },
+  {
+    "path": "recordings/repeat-2-cold_component_cache.json",
+    "sha256": "e511a1c7fa987c496c6cc957e92d693836920c21d8d36094336c513656c3f9da",
+    "bytes": 145894
+  },
+  {
+    "path": "receipts/repeat-2-cold_component_cache.json",
+    "sha256": "5c81490db655d5856e4dddd0ba86ffde7b471cd4f362aa3c56c8526454ee47b4",
+    "bytes": 16868
+  },
+  {
+    "path": "outcomes/repeat-2-cold_component_cache.json",
+    "sha256": "1d562a50bb17883b28dfc3f926d064af64ff9ad11086cb5660844b54e29ceb2a",
+    "bytes": 7554
+  },
+  {
+    "path": "recordings/repeat-2-cache_hit.json",
+    "sha256": "946eae6d25088fd50ab88eb1c8b09543595bbd9c276a69a5707dcb56660079f4",
+    "bytes": 62856
+  },
+  {
+    "path": "receipts/repeat-2-cache_hit.json",
+    "sha256": "bdbddfab73bd652a2a841017792696e52108daeea407eafb92ab2a6242bc8278",
+    "bytes": 16871
+  },
+  {
+    "path": "outcomes/repeat-2-cache_hit.json",
+    "sha256": "1d562a50bb17883b28dfc3f926d064af64ff9ad11086cb5660844b54e29ceb2a",
+    "bytes": 7554
+  },
+  {
+    "path": "recordings/repeat-3-cold_component_cache.json",
+    "sha256": "5efc3f42b1e9fa72302cec85be4c3dc9c611c24753af824412ce7c0568c4dca2",
+    "bytes": 145881
+  },
+  {
+    "path": "receipts/repeat-3-cold_component_cache.json",
+    "sha256": "b1ea8fa86b85e95cb726996bfaa4c4af37e91924f13dd069bccb6e3f1170aa63",
+    "bytes": 16867
+  },
+  {
+    "path": "outcomes/repeat-3-cold_component_cache.json",
+    "sha256": "1d562a50bb17883b28dfc3f926d064af64ff9ad11086cb5660844b54e29ceb2a",
+    "bytes": 7554
+  },
+  {
+    "path": "recordings/repeat-3-cache_hit.json",
+    "sha256": "b0faa3a123376dabcc04aff8488d27c3e2a7a0628a81bf195263af3337fd632b",
+    "bytes": 62834
+  },
+  {
+    "path": "receipts/repeat-3-cache_hit.json",
+    "sha256": "a128be133ab7f63e0237f3c442a2690a1c516dab769fe1a6d115b3d6c9ee5589",
+    "bytes": 16872
+  },
+  {
+    "path": "outcomes/repeat-3-cache_hit.json",
+    "sha256": "1d562a50bb17883b28dfc3f926d064af64ff9ad11086cb5660844b54e29ceb2a",
+    "bytes": 7554
+  }
+]

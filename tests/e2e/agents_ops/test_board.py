@@ -696,12 +696,70 @@ def test_version_four_migration_preserves_thread_graph_reactions_and_history(
     board: SimpleNamespace, v4_store: SimpleNamespace
 ) -> None:
     with v4_store.store.transaction() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0]
+            == board.storage.SCHEMA_VERSION
+        )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         for table, rows in v4_store.rows.items():
             assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
     with v4_store.store.read() as connection:
         assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 2
+
+
+def test_version_five_migration_accepts_agy_and_keeps_existing_delivery_history(
+    board: SimpleNamespace, v4_store: SimpleNamespace
+) -> None:
+    root, reply = (row[0] for row in v4_store.rows["posts"])
+    with sqlite3.connect(v4_store.store.path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        board.storage.MIGRATIONS[4](connection)
+        connection.execute("PRAGMA user_version=5")
+        connection.execute(
+            "UPDATE deliveries SET engine='codex', state='notified', attempts=1, notified_at=? "
+            "WHERE post_id=?",
+            (board.names.timestamp(NOW), root),
+        )
+        connection.execute(
+            "INSERT INTO recipients(post_id,name) VALUES (?, 'human')", (root,)
+        )
+        connection.execute(
+            "INSERT INTO deliveries(post_id,idempotency_key,state) "
+            "VALUES (?, 'human-delivery', 'available')",
+            (root,),
+        )
+        connection.execute(
+            "INSERT INTO recipients(post_id,assignment_id,name,repo,parent) "
+            "VALUES (?,2,'Barry','o/r',2)",
+            (reply,),
+        )
+        rows = connection.execute("SELECT * FROM deliveries ORDER BY state").fetchall()
+        auxiliaries = connection.execute(
+            "SELECT name,sql FROM sqlite_master WHERE tbl_name='deliveries' "
+            "AND type IN ('index','trigger') AND sql IS NOT NULL ORDER BY name"
+        ).fetchall()
+
+    with v4_store.store.transaction() as connection:
+        assert connection.execute("PRAGMA user_version").fetchone() == (6,)
+        assert (
+            connection.execute("SELECT * FROM deliveries ORDER BY state").fetchall()
+            == rows
+        )
+        assert (
+            connection.execute(
+                "SELECT name,sql FROM sqlite_master WHERE tbl_name='deliveries' "
+                "AND type IN ('index','trigger') AND sql IS NOT NULL ORDER BY name"
+            ).fetchall()
+            == auxiliaries
+        )
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        connection.execute(
+            "INSERT INTO deliveries(post_id,assignment_id,idempotency_key,engine,state,reason) "
+            "VALUES (?,2,'agy-delivery','agy','pending','awaiting_hook')",
+            (reply,),
+        )
+        with pytest.raises(sqlite3.IntegrityError, match="history is append-only"):
+            connection.execute("DELETE FROM deliveries WHERE post_id=?", (reply,))
 
 
 def test_human_migration_failure_rolls_back_the_complete_graph(
@@ -1200,14 +1258,20 @@ def test_concurrent_peer_sync_preserves_unique_names_and_registry(
     assert {parent for _name, parent in rows} == {1, 2, 3}
 
 
-@pytest.mark.parametrize("title", ["人間が作成した単独タスク", "[Bug] 単独タスク"])
+@pytest.mark.parametrize(
+    ("title", "labelled"),
+    [("人間が作成した単独タスク", False), ("[Bug] 単独タスク", True)],
+)
 def test_standalone_parent_has_a_name_and_null_identifier(
-    board: SimpleNamespace, parent_env: ParentEnv, title: str
+    board: SimpleNamespace, parent_env: ParentEnv, title: str, labelled: bool
 ) -> None:
     p = parent_env
     state = p.state()
     state["issues"]["1"].update(
-        title=title, labels=[{"name": "bug"}], body="単独タスクを実装する。"
+        title=title,
+        labels=[{"name": "bug"}]
+        + ([{"name": p.formats.STANDALONE_LABEL}] if labelled else []),
+        body="単独タスクを実装する。",
     )
     p.save(state)
     first = json.loads(p.cli("register").stdout)["board_sync"]
@@ -1227,7 +1291,12 @@ def test_standalone_parent_has_a_name_and_null_identifier(
     # Promotion to a parent and back keeps the assignment, updating only metadata.
     for role_labels, title, identifier in (
         ([{"name": "issue:parent"}], "[開発] 親に移行", "開発"),
-        ([{"name": "bug"}], "単独タスクに戻す", None),
+        (
+            [{"name": "bug"}]
+            + ([{"name": p.formats.STANDALONE_LABEL}] if labelled else []),
+            "単独タスクに戻す",
+            None,
+        ),
     ):
         state = p.state()
         state["issues"]["1"].update(title=title, labels=role_labels)
@@ -1343,7 +1412,8 @@ def test_name_failure_does_not_undo_parent_or_skip_display(
         connection.execute(f"PRAGMA user_version={board.storage.SCHEMA_VERSION}")
     repaired = p.cli("register")
     assert json.loads(repaired.stdout)["board_sync"]["status"] == "assigned"
-    assert len(p.state()["comments"]["1"]) == 1
+    assert len(p.comments()) == 1
+    assert not p.state()["comments"]["1"]
 
 
 @pytest.mark.parametrize(

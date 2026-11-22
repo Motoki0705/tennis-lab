@@ -196,7 +196,7 @@ def _failed_before_session(path: Path) -> bool:
         and value.get("cleanup_complete") is True
         and value.get("runtime", {}).get("session_id") is None
         and value.get("turn_end_reason")
-        in {"startup_failed", "cli_error", "usage_limit"}
+        in {"startup_failed", "cli_error", "cli_signal", "usage_limit"}
     )
 
 

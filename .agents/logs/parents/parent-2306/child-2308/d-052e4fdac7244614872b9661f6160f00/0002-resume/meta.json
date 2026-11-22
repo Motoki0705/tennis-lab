@@ -1,0 +1,80 @@
+{
+  "artifacts": {
+    "commits": [
+      "11c1396cebe06885c9489626990be82a592c908e",
+      "b9219c2a285b8472c5e9abf62d191928b11de8bc"
+    ],
+    "prs": [
+      2313
+    ]
+  },
+  "captured_at": "2026-11-20T03:21:39.817072+00:00",
+  "decision": {
+    "action": "approve",
+    "source_sequence": 1
+  },
+  "delegation_key": "d-052e4fdac7244614872b9661f6160f00",
+  "files": {
+    "final.md": "8ff8ea7e0780a8908d793c60694ac55d4ccb4d9f5ec6ed2b4f27437319a9ecef",
+    "instruction.md": "a00dfea67fbbca4392585a6bc71485896f5d92107d09f423dd6be5755e2250ca"
+  },
+  "finished_at": "2026-11-20T03:59:15.001720+00:00",
+  "instruction": {
+    "additional_instructions": [
+      "# #2308 実装ターン\n\n上の「親の判断」に従い、#2308 の Acceptance checklist をすべて満たす実装・文書・テストを、このworktree・branchで行う。\n\n## 進め方\n- 設計を先に固め、宣言の型・検査・監視の所有者・再開の一意性・上限の記録先をPR本文に書く。既存の `worker_wait.py`・`manual_workers.py`・`repair_turn.py`・review進行の監視（`merge_gate_impl.py`）を再利用できる箇所は再利用する。\n- テストは報告で挙げた e2e（宣言欠落・不正、CI成功時の再開有無、失敗ログ付き再開、queue終端からの再開、複数jobの集約、4回目の拒否、監視の二重起動防止、各入口への契約の到達、repair JSONとの整合、文書のアンカー・必須リンク）を fake gh・fake queue で実装する。\n- 関連 e2e と `tests/e2e/agents_ops/test_agents_docs.py` をローカルで実行して通す。無関係な既存失敗は origin/main と比較して区別し、PRに記す。\n\n## このターンの終わり方（重要）\n- この仕組みはまだmainに無いので、今回は宣言行を出さなくてよい。代わりに次を守る。\n- commit・push・ドラフトPR作成（日本語本文、`Closes #2308`）までで終了する。**CIの完了を待たない。** `sleep`・状態の繰り返し照会・`gh run watch`・`gh pr checks --watch` を使わない。CIは親が監視し、失敗すれば同じsessionへ結果を渡す。\n- 最終報告に PR URL、完全なHEAD SHA、各Acceptanceに対する証拠、ローカルで実行したテストと結果、未実施・残課題を書く。最終報告やPRに、ローカルのセッションファイル名・セッションID・`[local path]` の非公開パスを書かない（公開ログが `private_identifier` で拒否される）。\n- 作業時間の上限は6時間。全Acceptanceを満たしたら、または親・人間の判断が必要な食い違いが見つかったら（その場合は理由と選択肢を返す）終了してよい。\n"
+    ],
+    "kind": "answer"
+  },
+  "issue": 2308,
+  "parent": 2306,
+  "repo": "Motoki0705/tennis-lab",
+  "runtime": {
+    "result": "completed",
+    "turn_end_reason": "completed"
+  },
+  "sanitization": {
+    "additional": 1,
+    "final": 0,
+    "instruction": 0,
+    "local_paths": {
+      "posix": 1
+    },
+    "version": 2
+  },
+  "schema_version": 1,
+  "sources": {
+    "issue": {
+      "body_sha256": "72d82a26494f5d0f4f11ec388011720c0fcfe7e17e97b8a9ef4c76fd20f39ca2",
+      "url": "https://github.com/Motoki0705/tennis-lab/issues/2308"
+    },
+    "standard_instruction": {
+      "blob": "2da76aadc0c20150e44f2566acafdf8b0cf36d62",
+      "commit": "0fd704539a98489c3541637dcbef3399540ab969",
+      "path": ".agents/ops/parent/worker_prompt.md"
+    }
+  },
+  "started_at": "2026-11-20T03:21:43.395193+00:00",
+  "turn": {
+    "kind": "resume",
+    "phase": "implementing",
+    "previous_sequence": 1,
+    "sequence": 2
+  },
+  "worker": {
+    "agent": "codex",
+    "effective": {
+      "effort": {
+        "status": "observed",
+        "value": "max"
+      },
+      "model": {
+        "status": "observed",
+        "value": "gpt-6.2-sol"
+      }
+    },
+    "selected": {
+      "effort": "max",
+      "model": "gpt-6.2-sol"
+    }
+  }
+}

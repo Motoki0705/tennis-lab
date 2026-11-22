@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "8ab8237aaa644f86a93f7d531e6052cb",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=result.json; content_sha256=a331053b11e670ebe6d3461963b5f27022363e7c3f2d7d887d43eacc1f8b5a28; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "f55843efa1dd4335962177802ba0a9a9",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.result.json: status=succeeded; verdict=request_changes; exception=True; previous_review_keys=['c4e0fb9c6a234d4593b80ad478cbacce', '059dd8b7c166423ebbaeb9ed0d21e368', 'bd20ca481d324835a33defec1e1cb073', 'a33f33a5f1e6427e84e60dd59913b8bf']; 固定HEAD 52696feを再レビューしました。前回4件の再現経路は修正されていますが、同種の世代照合漏れが別入口に残るためmajor 1件です。隔離CPUテストはallowlist未設定で未実行、GitHub・CIログ取得はghの版不足で失敗しました。固定資料のCI成功記録とコード・テスト読解に基づく判定です。",
+      "verifies": []
+    },
+    "id": "2f9ce9a944fb4ec3a0dfcd0099969e77",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "673d723cb71741eeb21da8d7e7bcedfb",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "ac8d4fea046946d4b5263e052f069444"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T17:36:49.514262+00:00"
+      },
+      "recorded_at": "2026-11-14T17:36:49.514279+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

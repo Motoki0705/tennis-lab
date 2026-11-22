@@ -1,0 +1,14 @@
+{
+  "counts": {
+    "legacy": {
+      "old_gate": 165,
+      "new_gate": 139
+    },
+    "fixed_support": {
+      "old_gate": 163,
+      "new_gate": 128
+    }
+  },
+  "scope": 171,
+  "details": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/scene-gate-factorial.json"
+}

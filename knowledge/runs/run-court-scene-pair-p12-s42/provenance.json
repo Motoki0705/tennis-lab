@@ -1,0 +1,54 @@
+{
+  "schema": "court_scene_pair_condition_provenance_v1",
+  "condition": "P12",
+  "scientific_ref": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "inputs_identity": "4d7b39d613471fd9f94a64dcb36d8fbba3a939fa0517773125af394cc3c1ca33",
+  "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P12-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+  "checkpoint_sha256": "b079116cac2add89c70c062f370dabe9fc53567335a8c2473fd3cca88bef1cb3",
+  "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/P12-s42/evaluation.json",
+  "evaluation_sha256": "a3ad23de386b0149d7dcd09f2fb06713068f69ae86f76f9c15ca92b0d8c1165c",
+  "global_step": 33160,
+  "config_digest": "341589809cd119f4ef168d663d0d65f1aeeea1b27f5ec306318854681b7fcb65",
+  "data_condition_digest": "93b31ceaca2b5eb7166abd56872bfc85f834803b9125676d6504b045f12dcb67",
+  "train_scene_images": {
+    "B01": 2750,
+    "B02": 2750
+  },
+  "fit_val_scene_images": {
+    "B01": 250,
+    "B02": 250
+  },
+  "data_manifest_sha256": {
+    "synthetic_court/dataset_subset": "c456cdd47c24654be78702515a42a0b2d16d6dc975779335029e767d74dd270b",
+    "synthetic_court/validation_subset": "2763a2fcbc028b14c2cc49c2e3db81553d62a17462bccd6c86f6d24e04bb47f9",
+    "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+    "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+    "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+  },
+  "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-P12.json",
+  "original_marker_sha256": "3e10ce4eb11c42d71d062ed5d31ce566cd696c7b1ec2adebcd2e9ef75f90e658",
+  "evaluation_artifact_count": 37,
+  "training_source": {
+    "kind": "synthetic_court_dataset_subset",
+    "schema": "v3",
+    "court_scope": "target_court",
+    "manifest": "court_scene_diversity_6000_v1/pair-b01-b02.train.subset.json",
+    "validation_manifest": "court_scene_diversity_6000_v1/pair-b01-b02.val.subset.json"
+  },
+  "restarts": [
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P12-3833b2fcb4c748f3a409792b61fdc176.json",
+      "sha256": "d772a029d58f67f5fff43d05a9b91ca7d5b1fbf00bd352e822deb52e0a5a0bc4",
+      "condition": "P12",
+      "probe": false,
+      "resume_update": 0,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 1,
+        "last_possible": 3316
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": null
+    }
+  ]
+}

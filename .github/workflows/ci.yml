@@ -3,19 +3,30 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
+    paths-ignore: &ci_paths_ignore
       - '.agents/logs/parents/**/instruction.md'
       - '.agents/logs/parents/**/final.md'
       - '.agents/logs/parents/**/meta.json'
+      - '.agents/logs/parents/parent-*/activity-*/event-*.json'
+      - '.agents/logs/parents/README.md'
+      - '.agents/logs/parents/parent-*/README.md'
+      - '.agents/logs/parents/parent-*/activity-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/d-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/d-*/*-*/README.md'
+      - '.agents/memory/SUMMARY.md'
+      # Actions character classes cover alphanumeric characters. The scope job
+      # applies the complete kebab-case rule to the event's Git diff.
+      - '.agents/memory/workflow/[a-z0-9]+.md'
+      - '.agents/memory/decision/[a-z0-9]+.md'
+      - '.agents/memory/environment/[a-z0-9]+.md'
+      - '.agents/memory/gotcha/[a-z0-9]+.md'
   pull_request:
-    paths-ignore:
-      - '.agents/logs/parents/**/instruction.md'
-      - '.agents/logs/parents/**/final.md'
-      - '.agents/logs/parents/**/meta.json'
+    paths-ignore: *ci_paths_ignore
   workflow_dispatch:
     inputs:
       shards:
-        description: CPU job count for matched scheduling comparisons
+        description: Ordinary CPU job count (plus one required system dependency job)
         type: choice
         options: ["1", "2", "4", "6", "8", "10"]
         default: "10"
@@ -40,8 +51,29 @@ permissions:
   actions: read
 
 jobs:
+  scope:
+    name: Check shared memory paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      shared_memory_only: ${{ steps.paths.outputs.shared_memory_only }}
+    steps:
+      - name: Checkout the event and its parents
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          submodules: false
+          persist-credentials: false
+      - name: Check the event's Git diff
+        id: paths
+        env:
+          PYTHONPATH: .agents/ops
+        run: python3 -m shared_memory.ci_scope
+
   plan:
     name: CPU lane plan
+    needs: [scope]
+    if: ${{ !cancelled() && needs.scope.outputs.shared_memory_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -78,6 +110,8 @@ jobs:
 
   lint:
     name: Lint
+    needs: [scope]
+    if: ${{ !cancelled() && needs.scope.outputs.shared_memory_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -160,10 +194,6 @@ jobs:
           print(f"torch={torch.__version__}, torchvision={torchvision.__version__}")
           PY
 
-      - name: Install system dependencies
-        timeout-minutes: 8
-        run: bash scripts/ci_metrics/install_system_deps.sh
-
       - name: Prepare pinned upstream DINO CPU losses
         if: contains(fromJSON(needs.plan.outputs.suites), 'player-publication')
         run: |
@@ -182,7 +212,7 @@ jobs:
         if: contains(fromJSON(needs.plan.outputs.suites), 'javascript') || contains(fromJSON(needs.plan.outputs.suites), 'ops-scenarios')
         run: |
           npm ci --prefix scripts/ci_metrics --no-audit --no-fund
-          scripts/ci_metrics/node_modules/.bin/playwright install --with-deps chromium --only-shell
+          scripts/ci_metrics/node_modules/.bin/playwright install chromium --only-shell
 
       - name: Test
         # Long dataset generation/recovery integrations are run explicitly.
@@ -225,10 +255,106 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+  system-deps:
+    name: System dependency tests
+    needs: [plan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Pin worker count for reproducible comparisons; native threads stay at one.
+      PYTEST_XDIST_AUTO_NUM_WORKERS: ${{ inputs.workers || '2' }}
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      CUDA_VISIBLE_DEVICES: ""
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Download CPU lane plan
+        uses: actions/download-artifact@v8
+        with:
+          name: cpu-lane-plan-${{ github.run_id }}
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+          path: .ci-plan
+
+      - name: Record runner environment
+        run: python3 -m scripts.ci_metrics capture --workers "$CI_WORKERS" --output .ci-metrics/shard-system-deps/preparation
+
+      - name: Set up uv and Python 3.11
+        id: setup-uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          prune-cache: false
+          cache-dependency-glob: uv.lock
+          cache-suffix: cpu
+
+      - name: Install locked CPU environment
+        run: uv sync --locked --no-group gpu --group cpu
+
+      - name: Verify CPU backend
+        run: |
+          .venv/bin/python - <<'PY'
+          import torch
+          import torchvision
+          assert torch.version.cuda is None, torch.__version__
+          print(f"torch={torch.__version__}, torchvision={torchvision.__version__}")
+          PY
+
+      - name: Install pinned system dependencies
+        timeout-minutes: 8
+        run: bash scripts/ci_metrics/install_system_deps.sh
+
+      - name: Test
+        # Long dataset generation/recovery integrations are run explicitly.
+        env:
+          UV_CACHE_HIT: ${{ steps.setup-uv.outputs.cache-hit }}
+        run: >-
+          .venv/bin/python -m scripts.ci_metrics run
+          --output .ci-metrics/shard-system-deps/tests --workers "$CI_WORKERS"
+          --shard-index "$CI_SHARD_COUNT" --shard-count "$CI_SHARD_COUNT"
+          --shard-weights scripts/ci_metrics/cpu-file-times.json
+          --lane-plan .ci-plan/plan.json
+
+      - name: Summarize test measurements
+        if: always()
+        env:
+          SHARD: system-deps
+        run: |
+          status=0
+          python3 -m scripts.ci_metrics report --output ".ci-metrics/shard-$SHARD/tests" || status=$?
+          cat ".ci-metrics/shard-$SHARD/tests/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Snapshot attempt timings
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHARD: system-deps
+        run: >-
+          python3 -m scripts.ci_metrics fetch-actions --repo "$GITHUB_REPOSITORY"
+          --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+          --output ".ci-metrics/shard-$SHARD/actions"
+
+      - name: Upload test measurements
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cpu-test-measurements-${{ github.run_id }}-shard-${{ env.CI_SHARD_COUNT }}
+          overwrite: true
+          path: .ci-metrics/shard-system-deps/
+          include-hidden-files: true
+          if-no-files-found: error
+
   python:
     name: Python
-    if: always()
-    needs: [plan, lint, tests]
+    if: ${{ always() && needs.scope.outputs.shared_memory_only != 'true' }}
+    needs: [scope, plan, lint, tests, system-deps]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

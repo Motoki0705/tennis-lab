@@ -1,0 +1,274 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [397 items]
+
+........................................................................ [ 18%]
+........................................................................ [ 36%]
+........................................................................ [ 54%]
+........................................................................ [ 72%]
+........................................................................ [ 90%]
+.....................................                                    [100%]
+============================== slowest durations ===============================
+5.67s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry[build]
+5.57s call     tests/integration/tennis_scene/test_video_batch.py::test_one_plan_reuses_each_model_once_and_records_real_batch_sizes[3]
+5.55s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[build]
+5.48s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry[load]
+5.42s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[load]
+5.18s call     tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure0-True]
+4.87s call     tests/integration/tennis_scene/test_video_batch.py::test_batch_matches_single_entry_and_reuses_mixed_cache
+4.81s call     tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure1-True]
+4.61s call     tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs
+4.59s call     tests/integration/tennis_scene/test_video_batch.py::test_clip_too_long_isolated_and_other_clip_publishes_immediately
+4.50s call     tests/integration/tennis_scene/test_video_batch.py::test_single_entry_concurrent_export_cannot_mix_batch_publication[batch]
+4.49s call     tests/integration/tennis_scene/test_video_batch.py::test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure2-False]
+3.94s call     tests/integration/tennis_scene/test_video_batch.py::test_single_entry_concurrent_export_cannot_mix_batch_publication[single]
+3.46s call     tests/integration/tennis_scene/test_video_court_side.py::test_build_once_load_and_invalidate_only_side_consumers
+3.16s call     tests/integration/tennis_scene/test_video_batch.py::test_corrupt_cache_and_completed_export_cannot_be_reported_as_success
+2.60s call     tests/integration/tennis_scene/test_video_batch.py::test_clip_failure_keeps_the_resident_model_for_other_clips[VideoReadError]
+2.59s call     tests/integration/tennis_scene/test_video_batch.py::test_clip_failure_keeps_the_resident_model_for_other_clips[ValueError]
+2.41s call     tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference[False]
+2.40s call     tests/integration/tennis_scene/test_video_batch.py::test_one_plan_reuses_each_model_once_and_records_real_batch_sizes[1]
+2.39s call     tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference[True]
+2.18s call     tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_headless_declared_pipeline_and_disk_resume
+1.99s call     tests/integration/tennis_scene/test_video_court_side.py::test_short_clips_only_decide_together_and_warn_in_single_entry
+1.90s call     tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_v2_missing_mask_rejected_before_archive_write
+1.89s call     tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_single_ball_missing_views_remain_invalid
+1.88s call     tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_missing_detector_frames_remain_missing_through_triangulation_and_reload
+1.72s call     tests/unit/tennis_scene/pipeline/test_person_tracking_progress.py::test_redirected_progress_counts_consumed_frames_and_preserves_results
+1.65s call     tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_load_rejects_historical_filtered_ball_points
+1.40s call     tests/integration/tennis_scene/test_video_court_side.py::test_clip_verdict_and_full_video_decision[ambiguous-warning-court_side_ambiguous_margin]
+1.32s call     tests/integration/tennis_scene/test_video_court_side.py::test_clip_verdict_and_full_video_decision[conflict-failed-court_side_video_shared_conflict]
+1.21s call     tests/integration/tennis_scene/test_video_court_side.py::test_reject_foreign_missing_and_stale_inputs
+1.08s call     tests/integration/tennis_scene/test_video_court_side.py::test_clip_verdict_and_full_video_decision[agreement-ok-None]
+1.05s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_methods_and_paint_measurements_change_cache_identity
+1.04s call     tests/integration/tennis_scene/test_video_court_side.py::test_clip_verdict_and_full_video_decision[static-warning-court_side_insufficient_frames]
+1.03s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_model_load_failure_is_fatal_even_when_it_is_a_value_error
+0.85s call     tests/unit/tennis_scene/pipeline/test_person_tracking_progress.py::test_terminal_has_one_camera_bar_with_final_frame_total
+0.85s call     tests/unit/tennis_scene/pipeline/test_person_tracking_progress.py::test_interrupted_progress_never_claims_unprocessed_frames[12-5-5-tracker failed]
+0.84s call     tests/unit/tennis_scene/pipeline/test_person_tracking_progress.py::test_interrupted_progress_never_claims_unprocessed_frames[7-None-7-complete source timeline]
+0.74s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations
+0.69s call     tests/unit/tennis_scene/pipeline/components/test_gvhmr.py::test_only_feature_and_mesh_models_run_on_declared_source_frames
+0.68s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pipeline_consumes_detection_features_once_and_reuses_pose
+0.67s call     tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_no_ball_observations_stop_at_the_side_decision
+0.63s call     tests/unit/submodules/models/dino/test_person_detector.py::test_recording_reports_actual_compatible_and_partial_batches
+0.62s call     tests/unit/tennis_scene/pipeline/components/test_person_detection.py::test_optional_merge_records_original_clip_rows_and_roundtrips
+0.60s call     tests/unit/tennis_scene/pipeline/test_person_tracking_capacity.py::test_more_than_six_people_keep_their_raw_rows
+0.59s call     tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_filled_and_rejected_points_cannot_supply_the_second_real_view
+0.54s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_component_infers_only_frame_zero_and_normalizes_by_last_pixel
+0.54s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_unreconstructable_annotation_positions_have_explicit_missing_reasons[no_positions]
+0.53s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_equal_weight_solver_keeps_disagreeing_estimated_views
+0.53s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_unreconstructable_annotation_positions_have_explicit_missing_reasons[parallel_rays]
+0.52s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_frame_size_must_match_the_source
+0.52s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_failed_geometry_is_invisible_and_never_refit
+0.51s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_completed_clip_identity_includes_external_court_assets[backbone]
+0.51s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_person_settings_change_only_their_stage_cache_identities[vitpose.precision=fp16-changed_nodes1]
+0.50s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_person_settings_change_only_their_stage_cache_identities[vitpose.flip_test=false-changed_nodes2]
+0.50s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_region_search_runs_on_frame_zero
+0.50s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_person_settings_change_only_their_stage_cache_identities[dino_detector.precision=bf16-changed_nodes0]
+0.49s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_completed_clip_identity_includes_external_court_assets[dinov3_source/hubconf.py]
+0.49s call     tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_quality_rejection_cannot_publish_a_calibratable_homography
+0.48s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_fixed_geometry_rejects_an_internally_reordered_camera_payload
+0.43s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_import_loads_remain_bound_to_declared_bundle_and_annotation_revisions
+0.40s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer
+0.38s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_scene_annotation_schema_rejects_mask_and_provenance_forgery
+0.37s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit[False]
+0.36s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_fixed_geometry_rejects_changed_artifacts_and_foreign_sources[camera_order]
+0.36s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people
+0.36s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline]
+0.35s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node
+0.35s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit[True]
+0.35s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_saved_annotation_must_match_external_pinned_input[state-unprocessed]
+0.34s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence
+0.34s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_omitted_court_arrays_require_explicit_checksum_proven_recovery
+0.34s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot]
+0.33s call     tests/unit/tennis_scene/pipeline/test_inference_runtime.py::test_retained_exception_graph_does_not_retain_models[group]
+0.33s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_court_scope_is_rejected_before_acquisition[scope1]
+0.33s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch]
+0.33s call     tests/unit/tennis_scene/pipeline/test_inference_runtime.py::test_retained_exception_graph_does_not_retain_models[suppressed]
+0.33s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_court_scope_is_rejected_before_acquisition[scope0]
+0.32s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_saved_annotation_must_match_external_pinned_input[recording_id-other-recording]
+0.32s call     tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_inputs_and_encoders_must_agree_with_the_declaration
+0.32s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_fixed_geometry_rejects_changed_artifacts_and_foreign_sources[camera_bytes]
+0.32s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_fixed_geometry_rejects_changed_artifacts_and_foreign_sources[clip]
+0.32s call     tests/unit/tennis_scene/pipeline/test_inference_runtime.py::test_retained_exception_graph_does_not_retain_models[cause]
+0.32s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan]
+0.32s call     tests/unit/tennis_scene/pipeline/test_inference_runtime.py::test_retained_exception_graph_does_not_retain_models[context]
+0.32s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_process_exposes_one_unidentified_observation_stream
+0.31s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing]
+0.31s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_incomplete_timeline_stops_instead_of_padding
+0.31s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence
+0.31s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask]
+0.31s call     tests/integration/tennis_scene/test_video_batch.py::test_shared_side_scope_is_rejected_before_acquisition
+0.31s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition
+0.31s call     tests/unit/tennis_scene/pipeline/components/test_person_detection.py::test_full_frame_keeps_off_court_people_without_calibration
+0.30s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype]
+0.30s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built
+0.30s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_fixed_geometry_rejects_changed_artifacts_and_foreign_sources[array]
+0.30s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_fixed_geometry_rejects_changed_artifacts_and_foreign_sources[manifest]
+0.30s call     tests/unit/tennis_scene/pipeline/test_inference_runtime.py::test_retained_exception_graph_does_not_retain_models[cycle]
+0.29s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_saved_annotation_must_match_external_pinned_input[target-another-ball]
+0.29s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_saved_annotation_must_match_external_pinned_input[camera_id-other-camera]
+0.28s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_saved_annotation_must_match_external_pinned_input[time_base-1/2000]
+0.28s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_saved_annotation_must_match_external_pinned_input[pts-115]
+0.27s call     tests/integration/tennis_scene/test_video_batch.py::test_batch_keeps_the_single_entry_data_path_authority
+0.27s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights
+0.27s call     tests/unit/tennis_scene/pipeline/test_video_ball_imports.py::test_saved_annotation_must_match_external_pinned_input[media_sha256-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff]
+0.25s call     tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_unobserved_frames_carry_no_player_and_an_identity_switch_splits_a_track
+0.23s call     tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_require_a_load_only_node_and_adopted_inputs
+0.23s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_court_asset_changes_after_binding_fail_before_model_load[source_removed]
+0.22s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_explicit_x3d_config_changes_model_and_cache_settings
+0.21s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_external_assets_define_court_sharing[implementation]
+0.20s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_court_asset_changes_after_binding_fail_before_model_load[source_modified]
+0.20s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides
+0.19s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_court_asset_changes_after_binding_fail_before_model_load[source_added]
+0.19s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_court_asset_changes_after_binding_fail_before_model_load[backbone]
+0.19s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_external_assets_define_court_sharing[backbone]
+0.19s call     tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_the_decided_side_places_the_camera_local_courts
+0.19s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_external_assets_define_court_sharing[none]
+0.18s call     tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_players_get_per_frame_ids_on_the_carrier_order_of_every_camera
+0.18s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison
+0.18s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_external_assets_define_court_sharing[missing_repository]
+0.18s call     tests/unit/tennis_scene/pipeline/components/test_court_resources.py::test_external_assets_define_court_sharing[missing_backbone]
+0.12s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[deep_ocsort_pose_aflink_gsi]
+0.11s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated]
+0.11s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[strongsort_pp]
+0.11s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_person_precision_accepts_explicit_cuda_autocast[bf16]
+0.10s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[1]
+0.10s call     tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_torso_appearance_samples_inside_bounding_box
+0.10s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-+]
+0.10s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_person_precision_accepts_explicit_cuda_autocast[fp16]
+0.10s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[deep_ocsort_pose]
+0.10s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape]
+0.10s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings
+0.10s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs
+0.10s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4]
+0.10s call     tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_standard_pipeline_rejects_comparison_methods[invalid]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_ball_detection_is_used_without_refiner_assets
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0]
+0.09s call     tests/integration/tennis_scene/test_video_court_side.py::test_mode_must_be_explicit_and_calibrated[overrides2-require court_side.mode=video_shared]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_missing_model_selection_fails_instead_of_guessing_checkpoint
+0.09s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_two_clips_keep_stores_and_dependencies_separate_under_ready_policy[False]
+0.09s call     tests/integration/tennis_scene/test_video_court_side.py::test_mode_must_be_explicit_and_calibrated[overrides0-requires court_kp.mode=video_shared]
+0.09s call     tests/integration/tennis_scene/test_video_court_side.py::test_mode_must_be_explicit_and_calibrated[overrides1-must be clip or video_shared]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_person_precision_rejects_invalid_configuration[overrides3-DINO requires a CUDA device]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_sampling_covers_long_meiji_clip_and_still_refuses_truncation
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_person_precision_rejects_invalid_configuration[overrides2-vitpose.precision]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-+]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-+]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0]
+0.09s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_person_precision_rejects_invalid_configuration[overrides0-dino_detector.precision]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_person_precision_rejects_invalid_configuration[overrides4-ViTPose requires CUDA]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_person_precision_rejects_invalid_configuration[overrides1-vitpose.precision]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-]
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_retired_refiner_config_is_rejected
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected
+0.08s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan]
+0.08s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[model-expected6]
+0.08s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_two_clips_keep_stores_and_dependencies_separate_under_ready_policy[True]
+0.07s call     tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-]
+0.07s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_failed_completion_is_recorded_once_and_does_not_block_other_clip[None]
+0.07s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_failed_completion_is_recorded_once_and_does_not_block_other_clip[initial_targets1]
+0.07s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[overwrite-expected3]
+0.07s call     tests/unit/submodules/models/dino/test_person_detector.py::test_preprocess_frame_matches_official_resize_constraint
+0.06s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[preprocessing-expected7]
+0.05s call     tests/unit/tennis_scene/pipeline/test_component_store.py::test_changes_recompute_only_descendants
+0.05s call     tests/unit/tennis_scene/pipeline/test_component_store.py::test_replacing_implementation_uses_same_io_and_invalidates_its_outputs
+0.05s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_x3d_windows_keep_native_rgb_and_reset_mdd_per_window[1]
+0.04s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_speed_rejection_is_visible_and_matches_reconstruction
+0.04s call     tests/unit/tennis_scene/pipeline/test_component_store.py::test_upstream_replacement_invalidates_scene_export_and_legacy_stale_index
+0.04s call     tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_cap_applies_to_eligible_groups_not_all_person_input
+0.04s call     tests/unit/tennis_scene/pipeline/test_component_store.py::test_restart_and_memory_have_identical_typed_inputs_and_skip_models
+0.04s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[load-expected4]
+0.04s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction
+0.04s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_trace_reports_missing_and_rejected_frames
+0.04s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[overwrite_load-expected5]
+0.04s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[cached-expected1]
+0.04s call     tests/unit/tennis_scene/pipeline/test_component_store.py::test_loaded_dependency_cannot_silently_change
+0.04s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[empty-expected0]
+0.04s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_corrupt_cached_or_loaded_artifact_fails_without_recalculation[load]
+0.04s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_reconstruction_preserves_known_body_and_renderer_transform
+0.04s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_corrupt_cached_or_loaded_artifact_fails_without_recalculation[execute]
+0.04s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[partial-expected2]
+0.03s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_reprojection_gate_preserves_roots_and_ignores_non_torso_outliers
+0.03s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_x3d_windows_keep_native_rgb_and_reset_mdd_per_window[3]
+0.03s call     tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_static_calibration_fits_every_accepted_view_from_frame_zero
+0.03s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_single_clip_api_keeps_references_and_never_reexecutes_completed_targets
+0.03s call     tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_an_undecidable_clip_stops_with_the_reason_and_the_evidence
+0.02s call     tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_rejected_homography_excludes_the_camera_explicitly
+0.02s call     tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_fragments_link_before_dwell_and_cap_and_keep_duplicate_observations
+0.02s call     tests/unit/submodules/models/vitpose/test_pose2d.py::test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17[float32]
+0.02s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_actual_media_must_match_registered_timeline
+0.02s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[3]
+0.02s call     tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_wide_observations_survive_component_and_uncalibrated_camera_is_explicit
+0.02s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_trace_fields_shapes_and_segment_cameras
+0.02s call     tests/unit/submodules/models/vitpose/test_pose2d.py::test_vitpose_frame_sequence_shares_udp_and_batches_multiple_people
+0.02s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_actual_camera_media_must_be_synchronized[info0-frame count]
+0.02s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_clip_manifest_stops_preflight[change1-one-to-one]
+0.02s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_clip_manifest_stops_preflight[change4-missing]
+0.02s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_video_all_and_explicit_subset_are_frozen[None-expected0]
+0.02s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_targets_create_no_outputs[../video-None-video_id]
+0.02s call     tests/unit/tennis_scene/pipeline/test_component_store.py::test_failed_publish_does_not_replace_index_and_corruption_is_rejected
+0.02s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_trace_recovers_known_transform[rotated-camera]
+0.01s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_trace_recovers_known_transform[identity-camera]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_clip_manifest_stops_preflight[change0-timeline]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_targets_create_no_outputs[unknown-None-nonempty]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_actual_camera_media_must_be_synchronized[info2-image size]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_actual_camera_media_must_be_synchronized[info1-FPS]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_clip_manifest_stops_preflight[change2-duplicates]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_clip_manifest_stops_preflight[change3-another dataset]
+0.01s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_trace_target_joints_use_nan_for_invalid_joints
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_targets_create_no_outputs[video_000-selection1-Unknown]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_targets_create_no_outputs[video_000-selection3-nonempty]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_only_observed_points_survive_storage_and_join
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_targets_create_no_outputs[video_000-selection0-another video]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[False]
+0.01s call     tests/unit/tennis_scene/pipeline/test_trace_player_placement.py::test_trace_does_not_unload_or_mutate_inputs
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_video_all_and_explicit_subset_are_frozen[selection1-expected1]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_targets_create_no_outputs[video_000-selection2-unique]
+0.01s call     tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[True-1]
+0.01s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_invalid_plan_is_rejected_before_execution[shared_store-separate clip stores]
+0.01s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_unknown_execute_key_keeps_the_explicit_readiness_error[key0]
+0.01s call     tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[True-2]
+0.01s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_invalid_plan_is_rejected_before_execution[foreign_producer-Missing producer]
+0.01s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_invalid_plan_is_rejected_before_execution[unknown_target-Unknown component target]
+0.01s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_invalid_plan_is_rejected_before_execution[duplicate_clip-Duplicate clip]
+0.01s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_invalid_plan_is_rejected_before_execution[wrong_context-source clip disagrees]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_non_camera_view_checkpoint_schema_is_rejected
+0.01s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_invalid_plan_is_rejected_before_execution[cycle-Cyclic]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_x3d_settings_disagreement_is_rejected_before_load[changes8]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs
+0.01s call     tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[True-4]
+0.01s call     tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_missing_load_artifact_is_required_and_decided_once
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_trajectory_gate_zeroes_rejected_pipeline_frames
+0.01s call     tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[False-4]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_component_store.py::test_loaded_dependency_cannot_silently_change
+0.01s call     tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_invalid_clip_manifest_stops_preflight[change1-one-to-one]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[1-backfill]
+0.01s call     tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[False-1]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_wide_observations_survive_component_and_uncalibrated_camera_is_explicit
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[True]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_gvhmr.py::test_only_feature_and_mesh_models_run_on_declared_source_frames
+0.01s setup    tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_headless_declared_pipeline_and_disk_resume
+0.01s setup    tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[True-2]
+0.01s call     tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[False-2]
+0.01s call     tests/unit/tennis_scene/pipeline/test_video_inputs.py::test_actual_camera_media_must_be_synchronized[info0-frame count]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_corrupt_cached_or_loaded_artifact_fails_without_recalculation[execute]
+0.01s setup    tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[True-4]
+0.01s setup    tests/unit/tennis_scene/pipeline/test_execution_plan.py::test_each_node_is_decided_and_processed_once[cached-expected1]
+
+(935 durations < 0.005s hidden.  Use -vv to show these durations.)
+======================== 397 passed in 65.12s (0:01:05) ========================

@@ -16,18 +16,20 @@ up to the stop; it never falls back to a guess.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import asdict, dataclass, replace
+from collections import Counter
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, field, replace
+from functools import cache
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.person_tracking.features import DEFAULT_CONFIG, FeatureConfig
 from src.tasks.player_association.appearance.encoders import AppearanceEncoder
 from src.tasks.player_association.appearance.sampling import (
     CropSamplingConfig,
     TrackAppearance,
-    embed_tracks,
 )
 from src.tasks.player_association.association.associate import (
     AssociationConfig,
@@ -35,7 +37,15 @@ from src.tasks.player_association.association.associate import (
     CameraTracks,
     associate,
 )
-from src.tennis_scene.pipeline.components.base import release_inference_memory
+from src.tennis_scene.pipeline.appearance_media import (
+    APPEARANCE_MEDIA,
+    require_appearance_media,
+    require_current_appearance_crop,
+)
+from src.tennis_scene.pipeline.components.association_appearance import (
+    SavedAssociationAppearance,
+    camera_track_appearances,
+)
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
@@ -43,9 +53,19 @@ from src.tennis_scene.pipeline.components.court_side import (
     SIDE_PORT,
     CourtSideOutput,
 )
+from src.tennis_scene.pipeline.components.person_features import (
+    APPEARANCE_FEATURES_PORT,
+    appearance_feature_settings,
+)
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    ModelBorrower,
+    ModelSpec,
+)
+from src.utils.video.reader import OpenCVDecodeIdentity
 
 PLAYER_ASSOCIATION = "player_association"
 # Version 3: per-frame player IDs (a track may switch people) and the association evidence.
@@ -95,17 +115,23 @@ class PlayerAssociationInput:
     calibration: CourtCalibrationOutput
     side: CourtSideOutput
     tracks: tuple[PersonTrackingOutput, ...]  # every source camera, in source order
+    saved_appearance: Mapping[str, SavedAssociationAppearance] = field(default_factory=dict)
+    expected_decoders: Mapping[str, OpenCVDecodeIdentity] = field(default_factory=dict)
 
 
-def player_association_io(camera_ids: tuple[str, ...]) -> ComponentIO[PlayerAssociationInput, PlayerIdentitiesOutput]:
-    """The node's contract: calibration, the decided side and the tracks of every source camera."""
-    return ComponentIO(PLAYER_ASSOCIATION, PlayerAssociationInput, PlayerIdentitiesOutput,
-        {"calibration": InputPort("local_court_calibration"), "side": SIDE_PORT,
-         **{f"tracks_{c}": InputPort("selected_player_tracks", 2) for c in camera_ids}},
-        IDENTITIES_PORT.schema, IDENTITIES_PORT.version)
+def player_association_io(camera_ids: tuple[str, ...], *, reuse_clip_embeddings: bool = False
+                          ) -> ComponentIO[PlayerAssociationInput, PlayerIdentitiesOutput]:
+    """Bind saved features and their detections when the reuse policy needs them."""
+    ports = {"calibration": InputPort("local_court_calibration"), "side": SIDE_PORT,
+             **{f"tracks_{c}": InputPort("selected_player_tracks", 3) for c in camera_ids}}
+    if reuse_clip_embeddings:
+        ports.update({f"detections_{c}": InputPort("person_detections", 2) for c in camera_ids})
+        ports.update({f"appearance_{c}": APPEARANCE_FEATURES_PORT for c in camera_ids})
+    return ComponentIO(PLAYER_ASSOCIATION, PlayerAssociationInput, PlayerIdentitiesOutput, ports,
+                       IDENTITIES_PORT.schema, IDENTITIES_PORT.version)
 
 
-class PlayerAssociationModule:
+class PlayerAssociationModule(InferenceComponent[PlayerAssociationInput, PlayerIdentitiesOutput]):
     """``encoder`` builds the appearance encoder; it is required exactly when ``config.appearance`` is set.
 
     A disabled module (person observations off) publishes identities without
@@ -113,34 +139,60 @@ class PlayerAssociationModule:
     """
 
     def __init__(self, camera_ids: tuple[str, ...], config: AssociationConfig, *, sampling: CropSamplingConfig,
-                 encoder: Callable[[], AppearanceEncoder] | None, device: str, enabled: bool) -> None:
-        if (config.appearance is None) != (encoder is None):
+                 encoder: ModelSpec[AppearanceEncoder] | None, device: str, enabled: bool,
+                 reuse_clip_embeddings: bool = False, feature_config: FeatureConfig = DEFAULT_CONFIG) -> None:
+        if enabled and (config.appearance is None) != (encoder is None):
             raise ValueError("An appearance encoder is required exactly when the association config scores appearance")
         self.config, self.sampling, self.encoder, self.device, self.enabled = config, sampling, encoder, device, enabled
-        self.io = player_association_io(camera_ids)
+        self.reuse_clip_embeddings = reuse_clip_embeddings
+        self.reuse_preprocessing = appearance_feature_settings(feature_config) if reuse_clip_embeddings else None
+        self.io = player_association_io(camera_ids, reuse_clip_embeddings=reuse_clip_embeddings)
 
-    def _appearances(self, source: ClipSource, tracks: list[PersonTrackingOutput], sampling: CropSamplingConfig
+    def cache_identity(self) -> dict[str, Any]:
+        return {"config": self.config, "sampling": self.sampling, "enabled": self.enabled,
+                "reuse_clip_embeddings": self.reuse_clip_embeddings, "reuse_preprocessing": self.reuse_preprocessing}
+
+    def model_specs(self) -> dict[str, ModelSpec[AppearanceEncoder]]:
+        return {"encoder": self.encoder} if self.enabled and self.encoder is not None else {}
+
+    def validate_artifact(self, descriptor: Mapping[str, Any], settings: Mapping[str, Any]) -> None:
+        require_appearance_media(descriptor, settings.get(APPEARANCE_MEDIA))
+
+    def validate_output(self, output: PlayerIdentitiesOutput, settings: Mapping[str, Any]) -> None:
+        require_current_appearance_crop(settings)
+
+    def _appearances(self, source: ClipSource, tracks: list[PersonTrackingOutput], sampling: CropSamplingConfig,
+                     saved: Mapping[str, SavedAssociationAppearance], expected_decoders: Mapping[str, OpenCVDecodeIdentity],
+                     models: ModelBorrower,
                      ) -> tuple[list[tuple[TrackAppearance, ...]] | None, dict[str, Any]]:
         if self.encoder is None or self.config.appearance is None:
             return None, {"enabled": False}
         name = self.config.appearance.encoder
-        encoder = self.encoder()
-        if encoder.name != name:
-            raise ValueError(f"The appearance encoder {encoder.name!r} is not the configured {name!r}")
-        appearances, record = [], {}
-        try:
-            for camera in tracks:
-                appearance, samples = embed_tracks(source.video(camera.camera_id).path, camera.boxes_xyxy, camera.observed,
-                                                   source.size, encoder, sampling)
-                appearances.append(appearance)
-                record[camera.camera_id] = [{"track_id": int(track), "samples": len(sample.frames), "rejected": sample.rejected}
-                                            for track, sample in zip(camera.track_ids.tolist(), samples, strict=True)]
-        finally:
-            del encoder
-            release_inference_memory(self.device)
-        return appearances, {"enabled": True, "encoder": name, "sampling": asdict(sampling), "tracks": record}
+        @cache
+        def borrow_encoder() -> AppearanceEncoder:
+            encoder: AppearanceEncoder = models.borrow("encoder")
+            if encoder.name != name:
+                raise ValueError(f"The appearance encoder {encoder.name!r} is not the configured {name!r}")
+            return encoder
 
-    def process(self, inputs: PlayerAssociationInput) -> PlayerIdentitiesOutput:
+        if not self.reuse_clip_embeddings:
+            borrow_encoder()
+        appearances, record, reasons = [], {}, Counter[str]()
+        reused = 0
+        for camera in tracks:
+            appearance, records, recomputed = camera_track_appearances(source.video(camera.camera_id), camera, sampling,
+                saved=saved.get(camera.camera_id), preprocessing=self.reuse_preprocessing,
+                encoder=self.encoder, name=name, borrow_encoder=borrow_encoder,
+                expected_decoder=expected_decoders.get(camera.camera_id))
+            appearances.append(appearance)
+            record[camera.camera_id] = records
+            reasons.update(recomputed)
+            reused += sum(len(track["reused_frames"]) for track in records)
+        return appearances, {"enabled": True, "encoder": name, "sampling": asdict(sampling), "tracks": record,
+                             "reuse_clip_embeddings": self.reuse_clip_embeddings, "reused_samples": reused,
+                             "recomputed_samples": reasons.total(), "recomputed_by_reason": dict(reasons)}
+
+    def process_with_models(self, inputs: PlayerAssociationInput, models: ModelBorrower) -> PlayerIdentitiesOutput:
         source, views = inputs.source, inputs.calibration.calibration.views
         camera_ids = tuple(view.camera.camera_id for view in views)
         if inputs.side.camera_ids != camera_ids:
@@ -160,7 +212,8 @@ class PlayerAssociationModule:
         config = replace(self.config, footpoints=replace(self.config.footpoints, bottom_border_px=self.config.footpoints.bottom_border_px * scale))
         sampling = replace(self.sampling, min_height_px=self.sampling.min_height_px * scale, border_px=self.sampling.border_px * scale)
         tracks = [by_camera[camera] for camera in camera_ids]
-        appearances, appearance_record = self._appearances(source, tracks, sampling)
+        appearances, appearance_record = self._appearances(source, tracks, sampling, inputs.saved_appearance,
+                                                           inputs.expected_decoders, models)
         turns = dict(zip(inputs.side.camera_ids, inputs.side.view_half_turns, strict=True))
         cameras = [CameraTracks(view.camera.half_turned(turns[view.camera.camera_id]), source.size, t.track_ids, t.boxes_xyxy, t.observed,
                                 None if appearances is None else appearances[row]) for row, (view, t) in enumerate(zip(views, tracks, strict=True))]

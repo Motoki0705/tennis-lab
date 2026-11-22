@@ -10,6 +10,7 @@ from .errors import BoardError
 from .reactions import views as reaction_views
 
 REASONS = {
+    "awaiting_hook": "agy の次のターンで未読提示",
     "recipient_unavailable": "担当不在・配送保留",
     "recipient_retired": "宛先の担当が終了しています",
     "notifier_unconfigured": "通知アダプタが未設定です",

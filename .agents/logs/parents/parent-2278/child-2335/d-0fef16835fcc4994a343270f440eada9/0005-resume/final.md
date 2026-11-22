@@ -1,0 +1,9 @@
+GVHMRの最終ビルド試行を共有queueに4件投入しました。B=2・4とL=145・177の組み合わせごとに、固定shapeのFP16エンジンを別々にビルドし、TensorRTのverboseログと終了値を保存します。前回の最適化レベル0では両系列長ともSIGSEGVで、最後に記録されたTiming Runnerは `ForeignNode[[local path]]` でした。 [検証記録](https://github.com/Motoki0705/tennis-lab/blob/2923e9d11e73a3a339314884624b9869fcd7f0a3/knowledge/runs/run-i2335-trt-batch-sweep/validation.json)
+
+新規実測37ケースに、同じ入力とFP32参照を確認した #2305 のGVHMR TensorRT B=1実測2ケースを加えました。CLIP-ReID B=16のPyTorch FP16・TensorRT FP16は、時間切れで119/189件・66/114件だったncuを追測し、全件照合後に集計しました。GVHMR TensorRT FP16 B=4のL=145・177はビルド失敗で計測ファイルが生成されず、ncu起動前に終了したため、正式な値はありません。 [実測表とncu比較](https://github.com/Motoki0705/tennis-lab/blob/2923e9d11e73a3a339314884624b9869fcd7f0a3/knowledge/nodes/tennis_scene/000079-run-i2335-trt-batch-sweep.md)
+
+#2305の実測ONNXをCPUで検査しました。INT8・FP8とも指定した96積のQ/DQを確認し、指定外への直接接続は両条件ともShapeの24件でした。Add・LayerNormalization・対象外のMatMul/Gemm・graph outputは各0件です。現行の `verify_qdq_scope` は両グラフを拒否しました。 [Q/DQ検査結果](https://github.com/Motoki0705/tennis-lab/blob/2923e9d11e73a3a339314884624b9869fcd7f0a3/knowledge/runs/run-i2335-trt-batch-sweep/legacy-gvhmr-qdq.json)
+
+`codex/parent-2278-issue-2335-primary` のHEADは `2923e9d11e73a3a339314884624b9869fcd7f0a3`。#2342を含む `origin/main` を取り込み、共有harnessのCPUテスト90件、Ruff、knowledge検証が通りました。固定shapeの終端結果を同じsessionで受け取り、結果を追記して日本語ドラフトPRを作成します。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204797085800108978_2026-11-20T19-28-34-199891021Z_3059882_i2335-r5-gvhmr-static-b2-l145.job","0-8204797085545995659_2026-11-20T19-28-34-454004340Z_3059921_i2335-r5-gvhmr-static-b4-l145.job","0-8204797085268455169_2026-11-20T19-28-34-731544830Z_3060059_i2335-r5-gvhmr-static-b2-l177.job","0-8204797085017034634_2026-11-20T19-28-34-982965365Z_3060193_i2335-r5-gvhmr-static-b4-l177.job"]}}

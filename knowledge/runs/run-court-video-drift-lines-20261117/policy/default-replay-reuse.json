@@ -1,0 +1,40 @@
+{
+  "base": "3f03ea70e91c5b0f7e07c58fbce53bc3da1a7bda",
+  "numeric_sources_equal": {
+    "src/tasks/court_detection/geometry/__init__.py": true,
+    "src/tasks/court_detection/geometry/confidence_homography.py": true,
+    "src/tasks/court_detection/geometry/homography.py": true,
+    "src/tasks/court_detection/geometry/hybrid_homography.py": true,
+    "src/tasks/court_detection/geometry/line_evidence.py": true,
+    "src/tasks/court_detection/geometry/observations.py": true,
+    "src/tasks/court_detection/geometry/paint_correspondence.py": true,
+    "src/tasks/court_detection/geometry/paint_observations.py": true,
+    "src/tasks/court_detection/geometry/paint_refinement.py": true,
+    "src/tasks/court_detection/geometry/pose.py": true,
+    "src/tasks/court_detection/geometry/postprocess.py": true,
+    "src/tasks/court_detection/geometry/quality.py": true,
+    "src/tasks/court_detection/geometry/video_shared/__init__.py": true,
+    "src/tasks/court_detection/geometry/video_shared/candidates.py": true,
+    "src/tasks/court_detection/geometry/video_shared/consensus.py": true,
+    "src/tasks/court_detection/geometry/video_shared/drift.py": true,
+    "src/tasks/court_detection/geometry/video_shared/endpoints.py": true,
+    "src/tasks/court_detection/geometry/video_shared/fit.py": true,
+    "src/tasks/court_detection/geometry/video_shared/observations.py": true,
+    "src/tennis_scene/pipeline/video_court/estimator.py": true,
+    "src/tasks/court_detection/inference/__init__.py": true,
+    "src/tasks/court_detection/inference/checkpoint.py": true,
+    "src/tasks/court_detection/inference/contracts.py": true,
+    "src/tasks/court_detection/inference/predictor.py": true,
+    "src/tasks/court_detection/inference/regions.py": true,
+    "src/tennis_scene/pipeline/components/court_kp.py": true
+  },
+  "previous_yaml_values_equal": true,
+  "new_yaml_field": "court_kp.video_shared.unobservable_policy: warn",
+  "clip_mode_default_unchanged": true,
+  "replay_reused": {
+    "run": 77,
+    "images": 3545,
+    "regions": 8530,
+    "mismatches": 0
+  }
+}

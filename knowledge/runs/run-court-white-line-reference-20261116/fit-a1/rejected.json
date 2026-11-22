@@ -1,0 +1,5 @@
+{
+  "status": "rejected_before_prediction_evaluation",
+  "reason": "cam1 far_service matched elevated net tape; near_service paint was rejected. No prediction or threshold tuning used.",
+  "fit_script_sha256": "f81bb75ac2ec76b3b131d64593221091de64c40543b7319214c0880dbc5ceab9"
+}

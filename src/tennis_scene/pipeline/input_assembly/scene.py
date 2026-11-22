@@ -21,6 +21,7 @@ from src.tennis_scene.pipeline.input_assembly.observations import (
 class SceneAssemblyInputAssembler:
     human_threshold: float
     version: int = 1
+    include_ball: bool = True
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> SceneAssemblyInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]
@@ -28,4 +29,4 @@ class SceneAssemblyInputAssembler:
         raw = gather_people(context.source, artifacts).select_views(active)
         grouped = identified_people(raw, artifacts["identities"], self.human_threshold)
         return SceneAssemblyInput(context.source, calibration, artifacts["alignment"], grouped,
-            artifacts["skeleton"], artifacts["ball"], artifacts["placement"])
+            artifacts["skeleton"], artifacts["ball"] if self.include_ball else None, artifacts["placement"])

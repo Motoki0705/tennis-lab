@@ -1,0 +1,1542 @@
+{
+  "source": "outputs/tennis_scene/evaluate/meiji4cam-court-review-20261116/summary.json",
+  "sha256": "ebc75091cec7aa757e1f3b54fe16228190dd0a138f84b52e521d0c744ebcbcfa",
+  "rows": [
+    {
+      "clip_id": "video_000/clip_035",
+      "camera": "cam0",
+      "accepted": true,
+      "best_inliers": 8,
+      "best_reasons": [],
+      "candidates_with_enough_inliers": 2,
+      "n_candidates": 12,
+      "seconds": 23.09442080000008,
+      "candidates": [
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 7,
+          "inlier_score": 5.656464099884033,
+          "area_ratio": 0.07284417974023188,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 8,
+          "inlier_score": 4.801117897033691,
+          "area_ratio": 0.07289597759454185,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 3.2821617126464844,
+          "area_ratio": 0.0683163128107228,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1440,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1440,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 3.7979047298431396,
+          "area_ratio": 0.0737965335464827,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            540,
+            1440,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 2.2185633182525635,
+          "area_ratio": 0.011456456739251285,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            0,
+            1680,
+            540
+          ],
+          "status": "insufficient_line_support",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            270,
+            1680,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 8,
+          "inlier_score": 4.4888014793396,
+          "area_ratio": 0.07399147062878955,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            540,
+            1680,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            0,
+            1920,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            270,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 3.273282527923584,
+          "area_ratio": 0.07499166787993472,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            540,
+            1920,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        }
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_035",
+      "camera": "cam1",
+      "accepted": true,
+      "best_inliers": 11,
+      "best_reasons": [],
+      "candidates_with_enough_inliers": 5,
+      "n_candidates": 12,
+      "seconds": 26.830261854993296,
+      "candidates": [
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 10,
+          "inlier_score": 8.711845397949219,
+          "area_ratio": 0.10455547342230703,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 9,
+          "inlier_score": 7.42968225479126,
+          "area_ratio": 0.1056090223924768,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 9,
+          "inlier_score": 7.625834941864014,
+          "area_ratio": 0.10450300522671692,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1440,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1440,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 8,
+          "inlier_score": 6.1142191886901855,
+          "area_ratio": 0.10558362256669092,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            540,
+            1440,
+            1080
+          ],
+          "status": "insufficient_line_support",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            0,
+            1680,
+            540
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 4,
+          "inlier_score": 3.0638837814331055,
+          "area_ratio": 0.014152057554476167,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            270,
+            1680,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 11,
+          "inlier_score": 8.557065963745117,
+          "area_ratio": 0.104783493605086,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            540,
+            1680,
+            1080
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            0,
+            1920,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            270,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 3.9066171646118164,
+          "area_ratio": 0.10379336736842235,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            540,
+            1920,
+            1080
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        }
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_035",
+      "camera": "cam2",
+      "accepted": true,
+      "best_inliers": 8,
+      "best_reasons": [],
+      "candidates_with_enough_inliers": 5,
+      "n_candidates": 12,
+      "seconds": 19.408317731009447,
+      "candidates": [
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 8,
+          "inlier_score": 5.983003616333008,
+          "area_ratio": 0.06836189927376589,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 8,
+          "inlier_score": 5.6406145095825195,
+          "area_ratio": 0.07037165944713616,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 2.7659130096435547,
+          "area_ratio": 0.06822708897096252,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1440,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1440,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 8,
+          "inlier_score": 4.776617527008057,
+          "area_ratio": 0.06890376828736519,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            540,
+            1440,
+            1080
+          ],
+          "status": "insufficient_line_support",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            0,
+            1680,
+            540
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            270,
+            1680,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 8,
+          "inlier_score": 5.578784942626953,
+          "area_ratio": 0.06983196927096287,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            540,
+            1680,
+            1080
+          ],
+          "status": "insufficient_line_support",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            0,
+            1920,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            270,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 8,
+          "inlier_score": 5.053400993347168,
+          "area_ratio": 0.07034074396134482,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            540,
+            1920,
+            1080
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        }
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_035",
+      "camera": "cam3",
+      "accepted": true,
+      "best_inliers": 10,
+      "best_reasons": [],
+      "candidates_with_enough_inliers": 2,
+      "n_candidates": 12,
+      "seconds": 19.137177441996755,
+      "candidates": [
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 3.6063804626464844,
+          "area_ratio": 0.07072519164265548,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 3.2160279750823975,
+          "area_ratio": 0.06985834299964613,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 4,
+          "inlier_score": 3.0793278217315674,
+          "area_ratio": 0.0653747510411694,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1440,
+            540
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 3.2318596839904785,
+          "area_ratio": 0.07403490232536748,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1440,
+            810
+          ],
+          "status": "insufficient_line_support",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            540,
+            1440,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            0,
+            1680,
+            540
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 8,
+          "inlier_score": 5.373250961303711,
+          "area_ratio": 0.07614549725460008,
+          "convex": true,
+          "inside_content": false
+        },
+        {
+          "region_xyxy": [
+            240,
+            270,
+            1680,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 7,
+          "inlier_score": 4.416849136352539,
+          "area_ratio": 0.07276605640196157,
+          "convex": true,
+          "inside_content": false
+        },
+        {
+          "region_xyxy": [
+            240,
+            540,
+            1680,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            0,
+            1920,
+            540
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 10,
+          "inlier_score": 6.7783522605896,
+          "area_ratio": 0.07610168295952463,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            270,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 7,
+          "inlier_score": 4.634302616119385,
+          "area_ratio": 0.07143801488019551,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            540,
+            1920,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        }
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "camera": "cam0",
+      "accepted": true,
+      "best_inliers": 9,
+      "best_reasons": [],
+      "candidates_with_enough_inliers": 1,
+      "n_candidates": 12,
+      "seconds": 19.899005035011214,
+      "candidates": [
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 4.688624382019043,
+          "area_ratio": 0.07188465858002244,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 7,
+          "inlier_score": 3.6709628105163574,
+          "area_ratio": 0.0736751787420995,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 4,
+          "inlier_score": 2.824192762374878,
+          "area_ratio": 0.07022360945246789,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1440,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1440,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 9,
+          "inlier_score": 5.558617115020752,
+          "area_ratio": 0.07376098731878211,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            540,
+            1440,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            0,
+            1680,
+            540
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            270,
+            1680,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 3.2537312507629395,
+          "area_ratio": 0.07392283758112059,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            540,
+            1680,
+            1080
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            0,
+            1920,
+            540
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 4,
+          "inlier_score": 2.02569842338562,
+          "area_ratio": 0.017650299640324787,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            270,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 3.265944480895996,
+          "area_ratio": 0.07663653621569244,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            540,
+            1920,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        }
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "camera": "cam1",
+      "accepted": true,
+      "best_inliers": 10,
+      "best_reasons": [],
+      "candidates_with_enough_inliers": 5,
+      "n_candidates": 12,
+      "seconds": 26.56387768300192,
+      "candidates": [
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 9,
+          "inlier_score": 8.236268043518066,
+          "area_ratio": 0.10458603694797322,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 10,
+          "inlier_score": 7.830595970153809,
+          "area_ratio": 0.1053471984117439,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 9,
+          "inlier_score": 7.0080671310424805,
+          "area_ratio": 0.10437337530204932,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1440,
+            540
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 4.137421131134033,
+          "area_ratio": 0.030067159969233072,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1440,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 10,
+          "inlier_score": 7.612758159637451,
+          "area_ratio": 0.10586942138245169,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            540,
+            1440,
+            1080
+          ],
+          "status": "insufficient_line_support",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            0,
+            1680,
+            540
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 5.134154319763184,
+          "area_ratio": 0.06477029130202061,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            270,
+            1680,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 10,
+          "inlier_score": 7.789782524108887,
+          "area_ratio": 0.10526555518152932,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            540,
+            1680,
+            1080
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            0,
+            1920,
+            540
+          ],
+          "status": "insufficient_line_support",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            270,
+            1920,
+            810
+          ],
+          "status": "insufficient_line_support",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            540,
+            1920,
+            1080
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        }
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "camera": "cam2",
+      "accepted": true,
+      "best_inliers": 11,
+      "best_reasons": [],
+      "candidates_with_enough_inliers": 1,
+      "n_candidates": 12,
+      "seconds": 21.81691243100795,
+      "candidates": [
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 7,
+          "inlier_score": 5.057968616485596,
+          "area_ratio": 0.06868436881850537,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 11,
+          "inlier_score": 7.260768413543701,
+          "area_ratio": 0.07056070939328515,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 2.7247538566589355,
+          "area_ratio": 0.06739600141232878,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1440,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1440,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 7,
+          "inlier_score": 4.954626083374023,
+          "area_ratio": 0.06998326958098465,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            540,
+            1440,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            0,
+            1680,
+            540
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            270,
+            1680,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 7,
+          "inlier_score": 5.039390563964844,
+          "area_ratio": 0.07040502490942288,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            540,
+            1680,
+            1080
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            0,
+            1920,
+            540
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            270,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 3.982390880584717,
+          "area_ratio": 0.06827415826580734,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            540,
+            1920,
+            1080
+          ],
+          "status": "joint_optimization_failed",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        }
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "camera": "cam3",
+      "accepted": true,
+      "best_inliers": 9,
+      "best_reasons": [],
+      "candidates_with_enough_inliers": 1,
+      "n_candidates": 12,
+      "seconds": 20.598202955006855,
+      "candidates": [
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 3.47118878364563,
+          "area_ratio": 0.06990112648033113,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 3.3542933464050293,
+          "area_ratio": 0.07080342777347715,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 4,
+          "inlier_score": 2.6294500827789307,
+          "area_ratio": 0.06856579183948652,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            0,
+            0,
+            1440,
+            540
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 6,
+          "inlier_score": 3.4268970489501953,
+          "area_ratio": 0.09971351337625728,
+          "convex": true,
+          "inside_content": false
+        },
+        {
+          "region_xyxy": [
+            0,
+            270,
+            1440,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 4,
+          "inlier_score": 2.461613416671753,
+          "area_ratio": 0.07561695768487374,
+          "convex": true,
+          "inside_content": false
+        },
+        {
+          "region_xyxy": [
+            0,
+            540,
+            1440,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            240,
+            0,
+            1680,
+            540
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 7,
+          "inlier_score": 4.440378189086914,
+          "area_ratio": 0.07610927742403964,
+          "convex": true,
+          "inside_content": false
+        },
+        {
+          "region_xyxy": [
+            240,
+            270,
+            1680,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 4,
+          "inlier_score": 3.1366453170776367,
+          "area_ratio": 0.07443124825428517,
+          "convex": true,
+          "inside_content": false
+        },
+        {
+          "region_xyxy": [
+            240,
+            540,
+            1680,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            0,
+            1920,
+            540
+          ],
+          "status": "ok",
+          "accepted": true,
+          "inliers": 9,
+          "inlier_score": 5.795050144195557,
+          "area_ratio": 0.0759711447218397,
+          "convex": true,
+          "inside_content": true
+        },
+        {
+          "region_xyxy": [
+            480,
+            270,
+            1920,
+            810
+          ],
+          "status": "ok",
+          "accepted": false,
+          "inliers": 5,
+          "inlier_score": 3.3288683891296387,
+          "area_ratio": 0.07265716782716886,
+          "convex": true,
+          "inside_content": false
+        },
+        {
+          "region_xyxy": [
+            480,
+            540,
+            1920,
+            1080
+          ],
+          "status": "no_jointly_supported_candidate",
+          "accepted": false,
+          "inliers": 0,
+          "inlier_score": 0.0,
+          "area_ratio": 0.0,
+          "convex": false,
+          "inside_content": true
+        }
+      ]
+    }
+  ]
+}

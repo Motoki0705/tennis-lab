@@ -5,6 +5,7 @@ from __future__ import annotations
 import queue
 import threading
 from collections.abc import Iterable, Iterator
+from contextvars import copy_context
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
@@ -26,7 +27,8 @@ class PrefetchIterator(Generic[TItem]):
             raise ValueError(f"max_prefetch must be positive, got {max_prefetch}")
         self._iterable = iterable
         self._queue: queue.Queue[_QueueItem[TItem]] = queue.Queue(maxsize=max_prefetch)
-        self._thread = threading.Thread(target=self._run, daemon=True)
+        context = copy_context()
+        self._thread = threading.Thread(target=context.run, args=(self._run,), daemon=True)
         self._started = False
 
     def __iter__(self) -> Iterator[TItem]:

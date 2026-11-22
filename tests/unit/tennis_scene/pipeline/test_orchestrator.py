@@ -22,7 +22,7 @@ def _runtime_with_assets(tmp_path: Path) -> Any:
         runtime,
     )
     cfg = runtime(tmp_path)
-    materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path, court=cfg.court_kp)
     return cfg
 
 
@@ -33,6 +33,11 @@ def _source(tmp_path: Path) -> Any:
 
 def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -> None:
     from src.tennis_scene.pipeline.definition import standard_definition
+    from src.tennis_scene.pipeline.input_assembly.reconstruction import (
+        BallTriangulationInputAssembler,
+        CameraAlignmentInputAssembler,
+        CourtSideInputAssembler,
+    )
     from src.tennis_scene.pipeline.runner import ComponentRunner
     from src.tennis_scene.pipeline.storage.clip_store import ClipStore
     source = _source(tmp_path)
@@ -51,9 +56,14 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
         assert nodes[consumer].bindings["ball_cam0"] == "ball_points/cam0"
         assert nodes[consumer].io.inputs["ball_cam0"].schema == "ball_points"
         assert nodes[consumer].io.inputs["ball_cam0"].version == 4
-        assert nodes[consumer].assembler.ball_threshold == 0
+        assembler = nodes[consumer].assembler
+        assert isinstance(assembler, (CourtSideInputAssembler, CameraAlignmentInputAssembler, BallTriangulationInputAssembler))
+        assert assembler.ball_threshold == 0
     assert order.index("court_side") < order.index("camera_alignment")
-    assert order.index("body_view_selection") < order.index("gvhmr") < order.index("body_placement")
+    assert nodes["gvhmr"].bindings == {"selection": "body_view_selection", "features": "hmr2_features"}
+    assert nodes["gvhmr"].io.version == 2
+    assert nodes["body_placement"].io.inputs["recovered"].version == 2
+    assert order.index("body_view_selection") < order.index("hmr2_features") < order.index("gvhmr") < order.index("body_placement")
 
 
 def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:
@@ -136,6 +146,19 @@ def test_every_standard_component_has_one_execution_mode_and_node(tmp_path: Path
     assert tuple(cfg.component_sources) == STANDARD_COMPONENTS
     nodes = standard_definition(cfg, _source(tmp_path), code_identity="test")
     assert {node.name.split("/")[0] for node in nodes} == set(STANDARD_COMPONENTS)
+
+
+@pytest.mark.parametrize("asset", ["backbone", "dinov3_source/hubconf.py"])
+def test_completed_clip_identity_includes_external_court_assets(tmp_path: Path, asset: str) -> None:
+    from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
+    from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
+
+    cfg = _runtime_with_assets(tmp_path)
+    pipeline = TennisSceneOrchestrator(cfg)
+    original = pipeline.publication_identity()
+    path = CourtKPModule(cfg.court_kp).model_specs()["court"].weights[asset]
+    path.write_bytes(b"changed external Court input")
+    assert pipeline.publication_identity() != original
 
 
 @pytest.mark.parametrize("different", [VideoInfo(25., 1920, 1080, 20), VideoInfo(30., 1280, 720, 20), VideoInfo(30., 1920, 1080, 19)])

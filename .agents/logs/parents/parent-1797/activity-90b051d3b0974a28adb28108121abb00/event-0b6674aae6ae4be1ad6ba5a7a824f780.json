@@ -1,0 +1,70 @@
+{
+  "record": {
+    "data": {
+      "basis": [],
+      "evaluation": "reuse",
+      "inputs": [
+        "564b30d17a934763922c43a31c7a2461",
+        "80661f533998413786870a1329b983a0"
+      ],
+      "next_actions": [
+        {
+          "actor": "parent",
+          "conditions": "head・base・diffが再利用した結果のsnapshotと一致し、最新Python CIが成功",
+          "expected_result": "AI起動0回でPR #1907 がmergeされる",
+          "id": "ea67239f958344f3a2480c4ecf2f8927",
+          "instruction": "証拠待ちの完了後、merge_gate.py --parent 1797 merge を実行する",
+          "operation": "merge",
+          "summary": "追加レビューなしでmerge gateを実行する",
+          "target": "PR #1907"
+        }
+      ],
+      "reason": "gate dry-runはPR #1907を証拠待ち1件だけで停止した（CI・依存・coverageの他条件は通過）。review-inspect（AI起動0回）で、run [private identifier] の対象snapshot（head 8d67b26e3、base 0af13cefe、diff digest）が現在と全フィールド一致し、変更パス0、runtimeはcompleted・cleanup完了、公開済み、起動1回と確認した。コード・要件・依存に変化がないため、mergeまで追加のAIレビューを起動せず、この結果を再利用する。",
+      "recheck_scope": [],
+      "resume_conditions": [],
+      "reuse_scope": [
+        "PR #1907 のhead 8d67b26e3 に対する正式レビュー結果（approve、指摘0件）とcoverage"
+      ],
+      "source": {
+        "actor_key": "2a303c5213064b559dbbb7112c55b218",
+        "evidence": [
+          {
+            "kind": "unavailable",
+            "reason": "capture_source=parent.decide; artifact=decision spec; content_sha256=5f7c5d2eda038fa45fb012e07037c842d3e9a7138312a2601a462d74f36dfea2; private evidence"
+          }
+        ],
+        "kind": "parent_choice"
+      },
+      "unresolved": [
+        "証拠待ち1（#1863の実機受入）。親が確認してcomplete-evidenceで記録する"
+      ]
+    },
+    "id": "0b6674aae6ae4be1ad6ba5a7a824f780",
+    "kind": "decision",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "90b051d3b0974a28adb28108121abb00",
+      "delegation": null,
+      "issue": null,
+      "parent": 1797,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-13T03:07:24.172474+00:00"
+      },
+      "recorded_at": "2026-11-13T03:07:24.172505+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 1,
+    "version": 2
+  }
+}

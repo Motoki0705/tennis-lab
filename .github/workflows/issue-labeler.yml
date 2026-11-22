@@ -19,9 +19,35 @@ permissions:
 
 jobs:
   label:
+    if: ${{ !contains(github.event.issue.labels.*.name, 'parent-evidence') && !startsWith(github.event.issue.body, '<!-- parent-evidence:') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout trusted workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          submodules: false
+      - name: Exclude evidence containers, including manual dispatch
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --method GET "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" > "$RUNNER_TEMP/issue-label-target.json"
+          PYTHONPATH=.agents/ops python3 - "$RUNNER_TEMP/issue-label-target.json" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from issues.evidence import is_evidence_issue
+          issue = json.loads(Path(sys.argv[1]).read_text())
+          with Path(sys.argv[2]).open("a") as output:
+              output.write(f"is_work_issue={str(not is_evidence_issue(issue)).lower()}\n")
+          PY
       - name: Apply work type labels from title prefix
+        if: ${{ steps.target.outputs.is_work_issue == 'true' }}
         uses: github/issue-labeler@ccca1e16fcb66762200e616fc29b57b940c1cb67 # v3.5
         with:
           configuration-path: ".github/issue-labeler.yml"

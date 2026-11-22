@@ -27,12 +27,16 @@ if [ "${EUID}" -ne 0 ]; then
   exit 1
 fi
 
-for source_dir in "$REPOSITORY_ROOT/data" "$REPOSITORY_ROOT/ckpt"; do
-  if [ ! -d "$source_dir" ]; then
-    echo "Required local asset directory is missing: $source_dir" >&2
-    exit 1
-  fi
-done
+TEMP_ROOT="$(mktemp -d)"
+trap 'rm -rf "$TEMP_ROOT"' EXIT
+# Use the main checkout even if this installer is invoked from its worktree.
+main_git_dir="$(git -c "safe.directory=$REPOSITORY_ROOT" -C "$REPOSITORY_ROOT" rev-parse --path-format=absolute --git-common-dir)"
+main_repo_root="$(dirname "$main_git_dir")"
+python3 "$SCRIPT_DIR/asset_sources.py" \
+  --repo "$main_repo_root" \
+  --config "$REPOSITORY_ROOT/.agents/ops/storage_tier/config.toml" \
+  > "$TEMP_ROOT/asset_paths.conf"
+source "$TEMP_ROOT/asset_paths.conf"
 
 windows_mount_paths=()
 for mount_path in /mnt/?; do
@@ -94,8 +98,6 @@ done
 install -d -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0750 "$RUNNER_ROOT"
 install -d -o root -g root -m 0755 "$TOOL_ROOT/bin"
 
-TEMP_ROOT="$(mktemp -d)"
-trap 'rm -rf "$TEMP_ROOT"' EXIT
 
 download_release_asset() {
   local repository="$1" asset_name="$2" destination="$3"
@@ -152,58 +154,16 @@ echo "Installed uv $uv_tag."
 bash "$SCRIPT_DIR/install_queue_bundle.sh" "$TOOL_ROOT/bin"
 install -m 0755 "$SCRIPT_DIR/wsl_keepalive.sh" "$TOOL_ROOT/bin/wsl_keepalive.sh"
 
-source_data="$(printf '%q' "$REPOSITORY_ROOT/data")"
-source_ckpt="$(printf '%q' "$REPOSITORY_ROOT/ckpt")"
-install -m 0755 /dev/stdin "$TOOL_ROOT/bin/mount_assets.sh" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-SOURCE_DATA=$source_data
-SOURCE_CKPT=$source_ckpt
-TARGET_ROOT="$STATE_ROOT/assets"
-
-mount_readonly() {
-  local source_path="\$1" target_path="\$2"
-  if mountpoint --quiet "\$target_path"; then
-    local mounted_root
-    mounted_root="\$(findmnt --noheadings --output FSROOT --target "\$target_path" | xargs)"
-    if [ "\$mounted_root" != "\$source_path" ]; then
-      echo "Unexpected source for asset mount \$target_path: \$mounted_root" >&2
-      exit 1
-    fi
-    if ! findmnt --noheadings --output OPTIONS --target "\$target_path" | grep -qw ro; then
-      echo "Existing asset mount is not read-only: \$target_path" >&2
-      exit 1
-    fi
-    return
-  fi
-  mount --bind "\$source_path" "\$target_path"
-  mount --options remount,bind,ro "\$target_path"
-}
-
-case "\${1:-}" in
-  start)
-    mount_readonly "\$SOURCE_DATA" "\$TARGET_ROOT/data"
-    mount_readonly "\$SOURCE_CKPT" "\$TARGET_ROOT/ckpt"
-    ;;
-  stop)
-    if mountpoint --quiet "\$TARGET_ROOT/ckpt"; then
-      umount "\$TARGET_ROOT/ckpt"
-    fi
-    if mountpoint --quiet "\$TARGET_ROOT/data"; then
-      umount "\$TARGET_ROOT/data"
-    fi
-    ;;
-  *)
-    echo "usage: \$0 {start|stop}" >&2
-    exit 2
-    ;;
-esac
-EOF
+printf 'TARGET_ROOT=%q\n' "$STATE_ROOT/assets" >> "$TEMP_ROOT/asset_paths.conf"
+install -m 0600 "$TEMP_ROOT/asset_paths.conf" "$TOOL_ROOT/bin/asset_paths.conf"
+install -m 0755 "$SCRIPT_DIR/mount_assets.sh" "$TOOL_ROOT/bin/mount_assets.sh"
 
 install -m 0644 /dev/stdin "$SERVICE_PATH/tennis-lab-actions-assets.service" <<EOF
 [Unit]
 Description=Read-only tennis-lab data and checkpoint mounts for GitHub Actions
 Before=tennis-lab-training-queue.service
+Requires=tennis-data-mount.service
+After=tennis-data-mount.service
 
 [Service]
 Type=oneshot

@@ -1,0 +1,999 @@
+{
+  "measurement_commit": "ba0fbdf1c16bd56d0852328db7e9f462f21b5ec3",
+  "queue_job": "0-8205002942712217463_2026-11-18T10-17-37-287782536Z_3032097_i1752-shared-fp16-three-20261118-a1",
+  "all_three_completed": true,
+  "identity_counts_ok": true,
+  "body_exports_present": true,
+  "cuda_anomaly": false,
+  "entry_seconds": 1912.8565900009999,
+  "recorder_seconds": 1910.14356235,
+  "guard_phase_seconds": 1923.297575,
+  "startup_and_guard_seconds": 10.440984999000193,
+  "cli_before_recorder_seconds": 2.7130276509999476,
+  "global_python_profiler": false,
+  "resources": {
+    "ram_rss_sampled_peak_bytes": 9155485696,
+    "temporary_disk_peak_bytes": 120311119,
+    "ram_process_lifetime_peak_bytes": 9154760704,
+    "cuda": {
+      "cuda:0": {
+        "allocated_peak_bytes": 4470923264,
+        "reserved_peak_bytes": 5305794560
+      }
+    }
+  },
+  "nvml_health": {
+    "variant": "batch",
+    "started_at_utc": "2026-11-18T10:17:38.132452+00:00",
+    "status": "complete",
+    "device_memory_sampling_ms": 1000,
+    "device_memory_samples": 1811,
+    "query_timeout_seconds": 10.0,
+    "heartbeat_timeout_seconds": 180.0,
+    "driver": "621.24",
+    "pid": 3032401,
+    "returncode": 0,
+    "finished_at_utc": "2026-11-18T10:49:41.430027+00:00",
+    "device_memory_peak_mib": 6198,
+    "device_memory_min_mib": 936
+  },
+  "measurement_errors": [],
+  "lifetime": {
+    "loads": {
+      "ball": 1,
+      "dino": 1,
+      "vitpose": 1,
+      "appearance": 1,
+      "hmr2": 1,
+      "gvhmr": 1,
+      "body_geometry": 1
+    },
+    "unloads": {
+      "ball": 1,
+      "dino": 1,
+      "vitpose": 1,
+      "appearance": 1,
+      "hmr2": 1,
+      "gvhmr": 1,
+      "body_geometry": 1
+    },
+    "unclosed": [],
+    "maximum_owned": 2,
+    "failed_events": [],
+    "each_target_loaded_once": true
+  },
+  "all_recorded_models": [
+    {
+      "model": "ball",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt",
+          "sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242"
+        }
+      },
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 0.637738584,
+      "unload_seconds": 0.419883202
+    },
+    {
+      "model": "dino",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+          "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float16",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 16.062146754,
+      "unload_seconds": 0.967953375
+    },
+    {
+      "model": "AFLink",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/person_tracking/AFLink_epoch20.pth",
+          "sha256": "b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4"
+        }
+      },
+      "device": "cpu",
+      "dtype": "float32",
+      "load_count": 12,
+      "unload_count": 0,
+      "failed_count": 0,
+      "load_seconds": 0.5258770070000001,
+      "unload_seconds": 0.0
+    },
+    {
+      "model": "vitpose",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth",
+          "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float16",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 29.682764497,
+      "unload_seconds": 1.125457333
+    },
+    {
+      "model": "appearance",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth",
+          "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 2.981395777,
+      "unload_seconds": 0.511222905
+    },
+    {
+      "model": "hmr2",
+      "weights": {
+        "checkpoint": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt",
+          "sha256": "2dcf79638109781d1ae5f5c44fee5f55bc83291c210653feead9b7f04fa6f20e"
+        },
+        "mean_params": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+          "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 21.466847768,
+      "unload_seconds": 0.92975772
+    },
+    {
+      "model": "gvhmr",
+      "weights": {
+        "gvhmr": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+          "sha256": "4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91"
+        },
+        "body_model": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+          "sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992"
+        },
+        "smpl_hmr2_mean_params": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+          "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+        },
+        "smpl_smplx_to_smpl": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+          "sha256": "0fc821a9e79ec3e76d6a9796b96d5bef8cd67055e18497bbe370d8aed9e07e06"
+        },
+        "smpl_smpl_coco17_regressor": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+          "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f"
+        },
+        "smpl_smplx_verts437": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+          "sha256": "ef0ea64c470a1fea80adb5e4b866c78a792a04f5f98744c9367b15e57bfb4a4d"
+        },
+        "smpl_smpl_neutral_joint_regressor": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt",
+          "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 2.411171048,
+      "unload_seconds": 0.845890408
+    },
+    {
+      "model": "body_geometry",
+      "weights": {
+        "body_model": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+          "sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992"
+        },
+        "smpl_hmr2_mean_params": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+          "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+        },
+        "smpl_smplx_to_smpl": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+          "sha256": "0fc821a9e79ec3e76d6a9796b96d5bef8cd67055e18497bbe370d8aed9e07e06"
+        },
+        "smpl_smpl_coco17_regressor": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+          "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f"
+        },
+        "smpl_smplx_verts437": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+          "sha256": "ef0ea64c470a1fea80adb5e4b866c78a792a04f5f98744c9367b15e57bfb4a4d"
+        },
+        "smpl_smpl_neutral_joint_regressor": {
+          "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt",
+          "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf"
+        }
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "load_count": 1,
+      "unload_count": 1,
+      "failed_count": 0,
+      "load_seconds": 1.860862826,
+      "unload_seconds": 0.44001163
+    }
+  ],
+  "clips": [
+    {
+      "clip_id": "video_000/clip_000",
+      "marker_exists": true,
+      "scene_status": "ok",
+      "num_frames": 356,
+      "scene_players": 4,
+      "sides": {
+        "-1": {
+          "count": 2,
+          "identities": [
+            {
+              "candidates": [
+                0,
+                4,
+                9,
+                13
+              ],
+              "identity": 0,
+              "presence_frames": 354,
+              "seen_frames": 354,
+              "side": -1
+            },
+            {
+              "candidates": [
+                2,
+                5,
+                15,
+                16
+              ],
+              "identity": 2,
+              "presence_frames": 354,
+              "seen_frames": 354,
+              "side": -1
+            }
+          ],
+          "runner_up": null
+        },
+        "1": {
+          "count": 2,
+          "identities": [
+            {
+              "candidates": [
+                1,
+                7,
+                8,
+                11,
+                12,
+                17
+              ],
+              "identity": 1,
+              "presence_frames": 354,
+              "seen_frames": 354,
+              "side": 1
+            },
+            {
+              "candidates": [
+                3,
+                6,
+                10,
+                14
+              ],
+              "identity": 3,
+              "presence_frames": 354,
+              "seen_frames": 354,
+              "side": 1
+            }
+          ],
+          "runner_up": null
+        }
+      },
+      "validity_statistics": {
+        "ball_3d_frames": 158,
+        "player_joint_frames": [
+          354,
+          354,
+          354,
+          354
+        ],
+        "player_root_frames": [
+          353,
+          353,
+          353,
+          353
+        ],
+        "player_smpl_frames": [
+          353,
+          353,
+          353,
+          349
+        ]
+      },
+      "scene_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/batch/videos/video_000/clips/clip_000/annotations/tennis_scene/exports/2d318d55076218626af18ee56d4659c0e96a37f80d79ae91eb48bacca92619d4/scene.npz",
+      "body_exports_present": true,
+      "mask_counts": {
+        "player_observed": {
+          "valid": 1416,
+          "total": 1424
+        },
+        "player_valid": {
+          "valid": 1412,
+          "total": 1424
+        },
+        "player_heading_valid": {
+          "valid": 1412,
+          "total": 1424
+        },
+        "player_kp_3d_vis": {
+          "valid": 23979,
+          "total": 24208
+        },
+        "player_smpl_valid": {
+          "valid": 1408,
+          "total": 1424
+        },
+        "ball_3d_valid": {
+          "valid": 158,
+          "total": 356
+        }
+      }
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "marker_exists": true,
+      "scene_status": "ok",
+      "num_frames": 292,
+      "scene_players": 4,
+      "sides": {
+        "-1": {
+          "count": 2,
+          "identities": [
+            {
+              "candidates": [
+                0,
+                5,
+                10,
+                12
+              ],
+              "identity": 0,
+              "presence_frames": 290,
+              "seen_frames": 290,
+              "side": -1
+            },
+            {
+              "candidates": [
+                2,
+                4,
+                11,
+                14
+              ],
+              "identity": 2,
+              "presence_frames": 290,
+              "seen_frames": 290,
+              "side": -1
+            }
+          ],
+          "runner_up": null
+        },
+        "1": {
+          "count": 2,
+          "identities": [
+            {
+              "candidates": [
+                1,
+                6,
+                8,
+                15
+              ],
+              "identity": 1,
+              "presence_frames": 290,
+              "seen_frames": 290,
+              "side": 1
+            },
+            {
+              "candidates": [
+                3,
+                7,
+                9,
+                13
+              ],
+              "identity": 3,
+              "presence_frames": 290,
+              "seen_frames": 290,
+              "side": 1
+            }
+          ],
+          "runner_up": null
+        }
+      },
+      "validity_statistics": {
+        "ball_3d_frames": 127,
+        "player_joint_frames": [
+          290,
+          290,
+          290,
+          290
+        ],
+        "player_root_frames": [
+          289,
+          289,
+          289,
+          289
+        ],
+        "player_smpl_frames": [
+          289,
+          289,
+          289,
+          289
+        ]
+      },
+      "scene_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/batch/videos/video_000/clips/clip_037/annotations/tennis_scene/exports/698d2b8d7ad616eb25597aca4e6f424afd77fa6d3d955bb0c5d99385a819872b/scene.npz",
+      "body_exports_present": true,
+      "mask_counts": {
+        "player_observed": {
+          "valid": 1160,
+          "total": 1168
+        },
+        "player_valid": {
+          "valid": 1156,
+          "total": 1168
+        },
+        "player_heading_valid": {
+          "valid": 1156,
+          "total": 1168
+        },
+        "player_kp_3d_vis": {
+          "valid": 19720,
+          "total": 19856
+        },
+        "player_smpl_valid": {
+          "valid": 1156,
+          "total": 1168
+        },
+        "ball_3d_valid": {
+          "valid": 127,
+          "total": 292
+        }
+      }
+    },
+    {
+      "clip_id": "video_000/clip_027",
+      "marker_exists": true,
+      "scene_status": "ok",
+      "num_frames": 235,
+      "scene_players": 4,
+      "sides": {
+        "-1": {
+          "count": 2,
+          "identities": [
+            {
+              "candidates": [
+                2,
+                8,
+                12,
+                16
+              ],
+              "identity": 1,
+              "presence_frames": 233,
+              "seen_frames": 233,
+              "side": -1
+            },
+            {
+              "candidates": [
+                3,
+                6,
+                11,
+                17
+              ],
+              "identity": 2,
+              "presence_frames": 233,
+              "seen_frames": 233,
+              "side": -1
+            }
+          ],
+          "runner_up": null
+        },
+        "1": {
+          "count": 2,
+          "identities": [
+            {
+              "candidates": [
+                0,
+                1,
+                7,
+                9,
+                15
+              ],
+              "identity": 0,
+              "presence_frames": 233,
+              "seen_frames": 233,
+              "side": 1
+            },
+            {
+              "candidates": [
+                4,
+                5,
+                13,
+                14
+              ],
+              "identity": 3,
+              "presence_frames": 233,
+              "seen_frames": 233,
+              "side": 1
+            }
+          ],
+          "runner_up": 4
+        }
+      },
+      "validity_statistics": {
+        "ball_3d_frames": 125,
+        "player_joint_frames": [
+          233,
+          233,
+          233,
+          233
+        ],
+        "player_root_frames": [
+          233,
+          233,
+          233,
+          233
+        ],
+        "player_smpl_frames": [
+          233,
+          233,
+          233,
+          233
+        ]
+      },
+      "scene_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/batch/videos/video_000/clips/clip_027/annotations/tennis_scene/exports/cca96d614f2439b3a0921189604712ae11457cedc1c73c1fa27ed76915e494e5/scene.npz",
+      "body_exports_present": true,
+      "mask_counts": {
+        "player_observed": {
+          "valid": 932,
+          "total": 940
+        },
+        "player_valid": {
+          "valid": 932,
+          "total": 940
+        },
+        "player_heading_valid": {
+          "valid": 932,
+          "total": 940
+        },
+        "player_kp_3d_vis": {
+          "valid": 15841,
+          "total": 15980
+        },
+        "player_smpl_valid": {
+          "valid": 932,
+          "total": 940
+        },
+        "ball_3d_valid": {
+          "valid": 125,
+          "total": 235
+        }
+      }
+    }
+  ],
+  "outcomes": {
+    "video_000/clip_000": {
+      "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/batch/videos/video_000/clips/clip_000/annotations/tennis_scene/annotation.json",
+      "clip_id": "video_000/clip_000",
+      "error": null,
+      "status": "generated"
+    },
+    "video_000/clip_027": {
+      "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/batch/videos/video_000/clips/clip_027/annotations/tennis_scene/annotation.json",
+      "clip_id": "video_000/clip_027",
+      "error": null,
+      "status": "generated"
+    },
+    "video_000/clip_037": {
+      "annotation_path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/batch/videos/video_000/clips/clip_037/annotations/tennis_scene/annotation.json",
+      "clip_id": "video_000/clip_037",
+      "error": null,
+      "status": "generated"
+    }
+  },
+  "node_statuses": {
+    "executed": 114
+  },
+  "stages": {
+    "ball_detection": {
+      "measured_node_seconds": 62.26717403998191,
+      "successful_node_seconds": 62.26717403998191,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 1.0576217860000001,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 3205.5821762560745
+    },
+    "ball_points": {
+      "measured_node_seconds": 10.511941194024985,
+      "successful_node_seconds": 10.511941194024985,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 550.3352406765425
+    },
+    "ball_triangulation": {
+      "measured_node_seconds": 1.0137163189938292,
+      "successful_node_seconds": 1.0137163189938292,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 53.071436007300946
+    },
+    "body_placement": {
+      "measured_node_seconds": 16.893274346992257,
+      "successful_node_seconds": 16.893274346992257,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 2.300874456,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 766.2617602553092
+    },
+    "body_view_selection": {
+      "measured_node_seconds": 0.1801913140079705,
+      "successful_node_seconds": 0.1801913140079705,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 9.433617286478437
+    },
+    "camera_alignment": {
+      "measured_node_seconds": 0.27005590600310825,
+      "successful_node_seconds": 0.27005590600310825,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 14.138328904543249
+    },
+    "court_calibration": {
+      "measured_node_seconds": 0.20163323200540617,
+      "successful_node_seconds": 0.20163323200540617,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "clip_count",
+      "projection_ratio": 23.0,
+      "estimated_69clip_seconds": 4.637564336124342
+    },
+    "court_detection": {
+      "measured_node_seconds": 22.076095684999018,
+      "successful_node_seconds": 22.076095684999018,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "clip_count",
+      "projection_ratio": 23.0,
+      "estimated_69clip_seconds": 507.7502007549774
+    },
+    "court_side": {
+      "measured_node_seconds": 0.2539049189945217,
+      "successful_node_seconds": 0.2539049189945217,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "clip_count",
+      "projection_ratio": 23.0,
+      "estimated_69clip_seconds": 5.839813136874
+    },
+    "gvhmr": {
+      "measured_node_seconds": 126.30702503499924,
+      "successful_node_seconds": 126.30702503499924,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 25.653666944,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 5295.193234136201
+    },
+    "person_detection": {
+      "measured_node_seconds": 746.6731867710332,
+      "successful_node_seconds": 746.6731867710332,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 17.030100129,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 38216.28333828066
+    },
+    "person_tracking": {
+      "measured_node_seconds": 696.6564321140031,
+      "successful_node_seconds": 696.6564321140031,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 33.789617607000004,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 34737.08191775393
+    },
+    "player_association": {
+      "measured_node_seconds": 17.374593374013784,
+      "successful_node_seconds": 17.374593374013784,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0.511222905,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 883.3650055115336
+    },
+    "player_selection": {
+      "measured_node_seconds": 3.1078615880251164,
+      "successful_node_seconds": 3.1078615880251164,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 162.70693713615526
+    },
+    "player_triangulation": {
+      "measured_node_seconds": 108.92361347400583,
+      "successful_node_seconds": 108.92361347400583,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 5702.515066451123
+    },
+    "pose_estimation": {
+      "measured_node_seconds": 0.6354017230041791,
+      "successful_node_seconds": 0.6354017230041791,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 3532,
+      "frame_unit": "camera_frame",
+      "sample_successful_nodes": 12,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 33.265403002307124
+    },
+    "scene_assembly": {
+      "measured_node_seconds": 5.181871957989642,
+      "successful_node_seconds": 5.181871957989642,
+      "failed_node_seconds": 0,
+      "included_lifecycle_seconds": 0,
+      "successful_clip_ids": [
+        "video_000/clip_000",
+        "video_000/clip_027",
+        "video_000/clip_037"
+      ],
+      "sample_frame_units": 883,
+      "frame_unit": "clip_frame",
+      "sample_successful_nodes": 3,
+      "sample_failed_nodes": 0,
+      "sample_blocked_nodes": 0,
+      "scaling": "source_frames",
+      "projection_ratio": 52.35334088335221,
+      "estimated_69clip_seconds": 271.2883090305155
+    }
+  },
+  "overhead": {
+    "stages": [
+      {
+        "stage": "scene_export",
+        "measured_seconds": 16.349909229,
+        "successful_seconds": 16.349909229,
+        "successful_clip_ids": [
+          "video_000/clip_000",
+          "video_000/clip_027",
+          "video_000/clip_037"
+        ],
+        "sample_frame_units": 883,
+        "scaling": "clip_count_and_source_frame_scenarios",
+        "estimated_69clip_seconds_range": [
+          376.0479122670001,
+          855.9723712777034
+        ]
+      },
+      {
+        "stage": "clip_publication",
+        "measured_seconds": 3.404277605,
+        "successful_seconds": 3.404277605,
+        "successful_clip_ids": [
+          "video_000/clip_000",
+          "video_000/clip_027",
+          "video_000/clip_037"
+        ],
+        "sample_frame_units": 883,
+        "scaling": "clip_count_and_source_frame_scenarios",
+        "estimated_69clip_seconds_range": [
+          78.298384915,
+          178.22530591612684
+        ]
+      }
+    ],
+    "remaining_seconds": 71.86140252292279,
+    "attempted_sample_clips": 3,
+    "estimated_69clip_remaining_seconds_range": [
+      71.86140252292279,
+      1652.812258027224
+    ]
+  },
+  "full69_missing_stage_estimates": [],
+  "full69_conditional_hours_range": [
+    25.26614196146432,
+    25.882944418086023
+  ],
+  "full69_executed": false,
+  "timing_limits": "C1 synchronization, resource sampling, heartbeat and cold compile remain included. No global sys.setprofile. Projections are conditional, not causal precision speedups or confidence bounds."
+}

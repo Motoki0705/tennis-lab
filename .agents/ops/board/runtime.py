@@ -191,7 +191,7 @@ def sessions(env: Mapping[str, str]) -> dict[str, Any]:
             opened = {
                 index
                 for index, agent in enumerate(rows)
-                if _native(agent, engine, session)
+                if engine != "agy" and _native(agent, engine, session)
             }
             found = owned | opened
             if (

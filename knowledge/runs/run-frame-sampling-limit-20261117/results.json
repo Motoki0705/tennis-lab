@@ -1,0 +1,397 @@
+{
+  "source_commit": "486aa1ab09be857909d0fcf8c2b616c75a53f5b0",
+  "source_frames": 2108,
+  "sampled_frames": 1055,
+  "scopes": [
+    "court_side_saved",
+    "camera_alignment_saved_ball_only",
+    "body_view_selection_saved_provisional",
+    "camera_alignment_dense",
+    "body_view_selection_dense"
+  ],
+  "all_caps_outputs_bitwise_equal": true,
+  "cuda_initialized": false,
+  "environment": {
+    "python": "3.11.15",
+    "numpy": "2.3.5",
+    "scipy": "1.17.1",
+    "torch": "2.13.0+cu130",
+    "threads": {
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1"
+    }
+  },
+  "records": [
+    {
+      "case": "court_side_saved",
+      "scope": "saved calibrated ball observations",
+      "cap": 2048,
+      "repeats": 5,
+      "seconds": [
+        0.04944960001739673,
+        0.05838349199621007,
+        0.04815826899721287,
+        0.0574332780088298,
+        0.06313638400752097
+      ],
+      "mean_seconds": 0.05531220460543409,
+      "sample_stdev_seconds": 0.006338344996480253,
+      "rss_before_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_sampled_peak_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970211328,
+      "output_sha256": "5fc544cbf4dc21ee649abf6858249b263ec76c271a36901ad70236a70baf3915"
+    },
+    {
+      "case": "court_side_saved",
+      "scope": "saved calibrated ball observations",
+      "cap": 4096,
+      "repeats": 5,
+      "seconds": [
+        0.05207125601009466,
+        0.04783760500140488,
+        0.06519744399702176,
+        0.049784870992880315,
+        0.04417426299187355
+      ],
+      "mean_seconds": 0.05181308779865503,
+      "sample_stdev_seconds": 0.008023051367486609,
+      "rss_before_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_sampled_peak_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970211328,
+      "output_sha256": "5fc544cbf4dc21ee649abf6858249b263ec76c271a36901ad70236a70baf3915"
+    },
+    {
+      "case": "camera_alignment_saved_ball_only",
+      "scope": "saved calibration/side/ball, explicit empty people evidence",
+      "cap": 2048,
+      "repeats": 5,
+      "seconds": [
+        0.006687535002129152,
+        0.010863083007279783,
+        0.004752123000798747,
+        0.006710718997055665,
+        0.004411903006257489
+      ],
+      "mean_seconds": 0.006685072602704167,
+      "sample_stdev_seconds": 0.0025671009387737433,
+      "rss_before_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_sampled_peak_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970211328,
+      "output_sha256": "73dd7cdcc9a97526e15a4e39ca2acc314a680a7a416123b6da6a9801422b2f43"
+    },
+    {
+      "case": "camera_alignment_saved_ball_only",
+      "scope": "saved calibration/side/ball, explicit empty people evidence",
+      "cap": 4096,
+      "repeats": 5,
+      "seconds": [
+        0.00476655998500064,
+        0.00441409699851647,
+        0.004368321009678766,
+        0.004619063023710623,
+        0.004284411988919601
+      ],
+      "mean_seconds": 0.00449049060116522,
+      "sample_stdev_seconds": 0.00019746832566589295,
+      "rss_before_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_sampled_peak_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970211328,
+      "output_sha256": "73dd7cdcc9a97526e15a4e39ca2acc314a680a7a416123b6da6a9801422b2f43"
+    },
+    {
+      "case": "body_view_selection_saved_provisional",
+      "scope": "saved pose/boxes, provisional carrier-index IDs, not an association result",
+      "cap": 2048,
+      "repeats": 5,
+      "seconds": [
+        0.0245128310052678,
+        0.021566946990787983,
+        0.019094808987574652,
+        0.018592895998153836,
+        0.01939073298126459
+      ],
+      "mean_seconds": 0.020631643192609773,
+      "sample_stdev_seconds": 0.0024493172355424075,
+      "rss_before_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_sampled_peak_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970211328,
+      "output_sha256": "02285cc1bc24ea3c082309a5fa2f36b22e8b00837a9d224df3e7c4f6f7644724",
+      "request_lengths": [
+        [
+          1054
+        ],
+        [
+          1054
+        ],
+        [
+          1054
+        ],
+        [
+          1054
+        ],
+        [
+          311
+        ]
+      ]
+    },
+    {
+      "case": "body_view_selection_saved_provisional",
+      "scope": "saved pose/boxes, provisional carrier-index IDs, not an association result",
+      "cap": 4096,
+      "repeats": 5,
+      "seconds": [
+        0.018921810027677566,
+        0.020821526006329805,
+        0.0184734060021583,
+        0.02544960702653043,
+        0.01968706099432893
+      ],
+      "mean_seconds": 0.020670682011405005,
+      "sample_stdev_seconds": 0.0028158019990984834,
+      "rss_before_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_sampled_peak_bytes": [
+        970211328,
+        970211328,
+        970211328,
+        970211328,
+        970211328
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970211328,
+      "output_sha256": "02285cc1bc24ea3c082309a5fa2f36b22e8b00837a9d224df3e7c4f6f7644724",
+      "request_lengths": [
+        [
+          1054
+        ],
+        [
+          1054
+        ],
+        [
+          1054
+        ],
+        [
+          1054
+        ],
+        [
+          311
+        ]
+      ]
+    },
+    {
+      "case": "camera_alignment_dense",
+      "scope": "controlled dense two-person projections with real calibrated cameras and saved ball",
+      "cap": 2048,
+      "repeats": 5,
+      "seconds": [
+        0.06510984600754455,
+        0.06698349100770429,
+        0.059756019996711984,
+        0.0661371180030983,
+        0.053601938008796424
+      ],
+      "mean_seconds": 0.06231768260477111,
+      "sample_stdev_seconds": 0.005627618289793076,
+      "rss_before_bytes": [
+        970997760,
+        970997760,
+        970997760,
+        970997760,
+        970997760
+      ],
+      "rss_sampled_peak_bytes": [
+        970997760,
+        970997760,
+        970997760,
+        970997760,
+        970997760
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970997760,
+      "output_sha256": "2ad36f83134b124e23073d21ab18e3f66a087103bc8a7b6e8f97b1275fa1af54"
+    },
+    {
+      "case": "camera_alignment_dense",
+      "scope": "controlled dense two-person projections with real calibrated cameras and saved ball",
+      "cap": 4096,
+      "repeats": 5,
+      "seconds": [
+        0.05214923497987911,
+        0.05099373700795695,
+        0.05007833198760636,
+        0.054057800996815786,
+        0.07480368998949416
+      ],
+      "mean_seconds": 0.05641655899235047,
+      "sample_stdev_seconds": 0.010385572921764173,
+      "rss_before_bytes": [
+        970997760,
+        970997760,
+        970997760,
+        970997760,
+        970997760
+      ],
+      "rss_sampled_peak_bytes": [
+        970997760,
+        970997760,
+        970997760,
+        970997760,
+        970997760
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970997760,
+      "output_sha256": "2ad36f83134b124e23073d21ab18e3f66a087103bc8a7b6e8f97b1275fa1af54"
+    },
+    {
+      "case": "body_view_selection_dense",
+      "scope": "controlled fully observed two-person trajectories, 1055-frame body requests",
+      "cap": 2048,
+      "repeats": 5,
+      "seconds": [
+        0.015391789987916127,
+        0.010288383986335248,
+        0.008780639996984974,
+        0.008429543988313526,
+        0.008818426984362304
+      ],
+      "mean_seconds": 0.010341756988782435,
+      "sample_stdev_seconds": 0.00291203799311312,
+      "rss_before_bytes": [
+        970997760,
+        970997760,
+        970997760,
+        970997760,
+        970997760
+      ],
+      "rss_sampled_peak_bytes": [
+        970997760,
+        970997760,
+        970997760,
+        970997760,
+        970997760
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970997760,
+      "output_sha256": "89ce48ddbb5794beb2dc16706b9031306f253631092be64133a5a2e9586e0838",
+      "request_lengths": [
+        [
+          1055
+        ],
+        [
+          1055
+        ]
+      ]
+    },
+    {
+      "case": "body_view_selection_dense",
+      "scope": "controlled fully observed two-person trajectories, 1055-frame body requests",
+      "cap": 4096,
+      "repeats": 5,
+      "seconds": [
+        0.015588298003422096,
+        0.009372365020681173,
+        0.010648952011251822,
+        0.008617030980531126,
+        0.00890666400664486
+      ],
+      "mean_seconds": 0.010626662004506215,
+      "sample_stdev_seconds": 0.0028804773701133963,
+      "rss_before_bytes": [
+        970997760,
+        970997760,
+        970997760,
+        970997760,
+        970997760
+      ],
+      "rss_sampled_peak_bytes": [
+        970997760,
+        970997760,
+        970997760,
+        970997760,
+        970997760
+      ],
+      "rss_max_observed_increase_bytes": 0,
+      "process_lifetime_peak_rss_bytes": 970997760,
+      "output_sha256": "89ce48ddbb5794beb2dc16706b9031306f253631092be64133a5a2e9586e0838",
+      "request_lengths": [
+        [
+          1055
+        ],
+        [
+          1055
+        ]
+      ]
+    }
+  ]
+}

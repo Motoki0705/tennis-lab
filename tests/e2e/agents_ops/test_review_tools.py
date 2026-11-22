@@ -19,7 +19,7 @@ from tests.e2e.agents_ops.test_ops_report_retrieval import (
 
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 sys.path.insert(0, str(OPS))
-server: Any = importlib.import_module("lib.review_tools.review_server")
+server: Any = importlib.import_module("lib.review_tools.review_server_impl")
 
 
 def test_multiple_pinned_commits_exclude_dirty_worktree_and_other_revisions(
@@ -76,3 +76,90 @@ def test_cpu_allowlist_cannot_name_unpinned_revision(scenario: Scenario) -> None
                 "cpu_tests": {s.later: ["tests/test_x.py"]},
             }
         )
+
+
+def test_formal_review_ci_log_uses_shared_sanitization(scenario: Scenario) -> None:
+    scenario.fail("controlled_log", log="\x1b[31mfailed\x1b[0m\r\n")
+    client = server.ReviewRetrieval(
+        {
+            "repo": str(scenario.repo),
+            "commits": [scenario.base],
+            "repository": "o/r",
+            "run_id": "review-controls",
+            "journal_dir": str(scenario.journal / "formal"),
+        }
+    )
+    response = client.call("ci_log", {"job_id": 9})
+    assert response["ok"], response
+    assert response["data"]["text"] == "failed\\u000d\n"
+    assert response["sources"][1]["text_sanitization"]["ansi_sequences_removed"] == 2
+    record = json.loads(client.journal.path.read_text().splitlines()[-1])
+    assert record["response"] == response
+
+
+def test_failed_ci_fetch_then_fetch_only_retry_is_captured(
+    scenario: Scenario,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    capture = importlib.import_module("decision_logs.capture")
+    owner = capture.Operation.begin(
+        scenario.journal / "parent-state", "o/r", 1, "review.run", "review"
+    )
+    monkeypatch.setenv(capture.RETRIEVAL_ENV, str(owner.path))
+    client = server.ReviewRetrieval(
+        {
+            "repo": str(scenario.repo),
+            "commits": [scenario.base],
+            "repository": "o/r",
+            "run_id": "review-ci",
+            "journal_dir": str(scenario.journal / "formal"),
+        }
+    )
+    scenario.fail("403")
+    first = client.call("ci_runs", {"head_sha": scenario.base})
+    assert not first["ok"]
+    scenario.fail("")
+    second = client.call("ci_runs", {"head_sha": scenario.base})
+    assert second["ok"], second
+    value = capture.status(scenario.journal / "parent-state", "o/r", 1)
+    assert value["status"] == "captured", value
+    rows = [entry["record"] for entry in value["records"]]
+    assert [
+        r["data"]["operation"]
+        for r in rows
+        if r["kind"] == "action" and r["data"]["previous_action_id"] is None
+    ] == ["review", "fetch", "retry_fetch"]
+    results = [r for r in rows if r["kind"] == "result"]
+    assert [r["data"]["status"] for r in results] == ["failure", "success"]
+    assert results[1]["data"]["previous_result_id"] == results[0]["id"]
+    assert results[1]["data"]["changes"]["instruction"] == "unchanged"
+    assert results[1]["data"]["changes"]["conditions"] == "unconfirmed"
+    assert all(
+        r["data"]["auxiliary"]["usage"]["status"] == "unavailable" for r in results
+    )
+    assert len(scenario.calls()) == 2
+
+
+def test_progression_tools_cannot_enumerate_or_read_outside_targets(
+    scenario: Scenario,
+) -> None:
+    client = server.ReviewRetrieval(
+        {
+            "repo": str(scenario.repo),
+            "commits": [scenario.base],
+            "repository": "o/r",
+            "run_id": "scoped-review",
+            "journal_dir": str(scenario.journal / "scoped"),
+            "github_scope": {"issues": [17], "prs": [19]},
+        }
+    )
+    before = scenario.calls()
+    assert "github_items" not in client.tools
+    assert not client.call("github_items", {"kind": "issue"})["ok"]
+    assert (
+        client.call("github_item", {"kind": "issue", "number": 18})["error"]["code"]
+        == "FORBIDDEN_SCOPE"
+    )
+    assert client.call("ci_runs", {})["error"]["code"] == "FORBIDDEN_SCOPE"
+    assert scenario.calls() == before
+    assert client.call("github_item", {"kind": "issue", "number": 17})["ok"]

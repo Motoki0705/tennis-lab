@@ -1,0 +1,123 @@
+{
+  "dataset_id": "meiji_4cam",
+  "video_id": "video_000",
+  "clip_order": [
+    "video_000/clip_000",
+    "video_000/clip_037",
+    "video_000/clip_027"
+  ],
+  "frames_per_camera": 883,
+  "files": [
+    {
+      "path": "videos/video_000/clips/clip_000/clip.json",
+      "sha256": "783f0ccd4acb849ef89be36869661a3cf36327e1781574ded7b1ce4731fee094",
+      "bytes": 2067
+    },
+    {
+      "path": "videos/video_000/clips/clip_000/media/cam0.mp4",
+      "sha256": "33823be69af8a6940e85f10876781f616d8054d95e4ba3cea35f20700d37a759",
+      "bytes": 8109105
+    },
+    {
+      "path": "videos/video_000/clips/clip_000/media/cam1.mp4",
+      "sha256": "49f70bef419efe8e75ed3275458fd86aa0a5832d19df04c3941e298b9eae148e",
+      "bytes": 6709880
+    },
+    {
+      "path": "videos/video_000/clips/clip_000/media/cam2.mp4",
+      "sha256": "0fdd6844265b1c796e066bffbbde76af2d87ee667ec7687bbf64cacc97de32e0",
+      "bytes": 3462014
+    },
+    {
+      "path": "videos/video_000/clips/clip_000/media/cam3.mp4",
+      "sha256": "1f2150db8799a2b33e089e40a9537b68e344e436512436308fbf0e9b16697c18",
+      "bytes": 6424801
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/clip.json",
+      "sha256": "dc89788e4406ba99a0d36c73491b077f6bb88b545385ba998d142d8d0be91a94",
+      "bytes": 2062
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam0.mp4",
+      "sha256": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+      "bytes": 6617788
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam1.mp4",
+      "sha256": "c1b473a238719658a3caa6da81e4b6cae50396c18109956305db5ecba354c9b5",
+      "bytes": 4989172
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam2.mp4",
+      "sha256": "8149f06c609a6f209499abf4cd17055a4b8ac4e9be301285c8a5fad4956c5bfc",
+      "bytes": 2896798
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam3.mp4",
+      "sha256": "0112a64759ffd98bec0cfc529b779222dded555d883675794d78eba00f5049a1",
+      "bytes": 5528034
+    },
+    {
+      "path": "videos/video_000/clips/clip_027/clip.json",
+      "sha256": "26da567a77b437a7e8ebc469580236563c5743872952765230b926fa9e28eb7c",
+      "bytes": 2060
+    },
+    {
+      "path": "videos/video_000/clips/clip_027/media/cam0.mp4",
+      "sha256": "e9c75fcdcabab57415b1be46b3dcec806534da0d4d33f212403ee87cbc8bc8e9",
+      "bytes": 5080097
+    },
+    {
+      "path": "videos/video_000/clips/clip_027/media/cam1.mp4",
+      "sha256": "de5b3f01b9a782231a0f054afe10600df0249b8162b42a97a5619f5b0426d976",
+      "bytes": 3930844
+    },
+    {
+      "path": "videos/video_000/clips/clip_027/media/cam2.mp4",
+      "sha256": "7bb142ef07b3b0d3a7f4239038713215d4f85d9554c82a79459241bb3a730978",
+      "bytes": 1980423
+    },
+    {
+      "path": "videos/video_000/clips/clip_027/media/cam3.mp4",
+      "sha256": "714595721a3d2d1242d76bd6bca3b514591574f8b1540fbad44aa795cd903cdb",
+      "bytes": 4094569
+    }
+  ],
+  "selected_records": [
+    {
+      "clip_id": "video_000/clip_000",
+      "video_id": "video_000",
+      "clip_name": "clip_000",
+      "path": "videos/video_000/clips/clip_000",
+      "num_cameras": 4,
+      "num_frames": 356,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "video_id": "video_000",
+      "clip_name": "clip_037",
+      "path": "videos/video_000/clips/clip_037",
+      "num_cameras": 4,
+      "num_frames": 292,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "clip_id": "video_000/clip_027",
+      "video_id": "video_000",
+      "clip_name": "clip_027",
+      "path": "videos/video_000/clips/clip_027",
+      "num_cameras": 4,
+      "num_frames": 235,
+      "fps": 59.94005994005994,
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "source_dataset_sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099"
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>説明を読む · Explain HTML</title>
+    <link rel="icon" href="/ui/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/ui/app.css" />
+    <script src="/ui/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#instruction">指示欄へ移動</a>
+    <header>
+      <strong>Explain HTML</strong><span id="revision">文書を接続中</span
+      ><span id="connection" role="status">接続中</span>
+    </header>
+    <main>
+      <section id="reading" aria-label="説明文書">
+        <p id="empty">起動URLから文書を接続してください。</p>
+        <iframe
+          id="document"
+          title="説明文書。見出しや図を選ぶと指示の対象にできます"
+          sandbox="allow-scripts"
+          referrerpolicy="no-referrer"
+          hidden
+        ></iframe>
+      </section>
+      <aside aria-label="説明への指示">
+        <form id="edit-form">
+          <h1>説明を育てる</h1>
+          <p class="intro">質問や指示の回答は、このページの本文に追加されます。</p>
+          <label for="target">対象</label>
+          <select id="target">
+            <option value="document">ページ全体</option>
+          </select>
+          <p id="selection" class="muted">本文の見出し・図を選ぶか、文章の一部を選択できます。</p>
+          <label for="instruction">質問・変更したいこと</label>
+          <textarea
+            id="instruction"
+            rows="4"
+            placeholder="例：この図の読み方を具体例で説明して"
+            required
+          ></textarea>
+          <div class="actions">
+            <button id="send" type="submit" disabled>本文に反映</button
+            ><button id="cancel" type="button" disabled>処理を中止</button>
+          </div>
+        </form>
+        <div id="job">
+          <p id="status" aria-live="polite" aria-atomic="true">文書の接続を待っています。</p>
+          <p id="elapsed" class="muted"></p>
+        </div>
+        <p id="notice" role="status"></p>
+        <div class="actions">
+          <button id="retry" hidden>新しい要求で再試行</button
+          ><button id="reconnect" hidden>状態を再確認</button
+          ><button id="refresh" hidden>現在版を読む</button>
+        </div>
+        <section id="change-panel" aria-label="変更の案内" hidden>
+          <h2>今回の変更</h2>
+          <p id="summary"></p>
+          <div id="changes"></div>
+        </section>
+        <details id="history-panel">
+          <summary>版の履歴・取り消し</summary>
+          <p id="preview-note" hidden>
+            過去版を閲覧中です。現在版へ戻るか、この版を復元してから編集できます。
+          </p>
+          <button id="undo" disabled>直前の版を復元</button>
+          <ol id="history"></ol>
+        </details>
+        <details>
+          <summary>画像について</summary>
+          <p>
+            AI画像の新規生成は初版の作成時だけ利用できます。閲覧中はSVG・グラフの追加や、既存画像の差し替え・説明の変更を依頼できます。
+          </p>
+        </details>
+        <details>
+          <summary>静的版を書き出す</summary>
+          <p>
+            この操作UIを含まない、編集できない説明一式を保存します。画像や対応グラフも含みます。
+          </p>
+          <button id="export" disabled>表示版をZIPで保存</button>
+          <p id="export-status" role="status"></p>
+        </details>
+      </aside>
+    </main>
+  </body>
+</html>

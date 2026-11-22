@@ -1,0 +1,208 @@
+[
+  {
+    "action": "load",
+    "model": "ball",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt"
+    },
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "instance": "134646489918096:1",
+    "status": "complete",
+    "seconds": 0.9822303010005271,
+    "at_utc": "2026-11-18T10:19:20.043088+00:00"
+  },
+  {
+    "action": "unload",
+    "model": "ball",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt"
+    },
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "instance": "134646489918096:1",
+    "status": "complete",
+    "seconds": 0.42018471300252713,
+    "at_utc": "2026-11-18T10:20:21.328881+00:00"
+  },
+  {
+    "action": "load",
+    "model": "dino",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth"
+    },
+    "device": "cuda",
+    "dtype": "float16",
+    "instance": "134646489918096:2",
+    "status": "complete",
+    "seconds": 28.68905305500084,
+    "at_utc": "2026-11-18T10:21:15.220699+00:00"
+  },
+  {
+    "action": "unload",
+    "model": "dino",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth"
+    },
+    "device": "cuda",
+    "dtype": "float16",
+    "instance": "134646489918096:2",
+    "status": "complete",
+    "seconds": 0.9693121840100503,
+    "at_utc": "2026-11-18T10:32:59.085125+00:00"
+  },
+  {
+    "action": "load",
+    "model": "vitpose",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth"
+    },
+    "device": "cuda",
+    "dtype": "float16",
+    "instance": "134646489918096:3",
+    "status": "complete",
+    "seconds": 42.70640618499601,
+    "at_utc": "2026-11-18T10:34:17.552080+00:00"
+  },
+  {
+    "action": "load",
+    "model": "appearance",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth"
+    },
+    "device": "cuda",
+    "dtype": "float32",
+    "instance": "134646489918096:4",
+    "status": "complete",
+    "seconds": 5.725071934008156,
+    "at_utc": "2026-11-18T10:34:23.280637+00:00"
+  },
+  {
+    "action": "unload",
+    "model": "vitpose",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth"
+    },
+    "device": "cuda",
+    "dtype": "float16",
+    "instance": "134646489918096:3",
+    "status": "complete",
+    "seconds": 1.1270093380007893,
+    "at_utc": "2026-11-18T10:44:50.122135+00:00"
+  },
+  {
+    "action": "unload",
+    "model": "appearance",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth"
+    },
+    "device": "cuda",
+    "dtype": "float32",
+    "instance": "134646489918096:4",
+    "status": "complete",
+    "seconds": 0.511525776993949,
+    "at_utc": "2026-11-18T10:44:56.612872+00:00"
+  },
+  {
+    "action": "load",
+    "model": "hmr2",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt",
+      "mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz"
+    },
+    "device": "cuda",
+    "dtype": "float32",
+    "instance": "134646489918096:5",
+    "status": "complete",
+    "seconds": 36.60768959800771,
+    "at_utc": "2026-11-18T10:47:49.655097+00:00"
+  },
+  {
+    "action": "load",
+    "model": "gvhmr",
+    "weights": {
+      "gvhmr": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+      "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+      "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+      "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+      "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+      "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+      "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+    },
+    "device": "cuda",
+    "dtype": "float32",
+    "instance": "134646489918096:6",
+    "status": "complete",
+    "seconds": 3.828740203010966,
+    "at_utc": "2026-11-18T10:47:53.487497+00:00"
+  },
+  {
+    "action": "unload",
+    "model": "hmr2",
+    "weights": {
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt",
+      "mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz"
+    },
+    "device": "cuda",
+    "dtype": "float32",
+    "instance": "134646489918096:5",
+    "status": "complete",
+    "seconds": 0.9312637289986014,
+    "at_utc": "2026-11-18T10:48:53.459828+00:00"
+  },
+  {
+    "action": "unload",
+    "model": "gvhmr",
+    "weights": {
+      "gvhmr": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+      "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+      "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+      "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+      "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+      "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+      "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+    },
+    "device": "cuda",
+    "dtype": "float32",
+    "instance": "134646489918096:6",
+    "status": "complete",
+    "seconds": 0.8464259640022647,
+    "at_utc": "2026-11-18T10:48:54.306866+00:00"
+  },
+  {
+    "action": "load",
+    "model": "body_geometry",
+    "weights": {
+      "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+      "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+      "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+      "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+      "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+      "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+    },
+    "device": "cuda",
+    "dtype": "float32",
+    "instance": "134646489918096:7",
+    "status": "complete",
+    "seconds": 1.8620365199894877,
+    "at_utc": "2026-11-18T10:48:56.250713+00:00"
+  },
+  {
+    "action": "unload",
+    "model": "body_geometry",
+    "weights": {
+      "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+      "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+      "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+      "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+      "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+      "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+    },
+    "device": "cuda",
+    "dtype": "float32",
+    "instance": "134646489918096:7",
+    "status": "complete",
+    "seconds": 0.440591634993325,
+    "at_utc": "2026-11-18T10:49:11.245291+00:00"
+  }
+]

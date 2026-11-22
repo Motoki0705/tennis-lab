@@ -2,7 +2,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -16,6 +16,7 @@ def guard(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     monkeypatch.setattr(module.signal, 'signal', lambda *args: None)
+    monkeypatch.setattr(module.psutil, 'virtual_memory', lambda: SimpleNamespace(available=8 * 1024**3))
     (tmp_path / 'plan.json').write_text(json.dumps({'budget': {
         'vram_stop_bytes': 9_500_000_000, 'disk_limit_bytes': 5_000_000_000, 'wall_seconds': 7200}}))
     return module

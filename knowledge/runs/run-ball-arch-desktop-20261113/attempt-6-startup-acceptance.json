@@ -1,0 +1,736 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "source_commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+  "captured_at": 1794704152.104488,
+  "resume_stage": "C1-dpt-10000",
+  "resume_update": 6500,
+  "resume_sample_position": 6500,
+  "first_new_update": 6501,
+  "last_accepted_update": 6511,
+  "new_updates": 11,
+  "post_first_compile_updates": 10,
+  "sample_positions": [
+    6501,
+    6511
+  ],
+  "full_state_restore": {
+    "complete": true,
+    "restored_model": true,
+    "restored_optimizer": true,
+    "restored_rng": true,
+    "restored_sampler": true,
+    "new_state_keys": [],
+    "model_keys": 181,
+    "optimizer_states": 177,
+    "sample_position": 6500
+  },
+  "source_migration": {
+    "complete": true,
+    "original_sha256": "2e6de9e4990da7a9856c4b018885c2368adb11534bf940f1be542b01b9518bdd",
+    "local_sha256": "d83141334dc84f6367a428bf24a99180a5209023a19c32465dd3ae59e5a2ca64",
+    "exact_fields": [
+      "optimizer",
+      "optimizer_parameter_names",
+      "rng",
+      "schedule",
+      "sample_position",
+      "updates_completed",
+      "train_log"
+    ],
+    "model_state_keys": 181,
+    "new_state_keys": [],
+    "weights_exact": true,
+    "checkpoint_scope": null,
+    "source_changes": [],
+    "initial_policy_migration": false,
+    "observer_source_transition": null,
+    "metadata_changes": [
+      "recipe.model.activation_checkpointing",
+      "recipe.model.checkpoint_scope",
+      "recipe.data.snapshot.directory",
+      "recipe.manifest_sha256",
+      "recipe.evaluation_manifest_sha256",
+      "code",
+      "model_artifact.model_config",
+      "model_artifact.training.data.snapshot.directory",
+      "model_artifact.training.recipe_sha256",
+      "artifact_sha256"
+    ],
+    "original_gpu": "NVIDIA L4",
+    "local_gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "bitwise_gpu_continuation_guaranteed": false
+  },
+  "committed_prefix_unchanged": true,
+  "finite_loss_grad_lr": true,
+  "replayed_draws_and_augmentation_match_attempt5": true,
+  "activation_checkpointing": false,
+  "peak_allocated_bytes": 9786588672,
+  "peak_reserved_bytes": 10810818560,
+  "allocator_limit_bytes": 13682291507,
+  "host_guard": {
+    "schema_version": 4,
+    "minimum_available_bytes": 29083549696,
+    "threshold_bytes": 2147483648,
+    "admission_threshold_bytes": 6442450944,
+    "d_drive_path": "/mnt/d",
+    "minimum_d_drive_available_bytes": 306770300928,
+    "d_drive_available_threshold_bytes": 10737418240,
+    "e_drive_path": "/mnt/wsl/tennis-data",
+    "minimum_e_drive_available_bytes": 3772008771584,
+    "e_drive_available_threshold_bytes": 10737418240,
+    "triggered": false,
+    "trigger_reason": null,
+    "filesystem_growth_is_telemetry_only": true,
+    "maximum_filesystem_growth_bytes": 0,
+    "updated_at": 1794704151.2174032
+  },
+  "minimum_admitted_host_available_bytes": 29122514944,
+  "maximum_process_tree_rss_bytes": 8524324864,
+  "io_timing": {
+    "cold_first_update_seconds": 25.598382607000076,
+    "cold_data_wait_seconds": 1.3604532360000121,
+    "warm_ten_median_update_seconds": 1.8173975565000546,
+    "warm_ten_median_data_wait_seconds": 0.0010403244998542505,
+    "warm_ten_max_data_wait_seconds": 0.00443043299992496,
+    "reference_attempt5_same_updates_median_seconds": 1.839151119995222,
+    "reference_attempt5_same_updates_median_data_wait_seconds": 0.0010065354945254512,
+    "interpretation": "Same C1 update prefix on the same D NVMe copy. Short startup observation, different cold cache and increased host RAM; not an HDD or L4 comparison."
+  },
+  "wait_events": [
+    {
+      "schema_version": 1,
+      "event": "ram_wait_started",
+      "update": 5521,
+      "timestamp": 1794699449.4354925,
+      "started_at": 1794699449.4333181,
+      "elapsed_seconds": 0.0021759879891760647,
+      "admission_threshold_bytes": 6442450944,
+      "emergency_threshold_bytes": 2147483648,
+      "host_available_bytes": 6162993152,
+      "d_drive_available_bytes": 306770300928,
+      "e_drive_available_bytes": 3772609703936,
+      "process_tree_rss_bytes": 7552528384,
+      "parent_rss_bytes": 3562291200,
+      "children_rss_bytes": 3990237184,
+      "process_tree_process_count": 6,
+      "process_tree_pids": [
+        4050031,
+        4052635,
+        4076516,
+        4076517,
+        4076528,
+        4076531
+      ],
+      "sampled_at": 1794699449.4354744
+    },
+    {
+      "schema_version": 1,
+      "event": "ram_wait_resumed",
+      "update": 5521,
+      "timestamp": 1794699550.8163435,
+      "started_at": 1794699449.4333181,
+      "elapsed_seconds": 101.38302635498985,
+      "admission_threshold_bytes": 6442450944,
+      "emergency_threshold_bytes": 2147483648,
+      "host_available_bytes": 7151005696,
+      "d_drive_available_bytes": 306770300928,
+      "e_drive_available_bytes": 3772609695744,
+      "process_tree_rss_bytes": 7551741952,
+      "parent_rss_bytes": 3562029056,
+      "children_rss_bytes": 3989712896,
+      "process_tree_process_count": 6,
+      "process_tree_pids": [
+        4050031,
+        4052635,
+        4076516,
+        4076517,
+        4076528,
+        4076531
+      ],
+      "sampled_at": 1794699550.8163269
+    },
+    {
+      "schema_version": 1,
+      "event": "ram_wait_started",
+      "update": 5585,
+      "timestamp": 1794699675.1672213,
+      "started_at": 1794699675.1657205,
+      "elapsed_seconds": 0.0015016450051916763,
+      "admission_threshold_bytes": 6442450944,
+      "emergency_threshold_bytes": 2147483648,
+      "host_available_bytes": 5722636288,
+      "d_drive_available_bytes": 306770300928,
+      "e_drive_available_bytes": 3772609495040,
+      "process_tree_rss_bytes": 7557832704,
+      "parent_rss_bytes": 3562651648,
+      "children_rss_bytes": 3995181056,
+      "process_tree_process_count": 6,
+      "process_tree_pids": [
+        4050031,
+        4052635,
+        4076516,
+        4076517,
+        4076528,
+        4076531
+      ],
+      "sampled_at": 1794699675.1672144
+    },
+    {
+      "schema_version": 1,
+      "event": "ram_wait_resumed",
+      "update": 5585,
+      "timestamp": 1794699709.3580365,
+      "started_at": 1794699675.1657205,
+      "elapsed_seconds": 34.19231660600053,
+      "admission_threshold_bytes": 6442450944,
+      "emergency_threshold_bytes": 2147483648,
+      "host_available_bytes": 6803718144,
+      "d_drive_available_bytes": 306770300928,
+      "e_drive_available_bytes": 3772609495040,
+      "process_tree_rss_bytes": 7556915200,
+      "parent_rss_bytes": 3561734144,
+      "children_rss_bytes": 3995181056,
+      "process_tree_process_count": 6,
+      "process_tree_pids": [
+        4050031,
+        4052635,
+        4076516,
+        4076517,
+        4076528,
+        4076531
+      ],
+      "sampled_at": 1794699709.3579488
+    },
+    {
+      "schema_version": 1,
+      "event": "ram_wait_started",
+      "update": 5707,
+      "timestamp": 1794699946.0496714,
+      "started_at": 1794699946.0454953,
+      "elapsed_seconds": 0.004177586000878364,
+      "admission_threshold_bytes": 6442450944,
+      "emergency_threshold_bytes": 2147483648,
+      "host_available_bytes": 5911638016,
+      "d_drive_available_bytes": 306770300928,
+      "e_drive_available_bytes": 3772609110016,
+      "process_tree_rss_bytes": 7556468736,
+      "parent_rss_bytes": 3560943616,
+      "children_rss_bytes": 3995525120,
+      "process_tree_process_count": 6,
+      "process_tree_pids": [
+        4050031,
+        4052635,
+        4076516,
+        4076517,
+        4076528,
+        4076531
+      ],
+      "sampled_at": 1794699946.049665
+    },
+    {
+      "schema_version": 1,
+      "event": "ram_wait_resumed",
+      "update": 5707,
+      "timestamp": 1794699977.2597513,
+      "started_at": 1794699946.0454953,
+      "elapsed_seconds": 31.214256890991237,
+      "admission_threshold_bytes": 6442450944,
+      "emergency_threshold_bytes": 2147483648,
+      "host_available_bytes": 7480856576,
+      "d_drive_available_bytes": 306770300928,
+      "e_drive_available_bytes": 3772609110016,
+      "process_tree_rss_bytes": 7554764800,
+      "parent_rss_bytes": 3560681472,
+      "children_rss_bytes": 3994083328,
+      "process_tree_process_count": 6,
+      "process_tree_pids": [
+        4050031,
+        4052635,
+        4076516,
+        4076517,
+        4076528,
+        4076531
+      ],
+      "sampled_at": 1794699977.259741
+    }
+  ],
+  "wait_events_count": 6,
+  "processes": {
+    "service": {
+      "pid": 282591,
+      "ppid": 1419,
+      "pgid": 282591,
+      "sid": 282591,
+      "proc_starttime_ticks": 136429
+    },
+    "serial": {
+      "pid": 282944,
+      "ppid": 282726,
+      "pgid": 282726,
+      "sid": 282726,
+      "proc_starttime_ticks": 136495
+    },
+    "C1": {
+      "pid": 361142,
+      "ppid": 282944,
+      "pgid": 282726,
+      "sid": 282726,
+      "proc_starttime_ticks": 163605
+    }
+  },
+  "actual_data_root": {
+    "directory": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+    "device": 2096,
+    "recipe_manifest_match": true
+  },
+  "hot_data_handles_at_capture": [
+    {
+      "pid": 441429,
+      "fd": "53",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00666.bin"
+    },
+    {
+      "pid": 441429,
+      "fd": "55",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01520.bin"
+    },
+    {
+      "pid": 441429,
+      "fd": "56",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01191.bin"
+    },
+    {
+      "pid": 441429,
+      "fd": "57",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00672.bin"
+    },
+    {
+      "pid": 441429,
+      "fd": "58",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00865.bin"
+    },
+    {
+      "pid": 441429,
+      "fd": "67",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00641.bin"
+    },
+    {
+      "pid": 441435,
+      "fd": "57",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01436.bin"
+    },
+    {
+      "pid": 441435,
+      "fd": "59",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01160.bin"
+    },
+    {
+      "pid": 441435,
+      "fd": "60",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01517.bin"
+    },
+    {
+      "pid": 441435,
+      "fd": "61",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00011.bin"
+    },
+    {
+      "pid": 441435,
+      "fd": "62",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01515.bin"
+    },
+    {
+      "pid": 441435,
+      "fd": "72",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00228.bin"
+    },
+    {
+      "pid": 441441,
+      "fd": "61",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00737.bin"
+    },
+    {
+      "pid": 441441,
+      "fd": "63",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01423.bin"
+    },
+    {
+      "pid": 441441,
+      "fd": "64",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00784.bin"
+    },
+    {
+      "pid": 441441,
+      "fd": "65",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00482.bin"
+    }
+  ],
+  "samples": [
+    {
+      "update": 6501,
+      "sample_position": 6501,
+      "loss": 0.00042189666419290006,
+      "gradient_norm": 0.0009727582219056785,
+      "learning_rate": 8.881922868245426e-05,
+      "encoder_learning_rate": 8.881922868245426e-05,
+      "seconds": 25.598382607000076,
+      "data_wait_seconds": 1.3604532360000121,
+      "peak_vram_bytes": 9078799872,
+      "peak_reserved_vram_bytes": 10097786880,
+      "resources": {
+        "admitted_at": 1794704104.653602,
+        "admitted_host_available_bytes": 31917428736,
+        "children_rss_bytes": 4610555904,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119388160,
+        "host_available_bytes": 29222813696,
+        "parent_rss_bytes": 3826520064,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8437075968,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704130.2564166
+      }
+    },
+    {
+      "update": 6502,
+      "sample_position": 6502,
+      "loss": 0.0006665826982094182,
+      "gradient_norm": 0.006947262678295374,
+      "learning_rate": 8.881564859201065e-05,
+      "encoder_learning_rate": 8.881564859201065e-05,
+      "seconds": 1.805593940000108,
+      "data_wait_seconds": 0.001031022999995912,
+      "peak_vram_bytes": 9432694784,
+      "peak_reserved_vram_bytes": 10391388160,
+      "resources": {
+        "admitted_at": 1794704130.314011,
+        "admitted_host_available_bytes": 29196472320,
+        "children_rss_bytes": 4610555904,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119384064,
+        "host_available_bytes": 29226418176,
+        "parent_rss_bytes": 3827212288,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8437768192,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704132.1219504
+      }
+    },
+    {
+      "update": 6503,
+      "sample_position": 6503,
+      "loss": 0.000641259326881101,
+      "gradient_norm": 0.005806685425341129,
+      "learning_rate": 8.8812068001484e-05,
+      "encoder_learning_rate": 8.8812068001484e-05,
+      "seconds": 2.089229325999895,
+      "data_wait_seconds": 0.00038978799989308754,
+      "peak_vram_bytes": 9432694784,
+      "peak_reserved_vram_bytes": 10747904000,
+      "resources": {
+        "admitted_at": 1794704132.1929996,
+        "admitted_host_available_bytes": 29231480832,
+        "children_rss_bytes": 4610555904,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119379968,
+        "host_available_bytes": 29129244672,
+        "parent_rss_bytes": 3879772160,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8490328064,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704134.2844298
+      }
+    },
+    {
+      "update": 6504,
+      "sample_position": 6504,
+      "loss": 0.000636310255119823,
+      "gradient_norm": 0.005065993871539831,
+      "learning_rate": 8.880848691092107e-05,
+      "encoder_learning_rate": 8.880848691092107e-05,
+      "seconds": 1.792228328999954,
+      "data_wait_seconds": 0.0011326730000291718,
+      "peak_vram_bytes": 9432694784,
+      "peak_reserved_vram_bytes": 10810818560,
+      "resources": {
+        "admitted_at": 1794704134.3353531,
+        "admitted_host_available_bytes": 29142827008,
+        "children_rss_bytes": 4610568192,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119375872,
+        "host_available_bytes": 29135626240,
+        "parent_rss_bytes": 3913416704,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8523984896,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704136.1295614
+      }
+    },
+    {
+      "update": 6505,
+      "sample_position": 6505,
+      "loss": 0.00029025512412772514,
+      "gradient_norm": 0.005507726687937975,
+      "learning_rate": 8.880490532036854e-05,
+      "encoder_learning_rate": 8.880490532036854e-05,
+      "seconds": 1.8403152619998764,
+      "data_wait_seconds": 0.0014087359995755833,
+      "peak_vram_bytes": 9432694784,
+      "peak_reserved_vram_bytes": 10810818560,
+      "resources": {
+        "admitted_at": 1794704136.181185,
+        "admitted_host_available_bytes": 29127757824,
+        "children_rss_bytes": 4610568192,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119375872,
+        "host_available_bytes": 29128974336,
+        "parent_rss_bytes": 3913428992,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8523997184,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704138.0238574
+      }
+    },
+    {
+      "update": 6506,
+      "sample_position": 6506,
+      "loss": 0.0005281239449977875,
+      "gradient_norm": 0.0038865446113049984,
+      "learning_rate": 8.880132322987321e-05,
+      "encoder_learning_rate": 8.880132322987321e-05,
+      "seconds": 1.7941398230000232,
+      "data_wait_seconds": 0.0002587489998404635,
+      "peak_vram_bytes": 9432694784,
+      "peak_reserved_vram_bytes": 10810818560,
+      "resources": {
+        "admitted_at": 1794704138.0931394,
+        "admitted_host_available_bytes": 29133991936,
+        "children_rss_bytes": 4610572288,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119371776,
+        "host_available_bytes": 29157134336,
+        "parent_rss_bytes": 3913576448,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8524148736,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704139.8901699
+      }
+    },
+    {
+      "update": 6507,
+      "sample_position": 6507,
+      "loss": 0.0006127030606947693,
+      "gradient_norm": 0.004932858981192112,
+      "learning_rate": 8.87977406394818e-05,
+      "encoder_learning_rate": 8.87977406394818e-05,
+      "seconds": 1.8445067920001748,
+      "data_wait_seconds": 0.0003129520000584307,
+      "peak_vram_bytes": 9432694784,
+      "peak_reserved_vram_bytes": 10810818560,
+      "resources": {
+        "admitted_at": 1794704139.9599223,
+        "admitted_host_available_bytes": 29144440832,
+        "children_rss_bytes": 4610572288,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119367680,
+        "host_available_bytes": 29135335424,
+        "parent_rss_bytes": 3913650176,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8524222464,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704141.8067496
+      }
+    },
+    {
+      "update": 6508,
+      "sample_position": 6508,
+      "loss": 0.0005557729452848434,
+      "gradient_norm": 0.002607024507597089,
+      "learning_rate": 8.879415754924109e-05,
+      "encoder_learning_rate": 8.879415754924109e-05,
+      "seconds": 1.8032535989996177,
+      "data_wait_seconds": 0.001049625999712589,
+      "peak_vram_bytes": 9078800384,
+      "peak_reserved_vram_bytes": 10810818560,
+      "resources": {
+        "admitted_at": 1794704141.8596747,
+        "admitted_host_available_bytes": 29129515008,
+        "children_rss_bytes": 4610629632,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119363584,
+        "host_available_bytes": 29148360704,
+        "parent_rss_bytes": 3913650176,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8524279808,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704143.6664565
+      }
+    },
+    {
+      "update": 6509,
+      "sample_position": 6509,
+      "loss": 0.0005128185264766216,
+      "gradient_norm": 0.0024180167820304632,
+      "learning_rate": 8.879057395919783e-05,
+      "encoder_learning_rate": 8.879057395919783e-05,
+      "seconds": 1.792611702999693,
+      "data_wait_seconds": 0.0012312990002101287,
+      "peak_vram_bytes": 9078799872,
+      "peak_reserved_vram_bytes": 10810818560,
+      "resources": {
+        "admitted_at": 1794704143.7377398,
+        "admitted_host_available_bytes": 29136293888,
+        "children_rss_bytes": 4610629632,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119363584,
+        "host_available_bytes": 29122916352,
+        "parent_rss_bytes": 3913650176,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8524279808,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704145.534284
+      }
+    },
+    {
+      "update": 6510,
+      "sample_position": 6510,
+      "loss": 0.0010193024277687073,
+      "gradient_norm": 0.011815380305051804,
+      "learning_rate": 8.87869898693988e-05,
+      "encoder_learning_rate": 8.87869898693988e-05,
+      "seconds": 1.8519989989999885,
+      "data_wait_seconds": 0.00020390100007716683,
+      "peak_vram_bytes": 9786588672,
+      "peak_reserved_vram_bytes": 10810818560,
+      "resources": {
+        "admitted_at": 1794704145.6480894,
+        "admitted_host_available_bytes": 29122514944,
+        "children_rss_bytes": 4610633728,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119359488,
+        "host_available_bytes": 29153423360,
+        "parent_rss_bytes": 3913637888,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8524271616,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704147.5028296
+      }
+    },
+    {
+      "update": 6511,
+      "sample_position": 6511,
+      "loss": 0.0007826192852328805,
+      "gradient_norm": 0.007992381229996681,
+      "learning_rate": 8.878340527989079e-05,
+      "encoder_learning_rate": 8.878340527989079e-05,
+      "seconds": 1.8292011730000013,
+      "data_wait_seconds": 0.00443043299992496,
+      "peak_vram_bytes": 9432694784,
+      "peak_reserved_vram_bytes": 10810818560,
+      "resources": {
+        "admitted_at": 1794704147.5715737,
+        "admitted_host_available_bytes": 29157093376,
+        "children_rss_bytes": 4610633728,
+        "d_drive_available_bytes": 306770300928,
+        "e_drive_available_bytes": 3772119355392,
+        "host_available_bytes": 29144723456,
+        "parent_rss_bytes": 3913691136,
+        "process_tree_pids": [
+          361142,
+          370558,
+          441429,
+          441435,
+          441441,
+          441463
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 8524324864,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794704149.4057662
+      }
+    }
+  ],
+  "prefix_ram_wait_seconds": 0.0,
+  "wait_events_scope": "Six restored historical events at updates5521/5585/5707. No wait in accepted6501..6511 prefix."
+}

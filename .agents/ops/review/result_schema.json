@@ -5,142 +5,43 @@
       "type": "string",
       "enum": [
         "approve",
-        "request_changes",
-        "incomplete"
+        "major"
       ]
     },
     "summary": {
       "type": "string"
     },
-    "cross_findings": {
+    "major": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "severity": {
-            "type": "string",
-            "enum": [
-              "blocker",
-              "major"
-            ]
+          "prs": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
           },
-          "path": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "line": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 1
-          },
-          "rule": {
+          "title": {
             "type": "string"
           },
           "detail": {
             "type": "string"
-          },
-          "prs": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "minItems": 1
           }
         },
         "required": [
-          "severity",
-          "path",
-          "line",
-          "rule",
-          "detail",
-          "prs"
+          "prs",
+          "title",
+          "detail"
         ],
         "additionalProperties": false
       }
-    },
-    "prs": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "number": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "coverage": {
-            "type": "string",
-            "enum": [
-              "reviewed",
-              "not_reviewed"
-            ]
-          },
-          "summary": {
-            "type": "string"
-          },
-          "findings": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "severity": {
-                  "type": "string",
-                  "enum": [
-                    "blocker",
-                    "major"
-                  ]
-                },
-                "path": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "line": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "minimum": 1
-                },
-                "rule": {
-                  "type": "string"
-                },
-                "detail": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "severity",
-                "path",
-                "line",
-                "rule",
-                "detail"
-              ],
-              "additionalProperties": false
-            }
-          }
-        },
-        "required": [
-          "number",
-          "coverage",
-          "summary",
-          "findings"
-        ],
-        "additionalProperties": false
-      },
-      "minItems": 1
     }
   },
   "required": [
     "verdict",
     "summary",
-    "cross_findings",
-    "prs"
+    "major"
   ],
   "additionalProperties": false
 }

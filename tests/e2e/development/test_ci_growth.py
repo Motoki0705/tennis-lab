@@ -329,6 +329,7 @@ def test_split_family_is_counted_once_and_cheap_fixture_repeats_stay_below_budge
         "missing_growth",
         "schema",
         "coverage_schema",
+        "system_runtime_schema",
         "missing_field",
         "missing_call",
         "wrong_attempt",
@@ -363,6 +364,8 @@ def test_main_baseline_requires_the_latest_full_ancestor_and_explains_missing_ev
         snapshot["schema_version"] = 99
     elif fault == "coverage_schema":
         coverage["schema_version"] = 1
+    elif fault == "system_runtime_schema":
+        coverage["schema_version"] = 3
     elif fault == "missing_field":
         del snapshot["results"]
     elif fault == "missing_call":
@@ -428,8 +431,8 @@ def test_main_baseline_requires_the_latest_full_ancestor_and_explains_missing_ev
     baseline, reason = growth_baseline.previous_main(
         tmp_path, "owner/repo", "head", "current-run"
     )
-    assert (baseline is not None) is (fault is None)
-    if fault is not None:
+    assert (baseline is not None) is (fault in {None, "system_runtime_schema"})
+    if fault not in {None, "system_runtime_schema"}:
         assert reason
         document = growth.markdown(
             growth.analyze(

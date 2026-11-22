@@ -1,0 +1,3 @@
+{"elapsed_seconds": 2.108901389874518e-05, "event": "backend_load_start", "model": "dino"}
+{"allocated_bytes": 0, "elapsed_seconds": 0.00018031999934464693, "event": "backend_load_return", "model": "dino", "reserved_bytes": 0, "seconds": 0.0001457860053051263}
+{"compiled_graphs": 1, "calls": 16, "observed_loader_calls": 1, "status": "passed", "cuda_initialized": false}

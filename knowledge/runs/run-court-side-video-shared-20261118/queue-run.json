@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205020777380544674_2026-11-18T05-20-22-619455325Z_2708973_i2241-meiji-missing-ball-prefix",
+  "name": "i2241-meiji-missing-ball-prefix",
+  "command": "env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.worktree-outputs/court-side-video-shared/tennis_scene/evaluate/court-side-20261118/frozen .venv/bin/python /home/kamimura/projects/tennis-lab/.worktree-outputs/court-side-video-shared/tennis_scene/evaluate/court-side-20261118/guarded_prefix.py",
+  "provider": "codex",
+  "session": "01a1ed12-b302-77e2-81f4-ad96cdbf2553",
+  "issue": "2241",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "68b3bb4a491f6a7cca014c72d790a230a6a87894",
+  "branch": "codex/court-side-video-shared",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-side-video-shared",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-side-video-shared",
+  "captured_at": "2026-11-18T14:20:23+09:00"
+}

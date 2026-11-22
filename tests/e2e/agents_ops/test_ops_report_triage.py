@@ -35,6 +35,8 @@ def _parent(
     ok: bool = True,
     extra: dict[str, str] | None = None,
 ) -> Any:
+    if args == ("register",):
+        args = (*args, "--summary", "採用提案の確認")
     clean = {
         k: v
         for k, v in ops.env.items()
@@ -174,22 +176,30 @@ def _children(ops: Any) -> list[dict[str, Any]]:
     return [i for i in ops.state["issues"] if "issue:child" in i["labels"]]
 
 
+def _evidence_number(ops: Any) -> int:
+    [row] = [r for r in ops.state["issues"] if "parent-evidence" in r["labels"]]
+    return int(row["number"])
+
+
 def _events(ops: Any, kind: str) -> list[dict[str, Any]]:
     found = []
-    for comment in ops.state.get("comments", {}).get("1", []):
-        first = comment["body"].splitlines()[0]
-        if not first.startswith("<!-- parent-session:v1 "):
-            continue
-        event = json.loads(first[len("<!-- parent-session:v1 ") : -4])
-        if event["event"] == kind:
-            found.append(event)
+    for rows in ops.state.get("comments", {}).values():
+        for comment in rows:
+            first = comment["body"].splitlines()[0]
+            if not first.startswith("<!-- parent-session:v1 "):
+                continue
+            event = json.loads(first[len("<!-- parent-session:v1 ") : -4])
+            if event["event"] == kind and event["parent"] == 1:
+                found.append(event)
     return found
 
 
 def test_adoption_receipt_and_agreement_are_three_distinct_states(ops_env: Any) -> None:
     ops = ops_env
+    assert not any(key.startswith("HERDR_") for key in ops.env)
     _setup(ops)
-    _parent(ops, "register")
+    registered = json.loads(_parent(ops, "register").stdout)
+    assert registered["display_sync"]["status"] == "not_configured"
     assert ops.run("triage").returncode == 0
     assert _events(ops, "proposal_pending") == []
     _receive(ops, ok=False)
@@ -535,12 +545,17 @@ def test_pending_and_receipt_response_loss_are_idempotent(ops_env: Any) -> None:
     _select(ops)
     assert (
         ops.run(
-            "triage", FAKE_GH_API_FAIL_AFTER_SAVE="repos/o/r/issues/1/comments"
+            "triage",
+            FAKE_GH_API_FAIL_AFTER_SAVE=f"repos/o/r/issues/{_evidence_number(ops)}/comments",
         ).returncode
         == 1
     )
     assert ops.run("triage").returncode == 0
-    _receive(ops, ok=False, FAKE_GH_API_FAIL_AFTER_SAVE="repos/o/r/issues/1/comments")
+    _receive(
+        ops,
+        ok=False,
+        FAKE_GH_API_FAIL_AFTER_SAVE=f"repos/o/r/issues/{_evidence_number(ops)}/comments",
+    )
     _create(ops, ok=False)
     _receive(ops)
     assert (
@@ -613,6 +628,8 @@ def test_renaming_reparenting_and_new_task_key_reuse_metadata_identity(
     assert ops.run("triage").returncode == 0
     reused = json.loads(_create(ops, manifest=_manifest(key="renamed")).stdout)
     assert reused["child"] == 101 and reused["actual_parent"] == 2
+    assert "work targets changed" in reused["target_conflict"]
+    assert "work targets changed" in _parent(ops, "status", ok=False).stderr
     assert len(_children(ops)) == 1
     assert ops.state["parents"]["101"] == 2
 
@@ -866,3 +883,48 @@ def test_three_slots_in_one_week_keep_distinct_proposal_identity(ops_env: Any) -
     assert ops.run("triage").returncode == 0
     assert len(set(created)) == len(_children(ops)) == 3
     assert len(_events(ops, "proposal_received")) == 3
+
+
+def test_triage_real_github_and_organizer_allow_peer_registry_lock(
+    ops_env: Any,
+) -> None:
+    import shutil
+
+    from tests.e2e.agents_ops.test_adopted_proposal_issues import decision, plan
+    from tests.support.agents_ops.registry_io import (
+        instrument,
+        observations,
+        probe_code,
+    )
+
+    ops = ops_env
+    _setup(ops, route=False)
+    _select(ops)
+    Path(ops.env["FAKE_ORGANIZATION_PLAN"]).write_text(
+        json.dumps(plan(decisions=[decision("100/R-20261012-02")]))
+    )
+    lock = (
+        Path(ops.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.lock"
+    )
+    gh_output, agent_output, git_output = (
+        ops.tmp / f"{name}-probe.jsonl" for name in ("gh", "organizer", "git")
+    )
+    instrument(ops.tmp / "bin/gh", lock, gh_output)
+    instrument(ops.tmp / "bin/codex", lock, agent_output)
+    real_git = shutil.which("git")
+    assert real_git
+    git = ops.tmp / "bin/git"
+    git.write_text(
+        f"#!{sys.executable}\n"
+        + probe_code(lock, git_output)
+        + f"\nimport sys\n_os.execv({real_git!r}, [{real_git!r}, *sys.argv[1:]])\n"
+    )
+    git.chmod(0o700)
+    result = ops.run("triage")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert len(observations(gh_output)) > 10
+    assert len(observations(agent_output)) == 1
+    observations(git_output)
+    created = [row for row in ops.state["issues"] if row["number"] > 100]
+    assert len(created) == 1

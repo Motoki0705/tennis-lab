@@ -20,11 +20,17 @@ from src.tennis_scene.pipeline.components.player_reconstruction import (
 )
 from src.tennis_scene.pipeline.components.triangulation import PlayerTriangulationOutput
 from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    ModelBorrower,
+    ModelSpec,
+)
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.tennis_scene.pipeline.observation_types import (
     GroupedObservations,
     ObjectObservations,
 )
+from src.utils.inference_recording import model_event
 
 
 class SmplGeometry:
@@ -39,7 +45,9 @@ class SmplGeometry:
     @property
     def root_regressor(self) -> NDArray[np.float64]:
         if self._root is None:
-            value = torch.load(self.config.smpl_assets.smpl_neutral_joint_regressor, map_location="cpu", weights_only=True)
+            with model_event("load", "SMPL-root-regressor", weights={"regressor": self.config.smpl_assets.smpl_neutral_joint_regressor},
+                             device="cpu", dtype="float64", instance=f"{id(self)}:root"):
+                value = torch.load(self.config.smpl_assets.smpl_neutral_joint_regressor, map_location="cpu", weights_only=True)
             if not isinstance(value, torch.Tensor) or value.ndim not in (1, 2) or not bool(torch.isfinite(value).all()):
                 raise ValueError("Invalid SMPL root regressor")
             self._root = value.double().numpy()
@@ -49,9 +57,15 @@ class SmplGeometry:
         tensors = parameters.tensors()
         return BodyGeometry(self.vertices.reconstruct(tensors).numpy(), self.coco.reconstruct(tensors).numpy())
 
+    def load(self) -> None:
+        self.vertices.load()
+        self.coco.load()
+        _ = self.root_regressor
+
     def unload(self) -> None:
         self.vertices.unload()
         self.coco.unload()
+        self._root = None
 
 
 @dataclass(frozen=True)
@@ -69,22 +83,41 @@ class BodyPlacementOutput:
     players: ReconstructedPlayers | None
 
 
-class BodyPlacementModule:
+class BodyPlacementModule(InferenceComponent[BodyPlacementInput, BodyPlacementOutput]):
     def __init__(self, camera_ids: tuple[str, ...], models: PeopleModelConfig, config: TemporalPlacementConfig,
                  *, reprojection_px: float, enabled: bool = True) -> None:
         self.models, self.config, self.reprojection_px, self.enabled = models, config, reprojection_px, enabled
         self.io = ComponentIO("body_placement", BodyPlacementInput, BodyPlacementOutput,
             {"alignment": InputPort("aligned_cameras"), "calibration": InputPort("local_court_calibration"),
              "identities": IDENTITIES_PORT, "skeleton": InputPort("player_skeletons"),
-             "recovered": InputPort("body_parameters"), **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "placed_bodies")
+             "recovered": InputPort("body_parameters", version=2), **{f"pose_{c}": InputPort("person_poses", 2) for c in camera_ids}}, "placed_bodies")
 
-    def process(self, inputs: BodyPlacementInput) -> BodyPlacementOutput:
+    def model_specs(self) -> dict[str, ModelSpec[SmplGeometry]]:
+        weights = {k: v for k, v in self.models.body_assets().items() if k not in {"hmr2", "gvhmr"}}
+        return {} if not self.enabled else {"body": ModelSpec("body_geometry", weights, "smplx_supermotion_smpl_coco17",
+            self.models.runtime.device, "float32", {}, lambda: SmplGeometry(self.models),
+            initialize=lambda body: body.load(), release=lambda body: body.unload())}
+
+    def estimate_working_bytes(self, inputs: BodyPlacementInput) -> int:
+        if (not self.enabled or not inputs.recovered.bodies
+                or inputs.alignment.geometry is None or inputs.skeleton.skeleton is None):
+            return 0
+        players, views, frames = inputs.grouped.raw_indices.shape
+        # The clip's stored SMPL vertices, current/previous player vertices
+        # and float64 canonical/placement temporaries. SMPL-X conversion itself
+        # is performed in blocks of at most 32 frames.
+        smpl = (players + 8) * frames * 6890 * 3 * 4
+        smplx = min(frames, 32) * 10475 * 3 * 8 * 4
+        observations = players * views * frames * 17 * 64
+        return int(smpl + smplx + observations)
+
+    def process_with_models(self, inputs: BodyPlacementInput, models: ModelBorrower) -> BodyPlacementOutput:
         geometry, skeleton = inputs.alignment.geometry, inputs.skeleton.skeleton
         if geometry is None or skeleton is None:
             return BodyPlacementOutput(None)
         scale = inputs.source.pixel_threshold_scale
         config = replace(self.config, max_reprojection_rms_px=self.config.max_reprojection_rms_px * scale,
             reprojection_weight_sigma_px=self.config.reprojection_weight_sigma_px * scale)
-        body = SmplGeometry(self.models) if self.enabled and inputs.recovered.bodies else None
+        body = models.borrow("body") if self.enabled and inputs.recovered.bodies else None
         return BodyPlacementOutput(reconstruct_player_bodies(inputs.grouped, inputs.raw, skeleton,
             geometry.cameras, inputs.recovered, body=body, reprojection_px=self.reprojection_px * scale, placement_config=config))

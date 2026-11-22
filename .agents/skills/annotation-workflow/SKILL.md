@@ -28,6 +28,13 @@ description: Run tennis-lab annotation campaigns with pinned inputs, local image
 
 ## 依頼を条件へ分解する
 
+- sceneの`ball_detection.method=gpt_annotation`は、予測なしのローカル白紙注釈に対応する。
+  [sceneの一連実行](../../../src/tennis_scene/pipeline/direct_annotation/README.ja.md)に従って
+  元動画/frame/PTS・plan/予算・版付き探索方針・固定幾何・公開選択をrequestへ固定する。
+  この経路では予測の定性確認を開始条件にせず、追加学習を起動しない。
+  比較は`blank-register`で独立conditionを作り、そのruntimeを実行して`blank-compare`で計測する。
+  比較runを通常datasetへ公開せず、合成試験と実GPTの認識受入を区別する。
+
 - task/product、件数（channel×video×最大clip）、使用モデル、レビュー方針、学習・採用条件、
   資源予算に分ける。ユーザーが決めた値と未決定の主要な判断を分け、未決定のものだけを質問する。
   テストfixture・過去planの値やソースの既定値で埋めない。
@@ -100,6 +107,9 @@ description: Run tennis-lab annotation campaigns with pinned inputs, local image
 ## 停止から再開する
 
 - 失敗を自動で再試行しない。原因を確かめ、理由と元attemptを残す明示の操作で再開する。
+- **白紙注釈の時間切れ後の保存物修復**: 台帳や元のhold判断を書き換えず、同じruntimeで `tick` を実行して
+  完成回収を確認する。未処理が残る場合の明示retryは
+  [自動継続の復旧手順](../../../src/tasks/annotation/README.md#白紙注釈の自動継続)に従う。
 - **レビューの途中停止**: `review-progress` の `needs_decision` と各attemptの理由を読む。
   最新attemptが検証済みframeを増やしていれば、`continue-reviews --dry-run` で判定を確かめてから、
   `--reason` と、関門2の実測から決めた `--max-attempts` を付けて継続を記録する。

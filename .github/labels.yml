@@ -6,6 +6,13 @@ hierarchy:
   - name: "issue:child"
     color: "FED7AA"
     description: "正式なsub-issueとして直属の親を持つ子issue（.agents/ops/issues/README.md）"
+  - name: "issue:standalone"
+    color: "7DD3FC"
+    description: "親にも子にも属さず、単独の作業単位として扱うIssue（.agents/ops/issues/README.md）"
+
+  - name: "issue:proposal"
+    color: "C4B5FD"
+    description: "未判断を含む改善候補を元親ごとに列挙する改善提案Issue。作業対象ではない（.agents/skills/parent-session/references/finish.md）"
 
 work-type:
   - name: bug
@@ -34,6 +41,9 @@ origin:
   - name: "agent:codex"
     color: "0E8A16"
     description: "Codex が作成"
+  - name: "agent:agy"
+    color: "1D76DB"
+    description: "Antigravity CLI が作成"
 
 area:
   - name: "module: base"
@@ -80,6 +90,9 @@ area:
     description: ""
 
 status:
+  - name: parent-evidence
+    color: "EDEDED"
+    description: "親ごとの機械証拠専用容器。作業対象から除外（.agents/ops/parent/README.md）"
   - name: "supplement:done"
     color: "0E8A16"
     description: "親issue本文の補足追加が完了"

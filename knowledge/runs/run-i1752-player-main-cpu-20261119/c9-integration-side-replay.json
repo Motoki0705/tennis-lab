@@ -1,0 +1,148 @@
+{
+  "head": "0e743cde45c3a30244d7726b41b9114f510e7a77",
+  "source_tree": "e89e625c535dea3e6d3b32f060b57f262fece3a9",
+  "baseline_commit": "0aad14f15b3e16287ec59a3e69f8d8314bbfed06",
+  "clips": {
+    "video_000/clip_000": {
+      "view_half_turns": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "reason": null,
+      "source_num_frames": 356
+    },
+    "video_000/clip_027": {
+      "view_half_turns": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "reason": null,
+      "source_num_frames": 235
+    },
+    "video_000/clip_037": {
+      "view_half_turns": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "reason": null,
+      "source_num_frames": 292
+    }
+  },
+  "video_shared": {
+    "frames": 369,
+    "hypotheses": [
+      {
+        "cost": 0.14564943190466034,
+        "frames": 369,
+        "support": 0.46612466124661245,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      {
+        "cost": 0.3828485140318159,
+        "frames": 369,
+        "support": 0.024390243902439025,
+        "view_half_turns": [
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      {
+        "cost": 0.4065750063028971,
+        "frames": 369,
+        "support": 0.0,
+        "view_half_turns": [
+          false,
+          true,
+          true,
+          true
+        ]
+      },
+      {
+        "cost": 0.4127358425326242,
+        "frames": 369,
+        "support": 0.005420054200542005,
+        "view_half_turns": [
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      {
+        "cost": 0.41499875134181047,
+        "frames": 369,
+        "support": 0.051490514905149054,
+        "view_half_turns": [
+          false,
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "cost": 0.48519468692067375,
+        "frames": 369,
+        "support": 0.0,
+        "view_half_turns": [
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      {
+        "cost": 0.49056469761408195,
+        "frames": 369,
+        "support": 0.0,
+        "view_half_turns": [
+          false,
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "cost": 0.49574929776973164,
+        "frames": 369,
+        "support": 0.0,
+        "view_half_turns": [
+          false,
+          true,
+          false,
+          true
+        ]
+      }
+    ],
+    "margin": 0.23719908212715557,
+    "pair_frames": {
+      "cam0-cam1": 369,
+      "cam0-cam2": 369,
+      "cam0-cam3": 369,
+      "cam1-cam2": 369,
+      "cam1-cam3": 369,
+      "cam2-cam3": 369
+    },
+    "reason": null
+  },
+  "all_standalone_distance_sweeps_exact": true,
+  "all_geometry_error_summaries_exact": true,
+  "all_video_hypotheses_exact": true,
+  "admission_outcomes_exact": true,
+  "model_loads": 0,
+  "cuda_initialized": false,
+  "wall_seconds": 16.223672979976982,
+  "limits": "The existing 3-clip qualification, including its distance sweep, is replayed. It is not an independent GT, full69 side decision, end-to-end scene replay or GPU validation."
+}

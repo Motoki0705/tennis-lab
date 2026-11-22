@@ -1,0 +1,21 @@
+{
+  "overrides": [
+    "court_kp.mode=video_shared",
+    "court_kp.video_shared.action=load",
+    "court_kp.video_shared.directory=court-video-shared/tennis_scene/evaluate/court-video-shared-acceptance-20261117/store",
+    "court_kp.video_shared.dataset_id=meiji_4cam",
+    "court_kp.video_shared.video_id=video_000",
+    "court_kp.video_shared.artifact_digest=4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+    "court_kp.video_shared.drift_directory=court-video-shared/tennis_scene/evaluate/court-video-drift-lines-20261117/drift-store",
+    "court_kp.video_shared.drift_digest=7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+    "court_kp.video_shared.unobservable_policy=warn",
+    "court_side.mode=video_shared",
+    "court_side.video_shared.action=load",
+    "court_side.video_shared.directory=court-side-video-shared/tennis_scene/evaluate/court-side-20261118/side-store",
+    "court_side.video_shared.artifact_digest=a5f987bd59d40a2f20d19d7802a4435748f9e23fb61cddc0bc3a7b704d4cd668",
+    "court_side.video_shared.unobservable_policy=warn",
+    "player_association.players_per_side=2",
+    "people_models.runtime.dino_detector.precision=fp16",
+    "people_models.runtime.vitpose.precision=fp16"
+  ]
+}

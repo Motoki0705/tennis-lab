@@ -1,0 +1,1205 @@
+{
+  "artifact_digest": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "reference_sha256": "90ed3bbdeae4a553cf82c9fb13c49ee56cf45e17f0436b0c30ae83929de08e4b",
+  "split_sha256": "1c2908886ddc03d0e42aecd01fbe27bd1e355f17de739f5812111f2e21af25df",
+  "reference_excluded_from_seed_fit_evaluation": true,
+  "cameras": {
+    "cam0": {
+      "common_status": "accepted",
+      "accuracy": {
+        "mean_px": 1.9953555524754976,
+        "max_px": 3.361276133835601,
+        "mean_all_px": 1.9953555524754976,
+        "max_all_px": 3.361276133835601,
+        "within_tolerance": true
+      },
+      "selected_initializer": "video_000/clip_061/cam0/region_06/measured/video_000/clip_033/82",
+      "model_accepted_seed_clips": 26,
+      "used_fit_frames": 199,
+      "clip_counts": {
+        "failed": 25,
+        "ok": 44
+      }
+    },
+    "cam1": {
+      "common_status": "accepted",
+      "accuracy": {
+        "mean_px": 0.3793065808325694,
+        "max_px": 0.7003157073821802,
+        "mean_all_px": 0.3793065808325694,
+        "max_all_px": 0.7003157073821802,
+        "within_tolerance": true
+      },
+      "selected_initializer": "video_000/clip_064/cam1/region_06/measured/video_000/clip_001/112",
+      "model_accepted_seed_clips": 58,
+      "used_fit_frames": 186,
+      "clip_counts": {
+        "failed": 9,
+        "ok": 57,
+        "warning": 3
+      }
+    },
+    "cam2": {
+      "common_status": "accepted",
+      "accuracy": {
+        "mean_px": 0.48580285427871434,
+        "max_px": 0.8239680837208548,
+        "mean_all_px": 0.48580285427871434,
+        "max_all_px": 0.8239680837208548,
+        "within_tolerance": true
+      },
+      "selected_initializer": "video_000/clip_001/cam2/region_00/measured/video_000/clip_067/108",
+      "model_accepted_seed_clips": 50,
+      "used_fit_frames": 127,
+      "clip_counts": {
+        "failed": 66,
+        "ok": 3
+      }
+    },
+    "cam3": {
+      "common_status": "accepted",
+      "accuracy": {
+        "mean_px": 0.585896795896768,
+        "max_px": 0.6977878995418352,
+        "mean_all_px": 0.5817394522128162,
+        "max_all_px": 0.6977878995418352,
+        "within_tolerance": true
+      },
+      "selected_initializer": "video_000/clip_001/cam3/region_00/measured/video_000/clip_001/112",
+      "model_accepted_seed_clips": 7,
+      "used_fit_frames": 146,
+      "clip_counts": {
+        "failed": 69
+      }
+    }
+  },
+  "camera_clips": 276,
+  "successful_camera_clips": 107,
+  "complete_four_camera_clips": 0,
+  "false_accepted_cameras": 0,
+  "false_accepted_camera_clips": 0,
+  "drift_reason_counts": {
+    "None": 104,
+    "drift_unobservable": 169,
+    "camera_moved_possible": 3
+  },
+  "real_component_counts": {
+    "shared_output": 107,
+    "explicit_failure": 169
+  },
+  "camera_clips_with_reference_error": 0,
+  "frame0_overlays": 276,
+  "heldout_overlays": 276,
+  "measured_line_rows": 1419,
+  "native_crop_pairs": 1104,
+  "human_reviewed": false,
+  "independent_reference_extractor": false,
+  "seconds": 287.21718094000244,
+  "driver_sha256": "718a56c289cdf65a591319e4838be99c20173ad9895f7b549fb759dc9777ae89",
+  "legacy_comparisons": [
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_000/cam0/comparison.json",
+      "sha256": "ea22c699f6d94b8b7bfa698d22d0b89c3ca585ecffcbaffda98a8c454c61f720"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_001/cam0/comparison.json",
+      "sha256": "50baea8be09e9194f61d24eb0582326cb1648d613190bc0b87b893617c14bd35"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_002/cam0/comparison.json",
+      "sha256": "b23dc9c840333c929dfce0d4ed2e6355356d8775adffad5ff8e3d71cd963cb23"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_003/cam0/comparison.json",
+      "sha256": "2400abd6086b6ab77e037e5050f0273b3c1e928512887355b731e1f72d0f8df4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_004/cam0/comparison.json",
+      "sha256": "59350ab7f6cafea768a36ac811ecbc5a91251177b347f7b00ad73f11952a7660"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_005/cam0/comparison.json",
+      "sha256": "9a8aae6b4363f40fd8fe3aa1db13a43c4b50d2b6ee92f9807b0fdedb360d5f0f"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_006/cam0/comparison.json",
+      "sha256": "12529a59e0c30a6f78c79e52d4e4e33523f058af98c4859bec621ef9b240383c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_007/cam0/comparison.json",
+      "sha256": "3b43e8cde1a88c4850e00bec4afd82d227a952cc4ed724f93d01758b98a5a38f"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_008/cam0/comparison.json",
+      "sha256": "ca5b4c3f40d248fd0788bbc05d11f3508705077b352bcb979220e1d2111c38de"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_009/cam0/comparison.json",
+      "sha256": "858661c99f8324e7f84f9f543483d20aefc3da3debd9a46fa9257c08641b1c04"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_010/cam0/comparison.json",
+      "sha256": "6e12e0561343cbb6a69d9be5231a10f5382f03fd17d3d670ae76cb491280f992"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_011/cam0/comparison.json",
+      "sha256": "da99bcf8f8ac8ecf534b5315b01139e2da3dc6c1e3354fd72fab6562b1bdf3c0"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_012/cam0/comparison.json",
+      "sha256": "04852b6cd3e45e65e7f59d1801f9d8e1916e5817c61febfc0fd99963b3d1a070"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_013/cam0/comparison.json",
+      "sha256": "cf9f7731899b182f8da1aed4a36b311ce28e85e0efae4cd3086983b22470b021"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_014/cam0/comparison.json",
+      "sha256": "40aebe0f1b6b032b4a9cf269e752687c8db36d45cb5a6f9c62b0046f3679f908"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_015/cam0/comparison.json",
+      "sha256": "175fd596505f1f16a98174e9385543bd777a47a93323af9ee684a3a418114bae"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_016/cam0/comparison.json",
+      "sha256": "fd719d81e56a11a74b90ce05458680363936a38adaa2403da4b15b32ebd690bd"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_017/cam0/comparison.json",
+      "sha256": "5c680c4642ed6c62ba2136bf695ec4e8403dde027459eb9c25a2aa085ca11ede"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_018/cam0/comparison.json",
+      "sha256": "e01be58b4b2048df3860a8d72a17979dc81d69d6352a2b02523503fb817f0f02"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_019/cam0/comparison.json",
+      "sha256": "f45fb0ed514f3ce1191b4b847b9d878db4563ea29b2d3cd64729744b367ad471"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_020/cam0/comparison.json",
+      "sha256": "ee0a5b318a153ab843060f14b33853c20342b7e33dd57fb225d56e8e048c5fa6"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_021/cam0/comparison.json",
+      "sha256": "4d269687b1c3b9dbd77d72a8fa549421ff447065a7f8857aed7f168c9f4d9fe6"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_022/cam0/comparison.json",
+      "sha256": "6068be05549314b46096d1bfcc35de9ea6d4c7cf0152e60ccbb92a360f51434d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_023/cam0/comparison.json",
+      "sha256": "91b6275ab38cd9137bc0e0309771d3d545e83a8155b63e802646f231cf9e8015"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_024/cam0/comparison.json",
+      "sha256": "ebb412fbfb46ccd961b1deff99e8a91d0e49f3107b09d51657b7b0661b7bab42"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_025/cam0/comparison.json",
+      "sha256": "1be810cd72ad74e1ae5b34c5825b85ba8ae52152bb36b4b8eaa070080931c4f6"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_026/cam0/comparison.json",
+      "sha256": "cfe151d305a743f0ab3776d78935fce96a570b9d32a049e908c38197419dd156"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_027/cam0/comparison.json",
+      "sha256": "ceb038dc7ef9ce456be8438b02237dabd5e3011f82cab0486210ac4e629d2148"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_028/cam0/comparison.json",
+      "sha256": "238fef82e4da8233a95a6a2ed014659f8a72d641e26b14bcee5dc80c18e603cc"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_029/cam0/comparison.json",
+      "sha256": "a32b994757a255ba127e7ae6e45d4a08325fdec1297b28743f07d247f30a5713"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_030/cam0/comparison.json",
+      "sha256": "ae7fe9dbf2577129992d62e94432a220d708247c4da619d96ad128cc36a47ddb"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_031/cam0/comparison.json",
+      "sha256": "5fe264e8f61da01861cc939deccfad662f089010837f1a0b30f1088063606eb7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_032/cam0/comparison.json",
+      "sha256": "a64148a9c68049e90fc1e79d3329897b57ab2956af552eb2950fe51b90cc59ef"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_033/cam0/comparison.json",
+      "sha256": "cb84f077a4507808d0827843fe258a61d23310de9642d08b0c774d3e4ac045c7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_034/cam0/comparison.json",
+      "sha256": "3e1d503dc20a8f7717b451433c5385cfd9b179e467b84de4649483f2c8a816e1"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_035/cam0/comparison.json",
+      "sha256": "3ef98d083ec19cb9bc95b85213f9a63298c4bf797948f3dba8e4bf1fc53253de"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_036/cam0/comparison.json",
+      "sha256": "0476ba16693a754a1a93a1a02160cc24f58a87bfae13dc077e066ce8f077bbb4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_037/cam0/comparison.json",
+      "sha256": "bce7b344aa23101161344c3e6978080fdc8838f5164886b773f0eaa3d9686d6f"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_038/cam0/comparison.json",
+      "sha256": "74d9e7fb98131d148af61879b0f4f087a47301a063f80d2e1b8eb394e6891834"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_039/cam0/comparison.json",
+      "sha256": "2c17dd79c65af4e97b55232c5bb32d0d176329e5e894377c9bb2329c58f8e93a"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_040/cam0/comparison.json",
+      "sha256": "b332723e1a49a47d553cb079418a9cc7126767924f7138209ff1beb2ddaa0fce"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_041/cam0/comparison.json",
+      "sha256": "df1c5dc4e5fd98df1449d3323e277007c112ba6044fc16cc621d19f3faee2f88"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_042/cam0/comparison.json",
+      "sha256": "57bb5ddd606cc76d55952d9f500d618a6f033e656726dd690e5d9ce8ad012131"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_043/cam0/comparison.json",
+      "sha256": "ce606b478065772eede80478cd8bc0ac6be1af971e9f1bb9ba0b892d3ac61157"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_044/cam0/comparison.json",
+      "sha256": "8f1a34ef5b77f0f089c2a7002713e0c3d48dc08778f841aafd16f6911bce0f5d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_045/cam0/comparison.json",
+      "sha256": "3a52f1f984e8ae037aca873388f91f7879065f570082813e5c15cea5d1f12494"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_046/cam0/comparison.json",
+      "sha256": "d37055146e74ac04175bf454820be6de1b72208cb451928f37e87528dadcc7d4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_047/cam0/comparison.json",
+      "sha256": "bb3b7d77f1161cfc8d3e9ecf183a54647f8486a76d9702b2470624c3ab68bc62"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_048/cam0/comparison.json",
+      "sha256": "5a2037137fbb041305aff6f793f4117c0b218b0d9d07e9211ab202fc2e194a14"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_049/cam0/comparison.json",
+      "sha256": "c479a131c78601ba723335a3eda265c7a3f6709a597b604e6be0a625ad7b4f2a"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_050/cam0/comparison.json",
+      "sha256": "0bf755defe3afcf9788867c87445ee5f172da696d45fd02e5b100977b772ba70"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_051/cam0/comparison.json",
+      "sha256": "0c7d7cc50f25c885582f88f00033b704ece3e7cb984e21ada98d759eec11b0ec"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_052/cam0/comparison.json",
+      "sha256": "df71f86273cabafa3f26b78f3f1937b965145076e31e5f43b4819ecd6b8cf554"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_053/cam0/comparison.json",
+      "sha256": "9662dcdae7be278f4f83d7225c496854f3d4c85fe260ba07b772a17c086a97ac"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_054/cam0/comparison.json",
+      "sha256": "b0c8cd36ed55d1767f79f32dd1c0f7619498f557f88b74e094d74450174f90fe"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_055/cam0/comparison.json",
+      "sha256": "0065638586ab904b99a0a29353790289ffb16be13bec0611d5a1cbf1cd9c8f36"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_056/cam0/comparison.json",
+      "sha256": "e9fb367bfc69ea22cccde1c4904f714c87d6d369f854ce109d1b60c04ab01542"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_057/cam0/comparison.json",
+      "sha256": "d65563629e391ef53111bd89142545565544e1db5bf11aace88a14e047c4b129"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_058/cam0/comparison.json",
+      "sha256": "232ed6134cf6a2d7f39750c541e052761ed28bb7cd73d5b0f00e585f3b59e023"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_059/cam0/comparison.json",
+      "sha256": "86a6cb86de9cea864b5dc92b2b2a379d4d1090478a93bd373388ff2a00c8c417"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_060/cam0/comparison.json",
+      "sha256": "b052c1cc10b7509183d06402215249ec271e1e07dd7cb58a81f95e5e50f8daf9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_061/cam0/comparison.json",
+      "sha256": "59a3438dad0a55c9741912d62ee8086cf40d9451f2254a17ec8d45f5868be2d2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_062/cam0/comparison.json",
+      "sha256": "3c27d030dc6c1d432fe7eccc6780182997f16e032a1af15abd169e00a0dd548d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_063/cam0/comparison.json",
+      "sha256": "0048878f5e52b6e4cac2af90e7a5f52c49b3195ae52c6d9a0b45baf88e1d6ab4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_064/cam0/comparison.json",
+      "sha256": "a9d7cd836924841baf73fd19648918b1bb2d4a6f9f119ffa6181e334ff923754"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_065/cam0/comparison.json",
+      "sha256": "01f675192d38cf9a63bde8d2b62c86fc1f432cd50c9ca9f3a1f44faea51f0707"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_066/cam0/comparison.json",
+      "sha256": "c672025427acc7ff28d1aa656cec135b6800a1c6bb458098c9cc24b3d82e0f32"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_067/cam0/comparison.json",
+      "sha256": "8c75ea38858d61a2e293762430552a51649ba029de2570a005e16e8010f1c106"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_068/cam0/comparison.json",
+      "sha256": "1dde514f09cc8a411413f70cab735f12844f90adc5f9e2cc5d55b065d9b39f5a"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_000/cam1/comparison.json",
+      "sha256": "1482add8c1f28eb72736e4fd49ba286d72ca5f21221b500cf94dc30107058b09"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_001/cam1/comparison.json",
+      "sha256": "472dd7d9fb5b95e7a361588dfed5616e838f1d6dfd99f816e9c3285c710921d0"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_002/cam1/comparison.json",
+      "sha256": "4679372e9f363081d51f8748a108c6ca00770ed8b5d7c392e435a49bfdbf6d07"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_003/cam1/comparison.json",
+      "sha256": "d20bc7295fee5e8cf20bbfb21e7e50d9f8787772c279971151c390e093f93715"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_004/cam1/comparison.json",
+      "sha256": "6f6a066d451618438c687a81ab00651c208f3d592ccb2b41fbbd872cdf707f97"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_005/cam1/comparison.json",
+      "sha256": "3818f418037e611ab14384248b4536f4875c7817a5a9a75ad69baf2d729c45df"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_006/cam1/comparison.json",
+      "sha256": "a24c011f6a001b7712bbe00c5ba77e74a8380ecdf453191f1ae1afc7c5db5db7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_007/cam1/comparison.json",
+      "sha256": "6f06d9b229f9d743909713b1cb27761e2cdbc5ec91d6a387b23b8f0e22ee503f"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_008/cam1/comparison.json",
+      "sha256": "27476dbe263987d3b987100e5d8df1747884a4adcafdaa62fa83f85a60b7403e"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_009/cam1/comparison.json",
+      "sha256": "4d2a74d1f0fe4ae610f40d6f9ba9e29b10224119e1a1494bdb28086e84820289"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_010/cam1/comparison.json",
+      "sha256": "685162c34cf86a87ddeedc2c6157b01f091e44dd5dfd941fcc06312a1a12cae6"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_011/cam1/comparison.json",
+      "sha256": "80ea9e5c6a643e5d8293aee3d2e707f516e54fbc9015fb6d96271461abcee530"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_012/cam1/comparison.json",
+      "sha256": "0684d8ba9b72b8acf10a27aabd6c4f3409725555ae310ba411c44e6f0cfb3255"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_013/cam1/comparison.json",
+      "sha256": "198255a118cb745eb970df700414f086ba9020f975e4df9306c8d69e70fcc359"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_014/cam1/comparison.json",
+      "sha256": "1066bf07823246782a335b58b8d08bfbb47614016a6eddd593669324d85c2596"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_015/cam1/comparison.json",
+      "sha256": "bc4db2fb15b654c424355bc585612e564480dc09b7d972595b15824fd2cee310"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_016/cam1/comparison.json",
+      "sha256": "b11d0dce5e2002973cf321f20e52912d7d614ee189d315a418d67cc51fcf01ed"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_017/cam1/comparison.json",
+      "sha256": "c7cb85d58c5aac380eb122171e0821f9a59b430afef1272026b9a6a61e0e1c9e"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_018/cam1/comparison.json",
+      "sha256": "eb9f1bb42065acd1f9e65e003ed5e57d9dd4677fcc1a2a0461e7bb55e4e06d3a"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_019/cam1/comparison.json",
+      "sha256": "75d8cbed0dff3ae26ded8f819ebfd383b5c9bbdea532e09ea72b4aa7a83878a6"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_020/cam1/comparison.json",
+      "sha256": "2ce984c6d0c31d1be5c62d0c58a30b02b14f23d4b6154c2067f5b5f437635773"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_021/cam1/comparison.json",
+      "sha256": "4a9f54cc2068efd35486daf296215e8bd69a36c4d81b18bc24ae127b22e37e85"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_022/cam1/comparison.json",
+      "sha256": "b34c50c0d62a1d0c5d9a2fe6f63d3cff65af8f1312dce895ffff9a004883c0f7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_023/cam1/comparison.json",
+      "sha256": "9dafa3e0ed410706ba4b08fdef4ccfce9ed7cbbbb862be225176785c46f8c0f3"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_024/cam1/comparison.json",
+      "sha256": "7663049a8c69626737619dbdf44dd0fbe1c395c43e3e405623fb01c2591f39b8"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_025/cam1/comparison.json",
+      "sha256": "21c9792327ecdbb345ebf916bd535de78705a09c2d717151016d58108237b195"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_026/cam1/comparison.json",
+      "sha256": "32e55a4e8e5cf31872f2925f5eda14dc9488ec7fbf113f4b2831d4c1d51cc939"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_027/cam1/comparison.json",
+      "sha256": "09bceafd4ca1b12ab6d4c5cd4e1a686a95f4b711010280e5a87651760eba02ed"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_028/cam1/comparison.json",
+      "sha256": "5f11a41b2076f8403944f60985ce6c85e09bc4b2d94549877293a6d5e3a4291b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_029/cam1/comparison.json",
+      "sha256": "a7af1b6bc6c8f711284f649e4de6cc80c9ad8669638535115be6470ed4b44288"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_030/cam1/comparison.json",
+      "sha256": "9f2cdbf71dd41c9793507b3e98b572c9b5f36871c602ee7a9e89a8f177c37d07"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_031/cam1/comparison.json",
+      "sha256": "5b3a128a391d70332d5f1535e1b11f218d5cb4faa4fa2644a52901f71794cc26"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_032/cam1/comparison.json",
+      "sha256": "ea1304b6e8301dd2799fae4ad86466649ec2ef1a1ac9b643076cd657f9d9592a"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_033/cam1/comparison.json",
+      "sha256": "d189ef57db8b3f036400ffe10c8b622c13dd25deedc731a1a8af35cd9adb0845"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_034/cam1/comparison.json",
+      "sha256": "cd46de288d70e4c86fcea6aadbe9f1be5cd974f92b07430f82dc01c822e89e2c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_035/cam1/comparison.json",
+      "sha256": "2a1a65f2c21c9ca6ad9d898c2820f87d35318f442c222e602bd4a189e7cfd63b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_036/cam1/comparison.json",
+      "sha256": "073c16f2f5bbe2d9dd299eaafb839a76d1e082874cbb0b31828c56603953c8ea"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_037/cam1/comparison.json",
+      "sha256": "3b77c9f45bcb1a93dc0de29648750a8b3ca0c2a83cec7a4ebd50fcba6bf03836"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_038/cam1/comparison.json",
+      "sha256": "9988b35f29d3420c4b4f2404276a0af84d70b3fbb3aaf848aa1fc33c72149297"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_039/cam1/comparison.json",
+      "sha256": "73f1a7a8cab7872d30202cc9670ff147961ebae001d03e276b72dc66bcfc6945"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_040/cam1/comparison.json",
+      "sha256": "9141c6638a6ec46190b456e5b071c29fb5b5e7254073f32f77f9f505632209df"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_041/cam1/comparison.json",
+      "sha256": "fa5d31841f58c81bd2878d786d2237fdb36b3ccf6ee820aa6ec94d14909570b2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_042/cam1/comparison.json",
+      "sha256": "53bdf650befc849848ac3465b516af8530c52b394e305de22055e0161b376b4b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_043/cam1/comparison.json",
+      "sha256": "7c4d3f1626d68024338d78c7593461651ae92759e1ad8ff9971218c81c54fe71"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_044/cam1/comparison.json",
+      "sha256": "65c6a1d0e81e80dd9ea9742ebbe01b2202b40790b78861270d869827c594f1c0"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_045/cam1/comparison.json",
+      "sha256": "c334debf6ed7b902db850d20384c119a1e2cf718b0d7a15358678ed8b9822de2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_046/cam1/comparison.json",
+      "sha256": "6e0e663e65fec0ded3968b53c18056f44cd765880d1e3d7922e312c3be9be2de"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_047/cam1/comparison.json",
+      "sha256": "dafe4f9f959f3bf1831e34ae74b5aaf6b48ce5571ae1e24e5d5b5bbdfa15a1ae"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_048/cam1/comparison.json",
+      "sha256": "a51e611ffe5148e4f07d9059d70eff2d4fa49cf0b5039ccf8572533bf6610e0c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_049/cam1/comparison.json",
+      "sha256": "9661675a22ca62fe4214d6122d88e70e94efa09eb01f23c2424b7a7a993a5038"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_050/cam1/comparison.json",
+      "sha256": "f4e4c872c9673adad1931fd0162c2f5bf56578bd2e65e947675b70c47d43321d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_051/cam1/comparison.json",
+      "sha256": "87cd9e625bb74ba1f038918ff66b88ceffdeaec05a53c5058cf27b2f66a92eb8"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_052/cam1/comparison.json",
+      "sha256": "9dc22b2bb1cc8a70533671b85c725304794468252d74b41fd0febb3bc881813c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_053/cam1/comparison.json",
+      "sha256": "58f1a1552d80d963bd9e8628377ab64b22b2f3ca599a11efc480fc16679a12db"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_054/cam1/comparison.json",
+      "sha256": "69dd46d5d4c0fe7d0076a3ce6473a4dc26157d018fa6c39c8d10e5895dc0dad9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_055/cam1/comparison.json",
+      "sha256": "7cc67f41ed6da7e1f758fee56c69e72db1fcdf61fae8dc6da99aeed04fd9e619"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_056/cam1/comparison.json",
+      "sha256": "d46b41c6e21ee9a235d7370ab8b7b3ecf112bb3ed34983ca0cde8ceb8470c51f"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_057/cam1/comparison.json",
+      "sha256": "9eb86a65103aff5ace2e418b2fd6deadb47b203c7c6f1d60e68b21cb2b48cf2d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_058/cam1/comparison.json",
+      "sha256": "ff9b1e9e7be48af6f2136e66f0776d9c3c891de128c37de2fbeee1366ea5e8e7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_059/cam1/comparison.json",
+      "sha256": "3fe10adaec4884e550727ca2110d9e4a605da65c6edf19bdfaca4cdb1bc2b6fe"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_060/cam1/comparison.json",
+      "sha256": "412efb523d82794ac97bbbe99c5b5e49aa5e427b2184329feeea82560433281f"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_061/cam1/comparison.json",
+      "sha256": "761441764c41cc08fea5ac7bf4a86e64f303be2962146e417029d5e6f7480715"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_062/cam1/comparison.json",
+      "sha256": "2b83aff4a9f64f04dfc6513df595fbf6e4a739bfd4f7e1ebdef54b1e4360651d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_063/cam1/comparison.json",
+      "sha256": "e6d852a1e10fcb978ad33b0cbe5f2f4105fb2bc551fad2d7d07e47b83d54c3ae"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_064/cam1/comparison.json",
+      "sha256": "e20c02d043c7bcc534e6ef81e2701663186235f1fd71307872afe8b3c212e6d9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_065/cam1/comparison.json",
+      "sha256": "9585b3e1e8add1f4178aed4ac1c5994964723ae1e808de53fe6456ea8df803fd"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_066/cam1/comparison.json",
+      "sha256": "8016ab589578938f51f5e65ae921fd09846a3d4337fcc8dc1ab3735b705ce44b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_067/cam1/comparison.json",
+      "sha256": "f6ee5ca9c00a8b124684a3aef14c99c4382864de9393669eeee91b98fb5d4293"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_068/cam1/comparison.json",
+      "sha256": "356e677ba76166278121296e8f81e002c34bc473fd6f22406ea0f59675954cf9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_000/cam2/comparison.json",
+      "sha256": "422ace34eae9465c9a8b9740f272a948e5f644aa1bf03c47b25b2ed6ce4be3b0"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_001/cam2/comparison.json",
+      "sha256": "1d6698dc1ddfa7a1d49a17482b91c5a813e5658fd8f586ade8e5ec26e62fb9e7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_002/cam2/comparison.json",
+      "sha256": "b40bc9c41f4b0fe228cedd5361d0ff95b01c461a126508b8f833f617ff0b2f13"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_003/cam2/comparison.json",
+      "sha256": "f9071c84d8073a6f1667e94ad2461b3a37d8b26cd12797aab47b4f100d76d248"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_004/cam2/comparison.json",
+      "sha256": "7e19b62c985c87727053398e01a0bcb3b64bd6719e5c91ed877f399b06cfbf5c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_005/cam2/comparison.json",
+      "sha256": "b11c635ef1f4aa436ba321edf931473d5d3010db3b019fec242122c9da9fd63b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_006/cam2/comparison.json",
+      "sha256": "9f36bf2e23c42634b84f13828e29dcdded1ec556ae4a26ff872d105d4abd3ee2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_007/cam2/comparison.json",
+      "sha256": "d2d8f7646268015374ce2fee951bcd2b6dddf9d57175698a0d16697a7cb82f30"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_008/cam2/comparison.json",
+      "sha256": "8aa1d3f779fe76d395e7869fbda84d7bce25ae7f3b526f1c80b3f4717cec5817"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_009/cam2/comparison.json",
+      "sha256": "832ca69c6f9412a4db0ccd607b4e80c7af49ae804e48329972f4be80ee6bf9c2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_010/cam2/comparison.json",
+      "sha256": "9cbf0b95dda6d3ca67a6d7608f9880145e03592ae19324261611be175f7c1018"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_011/cam2/comparison.json",
+      "sha256": "1cd6580ca353f7348ecd2518efbf03bf47c273c38892dbb2ab650112e7ddc03f"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_012/cam2/comparison.json",
+      "sha256": "cd74a1771bac3e87bc510837db2b982b517752785ebbe7694651fe301d18b9a2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_013/cam2/comparison.json",
+      "sha256": "2880f67821ff249035fd5841904c9521c3c2104c2d33bde26894d71518c324a3"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_014/cam2/comparison.json",
+      "sha256": "866cfe39e211c1a2703106d22fea8ce5a140cd994472e1aa94951a4b763d4f85"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_015/cam2/comparison.json",
+      "sha256": "d230f1e41950c860f31dbf4106e705157c08a6566285a16d100b110286df6e8d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_016/cam2/comparison.json",
+      "sha256": "ee44ea3ea4806778af97dc7321068dde78c71eb819415493cadb7c4ea4727d66"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_017/cam2/comparison.json",
+      "sha256": "8626bbca98cdb436ee85e39904270d4a25679806414344bb611bba0043f6376d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_018/cam2/comparison.json",
+      "sha256": "09942de330db2d3ff90fb4126bfd8f8fc22ef23def7a06e595c5457e1f308192"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_019/cam2/comparison.json",
+      "sha256": "bdad9b0edadc2c209053ba2fa5f2b98457420a1501d7fd570f011add24b120b4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_020/cam2/comparison.json",
+      "sha256": "d1ae06304b18d19c97d0f7c72e21f85d428ac704c073d0a28a75ccfb43c82995"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_021/cam2/comparison.json",
+      "sha256": "a21a23df9e8a218e9ac63280782e46f57048cc937ad2fbbb6bc5dcd1bf7ccc13"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_022/cam2/comparison.json",
+      "sha256": "532969b6b7c4d4c608ca0e8e799fbec28ed903ac437542fc5e5f0ba7a84020d9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_023/cam2/comparison.json",
+      "sha256": "4a9c41aa02ab645f7c0fd8c99807e4b596e975f116b27efbb9e7624d6acd6851"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_024/cam2/comparison.json",
+      "sha256": "099ccf9b507f90ab30287e3112786a6d7c3d31f73867cd10095b129b1ad53c8e"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_025/cam2/comparison.json",
+      "sha256": "3f0edc42c9a9722c0e034963a3dad7acbc7a2742ca23e19eeb5dd20085327ade"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_026/cam2/comparison.json",
+      "sha256": "7f651009a12af0f86c5e1c0c4f02190bde6ac523411993d68cd36281ee1aa090"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_027/cam2/comparison.json",
+      "sha256": "0fceafdeccbf43a6f1d99743206b20c7c8c899ce46ebd45427d4089a84f49285"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_028/cam2/comparison.json",
+      "sha256": "4c29a58c258d35b27701528b37361eee0b76c2f85d7ebe44ad7be7914ca8a1c1"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_029/cam2/comparison.json",
+      "sha256": "d16e06421b6bd7c92b8c6c11204bd548b065a0d54e555b7a8f055088aba70dfa"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_030/cam2/comparison.json",
+      "sha256": "248d4a7ee744532e6d91e4f291ed8c754ef1a387fa72dde5ef5ca59d96a478a7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_031/cam2/comparison.json",
+      "sha256": "10392f039a912f4b1929c848a3749b69d0876d984dd7313f899e795118712bee"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_032/cam2/comparison.json",
+      "sha256": "0a322e08a4adb51d56aa3f0a6705bc56280076805f7eb176f22128c18a6b54d6"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_033/cam2/comparison.json",
+      "sha256": "156baee1a216f0d2bd39d167ddd782e15afdb79d6163c144c08b6a05c2a4cc58"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_034/cam2/comparison.json",
+      "sha256": "2386c687649b588c60ce5675b0fdfb7527c22e00c11c9ca966916c41383083d2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_035/cam2/comparison.json",
+      "sha256": "ea963e645086fc99cbe71d93777ab5e38fa75d4f41f33e0ac62194038f20e94e"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_036/cam2/comparison.json",
+      "sha256": "55cf9fcf025d2975cd85ea02c5f626a77be46300c629b97fb4cacfa3b58c3fc5"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_037/cam2/comparison.json",
+      "sha256": "afa2c32d724330a59cc2d803296b61b934bcabc450466a98dfa7807165460cc4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_038/cam2/comparison.json",
+      "sha256": "d830db58b9bfcc2cd424c2f75ed41fc1914d7091f94169b1814b48d8096ec34a"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_039/cam2/comparison.json",
+      "sha256": "a2125011d832542998a138969b01b601377afcac48a01471a410ff41755b5c2c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_040/cam2/comparison.json",
+      "sha256": "a64b0ac6db5f5fba0491e20f5e1db8e3a22f0b4691e3790ce5432bb3278fe8dd"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_041/cam2/comparison.json",
+      "sha256": "f21485e36e2ab98b6ad4ff0a50aa62ee7b6a4a43862d46e4b29795781f39a57c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_042/cam2/comparison.json",
+      "sha256": "dff5eddadb481da1646b5e58b409c898e1ce6cd8df18c885226bd2d4629009a2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_043/cam2/comparison.json",
+      "sha256": "aba609e6c5532e1af6ca76fccd4ff7df5d71f53e8ef556b7f42d8a5f57efa9d5"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_044/cam2/comparison.json",
+      "sha256": "fe54c48ac531088aaae4080d1345fb7944b4c91917928d4220fa1c95aba4f6c4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_045/cam2/comparison.json",
+      "sha256": "2d1506f53f2dc8e560760c44838c3d32e6d44dda902c717a041e52e54edd1e2d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_046/cam2/comparison.json",
+      "sha256": "8a4988fd4e556b1ae0ba225ff110541ef67d37b2691f646d4d9c011027a164c3"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_047/cam2/comparison.json",
+      "sha256": "6729a8297d356cee656131b917a7a612c4757f3db61ae80d26574c071b963523"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_048/cam2/comparison.json",
+      "sha256": "7116969102a5d84a6830112493f5442d8e6a5d3d58671aed84a1bd793e1cea47"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_049/cam2/comparison.json",
+      "sha256": "8a1714b00ab4d06728f3144dba3f246305a749522163e3eab3cdc33d11f9f34e"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_050/cam2/comparison.json",
+      "sha256": "e0341d46a12b72157f77a28acdee0d144039080ac7b030c6a42cd4836e6b1271"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_051/cam2/comparison.json",
+      "sha256": "7e19a9c2c320a45bf43a6dd03f7aa858148d7b28d05c9ca003e8742b7eadc48c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_052/cam2/comparison.json",
+      "sha256": "75e35ded0c9b322b1af4691fabd4d8c84d409a011869f7bb43ef3dd81491da9d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_053/cam2/comparison.json",
+      "sha256": "4f2a04bf076dfd272d4b0dcf734d0249b2b2077dcef2527b96ec674db77c8b40"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_054/cam2/comparison.json",
+      "sha256": "5d0e3cd2d15d5c8699c7c571aaaeda4a9578be46bad5e8f03f584a275ae64604"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_055/cam2/comparison.json",
+      "sha256": "416dd09af142012badb7db64130570be8774fa260df038bd144909a2dd0eafa0"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_056/cam2/comparison.json",
+      "sha256": "169ca24b14b9a72181133dee05411ba130a9ed0504055892c23ccae878914874"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_057/cam2/comparison.json",
+      "sha256": "f7d5578f643bc54a36f3db4842496979ff74cea4779c296340ab74fc2d2cbe02"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_058/cam2/comparison.json",
+      "sha256": "8e8e3828a7a0724849481e89d57c9801876857f32d4445eb2ff530c65a82c962"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_059/cam2/comparison.json",
+      "sha256": "c88dd4f7084fe097b11e1a0909a6f3ee3e7aa624acb0378912c2717074f8dcdf"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_060/cam2/comparison.json",
+      "sha256": "b1b09843e7d7ac71549ba9bc4305ac72950061f7cb52500738bd402a855548a2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_061/cam2/comparison.json",
+      "sha256": "5b9cb28ee6db91e34c4518d41aa50297be03d6178733a936f1ce3874858a50ad"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_062/cam2/comparison.json",
+      "sha256": "5d6055730221d25cf51bc04aac60958acd10448b9637def1cd77334a30d87937"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_063/cam2/comparison.json",
+      "sha256": "97b2d2ec3643bdeb33cf3dec86915f0d76f4b46dcce0a5d05a1c5140c8633dfe"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_064/cam2/comparison.json",
+      "sha256": "1603ac0ec205222b6534e22d0311a0cb27873b74b6d6ef1de8d02cd561f14bca"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_065/cam2/comparison.json",
+      "sha256": "61a386724d3353c625ebf542d7741eccbc8592e8c6eaa02691abce6243db3420"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_066/cam2/comparison.json",
+      "sha256": "31a270607dc409a23445771638f47efbbddbc1d66a34dfb9c6e01d663d809be9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_067/cam2/comparison.json",
+      "sha256": "bbb8a27a58e38f25523f1c41de35000262d09ef4df96fde73100e1eee6500860"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_068/cam2/comparison.json",
+      "sha256": "55edf49ee6746fa450902f5a38059d38bbb78a51a8f4125f6ed601a7a4baa3bc"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_000/cam3/comparison.json",
+      "sha256": "3a59f448a0c35ccd1f124c00ec1e5baeaed2be49edd60958e7c089b7821a296b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_001/cam3/comparison.json",
+      "sha256": "35ba15a0165495d38d11f3f34436cd6351bd89c09c4f343c90534396493354c2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_002/cam3/comparison.json",
+      "sha256": "3eb327dd069348d962d857d2b0858f7809f8153ef9891ab68aeff9696fe8c8d9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_003/cam3/comparison.json",
+      "sha256": "6b0649bf3fda677097ba07b4773f6ad48f857f54d3b72b479f05b906e60434f0"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_004/cam3/comparison.json",
+      "sha256": "a160f0a770007bad21be21d7f96c057406e86efcfc6c59a60e05ec583520c2bd"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_005/cam3/comparison.json",
+      "sha256": "da3b1466df6f7d1d3a28832648bb0af0ddf5902e66100d1a3a43bad62ebb0316"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_006/cam3/comparison.json",
+      "sha256": "39c48363937617525521f2cfdcbdb40cdde1ddadd5c5b904726894d7fbf143c3"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_007/cam3/comparison.json",
+      "sha256": "8b43d1b6dfb3b86d864dba4e6cb9a4d8747cafd306d8dfcbc82502d34a3c8cc4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_008/cam3/comparison.json",
+      "sha256": "59abc82165ae3e9e63c70fef5a273ddb43b449c8c00f25b8eae1c23650b446ee"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_009/cam3/comparison.json",
+      "sha256": "4f4a5a8abaf611a30f3e654f5bb4b7b6c398365e3c61799762259c5438c7edcf"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_010/cam3/comparison.json",
+      "sha256": "b5c9f01aec6343c39162f697dcb825c757902bff19824525f3ee7624cf42fb8c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_011/cam3/comparison.json",
+      "sha256": "6f38c293b142e679c935f45b6fdac6dea4d8ed25a3841ec3e9520c725a71d8e3"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_012/cam3/comparison.json",
+      "sha256": "93d1f486df85cac1e4d8683b74b44fe26dd59094fab15f9a74c988bb777620a5"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_013/cam3/comparison.json",
+      "sha256": "b68155d367a53baebb6e21b771cd082d57cf72bf91a570fddd885b2c2c2c6455"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_014/cam3/comparison.json",
+      "sha256": "4b9003beef33932378deaa1ecb2e79564f582ddb302ffe45698a86cc0a511525"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_015/cam3/comparison.json",
+      "sha256": "e49617c9baaedb4b011592392a60a90c8dc4af7e5c95c17c5cf28e14f14f0d0b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_016/cam3/comparison.json",
+      "sha256": "6df06ffbf6fd19471d9a67a9c58c303d3a02e90d20b5465e3bd262d80a608e1d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_017/cam3/comparison.json",
+      "sha256": "365a01bf3db5cb4903650facb8545c9a8472cb192fbc5b6e229c0bfabbcb5a54"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_018/cam3/comparison.json",
+      "sha256": "c8db7672b927fc0f6fb1f02a8b647832ddfedd8b726a76b80a4d97bb71d0a58c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_019/cam3/comparison.json",
+      "sha256": "3dd77a98bb677503d39565f2ca12557b251322fd97a4f01869a2456c5990d39d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_020/cam3/comparison.json",
+      "sha256": "8a60c47d951019a4b35946d98b36d883b2ea9147482fcae5c9152ac52286657c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_021/cam3/comparison.json",
+      "sha256": "a157d6c23ec1a54df351c0fc1b6d24d7fa55108b35649ab5839164ba6c8a72cc"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_022/cam3/comparison.json",
+      "sha256": "455c5cc8922875bc68fcb22169177247d6535a5674def0e902852627b8f310c7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_023/cam3/comparison.json",
+      "sha256": "78ae207188d455229eec92d9941c43e1857efd3154409b6cf9cddaee2ce0e47b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_024/cam3/comparison.json",
+      "sha256": "1e4388815d8ebdfd3dc2b2c55911a7f5dd3f7a066ffd363c401d46fd8c6745fd"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_025/cam3/comparison.json",
+      "sha256": "ad3ebdcf312e235edcb06486d0d30eafd1eb75ef976a24b57ae6762d97bebb6d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_026/cam3/comparison.json",
+      "sha256": "530082cfc56df845617997183c0e69fc62e02eb7de902959c49bdb1726755fa5"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_027/cam3/comparison.json",
+      "sha256": "e9cd5e68d29d7cba6e55d3535b634ec04d812d1c7b24a44e63a97c54492b0968"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_028/cam3/comparison.json",
+      "sha256": "be9451d36184ef61cdc4e9d855dc6bfa528ab3cb9b9c772ec8a2b5b6bbb040bc"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_029/cam3/comparison.json",
+      "sha256": "9a7be50a553c89dfb781a843f756090d709cbf1da5355410ee4cdf0c64c2bf5e"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_030/cam3/comparison.json",
+      "sha256": "f34d5ca51d009a6d5df15eb43eceeb872f77177a74dd1615f70bb24e0efc5001"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_031/cam3/comparison.json",
+      "sha256": "ad52bcb11cca568d75f61dc3b643b7039f43ff47e4cf92fcefa88e2cdd97bb1d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_032/cam3/comparison.json",
+      "sha256": "e0cff117bee6181860c1b049ebb2ad778d500d024405573c75ccdb4d237d50c9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_033/cam3/comparison.json",
+      "sha256": "cdde015c67a6374f26166774b5e1a2fa666cb2fbccd200945c13bf191ee112cc"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_034/cam3/comparison.json",
+      "sha256": "ba42be3f3da11eb2f1faf88c75fec8d433387f67f28eb883e21bad7f68bc3f9d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_035/cam3/comparison.json",
+      "sha256": "6ad0f6429df99b3d61fde3ff5f6014e2d57347b4411762dba96058c161264332"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_036/cam3/comparison.json",
+      "sha256": "087bbefff587a3724b8daa17d70d910d9023cb43ed16970e4424c32a95722dfc"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_037/cam3/comparison.json",
+      "sha256": "ba7c4745e4ef48283743c8df5e1a1125c1dbfdc5d3094540216522cb524ea83b"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_038/cam3/comparison.json",
+      "sha256": "ad2c58ee1af1483a02b786c3f7593a0ecbef9c49de7fb30c2136292370078980"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_039/cam3/comparison.json",
+      "sha256": "484d31c51ef7668f2f80ae1bce61bbe7b7569339429c8e094dcb11e1a976486f"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_040/cam3/comparison.json",
+      "sha256": "f4b31c080d9f1d855d5bc2da65e88c277172bb3cf902786ca6fe780aaab43730"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_041/cam3/comparison.json",
+      "sha256": "7de9afa5be57c66eb3238ed92cfb112d0fc37010bcc2d71a46604daaad2240b9"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_042/cam3/comparison.json",
+      "sha256": "336ecc47a1b75696bdeedd13623818e613f228db71fa8c8db4fa284a9b9bba5a"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_043/cam3/comparison.json",
+      "sha256": "fc9be78810e421068722fc5343a7549539c8d692a7677b808e521467673a6a04"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_044/cam3/comparison.json",
+      "sha256": "1f5de84eb3a6770afb8cf7355782899436e5a46eb7eabd4c3f80ff7e97ceb957"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_045/cam3/comparison.json",
+      "sha256": "fb2f0ea70c7fd16f87405f87e732df6724c646171aa1277b25799fd70faea8e6"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_046/cam3/comparison.json",
+      "sha256": "419c23342f8959581bca96c2402c9bdb38ca30ce604e01825849319468736013"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_047/cam3/comparison.json",
+      "sha256": "200b2bc4c36f23e9a4d98d1bc4cf39bb06afd2de491cc2ff22d0a7396ac31401"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_048/cam3/comparison.json",
+      "sha256": "fce386fd22235ae2abde9765e9c03ac8e0367a4526a4b81577f99fc96bd0cda7"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_049/cam3/comparison.json",
+      "sha256": "12e246b789658171de340d1f1c27f4027d30c1955fe29f5c84bff45672f594e5"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_050/cam3/comparison.json",
+      "sha256": "1c84dd15b9f8a27b51a924c607f2dbd1e06b41c7b1a4ce0a24c056c01319693d"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_051/cam3/comparison.json",
+      "sha256": "e3d8c70655d1d351f9313ad2e82a1399de273dee33527853cce8913e2e2a9579"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_052/cam3/comparison.json",
+      "sha256": "d0b3f30a1b0b58fd09a1c8cc91a89da206159bc6b953995bcb6ab05508254a85"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_053/cam3/comparison.json",
+      "sha256": "8f4fee03e73e7e14a8228c68f265e94731cbe82643275602ecaea7d2f0a139c2"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_054/cam3/comparison.json",
+      "sha256": "f56a984b21c4a9e793e95ffde354ea4a0013ac886c2902daeb323d90206803c1"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_055/cam3/comparison.json",
+      "sha256": "ac54ed9b5979e797df950273cfdb514fb66922616e8b22c31099703e89f1e06c"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_056/cam3/comparison.json",
+      "sha256": "ab01503e7a78b1715a2654de813b10ee1a0b15d988b1c42e76500837211271c4"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_057/cam3/comparison.json",
+      "sha256": "40f6f0447fb0d5d7b137b5055e9c813637d8d1e0930a5b231ab690bac73436c5"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_058/cam3/comparison.json",
+      "sha256": "cd6aa8b566aa9b86b8edf6fae9c72cc2266f63f0205fac726c7edd39241f88e6"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_059/cam3/comparison.json",
+      "sha256": "9b21c4f4a7771ccd778135a553b885454f5a64152ceb2995ef9e5aa4117075bd"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_060/cam3/comparison.json",
+      "sha256": "d771cc0f79d2caa0cbe93d6f4bb77ad6cbdf2dc9623e8130a3d0b1aa0e952864"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_061/cam3/comparison.json",
+      "sha256": "292e5aea462d935b4573b560fcbc5f8efe08b0a78eff339851ab6868f48d0f26"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_062/cam3/comparison.json",
+      "sha256": "218f02dd7ced70149d7c6763f566d15dd70bd26ab6fd0765db169f713ad062ca"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_063/cam3/comparison.json",
+      "sha256": "3c95190f1f7729c7d5eb8efba71720a1fe8c06a2d91a776d1ee5bdbc200e4751"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_064/cam3/comparison.json",
+      "sha256": "49522b528eaccd37fc8f5434a7216058782c06dba2f4f431a25cafe7be19dd10"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_065/cam3/comparison.json",
+      "sha256": "c4ed0a502bd98f9c2c1f333a5c90b0541a952ec02fc4057b7799f8ea6dd48afe"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_066/cam3/comparison.json",
+      "sha256": "f198ec3090c1b1ef2dca0ef8c892cfeeab0f7741b02fed5cb6a8e1c70397aded"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_067/cam3/comparison.json",
+      "sha256": "3da59a741b8ad6f7b79dd312e0614efb6e704df456afe650090f0cfdacce0007"
+    },
+    {
+      "path": "evaluation/meiji_4cam/video_000/clip_068/cam3/comparison.json",
+      "sha256": "8df54330968960f3765c269bd14655451144f2f02e31d621e8c3acd113303c6b"
+    }
+  ]
+}

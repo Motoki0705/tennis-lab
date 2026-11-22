@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 import torch
@@ -16,6 +16,7 @@ from src.submodules.vendor.gvhmr.body_model import make_smplx
 from src.submodules.vendor.gvhmr.pipeline import GvhmrDemoModel, build_gvhmr_demo_model
 from src.submodules.vendor.gvhmr.utils.geo_transform import compute_cam_angvel
 from src.submodules.vendor.gvhmr.utils.hmr_cam import estimate_K
+from src.utils.inference_recording import model_action, span
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,9 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
         self.smpl_assets = smpl_assets
         self._model: GvhmrDemoModel | None = None
 
+    def recording_assets(self) -> dict[str, Path]:
+        return {"checkpoint": self.checkpoint, "smplx": self.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz", **{field.name: getattr(self.smpl_assets, field.name) for field in fields(self.smpl_assets)}}
+
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"GVHMR checkpoint not found: {self.checkpoint}")
@@ -129,7 +133,8 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
             "cam_angvel": cam_angvel,
             "f_imgseq": request.f_imgseq.float(),
         }
-        pred = self._model.predict(data, static_cam=request.static_cam)
+        with span("inference", model="GVHMR", batch_shape=[1, num_frames, 1024]):
+            pred = self._model.predict(data, static_cam=request.static_cam)
 
         def to_cpu(params: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
             return {k: v.detach().float().cpu() for k, v in params.items()}
@@ -270,6 +275,11 @@ class SmplVertexReconstructor:
         self._smplx: torch.nn.Module | None = None
         self._smplx2smpl: torch.Tensor | None = None
 
+    def load(self) -> None:
+        self._ensure_loaded()
+
+    @model_action("load", "SmplVertexReconstructor", weights=lambda owner: {"smplx": owner._body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz", **{field.name: getattr(owner._smpl_assets, field.name) for field in fields(owner._smpl_assets)}},
+                  device=lambda owner: str(owner._device), loaded=lambda owner: owner._smplx is not None)
     def _ensure_loaded(self) -> None:
         if self._smplx is not None:
             return
@@ -290,6 +300,8 @@ class SmplVertexReconstructor:
             )
         self._smplx2smpl = smplx2smpl.to(device=self._device, dtype=torch.float32)
 
+    @model_action("unload", "SmplVertexReconstructor", weights=lambda owner: {"smplx": owner._body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz", **{field.name: getattr(owner._smpl_assets, field.name) for field in fields(owner._smpl_assets)}},
+                  device=lambda owner: str(owner._device), loaded=lambda owner: owner._smplx is not None)
     def unload(self) -> None:
         """Release the lazily loaded body model and topology conversion."""
         self._smplx = None
@@ -303,8 +315,10 @@ class SmplVertexReconstructor:
                 raise RuntimeError(
                     "SMPL vertex assets did not load before reconstruction."
                 )
-            params = {k: v.to(self._device) for k, v in smpl_params.items()}
-            smplx_out = self._smplx(**params)
+            with span("transfer", model="SMPL-vertices"):
+                params = {k: v.to(self._device) for k, v in smpl_params.items()}
+            with span("inference", model="SMPL-vertices", batch_shape=list(params["body_pose"].shape)):
+                smplx_out = self._smplx(**params)
             vertices = torch.stack(
                 [torch.matmul(self._smplx2smpl, verts) for verts in smplx_out.vertices],
                 dim=0,
@@ -347,6 +361,11 @@ class SmplCoco17Reconstructor:
         self._smpl_assets = smpl_assets
         self._model: torch.nn.Module | None = None
 
+    def load(self) -> None:
+        self._ensure_loaded()
+
+    @model_action("load", "SmplCoco17Reconstructor", weights=lambda owner: {"smplx": owner._body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz", **{field.name: getattr(owner._smpl_assets, field.name) for field in fields(owner._smpl_assets)}},
+                  device=lambda owner: str(owner._device), loaded=lambda owner: owner._model is not None)
     def _ensure_loaded(self) -> None:
         if self._model is None:
             self._model = (
@@ -359,6 +378,8 @@ class SmplCoco17Reconstructor:
                 .eval()
             )
 
+    @model_action("unload", "SmplCoco17Reconstructor", weights=lambda owner: {"smplx": owner._body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz", **{field.name: getattr(owner._smpl_assets, field.name) for field in fields(owner._smpl_assets)}},
+                  device=lambda owner: str(owner._device), loaded=lambda owner: owner._model is not None)
     def unload(self) -> None:
         """Release the lazily loaded body model."""
         self._model = None
@@ -395,13 +416,15 @@ class SmplCoco17Reconstructor:
                 raise ValueError(
                     "All SMPL parameters must contain the same frame count."
                 )
-            validated[name] = tensor.to(self._device)
+            with span("transfer", model="SMPL-COCO17"):
+                validated[name] = tensor.to(self._device)
 
         with torch.no_grad():
             self._ensure_loaded()
             if self._model is None:
                 raise RuntimeError("SMPL COCO-17 model did not load.")
-            joints = self._model(**validated)
+            with span("inference", model="SMPL-COCO17", batch_shape=list(validated["body_pose"].shape)):
+                joints = self._model(**validated)
         if not isinstance(joints, torch.Tensor) or joints.shape != (frame_count, 17, 3):
             raise RuntimeError(
                 "SMPL COCO-17 model returned an invalid shape: "

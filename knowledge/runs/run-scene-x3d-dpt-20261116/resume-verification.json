@@ -1,0 +1,93 @@
+{
+  "schema": "scene_dpt_resume_verification.v1",
+  "date": "2026-11-16",
+  "original_head": "ab8df9b809813e42e70e0be1807963f724abf936",
+  "rebase_base": "ad88a23ab7c1476409714bdeb2fa041a62283682",
+  "human_acceptance": {
+    "date": "2026-11-16",
+    "quote": "現状の証拠で受け入れる",
+    "source": "https://github.com/Motoki0705/tennis-lab/issues/2150#issuecomment-6907003882"
+  },
+  "node_sequence": 43,
+  "run_id": "run-scene-x3d-dpt-20261116",
+  "run_bundle_id_unchanged": true,
+  "pytest": {
+    "tests": 1347,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 68.06,
+    "max_case_total_seconds": 7.398,
+    "x3d_test_files_cases": 18,
+    "x3d_test_files_max_case_seconds": 0.964,
+    "existing_cases_over_five_seconds": [
+      {
+        "node": "tests.unit.tennis_scene.clip_studio.test_review_cli::test_review_package_help_without_dataset",
+        "seconds": 7.398
+      },
+      {
+        "node": "tests.unit.tennis_scene.generate_dataset.test_entrypoint::test_real_hydra_cli_fails_when_a_clip_fails",
+        "seconds": 7.381
+      },
+      {
+        "node": "tests.unit.tennis_scene.visualization.review.test_gallery::test_gallery_renders_every_declared_component_without_writing_the_store",
+        "seconds": 5.382
+      }
+    ],
+    "log": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/resume-pytest.log",
+    "junit": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/resume-pytest.xml"
+  },
+  "precommit": {
+    "log": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/resume-precommit.log",
+    "result": "Checking 21 source/test files changed from origin/main\nruff (fix)...............................................................Passed\nmypy.....................................................................Passed"
+  },
+  "knowledge": {
+    "base": "origin/main",
+    "errors": 0,
+    "warnings": 0,
+    "log": "outputs/tennis_scene/evaluate/x3d-dpt-20261116/resume-knowledge.log"
+  },
+  "numerical_evidence": [
+    {
+      "path": "knowledge/runs/run-scene-x3d-dpt-20261116/validation-plan.json",
+      "sha256": "480084c77be5d8b1b213d7b3a50a7c6368245ec4b2ee11c56af3870c22e9353a",
+      "unchanged_from_original_head": true
+    },
+    {
+      "path": "knowledge/runs/run-scene-x3d-dpt-20261116/paired-source-plan.json",
+      "sha256": "fbebfc84191c3a3018aed1639a99dda7191b8d67763f1b7b8d9a104f3d4d4bfb",
+      "unchanged_from_original_head": true
+    },
+    {
+      "path": "knowledge/runs/run-scene-x3d-dpt-20261116/validation-parity-eager.json",
+      "sha256": "f8452da862a48d9bd3a85b288a583449c94f2cb6d771a0fbfcbcddbd32647a83",
+      "unchanged_from_original_head": true
+    },
+    {
+      "path": "knowledge/runs/run-scene-x3d-dpt-20261116/validation-parity-compiled.json",
+      "sha256": "a51130cf9dca5534722b34c8b57a44fdb27206ce8465dd318aa49ec0a57983b5",
+      "unchanged_from_original_head": true
+    },
+    {
+      "path": "knowledge/runs/run-scene-x3d-dpt-20261116/validation-parity-torch214.json",
+      "sha256": "d254ad0d1a04c71ec0a7377c5e08178e33fdaea4a6f52ad74b659c256ab38280",
+      "unchanged_from_original_head": true
+    },
+    {
+      "path": "knowledge/runs/run-scene-x3d-dpt-20261116/validation-parity-gpu-decode.json",
+      "sha256": "30fd122cb0da4f924dbc90bc519f89785b4a68420517ffa54b9db05dd7c656cf",
+      "unchanged_from_original_head": true
+    },
+    {
+      "path": "knowledge/runs/run-scene-x3d-dpt-20261116/validation-paired-source.json",
+      "sha256": "deceb28bd1ed60fea996b377c8d98e60512177b21f3cc4b7a2d8889dfd48346e",
+      "unchanged_from_original_head": true
+    },
+    {
+      "path": "knowledge/runs/run-scene-x3d-dpt-20261116/export-calibration.json",
+      "sha256": "eebbf1b23ee97b7dc5fd5a8968be93ebb73dcb5d7ac95a2655c1866726fcaf62",
+      "unchanged_from_original_head": true
+    }
+  ],
+  "regression_scope": "Reused existing CPU nodes for scene, native MDD/legacy inference, model IO, window ownership, RGB/MDD preprocessing and real short-video artifact integration. No new pytest cases in this resume."
+}

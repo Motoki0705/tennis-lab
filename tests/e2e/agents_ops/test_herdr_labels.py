@@ -20,6 +20,7 @@ import pytest
 
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.hook_process import hook_command
 
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
@@ -33,6 +34,21 @@ state = json.loads(path.read_text())
 state['calls'].append(args)
 session = 'default'
 if args[:1] == ['--session']: session, args = args[1], args[2:]
+if args == ['agent', 'list']:
+    # Label preparation sits between the registry snapshot and the write.
+    if os.environ.get('LABEL_PREPARE_ENTERED'):
+        import time
+        Path(os.environ['LABEL_PREPARE_ENTERED']).touch()
+        deadline = time.monotonic() + 10
+        while not Path(os.environ['LABEL_PREPARE_RELEASE']).exists():
+            if time.monotonic() > deadline: raise SystemExit('test release timed out')
+            time.sleep(.01)
+    if os.environ.get('LABEL_PREPARE_RACE') == 'process': state['pid'] = os.getppid()
+    elif os.environ.get('LABEL_PREPARE_RACE'):
+        state['panes']['w1:p1'].update(display_agent='#99 · 親', tokens={'tl_owner': 'new-owner'})
+    if os.environ.get('LABEL_REGISTRY_RACE'):
+        p = Path(os.environ['XDG_STATE_HOME'])/'tennis-lab-agents/parent-sessions/registry.json'
+        data = json.loads(p.read_text()); data['parents']['o/r#42']['status'] = 'ended'; p.write_text(json.dumps(data))
 command = ' '.join(args[:2])
 if state.get('fail_call') == command:
     path.write_text(json.dumps(state)); sys.exit(3)
@@ -55,7 +71,8 @@ if args[:2] == ['pane', 'report-metadata']:
             if a == '--clear-token': tokens.pop(args[i+1],None)
     result = None
 elif args[:2] == ['pane', 'process-info']:
-    result = {'process_info':{'foreground_processes':[{'pid':state['pid'], 'name':pane['agent']}]}}
+    pid = state.get('pane_pids', {}).get(pane_id, state['pid'])
+    result = {'process_info':{'foreground_processes':[{'pid':pid, 'name':pane['agent']}]}}
 elif args == ['agent', 'list']:
     ids = state.get('server_panes', {}).get(session, state['panes'])
     result = {'agents':[state['panes'][key] for key in ids]}
@@ -71,22 +88,7 @@ if result is not None: print(json.dumps({'result':result}))
 """
 
 FAKE_GH = r"""
-import json,os,sys,time
-from pathlib import Path
-if os.environ.get('LABEL_GH_ENTERED'):
-    Path(os.environ['LABEL_GH_ENTERED']).touch()
-    deadline=time.monotonic()+10
-    while not Path(os.environ['LABEL_GH_RELEASE']).exists():
-        if time.monotonic()>deadline: raise SystemExit('test release timed out')
-        time.sleep(.01)
-if os.environ.get('LABEL_PREPARE_RACE'):
-    p=Path(os.environ['LABEL_FAKE_STATE']);data=json.loads(p.read_text())
-    if os.environ['LABEL_PREPARE_RACE']=='process': data['pid']=os.getppid()
-    else: data['panes']['w1:p1'].update(display_agent='#99 · 親',tokens={'tl_owner':'new-owner'})
-    p.write_text(json.dumps(data))
-if os.environ.get('LABEL_REGISTRY_RACE'):
-    p=Path(os.environ['XDG_STATE_HOME'])/'tennis-lab-agents/parent-sessions/registry.json'
-    data=json.loads(p.read_text());data['parents']['o/r#42']['status']='ended';p.write_text(json.dumps(data))
+import json,sys
 if '--include' in sys.argv: print('HTTP/1.1 200 OK\n')
 print(json.dumps({'number':42,'repository_url':'https://api.github.com/repos/o/r','title':'[表示設定] 親担当の表示','state':'open'}))
 """
@@ -118,6 +120,7 @@ class Labels:
             "generation": 1,
             "tasks": {},
             "reviews": [],
+            "display_summary": "表示の要約",
         }
 
     def run(
@@ -140,7 +143,7 @@ class Labels:
         self, event: str, identity: str = "test-owner", **fields: str
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            hook_command(OPS / "herdr_labels/claude_hook.py"),
             input=json.dumps(
                 {"hook_event_name": event, "session_id": identity, **fields}
             ),
@@ -371,7 +374,7 @@ def test_session_start_moves_only_a_vacated_confirmed_destination(
     assert owner["scope"] == hashlib.sha256(b"/fake/herdr.sock").hexdigest()
     assert owner["terminal_id"] == "term-new"
     after = labels.read()
-    assert after["panes"]["w1:p3"]["display_agent"] == "Alice · #42 · 親"
+    assert after["panes"]["w1:p3"]["display_agent"] == "Alice · 表示の要約"
     assert after["panes"]["w1:p3"]["tokens"]["other"] == "keep"
     assert all(call[2] == "w1:p3" for call in labels.mutations())
     assert labels.registry.read_bytes() == registry
@@ -512,7 +515,7 @@ def test_named_sync_preserves_unread_and_does_not_write_board_or_registry(
     assert json.loads(result.stdout)["name"] == "Alice"
     assert json.loads(result.stdout)["name_status"] == "assigned"
     pane = labels.read()["panes"]["w1:p1"]
-    assert pane["display_agent"] == "Alice · #42 · 親"
+    assert pane["display_agent"] == "Alice · 表示の要約"
     assert pane["tokens"]["tl_name"] == "Alice"
     assert pane["tokens"]["tl_inbox"] == "3"
     assert pane["tokens"]["tl_inbox_label"] == "未読:3"
@@ -561,7 +564,7 @@ def test_board_rename_refreshes_only_the_confirmed_parent_display(
     assert (data["old_name"], data["new_name"]) == ("Alice", "Barry")
     assert data["display_sync"]["status"] == "updated"
     after = labels.read()["panes"]["w1:p1"]
-    assert after["display_agent"] == "Barry · #42 · 親"
+    assert after["display_agent"] == "Barry · 表示の要約"
     assert after["tokens"] == {**state["panes"]["w1:p1"]["tokens"], "tl_name": "Barry"}
     assert labels.read()["panes"]["w1:p2"] == state["panes"]["w1:p2"]
     assert labels.registry.read_bytes() == registry
@@ -576,7 +579,18 @@ def test_board_rename_refreshes_only_the_confirmed_parent_display(
 
 @pytest.mark.parametrize(
     "condition",
-    ["reject", "drop_write", "owner_changed", "native_changed", "missing_owner"],
+    [
+        "reject",
+        "drop_write",
+        "owner_changed",
+        "native_changed",
+        "missing_summary",
+        "legacy_title",
+        "stale_summary",
+        "legacy_issue",
+        "other_issue",
+        "missing_owner",
+    ],
 )
 def test_board_rename_reports_projection_failure_without_undoing_the_rename(
     named_labels: Labels, condition: str
@@ -596,6 +610,27 @@ def test_board_rename_reports_projection_failure_without_undoing_the_rename(
             "agent": "claude",
             "value": "different-conversation",
         }
+    elif condition == "missing_summary":
+        # Renaming must not invent the label text it no longer finds.
+        state["panes"]["w1:p1"]["tokens"].pop("tl_topic")
+    elif condition == "legacy_title":
+        # A parent running since the title-based label keeps its old tl_topic
+        # but has never registered a summary; the old title must not survive.
+        state["panes"]["w1:p1"]["tokens"]["tl_topic"] = "旧Issueタイトル"
+        owner = labels.owner()
+        del owner["display_summary"]
+        labels.set_registry({"o/r#42": owner})
+    elif condition == "stale_summary":
+        # The record changed after the last sync; renaming must not keep the
+        # superseded token as if it were the current summary.
+        labels.set_registry(
+            {"o/r#42": {**labels.owner(), "display_summary": "新しい要約"}}
+        )
+    elif condition == "legacy_issue":
+        # A label synchronized before tl_issue existed has no number to keep.
+        state["panes"]["w1:p1"]["tokens"].pop("tl_issue")
+    elif condition == "other_issue":
+        state["panes"]["w1:p1"]["tokens"]["tl_issue"] = "#99"
     else:
         for path in (labels.registry.parent.parent / "herdr-labels/owners").glob(
             "*.json"
@@ -639,6 +674,12 @@ def test_board_rename_reports_projection_failure_without_undoing_the_rename(
                 connection.execute("SELECT COUNT(*) FROM name_renames").fetchone()[0]
                 == 1
             )
+    if condition in {"legacy_issue", "other_issue"}:
+        # The ordinary parent sync repairs the number from the registry key.
+        assert labels.run("sync").returncode == 0
+        repaired = labels.read()["panes"]["w1:p1"]
+        assert repaired["display_agent"] == "Barry · 表示の要約"
+        assert repaired["tokens"]["tl_issue"] == "#42"
 
 
 @pytest.mark.parametrize("condition", ["missing", "other_parent", "retired"])
@@ -665,7 +706,7 @@ def test_unassigned_names_keep_number_display_without_guessing(
     assert json.loads(result.stdout)["name_status"] == "unassigned"
     assert json.loads(result.stdout)["name"] is None
     pane = labels.read()["panes"]["w1:p1"]
-    assert pane["display_agent"] == "#42 · 親"
+    assert pane["display_agent"] == "表示の要約"
     assert "tl_name" not in pane["tokens"]
     if condition == "missing":
         assert not store.path.exists()
@@ -713,7 +754,7 @@ def test_hooks_integrate_name_and_unread_lifecycle(
     assert result.returncode == 0, result.stderr
     pane = labels.read()["panes"]["w1:p1"]
     if event in {"resume", "compact"}:
-        assert pane["display_agent"] == "Alice · #42 · 親"
+        assert pane["display_agent"] == "Alice · 表示の要約"
         assert pane["tokens"]["tl_name"] == "Alice"
         assert pane["tokens"]["tl_inbox_label"] == "未読:2"
     else:
@@ -760,10 +801,11 @@ def test_parent_cli_name_and_unread_follow_handoff_and_ended(
         "CODEX_SESSION_ID": "old-parent" if engine == "codex" else "",
         "CODEX_THREAD_ID": "old-parent" if engine == "codex" else "",
     }
-    data = json.loads(p.cli("register", extra=extra).stdout)
+    data = json.loads(p.cli("register", "--summary", "親の要約", extra=extra).stdout)
     name = data["board_sync"]["name"]
     assert data["display_sync"]["name"] == name
-    assert labels.read()["panes"]["w1:p1"]["display_agent"] == f"{name} · #1 · 親"
+    assert data["display_summary"] == "親の要約"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"] == f"{name} · 親の要約"
     p.cli("register", parent="2", extra={"CLAUDE_CODE_SESSION_ID": "peer-parent"})
     messages = importlib.import_module("board.messages")
     delivery = importlib.import_module("board.delivery")
@@ -797,7 +839,9 @@ def test_parent_cli_name_and_unread_follow_handoff_and_ended(
     )
     assert accepted["board_sync"]["name"] == name
     pane = labels.read()["panes"]["w1:p2"]
-    assert pane["display_agent"] == f"{name} · #1 · 親"
+    # The summary belongs to the parent record, so the successor shows it too.
+    assert pane["display_agent"] == f"{name} · 親の要約"
+    assert pane["tokens"]["tl_topic"] == "親の要約"
     assert pane["tokens"]["tl_name"] == name
     assert pane["tokens"]["tl_inbox_label"] == "未読:1"
     inbox = messages.inbox({**p.env, **new_extra}, unread=True)["posts"]
@@ -810,13 +854,58 @@ def test_parent_cli_name_and_unread_follow_handoff_and_ended(
     assert "display_agent" not in pane and pane["tokens"] == {}
 
 
+@pytest.mark.parametrize(
+    ("agent", "ending"),
+    [("claude", "clear"), ("claude", "SessionEnd"), ("codex", "clear")],
+)
+def test_issue_number_cell_follows_the_parent_lifecycle(
+    labels: Labels, agent: str, ending: str
+) -> None:
+    env = labels.env
+    if agent == "codex":
+        env = {k: v for k, v in labels.env.items() if not k.startswith("CLAUDE_")}
+        env.update(CODEX_SESSION_ID="test-owner", CODEX_THREAD_ID="test-owner")
+        state = labels.read()
+        state["panes"]["w1:p1"]["agent"] = "codex"
+        labels.write(state)
+        labels.set_registry({"o/r#42": labels.owner(identity="codex:test-owner")})
+        bound = labels.run(
+            "bind",
+            "--herdr-session",
+            "default",
+            "--pane",
+            "w1:p1",
+            "--terminal",
+            "term-a",
+            env=env,
+        )
+        assert bound.returncode == 0, bound.stderr
+    result = labels.run("sync", env=env)
+    assert result.returncode == 0, result.stderr
+    pane = labels.read()["panes"]["w1:p1"]
+    # The sidebar row ["$tl_engine", "$tl_issue"] renders "<engine> · #42";
+    # tl_parent keeps the full registry key and the summary stays in the name.
+    assert pane["tokens"]["tl_engine"] == agent
+    assert pane["tokens"]["tl_issue"] == "#42"
+    assert pane["tokens"]["tl_parent"] == "o/r#42"
+    assert pane["display_agent"] == "表示の要約"
+    if ending == "SessionEnd":
+        result = labels.hook("SessionEnd")
+    else:
+        result = labels.run("clear", env=env)
+    assert result.returncode == 0, result.stderr
+    pane = labels.read()["panes"]["w1:p1"]
+    assert "display_agent" not in pane
+    assert pane["tokens"] == {"other": "keep"}
+
+
 def test_sync_uses_caller_not_focus_and_is_idempotent(labels: Labels) -> None:
     result = labels.run("sync")
     assert result.returncode == 0, result.stderr
     state = labels.read()
     pane = state["panes"]["w1:p1"]
-    assert pane["display_agent"] == "#42 · 親"
-    assert pane["tokens"]["tl_topic"] == "表示設定"
+    assert pane["display_agent"] == "表示の要約"
+    assert pane["tokens"]["tl_topic"] == "表示の要約"
     assert pane["tokens"]["tl_engine"] == "claude"
     assert pane["tokens"]["other"] == "keep"
     assert "display_agent" not in state["panes"]["w1:p2"]
@@ -825,15 +914,290 @@ def test_sync_uses_caller_not_focus_and_is_idempotent(labels: Labels) -> None:
     assert len(labels.mutations()) == 1
 
 
-def test_custom_topic_persists_and_cjk_is_shortened(labels: Labels) -> None:
-    result = labels.run(
-        "sync", "--parent", "42", "--topic", "日本語表示幅確認用の非常に長い題名"
-    )
+def test_missing_summary_fails_without_guessing_a_label(labels: Labels) -> None:
+    owner = labels.owner()
+    del owner["display_summary"]
+    labels.set_registry({"o/r#42": owner})
+    result = labels.run("sync")
+    assert result.returncode == 2
+    assert "no sidebar summary" in result.stderr
+    assert "summary --text" in result.stderr
+    assert not labels.mutations()
+
+
+@pytest.mark.parametrize(
+    ("summary", "accepted"),
+    [
+        ("一二三四五六七八九十一二", True),  # 24 columns
+        ("一二三四五六七八九十一二三", False),  # 26 columns
+        ("a" * 24, True),
+        ("a" * 25, False),
+        ("", False),
+        (" 前後に空白", False),
+        ("改行\nを含む", False),
+    ],
+)
+def test_summary_width_is_validated_not_truncated(
+    labels: Labels, summary: str, accepted: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.syspath_prepend(str(OPS))
+    service = importlib.import_module("herdr_labels.service")
+    if accepted:
+        assert service.validate_summary(summary) == summary
+    else:
+        with pytest.raises(ValueError):
+            service.validate_summary(summary)
+    labels.set_registry({"o/r#42": {**labels.owner(), "display_summary": summary}})
+    result = labels.run("sync")
+    assert result.returncode == (0 if accepted else 2), result.stderr
+    pane = labels.read()["panes"]["w1:p1"]
+    if accepted:
+        assert pane["display_agent"] == summary
+        assert pane["tokens"]["tl_topic"] == summary
+    else:
+        assert not labels.mutations()
+
+
+def _write_v2_registry(
+    labels: Labels, record: dict[str, Any], index: dict[str, Any]
+) -> None:
+    digest = importlib.import_module("parent.policy").digest
+    parents = labels.registry.parent / "parents"
+    parents.mkdir(parents=True, exist_ok=True)
+    (parents / f"{digest('o/r#42')}.json").write_text(json.dumps(record))
+    labels.registry.write_text(json.dumps({"version": 2, "parents": {"o/r#42": index}}))
+
+
+def test_summary_is_read_from_the_matching_v2_parent_record(
+    labels: Labels, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.syspath_prepend(str(OPS))
+    record = {**labels.owner(), "display_summary": "分割記録の要約"}
+    index = {key: record[key] for key in ("session", "status", "generation")}
+    _write_v2_registry(labels, record, index)
+    result = labels.run("sync")
     assert result.returncode == 0, result.stderr
-    topic = json.loads(result.stdout)["topic"]
-    assert topic.endswith("…") and len(topic) <= 11
-    assert labels.run("sync").returncode == 0
-    assert labels.read()["panes"]["w1:p1"]["tokens"]["tl_topic"] == topic
+    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "分割記録の要約"
+
+    # A record from another generation is not this owner's summary.
+    _write_v2_registry(labels, {**record, "generation": 2}, index)
+    result = labels.run("sync")
+    assert result.returncode == 2
+    assert "disagrees with its index" in result.stderr
+
+
+@pytest.fixture
+def parent_store(parent_env: ParentEnv) -> Any:
+    state = importlib.import_module("parent.state")
+    return state.Store(
+        Path(parent_env.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    )
+
+
+@pytest.fixture
+def parent_display(parent_env: ParentEnv, labels: Labels) -> dict[str, str]:
+    target = Path(parent_env.env["PATH"].split(os.pathsep)[0]) / "herdr"
+    target.write_text(f"#!{sys.executable}\n{FAKE_HERDR}")
+    target.chmod(0o755)
+    return {
+        "HERDR_ENV": "1",
+        "HERDR_PANE_ID": "w1:p1",
+        "LABEL_FAKE_STATE": str(labels.state),
+    }
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_new_parent_requires_summary_without_creating_a_registry(
+    parent_env: ParentEnv,
+    labels: Labels,
+    parent_display: dict[str, str],
+    configured: bool,
+) -> None:
+    p = parent_env
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    github, display = p.state(), labels.read()
+    rejected = p.cli(
+        "register", summary=None, ok=None, extra=parent_display if configured else None
+    )
+    assert rejected.returncode == 2, rejected.stdout + rejected.stderr
+    assert "--summary" in rejected.stderr
+    assert not rejected.stdout
+    assert not registry.exists()
+    assert p.state() == github
+    assert labels.read() == display
+
+
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("transition", ["register", "accept", "recover", "retry"])
+def test_parent_assignment_requires_summary_before_writes(
+    parent_env: ParentEnv,
+    labels: Labels,
+    parent_display: dict[str, str],
+    parent_store: Any,
+    version: int,
+    transition: str,
+) -> None:
+    p = parent_env
+    store = parent_store
+    note = p.note("引継ぎの内容を確認した。")
+    command = (
+        ("register",)
+        if transition == "register"
+        else ("handoff", "--accept", "--note-file", note)
+    )
+    if transition == "recover":
+        command = (*command, "--recover")
+    row: dict[str, Any] = {
+        "session": "claude:private-session-a-unique"
+        if transition == "register"
+        else "claude:old-parent",
+        "status": "released" if transition == "register" else "handoff_pending",
+        "generation": 3,
+        "tasks": {},
+        "reviews": [],
+    }
+    if transition in {"recover", "retry"}:
+        row["status"] = "active"
+    if transition == "retry":
+        row.update(
+            session="claude:private-session-a-unique",
+            handoff_note_sha256=importlib.import_module("parent.policy").digest(
+                Path(note).read_text()
+            ),
+        )
+    with store.locked():
+        store.parents["o/r#1"] = row
+        store.save()
+        if version == 2:
+            store.migrate()
+
+    def snapshot() -> dict[Path, bytes]:
+        paths = [
+            *store.directory.glob("*.json"),
+            *(store.directory / "parents").glob("*.json"),
+        ]
+        return {path: path.read_bytes() for path in paths}
+
+    saved, github, display = snapshot(), p.state(), labels.read()
+    before_calls = len(p.calls())
+    for suffix in [(), ("--summary", "改行\nを含む")]:
+        rejected = p.cli(*command, *suffix, summary=None, ok=None, extra=parent_display)
+        assert rejected.returncode == 2, rejected.stdout + rejected.stderr
+        assert ("--summary" if not suffix else "control characters") in rejected.stderr
+        assert not rejected.stdout
+        assert snapshot() == saved
+        assert p.state() == github
+        assert labels.read() == display
+    assert not any(
+        method in call
+        for call in p.calls()[before_calls:]
+        for method in ("POST", "PATCH")
+    )
+
+    accepted = p.cli(*command, "--summary", "担当と表示の確認", extra=parent_display)
+    response = json.loads(accepted.stdout)
+    assert response["parent_action_applied"] is True
+    assert response["display_sync"]["status"] == "updated"
+    with store.locked():
+        assert store.data["version"] == version
+        assert store.parents["o/r#1"]["status"] == "active"
+        assert store.parents["o/r#1"]["session"] == "claude:private-session-a-unique"
+        assert store.parents["o/r#1"]["display_summary"] == "担当と表示の確認"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"].endswith(
+        " · 担当と表示の確認"
+    )
+
+
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("transition", ["register", "accept"])
+def test_parent_assignment_reuses_saved_summary(
+    parent_env: ParentEnv,
+    labels: Labels,
+    parent_display: dict[str, str],
+    parent_store: Any,
+    version: int,
+    transition: str,
+) -> None:
+    p, store = parent_env, parent_store
+    with store.locked():
+        store.parents["o/r#1"] = {
+            "session": "claude:private-session-a-unique"
+            if transition == "register"
+            else "claude:old-parent",
+            "status": "released" if transition == "register" else "handoff_pending",
+            "generation": 3,
+            "tasks": {},
+            "reviews": [],
+            "display_summary": "保存済みの要約",
+        }
+        store.save()
+        if version == 2:
+            store.migrate()
+    command = (
+        ("register",)
+        if transition == "register"
+        else ("handoff", "--accept", "--note-file", p.note())
+    )
+    result = p.cli(*command, summary=None, extra=parent_display)
+    assert json.loads(result.stdout)["display_sync"]["status"] == "updated"
+    row = store.read_data()["parents"]["o/r#1"]
+    assert row["status"] == "active"
+    assert row["session"] == "claude:private-session-a-unique"
+    assert row["display_summary"] == "保存済みの要約"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"].endswith(
+        " · 保存済みの要約"
+    )
+
+
+def test_handoff_summary_requires_accept_before_writes(
+    parent_env: ParentEnv, parent_store: Any
+) -> None:
+    p, store = parent_env, parent_store
+    p.cli("register")
+    registry, github = store.path.read_bytes(), p.state()
+    result = p.cli(
+        "handoff", "--summary", "引継ぎ後の要約", "--note-file", p.note(), ok=None
+    )
+    assert result.returncode == 2
+    assert "--accept" in result.stderr
+    assert store.path.read_bytes() == registry
+    assert p.state() == github
+
+
+def test_parent_summary_command_updates_status_and_display(
+    parent_env: ParentEnv, labels: Labels, parent_display: dict[str, str]
+) -> None:
+    extra = parent_display
+    parent_env.cli("register", "--summary", "最初の要約", extra=extra)
+
+    too_long = parent_env.cli(
+        "summary", "--text", "一二三四五六七八九十一二三", ok=None, extra=extra
+    )
+    assert too_long.returncode == 2
+    assert "display columns" in too_long.stderr
+    status = json.loads(parent_env.cli("status").stdout)
+    assert status["display_summary"] == "最初の要約"
+
+    updated = json.loads(
+        parent_env.cli("summary", "--text", "要約の表示", extra=extra).stdout
+    )
+    assert updated["display_summary"] == "要約の表示"
+    assert updated["display_sync"]["status"] == "updated"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"].endswith(" · 要約の表示")
+    assert (
+        json.loads(parent_env.cli("status").stdout)["display_summary"] == "要約の表示"
+    )
+
+    rejected = parent_env.cli(
+        "register", "--summary", "改行\nを含む", ok=None, extra=extra
+    )
+    assert rejected.returncode == 2
+    assert (
+        json.loads(parent_env.cli("status").stdout)["display_summary"] == "要約の表示"
+    )
 
 
 @pytest.mark.parametrize("status", ["ended", "released", "handoff_pending"])
@@ -876,7 +1240,7 @@ def test_duplicate_claude_session_cannot_turn_helper_into_parent(
         assert "another live pane" in result.stderr
     else:
         result = subprocess.run(
-            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            hook_command(OPS / "herdr_labels/claude_hook.py"),
             input=json.dumps(
                 {"hook_event_name": "SessionStart", "session_id": "test-owner"}
             ),
@@ -1002,7 +1366,7 @@ def test_claude_start_replaces_stale_predecessor_in_current_pane(
         labels.set_registry({})
     before = labels.registry.read_bytes()
     result = subprocess.run(
-        [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+        hook_command(OPS / "herdr_labels/claude_hook.py"),
         input=json.dumps(
             {"hook_event_name": "SessionStart", "session_id": "test-owner"}
         ),
@@ -1014,7 +1378,7 @@ def test_claude_start_replaces_stale_predecessor_in_current_pane(
     )
     assert result.returncode == 0, result.stderr
     after = labels.read()["panes"]["w1:p1"]
-    assert after.get("display_agent") == ("#42 · 親" if assigned else None)
+    assert after.get("display_agent") == ("表示の要約" if assigned else None)
     assert after["tokens"]["other"] == "keep"
     assert labels.registry.read_bytes() == before
     assert "display_agent" not in labels.read()["panes"]["w1:p2"]
@@ -1029,7 +1393,7 @@ def test_claude_hooks_use_real_payload_and_never_release_registry(
     env["CLAUDE_ENV_FILE"] = str(export)
     for event in ("SessionStart", "SessionEnd"):
         result = subprocess.run(
-            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            hook_command(OPS / "herdr_labels/claude_hook.py"),
             input=json.dumps({"hook_event_name": event, "session_id": "test-owner"}),
             text=True,
             capture_output=True,
@@ -1119,12 +1483,12 @@ def test_clear_keeps_display_without_managed_metadata(labels: Labels) -> None:
     assert not labels.mutations()
 
 
-@pytest.mark.parametrize("display", ["#42 · 親", "#42 · 関連", "親未登録"])
+@pytest.mark.parametrize("display", ["表示の要約", "#42 · 関連", "親未登録"])
 def test_compaction_preserves_display_and_runtime(labels: Labels, display: str) -> None:
-    assert labels.run("sync", "--topic", "手動で選んだ題名").returncode == 0
+    assert labels.run("sync").returncode == 0
     state = labels.read()
     state["panes"]["w1:p1"]["display_agent"] = display
-    if display != "#42 · 親":
+    if display != "表示の要約":
         state["panes"]["w1:p1"]["tokens"].pop("tl_owner")
         labels.set_registry({})
     labels.write(state)
@@ -1174,7 +1538,7 @@ def test_end_fences_old_commands_and_start_restores_same_parent(labels: Labels) 
     assert labels.run("sync").returncode == 2
     assert len(labels.mutations()) == count
     assert labels.hook("SessionStart", source="resume").returncode == 0
-    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 親"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "表示の要約"
 
 
 def test_new_session_fences_late_commands_from_predecessor(labels: Labels) -> None:
@@ -1198,10 +1562,7 @@ def test_lifecycle_hook_cannot_claim_an_unrelated_agent_process(labels: Labels) 
             result = labels.hook("SessionStart")
             assert result.returncode == 1
             assert result.stdout == ""
-            # A real Claude ancestor may reject this as a nested agent first.
-            assert (
-                "not a descendant" in result.stderr or "nested agent" in result.stderr
-            )
+            assert "not a descendant" in result.stderr
             assert not labels.mutations()
         finally:
             sibling.terminate()
@@ -1216,11 +1577,16 @@ def test_headless_claude_child_cannot_clear_its_parent_pane(labels: Labels) -> N
     script = """
 import ctypes,json,subprocess,sys
 ctypes.CDLL(None).prctl(15,b'claude',0,0,0)
-r=subprocess.run([sys.executable,sys.argv[1]],input=json.dumps({'hook_event_name':'SessionStart','session_id':'headless-child'}),text=True)
+r=subprocess.run(sys.argv[1:],input=json.dumps({'hook_event_name':'SessionStart','session_id':'headless-child'}),text=True)
 raise SystemExit(r.returncode)
 """
     result = subprocess.run(
-        [sys.executable, "-c", script, str(OPS / "herdr_labels/claude_hook.py")],
+        [
+            sys.executable,
+            "-c",
+            script,
+            *hook_command(OPS / "herdr_labels/claude_hook.py"),
+        ],
         env=labels.env,
         text=True,
         capture_output=True,
@@ -1231,11 +1597,11 @@ raise SystemExit(r.returncode)
     assert result.stdout == ""
     assert "nested agent" in result.stderr
     assert len(labels.mutations()) == count
-    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 親"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "表示の要約"
 
 
 @pytest.mark.parametrize("race", ["process", "metadata"])
-def test_replacement_during_title_lookup_rejects_old_write(
+def test_replacement_during_label_preparation_rejects_old_write(
     labels: Labels, race: str
 ) -> None:
     result = labels.run("sync", env={**labels.env, "LABEL_PREPARE_RACE": race})
@@ -1257,8 +1623,8 @@ def test_session_start_is_serialized_after_inflight_old_sync(labels: Labels) -> 
     ]
     old_env = {
         **labels.env,
-        "LABEL_GH_ENTERED": str(entered),
-        "LABEL_GH_RELEASE": str(release),
+        "LABEL_PREPARE_ENTERED": str(entered),
+        "LABEL_PREPARE_RELEASE": str(release),
     }
     old = subprocess.Popen(
         [sys.executable, "-m", "herdr_labels", "sync"],
@@ -1272,7 +1638,7 @@ def test_session_start_is_serialized_after_inflight_old_sync(labels: Labels) -> 
     try:
         wait_file(entered)
         new = subprocess.Popen(
-            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            hook_command(OPS / "herdr_labels/claude_hook.py"),
             env={**labels.env, "LABEL_WAITING_MARKER": str(waiting)},
             text=True,
             stdin=subprocess.PIPE,
@@ -1329,32 +1695,43 @@ def test_parent_fixture_blocks_inherited_host_herdr(
     assert not marker.exists()
 
 
+@pytest.mark.parametrize("failure", ["reject", "fail_call"])
 def test_parent_success_and_display_failure_are_distinguished(
     parent_env: ParentEnv,
     labels: Labels,
+    parent_display: dict[str, str],
+    failure: str,
 ) -> None:
-    # Reuse the real parent CLI's fake GitHub, with a separate fake Herdr executable.
-    target = Path(parent_env.env["PATH"].split(os.pathsep)[0]) / "herdr"
-    target.write_text(f"#!{sys.executable}\n{FAKE_HERDR}")
-    target.chmod(0o755)
-    extra = {
-        "HERDR_ENV": "1",
-        "HERDR_PANE_ID": "w1:p1",
-        "LABEL_FAKE_STATE": str(labels.state),
-    }
+    extra = parent_display
     state = labels.read()
-    state["reject"] = True
+    state[failure] = "pane get" if failure == "fail_call" else True
     labels.write(state)
-    result = parent_env.cli("register", ok=None, extra=extra)
+    result = parent_env.cli("register", "--summary", "表示の要約", ok=None, extra=extra)
     assert result.returncode == 1, result.stderr
     response = json.loads(result.stdout)
     assert response["assignment"] == "active"
     assert response["parent_action_applied"] is True
     assert response["display_sync"]["status"] == "error"
+    assert "herdr_labels sync" in response["display_sync"]["repair"]
+    assert json.loads(parent_env.cli("status").stdout)["assignment"] == "active"
     state = labels.read()
-    state["reject"] = False
+    del state[failure]
     labels.write(state)
     env = {**parent_env.env, **extra}
+    if failure == "fail_call":
+        # The first connection failed before a display destination was confirmed.
+        assert "herdr_labels bind" in response["display_sync"]["repair"]
+        bound = labels.run(
+            "bind",
+            "--herdr-session",
+            "default",
+            "--pane",
+            "w1:p1",
+            "--terminal",
+            "term-a",
+            env=env,
+        )
+        assert bound.returncode == 0, bound.stderr
     result = labels.run("sync", env=env)
     assert result.returncode == 0, result.stderr
     expected_owner = hashlib.sha256(b"claude:private-session-a-unique").hexdigest()

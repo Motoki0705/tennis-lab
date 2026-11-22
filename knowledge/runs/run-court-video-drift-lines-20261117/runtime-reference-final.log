@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-video-shared
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 1 item
+
+tests/integration/tennis_scene/test_video_court.py .                     [100%]
+
+============================= slowest 1 durations ==============================
+0.11s call     tests/integration/tennis_scene/test_video_court.py::test_runtime_configuration_loads_both_pinned_court_and_drift_references
+============================== 1 passed in 4.73s ===============================

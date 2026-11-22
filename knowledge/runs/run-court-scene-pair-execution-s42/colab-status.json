@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "court-campaign-service-20261110-r6-nb3",
+  "status": "completed",
+  "updated_at": "2026-11-10T04:54:28.875595+00:00",
+  "returncode": 0,
+  "worker_pid": 26893,
+  "worker_token": "634323",
+  "launch_guarded": true,
+  "pid": 27075,
+  "process_token": "637410",
+  "started_at": "2026-11-09T23:36:31.382715+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-11-10T04:55:25.769262+00:00",
+  "finished_at": "2026-11-10T04:55:25.769283+00:00"
+}

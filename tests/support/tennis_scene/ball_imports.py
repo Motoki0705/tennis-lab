@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -105,10 +105,12 @@ class ImportFixture:
         return nodes
 
 
-def make_import_fixture(tmp_path: Path, *, omit_court_arrays: bool = False) -> ImportFixture:
+def make_import_fixture(tmp_path: Path, *, omit_court_arrays: bool = False, source: ClipSource | None = None) -> ImportFixture:
     inputs = make_inputs(frames=4)
-    historical = make_store(tmp_path / "historical", inputs)
-    source: ClipSource = restore_type(historical.source, ClipSource)
+    if source is not None:
+        inputs = replace(inputs, fps=source.fps, clip_id=source.clip_id)
+    historical = make_store(tmp_path / "historical", inputs, source=source)
+    source = restore_type(historical.source, ClipSource)
     calibration = historical.load(historical.references()["court_calibration"], ArtifactCodec(CourtCalibrationOutput))
     assert calibration.court.diagnostics is not None
     for i, c in enumerate(source.camera_ids):

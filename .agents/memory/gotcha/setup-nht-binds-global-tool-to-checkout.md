@@ -1,14 +1,19 @@
 ---
-title: "spin setup-nht は、実行したtreeの third_party/nht に全体共通の nht-render を結び付ける"
+title: spin setup-nht は、実行したtreeの third_party/nht に全体共通の nht-render を結び付ける
+summary: spin setup-nhtは実行したcheckoutのNHTに共通コマンドを結び付ける。作業用worktreeでは専用の実行パスで試す。
 applies_to: all
-source: "nht-render の ModuleNotFoundError 調査（2026-10-16）"
+source: nht-render の ModuleNotFoundError 調査（2026-10-16）
 created: 2026-10-16
-last_verified: 2026-10-16
-evidence: "`uv tool dir` 配下の nht 環境にある `__editable___nht_*_finder.py` の MAPPING が、どのtreeの third_party/nht を指しているかを見る"
+last_verified: 2026-11-22
+evidence: setup_nhtのeditable installは.spin/cmds.pyのREPO_ROOTをcwdとして行われる。導入済みtoolのeditable finderのMAPPINGで参照先を確認できる。
+citations:
+- path: .spin/cmds.py
+  symbol: def setup_nht
+- path: src/synthetic_data_generation/rendering/nht/contracts.py
+  symbol: def _validate_executable
+  note: 専用ラッパーのパスに課される契約
 ---
 
-`spin setup-nht` は、`uv tool install --editable third_party/nht` で、ユーザー全体に1つの `nht-render` / `nht-reconstruct` を入れる。editable なので、実行したtreeの `third_party/nht` と `third_party/nht/gsplat` をそのまま参照する。
+同じ `uv tool` 環境を使うworktreeで `spin setup-nht` を実行すると、共用の `nht-render` / `nht-reconstruct` がそのworktreeのNHTへ付け替わる。2026-10-16には削除済みのworktreeを参照し、`ModuleNotFoundError: No module named 'nht_pipeline'` で失敗した。
 
-worktreeで実行すると、全体の `nht-render` がそのworktreeに結び付く。worktreeが消えると、どこから実行しても `ModuleNotFoundError: No module named 'nht_pipeline'` で落ちる。2026-10-16 には、削除済みのworktreeを指していて壊れていた。
-
-**使い方:** `spin setup-nht` はメインtreeでだけ実行する。worktreeでNHTを変更して試すときは、全体の tool を入れ替えない。tool の Python に `PYTHONPATH=<worktree>/third_party/nht` を付けて `-m nht_pipeline.render` を実行する、`nht-render` という名前のラッパーを作業用ディレクトリに置く。その絶対パスを `NHTRenderCommandRequest.executable`（reveal なら `reveal.nht.executable`）に渡す。gsplat を変えていなければ、CUDA拡張はメインtreeのものがそのまま使える。
+worktreeを試す際に共用toolを更新せず、`nht-render` という実行可能なラッパーを用意できる。ラッパーからtoolのPythonを使い、試すNHTソースを `PYTHONPATH` に指定して `-m nht_pipeline.render` を実行する。ラッパーの絶対パスを `NHTRenderCommandRequest.executable` または `reveal.nht.executable` に指定する。変更した依存やCUDA拡張がある場合は、試す環境の導入版も照合する。

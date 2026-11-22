@@ -1,0 +1,16 @@
+{
+  "key": "meiji_4cam/video_000/clip_013/cam3",
+  "region": [
+    240,
+    0,
+    1680,
+    540
+  ],
+  "source_size_hw": [
+    1080,
+    1920
+  ],
+  "raw_cache_sha256": "dc9b3c31ede3dcb595e9bbff69d7ef115af5ead05216769390d2c3c1d2cc0584",
+  "rgb_sha256": "73256064f0666cb12d922a416226527d2f1591cc0111024385720f407725b181",
+  "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+}

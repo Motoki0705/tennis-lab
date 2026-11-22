@@ -1,0 +1,56 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 38 items
+
+<Dir video-batch-cli>
+  <Dir tests>
+    <Dir integration>
+      <Dir tennis_scene>
+        <Module test_video_batch.py>
+          <Function test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry[build]>
+          <Function test_shared_court_is_acquired_once_before_the_plan_and_matches_single_entry[load]>
+          <Function test_shared_court_scope_is_rejected_before_acquisition[scope0]>
+          <Function test_shared_court_scope_is_rejected_before_acquisition[scope1]>
+          <Function test_one_plan_reuses_each_model_once_and_records_real_batch_sizes[1]>
+          <Function test_one_plan_reuses_each_model_once_and_records_real_batch_sizes[3]>
+          <Function test_batch_matches_single_entry_and_reuses_mixed_cache>
+          <Function test_batch_keeps_the_single_entry_data_path_authority>
+          <Function test_clip_too_long_isolated_and_other_clip_publishes_immediately>
+          <Function test_clip_failure_keeps_the_resident_model_for_other_clips[ValueError]>
+          <Function test_clip_failure_keeps_the_resident_model_for_other_clips[VideoReadError]>
+          <Function test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure0-True]>
+          <Function test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure1-True]>
+          <Function test_interruption_and_device_failure_stop_without_partial_markers_then_resume[failure2-False]>
+          <Function test_shared_model_load_failure_is_fatal_even_when_it_is_a_value_error>
+          <Function test_corrupt_cache_and_completed_export_cannot_be_reported_as_success>
+          <Function test_single_entry_concurrent_export_cannot_mix_batch_publication[batch]>
+          <Function test_single_entry_concurrent_export_cannot_mix_batch_publication[single]>
+          <Function test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[build]>
+          <Function test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip[load]>
+          <Function test_shared_side_scope_is_rejected_before_acquisition>
+    <Dir unit>
+      <Dir tennis_scene>
+        <Dir pipeline>
+          <Module test_video_inputs.py>
+            <Function test_video_all_and_explicit_subset_are_frozen[None-expected0]>
+            <Function test_video_all_and_explicit_subset_are_frozen[selection1-expected1]>
+            <Function test_invalid_targets_create_no_outputs[video_000-selection0-another video]>
+            <Function test_invalid_targets_create_no_outputs[video_000-selection1-Unknown]>
+            <Function test_invalid_targets_create_no_outputs[video_000-selection2-unique]>
+            <Function test_invalid_targets_create_no_outputs[video_000-selection3-nonempty]>
+            <Function test_invalid_targets_create_no_outputs[unknown-None-nonempty]>
+            <Function test_invalid_targets_create_no_outputs[../video-None-video_id]>
+            <Function test_invalid_clip_manifest_stops_preflight[change0-timeline]>
+            <Function test_invalid_clip_manifest_stops_preflight[change1-one-to-one]>
+            <Function test_invalid_clip_manifest_stops_preflight[change2-duplicates]>
+            <Function test_invalid_clip_manifest_stops_preflight[change3-another dataset]>
+            <Function test_invalid_clip_manifest_stops_preflight[change4-missing]>
+            <Function test_actual_camera_media_must_be_synchronized[info0-frame count]>
+            <Function test_actual_camera_media_must_be_synchronized[info1-FPS]>
+            <Function test_actual_camera_media_must_be_synchronized[info2-image size]>
+            <Function test_actual_media_must_match_registered_timeline>
+
+========================= 38 tests collected in 5.18s ==========================

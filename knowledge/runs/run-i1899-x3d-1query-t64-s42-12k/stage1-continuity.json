@@ -1,0 +1,24 @@
+{
+  "schema": "ball_query_control_state_continuity.v1",
+  "parent_checkpoint": "/content/tennis-lab/outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/checkpoint-update-00010000.pt",
+  "parent_sha256": "8a10a5a856703946d36df4a9490a62f68e05522b96bde0730f648f3e7c9b053e",
+  "parent_update": 10000,
+  "parent_sample_position": 10000,
+  "parent_cumulative_updates": 10000,
+  "same_model_continuation": false,
+  "resume": false,
+  "rng_policy": "legacy_seed42_stage_boundary_initialization",
+  "named_states_exact": true,
+  "inherited_states": 133,
+  "parent_step_histogram": {
+    "10000": 133
+  },
+  "model_keys_exact": 133,
+  "new_model_keys": 89,
+  "parent_last_lr": 7.360330616529733e-05,
+  "boundary_previous_lr": 7.360330616529733e-05,
+  "first_head_lr": 7.360330616529733e-05,
+  "first_encoder_lr": 0.0,
+  "rng_exact_before_first_batch": null,
+  "first_batch_ready_at": "2026-11-11T13:16:37.983230+00:00"
+}

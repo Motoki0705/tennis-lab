@@ -1,0 +1,25 @@
+{
+  "schema": "ball_capacity_documentation_source_state.v1",
+  "base_commit": "e99753cc7f2da87199965faa7cf60c64f8bd006e",
+  "branch": "codex/ball-capacity",
+  "new_commit_created": false,
+  "reason": "Git author identity is not configured on this VM; tracked and untracked knowledge changes are preserved as complete files and this patch.",
+  "preserved_files": [
+    "knowledge/nodes/ball_detection/.sequence",
+    "knowledge/nodes/ball_detection/000069-run-ball-capacity-scaling-20261103.md",
+    "knowledge/nodes/ball_detection/000070-run-ball-capacity-common-dpt-s42-20261103.md",
+    "knowledge/runs/run-ball-capacity-common-dpt-s42-20261103/README.md",
+    "knowledge/runs/run-ball-capacity-common-dpt-s42-20261103/completion.json",
+    "knowledge/runs/run-ball-capacity-common-dpt-s42-20261103/startup.json",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/README.md",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/resume-attempt-3-startup.json",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/resume-json-plan-cpu-evidence.json",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/resume-json-plan-diagnostic.json",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/resume-json-plan-provenance.json",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/resume-json-plan-reproduction.json",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/resume-json-plan-test-design.json",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/resume_json_plan.py",
+    "knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py",
+    "knowledge/summary.md"
+  ]
+}

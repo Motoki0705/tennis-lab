@@ -1,0 +1,74 @@
+{
+  "verify-finite.log": {
+    "size_bytes": 14627,
+    "sha256": "173e77bcb065161c20ad240bcc77e13895f42fac561aaceba239860757d7c9b3"
+  },
+  "identity-and-lengths.json": {
+    "size_bytes": 11096,
+    "sha256": "519ee9e6e8c4bdf1c8f98c48e0275d704860977ed628f1d264dd8c2ddf690198"
+  },
+  "results.json": {
+    "size_bytes": 10325,
+    "sha256": "d9844b8238cafc43551aab3f6c0e00b3251aff14a45666f10037bb516124ef19"
+  },
+  "input-artifacts.json": {
+    "size_bytes": 28395,
+    "sha256": "83ec9653dfdd3ea8259fc98f6fa0eaa43164226b264d27a1723303461e7432df"
+  },
+  "cap-history.txt": {
+    "size_bytes": 1086,
+    "sha256": "28b0823711aa217ce008b4870cb2f729c95e160ddbdc23adadd1fb044b57b509"
+  },
+  "source-parity.json": {
+    "size_bytes": 628,
+    "sha256": "eb11ca368f807f83ace18dff88e07e3e493e1b79c02d10032187285dabcbf62d"
+  },
+  "probe_real.py": {
+    "size_bytes": 6983,
+    "sha256": "e9d31ccddbad4c285799f5f913a1b7994e4acc925a5751edc15b0677a3c4dbad"
+  },
+  "check_identity.py": {
+    "size_bytes": 2781,
+    "sha256": "015c69925284762de7f489592ce91c5745a495fb8cce06919c3dee167c066644"
+  },
+  "pytest.log": {
+    "size_bytes": 15994,
+    "sha256": "f0a664e32e9644681605c3ddba075b1c7559c695aeb808790795b320b5c8ee8b"
+  },
+  "collect-only.log": {
+    "size_bytes": 3843,
+    "sha256": "c15032f3a782b52b037df6eff79609537f079c2c1ee7499cc60dbd2792d04fd9"
+  },
+  "real-downstream.json": {
+    "size_bytes": 24097,
+    "sha256": "c86537213877eef17f7926dc66a9047b182df0572b3c5c3cf0a700aee9579d89"
+  },
+  "reproduce.md": {
+    "size_bytes": 2672,
+    "sha256": "66a68ef7d47cbeada78e17003f537c75aa36a0e3fb2bcabd86ee3711f2bcf4c8"
+  },
+  "benchmark.log": {
+    "size_bytes": 21597,
+    "sha256": "8ec8d73cd7baba4905d33aaa0da20d42605c132cf0273362f03f00b31e1b3a61"
+  },
+  "related-pytest.log": {
+    "size_bytes": 30434,
+    "sha256": "849e6358a37cf1247e5d2d95ab3305dbd1fe5126b005e978290a8c712c357aa2"
+  },
+  "numerical-validation.json": {
+    "size_bytes": 1877,
+    "sha256": "466a9a4459f49a5cc8a908d0a912dd777dd509bb5e1b95bf17d2cf1ecf09301c"
+  },
+  "benchmark_limit.py": {
+    "size_bytes": 6446,
+    "sha256": "9e22cc9603f9bf178d1fd7cbe90c44abcf5379a276cd984c6f09721e1f5ccda0"
+  },
+  "verify_finite.py": {
+    "size_bytes": 846,
+    "sha256": "349950a5c6564d881dd07dd95a701c459f9436f5cb830fb751ba9795f9d94e23"
+  },
+  "real-side.json": {
+    "size_bytes": 4637,
+    "sha256": "7c863198f82084d9ded0951979a8c7880d8f69f25cc5cd0d176116ee5feda765"
+  }
+}

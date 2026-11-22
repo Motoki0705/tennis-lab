@@ -223,14 +223,15 @@ def _read_artifact(
     node: str,
     *,
     schema: str,
-    version: int,
+    version: int | tuple[int, ...],
     output_type: type[Any],
 ) -> tuple[Any, dict[str, Any]]:
     """Read one adopted artifact, enforcing its declared schema and lineage."""
     reference = reader.references.get(node)
     if reference is None:
         raise ValueError(f"Component store is missing required artifact {node!r}.")
-    if reference["schema"] != schema or int(reference["version"]) != int(version):
+    versions = (version,) if isinstance(version, int) else version
+    if reference["schema"] != schema or int(reference["version"]) not in versions:
         raise ValueError(
             f"Artifact {node!r} is {reference['schema']}:{reference['version']}, "
             f"but this exporter requires {schema}:{version}."
@@ -380,7 +381,8 @@ def _read_placement_inputs(
         reader,
         "gvhmr",
         schema="body_parameters",
-        version=1,
+        # Identical parameter payload; v2 additionally binds saved HMR2 features.
+        version=(1, 2),
         output_type=GVHMROutput,
     )
     placed_output, placed_descriptor = _read_artifact(
@@ -404,7 +406,7 @@ def _read_placement_inputs(
             reader,
             node,
             schema="person_poses",
-            version=1,
+            version=(1, 2),
             output_type=ObjectObservations,
         )
         poses[camera_id] = cast(ObjectObservations, pose)

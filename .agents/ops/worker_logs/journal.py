@@ -16,6 +16,7 @@ PUBLIC_ERRORS = frozenset(
     [
         "absolute_path",
         "ambiguous_encoding",
+        "base_not_ancestor",
         "closed_unmerged",
         "committed_content_changed",
         "control_character",
@@ -50,6 +51,7 @@ PUBLIC_ERRORS = frozenset(
         "log_owner_unavailable",
         "main_content_changed",
         "merge_conflict",
+        "merge_rejected",
         "merge_response_uncertain",
         "merge_unconfirmed",
         "missing_final",
@@ -122,9 +124,9 @@ class PublicationError(ValueError):
         self.detail = detail if code in PUBLIC_ERRORS else detail or code
 
 
-def require(condition: bool, code: str) -> None:
+def require(condition: bool, code: str, detail: str | None = None) -> None:
     if not condition:
-        raise PublicationError(code)
+        raise PublicationError(code, detail)
 
 
 def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -264,12 +266,14 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
             "pushed",
             "pr_create",
             "pr_open",
+            "mergeability_pending",
             "merge_attempted",
+            "merge_rejected",
             "merged",
         },
         "journal_stage",
     )
-    return {
+    result = {
         "delegation_key": "d-" + key,
         "sequence": source["sequence"],
         "state": row["state"],
@@ -278,3 +282,19 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
         "pr": number,
         "saved_to_main": row["state"] == "merged",
     }
+    if "publication_batch" in row:
+        result["batch_first_turn"] = row["publication_batch"]
+    if "merge_http_status" in row:
+        require(
+            type(row["merge_http_status"]) is int
+            and 100 <= row["merge_http_status"] <= 599,
+            "journal_invalid",
+        )
+        result["merge_http_status"] = row["merge_http_status"]
+    if "files" in row:
+        from .schema import sanitization
+
+        result["sanitization"] = sanitization(
+            decode(row["files"]["meta.json"])["sanitization"]
+        )
+    return result

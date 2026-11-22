@@ -1,0 +1,122 @@
+{
+  "accepted": true,
+  "kind": "checkpoint6000",
+  "remote_receipt": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/persistence/query-d512-l4-T64/checkpoint-00006000-a38ffe43.json",
+  "receipt_sha256": "4ba21a2ae138013e57fbcf88063215422deed22b98890199b55b98c2d6876fee",
+  "receipt": {
+    "files": 9,
+    "generation": "checkpoint-00006000-a38ffe43",
+    "manifest_md5": "0da7de3a62e00d30533ceb02e038c1e0",
+    "manifest_sha256": "9d651f7a1bef14f4684c48a94180b4fbb6d987c911ebb28df7d8d66f8200ca5e",
+    "marker_id": "1MGMuj5ggx2vxul76qUQd5iBPznPZ1a5f",
+    "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/checkpoint-00006000-a38ffe43",
+    "schema": "verified_artifact_snapshot.v1",
+    "seconds": 75.12391141300031,
+    "size_bytes": 418003805,
+    "status": "verified"
+  },
+  "marker": {
+    "files": {
+      "checkpoint-update-00006000.pt": {
+        "md5": "2db1678cd2eebfd92b01023ee75ae5a8",
+        "sha256": "fe51c968333e173e4e7f74bd5090ca01a1194eee317b57dc30c9c7dc8f0aa6d4",
+        "size_bytes": 253326185
+      },
+      "evaluation_manifest.json": {
+        "md5": "e39f00770047734c1e1da4d00f8dc922",
+        "sha256": "84d7714369a882f983e0e58bf48ff3d367ad6656af76ca4890416785733e2cea",
+        "size_bytes": 3317433
+      },
+      "latest.json": {
+        "md5": "bdb74b072809cd6d01d35f5a5d71be85",
+        "sha256": "56ec9c5ee8a17a6cb1b153c0b383fafdf6f3c89d18e94d838d8a35716f0d0733",
+        "size_bytes": 137
+      },
+      "run.json": {
+        "md5": "1408179f33944de00d49bb1d1bb2f76a",
+        "sha256": "5a1a575fa396a1dfd06f07392606b6881e7db704362b293c0f6944765616a71a",
+        "size_bytes": 690065
+      },
+      "train.jsonl": {
+        "md5": "777ce1e8c019b4020e48d1913e98bc97",
+        "sha256": "d8516fa48510e4bbdc9300980ac4a1a7be5dc54d9016f23a33931eee43828764",
+        "size_bytes": 6431156
+      },
+      "train_manifest.json": {
+        "md5": "113e26102cafb5612bb4f43da4858bc2",
+        "sha256": "4efd2d30a928ed53dc9289d759cfeacd9a0bac7f65749634717258d0c973113c",
+        "size_bytes": 3156689
+      },
+      "validation-update-00006000.frames.jsonl": {
+        "md5": "81870f3ab9e51e0e44330815ea31e9c9",
+        "sha256": "1e111e2deec2dec895ba58d5be1f188b397e504882d791391796420a1e0826fe",
+        "size_bytes": 66195415
+      },
+      "validation-update-00006000.json": {
+        "md5": "7bae6aaed77f8eb307a612e69fd299ee",
+        "sha256": "bd0b64c036fb34361d826e9039b14914e7b7473e2dac56d4b4dfb57963b130a8",
+        "size_bytes": 19202
+      },
+      "weights-update-00006000.pt": {
+        "md5": "bffc5f8388dfe29541cea4f52357f41a",
+        "sha256": "7d631c5ec39d32063c9a5749895adb53163f8e1b8cfed9fd42df73d636a5f8f3",
+        "size_bytes": 84867523
+      }
+    },
+    "generation": "checkpoint-00006000-a38ffe43",
+    "schema": "verified_artifact_snapshot.v1"
+  },
+  "verification": {
+    "schema": "ball_capacity_cli_resume_verification.v1",
+    "verified": true,
+    "commit": "49f65880ba3079b9e49905dc677ec0da1611378b",
+    "source_files": 162,
+    "frozen_digests": true,
+    "torch": "2.14.1+cu130",
+    "torchvision": "0.29.1+cu130",
+    "dataset_verified": true,
+    "receipt": {
+      "files": 9,
+      "generation": "checkpoint-00006000-a38ffe43",
+      "manifest_md5": "0da7de3a62e00d30533ceb02e038c1e0",
+      "manifest_sha256": "9d651f7a1bef14f4684c48a94180b4fbb6d987c911ebb28df7d8d66f8200ca5e",
+      "marker_id": "1MGMuj5ggx2vxul76qUQd5iBPznPZ1a5f",
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/checkpoint-00006000-a38ffe43",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 75.12391141300031,
+      "size_bytes": 418003805,
+      "status": "verified"
+    },
+    "stages": [
+      {
+        "stage": "query-d512-l4-T64",
+        "update": 6000,
+        "checkpoint": "checkpoint-update-00006000.pt",
+        "checkpoint_sha256": "fe51c968333e173e4e7f74bd5090ca01a1194eee317b57dc30c9c7dc8f0aa6d4",
+        "optimizer_parameter_states": 282,
+        "rng_devices": 1,
+        "sample_position": 16000,
+        "train_log": {
+          "bytes": 6431156,
+          "sha256": "d8516fa48510e4bbdc9300980ac4a1a7be5dc54d9016f23a33931eee43828764"
+        },
+        "last_loss": 0.005002192687243223,
+        "last_gradient_norm": 2.2963204383850098,
+        "runtime": {
+          "compile_mode": "default",
+          "compile_recompile_limit": 8,
+          "cpu_threads": 2,
+          "image_prefetch": true,
+          "input_verification": "upfront",
+          "jpeg_decoder": "nvjpeg",
+          "num_workers": 4,
+          "pin_memory": true,
+          "precision": "bf16",
+          "prefetch_factor": 2
+        },
+        "validation_present": true
+      }
+    ]
+  },
+  "vm_directory": "/tmp/ball-6000-checkpoint-verification-f5og10pr"
+}

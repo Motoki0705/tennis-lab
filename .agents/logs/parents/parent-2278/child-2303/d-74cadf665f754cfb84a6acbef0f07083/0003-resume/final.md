@@ -1,0 +1,9 @@
+#2303 の第2回は11件中8件が完了しました。実測結果、失敗原因、修正を `codex/trt-vit-pose-hmr2` の `682a12977dab1de242baa81c66f8e0095135cefe` に記録し、第3回の6件を共有キューに登録しました。
+
+- **ViTPose-H** は反転込みで PyTorch FP32 の中央値54.42 msから TensorRT FP16 の8.47 msに短縮しました。座標差P95は0.0247 px、最大0.302 pxで、有効マスクは全関節で一致しました。[条件別の実測](knowledge/runs/run-i2303-vit-tensorrt/metrics.json)
+- **CLIP-ReIDのINT8劣化**は、旧グラフの活性化Q/DQだけを解除すると cosine P05 が0.515から0.99974に回復しました。投影層別では、MLP出力だけを量子化すると0.860、attention出力だけでは0.99971でした。3aはattention出力投影のみをmax校正します。CLIP-ReIDの3bは全236 cropで cosine P05 0.99543、ID一致236/236でした。[層別診断](knowledge/runs/run-i2303-vit-tensorrt/int8-diagnosis.json) [更新した比較プロトコル](knowledge/runs/run-i2297-clipreid-tensorrt/PROTOCOL.md)
+- **停止した3件**は、ViTPose-HとHMR2のFP8でONNX演算名の照合が空集合になった2件と、HMR2のFP16でSMPL headの実行層を精度検査が認識できなかった1件です。修正後、保存済みのHMR2 inspectorから259演算のFP16を照合しました。pytest 52件、Ruff、knowledge検証が成功しました。[失敗と再照合の記録](knowledge/runs/run-i2303-vit-tensorrt/validation.json)
+
+投入したジョブは `i2303-vitpose-3a-r3`、`i2303-vitpose-3b-r3`、`i2303-hmr2-2-r3`、`i2303-hmr2-3a-r3`、`i2303-hmr2-3b-r3`、`i2303-clip-3a-r3` です。再開後は終了値と実行精度を照合し、3モデルの暫定精度基準への適合を判定します。残る計測とknowledgeのrunノードを揃えてからPRを作成します。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204842680668697072_2026-11-20T06-48-39-331302927Z_2612555_i2303-vitpose-3a-r3.job","0-8204842680381613157_2026-11-20T06-48-39-618386842Z_2612632_i2303-vitpose-3b-r3.job","0-8204842680091142395_2026-11-20T06-48-39-908857604Z_2612701_i2303-hmr2-2-r3.job","0-8204842679805963649_2026-11-20T06-48-40-194036350Z_2612771_i2303-hmr2-3a-r3.job","0-8204842679522710353_2026-11-20T06-48-40-477289646Z_2612844_i2303-hmr2-3b-r3.job","0-8204842679229479399_2026-11-20T06-48-40-770520600Z_2612917_i2303-clip-3a-r3.job"]}}

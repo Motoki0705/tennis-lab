@@ -1,0 +1,132 @@
+{
+  "head": "d6b70d4cdf6ac00f497ddd0368dc05f593932b38",
+  "driver_sha256": "8cfc4db216c3e99923fed5dedd5eb9ff0c98d0673cd4735075dfadae0f556136",
+  "code_identity": "5426ba1027401b75d51010c97413770ba0d98b7194f7a9b16594dc51c9ae7cef",
+  "overrides": [
+    "device=cpu",
+    "gvhmr.enabled=false",
+    "paths.artifact_root=/home/kamimura/projects/tennis-lab/.worktree-outputs/court-video-shared",
+    "court_kp.mode=video_shared",
+    "court_kp.video_shared.action=build",
+    "court_kp.video_shared.directory=tennis_scene/evaluate/court-video-shared-acceptance-20261117/store",
+    "court_kp.video_shared.dataset_id=meiji_4cam",
+    "court_kp.video_shared.video_id=video_000",
+    "court_kp.video_shared.request=tennis_scene/evaluate/court-video-shared-acceptance-20261117/inputs/request.json",
+    "court_kp.video_shared.request_sha256=0bdb8a74f4c8d9f25695ecd8b9b63a49a67dc1983e49ff0c081189bcfb6543df"
+  ],
+  "request_sha256": "0bdb8a74f4c8d9f25695ecd8b9b63a49a67dc1983e49ff0c081189bcfb6543df",
+  "request": {
+    "schema": "video_court_build_v1",
+    "profile": "temporal_rgb_candidate_consensus_v1",
+    "dataset_directory": "tennis_multiview/processed/meiji_4cam/dataset",
+    "video_id": "video_000",
+    "candidate_manifests": {
+      "cam0": {
+        "path": "tennis_scene/evaluate/court-video-shared-acceptance-20261117/inputs/cam0.json",
+        "sha256": "d1eaeb75000037964eb42e7850268bb04311d482b036897a2caf9d9deffdd21a"
+      },
+      "cam1": {
+        "path": "tennis_scene/evaluate/court-video-shared-acceptance-20261117/inputs/cam1.json",
+        "sha256": "8c1899354ed3752b2b4a41f355ba19985a71d9c98eea37bf2927a7f27b5e3471"
+      },
+      "cam2": {
+        "path": "tennis_scene/evaluate/court-video-shared-acceptance-20261117/inputs/cam2.json",
+        "sha256": "50edc6262f948e4f78eb6d84f78c1747bb47a2c3f240fe7d56e798d1a6758898"
+      },
+      "cam3": {
+        "path": "tennis_scene/evaluate/court-video-shared-acceptance-20261117/inputs/cam3.json",
+        "sha256": "d83002f35e45401f5b56d3223b0f1ab7a0c5853632ed02e8f85f3b5d0ee64631"
+      }
+    },
+    "seed_clip_ids": [
+      "video_000/clip_001",
+      "video_000/clip_002",
+      "video_000/clip_003",
+      "video_000/clip_004",
+      "video_000/clip_005",
+      "video_000/clip_006",
+      "video_000/clip_007",
+      "video_000/clip_008",
+      "video_000/clip_009",
+      "video_000/clip_010",
+      "video_000/clip_011",
+      "video_000/clip_012",
+      "video_000/clip_013",
+      "video_000/clip_014",
+      "video_000/clip_015",
+      "video_000/clip_016",
+      "video_000/clip_018",
+      "video_000/clip_019",
+      "video_000/clip_020",
+      "video_000/clip_021",
+      "video_000/clip_022",
+      "video_000/clip_023",
+      "video_000/clip_024",
+      "video_000/clip_025",
+      "video_000/clip_026",
+      "video_000/clip_027",
+      "video_000/clip_028",
+      "video_000/clip_029",
+      "video_000/clip_030",
+      "video_000/clip_031",
+      "video_000/clip_032",
+      "video_000/clip_033",
+      "video_000/clip_035",
+      "video_000/clip_036",
+      "video_000/clip_037",
+      "video_000/clip_038",
+      "video_000/clip_039",
+      "video_000/clip_040",
+      "video_000/clip_041",
+      "video_000/clip_042",
+      "video_000/clip_043",
+      "video_000/clip_044",
+      "video_000/clip_045",
+      "video_000/clip_046",
+      "video_000/clip_047",
+      "video_000/clip_048",
+      "video_000/clip_049",
+      "video_000/clip_050",
+      "video_000/clip_052",
+      "video_000/clip_053",
+      "video_000/clip_054",
+      "video_000/clip_055",
+      "video_000/clip_056",
+      "video_000/clip_057",
+      "video_000/clip_058",
+      "video_000/clip_059",
+      "video_000/clip_060",
+      "video_000/clip_061",
+      "video_000/clip_062",
+      "video_000/clip_063",
+      "video_000/clip_064",
+      "video_000/clip_065",
+      "video_000/clip_066",
+      "video_000/clip_067"
+    ],
+    "fit_clip_ids": null,
+    "bootstrap_clip_ids": [
+      "video_000/clip_001",
+      "video_000/clip_033",
+      "video_000/clip_067"
+    ],
+    "fit_numerators": [
+      1,
+      2,
+      3
+    ],
+    "diagnostic_numerators": [
+      4
+    ],
+    "denominator": 5,
+    "workers": 4
+  },
+  "reference_h_used": false,
+  "manual_points_used": false,
+  "manual_net_mask_used": false,
+  "reference_frames_used": false,
+  "gpu_used": false,
+  "cuda_visible_devices": "",
+  "full_protocol_sha256": "b811f6db9738fc2ff6214a526d02b9d329cdaeaa9430e9f5e126b7b843ce94c7",
+  "source_files": 1667
+}

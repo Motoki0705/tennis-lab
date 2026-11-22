@@ -1,6 +1,8 @@
 """Checksum-checked inspection of explicitly adopted component snapshots.
 
-Historical identity v2 and current v3 are distinguished explicitly. No current
+Historical identity v2 and current v3 are distinguished explicitly. Body
+parameters accept historical v1 and saved-feature v2 without changing their
+reported version. No current
 pipeline definition, model load, inference, annotation write or nearest-frame
 substitution is used by this reader.
 """
@@ -25,10 +27,10 @@ from src.utils.geometry.triangulation import PointRejection
 from src.utils.schema.player import COCO17_SKELETON, COCO_KP_NAMES
 
 SCHEMAS = {
-    "gvhmr": ("body_parameters", (1,)),
+    "gvhmr": ("body_parameters", (1, 2)),
     "body_view_selection": ("body_view_selection", (1,)),
     "body_placement": ("placed_bodies", (1,)),
-    "pose_estimation": ("person_poses", (1,)),
+    "pose_estimation": ("person_poses", (1, 2)),
     "player_association": ("person_identities", (2, 3)),
     "player_triangulation": ("player_skeletons", (1,)),
 }

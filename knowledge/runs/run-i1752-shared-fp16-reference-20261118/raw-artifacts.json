@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/reference/batch/recording.json",
+      "bytes": 8862893,
+      "sha256": "68548a6bcd0af5e2954f9c3ee5f739b7016182255d132133ac538157478760d7"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/reference/batch.log",
+      "bytes": 10768,
+      "sha256": "664848d15d5f237706d572267dc029caf09d38527d9ede2aa9645f0fbc50af9e"
+    }
+  ],
+  "prediction_store": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/single/videos/video_000/clips/clip_027/annotations/tennis_scene",
+  "retained": true
+}

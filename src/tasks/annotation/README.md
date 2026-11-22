@@ -49,7 +49,10 @@ session失敗は明示的な工程再試行を必要とし、勝手に次のsess
 `configure_local_videos(layout, LocalVideoConfiguration)` は、sceneが選んだ元動画を保持し、
 camera別の画像manifest・白紙context・`WorkRequest`を共有台帳へ登録するサービスAPI。
 checkpoint、予測receipt、YouTube取得・プレー窓選別・推論・GPU queue設定は不要である。
-worker起動、注釈編集・採用、dataset writer、scene CLIの配線はこのAPIでは実行しない。
+worker起動、注釈編集・採用、dataset writerはこの登録APIでは実行しない。
+scene CLIの一連実行は[白紙注釈composition](../../tennis_scene/pipeline/direct_annotation/README.ja.md)が所有する。
+統合CLIの`schema --type scene_annotation`で固定request、`blank_condition`と`blank_comparison`で
+探索方針の比較入力schemaを取得できる。
 
 ```python
 from src.tasks.annotation.configuration import (
@@ -67,6 +70,7 @@ from src.tasks.base.annotation.workers.contracts import WorkRequest
 # worker_settings: WorkerRuntimeSettings（Codex保存先・review/renderのcost）
 # budget_selection: ExistingBudget または明示した NewBudget
 # expected_input: sceneが固定した既存のVideoAnnotationInput。cameraごとに作る。
+# exploration_policy: ID・版・探索指示を持つAnnotationPolicy。
 configuration = LocalVideoConfiguration(
     campaign=campaign_settings,
     videos=(
@@ -76,7 +80,7 @@ configuration = LocalVideoConfiguration(
     budget=budget_selection,
     runtime=worker_settings,
 )
-reference = configure_local_videos(layout, configuration)
+reference = configure_local_videos(layout, configuration, annotation_policy=exploration_policy)
 receipt = read_document(layout, reference, LocalVideoConfigurationReceipt)
 for entry in receipt.registrations:
     request = read_document(layout, entry.request, WorkRequest)
@@ -105,13 +109,18 @@ task入力の`frame_index`は元動画番号、画像manifestの`frame_index`は
 新規worker条件とcode版は通常planと同じ検証を行う。`review`はCodex、`render`はCPUの
 明示した枠・costが必要で、予算scopeのbaseline・累計・停止状態を再送で初期化しない。
 `publish_dataset`は常に明示してplanへ固定する。後続の公開処理はこの選択とrecording_idを受け取る。
+`annotation_policy`を省略した登録だけが既定方針を選び、指定時も省略時も登録receiptの
+`annotation_policy`参照へ不変保存する。再送では同じ方針を渡す。
+controller・worker・CLIの`status`/`tick`/`run`を含む復旧は、この固定参照からだけ方針を読み、
+scene request、benchmark condition、派生mirrorと照合する。記録の欠損・破損・不一致を
+既定値で置き換えず停止する。controller初期化前の中断でmirrorがなくても登録値を再利用する。
 
 同じconfigurationの再送は同じ参照と台帳行を返す。画像・要求の公開後や台帳commit後に
 中断しても、再送で保存済み入力を検証して登録を補完する。異なるplan・元動画版・
 camera/frame/PTS・公開選択で既存登録を上書きしない。登録結果にはcamera単位の入力だけを
 `WorkRequest.inputs`として列挙し、全cameraを列挙するplan manifestは親サービスの照合用とする。
 workerの実効的な画像隔離・編集・途中保存・完成は [白紙worker](../ball_detection/annotation/video/agent/README.md) が所有する。
-[自動継続controller](#白紙注釈の自動継続)が時間切れを処理する。scene CLIの配線は別工程である。
+[自動継続controller](#白紙注釈の自動継続)が時間切れを処理する。
 
 検証は`tests/unit/tasks/annotation/test_configuration.py`、`test_local_videos.py`と
 `tests/integration/tasks/annotation/test_local_videos.py`。integrationは2cameraの短いVFR動画で、
@@ -161,19 +170,30 @@ for camera in progress["reviews"]:
 元のworker終了履歴は `timed_out` のまま保持し、cameraの `state=complete` と
 `completion` で完成を表す。`worker_state` と完成判断を混同しない。
 dataset公開はこのcontrollerの完了条件に含めず、planの `publish_dataset` を後続へ渡す。
+`run`・`tick`・`status`・`recover`・`resume-budget`・`report`は保存済み`LocalAnnotationRuntime`も受け付ける。
+sceneの公開だけの再開は上記compositionの`direct_annotation.resume=publication`を使う。
+`blank-register`で作った比較conditionのruntimeも同じCLIで実行でき、benchmark namespaceを検証して
+専用サービスstageを使う。通常のdataset公開へ進めず、計測は`blank-compare`で保存する。
 
 | 状態・原因 | 保存する判断と次の対応 |
 |---|---|
 | 正常な時間切れ・有効な増分・未処理あり | 自動継続。手動のcontinue操作は不要 |
 | 時間切れ・増分なし | `timed_out` で保留。workerと原因を確認し、明示的にretry |
-| 保存欠損・hash/入力不一致・壊れたrevision | `invalid_saved_progress`。既存成果物を保持し、復元・修正後に明示的に復旧。別revisionへの自動fallbackやunknownへの置換はしない |
+| 保存欠損・hash/入力不一致・壊れたrevision | `invalid_saved_progress`。既存成果物とhold判断を保持し、保存物を復元・修正して下記の手順で復旧。別revisionへの自動fallbackやunknownへの置換はしない |
 | quota・rate limit | `quota`。campaign全体の新規受付を停止し、未起動予約を取消。利用枠を回復して `ResumeWorkers` と `RetryWorker` を明示 |
 | 外部サービス・workerの失敗 | `failed`。exit/eventsを確認して原因解消後に明示的にretry。期限前のerrorを通常timeoutで隠さない |
 | 取消 | `cancelled`。保存済み編集を保持し、明示的なretryまで起動しない |
 | 結果検証失敗・worker保留 | `validation_failed` / `deferred`。理由を確認して明示的に復旧 |
 | 資源の一時的な枠不足 | `waiting`。同じpending要求を通常受付で再確認し、attempt・予約を重複作成しない |
 
-明示復旧は `recover(controller, RecoveryInput(...))` に理由を渡す既存APIを使う。
+時間切れで `invalid_saved_progress` になったcameraは、保存物の修復後、同じruntimeで `tick` を実行する。
+全target frameの処理済み保存と入力・revision・attemptの検証が通れば、追加workerを起動せず完成receiptを確定する。
+元の `workflow/continuations/<work-id>/<attempt>.json` のhold（理由・attempt）は変更せず、
+再判定を `workflow/continuations/<work-id>/<attempt>/completion.json` に保存してから完成を確定する。
+判断保存後に中断しても、次のtickで同じ判断を回収する。修復前や検証失敗時は完成させない。
+修復後も未処理frameがある場合や、取消・quota等で止まった場合は、明示復旧を必要とする。
+
+完成回収以外の明示復旧は `recover(controller, RecoveryInput(...))` に理由を渡す既存APIを使う。
 `RetryWorker(request, after_attempt)` は現在のattemptを照合する。完成済みcameraのretryは拒否する。
 `blocked` でも `live=true` の間は他camera・サービス工程の処理と終了回収を続ける。
 完成時も、稼働中の資源stageが終了するまでcampaign全体を完了と報告しない。

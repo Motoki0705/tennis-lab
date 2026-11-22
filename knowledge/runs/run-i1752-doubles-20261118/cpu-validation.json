@@ -1,0 +1,26 @@
+{
+  "entry_tests": {
+    "cases": 27,
+    "seconds": 45.73,
+    "maximum_integration_call_seconds": 7.86,
+    "maximum_e2e_call_seconds": 12.69
+  },
+  "input_tests": {
+    "cases": 17,
+    "seconds": 22.07
+  },
+  "collect_only_cases": 44,
+  "maximum_expansion_per_function": 6,
+  "measurement_smoke": "passed; settings, mixed/blocked scaling, lifetime overlap and 3 real guard/fake NVML exit cases",
+  "existing_c3_guard_smoke_cases": 14,
+  "cuda_visible_devices": "",
+  "cuda_initialized_by_guard_smoke": false,
+  "new_pytest_cases_this_turn": 0,
+  "pre_commit": "ruff and mypy passed on all changed Python files vs C3 base",
+  "manual_measurement_script_ruff": "passed",
+  "validator": {
+    "specified": 0,
+    "attempted": 0,
+    "completed": 0
+  }
+}

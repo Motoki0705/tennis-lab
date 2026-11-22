@@ -8,7 +8,7 @@ scene生成と元datasetの構造は [tennis_scene](../../../tennis_scene/README
 
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.generate_dataset \
-  data.dataset_root=tennis_multivew/processed/meiji_3cam/dataset
+  data.dataset_root=tennis_multiview/processed/meiji_3cam/dataset
 ```
 
 `data.dataset_root` は必須のDATA相対パスです。`dataset.json` に登録された全clipについて、

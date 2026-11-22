@@ -58,6 +58,35 @@ def digest(value: Any, length: int = 64) -> bool:
     )
 
 
+def sanitization(value: Any) -> dict[str, Any]:
+    require(isinstance(value, dict), "record_sanitization")
+    version = value.get("version")
+    require(type(version) is int and version in {1, 2}, "record_sanitization")
+    expected = {"version", "instruction", "final", "additional"}
+    if version == 2:
+        expected.add("local_paths")
+    require(set(value) == expected, "record_sanitization")
+    require(
+        all(
+            type(value[k]) is int and value[k] >= 0
+            for k in ("instruction", "final", "additional")
+        ),
+        "record_sanitization",
+    )
+    if version == 2:
+        counts = value["local_paths"]
+        require(
+            isinstance(counts, dict)
+            and bool(counts)
+            and set(counts) <= {"posix", "home", "windows", "unc"}
+            and all(type(n) is int and n > 0 for n in counts.values())
+            and sum(counts.values())
+            <= sum(value[k] for k in ("instruction", "final", "additional")),
+            "record_sanitization",
+        )
+    return dict(value)
+
+
 def path(meta: dict[str, Any]) -> str:
     require(integer(meta.get("parent")) and integer(meta.get("issue")), "record_issue")
     require(
@@ -65,7 +94,11 @@ def path(meta: dict[str, Any]) -> str:
         "record_key",
     )
     turn = meta["turn"]
-    fields(turn, {"sequence", "kind", "phase", "previous_sequence"})
+    fields(
+        turn,
+        {"sequence", "kind", "phase", "previous_sequence"}
+        | ({"repair"} if "repair" in turn else set()),
+    )
     require(integer(turn["sequence"]), "record_turn")
     require(turn["kind"] in {"initial", "resume"}, "record_turn")
     require(turn["phase"] in {"planning", "implementing"}, "record_phase")
@@ -74,6 +107,15 @@ def path(meta: dict[str, Any]) -> str:
         previous is None or integer(previous) and previous < turn["sequence"],
         "record_turn",
     )
+    if "repair" in turn:
+        fields(turn["repair"], {"pr"})
+        require(
+            integer(turn["repair"]["pr"])
+            and turn["kind"] == "resume"
+            and turn["phase"] == "implementing"
+            and previous is not None,
+            "record_repair",
+        )
     return (
         f"{DIRECTORY}/parent-{meta['parent']}/child-{meta['issue']}/"
         f"{meta['delegation_key']}/{turn['sequence']:04d}-{turn['kind']}"
@@ -153,7 +195,8 @@ def validate(files: dict[str, bytes], guard: Guard | None = None) -> dict[str, A
     require(
         isinstance(worker["selected"]["model"], str)
         and bool(re.fullmatch(r"[A-Za-z0-9_.-]+", worker["selected"]["model"]))
-        and worker["selected"]["effort"] == "max",
+        and worker["selected"]["effort"]
+        == ("high" if "repair" in meta["turn"] else "max"),
         "record_worker",
     )
     fields(worker["effective"], {"model", "effort"})
@@ -182,15 +225,7 @@ def validate(files: dict[str, bytes], guard: Guard | None = None) -> dict[str, A
         and all(digest(s, 40) for s in meta["artifacts"]["commits"]),
         "record_artifact",
     )
-    fields(meta["sanitization"], {"version", "instruction", "final", "additional"})
-    require(
-        meta["sanitization"]["version"] == 1
-        and all(
-            type(meta["sanitization"][k]) is int and meta["sanitization"][k] >= 0
-            for k in ("instruction", "final", "additional")
-        ),
-        "record_sanitization",
-    )
+    sanitization(meta["sanitization"])
     for key in ("started_at", "finished_at", "captured_at"):
         value = datetime.fromisoformat(meta[key])
         require(value.tzinfo is not None, "record_time")
@@ -220,20 +255,66 @@ def additions(raw: bytes, expected: set[str]) -> None:
     require(len(found) == len(set(found)) and set(found) == expected, "unsafe_diff")
 
 
+def pr_additions(changes: list[Any], expected: set[str]) -> None:
+    """Check GitHub's actual PR diff as well as the pinned local commit diff."""
+    require(len(changes) == len(expected), "unsafe_diff", "PR file count changed")
+    found = []
+    for change in changes:
+        require(
+            isinstance(change, dict)
+            and isinstance(change.get("filename"), str)
+            and change.get("status") == "added"
+            and "previous_filename" not in change,
+            "unsafe_diff",
+            "PR files must be additions without rename sources",
+        )
+        found.append(change["filename"])
+    require(
+        len(found) == len(set(found)) and set(found) == expected,
+        "unsafe_diff",
+        "PR files differ from the pinned turn's three files",
+    )
+
+
 def identity(pr: dict[str, Any], row: dict[str, Any], repo: str) -> None:
     source = row["source"]
+    normalized_repo = repo.casefold()
+
+    def matches_repo(value: str) -> bool:
+        return value.casefold() == normalized_repo
+
+    # Only owner/repo is case-insensitive; all other URL components stay exact.
+    html_url = pr.get("html_url")
+    url = (
+        re.fullmatch(
+            r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/pull/"
+            r"([1-9][0-9]*)",
+            html_url,
+        )
+        if isinstance(html_url, str)
+        else None
+    )
+    checks = {
+        "base.ref": pr.get("base", {}).get("ref") == "main",
+        "base.repo": matches_repo(
+            pr.get("base", {}).get("repo", {}).get("full_name", "")
+        ),
+        "head.repo": matches_repo(
+            pr.get("head", {}).get("repo", {}).get("full_name", "")
+        ),
+        "head.ref": pr.get("head", {}).get("ref") == row["branch"],
+        "head.sha": pr.get("head", {}).get("sha") == row["head"],
+        "draft": pr.get("draft") is False,
+        "body": pr.get("body") == row["pr_body"],
+        "html_url": url is not None
+        and matches_repo(url[1])
+        and url[2] == str(pr.get("number")),
+        "number": integer(pr.get("number")),
+        "source.repo": matches_repo(source["repo"]),
+    }
+    mismatches = [key for key, valid in checks.items() if not valid]
     require(
-        pr.get("base", {}).get("ref") == "main"
-        and pr.get("base", {}).get("repo", {}).get("full_name", "").casefold()
-        == repo.casefold()
-        and pr.get("head", {}).get("repo", {}).get("full_name", "").casefold()
-        == repo.casefold()
-        and pr.get("head", {}).get("ref") == row["branch"]
-        and pr.get("head", {}).get("sha") == row["head"]
-        and pr.get("draft") is False
-        and pr.get("body") == row["pr_body"]
-        and pr.get("html_url") == f"https://github.com/{repo}/pull/{pr.get('number')}"
-        and integer(pr.get("number"))
-        and source["repo"].casefold() == repo.casefold(),
+        not mismatches,
         "pr_identity_changed",
+        "PR identity mismatch: " + ", ".join(mismatches),
     )

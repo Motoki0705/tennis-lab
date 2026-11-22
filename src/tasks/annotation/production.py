@@ -8,13 +8,18 @@ from pathlib import Path
 from typing import Any
 
 from src.tasks.ball_detection.annotation.review.worker import BallReviewWorker
+from src.tasks.ball_detection.annotation.video.agent.contracts import (
+    AnnotationPolicy,
+)
 from src.tasks.ball_detection.training.annotation.adapter import BallLearningAdapter
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     read_document,
     write_document,
 )
+from src.tasks.base.annotation.collection.local import LocalInputRegistration
 from src.tasks.base.annotation.contracts import (
+    ArtifactRef,
     ProductOutcome,
     PublicationReceipt,
 )
@@ -33,6 +38,7 @@ from src.tasks.base.annotation.workers.contracts import WorkRequest
 from src.tasks.base.annotation.workers.ledger import WorkerBusy, WorkerStopped
 from src.tasks.base.annotation.workers.pool import WorkerPool
 
+from .annotation_policy import read_registered_annotation_policy
 from .contracts import (
     AnnotationContinuationPolicy,
     CompletionEvidence,
@@ -65,39 +71,52 @@ class LocalAnnotationWorkflow:
         *,
         test_command: tuple[str, ...] | None = None,
         test_clock: bool = False,
+        annotation_policy: AnnotationPolicy,
     ) -> None:
         from src.tasks.ball_detection.annotation.video.agent.worker import (
             BallVideoWorker,
         )
         from src.tasks.base.annotation.collection.local import LocalInputLedger
 
-        from .local_videos import LocalVideoConfigurationReceipt
+        if read_registered_annotation_policy(layout, runtime) != annotation_policy:
+            raise ValueError("annotation policy differs from its registration")
 
-        cost = runtime.cost("review")
         runtime_ref = annotation_reference(
             layout,
             layout.path("campaigns", plan.campaign_id, "configuration", "runtime.json"),
         )
         if read_document(layout, runtime_ref, LocalAnnotationRuntime) != runtime:
             raise ValueError("direct annotation requires its saved runtime")
-        registration = read_document(
-            layout,
-            annotation_reference(
+        entries = LocalInputLedger(layout).entries(plan)
+        if plan.phase == "benchmark":
+            from .benchmark.blank import BlankCondition
+
+            condition = read_document(
                 layout,
-                layout.path(
-                    "campaigns", plan.campaign_id, "configuration", "result.json"
+                annotation_reference(
+                    layout,
+                    layout.path(
+                        "campaigns",
+                        plan.campaign_id,
+                        "benchmark",
+                        "blank-condition.json",
+                    ),
                 ),
-            ),
-            LocalVideoConfigurationReceipt,
-        )
-        if (registration.plan, registration.runtime, registration.scope) != (
-            runtime.plan,
-            runtime_ref,
-            runtime.scope,
-        ):
-            raise ValueError(
-                "direct annotation runtime differs from its registration receipt"
+                BlankCondition,
             )
+            if (
+                condition.plan != runtime.plan
+                or condition.runtime != runtime_ref
+                or condition.policy != annotation_policy
+                or condition.requests != tuple(e.request for e in entries)
+                or plan.publish_dataset
+            ):
+                raise ValueError(
+                    "Blank condition differs from its frozen policy/runtime/inputs"
+                )
+        else:
+            self._validate_registration(layout, runtime, runtime_ref, entries, plan)
+        cost = runtime.cost("review")
         policy = AnnotationContinuationPolicy(
             plan=runtime.plan, runtime=runtime_ref, scope=runtime.scope
         )
@@ -118,20 +137,22 @@ class LocalAnnotationWorkflow:
             ),
             policy,
         )
-        entries = LocalInputLedger(layout).entries(plan)
-        if set(entries) != set(registration.registrations):
-            raise ValueError(
-                "registered camera inputs differ from the completed configuration"
-            )
         self.requests = tuple(entry.request for entry in entries)
         if not self.requests:
             raise ValueError(
                 "direct annotation requires registered local camera inputs"
             )
+        write_document(
+            layout,
+            layout.path(
+                "campaigns", plan.campaign_id, "workflow", "annotation-policy.json"
+            ),
+            annotation_policy,
+        )
         self.pool = WorkerPool(
             layout,
             plan,
-            (BallVideoWorker(),),
+            (BallVideoWorker(annotation_policy),),
             codex_binary=runtime.codex_binary,
             codex_home=Path(runtime.codex_home),
             timeout_seconds=policy.timeout_seconds,
@@ -142,6 +163,39 @@ class LocalAnnotationWorkflow:
             test_command=test_command,
             test_clock=test_clock,
         )
+
+    @staticmethod
+    def _validate_registration(
+        layout: AnnotationLayout,
+        runtime: LocalAnnotationRuntime,
+        runtime_ref: ArtifactRef,
+        entries: tuple[LocalInputRegistration, ...],
+        plan: LocalAnnotationPlan,
+    ) -> None:
+        from .local_videos import LocalVideoConfigurationReceipt
+
+        registration = read_document(
+            layout,
+            annotation_reference(
+                layout,
+                layout.path(
+                    "campaigns", plan.campaign_id, "configuration", "result.json"
+                ),
+            ),
+            LocalVideoConfigurationReceipt,
+        )
+        if (registration.plan, registration.runtime, registration.scope) != (
+            runtime.plan,
+            runtime_ref,
+            runtime.scope,
+        ):
+            raise ValueError(
+                "direct annotation runtime differs from its registration receipt"
+            )
+        if set(entries) != set(registration.registrations):
+            raise ValueError(
+                "registered camera inputs differ from the completed configuration"
+            )
 
     @staticmethod
     def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:

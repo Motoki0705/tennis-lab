@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -80,6 +81,47 @@ def test_shared_checkpoint_is_hashed_once(tmp_path: Path, monkeypatch: pytest.Mo
     assert calls == [shared]
 
 
+@pytest.mark.parametrize("name", ["vitpose", "hmr2"])
+@pytest.mark.parametrize("fault", ["same_size", "truncated", "quota_html", "lfs_pointer"])
+def test_acquired_gvhmr_weights_keep_byte_pins_in_preflight(
+    installation_config: DictConfig, monkeypatch: pytest.MonkeyPatch, name: str, fault: str,
+) -> None:
+    valid = b"known acquired checkpoint bytes"
+    digest = hashlib.sha256(valid).hexdigest()
+    # Keep this CPU regression small; real release pins are checked separately
+    # with acquired files, rather than manufacturing multi-GB test weights.
+    monkeypatch.setattr(preflight, "INSTALLATION_ASSETS", tuple(
+        replace(asset, sha256=digest, size_bytes=len(valid)) if asset.name == name else asset
+        for asset in INSTALLATION_ASSETS))
+    requirement = next(item for item in preflight.configured_requirements(installation_config) if item.name == name)
+    requirement.path.parent.mkdir(parents=True)
+    requirement.path.write_bytes(valid)
+    assert requirement.sha256 == digest
+    assert requirement.size_bytes == len(valid)
+
+    def extension() -> Path:
+        return requirement.path.parent / "unused-extension.so"
+
+    accepted = check_assets([requirement], extension_validator=extension)
+    assert all(check.status == "ok" for check in accepted)
+    assert accepted[0].sha256 == digest
+
+    corrupt = {
+        "same_size": b"X" + valid[1:],
+        "truncated": valid[:-1],
+        "quota_html": b"<html><title>Google Drive - Quota exceeded</title></html>",
+        "lfs_pointer": f"version https://git-lfs.github.com/spec/v1\noid sha256:{digest}\nsize {len(valid)}\n".encode(),
+    }[fault]
+    requirement.path.write_bytes(corrupt)
+    rejected = check_assets([requirement], extension_validator=extension)
+    assert rejected[0].status == "mismatch"
+    if fault == "same_size":
+        assert rejected[0].sha256 == hashlib.sha256(corrupt).hexdigest()
+    else:
+        assert f"Expected {len(valid)} bytes, got {len(corrupt)}" == rejected[0].detail
+    assert requirement.path.read_bytes() == corrupt
+
+
 def test_standard_inventory_covers_recipe_source_sample_and_visualization(tmp_path: Path) -> None:
     with initialize_config_dir(config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"):
         config = compose(config_name="pipeline", overrides=[f"paths.checkpoint_root={tmp_path / 'ckpt'}",
@@ -93,6 +135,11 @@ def test_standard_inventory_covers_recipe_source_sample_and_visualization(tmp_pa
     assert {"dino_models", "dino_util", "dino_ops", "dinov3_hub", "dinov3_backbones",
             "sample_clip.json", "sample_LICENSE", "video_cam0", "video_cam1", "video_cam2"} <= names
     assert all(item.sha256 is not None for item in requirements if item.path.is_relative_to(tmp_path / "ckpt"))
+    pins = {asset.name: asset for asset in INSTALLATION_ASSETS}
+    for name in ("vitpose", "hmr2"):
+        requirement = next(item for item in requirements if item.name == name)
+        assert requirement.size_bytes == pins[name].size_bytes
+        assert requirement.size_bytes is not None
 
 
 @pytest.mark.parametrize("profile", ["standard", "no_body", "no_people"])
@@ -137,7 +184,7 @@ def test_unreadable_association_recipe_does_not_hide_independent_assets(
     assert selected["video_cam0"].status == "missing"
 
 
-@pytest.mark.parametrize("asset", ["court", "tracking_encoder", "body_model", "dino_models", "video_cam0"])
+@pytest.mark.parametrize("asset", ["court", "vitpose", "tracking_encoder", "body_model", "dino_models", "video_cam0"])
 def test_rejected_asset_is_not_inspected_and_other_failures_remain(
     installation_config: DictConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, asset: str,
 ) -> None:

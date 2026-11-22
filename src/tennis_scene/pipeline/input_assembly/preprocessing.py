@@ -12,10 +12,15 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 )
 from src.tennis_scene.pipeline.components.court_kp import CourtDetectionInput
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionInput
+from src.tennis_scene.pipeline.components.person_features import (
+    PersonAppearanceFeaturesInput,
+    PersonFeaturesInput,
+)
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingInput
 from src.tennis_scene.pipeline.components.player_selection import PlayerSelectionInput
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationInput
 from src.tennis_scene.pipeline.contracts import AssemblyContext
+from src.utils.video.reader import OpenCVDecodeIdentity
 
 
 @dataclass(frozen=True)
@@ -58,12 +63,12 @@ class PersonDetectionInputAssembler:
 
 @dataclass(frozen=True)
 class PersonTrackingInputAssembler:
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PersonTrackingInput:
         if context.camera_id is None:
             raise ValueError("Tracking requires a camera scope")
-        return PersonTrackingInput(context.source.video(context.camera_id), artifacts["detections"])
+        return PersonTrackingInput(context.source.video(context.camera_id), artifacts["detections"], artifacts["poses"], artifacts["appearance"])
 
 
 @dataclass(frozen=True)
@@ -84,3 +89,24 @@ class PlayerSelectionInputAssembler:
         if context.camera_id is None:
             raise ValueError("Player selection requires a camera scope")
         return PlayerSelectionInput(context.source.video(context.camera_id), artifacts["calibration"], artifacts["tracks"])
+
+
+@dataclass(frozen=True)
+class PersonPoseFeaturesInputAssembler:
+    version: int = 1
+
+    def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PersonFeaturesInput:
+        if context.camera_id is None:
+            raise ValueError("Pose features require a camera scope")
+        return PersonFeaturesInput(context.source.video(context.camera_id), artifacts["detections"])
+
+
+@dataclass(frozen=True)
+class PersonAppearanceFeaturesInputAssembler:
+    version: int = 2
+    expected_decoder: OpenCVDecodeIdentity | None = None
+
+    def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PersonAppearanceFeaturesInput:
+        if context.camera_id is None:
+            raise ValueError("Appearance features require a camera scope")
+        return PersonAppearanceFeaturesInput(context.source.video(context.camera_id), artifacts["detections"], self.expected_decoder)

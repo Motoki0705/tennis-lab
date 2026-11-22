@@ -1,31 +1,14 @@
-"""Git snapshots and the explicit review handoff. Never launches a reviewer."""
+"""Git material for review and worker worktree validation; no merge authority."""
 
 from __future__ import annotations
 
-import hashlib
+import json
+import os
 import re
 import subprocess
-import uuid
+import sys
 from pathlib import Path
 from typing import Any
-
-from .execution import (
-    authorization,
-    require_requirement_targets,
-    require_run_authorization,
-    requirement_body,
-)
-from .policy import (
-    REVIEW_LABELS,
-    REVIEW_STATES,
-    closing_issues,
-    digest,
-    nonempty,
-    object_value,
-    review_state,
-    select_prs,
-)
-from .session import ParentSession
 
 
 def git(*args: str, cwd: Path | None = None) -> bytes:
@@ -37,6 +20,81 @@ def git(*args: str, cwd: Path | None = None) -> bytes:
             f"git {args[0]} failed: {result.stderr.decode(errors='replace').strip()}"
         )
     return result.stdout
+
+
+def worker_location(parent: int, child: int, worker: str) -> tuple[str, Path]:
+    common = Path(
+        git("rev-parse", "--path-format=absolute", "--git-common-dir").decode().strip()
+    )
+    name = f"parent-{parent}-issue-{child}-{worker}"
+    return "codex/" + name, common.parent / ".claude/worktrees" / name
+
+
+def prepare_worker_tree(
+    tree: Path, branch: str, base_ref: str, state_dir: Path
+) -> None:
+    """Retry a partially prepared reservation without adopting a foreign tree."""
+    from .policy import digest
+    from .state import Store
+
+    intent = state_dir / "worker-setup" / (digest(str(tree)) + ".json")
+    base = (
+        git("rev-parse", "--verify", "--end-of-options", base_ref + "^{commit}")
+        .decode()
+        .strip()
+    )
+    expected = {"branch": branch, "worktree": str(tree), "base": base}
+    if tree.resolve() != tree:
+        raise ValueError("worker checkout contains a symlink")
+    if intent.exists():
+        if json.loads(intent.read_text()) != expected:
+            raise ValueError(
+                "worker setup already bound to a different base or worktree"
+            )
+    else:
+        if tree.exists() or git("branch", "--list", branch).strip():
+            raise ValueError(
+                "automatic worker branch/worktree already exists; inspect before delegating"
+            )
+        Store.write_json(intent, expected)
+    if not tree.exists():
+        if git("branch", "--list", branch).strip():
+            if git("rev-parse", "refs/heads/" + branch).decode().strip() != base:
+                raise ValueError("worker branch moved during setup")
+            git("worktree", "add", str(tree), branch)
+        else:
+            git("worktree", "add", "-b", branch, str(tree), base)
+    validate_worktree(tree, branch)
+    if (
+        git("rev-parse", "HEAD", cwd=tree).decode().strip() != base
+        or git("status", "--porcelain", cwd=tree).strip()
+    ):
+        raise ValueError("worker setup checkout differs from its reserved base")
+    ops = Path(__file__).resolve().parents[1]
+    main = tree.parents[2]
+    prepared = subprocess.run(
+        [
+            sys.executable,
+            str(ops / "checkout_job.py"),
+            "--repo",
+            str(main),
+            "--",
+            sys.executable,
+            "-m",
+            "storage_tier",
+            "--repo",
+            str(main),
+            "prepare-worktree",
+            str(tree),
+        ],
+        env={**os.environ, "PYTHONPATH": str(ops)},
+        check=False,
+        stdout=subprocess.DEVNULL,
+    )
+    if prepared.returncode:
+        raise ValueError(
+            "storage preparation failed; fix the reported cause and retry the same --from"
+        )
 
 
 def validate_worktree(worktree: Path, branch: str) -> None:
@@ -107,208 +165,5 @@ def snapshot(pr: dict[str, Any]) -> tuple[dict[str, Any], bytes]:
         "base_sha": base,
         "base_ref": pr["base"]["ref"],
         "merge_base_sha": merge_base,
-        "diff_sha256": hashlib.sha256(diff).hexdigest(),
         "branch": pr["head"]["ref"],
     }, diff
-
-
-def prepare(
-    session: ParentSession, selected: list[int], reason: str | None
-) -> dict[str, Any]:
-    row = session.agreed()
-    auth = authorization(session)
-    parent, children = session.family()
-    child_numbers = set(children) or {parent.number}
-    prs = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
-    from .worker_preflight import require_implementation
-
-    for pr in prs:
-        for child in (
-            closing_issues(pr.get("body") or "", session.gh.repo) & child_numbers
-        ):
-            require_implementation(session, child)
-    entries, diffs = [], {}
-    for item in prs:
-        entry, diff = snapshot(dict(item))
-        entries.append(entry)
-        diffs[item["number"]] = diff
-    # Protect the collection window: changes during git I/O are not covered.
-    with session.gh.fresh_reads():
-        fresh = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
-    for before, after in zip(prs, fresh, strict=True):
-        if any(
-            before[part][field] != after[part][field]
-            for part, field in (
-                ("head", "sha"),
-                ("base", "sha"),
-                ("base", "ref"),
-                ("head", "ref"),
-            )
-        ) or (
-            closing_issues(before.get("body") or "", session.gh.repo) & child_numbers
-            != closing_issues(after.get("body") or "", session.gh.repo) & child_numbers
-        ):
-            raise ValueError(
-                "PR changed while freezing review targets; retry explicitly"
-            )
-    requirements = {str(parent.number): digest(requirement_body(parent.body))}
-    for pr in prs:
-        for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
-            requirements[str(n)] = digest(requirement_body(children[n].body))
-    reviews = row["reviews"]
-    if reviews:
-        public_state = review_state(session.history(), reviews[-1]["request"])
-        if public_state:
-            reviews[-1]["state"] = public_state
-    if (
-        reviews
-        and reviews[-1]["state"] == "targets_fixed"
-        and reviews[-1]["request"]["prs"] == entries
-        and set(reviews[-1]["request"].get("requirements", requirements))
-        == set(requirements)
-        and (reason is None or reason == reviews[-1]["request"].get("reason"))
-    ):
-        request = object_value(reviews[-1]["request"])
-        require_run_authorization(session, request)
-        publish_targets(session, request)
-        return request
-    previously_reviewed = {p["number"] for r in reviews for p in r["request"]["prs"]}
-    if previously_reviewed.intersection(selected) and not reason:
-        raise ValueError(
-            "a new review run requires an explicit reason; no automatic re-review"
-        )
-    if reason:
-        nonempty(reason, "new review reason")
-    run_id = "parent-" + str(session.parent) + "-" + uuid.uuid4().hex
-    request = {
-        "schema_version": 2,
-        "authorization": auth,
-        "requirements": requirements,
-        "review_run_id": run_id,
-        "repo": session.gh.repo,
-        "parent_issue": session.parent,
-        "prs": entries,
-        "reason": reason or "親が初回の対象PR群を確定",
-    }
-    session.public(request)
-    require_run_authorization(session, request)
-    run_dir = session.store.directory / "reviews" / run_id
-    run_dir.mkdir(parents=True, mode=0o700)
-    for n, diff in diffs.items():
-        (run_dir / f"pr-{n}.diff").write_bytes(diff)
-    session.store.write_json(run_dir / "request.json", request)
-    reviews.append({"state": "targets_fixed", "request": request})
-    session.store.save()
-    publish_targets(session, request)
-    return request
-
-
-def publish_targets(session: ParentSession, request: dict[str, Any]) -> None:
-    import json
-
-    session.post(
-        {
-            "event": "review",
-            "state": "targets_fixed",
-            "review_run_id": request["review_run_id"],
-            "request_sha256": digest(request),
-            **require_run_authorization(session, request),
-        },
-        "レビュー対象確定。実行は未指示。\n\n```json\n"
-        + json.dumps(request, ensure_ascii=False, indent=2, sort_keys=True)
-        + "\n```",
-    )
-
-
-def transition(
-    session: ParentSession, run_id: str, target: str, evidence: str
-) -> dict[str, Any]:
-    row = session.agreed()
-    nonempty(evidence, "review instruction/evidence")
-    if target not in REVIEW_STATES:
-        raise ValueError("unknown review state")
-    run = next(
-        (item for item in row["reviews"] if item["request"]["review_run_id"] == run_id),
-        None,
-    )
-    if run is None:
-        raise ValueError("unknown review run")
-    # A run's progress does not grant coverage to a changed child. Gate checks
-    # each PR separately so a stopped child does not stop independent work.
-    auth = require_run_authorization(
-        session,
-        run["request"],
-        required_issues=None if target == "instructed" else set(),
-    )
-    current = review_state(session.history(), run["request"])
-    if current is None:
-        raise ValueError("review target record is missing from the parent issue")
-    if target == current and target != "instructed":
-        run["state"] = current
-        session.store.save()
-        return {**run["request"], "review_state": target}
-    if target != current and not (
-        REVIEW_STATES.index(target) == REVIEW_STATES.index(current) + 1
-        or (current == "instructed" and target == "fixes_verified")
-    ):
-        raise ValueError(f"invalid review transition {current} -> {target}")
-    if target == "instructed":
-        request = run["request"]
-        parent, children = session.family()
-        from .worker_preflight import require_implementation
-
-        for entry in request["prs"]:
-            raw = session.gh.get(f"repos/{session.gh.repo}/pulls/{entry['number']}")
-            for child in closing_issues(raw.get("body") or "", session.gh.repo) & (
-                set(children) or {parent.number}
-            ):
-                require_implementation(session, child)
-        prs = select_prs(
-            [p["number"] for p in request["prs"]],
-            session.gh.pulls(),
-            set(children) or {parent.number},
-            session.gh.repo,
-        )
-        require_requirement_targets(
-            request,
-            {
-                n
-                for pr in prs
-                for n in closing_issues(pr.get("body") or "", session.gh.repo)
-                & (set(children) or {parent.number})
-            },
-            exact=True,
-        )
-        entries = [snapshot(dict(pr))[0] for pr in prs]
-        if entries != request["prs"]:
-            raise ValueError(
-                "review target changed since snapshot; prepare a new run with reason"
-            )
-        # Snapshot must also have been durably recorded publicly before instruction.
-        if not any(
-            e.get("event") == "review"
-            and e.get("state") == "targets_fixed"
-            and e.get("review_run_id") == run_id
-            and e.get("request_sha256") == digest(request)
-            for e in session.history()
-        ):
-            raise ValueError("review target record is missing from the parent issue")
-    if target == current:
-        run["state"] = current
-        session.store.save()
-        return {**run["request"], "review_state": target}
-    session.post(
-        {
-            "event": "review",
-            "state": target,
-            "review_run_id": run_id,
-            "request_sha256": digest(run["request"]),
-            **auth,
-        },
-        f"レビュー状態: {REVIEW_LABELS[target]}\n\n{evidence}",
-    )
-    run["state"] = target
-    run["evidence"] = evidence
-    session.store.save()
-    # This is the #1218 input, not an execution. Same run ID must be consumed at most once there.
-    return {**run["request"], "review_state": target}

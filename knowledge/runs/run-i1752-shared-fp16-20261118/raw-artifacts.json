@@ -1,0 +1,26 @@
+{
+  "files": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/batch/progress/fd3921035f4a495cab7cbda27e73afc6/recording.json",
+      "bytes": 33633542,
+      "sha256": "9c2658330b0f90fa0ad5504a94df8dd90095804bdfdcc406ee22b5c2451c2419"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/batch.log",
+      "bytes": 16966,
+      "sha256": "c4202cf739158425e9cebb28b9ebb71ad363e3e01264e7bb2723ba8f9384d2e7"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/batch/entry.json",
+      "bytes": 16061,
+      "sha256": "0d8a50645a4b06847972509fe2ed0327d7cb219c03f8b42dcf0da17990b1e3f0"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/health/batch-memory.csv",
+      "bytes": 68761,
+      "sha256": "0b53dadf6244b8c8fe7a4e70fcf18495eb42f3938163591d2fce890e9c3d2da2"
+    }
+  ],
+  "predictions": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-shared-fp16-20261118/datasets/batch",
+  "retained": true
+}

@@ -15,7 +15,7 @@ DINO person検出は `third_party/DINO` の公式git submoduleを型付きwrappe
 src/submodules/
 ├── models/            # 型付きの推論モデル（下流はここだけ見ればよい）
 │   ├── _base/         # BaseInferenceModel: load/unload/predict の共通契約
-│   ├── dino/          # DinoPersonDetector: frame -> person boxes
+│   ├── dino/          # DinoPersonDetector: frame(s) -> person boxes
 │   ├── tracker/       # 共通のtrack契約・bbox補間・足元polygonフィルタ
 │   ├── vitpose/       # ViTPosePose2D: video + boxes -> COCO-17 keypoints
 │   ├── hmr2/          # Hmr2FeatureExtractor: video + boxes -> (F, 1024) features
@@ -39,6 +39,7 @@ model family packageは内部実装であり、同じsymbolを再exportしませ
 - `filter_detections_by_footpoint`は評価で共有する足元polygonフィルタです。標準sceneのDINO検出・StrongSORT++追跡とIO契約は[scene pipeline README](../tennis_scene/pipeline/README.md)を参照してください。
 - `Pose2DRequest` / `ImageFeatureRequest`の`frame_indices`を指定すると、明示したsource frameを逐次decodeし、全動画をRAMへ展開せずcrop batchを作る。
 - `Pose2DFrameSequenceRequest`は明示したBGR画像列とframe ID・boxを受け、動画と同じcrop/正規化/復号でViTPoseを実行する。JPEG storeやRGB増強を動画へ再圧縮せず接続できる。同一frameの複数人物を受理し、要求frameの欠落・順序不整合・画像サイズ変更は停止する。最後の要求frameまでだけを読み、全clipの入力hash/PTS検証は呼び出し側が担当する。
+- 複数sourceからcropをまとめる呼び出し側は`iter_frame_person_crops`で同じ画像前処理を使い、ViTPoseとHMR2の`predict_crops`に渡す。cropの上限と結果のsource対応は呼び出し側が管理する。
 - `ViTPosePose2D`のcrop batch progressは既定で表示する。呼び出し側が別途進捗を報告する場合は`show_progress=False`で抑制できる。
 
 DINOの実行前に[導入案内](../../docs/installation/README.ja.md#dino-cuda-extension)に従いbinaryを選択します。
@@ -63,6 +64,28 @@ try:
 finally:
     detector.unload()
 ```
+
+複数画像には `detector.predict_batch(requests, *, batch_size=1)` を使います。
+`requests` は `PersonDetectionRequest` の列、戻り値は同じ順序・同じ件数の
+`list[PersonDetectionResult]` です。前処理後の `(3, H, W)` が一致する連続した入力だけを、
+最大 `batch_size` 件ずつstackします。形状が変わる箇所と上限で分割し、最後の端数も実行します。
+形状を揃えるpaddingやresize設定の変更、入力の並べ替えは行いません。
+元画像サイズが異なっていても前処理後の形状が同じなら同じbatchに入り、boxは各画像の元の
+ピクセル座標へ戻ります。confidenceの `>=` 判定とscore降順のrowは単一画像と同じです。
+`merge_duplicate_person_boxes` は引き続きpipeline側で画像ごとに適用します。
+`dino_batch_item_requirements`は、画像サイズとresize設定から互換shapeと明示的な入出力配列の見積りを返します。
+
+```python
+requests = [PersonDetectionRequest(frame) for frame in frames_bgr]
+results = detector.predict_batch(requests, batch_size=2)
+single_image_batches = detector.predict_batch(requests, batch_size=1)
+```
+
+`batch_size` は正の整数で、既定値の1は1画像ずつのforwardを明示します。
+`predict(request)` も同じ前処理・復号を使います。空の入力列はモデルをloadせず空のlistを返し、
+無効なbatch上限・画像はエラーになります。前処理済み画像は最大1batch分（形状比較用の次の1画像を除く）
+だけ保持します。実GPUで確認したbatch値・数値差・速度・VRAMは
+[受入記録](../../knowledge/nodes/tennis_scene/000042-run-dino-batch-api-20261116.md)を参照してください。
 
 ## デモ
 

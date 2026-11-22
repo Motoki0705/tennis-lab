@@ -115,6 +115,12 @@ READMEの3言語が参照する`multiview_reconstruction.gif`を新sceneからCP
 
 ## 再現と次の確認
 
+<a id="replay-source-access"></a>
+
+### CPU replayに必要な元ストア
+
+掲載GIFの元データをCPUでreplayするには、作者が保存している元のcomponent store（`SOURCE_STORE`）へのアクセスが必要である。元ストアは配布していないため、新規cloneからは掲載GIFをreplayできない。公開動画で標準pipelineを再実行するのは別のrunであり、掲載GIFと同じ結果にはならない。以下の再現手順は、元ストアへアクセスできる場合に限る。
+
 [run.json](../../runs/run-scene-ball-loess-20261026/run.json)に実行環境・path対応、[replay.json](../../runs/run-scene-ball-loess-20261026/replay.json)に元入力と使用artifact、`uncommitted.patch`に元commitからのcode差分を保存する。予測NPZ/NPY、元動画、全PNG、MP4、Blender bundleは`outputs/scene-ball-loess/`と保全元に残し、knowledgeへ大容量成果物を複製しない。学習はなくTensorBoard曲線はない。
 
 ```bash

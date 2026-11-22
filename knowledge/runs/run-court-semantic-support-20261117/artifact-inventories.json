@@ -1,0 +1,39 @@
+{
+  "evaluation": {
+    "files": 3545,
+    "bytes": 649800080,
+    "inventory": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/inventories/evaluation.jsonl",
+    "sha256": "de22d13f51426dc169d4241b0b02bb029c27c4d274e69844a260cba566ceaf5c"
+  },
+  "model_geometry": {
+    "files": 8530,
+    "bytes": 97762889,
+    "inventory": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/inventories/model_geometry.jsonl",
+    "sha256": "fd95229192d39146b9a8a816b4054bec6ef796ba67408355d0eccd48602479c3"
+  },
+  "review": {
+    "files": 1449,
+    "bytes": 779199213,
+    "inventory": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/inventories/review.jsonl",
+    "sha256": "c64d37993a4ad59c7c4cdbe5abbe6ac24078d41170ee07d5084462395b168f10"
+  },
+  "measured-points": {
+    "files": 1,
+    "bytes": 51622,
+    "inventory": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/inventories/measured-points.jsonl",
+    "sha256": "b9deae135f402ec3334ef103ed81af3a70fcce862105b5b3c253018c21e0cb63"
+  },
+  "review-extra": {
+    "files": 4,
+    "bytes": 398464,
+    "inventory": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/inventories/review-extra.jsonl",
+    "sha256": "e7fd80c081c15c819c11f20e3374f6c8e11cb562f36a2908a9305367658c98bc"
+  },
+  "frozen_inputs": {
+    "inventory": "knowledge/runs/run-court-fixed-support-rgb-20261117/artifact-inventories.json",
+    "source": "outputs/tennis_scene/evaluate/court-fixed-support-rgb-20261117",
+    "rgb_sha_checked_per_image": true,
+    "persisted_LINE_regions": 8530,
+    "missing_LINE_files": 0
+  }
+}

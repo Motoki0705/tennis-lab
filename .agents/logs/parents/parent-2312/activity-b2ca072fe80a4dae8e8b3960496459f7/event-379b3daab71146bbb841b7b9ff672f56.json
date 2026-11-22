@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "44b763631fa14bfebf2b1e4c6519e06f",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge.progression; artifact=progression state; content_sha256=be957b04810a2139a950095bd73d32b6b2f20824b96a7a8d484349bbdda1e577; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "d94a2abc366b412282a90a4e7769f5c7",
+      "repeat": null,
+      "status": "partial",
+      "summary": "Automatic progression: parent_wait; main_ci_failed",
+      "verifies": []
+    },
+    "id": "379b3daab71146bbb841b7b9ff672f56",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "b2ca072fe80a4dae8e8b3960496459f7",
+      "delegation": null,
+      "issue": null,
+      "parent": 2312,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "90f1089095c64d1ca61e9e6b58d3916f"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-20T14:50:22.125573+00:00"
+      },
+      "recorded_at": "2026-11-20T14:50:22.125589+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

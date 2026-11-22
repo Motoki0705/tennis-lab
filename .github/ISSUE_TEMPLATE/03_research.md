@@ -2,10 +2,10 @@
 name: 調査
 about: 調査、検証、探索的な作業を管理する
 title: "[調査] "
-labels: ["research"]
+labels: ["research", "issue:standalone"]
 ---
 
-<!-- 単独の調査用。研究ループは04_research_theme/05_research_cycleを使う。その他の親子は06_parent/07_childへ調査固有項目を追加する。書式の正本: .agents/ops/issues/README.md -->
+<!-- 単独の調査用（issue:standaloneを付与）。研究ループは04_research_theme/05_research_cycle、その他の親子は06_parent/07_childへ調査固有項目を追加する。起票後の親子移行は .agents/ops/issues/README.md に従う。 -->
 
 ## 概要
 

@@ -1,39 +1,40 @@
 # 共有memory SUMMARY
 
-作業を始める前に必ず読む。詳細が必要なときだけ、層の索引から個別のエントリを開く。読み方・書き方・圧縮・削除は [memory skill](../skills/memory/SKILL.md) に従う。memoryは規則ではなく検証待ちの観察で、コードと食い違ったらコードが正しい。
+各層の要点はエントリから自動生成する。作業を始める前に読み、詳細は層の索引から辿る。[memory skill](../skills/memory/SKILL.md) に読み方と更新手順がある。memoryの観察とコードが食い違った場合はコードを確認する。
 
 ## [workflow](workflow/index.md) — 作業のコツ
 
-- 新しいworktreeには `.venv` が無いので、メインtreeの `.venv` へsymlinkを張る。
-- 親たちへの一斉指示では、全員の応答がそろうのを待つ条件を作らず、届いた親から進める。止まった担当と人間の操作が要る手順は、人間にまとめて伝える。
+- 親たちへの一斉指示は、応答した親から進め、人間の操作が必要な手順を送信した親がまとめて伝える。
 
 ## [decision](decision/index.md) — ユーザーの判断
 
-- 判断を仰ぐときは、既に答えが出ている事項を聞き直さない。選択肢には、コードを読まずに判断できる説明を付ける。品質確認は動画で見せる。
-- Colabの複数条件の学習は、1セッションで逐次に実行し、約12時間で消えるVMから再開できるようにする。
-- 古いckptは、指標がknowledgeにあれば削除してよい。
-- 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
-- 公開向けの文書は英語版を既定にし、日本語版を `.ja.md`、簡体字中国語版を `.zh-CN.md` に分け、3言語を維持する。文書にハッシュ値を書かない。
-- CI短縮を受け、PRへのpushごとにCIを実行し、対象HEADの `Python` 成功をmergeの必須条件とする。コミットに `[skip ci]` を付けない。
+- 判断を仰ぐのは未決の事項だけにし、各選択肢に具体的な説明を添える。
+- 2026-06-21のPLCSローカル整理では、指標記録済みでbackfill不能な旧ckptの手動削除を人間が認めた。通常のpruneは検証済み予測を要求する。
+- Colabの複数条件の学習は1セッションで順に実行し、VMを作り直しても保存済みの段階とcheckpointから再開できるようにする。
+- 独立した目的の変更は別PRに分ける。同じ目的を成立させる実装・テスト・文書はまとめる。
+- 一度限りの実験進行用コードは常設のsrcから除き、再現に必要なscriptと実行時点の記録をknowledgeに残す。
+- 公開文書は英語を既定にし、日本語・簡体字中国語を別ファイルで維持する。資産のハッシュ値はコードに置く。
+- 実装名から機能・方式が伝わるようにし、Issue番号は追跡情報に置く。knowledgeの既存run IDは保全する。
 
 ## [environment](environment/index.md) — 環境の癖
 
-- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。親レビューの隔離CPUテストのprobeが通らず、CIログも読めないので、指示に書かないと統合レビューが `incomplete` になる。distroが再起動しても boot_id は変わらず、旧PID名前空間のプロセスはすべて消える。
+- WSL2のVMが動いたままdistroが再起動する場合がある。旧プロセスの回収はPID 1の開始時刻とプロセス一覧で確認する。
+- WSL2のRAM不足で学習や親のbackground workerがtracebackなしで止まった。WSL内の上限と同時に動くプロセスを調べる。
+- DINO計測で1秒ごとのnvidia-smi照会がタイムアウトし、監視がworkerを停止した。停止判定の0.17秒前にもDINOのheartbeatが更新されていた。過去のGPU停止の原因は未特定。
+- WSL2のPLCS multiview学習では16GB GPUのVRAM上限付近でWindowsホストが短周期に固まった。ピークVRAMに余裕を残す。
 
 ## [gotcha](gotcha/index.md) — 落とし穴
 
-- `src` はカレントディレクトリから import される。worktreeのコードは、worktreeで実行・enqueueしないと使われない。
-- 共有 `.venv` は依存追加に追従しない。不足分はlockの版を `uv pip install` で足す（`uv sync` しない）。
-- pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
-- 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
-- Codex workerのpromptで途中終了を数値なしで許すと、時間が残っていても早々に止まる。作業単位と時間上限を数値で示し、止めてよい条件を列挙する。
-- ColabのVMは使わずに待たせると寿命前に回収され、取得済み入力も消える。rclone設定に `client_id` がないと共用clientの上限で Drive が 403 rateLimitExceeded になる。
-- Colabの `exec` 直後の接続断では job が `pending` のまま起動しない（`transport_alive: false`）。`running` 後の `transport_alive: false` は提出clientの不在だけで、異常ではない。Claudeのbackground監視は会話のプロセスと一緒に止まる。
-- メインtreeのローカル `main` と submodule の checkout は自動で追従しない。規則・memory・skillは `git fetch` 後に `origin/main` から読む。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。
-- Claude Code配下のローカル `tests/e2e/agents_ops` には変更と無関係な失敗がある。退行と判断する前に origin/main で同じテストを比べる。
-
-## [review](review/index.md) — マージ可否の判断基準
-
-- 独立した目的の変更は別PRに分ける。
-- 名前は機能・方式が伝わるものにし、Issue番号は追跡情報に置く。
-- 特定の実験だけを進めるためのコードは常設のsrcに残さない。再現に必要なものはknowledgeに残す。
+- 親CLIのE2Eで識別子の曖昧さが出たら、pytestから実セッションIDを外して同じテストを比べる。
+- 実行中のbashスクリプトを同じinodeに上書きすると、途中から変更後の処理を実行する場合がある。一時ファイルから置き換える。
+- Claude Codeの会話を再開したら監視プロセスの生存とjobの状態を確かめる。以前の会話が終わると監視も止まった例がある。
+- codex-followupのtimerは作成時のスクリプトを絶対パスで参照する。timerが動いている間はそのcheckoutの変更や削除に注意する。
+- Codex注釈workerに曖昧な途中終了条件を渡すと短時間で止まった例がある。作業範囲・時間上限・終了条件を具体化する。
+- Colabでは修正待ち約1.4時間で割当が消え、VMに取得していた入力を取り直した例がある。
+- 汎用のignore規則で新しいlib・runs・JSONが一括stageから抜けることがある。git check-ignoreで確認する。
+- NHTのgitlinkと実checkoutのずれは実行版に影響する。submodule内の未追跡設定を整理する前にsceneの参照を確かめる。
+- pre-commitのmypyは対象のstagedファイルをfollow-imports=skipで検査する。全体検査と違う型エラーは同じ対象で再現する。
+- spin setup-nhtは実行したcheckoutのNHTに共通コマンドを結び付ける。作業用worktreeでは専用の実行パスで試す。
+- 共有.venvの依存はgit-syncでは更新されない。統合レビューの起動前に共有環境でjsonschemaをimportできるか確かめる。
+- 共有.venvで使われるsrcは実行時のカレントディレクトリで決まる。試すworktreeから実行・enqueueする。
+- 共有venvのstandalone Pythonではimport testsがsite-packagesを指す場合がある。pytestと同じimport解決を前提にしない。

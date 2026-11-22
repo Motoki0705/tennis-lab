@@ -1,0 +1,7 @@
+{
+  "scope": "CPU fake artifacts only; not a real GPU prefix/cache-hit measurement",
+  "clips": 2,
+  "retained_per_clip": 5,
+  "bytes_and_references_preserved": true,
+  "downstream_and_exports_absent": true
+}

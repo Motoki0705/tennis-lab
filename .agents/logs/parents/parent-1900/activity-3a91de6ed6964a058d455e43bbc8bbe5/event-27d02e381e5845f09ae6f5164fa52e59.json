@@ -1,0 +1,85 @@
+{
+  "record": {
+    "data": {
+      "action_id": "58ee62c736394cb58fa275c28ec004ef",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.review-request; artifact=saved parent verification; content_sha256=ae7be61dbd1b24c90420ab7b0bc5176c7143d9a72819589692be12744aa95563; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=ae7be61dbd1b24c90420ab7b0bc5176c7143d9a72819589692be12744aa95563; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2018]; - 対象HEAD 7fea0a9f5fb2fb1074ac0f9485987a13a9b1f927。CI run 43577017995（attempt 2）で Python を含む全ジョブ成功。初回の失敗は既存のworktree削除テストで、再実行の根拠はPR本文に記録。",
+      "verifies": [
+        "96087ebe19c74141b5afa22872d1bf84"
+      ]
+    },
+    "id": "27d02e381e5845f09ae6f5164fa52e59",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "3a91de6ed6964a058d455e43bbc8bbe5",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "01a18c8251354da79ee462d689409473"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T09:29:10.437987+00:00"
+      },
+      "recorded_at": "2026-11-14T09:29:10.438003+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

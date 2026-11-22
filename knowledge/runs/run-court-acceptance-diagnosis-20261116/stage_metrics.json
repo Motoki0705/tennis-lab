@@ -1,0 +1,1495 @@
+{
+  "reference_used": false,
+  "records": [
+    {
+      "key": "clip_000_cam0_review_best",
+      "old_accepted": false,
+      "old_best": {
+        "region_xyxy": [
+          240,
+          270,
+          1680,
+          810
+        ],
+        "status": "ok",
+        "accepted": false,
+        "inliers": 7,
+        "inlier_score": 4.173257350921631,
+        "area_ratio": 0.07440756088507902,
+        "convex": true,
+        "inside_content": true
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        0,
+        3,
+        4,
+        7,
+        10,
+        11,
+        12
+      ],
+      "crop_xyxy": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "fit_indices": [
+        3,
+        4,
+        7,
+        10,
+        11,
+        12
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            2,
+            5
+          ],
+          "distance_px": 0.7776056861436524
+        },
+        {
+          "indices": [
+            6,
+            9
+          ],
+          "distance_px": 24.320939573605035
+        },
+        {
+          "indices": [
+            0,
+            4
+          ],
+          "distance_px": 42.07632266644083
+        },
+        {
+          "indices": [
+            1,
+            6
+          ],
+          "distance_px": 53.77865837096561
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        153.15296936035156,
+        172.49624633789062,
+        25.088111877441406,
+        109.63784790039062,
+        170.5255584716797,
+        24.35689353942871,
+        172.96546936035156,
+        130.67919921875,
+        174.60385131835938,
+        184.105712890625,
+        251.73037719726562,
+        254.18759155273438,
+        182.3985137939453,
+        263.7502136230469
+      ],
+      "line_support": {
+        "forward_support": 0.8388888888888889,
+        "reverse_support": 0.9935933899915342,
+        "segment_support": [
+          0.875,
+          1.0,
+          0.675,
+          0.925,
+          0.825,
+          0.95,
+          0.725,
+          0.9,
+          0.675
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 9.0,
+        "forward_rms_px": 6.580767907308405,
+        "reverse_rms_px": 2.3386856276902948
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 425,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 0.9982400660663093,
+      "final_score": 0.8735912123521417,
+      "selection_history": [
+        [
+          3,
+          4,
+          6,
+          10,
+          12
+        ],
+        [
+          3,
+          4,
+          6,
+          7,
+          10,
+          11,
+          12
+        ],
+        [
+          3,
+          4,
+          7,
+          10,
+          11,
+          12
+        ],
+        [
+          3,
+          4,
+          7,
+          10,
+          11,
+          12
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 3.268655359992408,
+      "rgb_sha256": "df3c4acb04974f7cf8d85323424639fe18f830e578d51534d0e86400fc6a9b7b"
+    },
+    {
+      "key": "clip_013_cam0_review_best",
+      "old_accepted": false,
+      "old_best": {
+        "region_xyxy": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "status": "ok",
+        "accepted": false,
+        "inliers": 4,
+        "inlier_score": 2.808392286300659,
+        "area_ratio": 0.05749440136263954,
+        "convex": true,
+        "inside_content": true
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        3,
+        5,
+        7,
+        11
+      ],
+      "crop_xyxy": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "fit_indices": [
+        3,
+        5,
+        7,
+        11
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            0,
+            2
+          ],
+          "distance_px": 2.6768794146948824
+        },
+        {
+          "indices": [
+            8,
+            12
+          ],
+          "distance_px": 13.694114635698961
+        },
+        {
+          "indices": [
+            4,
+            12
+          ],
+          "distance_px": 15.137970628714761
+        },
+        {
+          "indices": [
+            0,
+            5
+          ],
+          "distance_px": 16.003593890629332
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        200.16616821289062,
+        454.6161804199219,
+        199.19049072265625,
+        384.18475341796875,
+        438.5411071777344,
+        216.0081329345703,
+        454.9800109863281,
+        409.94781494140625,
+        454.59283447265625,
+        468.8730163574219,
+        512.1727294921875,
+        518.6090698242188,
+        453.5702819824219,
+        532.6316528320312
+      ],
+      "line_support": {
+        "forward_support": 0.7444444444444445,
+        "reverse_support": 0.8968469330821629,
+        "segment_support": [
+          0.275,
+          0.95,
+          0.65,
+          1.0,
+          0.65,
+          0.85,
+          0.85,
+          0.975,
+          0.5
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 8.0,
+        "forward_rms_px": 10.490100738147046,
+        "reverse_rms_px": 6.797298701330194
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 110,
+      "refined_count": 1,
+      "alternative_score_gap": null,
+      "line_selection_score": 3.277270825982159,
+      "final_score": 1.2998496078009931,
+      "selection_history": [
+        [
+          3,
+          5,
+          6,
+          7,
+          9
+        ],
+        [
+          3,
+          5,
+          7,
+          11
+        ],
+        [
+          3,
+          5,
+          7,
+          11
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 1.6600210000033258,
+      "rgb_sha256": "ea55dabb4d35887fe54cb2108ab7fa75f060bc02cb3753b32b1ef1223248cdd7"
+    },
+    {
+      "key": "clip_001_cam1_review_best",
+      "old_accepted": false,
+      "old_best": {
+        "region_xyxy": [
+          240,
+          270,
+          1680,
+          810
+        ],
+        "status": "ok",
+        "accepted": false,
+        "inliers": 7,
+        "inlier_score": 4.663131237030029,
+        "area_ratio": 0.10438942079279963,
+        "convex": true,
+        "inside_content": true
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        0,
+        1,
+        3,
+        4,
+        8,
+        9,
+        10
+      ],
+      "crop_xyxy": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "fit_indices": [
+        0,
+        4,
+        8,
+        9
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            2,
+            5
+          ],
+          "distance_px": 25.25226138172631
+        },
+        {
+          "indices": [
+            1,
+            9
+          ],
+          "distance_px": 25.6755258068941
+        },
+        {
+          "indices": [
+            4,
+            8
+          ],
+          "distance_px": 31.18790370059064
+        },
+        {
+          "indices": [
+            1,
+            6
+          ],
+          "distance_px": 34.14274191863467
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        209.38467407226562,
+        204.15518188476562,
+        17.96038818359375,
+        61.6541748046875,
+        209.0325469970703,
+        1.8125,
+        204.32208251953125,
+        129.82992553710938,
+        230.47378540039062,
+        217.8811798095703,
+        196.78091430664062,
+        232.8385009765625,
+        220.40805053710938,
+        220.12899780273438
+      ],
+      "line_support": {
+        "forward_support": 0.6666666666666666,
+        "reverse_support": 0.9658985068433935,
+        "segment_support": [
+          0.05,
+          0.975,
+          0.975,
+          0.85,
+          0.75,
+          0.725,
+          0.225,
+          0.825,
+          0.625
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 7.0,
+        "forward_rms_px": 17.14588336957181,
+        "reverse_rms_px": 3.8578789626082
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 166,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 6.75257580954928,
+      "final_score": 3.4098369709932936,
+      "selection_history": [
+        [
+          0,
+          4,
+          8,
+          9,
+          11
+        ],
+        [
+          0,
+          4,
+          8,
+          9,
+          11
+        ],
+        [
+          0,
+          4,
+          8,
+          9
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 2.3648991829977604,
+      "rgb_sha256": "bf71cee1f20dfeec756d93ae52efc166fcc2326e476183a7dd42dbc926b2501c"
+    },
+    {
+      "key": "clip_009_cam2_review_best",
+      "old_accepted": false,
+      "old_best": {
+        "region_xyxy": [
+          240,
+          270,
+          1680,
+          810
+        ],
+        "status": "ok",
+        "accepted": false,
+        "inliers": 7,
+        "inlier_score": 4.73710823059082,
+        "area_ratio": 0.07090369023083451,
+        "convex": true,
+        "inside_content": true
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        0,
+        2,
+        3,
+        5,
+        6,
+        9,
+        11
+      ],
+      "crop_xyxy": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "fit_indices": [
+        0,
+        3,
+        5,
+        6
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            0,
+            4
+          ],
+          "distance_px": 25.921653495802943
+        },
+        {
+          "indices": [
+            6,
+            9
+          ],
+          "distance_px": 35.40050457656213
+        },
+        {
+          "indices": [
+            1,
+            6
+          ],
+          "distance_px": 42.79876397900879
+        },
+        {
+          "indices": [
+            2,
+            5
+          ],
+          "distance_px": 58.04512251082207
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        181.4911346435547,
+        185.5811004638672,
+        36.02548599243164,
+        104.80160522460938,
+        183.91732788085938,
+        93.24818420410156,
+        185.91192626953125,
+        109.75445556640625,
+        204.93370056152344,
+        196.8615264892578,
+        252.10125732421875,
+        240.39602661132812,
+        205.82589721679688,
+        253.82083129882812
+      ],
+      "line_support": {
+        "forward_support": 0.8166666666666665,
+        "reverse_support": 0.96995988139406,
+        "segment_support": [
+          0.675,
+          0.975,
+          0.725,
+          0.825,
+          0.95,
+          0.975,
+          0.475,
+          0.95,
+          0.8
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 8.0,
+        "forward_rms_px": 10.147532566142434,
+        "reverse_rms_px": 4.856333035641306
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 299,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 1.8427046278225674,
+      "final_score": 1.742734219292786,
+      "selection_history": [
+        [
+          0,
+          3,
+          5,
+          6
+        ],
+        [
+          0,
+          3,
+          5,
+          6
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 2.2288060569990193,
+      "rgb_sha256": "f25413c711a88bd3260af03bccac4c5cfc74b3fde0c23ff8a328e509ac355dff"
+    },
+    {
+      "key": "clip_000_cam3_review_best",
+      "old_accepted": true,
+      "old_best": {
+        "region_xyxy": [
+          480,
+          0,
+          1920,
+          540
+        ],
+        "status": "ok",
+        "accepted": true,
+        "inliers": 8,
+        "inlier_score": 4.924747943878174,
+        "area_ratio": 0.07583797290485732,
+        "convex": true,
+        "inside_content": true
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        1,
+        4,
+        6,
+        8,
+        9,
+        10,
+        12,
+        13
+      ],
+      "crop_xyxy": [
+        480,
+        0,
+        1920,
+        540
+      ],
+      "fit_indices": [
+        6,
+        8,
+        9,
+        10,
+        13
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            2,
+            3
+          ],
+          "distance_px": 2.1125865579346295
+        },
+        {
+          "indices": [
+            2,
+            5
+          ],
+          "distance_px": 11.076453893682034
+        },
+        {
+          "indices": [
+            3,
+            5
+          ],
+          "distance_px": 13.186804286545573
+        },
+        {
+          "indices": [
+            4,
+            8
+          ],
+          "distance_px": 31.02342067242668
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        203.97323608398438,
+        240.32000732421875,
+        76.1673583984375,
+        74.925048828125,
+        218.03427124023438,
+        83.122314453125,
+        239.60372924804688,
+        38.8800048828125,
+        199.80221557617188,
+        229.441650390625,
+        120.31881713867188,
+        176.68475341796875,
+        210.99160766601562,
+        160.9520263671875
+      ],
+      "line_support": {
+        "forward_support": 0.8111111111111112,
+        "reverse_support": 0.9628601828066156,
+        "segment_support": [
+          0.65,
+          0.825,
+          0.925,
+          0.675,
+          1.0,
+          0.65,
+          0.7,
+          0.975,
+          0.9
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 9.0,
+        "forward_rms_px": 7.504949307594565,
+        "reverse_rms_px": 9.035873972152492
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 98,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 1.8628858063772866,
+      "final_score": 1.5028133162858146,
+      "selection_history": [
+        [
+          6,
+          8,
+          9,
+          10,
+          13
+        ],
+        [
+          6,
+          8,
+          9,
+          10,
+          13
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 2.3397199729952263,
+      "rgb_sha256": "38c40935bc3551c13bb74daf929b0bada5881da73b925cc0c5d5f65692fbbf59"
+    },
+    {
+      "key": "clip_000_cam3_full_frame",
+      "old_accepted": true,
+      "old_best": {
+        "region_xyxy": [
+          480,
+          0,
+          1920,
+          540
+        ],
+        "status": "ok",
+        "accepted": true,
+        "inliers": 8,
+        "inlier_score": 4.924747943878174,
+        "area_ratio": 0.07583797290485732,
+        "convex": true,
+        "inside_content": true
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        2,
+        4,
+        5,
+        9,
+        10
+      ],
+      "crop_xyxy": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "fit_indices": [
+        4,
+        5,
+        9,
+        10
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            3,
+            7
+          ],
+          "distance_px": 9.829964040408377
+        },
+        {
+          "indices": [
+            4,
+            8
+          ],
+          "distance_px": 23.073409239317268
+        },
+        {
+          "indices": [
+            1,
+            6
+          ],
+          "distance_px": 46.28130439068545
+        },
+        {
+          "indices": [
+            1,
+            9
+          ],
+          "distance_px": 53.77366958598319
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        53.0130615234375,
+        294.0704650878906,
+        531.7779541015625,
+        66.9046630859375,
+        321.89959716796875,
+        515.4270629882812,
+        307.13983154296875,
+        70.2783203125,
+        333.9323425292969,
+        317.75042724609375,
+        412.83026123046875,
+        363.79180908203125,
+        322.81341552734375,
+        382.339111328125
+      ],
+      "line_support": {
+        "forward_support": 0.8277777777777778,
+        "reverse_support": 0.959559516327177,
+        "segment_support": [
+          0.825,
+          0.95,
+          0.875,
+          0.8,
+          0.95,
+          0.45,
+          0.925,
+          0.675,
+          1.0
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 8.0,
+        "forward_rms_px": 8.49852879898191,
+        "reverse_rms_px": 6.8796157595297505
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 280,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 1.2954325789452028,
+      "final_score": 1.0311956917919132,
+      "selection_history": [
+        [
+          4,
+          5,
+          9,
+          10
+        ],
+        [
+          4,
+          5,
+          9,
+          10
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 2.85590087401215,
+      "rgb_sha256": "38c40935bc3551c13bb74daf929b0bada5881da73b925cc0c5d5f65692fbbf59"
+    },
+    {
+      "key": "clip_001_cam3_review_best",
+      "old_accepted": false,
+      "old_best": {
+        "region_xyxy": [
+          240,
+          0,
+          1680,
+          540
+        ],
+        "status": "ok",
+        "accepted": false,
+        "inliers": 9,
+        "inlier_score": 5.625601768493652,
+        "area_ratio": 0.1783200932809915,
+        "convex": true,
+        "inside_content": false
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        0,
+        1,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "crop_xyxy": [
+        240,
+        0,
+        1680,
+        540
+      ],
+      "fit_indices": [
+        1,
+        8,
+        10,
+        11
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            2,
+            5
+          ],
+          "distance_px": 7.750512496056296
+        },
+        {
+          "indices": [
+            3,
+            7
+          ],
+          "distance_px": 12.568037931256063
+        },
+        {
+          "indices": [
+            1,
+            6
+          ],
+          "distance_px": 24.677161303977453
+        },
+        {
+          "indices": [
+            4,
+            8
+          ],
+          "distance_px": 30.472069692290468
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        209.9066162109375,
+        232.97125244140625,
+        27.171722412109375,
+        117.84912109375,
+        219.03225708007812,
+        19.50482177734375,
+        230.70562744140625,
+        116.889404296875,
+        199.93447875976562,
+        228.86752319335938,
+        120.09976196289062,
+        184.1097412109375,
+        218.1763916015625,
+        161.76739501953125
+      ],
+      "line_support": {
+        "forward_support": 0.803125,
+        "reverse_support": 0.8560624986913306,
+        "segment_support": [
+          0.775,
+          0.0,
+          0.9,
+          0.825,
+          0.9,
+          0.5,
+          0.9,
+          0.75,
+          0.875
+        ],
+        "visible_segments": 8.0,
+        "supported_segments": 8.0,
+        "forward_rms_px": 7.016389543261254,
+        "reverse_rms_px": 30.037268162017533
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 231,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 2.9023361104480463,
+      "final_score": 2.7756514840664597,
+      "selection_history": [
+        [
+          1,
+          8,
+          10,
+          11
+        ],
+        [
+          1,
+          8,
+          10,
+          11
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 2.9086305880045984,
+      "rgb_sha256": "7c8be54c3f9e00ff88cc8675b000df4d1d12dfb8999544b9f052da6c6018322c"
+    },
+    {
+      "key": "clip_013_cam3_review_best",
+      "old_accepted": false,
+      "old_best": {
+        "region_xyxy": [
+          0,
+          0,
+          1440,
+          540
+        ],
+        "status": "ok",
+        "accepted": false,
+        "inliers": 6,
+        "inlier_score": 3.551058530807495,
+        "area_ratio": 0.547007888855117,
+        "convex": true,
+        "inside_content": false
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        1,
+        6,
+        9,
+        10,
+        12,
+        13
+      ],
+      "crop_xyxy": [
+        0,
+        0,
+        1440,
+        540
+      ],
+      "fit_indices": [
+        9,
+        10,
+        12,
+        13
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            0,
+            4
+          ],
+          "distance_px": 10.27258013966093
+        },
+        {
+          "indices": [
+            7,
+            11
+          ],
+          "distance_px": 19.268798828125
+        },
+        {
+          "indices": [
+            2,
+            5
+          ],
+          "distance_px": 19.362083292571892
+        },
+        {
+          "indices": [
+            1,
+            6
+          ],
+          "distance_px": 25.699765347137077
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        218.06893920898438,
+        230.55764770507812,
+        1.8125,
+        30.8509521484375,
+        218.12979125976562,
+        16.2552490234375,
+        222.51681518554688,
+        1.8125,
+        205.81338500976562,
+        228.31643676757812,
+        108.90402221679688,
+        1.8125,
+        210.6348876953125,
+        154.14266967773438
+      ],
+      "line_support": {
+        "forward_support": 0.7843749999999999,
+        "reverse_support": 0.8672111193640548,
+        "segment_support": [
+          0.6,
+          0.0,
+          0.725,
+          0.825,
+          0.875,
+          0.65,
+          0.75,
+          0.9,
+          0.95
+        ],
+        "visible_segments": 8.0,
+        "supported_segments": 8.0,
+        "forward_rms_px": 6.292309621618394,
+        "reverse_rms_px": 24.263556543360128
+      },
+      "kp_only_status": "court_crosses_projection_pole",
+      "kp_only_prosac_orientation": null,
+      "candidate_count": 22,
+      "refined_count": 2,
+      "alternative_score_gap": null,
+      "line_selection_score": 2.7415498688445554,
+      "final_score": 2.1764786922545043,
+      "selection_history": [
+        [
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          9,
+          10,
+          12,
+          13
+        ],
+        [
+          9,
+          10,
+          12,
+          13
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 1.5890693760011345,
+      "rgb_sha256": "73256064f0666cb12d922a416226527d2f1591cc0111024385720f407725b181"
+    },
+    {
+      "key": "clip_033_cam3_review_best",
+      "old_accepted": true,
+      "old_best": {
+        "region_xyxy": [
+          480,
+          270,
+          1920,
+          810
+        ],
+        "status": "ok",
+        "accepted": true,
+        "inliers": 8,
+        "inlier_score": 5.729551315307617,
+        "area_ratio": 0.07262876508660998,
+        "convex": true,
+        "inside_content": true
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        0,
+        2,
+        4,
+        5,
+        8,
+        10,
+        11,
+        13
+      ],
+      "crop_xyxy": [
+        480,
+        270,
+        1920,
+        810
+      ],
+      "fit_indices": [
+        2,
+        4,
+        5,
+        8,
+        10,
+        11,
+        13
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            1,
+            6
+          ],
+          "distance_px": 15.563905457787722
+        },
+        {
+          "indices": [
+            6,
+            12
+          ],
+          "distance_px": 15.82846452131874
+        },
+        {
+          "indices": [
+            3,
+            7
+          ],
+          "distance_px": 25.4597602658698
+        },
+        {
+          "indices": [
+            1,
+            12
+          ],
+          "distance_px": 29.289266392994076
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        62.425079345703125,
+        46.67506790161133,
+        262.0331726074219,
+        162.22503662109375,
+        60.23625564575195,
+        252.77566528320312,
+        47.539955139160156,
+        149.89154052734375,
+        72.81895446777344,
+        49.88221740722656,
+        159.2513885498047,
+        92.67221069335938,
+        58.80450439453125,
+        116.24591064453125
+      ],
+      "line_support": {
+        "forward_support": 0.6833333333333332,
+        "reverse_support": 0.9931750579639861,
+        "segment_support": [
+          0.375,
+          0.95,
+          0.925,
+          0.6,
+          1.0,
+          0.375,
+          0.45,
+          0.85,
+          0.625
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 6.0,
+        "forward_rms_px": 17.203652741717875,
+        "reverse_rms_px": 2.4520033695393066
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 144,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 3.4249068374339267,
+      "final_score": 3.1023158617404514,
+      "selection_history": [
+        [
+          4,
+          5,
+          8,
+          11,
+          13
+        ],
+        [
+          2,
+          4,
+          5,
+          8,
+          10,
+          11,
+          13
+        ],
+        [
+          2,
+          4,
+          5,
+          8,
+          10,
+          11,
+          13
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 2.767174498992972,
+      "rgb_sha256": "3627522835ea9d9308290b4a52850149740c19d73cb2b255086fa193d7d8cf14"
+    },
+    {
+      "key": "clip_035_cam3_review_best",
+      "old_accepted": true,
+      "old_best": {
+        "region_xyxy": [
+          480,
+          0,
+          1920,
+          540
+        ],
+        "status": "ok",
+        "accepted": true,
+        "inliers": 10,
+        "inlier_score": 6.7783522605896,
+        "area_ratio": 0.07610168295952463,
+        "convex": true,
+        "inside_content": true
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        0,
+        1,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "crop_xyxy": [
+        480,
+        0,
+        1920,
+        540
+      ],
+      "fit_indices": [
+        4,
+        6,
+        9,
+        10,
+        11,
+        12
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            2,
+            3
+          ],
+          "distance_px": 2.1377177720874494
+        },
+        {
+          "indices": [
+            3,
+            7
+          ],
+          "distance_px": 12.63117981804028
+        },
+        {
+          "indices": [
+            2,
+            7
+          ],
+          "distance_px": 14.723446049062051
+        },
+        {
+          "indices": [
+            4,
+            8
+          ],
+          "distance_px": 34.83479856499926
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        195.2346649169922,
+        240.41787719726562,
+        84.4246826171875,
+        82.6890869140625,
+        209.24749755859375,
+        1.8125,
+        231.35040283203125,
+        74.3212890625,
+        196.88534545898438,
+        222.32614135742188,
+        109.05276489257812,
+        176.98147583007812,
+        210.38140869140625,
+        152.35385131835938
+      ],
+      "line_support": {
+        "forward_support": 0.8555555555555556,
+        "reverse_support": 0.997615138860504,
+        "segment_support": [
+          0.8,
+          0.9,
+          0.975,
+          0.775,
+          1.0,
+          0.625,
+          0.625,
+          1.0,
+          1.0
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 9.0,
+        "forward_rms_px": 6.092465270968716,
+        "reverse_rms_px": 2.7667759496137387
+      },
+      "kp_only_status": "ok",
+      "kp_only_prosac_orientation": "x_reflected",
+      "candidate_count": 299,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 1.0569999340225675,
+      "final_score": 0.7418386719411955,
+      "selection_history": [
+        [
+          4,
+          6,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          4,
+          6,
+          9,
+          10,
+          11,
+          12
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 2.7330145119922236,
+      "rgb_sha256": "81adc5021f56b023a56cf3fd7528313e02356af1ee7fd8e44f3567dad364a277"
+    },
+    {
+      "key": "clip_068_cam3_review_best",
+      "old_accepted": false,
+      "old_best": {
+        "region_xyxy": [
+          480,
+          270,
+          1920,
+          810
+        ],
+        "status": "ok",
+        "accepted": false,
+        "inliers": 6,
+        "inlier_score": 4.000311851501465,
+        "area_ratio": 0.07322521096815762,
+        "convex": true,
+        "inside_content": false
+      },
+      "current_status": "ok",
+      "current_region_inliers": [
+        0,
+        2,
+        4,
+        5,
+        8,
+        9
+      ],
+      "crop_xyxy": [
+        480,
+        270,
+        1920,
+        810
+      ],
+      "fit_indices": [
+        2,
+        4,
+        5,
+        8,
+        9
+      ],
+      "raw_closest_pairs": [
+        {
+          "indices": [
+            1,
+            6
+          ],
+          "distance_px": 0.5720038364979314
+        },
+        {
+          "indices": [
+            3,
+            5
+          ],
+          "distance_px": 21.7817706494355
+        },
+        {
+          "indices": [
+            6,
+            12
+          ],
+          "distance_px": 29.813906012690264
+        },
+        {
+          "indices": [
+            1,
+            12
+          ],
+          "distance_px": 30.260348417847254
+        }
+      ],
+      "raw_crop_boundary_distance_px": [
+        62.304168701171875,
+        39.628631591796875,
+        262.8043212890625,
+        253.6260528564453,
+        60.34333038330078,
+        251.73497009277344,
+        40.19355010986328,
+        73.1468505859375,
+        73.32965850830078,
+        46.4951286315918,
+        162.12124633789062,
+        85.70346069335938,
+        60.11798858642578,
+        126.43856811523438
+      ],
+      "line_support": {
+        "forward_support": 0.6722222222222222,
+        "reverse_support": 0.966626156007163,
+        "segment_support": [
+          0.425,
+          1.0,
+          0.95,
+          0.5,
+          0.975,
+          0.425,
+          0.625,
+          0.15,
+          1.0
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 6.0,
+        "forward_rms_px": 17.183758988211743,
+        "reverse_rms_px": 3.672072962087917
+      },
+      "kp_only_status": "court_crosses_projection_pole",
+      "kp_only_prosac_orientation": null,
+      "candidate_count": 112,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "line_selection_score": 3.3084980190624256,
+      "final_score": 3.1346977266180667,
+      "selection_history": [
+        [
+          2,
+          4,
+          5,
+          8,
+          9
+        ],
+        [
+          2,
+          4,
+          5,
+          8,
+          9
+        ]
+      ],
+      "prediction_and_diagnostic_seconds": 1.4677985369926319,
+      "rgb_sha256": "c4f815ea6cc83fdffe81ce37620a20607a365ddaa4d225dc9e2ab30a54aed370"
+    }
+  ]
+}

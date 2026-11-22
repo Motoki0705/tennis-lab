@@ -1,0 +1,466 @@
+"""Small, network-free value and document contracts shared by citation consumers."""
+from __future__ import annotations
+
+import importlib
+import json
+from copy import deepcopy
+from dataclasses import asdict
+from pathlib import Path
+from types import ModuleType
+from typing import Any
+
+import pytest
+import yaml
+
+ROOT = Path(__file__).resolve().parents[3]
+FIXTURE = ROOT / "tests/fixtures/knowledge/citation_map"
+BOUNDARIES = json.loads((FIXTURE.parent / "citation-boundaries.json").read_text())
+
+
+@pytest.fixture(scope="module")
+def api() -> ModuleType:
+    with pytest.MonkeyPatch.context() as patch:
+        patch.syspath_prepend(str(ROOT / ".agents/skills/knowledge-control/scripts"))
+        return importlib.import_module("kg_citations")
+
+
+@pytest.fixture(scope="module")
+def identifiers(api: ModuleType) -> ModuleType:
+    return importlib.import_module("kg_identifiers")
+
+
+@pytest.fixture(scope="module")
+def paper_data() -> dict[str, Any]:
+    for path in (FIXTURE / "papers").glob("*.md"):
+        data = yaml.safe_load(path.read_text().split("---", 2)[1])
+        if data["title"] == "Fixture A":
+            return data  # type: ignore[no-any-return]
+    raise AssertionError("Fixture A is missing")
+
+
+def markdown(data: dict[str, Any]) -> str:
+    return "---\n" + yaml.safe_dump(data, allow_unicode=True) + "---\nAdditional reading note.\n"
+
+
+@pytest.fixture(scope="module")
+def boundary_library(api: ModuleType) -> Any:
+    return api.load_citations(FIXTURE)
+
+
+@pytest.fixture(scope="module")
+def contract_documents() -> dict[str, Any]:
+    result: dict[str, Any] = {"papers": {}, "searches": {}}
+    for kind in result:
+        for file in (FIXTURE / kind).glob("*.md"):
+            meta = yaml.safe_load(file.read_text().split("---", 2)[1])
+            result[kind][meta["title"] if kind == "papers" else meta["id"]] = meta
+    return result
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["libraries"], ids=lambda c: c["name"])
+def test_shared_library_contract(api: ModuleType, contract_documents: dict[str, Any], case: dict[str, Any]) -> None:
+    raw = deepcopy(contract_documents)
+    for edit in case["edits"]:
+        parent = raw
+        for key in edit["path"][:-1]:
+            parent = parent[key]
+        if edit.get("remove"):
+            del parent[edit["path"][-1]]
+        else:
+            parent[edit["path"][-1]] = deepcopy(edit["value"])
+    library = api.CitationLibrary()
+    observed: dict[str, Any] = {"papers": {}, "searches": {}}
+    try:
+        for kind, docs in raw.items():
+            for key, data in docs.items():
+                parsed = api.parse_document(markdown(data))
+                getattr(library, kind)[parsed.id] = parsed
+                observed[kind][key] = asdict(parsed)
+        accepted = not api.validate_library(library)
+    except ValueError:
+        accepted = False
+    assert accepted == case["accept"]
+    if accepted:
+        for expected in case.get("expect", []):
+            value = observed
+            for key in expected["path"]:
+                value = value[key]
+            assert value == expected["value"]
+
+
+def test_saved_wasb_library_accepts_both_searches(api: ModuleType) -> None:
+    directory = ROOT / "knowledge/citation_map"
+    library = api.load_citations(directory)
+    assert len(library.papers) == len(list((directory / "papers").glob("*.md")))
+    assert len(library.papers) >= 115
+    assert api.validate_library(library) == []
+    for search_id in ("search-wasb-comparison-depth1", "search-wasb-comparison-depth2"):
+        assert library.searches[search_id].root_id == "cite-baef928f0aefd5a6"
+        assert library.searches[search_id].status == "complete"
+    sources: dict[str, set[str]] = {}
+    for generation in library.searches["search-wasb-comparison-depth2"].generations:
+        for paper_id in generation.expanded_ids:
+            for ref in library.papers[paper_id].references:
+                if ref.target_id and "comparison" in ref.roles:
+                    sources.setdefault(ref.target_id, set()).add(paper_id)
+    assert len(sources) == 10
+    assert {target for target, papers in sources.items() if len(papers) == 2} == {"cite-8f0c4c4fb0a47be0", "cite-aece796df0c08e14", "cite-bee887c491b4ab99"}
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["external_ids"], ids=lambda c: c["name"])
+def test_identifier_aliases_have_explicit_normal_forms(api: ModuleType, identifiers: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    namespace, value, expected = case["namespace"], case["value"], case["normalized"]
+    if expected is None:
+        with pytest.raises(ValueError):
+            identifiers.normalize_identifier(namespace, value)
+    else:
+        assert identifiers.normalize_identifier(namespace, value) == expected
+    paper = deepcopy(next(iter(boundary_library.papers.values())))
+    paper.references = []
+
+    def parsed(saved_value: str) -> Any:
+        paper.external_ids = {namespace: saved_value}
+        paper.identity_key = f"{namespace}:{saved_value}"
+        paper.id = identifiers.citation_id(paper.identity_key)
+        return api.parse_document(api.serialize_document(paper))
+
+    if expected is not None:
+        canonical = parsed(expected)
+        assert canonical.external_ids == {namespace: expected}
+        assert api.validate_library(api.CitationLibrary(papers={canonical.id: canonical})) == []
+    if expected is None or value != expected:
+        with pytest.raises(ValueError):
+            parsed(value)
+    else:
+        assert parsed(value).external_ids == {namespace: value}
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["timestamps"], ids=lambda c: c["name"])
+def test_shared_timestamp_boundaries(api: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    search = deepcopy(boundary_library.searches["search-fixture-mixed-depth2"])
+    search.created_at = case["value"]
+    if not case["accept"]:
+        with pytest.raises(ValueError):
+            api.serialize_document(search)
+        return
+    parsed = api.parse_document(api.serialize_document(search))
+    assert parsed.created_at == case["value"]
+    assert api.validate_library(api.CitationLibrary(papers=boundary_library.papers, searches={parsed.id: parsed})) == []
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["source_urls"], ids=lambda c: c["name"])
+def test_shared_source_url_boundaries(api: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    paper = deepcopy(next(iter(boundary_library.papers.values())))
+    paper.source = case["value"]
+    if not case["accept"]:
+        with pytest.raises(ValueError):
+            api.serialize_document(paper)
+        return
+    parsed = api.parse_document(api.serialize_document(paper))
+    assert parsed.source == case["value"]
+    assert api.validate_library(api.CitationLibrary(papers={**boundary_library.papers, parsed.id: parsed}, searches=boundary_library.searches)) == []
+
+
+@pytest.mark.parametrize(("field_path", "value", "message"), [
+    (("schema_version",), 2, "schema_version"),
+    (("schema_version",), True, "schema_version"),
+    (("type",), "paper", "type must"),
+    (("extra",), "ignored?", "expected keys"),
+    (("title",), " ", "title"),
+    (("year",), True, "year"),
+    (("authors",), "Author", "authors"),
+    (("authors",), ["Author", "Author"], "duplicate"),
+    (("external_ids",), {}, "external_ids"),
+    (("external_ids",), {"isbn": "unknown"}, "invalid external ID"),
+    (("external_ids",), {"doi": "10.5555/FIXTURE-A"}, "normalized"),
+    (("identity_key",), "doi:10.5555/other", "identity_key"),
+    (("source",), "javascript:alert(1)", "source"),
+    (("summary",), "", "summary"),
+    (("text_status",), "downloaded", "text_status"),
+    (("references", 0, "roles"), ["baseline"], "roles"),
+    (("references", 0, "roles"), ["comparison", "comparison"], "duplicate"),
+    (("references", 0, "roles"), [], "requires roles and evidence"),
+    (("references", 0, "evidence"), [], "requires roles and evidence"),
+    (("references", 0, "reason"), "", "reason"),
+    (("references", 0, "identification_status"), "unknown", "identification_status"),
+    (("references", 0, "identification_status"), "unresolved", "disagree"),
+    (("references", 0, "decision_status"), "guessed", "decision_status"),
+    (("references", 0, "decision_status"), "unclassifiable", "empty roles"),
+    (("references", 1, "ref_id"), "ref-1", "duplicate reference"),
+])
+def test_malformed_paper_is_rejected(api: ModuleType, paper_data: dict[str, Any], field_path: tuple[Any, ...], value: Any, message: str) -> None:
+    data = deepcopy(paper_data)
+    cursor = data
+    for key in field_path[:-1]:
+        cursor = cursor[key]
+    cursor[field_path[-1]] = value
+    with pytest.raises(ValueError, match=message):
+        api.parse_document(markdown(data))
+
+
+def test_yaml_duplicate_keys_and_aliases_are_rejected(api: ModuleType, paper_data: dict[str, Any]) -> None:
+    raw = markdown(paper_data)
+    with pytest.raises(ValueError, match="duplicate YAML key"):
+        api.parse_document(raw.replace("type: citation_paper", "type: citation_paper\ntype: citation_paper"))
+    with pytest.raises(ValueError, match="aliases"):
+        api.parse_document(raw.replace("title: Fixture A", "title: &title Fixture A\nextra: *title"))
+
+
+def test_fixture_has_independent_failure_states_and_all_roles(api: ModuleType, tmp_path: Path) -> None:
+    library = api.load_citations(FIXTURE)
+    assert api.validate_library(library) == []
+    papers = {p.title[-1]: p for p in library.papers.values()}
+    assert set(papers) == set("ABCDEP")
+    pending = papers["P"].references[0]
+    assert pending.identification_status == "pending" and pending.target_id is None
+    assert pending.lookup.title == "A Pending Target"
+    assert pending.roles == ["comparison", "foundation"]
+    assert library.searches["search-fixture-pending-identification"].generations[0].expanded_ids == []
+    assert papers["D"].text_status == "not_requested" and papers["D"].summary == ""
+    assert papers["E"].text_status == "failed" and "403" in papers["E"].text_reason
+    a = papers["A"]
+    assert a.references[3].identification_status == "unresolved"
+    assert a.references[4].identification_status == "resolved"
+    assert a.references[3].decision_status == a.references[4].decision_status == "unclassifiable"
+    assert {r for ref in a.references for r in ref.roles} == {"foundation", "component", "comparison", "related", "benchmark"}
+    comparisons: dict[str, set[str]] = {}
+    for paper in library.papers.values():
+        for ref in paper.references:
+            if "comparison" in ref.roles and ref.target_id:
+                comparisons.setdefault(ref.target_id, set()).add(paper.title[-1])
+    assert comparisons == {papers["B"].id: {"A"}, papers["D"].id: {"B", "C"}, papers["E"].id: {"A"}}
+    for suffix, expected in (("comparison-depth2", [set("A"), set("BE"), set("D")]), ("comparison-depth1", [set("A"), set("BE")]), ("mixed-depth2", [set("A"), set("BCE"), set("D")])):
+        search = library.searches["search-fixture-" + suffix]
+        labels = {p.id: p.title[-1] for p in papers.values()}
+        assert [{labels[x] for x in g.paper_ids} for g in search.generations] == expected
+    # Actual disk write/read boundary; independent content assertions guard against
+    # a serializer/parser pair dropping fields together.
+    a.body = "\nA separate reading note.\n"
+    written = api.write_document(a, tmp_path)
+    raw = written.read_text()
+    data = yaml.safe_load(raw.split("---", 2)[1])
+    assert data["references"][0]["roles"] == ["comparison", "foundation"]
+    assert data["external_ids"] == {"doi": "10.5555/fixture-a"}
+    assert data["references"][3]["target_id"] is None
+    assert "A separate reading note." in raw
+    assert api.load_citations(tmp_path).papers[a.id] == a
+
+
+def test_alias_addition_keeps_id_and_ambiguous_union_is_rejected(api: ModuleType, identifiers: ModuleType) -> None:
+    library = api.load_citations(FIXTURE)
+    paper = next(p for p in library.papers.values() if p.title == "Fixture B")
+    assert paper.id == "cite-15ff6ca63fce212e"
+    paper.external_ids["url"] = "https://example.org/other-b"
+    parsed = api.parse_document(api.serialize_document(paper))
+    assert parsed.id == paper.id and parsed.identity_key == "doi:10.5555/fixture-b"
+    index = identifiers.external_id_index((p.id, p.external_ids) for p in library.papers.values())
+    assert identifiers.resolve_identity({"arxiv": "2401.00002v3"}, index) == paper.id
+    with pytest.raises(ValueError, match="ambiguous literature aliases"):
+        identifiers.resolve_identity({"arxiv": "2401.00002", "doi": "10.5555/fixture-c"}, index)
+
+
+@pytest.mark.parametrize(("namespace", "conflicting", "matching"), [
+    ("doi", "10.5555/conflicting-b", {"arxiv": "2401.00002v3"}),
+    ("arxiv", "2401.99999", {"doi": "10.5555/FIXTURE-B"}),
+    ("openalex", "W99999", {"doi": "10.5555/fixture-b"}),
+    ("url", "https://example.org/conflicting-b", {"doi": "10.5555/fixture-b"}),
+])
+def test_single_identity_match_rejects_conflicting_namespace(identifiers: ModuleType, namespace: str, conflicting: str, matching: dict[str, str]) -> None:
+    known = {"doi": "10.5555/fixture-b", "arxiv": "2401.00002", "openalex": "W1000002", "url": "https://example.org/fixture-b"}
+    incoming = {**matching, namespace: conflicting}
+    index = identifiers.external_id_index([("existing-b", known)])
+    with pytest.raises(ValueError, match="conflicting external IDs") as error:
+        identifiers.resolve_identity(incoming, index)
+    assert namespace in str(error.value) and conflicting in str(error.value)
+    # The same rule applies when building an exploration index, in either order.
+    for entries in ([('existing-b', known), ('incoming-b', incoming)], [('incoming-b', incoming), ('existing-b', known)]):
+        with pytest.raises(ValueError, match="conflicting external IDs"):
+            identifiers.external_id_index(entries)
+
+
+def test_papers_join_rejects_one_shared_id_with_a_conflicting_doi(api: ModuleType) -> None:
+    node = importlib.import_module("kg_lib").Node
+    library = api.load_citations(FIXTURE)
+    registered = [node("paper-2024-conflicting-b", "paper", {"external_ids": {"doi": "10.5555/conflicting-b", "arxiv": "2401.00002"}}, "", Path())]
+    with pytest.raises(ValueError, match="conflicting external IDs"):
+        api.papers_join(library, registered)
+    assert any("conflicting external IDs" in e for e in api.validate_library(library, registered))
+
+
+@pytest.mark.parametrize(("key", "value", "message"), [
+    ("roles", ["baseline"], "roles"),
+    ("roles", [], "nonempty"),
+    ("max_depth", -1, "nonnegative integer"),
+    ("max_depth", True, "nonnegative integer"),
+    ("created_at", "2026-11-14T00:00:00", "timezone"),
+    ("root_id", "../escape", "citation paper id"),
+])
+def test_search_schema_rejects_invalid_conditions(api: ModuleType, key: str, value: Any, message: str) -> None:
+    path = FIXTURE / "searches/search-fixture-comparison-depth2.md"
+    data = yaml.safe_load(path.read_text().split("---", 2)[1])
+    data[key] = value
+    with pytest.raises(ValueError, match=message):
+        api.parse_document(markdown(data))
+
+
+def test_full_text_failure_requires_a_reason_and_no_invented_references(api: ModuleType, paper_data: dict[str, Any]) -> None:
+    data = deepcopy(paper_data)
+    data.update(text_status="failed", text_reason="")
+    with pytest.raises(ValueError, match="text_reason"):
+        api.parse_document(markdown(data))
+    data["text_reason"] = "HTTP 403"
+    with pytest.raises(ValueError, match="cannot have references"):
+        api.parse_document(markdown(data))
+
+
+def test_papers_join_rejects_aliases_that_bridge_multiple_documents(api: ModuleType) -> None:
+    node = importlib.import_module("kg_lib").Node
+    library = api.load_citations(FIXTURE)
+    registered = [node("paper-2024-one", "paper", {"external_ids": {"doi": "10.5555/fixture-b"}}, "", Path()),
+                  node("paper-2024-two", "paper", {"external_ids": {"arxiv": "2401.00002"}}, "", Path())]
+    assert any("ambiguous literature aliases" in e for e in api.validate_library(library, registered))
+    # Disjoint namespace sets can also be bridged by Papers; retain coverage of
+    # duplicate citation documents even when no shared namespace conflicts.
+    identifiers = importlib.import_module("kg_identifiers")
+    b = next(p for p in library.papers.values() if p.title == "Fixture B")
+    b.references = []
+    library = api.CitationLibrary(papers={b.id: b})
+    c = deepcopy(b)
+    c.external_ids = {"url": "https://example.org/fixture-c"}
+    c.identity_key = "url:https://example.org/fixture-c"
+    c.id = identifiers.citation_id(c.identity_key)
+    c.title = "Fixture C"
+    c.source = "https://example.org/fixture-c"
+    library.papers[c.id] = c
+    registered = [node("paper-2024-one", "paper", {"external_ids": {"doi": "10.5555/fixture-b", "url": "https://example.org/fixture-c"}}, "", Path())]
+    assert any("duplicate literature through Papers" in e for e in api.validate_library(library, registered))
+
+
+def test_missing_store_is_empty_but_a_dangling_symlink_is_rejected(api: ModuleType, tmp_path: Path) -> None:
+    root = tmp_path / "citation_map"
+    assert api.load_citations(root).papers == {}
+    root.symlink_to(tmp_path / "missing", target_is_directory=True)
+    with pytest.raises(ValueError, match="symlinks"):
+        api.load_citations(root)
+
+
+def test_writer_rejects_symlink_before_creating_directories(api: ModuleType, tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    root = tmp_path / "citation_map"
+    root.symlink_to(outside, target_is_directory=True)
+    paper = next(iter(api.load_citations(FIXTURE).papers.values()))
+    with pytest.raises(ValueError, match="symlinks"):
+        api.write_document(paper, root)
+    assert list(outside.iterdir()) == []
+
+
+@pytest.mark.parametrize("mutation", ["target", "aliases", "generation", "expanded", "depth", "missing-generation", "issues", "unread-expanded", "root", "duplicate-id"])
+def test_library_rejects_cross_document_inconsistency(api: ModuleType, mutation: str) -> None:
+    library = api.load_citations(FIXTURE)
+    by_name = {p.title[-1]: p for p in library.papers.values()}
+    search = library.searches["search-fixture-comparison-depth2"]
+    if mutation == "target":
+        by_name["A"].references[0].target_id = "cite-0000000000000000"
+    elif mutation == "aliases":
+        by_name["C"].external_ids["arxiv"] = "2401.00002"
+    elif mutation == "generation":
+        search.generations[1].paper_ids.append(by_name["C"].id)
+    elif mutation == "expanded":
+        search.generations[2].expanded_ids.append(by_name["D"].id)
+    elif mutation == "depth":
+        search.generations[1].depth = 2
+    elif mutation == "missing-generation":
+        search.generations.pop()
+    elif mutation == "issues":
+        search.issues.pop()
+    elif mutation == "unread-expanded":
+        by_name["B"].text_status = "not_requested"
+    elif mutation == "root":
+        search.root_id = "cite-0000000000000000"
+    else:
+        by_name["C"].id = by_name["B"].id
+    assert api.validate_library(library), mutation
+
+
+@pytest.mark.parametrize("mutation", ["none", "empty-reason", "invalid-status", "early-partial", "unselected", "wrong-issues", "false-complete"])
+def test_interrupted_fixture_allows_only_the_last_generation_to_be_partial(api: ModuleType, mutation: str) -> None:
+    library = api.load_citations(FIXTURE)
+    search = library.searches["search-fixture-interrupted-depth2"]
+    if mutation == "empty-reason":
+        search.stop_reason = ""
+    elif mutation == "invalid-status":
+        search.status = "running"
+    elif mutation == "early-partial":
+        search.generations[0].expanded_ids = []
+    elif mutation == "unselected":
+        c = next(p for p in library.papers.values() if p.title == "Fixture C")
+        search.generations[1].paper_ids.append(c.id)
+    elif mutation == "wrong-issues":
+        search.issues = []
+    elif mutation == "false-complete":
+        search.status, search.stop_reason = "complete", ""
+    errors = api.validate_library(library)
+    assert bool(errors) == (mutation != "none")
+    if mutation == "none":
+        data = yaml.safe_load(api.serialize_document(search).split("---", 2)[1])
+        assert data["status"] == "interrupted"
+        assert data["generations"][1]["expanded_ids"] == ["cite-15ff6ca63fce212e"]
+
+
+def test_failed_atomic_replace_preserves_the_previous_document(api: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    paper = next(iter(api.load_citations(FIXTURE).papers.values()))
+    path = api.write_document(paper, tmp_path / "citation_map")
+    before = path.read_bytes()
+    paper.body = "Replacement that must not leak into a failed write."
+
+    def fail_replace(source: str, target: Path) -> None:
+        raise OSError("injected replace failure")
+
+    monkeypatch.setattr(api.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="injected"):
+        api.write_document(paper, tmp_path / "citation_map")
+    assert path.read_bytes() == before
+    assert list(tmp_path.glob(".citation-*")) == []
+
+
+def test_pending_identification_preserves_roles_and_blocks_expansion(api: ModuleType) -> None:
+    library = api.load_citations(FIXTURE)
+    a = next(p for p in library.papers.values() if p.title == "Fixture A")
+    ref = a.references[0]
+    ref.target_id, ref.identification_status = None, "pending"
+    ref.reason = "Comparison and foundation evidence.\nIdentification: pending"
+    assert ref.roles == ["comparison", "foundation"]
+    assert api.validate_library(library)
+    for search in library.searches.values():
+        api.rebuild_search(search, library.papers)
+    assert not api.validate_library(library)
+    assert all(search.status == "interrupted" for search in library.searches.values())
+    parsed = api.parse_document(api.serialize_document(a))
+    assert parsed.references[0].identification_status == "pending"
+    assert parsed.references[0].roles == ["comparison", "foundation"]
+
+
+@pytest.mark.parametrize("field,value", [("year", True), ("year", 99), ("authors", ["Alice", "Alice"]),
+                                         ("links", ["file:///private"]), ("extra", "ignored?")])
+def test_reference_lookup_inputs_are_strictly_validated(api: ModuleType, field: str, value: Any) -> None:
+    library = api.load_citations(FIXTURE)
+    pending = next(p for p in library.papers.values() if p.title == "Fixture P")
+    data = yaml.safe_load(api.serialize_document(pending).split("---", 2)[1])
+    data["references"][0]["lookup"][field] = value
+    with pytest.raises(ValueError):
+        api.parse_document(markdown(data))
+
+
+def test_unverified_identity_is_distinct_from_pending_and_cannot_expand(api: ModuleType) -> None:
+    library = api.load_citations(FIXTURE)
+    p = next(p for p in library.papers.values() if p.title == "Fixture P")
+    data = yaml.safe_load(api.serialize_document(p).split("---", 2)[1])
+    assert [r["identification_status"] for r in data["references"]] == ["pending", "unverified"]
+    assert data["references"][1]["target_id"] is None
+    assert data["references"][1]["roles"] == ["related"]
+    search = library.searches["search-fixture-pending-identification"]
+    assert search.status == "interrupted" and search.generations[0].expanded_ids == []
+    data["references"][1]["target_id"] = next(x.id for x in library.papers.values() if x.title == "Fixture B")
+    with pytest.raises(ValueError, match="disagree"):
+        api.parse_document(markdown(data))

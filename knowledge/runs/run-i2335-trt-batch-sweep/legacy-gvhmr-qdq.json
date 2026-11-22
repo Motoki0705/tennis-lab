@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "source_issue": 2305,
+  "conditions": {
+    "3a": {
+      "measured_graph": "outputs/trt-gvhmr/build-3a-r5/quantized.onnx",
+      "graph_sha256": "adaf4aedddd3765afe69155964b6fa0cac8e45d09142027004a89139bbd7c6d8",
+      "measurement_engine_sha256": "b2c520d748de82c88f85e04cf2b41b497a3b8e5e3c3e81f724be1a7d430130e3",
+      "conversion_receipt_sha256": "188421a3d5bd114bc92655fa8b678b151043ffcc893bfbe51def3508933d7733",
+      "queue_job": "0-8204837884971504911_2026-11-20T08-08-35-028495088Z_3163165_i2305-gvhmr-build-and-measure-3a-r5.job",
+      "onnx_checker_passed": true,
+      "verify_qdq_scope": {
+        "passed": false,
+        "reason": "Q/DQ connected to unselected inputs or outputs"
+      },
+      "selected_compute_nodes": 96,
+      "observed_dual_dq_compute_nodes": 96,
+      "missing_selected_compute_nodes": [],
+      "unexpected_dual_dq_compute_nodes": [],
+      "qdq_nodes": {
+        "QuantizeLinear": 168,
+        "DequantizeLinear": 168
+      },
+      "outside_dq_inputs_by_op": {
+        "Shape": 24
+      },
+      "outside_dq_consumer_nodes_by_op": {
+        "Shape": 24
+      },
+      "outside_dq_examples": {
+        "Shape": {
+          "node": "/network/blocks.0/attn/Shape",
+          "input_indices": [
+            0
+          ]
+        }
+      },
+      "dq_graph_outputs": []
+    },
+    "3b": {
+      "measured_graph": "outputs/trt-gvhmr/build-3b-r5/quantized.onnx",
+      "graph_sha256": "38f2c8c67fc2f1d4de81558e6fbe159bf1529a8f33e5f8c4a53ff3590e180101",
+      "measurement_engine_sha256": "42c0414901ea6e1b2b61301f0c9ae1ad1e17fe7692e8060d8945b8f7a532b498",
+      "conversion_receipt_sha256": "79c521e7a9bf70668c80c12eb0e2dbc3ae55081bff93728ad9fdeacad07b7e5a",
+      "queue_job": "0-8204837884702239052_2026-11-20T08-08-35-297760947Z_3163227_i2305-gvhmr-build-and-measure-3b-r5.job",
+      "onnx_checker_passed": true,
+      "verify_qdq_scope": {
+        "passed": false,
+        "reason": "Q/DQ connected to unselected inputs or outputs"
+      },
+      "selected_compute_nodes": 96,
+      "observed_dual_dq_compute_nodes": 96,
+      "missing_selected_compute_nodes": [],
+      "unexpected_dual_dq_compute_nodes": [],
+      "qdq_nodes": {
+        "QuantizeLinear": 168,
+        "DequantizeLinear": 168
+      },
+      "outside_dq_inputs_by_op": {
+        "Shape": 24
+      },
+      "outside_dq_consumer_nodes_by_op": {
+        "Shape": 24
+      },
+      "outside_dq_examples": {
+        "Shape": {
+          "node": "/network/blocks.0/attn/Shape",
+          "input_indices": [
+            0
+          ]
+        }
+      },
+      "dq_graph_outputs": []
+    }
+  }
+}

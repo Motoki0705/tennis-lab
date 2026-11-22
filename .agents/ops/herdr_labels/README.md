@@ -1,31 +1,47 @@
 # Herdrの親担当表示
 
-Herdr 0.9.3の表示用metadataへ、parent registryの担当を投影する。
+Herdr 0.9.5の表示用metadataへ、parent registryの担当を投影する。
 通常の呼出し手順は[herdr-session-label skill](../../skills/herdr-session-label/SKILL.md)。
 担当・合意・引継ぎの正本は[parent](../parent/README.md)。
 
 ## 表示と同期
 
-上段は`Alice · #1353 · 親`、下段は`セッション表示 · claude`。
+Agent行は`Alice · 親Issueの要約表示`のように、名前と親AIが書いた要約を並べる。
 名前は[board](../board/README.md#名前とライフサイクル)の有効な割当を読み取り専用で参照する。
-名前のない親（`name_status: unassigned`）は従来の`#1353 · 親`を表示し、名前を推測・割当しない。
+名前のない親（`name_status: unassigned`）は要約だけを表示し、名前を推測・割当しない。
 DBの破損や未知schemaはエラーにし、未割当として隠さない。
 `display_agent`は表示名だけを変更し、実際のagent種別と稼働状態には触れない。
-source `tennis-parent`で`tl_name` / `tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`を管理する。
+source `tennis-parent`で`tl_name` / `tl_parent` / `tl_issue` / `tl_topic` / `tl_engine` / `tl_owner`を管理する。
 `tl_name`は有効な名前だけを持ち、未割当では削除する。
 `tl_owner`はセッション識別子のSHA-256で、サイドバーには表示しない。
-短い題名は親issueタイトルの識別名。`--topic`で明示変更でき、同じ担当の同期では保持する。
-日本語の表示幅を数えて最大20桁に短縮する。
+`tl_topic`は要約、`tl_parent`は親registryキー（`owner/repo#番号`）で、どちらもサイドバーの既定行には出さない。
+`tl_issue`は同じregistryキーの番号を`#番号`の形で持ち、サイドバーでモデル名（`tl_engine`）の右に出す。
 
-`parent register/reconcile/sync/handoff/release`の担当操作後に、registryのロックを離し、
+### 要約
+
+要約は担当親が親issueの作業内容から作り、`parent register --summary`・`parent handoff --accept --summary`・
+`parent summary --text`でparent stateの親ごとの記録（`display_summary`）へ保存する。
+手順は[parent-session skill](../../skills/parent-session/references/ownership.md)。
+親ごとの記録なので、同じ会話の再開・新しいpaneでの復元・引継ぎ後も同じ値を表示する。
+表示幅は全角2・半角1で数えて24桁（全角12文字）以内。超過・空・前後の空白・制御文字は
+切り詰めず拒否し、保存済みの値を変えない。
+`register` / `handoff --accept` は要約不足を担当の書込み前に拒否する
+（[parentの事前検査](../../skills/parent-session/references/ownership.md)）。
+既存の要約のない担当を同期するときもエラーにし、issueタイトルや古い表示で代替しない。
+この場合は `parent summary --text` で要約を保存すれば表示が直る。
+version 2のregistryでは索引と親ごとの記録の`session` / `status` / `generation`が
+一致する場合だけ要約を読み、不一致なら再試行を求める。
+
+`parent register/summary/reconcile/sync/handoff/release`の担当操作後に、registryのロックを離し、
 boardの名前同期→担当表示→担当復帰時の未読表示の順で同期する。
 名前同期と担当表示は、一方が失敗しても他方を試みる。
 register・handoffの受領時に、担当sessionと確認済みterminalの対応をprivate stateへ保存する。
 この対応は表示トークンを消しても終了hook後も保持する。
-owner記録がない場合、通常のsyncや起動hookは表示先を確認せず、明示bindを求める。
-確認済み記録だけは、[ClaudeのSessionStart](#claudeのsessionstartによる表示先の移動)で条件付きで移せる。
+owner記録がない場合は、まずその会話で担当登録または引継ぎを行う。Claude / Codexでは明示bindも使える。
+確認済み記録は、[ClaudeのSessionStart](#claudeのsessionstartによる表示先の移動)または
+[agyのstatusLine](#agyの手動起動と表示)が条件付きで移せる。
 担当操作が成功して表示だけ失敗したときは終了値1、`parent_action_applied: true`と
-`display_sync.status: error`を返す。担当操作を取り消さず、表示CLIで修復する。
+`display_sync.status: error`と`display_sync.repair`の修復手順を返す。担当操作を取り消さず、表示CLIで修復する。
 Herdr環境・bindのないheadless実行は`not_configured`を明示し、担当操作自体は成功を返す。
 表示CLIでの`not_configured`は終了値1。設定・API・読み戻しの不一致は終了値2。
 
@@ -48,6 +64,38 @@ registryやGitHubを書き換えない。Codexも同じparent CLIとskillを使�
 表示解除と別の会話へのSessionStartでは、同じpaneロック内でsource `tennis-board`の
 未読トークンも解除し、前の親の未読数を残さない。DBの未読は変更しない。
 同じ担当のresumeでは名前を復元し、未読表示を保持する。compactでは両方とも保持する。
+
+## agyの手動起動と表示
+
+repo rootから手動親を起動する。Herdrの端末から起動すると担当表示も有効になる。
+検証対象はAntigravity CLI 1.5.13（Linux）。
+
+```bash
+.agents/ops/herdr_labels/agy-parent.sh
+.agents/ops/herdr_labels/agy-parent.sh --continue
+```
+
+個別再開ではagy自身の `--conversation` または `/resume` を使う。担当登録や変更は起動した会話の
+ホスト側 `run_command` からparent CLIで行う。識別の前提は[parent CLI](../parent/README.md#agyの手動親)を参照。
+
+ランチャーはcheckoutの `.venv/bin/python` を検査し、未設定なら起動前にエラーを返す。
+手動親の `PreInvocation` は、専用のhook設定だけを置いた一時ディレクトリを `--add-dir` で渡して有効にする。
+起動した会話だけがこの設定を読み、一時ディレクトリは終了時に削除する。担当登録と引継ぎ受領ではこのランチャーを使う。
+未読件数の扱いは[掲示板の仕様](../board/README.md#agyのpreinvocationによる未読提示)を参照。
+[Antigravityのカスタマイズ検出](https://antigravity.google/docs/customization-discovery?tab=cli)
+
+Herdr内では一時的な `--settings` で `statusLine` を設定する。他の起動時設定は引き継ぎ、
+指定済みのカスタム `statusLine` はその起動中だけ置き換える。Herdrが認識する `agent == "agy"` と
+実行元TUIのPID・開始時刻を、`statusLine` と通常同期の両方で対象paneと照合する。
+`statusLine` の会話IDとPIDが現在保持する会話ロックが一致したイベントで同期する。
+`/clear` や別会話への切替は次の入力前に古い表示を消し、登録済みの会話を再開すれば名前と担当を復元する。
+同じ端末に紐付く元のプロセスの終了後は、ランチャーが管理する表示と未読トークンを消す。
+
+別paneへの移動は、新paneのTUIが対象会話のロックを保持しており、登録済みの旧paneが空いたと確認できた場合に限る。
+移動前の空き確認と競合時の再照合は[共通のpane確認](#claudeのsessionstartによる表示先の移動)と同じ。
+agyではキャッシュされたnative参照より実際の会話ロックで照合する。
+表示先は起動した会話のHerdr環境から確認する。表示先の初回登録や修復では、
+上のランチャーで担当会話を開き、`parent register` を実行する。
 
 ## Codexのclear通知
 
@@ -149,16 +197,25 @@ SessionEndの失敗は従来どおりstderrと終了値1で返す。
 編集前に設定を退避し、別のrows_by_agent設定があれば競合を確認する。
 
 ```toml
+[ui]
+sidebar_width = 36
+
 [ui.sidebar.agents]
 rows = [
   ["state_icon", "agent"],
-  ["$tl_topic", "$tl_engine"],
+  ["$tl_engine", "$tl_issue"],
   ["$tl_inbox_label"],
 ]
 ```
 
-名前は`agent`の表示名に含まれるため、`$tl_name`を重ねて配置する必要はない。
-未読は専用行にし、長い題名で隠れにくくする。0件ではラベルがなく、行も消える。
+名前と要約は`agent`の表示名に含まれるため、`$tl_name` / `$tl_topic`を重ねて配置しない。
+2行目はHerdrが同じ行の値を`·`で区切り、`claude · #2012`のように表示する。
+表示解除・担当のないagentでは両方のトークンがなく、2行目ごと消える。
+`tl_issue`導入前に同期された表示は、次の担当操作か`herdr_labels sync`で番号が付く。
+それまでのboardの改名は表示を更新せず、担当表示の同期を求めるエラーを返す。
+Herdrは1つの値を折り返さず、行の幅を超えた分を`…`で切る。既定幅26では要約が入らないので、
+幅36を使う。サイドバーをドラッグで狭めると要約の末尾が切れる。
+未読は専用行にし、0件ではラベルがなく行も消える。
 メタデータのないagentは標準のagent名を表示する。親未登録を親として表示しない。
 Space一覧と状態表示は既存設定を使う。
 `herdr config check`で検証し、`herdr server reload-config`で再読込する。
@@ -196,7 +253,7 @@ bindは表示先のローカル記録であり、担当を割り当てない。
 ## 検証
 
 ```bash
-.venv/bin/python -m pytest tests/e2e/agents_ops/test_herdr_labels.py -n 4 -q
+.venv/bin/python -m pytest tests/e2e/agents_ops/test_{herdr_labels,agy_parent}.py -n 4 -q
 ```
 
 公式仕様: [metadata API](https://herdr.dev/docs/cli-reference/#panes)、

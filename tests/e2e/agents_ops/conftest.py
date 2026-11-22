@@ -21,6 +21,29 @@ ROOT = Path(__file__).resolve().parents[3]
 OPS_REPORT = ROOT / ".agents/ops/ops-report/ops_report.py"
 NOW = "2026-10-12T08:00:00+09:00"  # Monday of ISO week 2026-W42
 
+
+@pytest.fixture(autouse=True)
+def _isolate_agent_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No ops test may inherit the live parent's journal or capture namespace."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    for key in (
+        "DECISION_LOG_CAPTURE",
+        "DECISION_LOG_RETRIEVAL",
+        "AGENT_RUNTIME_RUN_DIR",
+        "AGENT_RUNTIME_TASK_ID",
+        "AGENT_AUTO_MERGE",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_herdr_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only explicit fake Herdr environments may reach an ops subprocess."""
+    for key in tuple(os.environ):
+        if key.startswith("HERDR_"):
+            monkeypatch.delenv(key)
+
+
 FAKE_GH = r"""
 import json, os, re, subprocess, sys, time
 
@@ -87,6 +110,7 @@ elif args[0] == "api" and "--method" in args:
         sys.exit(0 if code < 300 else 1)
     def api_issue(row):
         return {**gh_issue(row), "id": row["number"] + 10000, "state": row["state"].lower(),
+                "user": row.get("author", {"login": "bot"}),
                 "created_at": row["createdAt"],
                 "state_reason": row.get("state_reason"), "assignees": row.get("assignees", []),
                 "repository_url": "https://api.github.com/repos/o/r"}
@@ -113,6 +137,8 @@ elif args[0] == "api" and "--method" in args:
         sys.exit(1)
     if api_path == "user":
         api_emit({"login": "bot"})
+    if api_path == "repos/o/r/labels/parent-evidence":
+        api_emit({"name": "parent-evidence"})
     if api_path == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
         api_emit({"message": "Not Found"}, 404)
     if api_path == "repos/o/r/pulls":
@@ -132,8 +158,12 @@ elif args[0] == "api" and "--method" in args:
     if n is None:
         if method == "GET":
             api_emit(page([api_issue(i) for i in state["issues"]]))
-        number = state["next_number"]
-        state["next_number"] += 1
+        if payload.get("labels") == ["parent-evidence"]:
+            number = state.get("next_evidence", 9000)
+            state["next_evidence"] = number + 1
+        else:
+            number = state["next_number"]
+            state["next_number"] += 1
         row = {"number": number, **payload, "state": "OPEN", "state_reason": None,
                "createdAt": "2026-10-12T00:00:00Z", "updatedAt": "2026-10-12T00:00:00Z",
                "url": f"https://github.com/o/r/issues/{number}"}
@@ -584,7 +614,14 @@ class OpsEnv:
                 cmd += ["--base-ref", "main"]
             if "--now" not in args:
                 cmd += ["--now", NOW]
-        return cmd
+        return [
+            sys.executable,
+            str(ROOT / ".agents/ops/checkout_job.py"),
+            "--repo",
+            str(self.repo),
+            "--",
+            *cmd,
+        ]
 
     def run(
         self, *args: str, cwd: Path | None = None, **extra_env: str
@@ -674,3 +711,43 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
     )
     assert init.returncode == 0, init.stderr
     yield ops
+
+
+@pytest.fixture(autouse=True)
+def _github_http_bridge(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Route reader/parent HTTP to existing fake executable scenarios."""
+    import importlib.util
+
+    support = ROOT / "tests/support/agents_ops"
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    spec = importlib.util.spec_from_file_location(
+        "github_http", support / "github_http.py"
+    )
+    assert spec is not None and spec.loader is not None
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    transport = importlib.import_module("issues.transport")
+    monkeypatch.setattr(transport, "_API_URL", transport._API_URL)
+    monkeypatch.setattr(transport, "_logins", {})
+    monkeypatch.setattr(transport, "_token", transport._token)
+    monkeypatch.setattr(transport.HTTPClient, "request", transport.HTTPClient.request)
+    monkeypatch.setattr(
+        transport.HTTPClient, "request_response", transport.HTTPClient.request_response
+    )
+    monkeypatch.setenv("NO_PROXY", os.environ.get("NO_PROXY", ""))
+    bridge = helper.install(transport)
+    original = subprocess.Popen.__init__
+
+    def launch(self: Any, *args: Any, **kwargs: Any) -> None:
+        env = dict(kwargs.get("env") or os.environ)
+        env["AGENTS_TEST_GITHUB_HTTP"] = "1"
+        paths = [str(support / "http_bootstrap")]
+        env["PYTHONPATH"] = os.pathsep.join([*paths, env.get("PYTHONPATH", "")])
+        kwargs["env"] = env
+        original(self, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess.Popen, "__init__", launch)
+    try:
+        yield
+    finally:
+        bridge.close()

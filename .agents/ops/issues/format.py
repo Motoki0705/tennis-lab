@@ -13,6 +13,8 @@ from urllib.parse import quote, unquote
 
 PARENT_LABEL = "issue:parent"
 CHILD_LABEL = "issue:child"
+STANDALONE_LABEL = "issue:standalone"
+PROPOSAL_LABEL = "issue:proposal"
 TASKS_HEADING = "子タスクのチェックリスト"
 NO_CHILDREN = "未分割（子issue未作成）"
 PARENT_REQUIRED = (
@@ -176,6 +178,46 @@ def parse_sections(body: str) -> dict[str, str]:
     return {name: "\n".join(lines).strip() for name, lines in sections.items()}
 
 
+def section_span(body: str, heading: str) -> tuple[int, int] | None:
+    """Use the shared Markdown parser as authority; refuse ambiguous raw editing."""
+    sections = parse_sections(body)
+    if heading not in sections:
+        return None
+    headings: list[tuple[str, re.Match[str]]] = []
+    for match in re.finditer(r"(?m)^## (\S.*?)[ \t]*$", body):
+        try:
+            prefix = parse_sections(body[: match.end()])
+        except ValueError as exc:
+            if str(exc) in {"unclosed code fence", "unclosed HTML comment"}:
+                continue  # Examples/comments do not define an editable section.
+            raise
+        name = next(reversed(prefix), None)
+        if name and (not headings or headings[-1][0] != name):
+            headings.append((name, match))
+    if [name for name, _ in headings] != list(sections):
+        raise ValueError("ambiguous raw Markdown section boundaries")
+    index = list(sections).index(heading)
+    return headings[index][1].end(), headings[index + 1][1].start() if index + 1 < len(
+        headings
+    ) else len(body)
+
+
+def raw_section(body: str, heading: str) -> str:
+    span = section_span(body, heading)
+    return body[span[0] : span[1]].strip() if span else ""
+
+
+def raw_preamble(body: str) -> str:
+    """Retain prose/examples before the first real section, using the same parser."""
+    sections = parse_sections(body)
+    if not sections:
+        return body
+    span = section_span(body, next(iter(sections)))
+    assert span is not None
+    # section_span begins immediately after the header, not at its line start.
+    return body[: span[0]].rpartition("\n")[0]
+
+
 def parent_reference(body: str) -> int | None:
     lines = visible_lines(body)
     references = [
@@ -226,30 +268,57 @@ def render_child_tasks(tasks: Sequence[ChildTask]) -> str:
     )
 
 
+def _child_checklist_error(
+    line: str, reason: str = "invalid child checklist row"
+) -> ValueError:
+    return ValueError(
+        f"{reason}: {line!r}; 修正: 子issue未作成なら先頭行を「{NO_CHILDREN}」"
+        "にしてください（句点「。」・同じ行の説明・続く分割候補の段落は可、チェック行は不可）。"
+        "作成済みなら未分割表記と説明文を外し、実番号とタスク名を使って各行を「- [ ] #123 タスク名」"
+        "（完了時は「- [x] #123 タスク名」）の形式に直してください。"
+    )
+
+
 def parse_child_tasks(text: str) -> tuple[ChildTask, ...]:
-    if text.strip() == NO_CHILDREN:
+    lines = [line for line in visible_lines(text) if line.strip()]
+    if lines and lines[0].strip().startswith(NO_CHILDREN):
+        for index, line in enumerate(lines):
+            row = (
+                line.strip().removeprefix(NO_CHILDREN).removeprefix("。")
+                if index == 0
+                else line
+            )
+            # Reject even malformed task-list rows rather than treating them as notes.
+            if re.match(
+                r"\s*(?:[-*+]|\d+[.)])\s*\[(?:[ xX]\](?!\()|[^\]]?\]\s*#)", row
+            ):
+                raise _child_checklist_error(
+                    line, "cannot mix unsplit marker and child checklist rows"
+                )
         return ()
     tasks: list[ChildTask] = []
-    for line in visible_lines(text):
-        if not line.strip():
-            continue
+    seen: set[int] = set()
+    for line in lines:
         match = re.fullmatch(r"- \[([ xX])\] #([1-9][0-9]*) (\S.*)", line)
         if not match:
-            raise ValueError(f"invalid child checklist row: {line}")
+            raise _child_checklist_error(line)
         checked, number, title = match.groups()
         cancelled = title.endswith("（取消）")
         if cancelled and checked != " ":
-            raise ValueError("cancelled child must remain unchecked")
+            raise _child_checklist_error(line, "cancelled child must remain unchecked")
         status: TaskStatus = (
             "cancelled" if cancelled else "completed" if checked != " " else "open"
         )
-        tasks.append(ChildTask(int(number), title.removesuffix("（取消）"), status))
+        try:
+            task = ChildTask(int(number), title.removesuffix("（取消）"), status)
+        except ValueError as exc:
+            raise _child_checklist_error(line, str(exc)) from exc
+        if task.number in seen:
+            raise _child_checklist_error(line, "duplicate child in checklist")
+        seen.add(task.number)
+        tasks.append(task)
     if not tasks:
-        raise ValueError(
-            f"empty child checklist; use '{NO_CHILDREN}' before subdivision"
-        )
-    if len({task.number for task in tasks}) != len(tasks):
-        raise ValueError("duplicate child in checklist")
+        raise _child_checklist_error("", "empty child checklist")
     return tuple(tasks)
 
 
@@ -355,6 +424,11 @@ def validate_body(body: str, *, is_parent: bool, is_child: bool) -> tuple[str, .
     errors: list[str] = []
     try:
         parse_proposal_source(body)
+        from .improvement import parse_source
+
+        improvement = parse_source(body)
+        if improvement is not None and (not is_parent or is_child):
+            errors.append("an improvement proposal must remain an independent parent")
         reference = parent_reference(body)
         if (reference is not None) != is_child:
             errors.append("parent reference must be present only for a child")

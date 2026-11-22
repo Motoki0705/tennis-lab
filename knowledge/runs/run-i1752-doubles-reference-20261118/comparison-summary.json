@@ -1,0 +1,32 @@
+{
+  "strict": true,
+  "all_arrays_exact": true,
+  "all_discrete_exact": true,
+  "c3_policy_reference": false,
+  "ball_detection_error_px": [
+    {
+      "camera": "cam0",
+      "max_axis": 0.0,
+      "max_l2": 0.0
+    },
+    {
+      "camera": "cam1",
+      "max_axis": 0.0,
+      "max_l2": 0.0
+    },
+    {
+      "camera": "cam2",
+      "max_axis": 0.0,
+      "max_l2": 0.0
+    },
+    {
+      "camera": "cam3",
+      "max_axis": 0.0,
+      "max_l2": 0.0
+    }
+  ],
+  "ball_final_position_error_m": {
+    "max_axis": 0.0,
+    "max_l2": 0.0
+  }
+}

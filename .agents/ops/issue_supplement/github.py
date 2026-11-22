@@ -7,8 +7,9 @@ import subprocess
 from typing import Any
 
 from parent.github import GitHub as ParentGitHub
+from parent.history import from_projection
 from parent.judgement_comments import PREFIX, owned_comment, read_json
-from parent.policy import events, nonempty, object_value
+from parent.policy import nonempty, object_value
 
 HISTORY_QUERY = """
 query($owner: String!, $name: String!, $number: Int!, $after: String) {
@@ -33,7 +34,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
 def has_execution_record(
     comments: list[dict[str, Any]], publisher: str, repo: str, number: int
 ) -> bool:
-    history = events(comments, publisher, number)
+    history = from_projection(repo, number, publisher, comments).session_events()
     if any(
         event["event"] in {"agreed", "proposal_agreed", "execution_basis"}
         for event in history

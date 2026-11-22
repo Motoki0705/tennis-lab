@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import Field
 
+from src.tasks.ball_detection.annotation.video.agent.contracts import AnnotationPolicy
 from src.tasks.ball_detection.annotation.video.inputs import validate_video_input
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
@@ -54,6 +55,7 @@ from .reviews import local_video_request
 
 
 class LocalVideoConfigurationReceipt(ConfigurationReceipt):
+    annotation_policy: ArtifactRef
     registrations: tuple[LocalInputRegistration, ...] = Field(min_length=1)
 
 
@@ -70,13 +72,19 @@ def _document_reference(
 
 
 def register_local_videos(
-    layout: AnnotationLayout, data: LocalVideoConfiguration
+    layout: AnnotationLayout,
+    data: LocalVideoConfiguration,
+    *,
+    annotation_policy: AnnotationPolicy,
 ) -> ArtifactRef:
     # Reject prediction-specific settings before nested base-class serialization
     # could discard them. JSON callers already get extra-field validation.
     ExecutionPlan.model_validate_json(data.campaign.canonical_bytes())
     WorkerRuntimeSettings.model_validate_json(data.runtime.canonical_bytes())
     data = LocalVideoConfiguration.model_validate_json(data.canonical_bytes())
+    annotation_policy = AnnotationPolicy.model_validate_json(
+        annotation_policy.canonical_bytes()
+    )
     if data.campaign.phase != "production" or layout.review_namespace is not None:
         raise ValueError(
             "local blank inputs require a production campaign without benchmark state"
@@ -157,6 +165,15 @@ def register_local_videos(
             != data
         ):
             raise ValueError("local configuration differs from its original request")
+        policy_path = directory / "annotation-policy.json"
+        if (
+            policy_path.exists()
+            and read_document(
+                layout, annotation_reference(layout, policy_path), AnnotationPolicy
+            )
+            != annotation_policy
+        ):
+            raise ValueError("annotation policy differs from its original registration")
         # A new campaign must not reserve a budget for work already bound to
         # another plan. Source/camera and native range define the shared subject.
         for video in data.videos:
@@ -194,6 +211,7 @@ def register_local_videos(
             )
         resources.bind(plan)
         request_ref = write_document(layout, request_path, data)
+        policy_ref = write_document(layout, policy_path, annotation_policy)
         write_document(layout, manifest_path, manifest)
         plan_ref = annotation_reference(layout, save_plan(layout, plan))
         runtime_ref = write_document(
@@ -251,6 +269,7 @@ def register_local_videos(
             plan=plan_ref,
             scope=resources.reference,
             runtime=runtime_ref,
+            annotation_policy=policy_ref,
             registrations=tuple(registrations),
         )
         for reference in references(receipt):

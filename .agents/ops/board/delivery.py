@@ -8,9 +8,9 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from herdr_labels.coordination import locked
-from lib.identity import session_identity
+from lib.identity import PARENT_ENGINES, session_identity
 
-from .access import parent_state
+from .access import ownership_fence, parent_state
 from .errors import BoardError
 from .names import for_parent, resolve_name, timestamp
 from .records import REASONS, post_row, recipient_views
@@ -31,6 +31,8 @@ class Notification:
     sender_repo: str | None
     sender_parent: int | None
     kind: str
+    owner_session: str
+    owner_generation: int
 
     @property
     def bell(self) -> str:
@@ -87,7 +89,8 @@ def _result(value: Any) -> NotificationResult:
         if (
             not value.accepted
             and value.reason in REASONS
-            and value.reason not in {"recipient_unavailable", "recipient_retired"}
+            and value.reason
+            not in {"recipient_unavailable", "recipient_retired", "awaiting_hook"}
             and not (value.reason == "notification_uncertain" and value.retryable)
         ):
             return value
@@ -128,9 +131,11 @@ def dispatch(
     crash, exception or malformed result therefore cannot cause automatic
     duplicate sends. Only a certified unsent failure may be retried. Never hold
     a SQLite transaction while calling a notifier. With retry_only, recheck the
-    active sender under each parent lock, leave held rows alone and report
+    active sender under each short registry lock, leave held rows alone and report
     attempts/skips from inside the notification lock. Omitting assignment_id
     selects all recipients; explicit None selects only the reserved human.
+    The common ownership fence spans each attempt, while registry/DB locks
+    cover only preparation and result persistence, never notifier I/O.
     """
     if set(notifiers) - {"claude", "codex"}:
         raise BoardError("unknown board notification engine")
@@ -144,7 +149,7 @@ def dispatch(
         filters.append("assignment_id IS ?")
         params.append(assignment_id)
     if held_only:
-        filters.append("state='held'")
+        filters.append("(state='held' OR (state='pending' AND reason='awaiting_hook'))")
     where = " WHERE " + " AND ".join(filters) if filters else ""
     with locked(store.directory / "notifications.lock"):
         reports: dict[tuple[str, int | None], dict[str, Any]] = {}
@@ -162,12 +167,12 @@ def dispatch(
                 # The human receives posts through Web polling, without a bell.
                 report["skip_reason"] = "human_recipient"
                 continue
-            with parent_state(env) as parents:
-                with store.transaction() as connection:
+            with ownership_fence(env):
+                with parent_state(env) as parents, store.transaction() as connection:
                     if retry_only:
                         # Initial CLI authorization predates notifications.lock.
                         # Fence the caller again before any delivery mutation;
-                        # this parent lock also spans the notifier and its result.
+                        # the ownership fence spans the notifier and its result.
                         try:
                             caller_identity = session_identity(env)
                         except ValueError:
@@ -242,8 +247,16 @@ def dispatch(
                         )
                         continue
                     engine = owner["session"].partition(":")[0]
-                    if engine not in {"claude", "codex"}:
+                    if engine not in PARENT_ENGINES:
                         raise BoardError("invalid recipient engine identity")
+                    if engine == "agy":
+                        connection.execute(
+                            """UPDATE deliveries SET state='pending', reason='awaiting_hook',
+                               retryable=0, engine=? WHERE post_id=? AND assignment_id=?""",
+                            (engine, target_post, target_id),
+                        )
+                        report.update(outcome="skipped", skip_reason="awaiting_hook")
+                        continue
                     notifier = notifiers.get(engine)
                     if notifier is None:
                         report["skip_reason"] = "notifier_unconfigured"
@@ -265,6 +278,8 @@ def dispatch(
                         post["sender_repo"],
                         post["sender_parent"],
                         post["kind"],
+                        owner["session"],
+                        owner["generation"],
                     )
                     public(
                         [notification.bell, notification.name, notification.repo],
@@ -274,7 +289,12 @@ def dispatch(
                     connection.execute(
                         """UPDATE deliveries SET state='delivery_failed', reason='notification_uncertain', retryable=0,
                            engine=?, attempts=attempts+1, attempted_at=? WHERE post_id=? AND assignment_id=?""",
-                        (engine, timestamp(datetime.now(UTC)), target_post, target_id),
+                        (
+                            engine,
+                            timestamp(datetime.now(UTC)),
+                            target_post,
+                            target_id,
+                        ),
                     )
                 report["attempted"] = True
                 try:
@@ -283,7 +303,7 @@ def dispatch(
                     # Exception text may contain private runtime destinations.
                     outcome = NotificationResult(False, "notification_uncertain")
                 report["outcome"] = "notified" if outcome.accepted else "failed"
-                with store.transaction() as connection:
+                with parent_state(env), store.transaction() as connection:
                     connection.execute(
                         "UPDATE deliveries SET state=?, reason=?, retryable=?, notified_at=? WHERE post_id=? AND assignment_id=?",
                         (

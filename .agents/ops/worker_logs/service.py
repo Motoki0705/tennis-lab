@@ -2,22 +2,29 @@
 
 from __future__ import annotations
 
-import copy
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from parent.state import RegistryConflict
+from parent.worker_slots import record, select, workers
+
 from . import journal, schema, sources
 from .journal import PublicationError, require
+from .ownership import publication_owner, require_owner
 from .publication import Publisher
 
 
 def capture(session: Any, child: int, issue_body: str, prepared: Any) -> None:
-    turn = session.row["tasks"][str(child)]["preflight"]["turns"][-1]
+    turn = session.worker_task(child)["preflight"]["turns"][-1]
     turn["instruction_source"]["issue_sha256"] = schema.sha(issue_body.encode("utf-8"))
     try:
-        sources.freeze(session, child, prepared.text, prepared.standard)
+        with session.unlocked() as external:
+            sources.freeze(external, child, prepared.text, prepared.standard)
+    except RegistryConflict:
+        raise
     except (
         ValueError,
         OSError,
@@ -30,13 +37,36 @@ def capture(session: Any, child: int, issue_body: str, prepared: Any) -> None:
 
 
 def publish(
-    path: Path, *, dry_run: bool = False, retry: bool = False
+    path: Path,
+    *,
+    dry_run: bool = False,
+    retry: bool = False,
+    milestone: bool = True,
+    only_turn: bool = False,
+    owner_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     try:
+        if not dry_run:
+            require_owner(owner_check)
         row = journal.read(path)
-        return Publisher(Path(row["source"]["repository_root"]), path).publish(
-            dry_run=dry_run, retry=retry
-        )
+        result: dict[str, Any]
+        if row.get("publication_mode") == "delegation_batch":
+            if not milestone:
+                return journal.view(row)
+            from . import batches
+
+            result = batches.publish(
+                path,
+                dry_run=dry_run,
+                retry=retry,
+                owner_check=owner_check,
+                only_turn=only_turn,
+                publisher=Publisher,
+            )
+        else:
+            result = Publisher(Path(row["source"]["repository_root"]), path).publish(
+                dry_run=dry_run, retry=retry
+            )
     except (
         ValueError,
         OSError,
@@ -44,21 +74,35 @@ def publish(
         TypeError,
         AttributeError,
         subprocess.SubprocessError,
-    ):
-        return {
+    ) as exc:
+        result = {
             "state": "blocked",
-            "error": "journal_unavailable",
+            "error": "log_owner_mismatch"
+            if isinstance(exc, PublicationError) and str(exc) == "log_owner_mismatch"
+            else "journal_unavailable",
             "saved_to_main": False,
         }
+    if not dry_run:
+        from decision_logs.observations import worker_log
+
+        worker_log(path, result, retry=retry)
+    return result
 
 
 def finish(
-    path: Path, proof: dict[str, Any], *, publish_now: bool = True
+    path: Path,
+    proof: dict[str, Any],
+    *,
+    publish_now: bool = True,
+    owner_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     try:
-        result = sources.receive(path, proof)
+        result: dict[str, Any] = sources.receive(path, proof)
+        from decision_logs.observations import worker_log
+
+        worker_log(path, result, entrypoint="worker_logs.receive")
         if publish_now and result["state"] in {"ready", "pending", "merged"}:
-            return publish(path)
+            return publish(path, owner_check=owner_check, milestone=False)
         return result
     except (
         ValueError,
@@ -84,13 +128,23 @@ def reject_unstarted(path: str | None) -> dict[str, Any]:
                 row = journal.read(target)
                 row["stage"] = "not_started"
                 journal.fail(target, row, "runner_not_started", state="worker_failed")
-                return journal.view(row)
+                result: dict[str, Any] = journal.view(row)
+            from decision_logs.observations import worker_log
+
+            worker_log(target, result, entrypoint="worker_logs.reject-unstarted")
+            return result
         except (ValueError, OSError, KeyError, TypeError):
             pass
     return {"state": "blocked", "error": "journal_unavailable", "saved_to_main": False}
 
 
-def finish_manual(path: str | None, directory: Path, runner: Path) -> dict[str, Any]:
+def finish_manual(
+    path: str | None,
+    directory: Path,
+    runner: Path,
+    *,
+    owner_check: Callable[[], bool] | None = None,
+) -> dict[str, Any]:
     if path is None:
         return {
             "state": "blocked",
@@ -114,14 +168,15 @@ def finish_manual(path: str | None, directory: Path, runner: Path) -> dict[str, 
             with journal.locked(target):
                 row = journal.read(target)
                 journal.fail(target, row, "runner_evidence_unavailable")
-                return journal.view(row)
+                result: dict[str, Any] = journal.view(row)
+                return result
         except (ValueError, OSError):
             return {
                 "state": "blocked",
                 "error": "runner_evidence_unavailable",
                 "saved_to_main": False,
             }
-    return finish(Path(path), proof)
+    return finish(Path(path), proof, owner_check=owner_check)
 
 
 def _command(
@@ -134,16 +189,24 @@ def _command(
     publish_logs: bool,
     sequence: int | None = None,
     key: str | None = None,
+    worker: str | None = None,
     dry_run: bool = False,
     retry: bool = False,
 ) -> dict[str, Any]:
     data = store.read_data()
     owner = data.get("parents", {}).get(f"{gh.repo.casefold()}#{parent}")
+    if not publish_logs or dry_run:
+        owner = owner or {}
     require(isinstance(owner, dict), "log_owner_unavailable")
-    if publish_logs:
+    if publish_logs and not dry_run:
         # Historical publication does not require the issue to remain open, or
         # re-authorize an implementation. The saved capture is the authority.
         require(owner.get("session") == identity, "log_owner_mismatch")
+    check = (
+        publication_owner(store, gh.repo, parent, identity, owner["generation"])
+        if publish_logs and not dry_run
+        else None
+    )
     if key is not None:
         require(bool(re.fullmatch(r"d-[a-f0-9]{32}", key)), "invalid_public_key")
     root = (
@@ -158,6 +221,13 @@ def _command(
             f"{key[2:] if key else '*'}/{sequence if sequence else '*'}/journal.json"
         )
     )
+    task = record(owner, child)
+    if worker is not None:
+        name = select(owner, child, worker)
+        task = record(owner, child, name)
+        require(task.get("delegated") is True, "unknown_worker")
+        public_key = task.get("preflight", {}).get("public_key")
+        paths = [path for path in paths if path.parent.parent.name == public_key]
     results = []
     for path in paths:
         row = journal.read(path)
@@ -168,16 +238,33 @@ def _command(
             "journal_identity_changed",
         )
         if publish_logs:
+            if not dry_run:
+                try:
+                    require_owner(check)
+                except PublicationError:
+                    results.append(
+                        {
+                            **journal.view(row),
+                            "state": "blocked",
+                            "error": "log_owner_mismatch",
+                            "saved_to_main": False,
+                        }
+                    )
+                    break
             if row.get("stage") == "not_started":
                 results.append(journal.view(row))
                 continue
             if row["state"] == "captured" or retry and "receipt" not in row:
                 # Reconcile the original recorded run. Never launch/resume a worker.
-                task = copy.deepcopy(owner.get("tasks", {}).get(str(child), {}))
-                phase = task.get("preflight", {})
                 turn = next(
                     (
                         t
+                        for n, _, task in workers(owner.get("tasks", {}))
+                        if n == child
+                        for phase in (
+                            task.get("preflight", {}),
+                            task.get("astra_handoff", {}).get("preflight") or {},
+                        )
                         for t in phase.get("turns", [])
                         if t["snapshot"]["turn_id"] == row["source"]["turn_id"]
                     ),
@@ -210,10 +297,20 @@ def _command(
                     if result["state"] not in {"ready", "pending", "merged"}:
                         results.append(result)
                         continue
-            results.append(publish(path, dry_run=dry_run, retry=retry))
+            result = publish(
+                path,
+                dry_run=dry_run,
+                retry=retry,
+                owner_check=check,
+                only_turn=sequence is not None,
+            )
+            results.append(result)
+            if result.get("error") == "log_owner_mismatch":
+                break
         else:
-            results.append(journal.view(row))
-    phase = owner.get("tasks", {}).get(str(child), {}).get("preflight", {})
+            result = journal.view(row)
+            results.append(result)
+    phase = task.get("preflight", {})
     legacy = [
         i + 1
         for i, turn in enumerate(phase.get("turns", []))
