@@ -38,6 +38,8 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_resources import hmr2_tensorrt
+from src.tennis_scene.pipeline.tensorrt_assets import tensorrt_identity
 from src.utils.video import OpenCVVideoFrameReader
 
 
@@ -121,11 +123,25 @@ class HMR2FeaturesModule(InferenceComponent[HMR2FeaturesInput, HMR2FeaturesOutpu
 
     def model_specs(self) -> dict[str, ModelSpec[Hmr2FeatureExtractor]]:
         config = self.config
-        return {} if not self.enabled else {
-            "features": ModelSpec("hmr2", {"checkpoint": config.hmr2_checkpoint, "mean_params": config.smpl_assets.hmr2_mean_params},
-                "hmr2_vit_huge", config.runtime.device, "float32", {"runtime": config.runtime.hmr2},
+        if not self.enabled:
+            return {}
+        runtime = config.runtime.hmr2
+        spec = hmr2_tensorrt(config)
+        assets = dict(spec.assets)
+        settings: dict[str, Any] = {"runtime": {"batch_size": runtime.batch_size}}
+        dtype = "float32"
+        kwargs = {}
+        if runtime.backend.engines:
+            engine = spec.bind(runtime.backend.engines[0], device=config.runtime.device, batch_size=runtime.batch_size)
+            engine_assets, identity = tensorrt_identity((engine,), batch_size=runtime.batch_size)
+            assets.update(engine_assets)
+            settings.update(identity)
+            dtype = "float16"
+            kwargs["engine"] = engine
+        return {
+            "features": ModelSpec("hmr2", assets, spec.model, config.runtime.device, dtype, settings,
                 lambda: Hmr2FeatureExtractor(config.hmr2_checkpoint, device=config.runtime.device,
-                    batch_size=config.runtime.hmr2.batch_size, mean_params_path=config.smpl_assets.hmr2_mean_params),
+                    batch_size=runtime.batch_size, mean_params_path=config.smpl_assets.hmr2_mean_params, **kwargs),
                 initialize=lambda model: model.load(), release=lambda model: model.unload()),
         }
 

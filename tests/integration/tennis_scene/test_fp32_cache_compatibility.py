@@ -194,7 +194,21 @@ def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_pat
     assert source_identity.compatible_source_digests({**snapshot, **unrelated_edit}) == {**baseline, **unrelated_edit}
     # The model runtime and tracking evidence schema are not precision-only changes.
     current = source_identity.source_digests(PROJECT_ROOT / "src")
-    assert source_identity.compatible_source_digests(current) == current
+    assert source_identity.compatible_source_digests(current, tensorrt=True) == current
+
+
+def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("tensorrt_fp32_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    unrelated = {"tennis_scene/schema.py": "a" * 64}
+    baseline = {**unrelated, **{path: record["before"] for path, record in files.items() if record["before"] is not None}}
+    patch = {**unrelated, **{path: record["after"] for path, record in files.items()}}
+    assert source_identity.compatible_source_digests(patch) == baseline
+    assert source_identity.compatible_source_digests(patch, tensorrt=True) == patch
+    changed = {**patch, "utils/models/tensorrt_runtime.py": "b" * 64}
+    assert source_identity.compatible_source_digests(changed) == changed
 
 
 def test_ball_side_preserves_the_exact_pre_player_source_identity() -> None:

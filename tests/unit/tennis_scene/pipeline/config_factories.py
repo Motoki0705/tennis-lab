@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from src.submodules.configuration import (
+    BackendConfig,
+    BatchedRuntimeConfig,
     DinoDetectorRuntimeConfig,
     Hmr2RuntimeConfig,
     SmplAssetPaths,
@@ -64,6 +66,7 @@ def make_submodule_runtime(
     dino_confidence: float = 0.35,
 ) -> SubmoduleRuntimeConfig:
     """Return the complete typed model-runtime contract used by GVHMR."""
+    backend = BackendConfig(precision="fp32", engines=())
     return SubmoduleRuntimeConfig(
         device="cpu",
         tracking=TrackingRuntimeConfig(
@@ -74,11 +77,14 @@ def make_submodule_runtime(
             short_side=800,
             max_long_side=1333,
             precision="fp32",
+            batch_size=1,
+            engines=(),
         ),
         vitpose=ViTPoseRuntimeConfig(
             flip_test=True,
             batch_size=8,
             precision="fp32",
+            engines=(),
             head=ViTPoseHeadConfig(
                 in_channels=1280,
                 out_channels=17,
@@ -90,7 +96,9 @@ def make_submodule_runtime(
                 num_conv_kernels=(),
             ),
         ),
-        hmr2=Hmr2RuntimeConfig(batch_size=8),
+        hmr2=Hmr2RuntimeConfig(batch_size=8, backend=backend),
+        clip_reid=BatchedRuntimeConfig(batch_size=64, backend=backend),
+        gvhmr=BatchedRuntimeConfig(batch_size=1, backend=backend),
         static_cam=True,
     )
 

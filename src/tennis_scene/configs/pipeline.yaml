@@ -144,10 +144,15 @@ people_models:
       short_side: 800
       max_long_side: 1333
       precision: fp32
+      backend: pytorch
+      engines: []
+      batch_size: 1
     vitpose:
       flip_test: true
       batch_size: 16
       precision: fp32
+      backend: pytorch
+      engines: []
       head:
         in_channels: 1280
         out_channels: 17
@@ -163,6 +168,19 @@ people_models:
         num_conv_kernels: []
     hmr2:
       batch_size: 16
+      precision: fp32
+      backend: pytorch
+      engines: []
+    clip_reid:
+      batch_size: 64
+      precision: fp32
+      backend: pytorch
+      engines: []
+    gvhmr:
+      batch_size: 1
+      precision: fp32
+      backend: pytorch
+      engines: []
     static_cam: true
 person_tracking:
   # The adopted run-10 pose/CLIP profile; comparison methods use benchmark entrypoints.

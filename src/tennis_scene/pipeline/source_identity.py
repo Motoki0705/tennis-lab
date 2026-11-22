@@ -12,8 +12,12 @@ def source_digests(source: Path) -> dict[str, str]:
     return {str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))}
 
 
-def compatible_source_digests(sources: dict[str, str], *, ball_court_side: bool = False) -> dict[str, str]:
+def compatible_source_digests(
+    sources: dict[str, str], *, ball_court_side: bool = False, tensorrt: bool = False
+) -> dict[str, str]:
     """Keep the baseline identity for exact, compatible source changes."""
+    if not tensorrt:
+        sources = _compatible_patch(sources, "tensorrt_fp32_cache_compatibility.json")
     if ball_court_side:
         sources = _compatible_patch(sources, "ball_court_side_cache_compatibility.json")
     return _compatible_patch(sources, "fp32_cache_compatibility.json")
