@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "ok": false,
+  "command": "inventory",
+  "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "error": "rclone lsjson gdrive:tennis_lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full failed: 2026/11/09 23:14:54 Failed to lsjson: error in ListJSON: couldn't list directory: googleapi: Error 403: Quota exceeded for quota metric 'Queries' and limit 'Previous quota: Requests per minute' of service 'drive.googleapis.com' for consumer 'project_number:202264815644'.\nDetails:\n[\n  {\n    \"@type\": \"type.googleapis.com/google.rpc.ErrorInfo\",\n    \"domain\": \"googleapis.com\",\n    \"metadata\": {\n      \"consumer\": \"projects/202264815644\",\n      \"quota_limit\": \"defaultPerMinutePerProject\",\n      \"quota_limit_value\": \"840000\",\n      \"quota_location\": \"global\",\n      \"quota_metric\": \"drive.googleapis.com/default\",\n      \"quota_unit\": \"1/min/{project}\",\n      \"service\": \"drive.googleapis.com\"\n    },\n    \"reason\": \"RATE_LIMIT_EXCEEDED\"\n  },\n  {\n    \"@type\": \"type.googleapis.com/google.rpc.Help\",\n    \"links\": [\n      {\n        \"description\": \"Request a higher quota limit.\",\n        \"url\": \"https://cloud.google.com/docs/quotas/help/request_increase\"\n      }\n    ]\n  }\n]\n, rateLimitExceeded"
+}

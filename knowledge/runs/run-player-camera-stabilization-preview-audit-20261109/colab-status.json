@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "job_id": "preview-a2-validate",
+  "status": "completed",
+  "updated_at": "2026-11-09T12:27:06.794759+00:00",
+  "returncode": 0,
+  "worker_pid": 22609,
+  "worker_token": "398262",
+  "launch_guarded": true,
+  "pid": 23479,
+  "process_token": "417337",
+  "started_at": "2026-11-09T12:21:39.911264+00:00",
+  "completion_target": "completed",
+  "save_pid": 24933,
+  "save_token": "450012",
+  "drive_saved_at": "2026-11-09T12:29:46.461498+00:00",
+  "finished_at": "2026-11-09T12:29:46.461516+00:00"
+}

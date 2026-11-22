@@ -17,6 +17,8 @@ import numpy as np
 from src.utils.checksum import dual_sha256
 
 from .blender import SHOT_SCHEMA
+from .head_camera import HeadCameraConfig
+from .lenses import lens_from_metadata, remap_srgb_bgr8
 
 
 def validate_render(package: Path, render: Path, player_id: int) -> dict[str, Any]:
@@ -44,6 +46,31 @@ def validate_render(package: Path, render: Path, player_id: int) -> dict[str, An
         raise ValueError("Expected explicit Cycles GPU rendering evidence")
     players = info["players"]
     viewer = next(p for p in players if p["player_id"] == player_id)
+    if "lens" in info:
+        lens_from_metadata(info["lens"], HeadCameraConfig(**info["camera_config"]))
+        camera = report.get("camera", {})
+        expected_resolution = [
+            info["camera_config"][key] for key in ("width", "height")
+        ]
+        if (
+            camera.get("projection") != "PERSP"
+            or camera.get("depth_of_field") is not False
+            or camera.get("resolution") != expected_resolution
+            or not np.isclose(
+                camera.get("lens_mm", 0), viewer["lens_mm"], rtol=0, atol=1e-6
+            )
+            or report.get("color_management")
+            != {
+                "display_device": "sRGB",
+                "view_transform": "Standard",
+                "look": "None",
+                "exposure": 0,
+                "gamma": 1,
+            }
+        ):
+            raise ValueError(
+                "Wide-lens render camera/color audit differs from the shared pinhole contract"
+            )
     sources = np.load(package / "source_frames.npy")
     mesh_valid = np.load(package / "player_smpl_valid.npy")
     ball_valid = np.load(package / "ball_3d_valid.npy")
@@ -190,7 +217,17 @@ def publish_player_views(
         raise ValueError(
             "Preview is limited to 12 frames; final publication requires the entire input timeline"
         )
-    width, height = (info["camera_config"][name] for name in ("width", "height"))
+    source_width, source_height = (
+        info["camera_config"][name] for name in ("width", "height")
+    )
+    lens = (
+        lens_from_metadata(info["lens"], HeadCameraConfig(**info["camera_config"]))
+        if "lens" in info
+        else None
+    )
+    width, height = (
+        (source_width, source_height) if lens is None else (lens.width, lens.height)
+    )
     if width % 2 or height % 2:
         raise ValueError("H.264 yuv420p requires even image dimensions")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -248,15 +285,34 @@ def publish_player_views(
             for identity, report in zip(identities, reports, strict=True):
                 path = renders / f"player_{identity}" / "frames" / f"{index:05d}.png"
                 frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
-                if frame is None or frame.shape != (height, width, 3):
+                if frame is None or frame.shape != (source_height, source_width, 3):
                     raise ValueError(f"Missing/invalid rendered PNG: {path}")
                 valid = report["frames"][index]["camera_valid"]
                 # Blender 5.2's default 8-bit dithering spans three levels in
                 # the actual black-frame fixture; allow at most four LSBs.
                 if not valid and np.ptp(frame.astype(np.int16), axis=(0, 1)).max() > 4:
                     raise ValueError("Camera-missing render must be a blank frame")
+                if lens is not None:
+                    frame = remap_srgb_bgr8(frame, lens)
                 cv2.rectangle(frame, (0, 0), (width, min(50, height)), (15, 15, 15), -1)
                 text = f"ID {identity} | source frame {source_frame} | camera {'VALID' if valid else 'MISSING'}"
+                if lens is not None:
+                    strength = (
+                        info["camera_processing"]["config"]["sigma_seconds"]
+                        if info.get("camera_processing")
+                        else 0
+                    )
+                    text = f"ID {identity} | sigma={strength:g}s | Wide {lens.diagonal_fov_degrees:g}deg approx"
+                    cv2.putText(
+                        frame,
+                        f"source {source_frame} | {'VALID' if valid else 'CAMERA MISSING'}",
+                        (12, min(47, height - 2)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        min(0.5, width / 1250),
+                        (240, 240, 240),
+                        1,
+                        cv2.LINE_AA,
+                    )
                 scale = min(0.75, width / 1100)
                 cv2.putText(
                     frame,
@@ -325,6 +381,8 @@ def publish_player_views(
                 for k in ("config", "camera_config", "policy", "inputs", "frames")
             },
             "verification": verification,
+            "display_lens": info.get("lens"),
+            "camera_processing": info.get("camera_processing"),
             "human_acceptance": "pending",
         }
         (staging / "manifest.json").write_text(

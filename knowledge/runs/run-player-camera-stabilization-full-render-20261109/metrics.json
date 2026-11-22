@@ -1,0 +1,15 @@
+{
+  "source_pngs": 1920.0,
+  "valid_camera_audit_rows": 1904.0,
+  "missing_camera_audit_rows": 16.0,
+  "views": 8.0,
+  "source_frames_per_view": 240.0,
+  "mp4s": 14.0,
+  "archives_on_drive": 8.0,
+  "drive_verified_files": 68.0,
+  "drive_verified_bytes": 1065261659.0,
+  "original_colab_returncode": -15.0,
+  "rerendered_views_after_failure": 0.0,
+  "driver_elapsed_seconds": 2706.457732,
+  "reported_frame_render_seconds_total": 1695.624283
+}

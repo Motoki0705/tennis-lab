@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "session": "player-view-stabilization-20261109-a2",
+  "status": "stopped",
+  "allocation_request_utc": "2026-11-09T11:22:50.337862+00:00",
+  "stopped_state_updated_at": "2026-11-09T14:18:29.019556+00:00",
+  "elapsed_request_to_stopped_seconds": 10538.681694,
+  "maximum_allocation_seconds": 14400,
+  "within_budget": true,
+  "stop_receipt_sha256": "825b4643149eca7bcbaa94a27e525084d42d4cc055a224f23de7b61268a45a1a",
+  "source_ref": "d133993421c206af28340f4ffe082c65b70fe7a7"
+}

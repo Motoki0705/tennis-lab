@@ -1,0 +1,79 @@
+{
+  "schema": "player_view_stabilization_short_metrics_v1",
+  "source_interval": [
+    0,
+    240
+  ],
+  "input_manifest_sha256": "b2d9974def95a1932c0bde1b0acbecfa2907a71bc96baa47d69fc6b606eced26",
+  "players": {
+    "0": {
+      "sigma_000": {
+        "angular_velocity_rms_deg_s": 105.03156521362425,
+        "angular_acceleration_rms_deg_s2": 2392.6369219922044,
+        "angular_jerk_rms_deg_s3": 202199.9529464751,
+        "correction_rms_deg": 0.0,
+        "correction_max_deg": 0.0,
+        "valid_frames": 238
+      },
+      "sigma_060": {
+        "angular_velocity_rms_deg_s": 88.36071568997764,
+        "angular_acceleration_rms_deg_s2": 594.3897498400052,
+        "angular_jerk_rms_deg_s3": 7473.945403080577,
+        "correction_rms_deg": 1.54748164980064,
+        "correction_max_deg": 7.365659438972736,
+        "valid_frames": 238
+      },
+      "sigma_080": {
+        "angular_velocity_rms_deg_s": 82.38385255191395,
+        "angular_acceleration_rms_deg_s2": 496.5051667203357,
+        "angular_jerk_rms_deg_s3": 5056.929872739439,
+        "correction_rms_deg": 2.346463306238713,
+        "correction_max_deg": 10.585359125318304,
+        "valid_frames": 238
+      },
+      "sigma_120": {
+        "angular_velocity_rms_deg_s": 70.84285494206704,
+        "angular_acceleration_rms_deg_s2": 359.9381824672452,
+        "angular_jerk_rms_deg_s3": 2967.1955813761792,
+        "correction_rms_deg": 4.069377527052763,
+        "correction_max_deg": 16.62041782401442,
+        "valid_frames": 238
+      }
+    },
+    "1": {
+      "sigma_000": {
+        "angular_velocity_rms_deg_s": 184.66553011815697,
+        "angular_acceleration_rms_deg_s2": 3506.885025128798,
+        "angular_jerk_rms_deg_s3": 300791.7372553016,
+        "correction_rms_deg": 0.0,
+        "correction_max_deg": 0.0,
+        "valid_frames": 238
+      },
+      "sigma_060": {
+        "angular_velocity_rms_deg_s": 157.23472262442922,
+        "angular_acceleration_rms_deg_s2": 1356.6209797557956,
+        "angular_jerk_rms_deg_s3": 15668.802974614577,
+        "correction_rms_deg": 2.759319007032986,
+        "correction_max_deg": 7.389956498944712,
+        "valid_frames": 238
+      },
+      "sigma_080": {
+        "angular_velocity_rms_deg_s": 144.18505854392336,
+        "angular_acceleration_rms_deg_s2": 1143.172012626217,
+        "angular_jerk_rms_deg_s3": 12285.153093862926,
+        "correction_rms_deg": 4.365135820039633,
+        "correction_max_deg": 11.693897830816528,
+        "valid_frames": 238
+      },
+      "sigma_120": {
+        "angular_velocity_rms_deg_s": 120.17323732191683,
+        "angular_acceleration_rms_deg_s2": 766.6935186830556,
+        "angular_jerk_rms_deg_s3": 7422.449854494761,
+        "correction_rms_deg": 7.73272213696164,
+        "correction_max_deg": 20.190217246078465,
+        "valid_frames": 238
+      }
+    }
+  },
+  "zero_sigma_correction_definition": "Exact input transform copy, established by measure_cameras.py array-equality checks; not numerical Log(R R^T) residue"
+}

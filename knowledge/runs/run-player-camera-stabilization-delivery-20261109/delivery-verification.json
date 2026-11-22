@@ -1,0 +1,140 @@
+{
+  "schema": "player_view_stabilization_delivery_verification_v1",
+  "source_frames": [
+    0,
+    240
+  ],
+  "git_ref": "d133993421c206af28340f4ffe082c65b70fe7a7",
+  "input_manifest_sha256": "b2d9974def95a1932c0bde1b0acbecfa2907a71bc96baa47d69fc6b606eced26",
+  "render_audit_rows_checked": 1920,
+  "videos": {
+    "videos/sigma_000/player_0.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 640,
+      "height": 360,
+      "sha256": "3900842019ee3e5408a2757836b3bd7a5aa465ba2d8f434c5965fb12c0a4b114"
+    },
+    "videos/sigma_000/player_1.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 640,
+      "height": 360,
+      "sha256": "9c097de6c0ce0dfc50e767c305ab8133e2df6d2ff1c94a87118b8a0bfa2edcad"
+    },
+    "videos/sigma_000/comparison.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 1280,
+      "height": 360,
+      "sha256": "70badd77d82a4df2384b612a52f769db504cc9618bbcba26e86c3eabf69b2fbc"
+    },
+    "videos/sigma_060/player_0.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 640,
+      "height": 360,
+      "sha256": "aa6c8df4171c5d5907d7cf54c3fcedfd3448a58d6003d9a28781f77507eb11c5"
+    },
+    "videos/sigma_060/player_1.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 640,
+      "height": 360,
+      "sha256": "41d4ce972972240b767aec5a7cb048d9cadd43022f1a6d2ddcd0e75f107a8772"
+    },
+    "videos/sigma_060/comparison.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 1280,
+      "height": 360,
+      "sha256": "dfcc7dc1d2a424249b613b9e947e89a4b7d48e6c312ec57674cfaabcb07d56d2"
+    },
+    "videos/sigma_080/player_0.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 640,
+      "height": 360,
+      "sha256": "cbc0ea4fb8a206a0a617690e69841a3422add3d87364470d285aa1f89b50ab76"
+    },
+    "videos/sigma_080/player_1.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 640,
+      "height": 360,
+      "sha256": "c5f9ab6296d45b9f14c256674d9a043687b52869cd3c1070a2800bb1ccda474b"
+    },
+    "videos/sigma_080/comparison.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 1280,
+      "height": 360,
+      "sha256": "f5f1a4ddf4869d9e5dbbefa6402c9a33a7a4f56cfe091583401eb5d0a26e268f"
+    },
+    "videos/sigma_120/player_0.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 640,
+      "height": 360,
+      "sha256": "76f83cba0257696ae39049df929c67b7b956411c5488eea0d1ed26fe484e81cd"
+    },
+    "videos/sigma_120/player_1.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 640,
+      "height": 360,
+      "sha256": "125eda0cca030defb5146524eb9babf89344aa2eff3eb90fff02febe1490b8cf"
+    },
+    "videos/sigma_120/comparison.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 1280,
+      "height": 360,
+      "sha256": "c4cc5440ea7f09b427549329bcc5c6a40e90ac1d46046bbf1017023730f110a4"
+    },
+    "videos/comparison_player_0.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 1280,
+      "height": 720,
+      "sha256": "e29d0da89f2f57abef3049302c403536464f971bf917b64e8069b6bdad677fdc"
+    },
+    "videos/comparison_player_1.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 1280,
+      "height": 720,
+      "sha256": "da304b373e9b78de3270194637ac7be5cf0a1b761dc2589cfcdd65dc916e0091"
+    }
+  },
+  "human_acceptance": "pending",
+  "decoded_video_frames": 3360
+}

@@ -1,0 +1,6 @@
+{
+  "snapshot_path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/worker_runtime-preview-before-logfix.py",
+  "sha256": "259efec420a2393b62b052b7e3da90081c47c4a46b7d1dba4fa115efef088063",
+  "matches_original_remote_upload": true,
+  "reason": "Original ignored preview wrapper expected an exit_code=0 log line, but queue success is authoritative done state; renderer was not rerun."
+}

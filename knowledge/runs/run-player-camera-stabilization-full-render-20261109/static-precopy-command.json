@@ -1,0 +1,23 @@
+{
+  "started_at": "2026-11-09T13:42:35.126317+00:00",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "--timeout-seconds",
+    "1200",
+    "upload",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full",
+    "--overwrite",
+    "--verify"
+  ],
+  "overall_timeout_seconds": 1800,
+  "source_files": 68,
+  "source_bytes": 1065261659,
+  "command_deadline_utc": "2026-11-09T15:06:50.337862Z",
+  "hard_deadline_utc": "2026-11-09T15:22:50.337862Z",
+  "mutable_progress_record_allowlist": [
+    "checkpoint.json"
+  ],
+  "immutable_drive_conflicts": 0
+}

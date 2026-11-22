@@ -1,0 +1,5 @@
+{
+  "before_sha256": "2c225f6382be628d2e323d33feb6309d91d1d5385aaba53b28427b145009e31a",
+  "after_sha256": "0f61c71480b3232c0163f7bbb5fade79d70492a103a3ee0bdc83be5659778bf6",
+  "reason": "Use explicitly recorded recent successful listing for immutable conflict preflight after two fresh preflight calls failed on project Queries/minute quota. No writes occurred since that listing. Actual upload still requires --verify; no secret/core publisher change."
+}

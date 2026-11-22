@@ -97,12 +97,18 @@ def build(package, viewer_id, backend):
     scene.render.use_compositing = False
     scene.view_settings.view_transform = "Standard"
     scene.view_settings.look = "None"
+    scene.view_settings.exposure = 0
+    scene.view_settings.gamma = 1
+    scene.display_settings.display_device = "sRGB"
     scene.frame_start, scene.frame_end = 0, info["num_frames"] - 1
     cam_data = bpy.data.cameras.new("SavedHeadCamera")
     cam_data.sensor_fit, cam_data.sensor_width = "HORIZONTAL", 36
     cam_data.lens = viewer["lens_mm"]
     cam_data.clip_start = camera_config["near_m"]
     cam_data.clip_end = camera_config["far_m"]
+    cam_data.dof.use_dof = False
+    if "lens" in info:
+        cam_data.dof.aperture_fstop = info["lens"]["reference_aperture_f_number"]
     camera = bpy.data.objects.new("SavedHeadCamera", cam_data)
     scene.collection.objects.link(camera)
     scene.camera = camera
@@ -311,6 +317,20 @@ def main():
             "engine": scene.render.engine,
             "gpu_devices": devices,
             "motion_blur": scene.render.use_motion_blur,
+            "camera": {
+                "projection": scene.camera.data.type,
+                "lens_mm": scene.camera.data.lens,
+                "depth_of_field": scene.camera.data.dof.use_dof,
+                "reference_aperture_f_number": scene.camera.data.dof.aperture_fstop,
+                "resolution": [scene.render.resolution_x, scene.render.resolution_y],
+            },
+            "color_management": {
+                "display_device": scene.display_settings.display_device,
+                "view_transform": scene.view_settings.view_transform,
+                "look": scene.view_settings.look,
+                "exposure": scene.view_settings.exposure,
+                "gamma": scene.view_settings.gamma,
+            },
             "dither_intensity": scene.render.dither_intensity,
             "persistent_data": scene.render.use_persistent_data,
             "denoising": {

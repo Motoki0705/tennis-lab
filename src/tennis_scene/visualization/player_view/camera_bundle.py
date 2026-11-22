@@ -330,6 +330,10 @@ def load_head_cameras(directory: Path, *, player_id: int) -> SavedHeadCameras:
         )
     ):
         raise ValueError("Camera archive source timeline disagrees with its manifest")
+    if "stabilization" in manifest or manifest["head"]["smoothing"] != "none":
+        from .stabilization import validate_stabilization_record
+
+        validate_stabilization_record(manifest, values)
     series = HeadCameraSeries(
         K=values["K"],
         camera_to_court=values["camera_to_court"],

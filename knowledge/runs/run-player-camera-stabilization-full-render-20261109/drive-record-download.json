@@ -1,0 +1,31 @@
+{
+  "method": "Google Drive connector exact raw bytes",
+  "drive_record": "operations/colab/player-view-stabilization-20261109-a2/full-a2",
+  "request_sha256_matches_original": true,
+  "files": [
+    {
+      "name": "status.json",
+      "id": "1PI2puJZETnPYTQOkTihdlEGK71aaRWTq",
+      "bytes": 598,
+      "sha256": "40c9b6e420da42a9414a8ba1a52edba57487eb827c987bd53390c02e48755a8e"
+    },
+    {
+      "name": "request.json",
+      "id": "1JlWhUHtoY8B4I_7c0c_FKOhh0yjiVYXc",
+      "bytes": 1144,
+      "sha256": "f33d58d52e9ee69854c7d15d56596facf2b7766ef77cbee66ea1cc5241cc3fa2"
+    },
+    {
+      "name": "source_changes.json",
+      "id": "1lXXs9bPZuV_JYGjVyFY67w7YueyPiSHu",
+      "bytes": 164,
+      "sha256": "498070908021d9ba876c2585d00b858276eb64f169207f3ca8da1939ec995333"
+    },
+    {
+      "name": "stdout.log",
+      "id": "1Dn23Am5TQ-jwmWV30TS1OpFftUiTpXlE",
+      "bytes": 680,
+      "sha256": "645541d8ca382ca4fc4e5b384677cef5b8e0cff72aa1125afc8421fc67e56c06"
+    }
+  ]
+}

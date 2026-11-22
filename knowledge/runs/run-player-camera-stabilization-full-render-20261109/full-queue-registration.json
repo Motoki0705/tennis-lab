@@ -1,0 +1,16 @@
+{
+  "registered_at": "2026-11-09T12:46:48.757314+00:00",
+  "job": "0-8205771591263090791_2026-11-09T12-46-48-736909208Z_29990_issue1776_full_a2.job",
+  "idempotency_key": "issue1776/player-view-stabilization-20261109-a2/full-a2/attempt-1",
+  "provider": "codex",
+  "session": "01a1be2e-ac58-7473-9cde-76c8e2ad0fb2",
+  "issue": 1776,
+  "resource": "all",
+  "source_ref": "d133993421c206af28340f4ffe082c65b70fe7a7",
+  "command": "timeout --signal=TERM --kill-after=20s 8341s .venv/bin/python outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/render_full_comparison.py --phase full --inputs outputs/tennis_scene/visualize/player_view/stabilization-comparison/inputs --output outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full-render --artifacts outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full --blender /content/blender/blender-5.2.1-linux-x64/blender",
+  "timeout_seconds": 8341,
+  "helper_sha256": {
+    "archive_render_frames.py": "9fa41f23de33ab3638a8e53768401b6e64847b2d7de9f8ce7d71272724dd4c41",
+    "render_full_comparison.py": "40fe11cc7227db7b565bc08a769279edc339cae409aa71f235593b3d54ad3c6f"
+  }
+}
