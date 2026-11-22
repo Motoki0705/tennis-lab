@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import grp
 import importlib
 import json
 import os
+import pwd
 import stat
 from pathlib import Path
 from types import SimpleNamespace
@@ -116,15 +118,127 @@ def test_write_refuses_symlinked_ancestor_without_creating_directories(
     assert not list(outside.iterdir())
 
 
-def test_write_refuses_shared_write_ancestor(tmp_path: Path) -> None:
+def _mock_private_group(
+    monkeypatch: pytest.MonkeyPatch, uid: int, gid: int
+) -> SimpleNamespace:
+    account = SimpleNamespace(pw_uid=uid, pw_gid=gid, pw_name="owner")
+    accounts = {
+        uid: account,
+        uid + 1: SimpleNamespace(pw_uid=uid + 1, pw_gid=gid + 1),
+    }
+    groups = {gid: SimpleNamespace(gr_mem=[account.pw_name])}
+    monkeypatch.setattr(pwd, "getpwuid", accounts.__getitem__)
+    monkeypatch.setattr(pwd, "getpwall", lambda: list(accounts.values()))
+    monkeypatch.setattr(grp, "getgrgid", groups.__getitem__)
+    return SimpleNamespace(account=account, accounts=accounts, groups=groups)
+
+
+def test_open_state_directory_through_user_private_group_ancestors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state_files = importlib.import_module("lib.state_files")
+    path = tmp_path
+    for name, mode in (
+        ("home", 0o750),
+        (".local", 0o775),
+        ("state", 0o775),
+        ("tennis-lab-agents", 0o755),
+        ("private", 0o700),
+    ):
+        path /= name
+        path.mkdir()
+        path.chmod(mode)
+    _mock_private_group(monkeypatch, os.geteuid(), path.stat().st_gid)
+
+    with state_files.open_state_directory(path) as directory:
+        assert os.path.samestat(os.fstat(directory.fd), path.stat())
+
+
+@pytest.mark.parametrize(
+    "problem",
+    [
+        "supplementary-member",
+        "primary-member",
+        "different-primary-group",
+        "missing-group",
+        "owner-not-enumerated",
+    ],
+)
+def test_write_refuses_unverified_group_writable_ancestor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, problem: str
+) -> None:
+    state_files = importlib.import_module("lib.state_files")
+    store = importlib.import_module("parent.state").Store
+    shared = tmp_path / "group-writable"
+    shared.mkdir()
+    shared.chmod(0o775)
+    directory = shared / "private"
+    directory.mkdir(mode=0o700)
+    uid, gid = os.geteuid(), shared.stat().st_gid
+    database = _mock_private_group(monkeypatch, uid, gid)
+    if problem == "supplementary-member":
+        database.groups[gid].gr_mem.append("other-user")
+    elif problem == "primary-member":
+        database.accounts[uid + 1].pw_gid = gid
+    elif problem == "different-primary-group":
+        database.account.pw_gid = gid + 1
+    elif problem == "missing-group":
+        database.groups.clear()
+    elif problem == "owner-not-enumerated":
+        monkeypatch.setattr(pwd, "getpwall", lambda: [database.accounts[uid + 1]])
+
+    with pytest.raises(state_files.StateFileError, match="shared_write") as exc:
+        store.write_json(directory / "registry.json", {})
+
+    assert exc.value.entry == "directory"
+    assert str(shared) in str(exc.value)
+    assert not list(directory.iterdir())
+
+
+def test_group_writable_ancestor_must_be_owned_by_current_user(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state_files = importlib.import_module("lib.state_files")
+    uid, gid = 1001, 2001
+    _mock_private_group(monkeypatch, uid, gid)
+    info = SimpleNamespace(st_uid=0, st_gid=gid, st_mode=stat.S_IFDIR | 0o775)
+    monkeypatch.setattr(
+        state_files, "os", SimpleNamespace(fstat=lambda _fd: info, geteuid=lambda: uid)
+    )
+
+    with pytest.raises(state_files.StateFileError, match="shared_write"):
+        state_files._check_directory(0, tmp_path, tmp_path / "private", leaf=False)
+
+
+def test_write_refuses_shared_write_ancestor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state_files = importlib.import_module("lib.state_files")
     store = importlib.import_module("parent.state").Store
     shared = tmp_path / "shared"
     shared.mkdir()
-    shared.chmod(0o770)
+    shared.chmod(0o777)
     directory = shared / "private"
     directory.mkdir(mode=0o700)
+    _mock_private_group(monkeypatch, os.geteuid(), shared.stat().st_gid)
 
-    with pytest.raises(OSError, match="shared_write"):
+    with pytest.raises(state_files.StateFileError, match="shared_write"):
+        store.write_json(directory / "registry.json", {})
+
+    assert not list(directory.iterdir())
+
+
+def test_write_refuses_group_writable_state_directory_with_private_group(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state_files = importlib.import_module("lib.state_files")
+    store = importlib.import_module("parent.state").Store
+    directory = tmp_path / "private"
+    directory.mkdir()
+    directory.chmod(0o775)
+    _mock_private_group(monkeypatch, os.geteuid(), directory.stat().st_gid)
+
+    with pytest.raises(state_files.StateFileError, match="shared_write"):
         store.write_json(directory / "registry.json", {})
 
     assert not list(directory.iterdir())

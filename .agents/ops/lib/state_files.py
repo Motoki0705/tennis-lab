@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import errno
+import grp
 import os
+import pwd
 import stat
 from collections.abc import Callable, Iterator
 from contextlib import (
@@ -92,15 +94,41 @@ class StateDirectory:
 _DIRECTORY_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
 
 
+def _is_user_private_group(info: os.stat_result, owner: int) -> bool:
+    if info.st_uid != owner:
+        return False
+    try:
+        account = pwd.getpwuid(owner)
+        if account.pw_gid != info.st_gid:
+            return False
+        group = grp.getgrgid(info.st_gid)
+        if any(member != account.pw_name for member in group.gr_mem):
+            return False
+        primary_users = {
+            entry.pw_uid for entry in pwd.getpwall() if entry.pw_gid == info.st_gid
+        }
+    except (KeyError, OSError):
+        return False
+    # Enumeration has to include the owner to verify the group's membership.
+    return primary_users == {owner}
+
+
 def _check_directory(fd: int, path: Path, target: Path, *, leaf: bool) -> None:
     info = os.fstat(fd)
     owner = os.geteuid()
     if info.st_uid not in ({owner} if leaf else {0, owner}):
         raise StateFileError(target, "wrong_owner", entry="directory", location=path)
-    # Sticky ancestors such as /tmp protect the next entry, whose owner is
-    # checked in turn. The state directory itself is writable only by its owner.
-    if info.st_mode & 0o022 and (leaf or not info.st_mode & stat.S_ISVTX):
-        raise StateFileError(target, "shared_write", entry="directory", location=path)
+    shared_write = info.st_mode & 0o022
+    if not shared_write:
+        return
+    if not leaf:
+        # Sticky ancestors such as /tmp protect the next entry, whose owner
+        # is checked in turn.
+        if shared_write & 0o002 and info.st_mode & stat.S_ISVTX:
+            return
+        if shared_write == 0o020 and _is_user_private_group(info, owner):
+            return
+    raise StateFileError(target, "shared_write", entry="directory", location=path)
 
 
 def _open_directory_at(

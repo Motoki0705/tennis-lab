@@ -294,6 +294,7 @@ schedule/runの正本は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/di
 初期化はdisabledで、初期化時点の直前slotまでを消費済みにする。過去の予定を導入直後に実行しない。
 `--state-dir` と `--parent-state-dir` は使い捨て試験用にも指定できる。
 両ディレクトリと判定runの保存経路には [状態ルートの所有者・権限](../parent/README.md#排他とio) の条件が適用される。
+`~/.local` と `~/.local/state` が `0775` の環境でも、単一ユーザー専用グループの条件を満たせば既定の保存先を使える。
 scheduleもregistryと同じ `Store.locked()` 内で保存し、長い判定の重複は別の `judgement.lock`、
 supervisorの重複は `supervisor.lock` で防ぐ。JSON破損・未知version・不正設定は停止し、初期化し直さない。
 
