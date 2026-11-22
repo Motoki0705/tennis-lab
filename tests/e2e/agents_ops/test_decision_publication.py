@@ -1086,6 +1086,57 @@ def test_main_advance_regenerates_other_parents_and_reuses_open_pr(
     assert len(document["batches"][0]["revisions"]) == 2
 
 
+@pytest.mark.parametrize("recovered", [True, False])
+def test_pr_head_lag_during_reconciliation_and_after_revision_push(
+    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch, recovered: bool
+) -> None:
+    worker_publication = importlib.import_module("worker_logs.publication")
+    log = env.capture()
+    publisher = env.decision_publisher(log)
+    env.github.pause_reads = True
+    assert publisher.publish()["state"] == "pending"
+    env.github.pause_reads = False
+    original = json.loads(publisher.path.read_text())["batches"][0]
+    old_head = original["revisions"][-1]["head"]
+    main = env.advance({"upstream-note.txt": b"Independent main advance\n"})
+    delays: list[float] = []
+    snapshots: list[bytes] = []
+    get = env.github.get
+    saw_new_head = False
+
+    def observe(number: int) -> dict[str, Any]:
+        nonlocal saw_new_head
+        pr: dict[str, Any] = get(number)
+        snapshots.append(publisher.path.read_bytes())
+        if len(snapshots) == 2 or not recovered and len(snapshots) > 1:
+            pr["head"]["sha"] = ""
+        elif pr["head"]["sha"] != old_head and not saw_new_head:
+            saw_new_head = True
+            pr["head"]["sha"] = old_head
+        return pr
+
+    monkeypatch.setattr(worker_publication, "sleep", delays.append, raising=False)
+    monkeypatch.setattr(env.github, "get", observe)
+    value = publisher.publish()
+    saved = json.loads(publisher.path.read_text())["batches"][0]
+    for key in ("branch", "pr_number", "payloads"):
+        assert saved[key] == original[key]
+    if recovered:
+        assert value["saved_to_main"] and env.github.calls == ["create", "merge"]
+        assert saw_new_head and len(delays) == 2
+        assert saved["revisions"][0] == original["revisions"][0]
+        assert len(saved["revisions"]) == 2 and saved["revisions"][1]["base"] == main
+    else:
+        assert value["error"] == "pr_identity_changed" and not value["saved_to_main"]
+        assert len(snapshots) == 5 and len(delays) == 3
+        assert all(raw == snapshots[0] for raw in snapshots)
+        assert (
+            saved["revisions"] == original["revisions"] and not saved["merge_attempted"]
+        )
+        assert env.github.calls == ["create"] and env.github.main() == main
+        assert git(env.upstream, "rev-parse", original["branch"]) == old_head
+
+
 @pytest.mark.parametrize(
     "point",
     [
