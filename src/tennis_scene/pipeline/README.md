@@ -329,7 +329,8 @@ HMR2・GVHMR・body geometry資産は各段階の最終需要まで共有し、�
 保存特徴のあるclipと未計算のclipが混在する再開でも、HMR2の解放をGVHMRの読込より先に行う。
 この順序制約はclipをまたぐartifact依存には含めず、部分targetでは選択していないclipを実行しない。
 両推論nodeのModelSpecは共通のcomponent生成表から成果物settingsと完成markerへ束縛する。
-DINO・ViTPoseの精度設定とは独立して、HMR2特徴・GVHMR・身体配置はFP32を使う。
+HMR2特徴とGVHMRは既定でFP32を使い、DINO・ViTPoseとは別に推論バックエンドを指定する。
+身体配置はFP32を使う。
 上流の精度変更は依存artifactのidentityを通じて身体段のcacheへ反映する。
 
 ## TensorRT FP16
@@ -356,6 +357,16 @@ uv sync --locked --extra tensorrt
 TensorRTを選んだモデルの `batch_size` は単一clipと横断バッチで共通です。
 横断バッチを有効にしたとき、PyTorchのモデルには既存の `batching.sizes` が適用されます。
 各バッチの端数を処理します。PyTorch GVHMRでは連続する同じ系列長をまとめ、人物ごとに復号します。
+
+### DINO GridSampleの単体精度
+
+DINOのTensorRT FP16は明示設定で選択でき、既定はPyTorch FP32です。
+固定64画像の実測ではIoU P05が0.93056、score差P95が0.01724で、
+単体基準のIoU P05 ≥ 0.98、score差P95 ≤ 0.01をともに満たしていません。
+常設化前のPhase 1でもIoU P05は0.93252、score差P95は0.01726で、同じ2項目が基準外でした。
+採用は全クリップE2Eで判断します。
+[実測記録](../../../knowledge/nodes/tennis_scene/000081-run-i2362-tensorrt-pipeline.md)・
+[全クリップE2E #2363](https://github.com/Motoki0705/tennis-lab/issues/2363)
 
 ### エンジンの作成と配置
 

@@ -55,10 +55,10 @@ parents:
 | GVHMR | カメラ座標のCOCO-17差 P95 (mm)、L=145 / 177 | 8.61 / 8.72 | 8.35 / 8.81 | 範囲内。回転P95は最大0.0774°、length・maskは全件一致 |
 | DINO GridSample | IoU P05、score差 P95、欠落 / 追加 | 0.93252、0.01726、3 / 2 | 0.93056、0.01724、2 / 4 | IoU ≥ 0.98とscore差 ≤ 0.01を両計測で未達 |
 
-DINOは64画像を照合した。欠落2/494と追加4/496は1%以下。xyxy絶対差P95はPhase 1の0.707 pxから今回の1.241 pxになった。今回もPhase 1の暫定基準を適用した。既知の精度差を採用条件としてどう扱うかは #2278 の判断に委ねる。 [DINOのPhase 1記録](000078-run-i2304-dino-tensorrt.md)・[モデル別の実測値](../../runs/run-i2362-tensorrt-pipeline/metrics.json)
+DINOは64画像を照合した。欠落2/494と追加4/496は1%以下。xyxy絶対差P95はPhase 1の0.707 pxから今回の1.241 pxになった。IoUとscore差の単体基準未達は常設化前のPhase 1から観測されている。2026-11-22の判断により、現行GridSample版を明示選択の比較候補とし、採用は #2363 の全クリップE2Eで判断する。 [DINOのPhase 1記録](000078-run-i2304-dino-tensorrt.md)・[モデル別の実測値](../../runs/run-i2362-tensorrt-pipeline/metrics.json)・[全クリップE2E #2363](https://github.com/Motoki0705/tennis-lab/issues/2363)
 
 GVHMRでは重力整列座標のCOCO-17差P95が22.63 / 20.39 mmだった。Phase 1でもこの座標で23.50 / 18.32 mmを記録している。今回の比較コードは両座標に10 mmを適用し、GVHMR比較を終了値1とした。Phase 1の判定対象であるカメラ座標と全1,288フレームのlength・maskを、保存済み指標から再照合した。 [GVHMRのPhase 1記録](000076-run-i2305-gvhmr-tensorrt.md)・[元の終了状態](../../runs/run-i2362-tensorrt-pipeline/attempts.json)
 
 `meiji_4cam` の `video_000/clip_037` は5モデルすべてTensorRT B=1でsmokeを実施した。4カメラ・292フレームでシーン出力が `ok` になり、4選手の有効SMPLフレームは各289。publicationに記録した5モデルのengine digestはbuildのmanifestと一致し、5モデルのforwardを記録した。 [smokeの出力](../../runs/run-i2362-tensorrt-pipeline/smoke.json)
 
-今回検証した設定は明示選択用で、DINOの単体判定と全クリップの比較が残っている。標準構成の採用判断は維持した。
+今回検証したTensorRT設定は明示選択用。標準構成の採用判断は維持した。
