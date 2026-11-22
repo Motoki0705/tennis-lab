@@ -115,13 +115,15 @@ def register_approved_parent(p: ParentEnv) -> str:
     return str(approved)
 
 
-def create_improvement_child(p: ParentEnv) -> subprocess.CompletedProcess[str]:
+def create_improvement_child(
+    p: ParentEnv, *, ok: bool = True
+) -> subprocess.CompletedProcess[str]:
     sections = {name: name + "を確認する。" for name in p.formats.CHILD_REQUIRED}
     sections["依存関係"] = "なし。"
     sections["Acceptance checklist"] = (
         "- [ ] 保存済み結果を取得する\n  文脈: 合意した改善。\n  下流への影響: 重複実行を防ぐ。\n  検証方法・証拠: fake runner。"
     )
-    return p.cli(
+    result: subprocess.CompletedProcess[str] = p.cli(
         "create-child",
         "--spec",
         p.spec(
@@ -138,7 +140,9 @@ def create_improvement_child(p: ParentEnv) -> subprocess.CompletedProcess[str]:
             }
         ),
         parent="11",
+        ok=ok,
     )
+    return result
 
 
 def create_approved_child(p: ParentEnv) -> str:
@@ -164,10 +168,22 @@ def test_self_stop_allows_splitting_an_approved_extracted_parent(
 ) -> None:
     p = parent_env
     register_approved_parent(p)
-    p.cli("stop", "--child", "11", "--spec", p.detail(), parent="11")
+    detail = json.loads(Path(p.detail()).read_text())
+    detail["facts"] = "再現を確認。\n## ログの見出し\n\n確認した行を引用する。"
+    detail["reason"] = "判断待ち。\n## 根拠の見出し\n次の作業を整理する。"
+    p.cli("stop", "--child", "11", "--spec", p.spec(detail), parent="11")
+    state = p.state()
+    stopped = state["issues"]["11"]["body"]
+    assert "<!-- parent-task-status:v1 state=stopped " in stopped
     assert (
-        "<!-- parent-task-status:v1 state=stopped " in p.state()["issues"]["11"]["body"]
+        not {"ログの見出し", "根拠の見出し"} & p.formats.parse_sections(stopped).keys()
     )
+
+    state["issues"]["11"]["body"] = stopped + "\n### 追加要件\n\n別の作業も行う。\n"
+    p.save(state)
+    assert "requirements changed" in create_improvement_child(p, ok=False).stderr
+    state["issues"]["11"]["body"] = stopped
+    p.save(state)
     result = json.loads(create_improvement_child(p).stdout)
     assert result["child"] == 12
     assert p.state()["parents"]["12"] == 11

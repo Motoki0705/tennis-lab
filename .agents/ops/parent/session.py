@@ -29,6 +29,7 @@ from issues import (
     render_child_tasks,
     task_status,
     validate_body,
+    work_status,
 )
 from issues.cli import render_spec
 from issues.format import WORK_STATUS_HEADING
@@ -1664,27 +1665,32 @@ class ParentSession:
             raise ValueError(
                 "stop/resume requires an open target or a completed target with an existing worker"
             )
-        required = {"reason", "facts", "impact", "resume_condition", "next_action"}
+        required = set(work_status.DETAIL_FIELDS)
         if set(detail) != required:
             raise ValueError(f"stop/resume requires exactly {sorted(required)}")
-        detail = {key: nonempty(value, key) for key, value in detail.items()}
+        detail = {
+            key: "\n".join(nonempty(value, key).splitlines())
+            for key, value in detail.items()
+        }
         task = self.row["tasks"].setdefault(str(child), {})
-        operation = {"resume": resume, "detail_sha256": digest(detail)}
+        detail_sha = work_status.detail_sha256(detail)
+        operation = {"resume": resume, "detail_sha256": detail_sha}
         if (
             resume
             and not child_stopped(children[child].body, task.get("stopped", False))
             and task.get("last_operation") != operation
         ):
             raise ValueError("child is not stopped")
-        action = "再開" if resume else "停止"
-        text = (
-            action
-            + "\n\n"
-            + "\n\n".join(f"{key}: {value}" for key, value in detail.items())
-        )
-        text += f"\n\n<!-- parent-task-status:v1 state={'resumed' if resume else 'stopped'} detail={digest(detail)} -->"
+        state = "resumed" if resume else "stopped"
+        action = work_status.ACTIONS[state]
         current = raw_section(children[child].body, WORK_STATUS_HEADING)
-        already_recorded = current.rstrip().endswith(text)
+        latest = work_status.last_record(current)
+        already_recorded = (
+            latest is not None
+            and latest.end == len(current.splitlines())
+            and latest.state == state
+            and latest.detail == detail
+        )
         operation_number = len(
             re.findall(r"(?m)^<!-- parent-task-status:v1 ", current)
         ) + (0 if already_recorded else 1)
@@ -1693,7 +1699,11 @@ class ParentSession:
             replace_section(
                 children[child].body,
                 WORK_STATUS_HEADING,
-                current if already_recorded else current + "\n\n" + text,
+                current
+                if already_recorded
+                else "\n\n".join(
+                    filter(None, (current, work_status.render(detail, state)))
+                ),
             ),
             children[child].body,
         )
@@ -1715,7 +1725,7 @@ class ParentSession:
             {
                 "event": "child_resumed" if resume else "child_stopped",
                 "child": child,
-                "detail_sha256": digest(detail),
+                "detail_sha256": detail_sha,
                 "operation": operation_number,
             },
             f"{action}: #{child} — {detail['reason']}\n\n全体への影響: 依存保留 {held}。継続 {continuing}。\n\n次の対応: {detail['next_action']}。詳細・再開条件は #{child}。",

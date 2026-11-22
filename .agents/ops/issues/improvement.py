@@ -13,6 +13,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from . import work_status
 from .format import (
     WORK_STATUS_HEADING,
     _scan_markdown,
@@ -28,7 +29,6 @@ PROGRESS = frozenset(
     {
         "子タスクのチェックリスト",
         "進捗概要",
-        WORK_STATUS_HEADING,
         "成果物・関連PR",
         "次の改善候補",
         "終了記録",
@@ -183,8 +183,14 @@ def contract(body: str) -> dict[str, str]:
     result = {
         heading: normalize(raw_section(body, heading))
         for heading in sections
-        if heading not in PROGRESS
+        if heading != WORK_STATUS_HEADING and heading not in PROGRESS
     }
+    if WORK_STATUS_HEADING in sections:
+        status_text = normalize(
+            work_status.without_records(raw_section(body, WORK_STATUS_HEADING))
+        )
+        if status_text:
+            result[WORK_STATUS_HEADING] = status_text
     preamble = raw_preamble(body)
     from .improvement_proposals import parse_extraction
 
