@@ -117,7 +117,7 @@ class PluginCore(torch.autograd.Function):
         flat = grid_core(
             upstream.ms_deform_attn_core_pytorch, value, geometry, locations, weights
         )
-        return flat.reshape(batch, queries, heads, channels)
+        return flat.reshape(value.shape[0], queries, heads, channels)
 
     @staticmethod
     def symbolic(
@@ -147,10 +147,11 @@ class PluginCore(torch.autograd.Function):
         )
 
 
-def plugin_core(value, geometry, starts, locations, weights):
+def plugin_core(value, geometry, starts, locations, weights, *, dynamic_batch=False):
     # Record the observed static bucket while tracing. The legacy symbolic
     # pass can discard upstream shape annotations before translating this op.
-    batch, queries = int(value.shape[0]), int(locations.shape[1])
+    batch = None if dynamic_batch else int(value.shape[0])
+    queries = int(locations.shape[1])
     heads, channels = int(value.shape[2]), int(value.shape[3])
     if value.dtype not in (torch.float32, torch.float16):
         raise ValueError(f"Unsupported TensorRT MSDA dtype: {value.dtype}")
@@ -169,7 +170,7 @@ def plugin_core(value, geometry, starts, locations, weights):
 
 
 @contextmanager
-def export_sampling(method):
+def export_sampling(method, *, dynamic_batch=False):
     layer, upstream = upstream_modules()
 
     def apply(value, geometry, starts, locations, weights, _step):
@@ -182,14 +183,16 @@ def export_sampling(method):
                 weights,
             )
         if method == "plugin":
-            return plugin_core(value, geometry, starts, locations, weights)
+            return plugin_core(
+                value, geometry, starts, locations, weights, dynamic_batch=dynamic_batch
+            )
         raise ValueError(f"Unknown MSDA export: {method}")
 
     with patch.object(layer, "MSDeformAttnFunction", SimpleNamespace(apply=apply)):
         yield
 
 
-def export_onnx(model, tensors, path, *, inputs, outputs):
+def export_onnx(model, tensors, path, *, inputs, outputs, dynamic_batch=False):
     # Swin and deformable-attention geometry use fixed shapes in the legacy trace.
     with torch.no_grad():
         torch.onnx.export(
@@ -201,4 +204,9 @@ def export_onnx(model, tensors, path, *, inputs, outputs):
             opset_version=19,
             dynamo=False,
             external_data=True,
+            dynamic_axes=(
+                {name: {0: "batch"} for name in (*inputs, *outputs)}
+                if dynamic_batch
+                else None
+            ),
         )

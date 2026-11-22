@@ -110,7 +110,11 @@ class Hmr2Images(nn.Module):
 class FlipRunner:
     def __init__(self, runner):
         self.runner = runner
-        self.pixels = torch.empty_like(runner.pixels[:1])
+        self.pixels = torch.empty_like(runner.pixels[: len(runner.pixels) // 2])
+
+    def set_batch_size(self, batch_size):
+        self.runner.set_batch_size(batch_size)
+        self.pixels = torch.empty_like(self.runner.pixels[:batch_size])
 
     def run(self):
         torch.cat((self.pixels, self.pixels.flip(3)), dim=0, out=self.runner.pixels)
@@ -206,7 +210,7 @@ def compare_crops(model, actual, baseline, addresses, inputs):
     return result
 
 
-def external_onnx(model, sample, path):
+def external_onnx(model, sample, path, *, dynamic_axes=None):
     """Export a graph first, then stream parameters into ONNX external data."""
     import onnx
 
@@ -220,6 +224,7 @@ def external_onnx(model, sample, path):
         dynamo=False,
         export_params=False,
         do_constant_folding=False,
+        dynamic_axes=dynamic_axes,
     )
     proto = onnx.load(path)
     parameters = model.state_dict()
@@ -329,16 +334,21 @@ class VitAdapter:
             }
         return settings
 
-    def export(self, checkpoint, path, *, fp16):
+    def export(self, checkpoint, path, *, fp16, dynamic_batch=False):
         import onnx
 
         torch.set_num_threads(4)
         dtype = torch.float16 if fp16 else torch.float32
         model = self.torch_model(checkpoint).to(dtype=dtype).eval()
         sample = torch.zeros(self.engine_shape, dtype=dtype)
+        axes = (
+            {name: {0: "batch"} for name in ("pixels", "features")}
+            if dynamic_batch
+            else None
+        )
         with torch.no_grad():
             if self.model != MODEL and not fp16:
-                external_onnx(model, sample, path)
+                external_onnx(model, sample, path, dynamic_axes=axes)
             else:
                 torch.onnx.export(
                     model,
@@ -349,6 +359,7 @@ class VitAdapter:
                     opset_version=19,
                     dynamo=False,
                     external_data=False,
+                    dynamic_axes=axes,
                 )
                 onnx.checker.check_model(str(path))
 
@@ -377,8 +388,7 @@ class VitAdapter:
             nodes=sorted(selected),
             method=method,
             calibration_shapes=calibration_shapes,
-            restore_dynamic_shapes=self.model == MODEL
-            and calibration_shapes is not None,
+            restore_dynamic_shapes=calibration_shapes is not None,
             external_data=self.model != MODEL,
             disable_mha_qdq=self.model != MODEL and scope != "matmul",
         )
