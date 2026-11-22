@@ -93,6 +93,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             "worktree_cleanup",
             "storage_tier",
             "d_capacity",
+            "lib",
         ):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
@@ -725,6 +726,14 @@ def test_autodream_corrupt_state_preserved_and_reported_by_spin(
         ("agents", AGENT_UNITS),
         ("dispatcher", {SUPERVISOR, JUDGEMENT_TIMER, JUDGEMENT}),
         ("git-sync", {"tennis-lab-git-sync.timer", "tennis-lab-git-sync.service"}),
+        (
+            "storage-tier",
+            {
+                "tennis-lab-storage-tier.timer",
+                "tennis-lab-storage-tier.service",
+                "tennis-lab-failure-notify@tennis-lab-storage-tier.service.service",
+            },
+        ),
     ],
 )
 def test_logs_selects_exact_user_units_even_without_manager(
@@ -824,23 +833,26 @@ def test_worktree_cleanup_timer_public_controls_and_tokyo_schedule(
     assert "KillMode=control-group" in service
 
 
-def test_storage_timer_only_installs_service_and_timer_without_notification(
+def test_storage_timer_installs_failure_notification_and_enables_only_timer(
     control: ControlEnv,
 ) -> None:
-    stem = "tennis-lab-storage-tier"
+    timer = "tennis-lab-storage-tier.timer"
+    service = "tennis-lab-storage-tier.service"
+    template = "tennis-lab-failure-notify@.service"
     assert control.run("install", "storage-tier").returncode == 0
+    config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
+    assert {path.name for path in config.iterdir()} == {timer, service, template}
+    service_body = (config / service).read_text()
+    assert "OnFailure=tennis-lab-failure-notify@%n.service" in service_body.splitlines()
+    assert "checkout_job.py" in service_body and "-m storage_tier cycle" in service_body
+    assert "-m lib.notify_unit_failure -- %i" in (config / template).read_text()
+    timer_body = (config / timer).read_text()
+    assert "OnCalendar=*-*-* 05:30:00 Asia/Tokyo" in timer_body
+    assert "Persistent=true" in timer_body
     checked(control, "on", "storage-tier")
-    source = control.repo / ".agents/ops/storage_tier/systemd"
-    service = (source / f"{stem}.service").read_text()
-    timer = (source / f"{stem}.timer").read_text()
-    assert "OnFailure=" not in service
-    assert "checkout_job.py" in service and "-m storage_tier cycle" in service
-    assert "OnCalendar=*-*-* 05:30:00 Asia/Tokyo" in timer
-    assert "Persistent=true" in timer
-    state = control.read()
-    assert state["units"][f"{stem}.timer"]["UnitFileState"] == "enabled"
-    assert f"{stem}-failure.service" not in state["units"]
-    assert not (source / f"{stem}-failure.service").exists()
+    assert [call for call in control.calls() if call[2] == "enable"] == [
+        ["systemctl", "--user", "enable", "--now", timer]
+    ]
     checked(control, "off", "storage-tier")
 
 

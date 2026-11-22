@@ -1,0 +1,10 @@
+[Unit]
+Description=Send a Windows toast for failed unit %i
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab/.agents/ops
+ExecStart=/usr/bin/python3 -B -m lib.notify_unit_failure -- %i
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=30s

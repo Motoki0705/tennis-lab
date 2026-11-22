@@ -237,13 +237,17 @@ class Controller:
         command = ["bash", str(self.repo_root / ".agents/ops/install_units.sh")]
         if dry_run:
             command.append("--dry-run")
-        for unit in dict.fromkeys(unit for target in targets for unit in target.units):
+        for unit in dict.fromkeys(
+            unit for target in targets for unit in target.install_units
+        ):
             command.extend(("--unit", unit))
         return subprocess.run(command, cwd=self.repo_root, check=False).returncode
 
     def logs(self, targets: tuple[Target, ...], *, lines: int, follow: bool) -> int:
         command = ["journalctl", "--user", "--lines", str(lines)]
         command.append("--follow" if follow else "--no-pager")
-        for unit in dict.fromkeys(unit for target in targets for unit in target.units):
+        for unit in dict.fromkeys(
+            unit for target in targets for unit in target.journal_units
+        ):
             command.extend(("--unit", unit))
         return subprocess.run(command, cwd=self.repo_root, check=False).returncode

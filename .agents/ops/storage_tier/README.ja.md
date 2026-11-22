@@ -368,7 +368,7 @@ repo/E:の基準mountから単位rootまで全成分をnofollow FDで開き、�
 D:`<repo>/.storage-tier/audit.jsonl` に、照合・取得・失敗・削除前確認・完了のUTC時刻、単位、サイズ、
 照合方式を残す。変更処理はrepoごとに排他し、dry-runはlockも作らない。同じ場所の `transactions/` に
 削除の永続intentを置く。
-他UIDの除外範囲も各監査eventに残す。失敗はauditとserviceのjournalだけに残し、通知は送らない。
+他UIDの除外範囲とストレージ操作の失敗も監査記録に残す。
 通常dirの読取専用 `index --dry-run` は単位quietを省く（rootファイル投影はfd/cwd/mmapを検査）。どちらもE:側mount参照検査の証拠にはならない。
 manifestの認証・削除許可も行わない。実機確認は `verify --dry-run` で両側を検査し、E:の `quiet` 通過とmetadata不変を記録する。
 配置切替前は、既存D:/E:ペアの読取専用対応付けによる確認と、未切替配置を拒否する通常CLIの結果を分ける。
@@ -500,8 +500,11 @@ spin ops logs storage-tier --lines 100
 spin ops off storage-tier
 ```
 
-user timerは毎日05:30 Asia/Tokyo、最大15分のjitter。失敗はjournalと `audit.jsonl` に残すだけで、
-通知helperや `OnFailure` は置かない。有効化前に実行ユーザーのプロセス検査を実機で確認する。他UIDは合意上の対象外である。
+user timerは毎日05:30 Asia/Tokyo、最大15分のjitter。serviceが失敗すると、systemdが通知用unitを起動してWindowsトーストを送る。
+通知には失敗したunit名と対応する `journalctl --user -u` コマンドを載せる。送信結果はuser journalに記録し、
+`spin ops logs storage-tier` で確認できる。[物理D:の容量gate](../d_capacity/README.md) が新規jobを拒否していてもcycleは実行できる。
+
+有効化前に実行ユーザーのプロセス検査を実機で確認する。他UIDは合意上の対象外である。
 systemのmount unitへの順序依存は張らず、毎回mountを確認する。installはunitのリンクだけで、有効化は別操作。
 
 ## 移行と検証

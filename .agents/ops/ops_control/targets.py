@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+FAILURE_NOTIFY_PREFIX = "tennis-lab-failure-notify@"
+
 
 @dataclass(frozen=True)
 class Step:
@@ -25,6 +27,22 @@ class Target:
     members: tuple[str, ...] = ()
     status_file: str | None = None
     deferred_exit_statuses: tuple[str, ...] = ()
+    failure_notify_for: str | None = None
+
+    @property
+    def install_units(self) -> tuple[str, ...]:
+        if self.failure_notify_for is None:
+            return self.units
+        return (*self.units, f"{FAILURE_NOTIFY_PREFIX}.service")
+
+    @property
+    def journal_units(self) -> tuple[str, ...]:
+        if self.failure_notify_for is None:
+            return self.units
+        return (
+            *self.units,
+            f"{FAILURE_NOTIFY_PREFIX}{self.failure_notify_for}.service",
+        )
 
 
 def service_target(name: str, stem: str) -> Target:
@@ -44,6 +62,7 @@ def timer_target(
     *,
     status_file: str | None = None,
     deferred_exit_statuses: tuple[str, ...] = (),
+    notify_on_failure: bool = False,
 ) -> Target:
     timer, service = f"{stem}.timer", f"{stem}.service"
     return Target(
@@ -58,6 +77,7 @@ def timer_target(
         run_unit=service,
         status_file=status_file,
         deferred_exit_statuses=deferred_exit_statuses,
+        failure_notify_for=service if notify_on_failure else None,
     )
 
 
@@ -108,7 +128,9 @@ TARGETS = {
         deferred_exit_statuses=("75",),
     ),
     "worktree-cleanup": timer_target("worktree-cleanup", "tennis-lab-worktree-cleanup"),
-    "storage-tier": timer_target("storage-tier", "tennis-lab-storage-tier"),
+    "storage-tier": timer_target(
+        "storage-tier", "tennis-lab-storage-tier", notify_on_failure=True
+    ),
     "d-capacity": service_target("d-capacity", "tennis-lab-d-capacity"),
 }
 
