@@ -25,7 +25,7 @@ from .records import (
     require_participant,
     require_thread_participant,
 )
-from .safety import public, text
+from .safety import MAX_SUBJECT_LENGTH, public, text, truncate
 from .service import _assigned, _reference, _runtime_states
 from .storage import Store, directory
 
@@ -176,7 +176,9 @@ def _create(
         )
         if original is not None:
             require_participant(connection, original, sender.id)
-            subject = ("Re: " + original["subject"])[:200]
+            subject = "Re: " + original["subject"]
+            public(subject, parents, env)
+            subject = truncate(subject, MAX_SUBJECT_LENGTH)
         text(body, parents, env)
         text(subject, parents, env, subject=True)
         recipients, broadcast = _destinations(

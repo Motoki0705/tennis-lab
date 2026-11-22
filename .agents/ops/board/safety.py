@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from markdown_it import MarkdownIt
     from markdown_it.rules_inline.state_inline import StateInline
 
+MAX_SUBJECT_LENGTH = 200
+
 # Only letters can precede a Japanese word separator. Punctuation, including
 # fullwidth punctuation, must still introduce Japanese-named absolute paths.
 _JAPANESE_LETTERS = (
@@ -170,6 +172,16 @@ def public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> No
     check(value)
 
 
+def truncate(value: str, limit: int) -> str:
+    """Shorten already validated text without cutting an identifier list in half."""
+    prefix = value[:limit]
+    if len(prefix) < len(value):
+        for match in _CODE_IDENTIFIER_LIST.finditer(value):
+            if match.start() < len(prefix) < match.end():
+                return value[: match.start()].rstrip()
+    return prefix
+
+
 def text(
     value: str,
     parents: Mapping[str, Any],
@@ -180,7 +192,7 @@ def text(
     if (
         not isinstance(value, str)
         or not value.strip()
-        or len(value) > (200 if subject else 60000)
+        or len(value) > (MAX_SUBJECT_LENGTH if subject else 60000)
     ):
         raise BoardError("board text is empty or too long")
     if subject and ("\n" in value or "\t" in value):

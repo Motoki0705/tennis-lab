@@ -491,6 +491,44 @@ def test_staleness_uses_received_time_and_never_stops_a_live_runner(
     assert f.child(stale_after=301)["updates_stalled"] is False
 
 
+@pytest.mark.parametrize("separator", ["/", "／"])
+def test_identifier_lists_at_display_limits_keep_worker_status_visible(
+    fixture: Any, separator: str
+) -> None:
+    f = fixture
+    guard = importlib.import_module("worker_status.safety").Guard({}, env={})
+    title_prefix = "件" * 191
+    message_prefix = "確" * 291
+    identifiers = f"`foo`{separator}`bar`"
+    f.task["title"] = f"{title_prefix} {identifiers}"
+    message = f"{message_prefix} {identifiers} 確認済み"
+    f.record()
+    f.events([item("agent_message", text=message)])
+
+    title = {"status": "visible", "text": title_prefix, "truncated": True}
+    summary = {"status": "visible", "text": message_prefix, "truncated": True}
+    for value, limit, expected in (
+        (f.task["title"], 200, title),
+        (message, 300, summary),
+    ):
+        assert guard.text(value, limit=len(value)) == {
+            "status": "visible",
+            "text": value,
+            "truncated": False,
+        }
+        assert guard.text(value, limit=limit) == expected
+        guard.check(expected["text"])
+
+    child = f.child()
+    assert child["title"] == {**title, "source": "parent_registry.task"}
+    assert child["summary"]["message"] == {
+        **summary,
+        "received_at": NOW.isoformat(),
+        "time_status": "observed",
+    }
+    assert child["summary"]["messages"] == [child["summary"]["message"]]
+
+
 def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> None:
     f = fixture
     f.record()

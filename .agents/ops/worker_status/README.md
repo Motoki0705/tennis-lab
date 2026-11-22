@@ -186,7 +186,9 @@ URLの除外は原文の引用符と演算子の境界を考慮してから、�
 | 対象 | 検査する値 |
 |---|---|
 | `Guard.check(output)`：キー・状態コード・ラベル・URLを含む出力全体 | boardのpublic検査（保存済み親のsession、3つのCLI session/thread環境値、UUID/ID表記・絶対パス・制御文字）に加え、観測済みのsession/turn/run/delegation/job ID・worktree/runパス、下記identity系環境値、既存の認証token表記 |
-| `Guard.text(...)`：発言・コマンド・ツール名・停止理由などの自由文 | 上記の構造検査と、起動環境の**8文字以上の全環境値**。全文を検査してから先頭300字・コマンド先頭行へ切り詰める |
+| `Guard.text(...)`：発言・コマンド・ツール名・停止理由などの自由文 | 上記の構造検査と、起動環境の**8文字以上の全環境値**。全文を検査してから、フィールドの文字数上限やコマンドの先頭行に合わせて切り詰め、表示する断片も再検査する |
+
+文字数上限がインラインコードの識別子列の途中に来る場合は、列の手前までを表示する。
 
 identity系環境値は`CLAUDE_CODE_SESSION_ID`、`CLAUDE_CODE_PARENT_SESSION_ID`、
 `CLAUDE_CODE_AGENT_ID`、`CODEX_SESSION_ID`、`CODEX_THREAD_ID`、

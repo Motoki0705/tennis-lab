@@ -1134,11 +1134,22 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
 
 
+@pytest.mark.parametrize(
+    ("title", "displayed"),
+    [
+        ("実験の確認", "実験の確認"),
+        ("確" * 191 + " `foo`/`bar`", "確" * 191),
+        ("確" * 201 + " /private/title", ""),
+    ],
+    ids=["short-title", "identifier-list-at-limit", "private-path-after-limit"],
+)
 def test_runtime_includes_unregistered_agents_without_changing_membership(
     world: World,
     client: TestClient,
     web: SimpleNamespace,
     monkeypatch: pytest.MonkeyPatch,
+    title: str,
+    displayed: str,
 ) -> None:
     observed = []
     secret = "f08ef56a-0296-4706-9a8c-88a9366ef922"
@@ -1162,7 +1173,7 @@ def test_runtime_includes_unregistered_agents_without_changing_membership(
                     {
                         "agent": "codex",
                         "agent_status": "working",
-                        "terminal_title_stripped": "実験の確認"
+                        "terminal_title_stripped": title
                         if self.session == "main"
                         else f"/private/work {secret}",
                         "terminal_id": "private-terminal",
@@ -1180,7 +1191,10 @@ def test_runtime_includes_unregistered_agents_without_changing_membership(
     data = response.json()
     assert data["observed_at"]
     assert [row["label"] for row in data["agents"]] == ["codex 1", "codex 2"]
-    assert data["agents"][0]["title"] == "実験の確認"
+    assert data["agents"][0]["title"] == displayed
+    assert data["agents"][0]["title_status"] == (
+        "available" if displayed else "redacted"
+    )
     assert data["agents"][1]["title"] == ""
     assert data["agents"][1]["title_status"] == "redacted"
     assert all(row["state"] == "working" for row in data["agents"])
