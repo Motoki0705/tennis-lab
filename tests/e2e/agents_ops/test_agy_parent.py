@@ -17,12 +17,14 @@ import pytest
 from tests.e2e.agents_ops.test_board import run_board
 from tests.e2e.agents_ops.test_herdr_labels import Labels
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
+from tests.e2e.agents_ops.test_human_agreement import delegation_args
 from tests.e2e.agents_ops.test_parent_session import OPS, ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.agy_tui import (
     CHILD,
     OTHER,
     ROOT,
+    TOKEN,
     TRAJECTORY,
     Tui,
     foreground,
@@ -88,7 +90,7 @@ def _parent(
     parent: ParentEnv, tui: Tui, *args: str, **caller: Any
 ) -> subprocess.CompletedProcess[str]:
     env = caller.pop("env", _agy_env(parent.env))
-    return tui.run(
+    result: subprocess.CompletedProcess[str] = tui.run(
         "-m:parent",
         "--repo",
         "o/r",
@@ -99,6 +101,7 @@ def _parent(
         cwd=parent.repo,
         **caller,
     )
+    return result
 
 
 def test_agy_launcher_scopes_native_hook_and_reports_missing_venv(
@@ -429,7 +432,7 @@ def _place(
 def _status(
     tui: Tui, env: dict[str, str], cwd: Path, conversation: str = ROOT
 ) -> subprocess.CompletedProcess[str]:
-    return tui.run(
+    result: subprocess.CompletedProcess[str] = tui.run(
         HOOK,
         "status-line",
         env=env,
@@ -437,6 +440,7 @@ def _status(
         conversation=conversation,
         stdin={"conversation_id": conversation, "session_id": conversation},
     )
+    return result
 
 
 def _hook_payload(conversation: str, invocation: int = 0) -> dict[str, Any]:
@@ -716,3 +720,170 @@ def test_agy_board_routes_unread_without_sending_or_reading_it(
             "route_unavailable",
             1,
         )
+
+
+def _prepare_agy_manual_worker(
+    p: ParentEnv, tui: Tui
+) -> tuple[Path, Path, dict[str, str]]:
+    _value(_parent(p, tui, "register", "--summary", "試験の担当"))
+    _value(_parent(p, tui, "checking"))
+    _value(
+        _parent(
+            p,
+            tui,
+            "agree",
+            "--spec",
+            p.spec(
+                {
+                    "purpose": "目的を固定する",
+                    "scope": "親と子",
+                    "behavior": "合意後に実装する",
+                    "acceptance": "fakeで検証する",
+                    "human_confirmation": "この目的・範囲・動作・受入条件で進めてください。",
+                }
+            ),
+        )
+    )
+    sections = {
+        name: name + "について具体的に実装する。" for name in p.formats.CHILD_REQUIRED
+    }
+    sections["依存関係"] = "なし。"
+    sections["Acceptance checklist"] = (
+        "- [ ] 動作する\n  文脈: 親の目的。\n  下流への影響: 誤委任を防ぐ。\n  検証方法・証拠: fake gh。"
+    )
+    _value(
+        _parent(
+            p,
+            tui,
+            "create-child",
+            "--spec",
+            p.spec(
+                {
+                    "key": "worker",
+                    "spec": {
+                        "role": "child",
+                        "summary": "worker",
+                        "parent": {"identifier": "開発", "number": 1},
+                        "sections": sections,
+                        "labels": ["enhancement", "ci", "tests"],
+                    },
+                    "dependencies": [],
+                }
+            ),
+        )
+    )
+    _value(_parent(p, tui, *delegation_args(p.worktree("worker"))))
+    runner = p.root / "fake-agy-manual-runner"
+    runner.write_text(
+        f"#!{sys.executable}\n"
+        + Path(__file__).with_name("fake_manual_worker_runner.py").read_text()
+    )
+    runner.chmod(0o700)
+    entry = p.root / "agy_manual_entry.py"
+    entry.write_text(
+        "import os, sys\n"
+        "from pathlib import Path\n"
+        'sys.path[:] = [os.environ["TEST_OPS_DIR"], '
+        '*(path for path in sys.path if Path(path).name != "agents_ops")]\n'
+        "from parent import manual_workers\n"
+        "from parent.cli_impl import main\n"
+        'manual_workers.RUNNER = Path(os.environ["TEST_MANUAL_RUNNER"])\n'
+        "raise SystemExit(main(sys.argv[1:]))\n"
+    )
+    calls_log = p.root / "agy-runner-calls.jsonl"
+    state_dir = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    env = {
+        **_agy_env(p.env),
+        "TEST_OPS_DIR": str(OPS),
+        "TEST_MANUAL_RUNNER": str(runner),
+        "MANUAL_STATE_DIR": str(state_dir),
+        "MANUAL_RUNNER_CALLS": str(calls_log),
+    }
+    return entry, calls_log, env
+
+
+def test_agy_manual_worker_rejects_detached_setsid_and_runs_directly_under_tui(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    with foreground(p.root / "agy-home") as tui:
+        assert tui.lock(ROOT)
+        tui.metadata(ROOT)
+        entry, calls_log, env = _prepare_agy_manual_worker(p, tui)
+        calls_before = len(p.calls())
+        detached_env = {
+            **{
+                key: value
+                for key, value in env.items()
+                if not key.startswith("ANTIGRAVITY_")
+            },
+            "ANTIGRAVITY_CONVERSATION_ID": ROOT,
+            "ANTIGRAVITY_TRAJECTORY_ID": TRAJECTORY,
+            "ANTIGRAVITY_LS_ADDRESS": f"localhost:{tui.port}",
+            "ANTIGRAVITY_CSRF_TOKEN": TOKEN,
+        }
+        detached_prompt = p.note("切り離し実行は拒否される。")
+        for subcommand in (
+            ("run-worker", "--child", "10", "--prompt-file", detached_prompt),
+            ("inspect-worker", "--child", "10"),
+        ):
+            refused = subprocess.run(
+                [
+                    *hook_command(entry),
+                    "--repo",
+                    "o/r",
+                    "--parent",
+                    "1",
+                    *subcommand,
+                ],
+                cwd=p.repo,
+                env=detached_env,
+                start_new_session=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            assert refused.returncode == 2 and refused.stdout == ""
+            assert "agy host process ancestry is unavailable" in refused.stderr
+            assert "setsid" in refused.stderr
+        assert len(p.calls()) == calls_before
+        assert not calls_log.exists()
+        registry = (
+            Path(p.env["XDG_STATE_HOME"])
+            / "tennis-lab-agents/parent-sessions/registry.json"
+        )
+        task = json.loads(registry.read_text())["parents"]["o/r#1"]["tasks"]["10"]
+        assert not task.get("worker_runs")
+
+        def invoke(*args: str) -> dict[str, Any]:
+            return _value(
+                tui.run(
+                    entry,
+                    "--repo",
+                    "o/r",
+                    "--parent",
+                    "1",
+                    *args,
+                    env=env,
+                    cwd=p.repo,
+                )
+            )
+
+        run_result = invoke(
+            "run-worker", "--child", "10", "--prompt-file", p.note("実装する。")
+        )
+        assert run_result["exit_code"] == 0
+        assert run_result["runner_summary"]["result"] == "completed"
+        assert run_result["final_file"] and Path(run_result["final_file"]).is_file()
+        assert len(calls_log.read_text().splitlines()) == 1
+
+        inspected = invoke("inspect-worker", "--child", "10")
+        assert inspected["result"] == "completed"
+        assert inspected["termination_confirmed"] is True
+        assert inspected["final_file"] == run_result["final_file"]
+
+        waited = invoke("wait-worker", "--child", "10", "--timeout", "10")
+        assert waited["wait_state"] == "ended"
+        assert waited["runner_summary"]["result"] == "completed"
+        assert waited["final_file"] == run_result["final_file"]
