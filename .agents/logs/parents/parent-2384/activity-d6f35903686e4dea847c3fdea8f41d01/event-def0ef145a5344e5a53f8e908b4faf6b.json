@@ -1,0 +1,45 @@
+{
+  "record": {
+    "data": {
+      "decision_id": null,
+      "decision_missing_reason": "parent decision not recorded for this operation",
+      "operation": "merge",
+      "plan_id": null,
+      "previous_action_id": "531bfa42c7aa4b3b8d38367a68c79808",
+      "result_ids": [
+        "cbd755b8cb1f4d338fcc34a889586382",
+        "0087036abd914117945064a7d93e24ef",
+        "da13569b812b4b0699144124a3e2f7e0"
+      ],
+      "state": "ended",
+      "summary": "Automatic merge and post-merge confirmation completed"
+    },
+    "id": "def0ef145a5344e5a53f8e908b4faf6b",
+    "kind": "action",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "d6f35903686e4dea847c3fdea8f41d01",
+      "delegation": null,
+      "issue": null,
+      "parent": 2384,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "c04b5f07a47049238b2452ee88a68ff8"
+    },
+    "time": {
+      "occurred_at": {
+        "status": "observed",
+        "value": "2026-11-22T18:07:10.912648+00:00"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-22T18:07:10.912713+00:00"
+      },
+      "recorded_at": "2026-11-22T18:07:10.912716+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
