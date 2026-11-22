@@ -62,6 +62,7 @@ JSONの `schema_version` は `1`。`scope` は `records-only`。識別情報は 
 コードのimport前から終了まで共有lockを保持する。exec後もFDを継承するため、子が継承したFDを
 閉じるまで排他が続く。systemdのcleanup・report・triage・dispatch判定はこの入口を使う。
 手動で同じ運用jobを実行するときもこの入口を使う。lockファイルは削除しない。
+systemdの失敗通知用oneshotはlauncherの失敗も報告するため、通知モジュールを直接起動する。
 
 ### 既存CLIと新規jobの接続
 

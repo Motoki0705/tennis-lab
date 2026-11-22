@@ -17,7 +17,7 @@ from lib.checkout_lock import (
 )
 
 from .systemd import ControlError, ManagerUnavailable, Systemd
-from .targets import Step, Target
+from .targets import Step, Target, failure_notify_instance
 
 
 class Controller:
@@ -197,6 +197,11 @@ class Controller:
                     report["errors"].append(str(exc))
         else:
             try:
+                failure_source = target.failure_notify_for
+                if failure_source is not None and action in {"on", "status"}:
+                    self.systemd.require_on_failure(
+                        failure_source, failure_notify_instance(failure_source)
+                    )
                 if action == "on":
                     for step in target.before_on:
                         self.step(step)
@@ -237,13 +242,17 @@ class Controller:
         command = ["bash", str(self.repo_root / ".agents/ops/install_units.sh")]
         if dry_run:
             command.append("--dry-run")
-        for unit in dict.fromkeys(unit for target in targets for unit in target.units):
+        for unit in dict.fromkeys(
+            unit for target in targets for unit in target.install_units
+        ):
             command.extend(("--unit", unit))
         return subprocess.run(command, cwd=self.repo_root, check=False).returncode
 
     def logs(self, targets: tuple[Target, ...], *, lines: int, follow: bool) -> int:
         command = ["journalctl", "--user", "--lines", str(lines)]
         command.append("--follow" if follow else "--no-pager")
-        for unit in dict.fromkeys(unit for target in targets for unit in target.units):
+        for unit in dict.fromkeys(
+            unit for target in targets for unit in target.journal_units
+        ):
             command.extend(("--unit", unit))
         return subprocess.run(command, cwd=self.repo_root, check=False).returncode

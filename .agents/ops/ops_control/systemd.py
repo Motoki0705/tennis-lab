@@ -101,13 +101,14 @@ class Systemd:
             )
             raise error_type("; ".join(str(error) for error in errors))
 
-    def status(self, unit: str) -> dict[str, str | None]:
+    def _loaded_properties(self, unit: str, *names: str) -> dict[str, str]:
+        properties_to_read = ",".join(dict.fromkeys((*names, "LoadState")))
         result = self.invoke(
             "show",
             unit,
             "--all",
             "--no-pager",
-            "--property=" + ",".join(PROPERTIES.values()),
+            "--property=" + properties_to_read,
         )
         properties = dict(
             line.split("=", 1) for line in result.stdout.splitlines() if "=" in line
@@ -118,7 +119,20 @@ class Systemd:
                 f"{unit}: load_state={properties.get('LoadState', 'unknown')}; "
                 f"{result.stderr.strip() or 'unit is not loaded; run spin ops install'}"
             )
-        required = {"LoadState", "UnitFileState", "ActiveState", "SubState"}
+        return properties
+
+    def require_on_failure(self, unit: str, handler: str) -> None:
+        on_failure = self._loaded_properties(unit, "OnFailure").get("OnFailure")
+        if not on_failure or handler not in on_failure.split():
+            raise ControlError(
+                f"{unit} requires {handler} in OnFailure. "
+                f"systemd reported {on_failure!r}. Run spin ops install."
+            )
+        self._loaded_properties(handler)
+
+    def status(self, unit: str) -> dict[str, str | None]:
+        properties = self._loaded_properties(unit, *PROPERTIES.values())
+        required = {"UnitFileState", "ActiveState", "SubState"}
         required.update(
             {"NextElapseUSecRealtime", "NextElapseUSecMonotonic"}
             if unit.endswith(".timer")

@@ -26,6 +26,10 @@ REPORT = "tennis-lab-ops-report.service"
 TRIAGE_TIMER = "tennis-lab-ops-triage.timer"
 TRIAGE = "tennis-lab-ops-triage.service"
 CLEANUP_TIMER = "tennis-lab-cleanup.timer"
+STORAGE_TIMER = "tennis-lab-storage-tier.timer"
+STORAGE = "tennis-lab-storage-tier.service"
+STORAGE_NOTIFY = "tennis-lab-failure-notify@tennis-lab-storage-tier.service.service"
+FAILURE_NOTIFY_TEMPLATE = "tennis-lab-failure-notify@.service"
 AGENT_UNITS = {
     SUPERVISOR,
     JUDGEMENT_TIMER,
@@ -93,6 +97,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             "worktree_cleanup",
             "storage_tier",
             "d_capacity",
+            "lib",
         ):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
@@ -152,6 +157,8 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
                 "NextElapseUSecMonotonic": "0",
                 "LastTriggerUSec": "",
             }
+        units[STORAGE]["OnFailure"] = STORAGE_NOTIFY
+        units[STORAGE_NOTIFY] = units[FAILURE_NOTIFY_TEMPLATE].copy()
         control.write(
             {
                 "units": units,
@@ -725,6 +732,10 @@ def test_autodream_corrupt_state_preserved_and_reported_by_spin(
         ("agents", AGENT_UNITS),
         ("dispatcher", {SUPERVISOR, JUDGEMENT_TIMER, JUDGEMENT}),
         ("git-sync", {"tennis-lab-git-sync.timer", "tennis-lab-git-sync.service"}),
+        (
+            "storage-tier",
+            {STORAGE_TIMER, STORAGE, STORAGE_NOTIFY},
+        ),
     ],
 )
 def test_logs_selects_exact_user_units_even_without_manager(
@@ -824,24 +835,85 @@ def test_worktree_cleanup_timer_public_controls_and_tokyo_schedule(
     assert "KillMode=control-group" in service
 
 
-def test_storage_timer_only_installs_service_and_timer_without_notification(
+def test_storage_timer_installs_failure_notification_and_enables_only_timer(
     control: ControlEnv,
 ) -> None:
-    stem = "tennis-lab-storage-tier"
     assert control.run("install", "storage-tier").returncode == 0
+    config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
+    assert {path.name for path in config.iterdir()} == {
+        STORAGE_TIMER,
+        STORAGE,
+        FAILURE_NOTIFY_TEMPLATE,
+    }
+    service_body = (config / STORAGE).read_text()
+    assert "OnFailure=tennis-lab-failure-notify@%n.service" in service_body.splitlines()
+    assert "checkout_job.py" in service_body and "-m storage_tier cycle" in service_body
+    assert (
+        "-m lib.notify_unit_failure -- %i"
+        in (config / FAILURE_NOTIFY_TEMPLATE).read_text()
+    )
+    timer_body = (config / STORAGE_TIMER).read_text()
+    assert "OnCalendar=*-*-* 05:30:00 Asia/Tokyo" in timer_body
+    assert "Persistent=true" in timer_body
+    checked(control, "status", "storage-tier")
     checked(control, "on", "storage-tier")
-    source = control.repo / ".agents/ops/storage_tier/systemd"
-    service = (source / f"{stem}.service").read_text()
-    timer = (source / f"{stem}.timer").read_text()
-    assert "OnFailure=" not in service
-    assert "checkout_job.py" in service and "-m storage_tier cycle" in service
-    assert "OnCalendar=*-*-* 05:30:00 Asia/Tokyo" in timer
-    assert "Persistent=true" in timer
-    state = control.read()
-    assert state["units"][f"{stem}.timer"]["UnitFileState"] == "enabled"
-    assert f"{stem}-failure.service" not in state["units"]
-    assert not (source / f"{stem}-failure.service").exists()
+    assert [call for call in control.calls() if call[2] == "enable"] == [
+        ["systemctl", "--user", "enable", "--now", STORAGE_TIMER]
+    ]
     checked(control, "off", "storage-tier")
+
+
+@pytest.mark.parametrize(
+    ("on_failure", "load_state", "reason"),
+    [
+        (STORAGE_NOTIFY, "not-found", "load_state=not-found"),
+        (STORAGE_NOTIFY, "masked", "load_state=masked"),
+        (f"{STORAGE_NOTIFY}-old", "loaded", "OnFailure"),
+    ],
+    ids=["missing-template", "masked-instance", "wrong-on-failure"],
+)
+def test_storage_timer_refuses_unavailable_failure_notification(
+    control: ControlEnv, on_failure: str, load_state: str, reason: str
+) -> None:
+    state = control.read()
+    state["units"][STORAGE]["OnFailure"] = on_failure
+    state["units"][STORAGE_NOTIFY]["LoadState"] = load_state
+    control.write(state)
+    for action in ("on", "status"):
+        result = control.run(action, "storage-tier")
+        assert result.returncode == 1, result.stdout + result.stderr
+        data = json.loads(result.stdout)
+        assert data["outcome"] == "partial_failure"
+        assert any(
+            STORAGE_NOTIFY in error and reason in error
+            for error in data["targets"][0]["errors"]
+        )
+    assert all(call[2] == "show" for call in control.calls())
+    timer = control.read()["units"][STORAGE_TIMER]
+    assert (timer["UnitFileState"], timer["ActiveState"]) == ("disabled", "inactive")
+
+
+def test_other_registered_timers_require_their_failure_notification(
+    control: ControlEnv,
+) -> None:
+    registry = control.repo / ".agents/ops/ops_control/targets.py"
+    with registry.open("a") as stream:
+        stream.write(
+            '\nTARGETS["report"] = timer_target("report", "tennis-lab-ops-report", '
+            "notify_on_failure=True)\n"
+        )
+    state = control.read()
+    handler = "tennis-lab-failure-notify@tennis-lab-ops-report.service.service"
+    state["units"][REPORT]["OnFailure"] = handler
+    state["units"][handler] = {
+        **state["units"][FAILURE_NOTIFY_TEMPLATE],
+        "LoadState": "not-found",
+    }
+    control.write(state)
+    result = control.run("on", "report")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert f"{handler}: load_state=not-found" in result.stdout
+    assert all(call[2] == "show" for call in control.calls())
 
 
 def test_d_capacity_installs_and_controls_the_watchdog(

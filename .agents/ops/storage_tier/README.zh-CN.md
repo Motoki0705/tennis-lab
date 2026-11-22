@@ -329,7 +329,7 @@ hydrate 拒绝已存在的 D: 目标，完成 E: 哈希、复制、D: 哈希后�
 
 D:`<repo>/.storage-tier/audit.jsonl` 保存校验、取回、失败、删除确认与完成记录，包含 UTC、单位、大小与校验方式。
 修改操作按 repo 排他；dry-run 不创建锁。持久删除 intent 位于同目录的 `transactions/`。
-各审计事件记录其他 UID 的排除范围。失败仅写入 audit 和 service journal，不发送通知。
+审计还记录其他 UID 的排除范围。
 普通目录的只读index dry-run不调用单位quiet（根文件投影检查fd/cwd/mmap）；两者都不能证明E: mount引用检查成功；
 它也不认证 manifest、不授权删除。实机验证须通过 `verify --dry-run` 检查两边，记录 E: `quiet` 通过与 metadata 不变。
 布局迁移前，必须区分既有 D:/E: 配对的只读路径映射验证与仍拒绝待迁移布局的普通 CLI 结果。
@@ -454,8 +454,11 @@ spin ops logs storage-tier --lines 100
 spin ops off storage-tier
 ```
 
-user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。失败仅写入 journal 与 `audit.jsonl`，
-没有通知 helper 或 `OnFailure`。启用前检查执行用户的进程；其他 UID 按合意排除。
+user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。service 失败时，systemd 会触发 Windows Toast 通知。
+通知包含失败的 unit 名称和对应的 `journalctl --user -u` 命令。发送结果写入用户 journal，可用
+`spin ops logs storage-tier` 查看。[D: 容量检查](../d_capacity/README.md) 拒绝启动新任务时，cycle 仍可运行。
+
+启用前检查执行用户的进程；其他 UID 按合意排除。
 不建立对 system mount unit 的顺序依赖，每次直接检查挂载。install 只链接 unit，启用是独立部署操作。
 
 ## 迁移与验证

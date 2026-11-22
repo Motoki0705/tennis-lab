@@ -1,6 +1,7 @@
 [Unit]
 Description=tennis-lab: verified D:/E: mirror and eviction of unused working copies
 Documentation=file://%h/projects/tennis-lab/.agents/ops/storage_tier/README.md
+OnFailure=tennis-lab-failure-notify@%n.service
 
 [Service]
 Type=oneshot

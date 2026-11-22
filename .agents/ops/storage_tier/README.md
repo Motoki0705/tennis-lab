@@ -506,8 +506,7 @@ publishes the whole unit with fresh file atimes and updates the manifest.
 D:`<repo>/.storage-tier/audit.jsonl` records verification, hydration, failure, deletion
 intent and completion with UTC time, unit, byte counts and verification method.
 A single repo lock serializes mutating operations; dry-runs do not acquire/create it.
-Process exclusion scope is included in audit events. Failures remain in this audit
-and the service journal; no desktop, D-Bus, mail or other notification is sent.
+The audit also records the scope of process exclusions.
 Read-only `index --dry-run` reports global process inspection errors but never certifies
 a manifest or authorizes deletion; for directory units it hashes the selected tiny tree without
 unit `quiet` checks (the checkpoint root-file projection also inspects fd/cwd/mmap). It is therefore not evidence that E: mount-reference
@@ -687,9 +686,14 @@ spin ops off storage-tier
 ```
 
 The user timer runs daily at 05:30 Asia/Tokyo with up to 15 minutes of jitter.
-Failures are recorded only in the service journal and `audit.jsonl`; there is no
-notification helper or `OnFailure`. Host validation must confirm inspection of
-the execution user's processes. Other UIDs are outside the agreed safety scope.
+If the service fails, systemd starts a notifier that sends a Windows toast
+with the failed unit's name and its `journalctl --user -u` command. The notifier
+records submission or the send error in the user journal.
+`spin ops logs storage-tier` includes those records. The cycle can run while
+the [D: capacity gate](../d_capacity/README.md) blocks new workloads.
+
+Host validation must confirm inspection of the execution user's processes.
+Other UIDs are outside the agreed safety scope.
 There is no ordering dependency on the system mount service; each operation checks
 the mount itself. Installation only links units. Enablement is a separate deployment step.
 

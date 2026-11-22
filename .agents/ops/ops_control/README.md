@@ -37,7 +37,7 @@ user managerが停止していても、過去のjournalは読める。
 | `cleanup` | 既存のmerge済みbranch整理timer/service。agentsに含めない。worktreeの期限削除とは別 |
 | `git-sync` | [メインcheckoutの30分周期fast-forward](../git_sync/README.md)。agentsに含めない |
 | `worktree-cleanup` | [作成から336時間のworktree強制削除](../worktree_cleanup/README.md)。毎日04:30 Asia/Tokyo。agentsに含めない |
-| `storage-tier` | [D:/E:のミラー・取得・未使用単位の削除](../storage_tier/README.md)。失敗はjournalと監査記録のみ。agentsに含めない |
+| `storage-tier` | [D:/E:のミラー・取得・未使用単位の削除と失敗時のWindows通知](../storage_tier/README.md)。agentsに含めない |
 | `d-capacity` | [物理D:の空き監視とWindows通知](../d_capacity/README.md)。常駐service。 |
 
 `on` は `enable --now` を実行し、永続的な `enabled` と `active` を照合する。
@@ -103,6 +103,11 @@ timer＋oneshotは `TARGETS` に `timer_target("対象名", "unitのstem")` を1
 停止順序と残存確認対象の全unitを表に持たせ、CLIに対象名の分岐を追加しない。
 集合は `kind="group"` と `members` で定義する。保守ジョブを `agents` へ追加しない。
 unitを追加する担当はserviceの停止時に子プロセスも終了する契約を定める。
+
+Windowsで失敗通知を出すtimer対象は、serviceに `OnFailure=tennis-lab-failure-notify@%n.service` を宣言し、
+`timer_target(..., notify_on_failure=True)` を指定する。`install` は通知テンプレートをリンクし、
+`logs` は通知unitのjournalも含める。`status` と `on` はuser managerの `OnFailure` と通知unitの
+`LoadState=loaded` を確認する。確認できない場合は非0を返し、`on` は有効化の前に停止する。
 
 有限の運用jobは [checkout_job.py](../checkout_job.py) を経由し、対象コードを読む前から
 終了まで [checkout lock](../lib/README.md#メインcheckoutと運用jobの排他) を保持する。
