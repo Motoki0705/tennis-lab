@@ -1,0 +1,82 @@
+{
+  "record": {
+    "data": {
+      "action_id": "6cb3e0e5f630412f88f493fa07038144",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.improvement; artifact=command response; content_sha256=104005310bb49c3e7a531c07525632213c5efaf80a0075de1e1a741bd6975f52; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "deafae4442184b4dbfe1f9dd220ae436",
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.improvement: success; {\n  \"candidate_id\": \"I-1900-decision-pr-head-lag\",\n  \"child\": 2080,\n  \"revision\": 1\n}",
+      "verifies": []
+    },
+    "id": "6308b787a06f4cf18003f61b14e48e4b",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "ac8dbecbc5c44f5a8b50da861262768c",
+      "delegation": {
+        "key": "d-2462e764daca433585e8cd7ad1270175",
+        "turn": 4
+      },
+      "issue": 2080,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T10:24:52.951516+00:00"
+      },
+      "recorded_at": "2026-11-15T10:24:52.951532+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

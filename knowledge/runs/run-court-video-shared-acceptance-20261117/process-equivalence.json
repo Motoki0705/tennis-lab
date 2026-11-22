@@ -1,0 +1,30 @@
+{
+  "cases": [
+    {
+      "clip_id": "video_000/clip_001",
+      "frame_index": 112,
+      "groups": 7,
+      "rgb_sha256": "a26ea85c51933be3e887e8a1e0cd7b051f19ab9e6bcfb6080d802202a0652b5c",
+      "exact": true
+    },
+    {
+      "clip_id": "video_000/clip_001",
+      "frame_index": 224,
+      "groups": 7,
+      "rgb_sha256": "e879fbe9773b5e6fdc72f31e0456ac43a171f8411fe39fe3237d8c5d0fba84dc",
+      "exact": true
+    },
+    {
+      "clip_id": "video_000/clip_001",
+      "frame_index": 336,
+      "groups": 7,
+      "rgb_sha256": "7100f1afc23bdb8eb265b09ee20edae342c94445b0d2f5e8bfdd835d39a391ef",
+      "exact": true
+    }
+  ],
+  "seconds": 26.237020414002473,
+  "driver_sha256": "358d50cbf76b4fceb193041b55d08df9f739b164d4dc5ef6ae9abf0568281280",
+  "estimator_sha256": "9ffb9ddb0249932019675ba2e6f6ee5e0e5802b15e2ee237e5811551112c8976",
+  "reference_h_used": false,
+  "heldout_frames_used": false
+}

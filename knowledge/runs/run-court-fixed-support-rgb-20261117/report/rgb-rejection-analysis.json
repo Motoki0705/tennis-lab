@@ -1,0 +1,91 @@
+{
+  "cam0": {
+    "lost_initial_lines": {
+      "left_doubles": 38,
+      "far_service": 53
+    },
+    "correct_rejected_reasons": {
+      "lost_initial_paint_lines": 61,
+      "uncertain_paint_extrapolation": 42,
+      "unstable_paint_line_influence": 43,
+      "paint_residual_too_large": 2
+    },
+    "correct_rejected_lost_lines": {
+      "left_doubles": 38,
+      "far_service": 53
+    },
+    "accepted": [
+      "meiji_4cam/video_000/clip_023/cam0",
+      "meiji_4cam/video_000/clip_024/cam0",
+      "meiji_4cam/video_000/clip_025/cam0",
+      "meiji_4cam/video_000/clip_031/cam0",
+      "meiji_4cam/video_000/clip_068/cam0"
+    ]
+  },
+  "cam1": {
+    "lost_initial_lines": {
+      "far_baseline": 62,
+      "right_doubles": 24,
+      "right_singles": 4,
+      "far_service": 32,
+      "near_service": 2
+    },
+    "correct_rejected_reasons": {
+      "lost_initial_paint_lines": 62,
+      "unconstrained_leave_line_out": 23,
+      "unstable_paint_line_influence": 11,
+      "uncertain_paint_extrapolation": 2,
+      "paint_residual_too_large": 3
+    },
+    "correct_rejected_lost_lines": {
+      "far_baseline": 61,
+      "right_doubles": 20,
+      "far_service": 26,
+      "right_singles": 2
+    },
+    "accepted": []
+  },
+  "cam2": {
+    "lost_initial_lines": {
+      "left_doubles": 51,
+      "left_singles": 53,
+      "far_service": 69
+    },
+    "correct_rejected_reasons": {
+      "lost_initial_paint_lines": 52,
+      "uncertain_paint_extrapolation": 48,
+      "unstable_paint_line_influence": 49,
+      "ambiguous_paint_correspondence": 25,
+      "paint_residual_too_large": 1
+    },
+    "correct_rejected_lost_lines": {
+      "left_doubles": 45,
+      "left_singles": 40,
+      "far_service": 52
+    },
+    "accepted": []
+  },
+  "cam3": {
+    "lost_initial_lines": {
+      "right_doubles": 26,
+      "far_service": 66,
+      "far_baseline": 3,
+      "right_singles": 4,
+      "centre_service": 2,
+      "near_service": 1
+    },
+    "correct_rejected_reasons": {
+      "lost_initial_paint_lines": 38,
+      "uncertain_paint_extrapolation": 38,
+      "unstable_paint_line_influence": 38,
+      "paint_residual_too_large": 4,
+      "ambiguous_paint_correspondence": 2
+    },
+    "correct_rejected_lost_lines": {
+      "far_service": 38,
+      "right_doubles": 10,
+      "right_singles": 3
+    },
+    "accepted": []
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "1923dd3770be491987d1271a75b2deb5",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=output.json; content_sha256=b44a238228f0a1be9ea40a0626ca632f4f4dd3841554d0184783994b2ea01385; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "5f360feb7b124295a7d4103db9555eb6",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.output.json: status=succeeded; verdict=request_changes; exception=False; previous_review_keys=[]; 固定HEADと受入条件1〜6をレビューしました。対象解決・関連PRとの接続・文書・テスト設計を確認し、完了照合にmajorを1件検出しました。最新HEADの必須CIは成功。隔離CPUテストは利用不可のため未実行です。",
+      "verifies": []
+    },
+    "id": "8ca16a2566d94ef4941819d2793a8bf4",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "b80765881cd14972bb367920d0b6c2ac",
+      "delegation": null,
+      "issue": null,
+      "parent": 1804,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "ebf21a97c2b1410baad8c3701b0dd73d"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-11T05:43:53.633893+00:00"
+      },
+      "recorded_at": "2026-11-11T05:43:53.633914+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

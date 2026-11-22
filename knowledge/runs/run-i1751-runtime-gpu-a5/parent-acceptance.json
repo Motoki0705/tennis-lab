@@ -1,0 +1,63 @@
+{
+  "schema": "c3_parent_acceptance.v1",
+  "policy": {
+    "schema": "c3_parent_acceptance_policy.v1",
+    "authority": "親 #1734 の継続指示、2026-11-18、turn f6e27954492945258ae4abc0a89dbea6",
+    "scope": "a5 の C3 受入。親の明示的な条件改訂であり、元の比較結果は変更しない。",
+    "ball_precision": "bf16",
+    "ball_detection_uv_l2_limit_px": 0.5,
+    "ball_final_position_l2_limit_m": 0.001,
+    "observed_and_masks": "exact",
+    "other_outputs": {
+      "float_atol": 1e-06,
+      "float_rtol": 1e-05,
+      "discrete": "exact"
+    },
+    "ball_float_diagnostics": "BF16 Ballのheatmap・score・派生floatは元レポートに保持する。改訂後のBall判定は検出uv、最終3D位置、observed/maskで行う。",
+    "reason": "全mask・ID・人物系出力が完全一致し、差はBF16 Ballのみ。検出最大0.129px、3D L2最大0.362mmは検出誤差の数pxより2桁小さく下流判断を変えない、と親が判断した。FP32の決定的経路を前提にした元条件はBF16に厳しすぎた。"
+  },
+  "original_numerical_acceptance": false,
+  "original_queue_status": "failed",
+  "original_comparison_returncode": 1,
+  "parent_acceptance": true,
+  "checks": {
+    "both_gpu_variants_complete": true,
+    "same_artifact_fields": true,
+    "same_shapes_and_dtypes": true,
+    "all_discrete_observed_masks_exact": true,
+    "ball_uv_within_0_5_px": true,
+    "ball_3d_within_1_mm": true,
+    "non_ball_original_float_rule": true,
+    "json_payloads_original_rule": true,
+    "runtime_resources_closed": true
+  },
+  "ball_detection_error_px": [
+    {
+      "camera": "cam0",
+      "max_axis": 0.1287841796875,
+      "max_l2": 0.13514859957900016
+    },
+    {
+      "camera": "cam1",
+      "max_axis": 0.0,
+      "max_l2": 0.0
+    },
+    {
+      "camera": "cam2",
+      "max_axis": 0.0,
+      "max_l2": 0.0
+    }
+  ],
+  "ball_final_position_error_m": {
+    "max_axis": 0.0002738386392593384,
+    "max_l2": 0.00036189522009106684
+  },
+  "non_ball_original_rule_failures": [],
+  "raw_evidence_sha256": {
+    "comparison.json": "3052e42df3e47dd8fb6762b8b46ef0a6be994d1a5ff098b031e76572867539a4",
+    "comparison-completed.json": "a23fd87a0b91d7d7c06219970d232ef8d90f499953b26692c8ecc0172185b13b",
+    "acceptance-summary.json": "02dd3a1b914adc110f21f83fd59e5cc3a2baa9cfb167ab0873523832c5ef45c2",
+    "terminal.json": "f26485c470ecdda5b7876447d3c643be74197c939aed89df779389d142aa96e1"
+  },
+  "additional_gpu_runs": 0
+}

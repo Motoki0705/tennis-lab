@@ -1,0 +1,231 @@
+{
+  "strict_acceptance": false,
+  "changed_arrays": [
+    {
+      "node": "ball_detection/cam0",
+      "field": "/evidence/heatmaps",
+      "shape_main": [
+        235,
+        180,
+        320
+      ],
+      "shape_runtime": [
+        235,
+        180,
+        320
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0013553053140640259,
+      "different_elements": 483,
+      "elements": 13536000
+    },
+    {
+      "node": "ball_detection/cam0",
+      "field": "/evidence/patches",
+      "shape_main": [
+        235,
+        8,
+        5,
+        5
+      ],
+      "shape_runtime": [
+        235,
+        8,
+        5,
+        5
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.00034301355481147766,
+      "different_elements": 1,
+      "elements": 47000
+    },
+    {
+      "node": "ball_detection/cam1",
+      "field": "/evidence/heatmaps",
+      "shape_main": [
+        235,
+        180,
+        320
+      ],
+      "shape_runtime": [
+        235,
+        180,
+        320
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.001592189073562622,
+      "different_elements": 215,
+      "elements": 13536000
+    },
+    {
+      "node": "ball_detection/cam1",
+      "field": "/evidence/patches",
+      "shape_main": [
+        235,
+        8,
+        5,
+        5
+      ],
+      "shape_runtime": [
+        235,
+        8,
+        5,
+        5
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 6.097555160522461e-05,
+      "different_elements": 1,
+      "elements": 47000
+    },
+    {
+      "node": "ball_detection/cam2",
+      "field": "/evidence/heatmaps",
+      "shape_main": [
+        235,
+        180,
+        320
+      ],
+      "shape_runtime": [
+        235,
+        180,
+        320
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0007953941822052002,
+      "different_elements": 417,
+      "elements": 13536000
+    },
+    {
+      "node": "ball_detection/cam2",
+      "field": "/evidence/patches",
+      "shape_main": [
+        235,
+        8,
+        5,
+        5
+      ],
+      "shape_runtime": [
+        235,
+        8,
+        5,
+        5
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0005337037146091461,
+      "different_elements": 3,
+      "elements": 47000
+    },
+    {
+      "node": "ball_detection/cam3",
+      "field": "/evidence/heatmaps",
+      "shape_main": [
+        235,
+        180,
+        320
+      ],
+      "shape_runtime": [
+        235,
+        180,
+        320
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0015053153038024902,
+      "different_elements": 149,
+      "elements": 13536000
+    },
+    {
+      "node": "ball_detection/cam3",
+      "field": "/evidence/candidate_uv_px",
+      "shape_main": [
+        235,
+        8,
+        2
+      ],
+      "shape_runtime": [
+        235,
+        8,
+        2
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 1.0053253173828125,
+      "different_elements": 1,
+      "elements": 3760,
+      "changed": [
+        {
+          "index": [
+            69,
+            3,
+            1
+          ],
+          "single": 222.02818298339844,
+          "batch": 223.03350830078125,
+          "candidate_valid": [
+            true,
+            true
+          ],
+          "candidate_score": [
+            0.06465348601341248,
+            0.06465348601341248
+          ]
+        }
+      ]
+    },
+    {
+      "node": "ball_detection/cam3",
+      "field": "/evidence/patches",
+      "shape_main": [
+        235,
+        8,
+        5,
+        5
+      ],
+      "shape_runtime": [
+        235,
+        8,
+        5,
+        5
+      ],
+      "dtype_main": "float32",
+      "dtype_runtime": "float32",
+      "exact": false,
+      "close": false,
+      "max_abs_diff": 0.0009643509984016418,
+      "different_elements": 5,
+      "elements": 47000
+    }
+  ],
+  "changed_array_count": 9,
+  "component_count": 38,
+  "scene_array_count": 29,
+  "scene_all_arrays_exact": true,
+  "all_discrete_exact": true,
+  "primary_ball_uv_confidence_observed_point_kind_exact": true,
+  "all_other_components_exact": true,
+  "metadata_exact": true,
+  "payloads_exact": true,
+  "interpretation": "Only saved Ball BF16 evidence differs. Cause not isolated; no tolerance change or GPU retry. Final scene and primary Ball arrays are exact."
+}

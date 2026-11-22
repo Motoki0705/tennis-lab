@@ -1,10 +1,16 @@
 ---
 title: "公開向け文書は英語版を既定にして日本語・簡体字中国語版を別ファイルに分け、ハッシュ値は書かない"
+summary: "公開文書は英語を既定にし、日本語・簡体字中国語を別ファイルで維持する。資産のハッシュ値はコードに置く。"
 applies_to: "all"
 source: "#1318（2026-10-21のユーザー指示と回答）、#1388の要件合意（2026-10-23）、#1425"
 created: 2026-10-22
-last_verified: 2026-10-23
+last_verified: 2026-11-20
 evidence: "#1388の最新合意コメントと照合。README・docs/installation/README・LICENSESの .md / .ja.md / .zh-CN.md の冒頭の言語リンク、tests/unit/tennis_scene/test_installation_assets.py と tests/e2e/development の検査"
+citations:
+  - path: "tests/unit/tennis_scene/test_installation_assets.py"
+    symbol: "test_installation_guides_have_language_navigation_and_valid_local_links"
+  - path: "tests/unit/tennis_scene/test_installation_assets.py"
+    symbol: "test_checkpoint_table_has_all_assets_and_localized_terms_without_hashes"
 ---
 
 ユーザーは、外部の利用者が読む文書（トップのREADME、導入ガイド、LICENSES、Hugging Faceのcard）で、同じ段落に複数の言語を並べる書き方を嫌う。英語版を既定のファイル名にし、日本語版は `.ja.md`、簡体字中国語版は `.zh-CN.md` に分け、冒頭の English / 日本語 / 简体中文 のリンクで切り替える形を選んだ。中国語は簡体字（zh-CN）のみを対象とし、繁体字版は作らない。

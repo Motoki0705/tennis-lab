@@ -197,6 +197,126 @@ The videos, manifest and LICENSE are placed as follows.
 For Google Drive folders, download only the relevant files and place them under the names in the table.
 Models requiring registration or an application are not redistributed by this repository or supplied from other mirrors.
 
+<a id="drive-quota"></a>
+
+### GVHMR Drive download quota: diagnose and recover
+
+Start with the official ViTPose-H and HMR2 files, keeping downloads outside `ckpt/` until verified:
+
+```bash
+export GVHMR_WEIGHTS="$PWD/outputs/gvhmr-weights"
+mkdir -p "$GVHMR_WEIGHTS/vitpose" "$GVHMR_WEIGHTS/hmr2"
+.venv/bin/python -m gdown 1sR8xZD9wrZczdDVo6zKscNLwvarIRhP5 -O "$GVHMR_WEIGHTS/vitpose/vitpose-h-multi-coco.pth"
+.venv/bin/python -m gdown 1X5hvVqvqI9tvjUCb2oAlZxtgIKD9kvsc -O "$GVHMR_WEIGHTS/hmr2/epoch=10-step=25000.ckpt"
+```
+
+During a fresh installation on **2026-11-02 UTC**, both commands failed with
+`Too many users have viewed or downloaded this file recently`. Direct downloads returned
+HTTP 200 with an HTML page titled `Google Drive - Quota exceeded`, rather than checkpoint bytes.
+This identifies an upstream download quota for those files; it does not establish a permanent broken link
+or a pipeline model failure. HTTP 200 alone is not evidence of a successful download.
+The following probe reads at most 8 KiB from each response without installing anything:
+
+```bash
+.venv/bin/python - <<'PY'
+from urllib.error import HTTPError
+from urllib.request import urlopen
+
+for name, file_id in (
+    ("vitpose", "1sR8xZD9wrZczdDVo6zKscNLwvarIRhP5"),
+    ("hmr2", "1X5hvVqvqI9tvjUCb2oAlZxtgIKD9kvsc"),
+):
+    url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t"
+    try:
+        response = urlopen(url, timeout=30)
+    except HTTPError as error:
+        response = error
+    with response:
+        prefix = response.read(8192).decode("utf-8", errors="replace")
+        print(name, response.status, response.headers.get("Content-Type"))
+        print("quota_exceeded:", "Google Drive - Quota exceeded" in prefix)
+PY
+```
+
+If `quota_exceeded: True` appears, keep that diagnostic and stop repeating the same download.
+Retry the official source after its temporary restriction clears, or use an identical copy you already
+obtained under the upstream terms. Set `GVHMR_WEIGHTS` to that copy's root, preserving the
+`vitpose/` and `hmr2/` paths from the table, then follow [verification and placement](#verify-gvhmr-weights).
+For example: `export GVHMR_WEIGHTS=/absolute/path/to/user-acquired/ckpt`.
+
+An optional, **user-selected** source is [camenduru/GVHMR](https://huggingface.co/camenduru/GVHMR/tree/main).
+On **2026-11-14 UTC**, its two Git LFS objects' SHA-256 values matched the existing pins in
+[installation_assets.py](../../src/tennis_scene/installation_assets.py); their sizes also matched
+verified local copies and are pinned there. This metadata check does not replace checking downloaded bytes.
+The mirror has no model card or license declaration, and permission from the rights holders to redistribute
+these checkpoints has not been established. The upstream ViTPose code is Apache-2.0 and HMR2 code is MIT;
+these code licenses do not settle all rights to weights, training data or SMPL content. Consult the
+[upstream terms and attribution](../../LICENSES.md#third-party-weights) and use the mirror only if you
+independently determine that your acquisition and use are permitted. Otherwise, keep to your already
+lawfully acquired files or the official source. No authorized long-term alternative has been established;
+the mirror's presence does not confirm the official Drive's stability or the mirror's future availability.
+If you choose this source, download only these two files to the staging root, then verify them below:
+
+```bash
+.venv/bin/python - <<'PY'
+import os
+from huggingface_hub import hf_hub_download
+from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
+
+for asset in INSTALLATION_ASSETS:
+    if asset.name in {"vitpose", "hmr2"}:
+        hf_hub_download("camenduru/GVHMR", asset.filename, revision="main",
+                        local_dir=os.environ["GVHMR_WEIGHTS"])
+PY
+```
+
+<a id="verify-gvhmr-weights"></a>
+
+### Verify and place acquired ViTPose-H and HMR2 files
+
+Run this for **every source**, including an existing local copy, a successful Drive download or the optional mirror.
+It checks both files against the code's fixed sizes and SHA-256 values before copying, checks the placed files
+again, and refuses to overwrite an existing different file. An HTML error page, a Git LFS pointer, a partial
+download or a same-name different checkpoint must fail. On any error, repair the acquisition explicitly and rerun;
+do not change the pins, convert the files or substitute another model. Allow disk space for both staging and placed copies.
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python - <<'PY'
+import os
+import shutil
+from pathlib import Path
+from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
+from src.utils.checksum import dual_sha256
+
+assets = [asset for asset in INSTALLATION_ASSETS if asset.name in {"vitpose", "hmr2"}]
+source_root = Path(os.environ["GVHMR_WEIGHTS"])
+checkpoint_root = Path("ckpt").resolve()
+
+def verify(asset, path):
+    if asset.size_bytes is None or path.stat().st_size != asset.size_bytes:
+        raise SystemExit(f"Size mismatch: {path}")
+    if dual_sha256(path) != asset.sha256:
+        raise SystemExit(f"SHA-256 mismatch: {path}")
+    print(f"{asset.name}: ok ({path})")
+
+for asset in assets:
+    verify(asset, source_root / asset.filename)
+for asset in assets:
+    destination = (checkpoint_root / asset.filename).resolve()
+    if not destination.is_relative_to(checkpoint_root):
+        raise SystemExit(f"Path escapes checkpoint root: {destination}")
+    if not destination.exists():
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with (source_root / asset.filename).open("rb") as source, destination.open("xb") as target:
+            shutil.copyfileobj(source, target)
+    verify(asset, destination)
+PY
+```
+
+Only after both placed files report `ok`, continue with [full preflight](#preflight), which uses the same pins
+and also checks the other assets and the DINO extension. This two-file check does not qualify the entire installation.
+Body models and DINOv3 still require their official registration/application paths above; do not obtain them from this mirror.
+
 <a id="preflight"></a>
 
 ## Preflight
@@ -289,7 +409,7 @@ clone and venv, recording each step's time, logs, copy sources, verification res
 **For this local verification only**, third-party assets acquired by the user through registration, applications
 or Drive are checked and copied from an explicitly specified checkpoint root, then checked again after copying.
 Project weights and the sample are fetched from the Hub. The script does not link an existing venv, data or ckpt,
-and does not copy weights without checking them. For your own installation, obtain assets from the official sources above.
+and does not copy weights without checking them. For your own installation, follow the acquisition and verification steps above.
 
 ```bash
 python3 scripts/prepare_clean_install.py \

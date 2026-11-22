@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from lib.agy_session import AgyTui, AgyVerificationError
 from parent.state import Store
 
 from .client import Herdr
@@ -28,6 +29,10 @@ def owner_token(identity: str) -> str:
     return hashlib.sha256(identity.encode()).hexdigest()
 
 
+def pane_record(root: Path, scope: str, terminal: str) -> Path:
+    return root / "panes" / (owner_token(f"{scope}:{terminal}") + ".json")
+
+
 @contextmanager
 def locked(path: Path) -> Iterator[None]:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -35,6 +40,10 @@ def locked(path: Path) -> Iterator[None]:
         os.chmod(path, 0o600)
         fcntl.flock(stream, fcntl.LOCK_EX)
         yield
+
+
+class ForegroundAgentUnavailable(ValueError):
+    """The pane no longer has exactly one foreground process of its engine."""
 
 
 def process_stamp(client: Herdr, pane: dict[str, Any]) -> list[dict[str, Any]]:
@@ -49,7 +58,9 @@ def process_stamp(client: Herdr, pane: dict[str, Any]) -> list[dict[str, Any]]:
         stat = (Path("/proc") / str(pid) / "stat").read_text()
         stamps.append({"pid": pid, "start": stat.rsplit(")", 1)[1].split()[19]})
     if len(stamps) != 1:
-        raise ValueError("cannot identify exactly one foreground agent process")
+        raise ForegroundAgentUnavailable(
+            "cannot identify exactly one foreground agent process"
+        )
     return stamps
 
 
@@ -78,8 +89,7 @@ class Guard:
             "scope": self.scope,
             "terminal_id": pane["terminal_id"],
         }
-        key = owner_token(self.scope + ":" + pane["terminal_id"])
-        self.path = self.root / "panes" / (key + ".json")
+        self.path = pane_record(self.root, self.scope, pane["terminal_id"])
         self.runtime: dict[str, Any] = {}
 
     def claim(self, *, allow_create: bool = False, allow_move: bool = False) -> None:
@@ -90,9 +100,9 @@ class Guard:
             if (
                 not self.native_verified
                 or self.client.env.get("HERDR_ENV") != "1"
-                or not self.identity.startswith("claude:")
+                or self.identity.partition(":")[0] not in {"claude", "agy"}
             ):
-                raise ValueError("display moves require a verified Claude SessionStart")
+                raise ValueError("display moves require a verified TUI lifecycle event")
             self._require_vacated(previous)
             with locked(path.with_suffix(".lock")):
                 if read_record(path) != previous:
@@ -119,12 +129,17 @@ class Guard:
 
     def _require_vacated(self, previous: dict[str, Any]) -> None:
         """Absence must be verified against the recorded server, never inferred."""
+        engine, _, conversation = self.identity.partition(":")
         native = self.pane.get("agent_session")
-        if native is not None and (
-            not isinstance(native, dict)
-            or native.get("kind") != "id"
-            or native.get("agent") != "claude"
-            or native.get("value") != self.identity.partition(":")[2]
+        if (
+            engine == "claude"
+            and native is not None
+            and (
+                not isinstance(native, dict)
+                or native.get("kind") != "id"
+                or native.get("agent") != engine
+                or native.get("value") != conversation
+            )
         ):
             raise ValueError("new pane native session differs from the caller")
         scope, terminal = previous.get("scope"), previous.get("terminal_id")
@@ -186,14 +201,13 @@ class Guard:
             return
         pane = candidates[0]
         live = pane.get("tokens", {}).get("tl_owner") == self.owner
-        key = owner_token(scope + ":" + terminal)
-        runtime = read_record(self.root / "panes" / (key + ".json"))
+        runtime = read_record(pane_record(self.root, scope, terminal))
         if (
             not live
             and runtime is not None
             and runtime.get("owner") == self.owner
             and runtime.get("state") == "active"
-            and pane["agent"] == "claude"
+            and pane["agent"] == engine
         ):
             stamps = runtime.get("processes")
             if (
@@ -214,11 +228,24 @@ class Guard:
                 "inspect duplicated sessions before synchronizing"
             )
 
-    def check(self) -> None:
+    def _check_process(self) -> None:
         if process_stamp(self.client, self.pane) != self.stamp:
             raise ValueError("foreground agent changed during display synchronization")
+        engine, _, conversation = self.identity.partition(":")
+        if engine == "agy":
+            stamp = self.stamp[0]
+            AgyTui(stamp["pid"], stamp["start"]).require_conversation(conversation)
+
+    def check(self) -> None:
+        self._check_process()
         if read_record(self.path) != self.runtime:
             raise ValueError("pane session changed during display synchronization")
+
+    def require_agy_tui(self, tui: AgyTui) -> None:
+        if self.stamp != [{"pid": tui.pid, "start": tui.start_ticks}]:
+            raise AgyVerificationError(
+                "agy TUI does not match the inherited Herdr pane"
+            )
 
     def require_native_ancestor(self) -> None:
         """A lifecycle payload must originate from the pane's current agent."""
@@ -245,10 +272,7 @@ class Guard:
         # A newer SessionStart either follows the old write or invalidates it
         # before it can run; SessionEnd also fences late old-session commands.
         with locked(self.path.with_suffix(".lock")):
-            if process_stamp(self.client, self.pane) != self.stamp:
-                raise ValueError(
-                    "foreground agent changed while awaiting the pane lock"
-                )
+            self._check_process()
             if confirmed:
                 self.claim(allow_create=True)
             fresh = self.client.pane(self.pane["pane_id"])
@@ -265,7 +289,7 @@ class Guard:
                 "processes": self.stamp,
                 "state": "active",
             }
-            if start or previous is None:
+            if previous is None or (start and previous != expected):
                 Store.write_json(self.path, expected)
             elif previous != expected:
                 raise ValueError("caller is no longer the active session in this pane")

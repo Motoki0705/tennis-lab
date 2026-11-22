@@ -124,9 +124,11 @@ def test_resume_stops_instead_of_recomputing_a_mismatch(resume: ModuleType, tmp_
         resume.resume_records(plan)
 
 
-def test_extraction_skips_reused_camera_and_recomputes_partial(resume: ModuleType, tmp_path: Path,
-                                                             monkeypatch: pytest.MonkeyPatch) -> None:
-    """Exercise the actual producer with tiny fake models, without CUDA/video."""
+@pytest.fixture
+def extraction(
+    resume: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> tuple[ModuleType, Path, dict[str, Any], list[str]]:
+    """Run the real producer with tiny models and fixed resource observations."""
     module = importlib.import_module('association_recalibration_features')
     plan, frame = fixture(tmp_path)
     plan.update(selected_clips=['video_000/clip_003'], dataset=str(tmp_path),
@@ -159,7 +161,9 @@ def test_extraction_skips_reused_camera_and_recomputes_partial(resume: ModuleTyp
         monkeypatch.setattr(module.torch.cuda, name, lambda *_: None)
     for name in ('max_memory_allocated', 'max_memory_reserved'):
         monkeypatch.setattr(module.torch.cuda, name, lambda: 0)
-    calls = []
+    # Exactly the required RAM is sufficient; the real guard still runs.
+    monkeypatch.setattr(module.psutil, 'virtual_memory', lambda: SimpleNamespace(available=6 * 1024**3))
+    calls: list[str] = []
 
     class Detector:
         def __init__(self, *_: Any, **__: Any) -> None:
@@ -175,9 +179,34 @@ def test_extraction_skips_reused_camera_and_recomputes_partial(resume: ModuleTyp
     monkeypatch.setattr(module, 'UnpromptedEncoder', lambda *a: None)
     monkeypatch.setattr(module, 'FeatureExtractor', lambda *a: SimpleNamespace(extract=lambda *a: frame))
     monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k: [SimpleNamespace(index=0, frame=None)])
+    return module, report, verified[0], calls
+
+
+def test_extraction_skips_reused_camera_and_recomputes_partial(
+    extraction: tuple[ModuleType, Path, dict[str, Any], list[str]], tmp_path: Path,
+) -> None:
+    module, report, reused, calls = extraction
     module.extract(tmp_path, report)
     final = json.loads((report / 'features.json').read_text())
     assert calls == ['detector']
     assert final['status'] == 'ok' and set(final['records']) == {'complete', 'partial'}
-    assert final['records']['complete'] == verified[0]['complete']
+    assert final['records']['complete'] == reused['complete']
     assert final['reused_keys'] == ['complete'] and set(final['timings']) == {'partial'}
+
+
+def test_extraction_rejects_insufficient_ram_before_loading_models(
+    extraction: tuple[ModuleType, Path, dict[str, Any], list[str]], tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module, report, reused, calls = extraction
+    monkeypatch.setattr(module.psutil, 'virtual_memory', lambda: SimpleNamespace(available=6 * 1024**3 - 1))
+
+    with pytest.raises(RuntimeError, match='Require at least 6 GiB available host RAM'):
+        module.extract(tmp_path, report)
+
+    progress = json.loads((report / 'features.progress.json').read_text())
+    assert calls == []
+    assert progress['status'] == 'failed' and progress['error_type'] == 'RuntimeError'
+    assert progress['records'] == reused and progress['reused_keys'] == ['complete']
+    assert progress['timings'] == {}
+    assert not (report / 'features.json').exists()

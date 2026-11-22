@@ -874,6 +874,9 @@ root, ref, req, fd, mode = sys.argv[1:]
 manager = ResourceManager(AnnotationLayout.testing(pathlib.Path(root)), ArtifactRef.model_validate_json(ref))
 request = ResourceRequest.model_validate_json(req)
 owner = capture_supervisor(os.getpid())
+if mode == "coordinated":
+    # Cross a binary exponent boundary: (254.1 + 2.5) - 254.1 != 2.5.
+    time.monotonic = lambda: 254.1
 manager.attach(request, int(fd), owner)
 pathlib.Path(root, "attached").write_text(str(os.getpid()))
 if mode == "orphan":
@@ -949,7 +952,9 @@ def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
         assert sample.active_by_stage == {}
         assert not attempt_is_protected(guard, item)
         assert item.plan in retained(guard)
-        assert sample.gpu_charged_seconds == (5 if mode == "orphan" else 2.5)
+        assert sample.gpu_charged_seconds == pytest.approx(
+            5 if mode == "orphan" else 2.5, rel=0, abs=1e-9
+        )
         # A new campaign inherits consumed time from this same budget scope.
         next_plan = make_plan(layout, "next")
         too_much = request(layout, next_plan, "next", stage="gpu", gpu=100.0)
@@ -1004,7 +1009,7 @@ def test_recovery_preserves_finish_record_written_before_lease_acquisition(
             pass_fds=(fd,),
             start_new_session=True,
         )
-    expected_charge = 2.5 if stage == "gpu" else 0.0
+    expected_charge = pytest.approx(2.5 if stage == "gpu" else 0.0, rel=0, abs=1e-9)
 
     @contextmanager
     def finish_before_lock(layout, name, *, blocking=True):

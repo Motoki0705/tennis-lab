@@ -1,0 +1,69 @@
+{
+  "record": {
+    "data": {
+      "basis": [],
+      "evaluation": "request_changes",
+      "inputs": [
+        "bde951ad464f49a8bca826f1a9ae5cfc"
+      ],
+      "next_actions": [
+        {
+          "actor": "worker",
+          "conditions": "同じworker sessionで継続する。",
+          "expected_result": "修正commitと対象HEADのCI Python成功",
+          "id": "56b706c6a1e747b897d361cb664520db",
+          "instruction": "presentationで復号・整形した全ての表示値に、HTML escape前に公開Guardを適用する。escape形式の資格情報を含む入力が拒否される回帰テストを追加する。",
+          "operation": "continue_ai",
+          "summary": "PR #1890 のレビュー指摘1件の修正",
+          "target": "#1817 / PR #1890"
+        }
+      ],
+      "reason": "pr-1890-1は妥当な漏洩経路である。presentationがliteralを復号して作る表示値は、元の公開検査を経ておらず、HTML entity化が最終Guardの検出を妨げる。復号後・escape前の値を同じGuardで検査し、拒否する回帰テストを追加させる。",
+      "recheck_scope": [
+        "presentation.pyとnavigation.saveの検査経路"
+      ],
+      "resume_conditions": [],
+      "reuse_scope": [
+        "pr-1890-1以外の範囲は既存の親確認とレビューを再利用する"
+      ],
+      "source": {
+        "actor_key": "da6ca190469a49c1995f4c7b31c69808",
+        "evidence": [
+          {
+            "kind": "unavailable",
+            "reason": "capture_source=parent.decide; artifact=decision spec; content_sha256=48d633d80c9f3360ffebc693276afa425dc79f5b9840d849c713a9c6b8de8b15; private evidence"
+          }
+        ],
+        "kind": "parent_choice"
+      },
+      "unresolved": []
+    },
+    "id": "815c763c410546f084daa7e5c8954b70",
+    "kind": "decision",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "9c9a4dad01934f68b5159cb409004722",
+      "delegation": null,
+      "issue": null,
+      "parent": 1796,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-11T02:26:24.965184+00:00"
+      },
+      "recorded_at": "2026-11-11T02:26:24.965215+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

@@ -44,6 +44,11 @@ tasks:
   plcs:
     status: active
     module: src/tasks/plcs
+  review_evaluation:
+    status: active
+    module: .agents/ops/review/evaluation
+    note: >-
+      正式レビューの固定snapshot比較と再利用・復旧の実測。指摘の一致と採否は親が判定する。
   slcs:
     status: active
     module: src/tasks/slcs

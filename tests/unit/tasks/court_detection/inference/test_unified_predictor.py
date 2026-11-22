@@ -139,6 +139,36 @@ def test_raw_multihead_request_runs_one_forward_and_preserves_all_heads() -> Non
         result.downstream_keypoints()
 
 
+def test_prepared_batch_keeps_per_image_pixel_geometry() -> None:
+    predictor = _predictor()
+    image_a: np.ndarray = np.full((20, 30, 3), 9, np.uint8)
+    image_b: np.ndarray = np.full((40, 60, 3), 17, np.uint8)
+
+    def forward(images: torch.Tensor) -> CourtModelOutput:
+        output: CourtModelOutput = _StaticPoseModel(predictor.adapter.spec.target_bundle)(images)
+        logits = output.dense_logits["kp"]
+        logits.fill_(-12)
+        for row in range(len(images)):
+            x = 5 if images[row, 0, 0, 0] < -1.9 else 9
+            logits[row, 0, 7, x] = 12
+        return output
+
+    called = Mock(side_effect=forward)
+    predictor.model.forward = called
+    prepared = [predictor.prepare_batch_image(image) for image in (image_a, image_b)]
+    predictions = predictor.predict_prepared(prepared, postprocess="none", heads=("kp",))
+    assert called.call_count == 1 and len(called.call_args.args[0]) == 2
+    for prediction, image, model_x in zip(predictions, (image_a, image_b), (5, 9), strict=True):
+        assert isinstance(prediction, CourtPrediction)
+        raw = prediction.raw_heads["kp"]
+        assert isinstance(raw, CourtKeypointPrediction)
+        height, width = prediction.native_size_hw
+        original_h, original_w = image.shape[:2]
+        torch.testing.assert_close(raw.keypoints[0, 0], torch.tensor([
+            model_x * (original_w - 1) / (width - 1), 7 * (original_h - 1) / (height - 1),
+        ]))
+
+
 @pytest.mark.parametrize(
     "options",
     [

@@ -1,0 +1,329 @@
+{
+  "actual_ai_invocations_in_this_assessment": 0,
+  "assessment_scope": "saved-evidence eligibility at the historical predecessor boundary; excludes live authorization, publication and superseding-request checks",
+  "audit_url": "https://github.com/Motoki0705/tennis-lab/issues/1790",
+  "avoidable_with_current_saved_evidence": 0,
+  "historical_extra_agent_seconds": 1041.4471039772034,
+  "historical_extra_invocations": 5,
+  "historical_extra_review_seconds": 1746.033696,
+  "historical_extra_usage": {
+    "cached_input_tokens": {
+      "missing": 0,
+      "observed_sum": 6387456
+    },
+    "input_tokens": {
+      "missing": 0,
+      "observed_sum": 7019963
+    },
+    "output_tokens": {
+      "missing": 0,
+      "observed_sum": 32106
+    }
+  },
+  "monetary_or_quota_savings_claimed": false,
+  "not_avoidable_without_more_code_review": 5,
+  "pairs": [
+    {
+      "agent_seconds": 238.09050369262695,
+      "assessment": {
+        "can_avoid_full_ai_rereview": false,
+        "candidate_verdict": "incomplete",
+        "coverage": [
+          {
+            "coverage": "not_reviewed",
+            "pr": 1615
+          }
+        ],
+        "current_formal_recovery_authorized": false,
+        "evidence_waits": 0,
+        "findings_retained": 0,
+        "reason": "not_reviewed_cannot_be_promoted_or_given_invented_evidence_waits",
+        "requires_parent_verification": true,
+        "validation": {
+          "current_prs": [
+            {
+              "base_ref": "main",
+              "base_sha": "602ecb9d3a2f4a1c404792f37f5fa9bffebae95f",
+              "branch": "codex/ci-partial-rerun",
+              "diff_sha256": "c0a64680355f298232c7602acc08ed68921845fad3d941556ac191ba3a6c303d",
+              "head_sha": "dc86c2b855fbe1fead0ba95f152a7df7ac6b1a36",
+              "merge_base_sha": "602ecb9d3a2f4a1c404792f37f5fa9bffebae95f",
+              "number": 1615
+            }
+          ],
+          "events_sha256": "ddc34aa943617031e000238562627376b10d3e51326b3940e3e23cc3cfe11e5a",
+          "final_sha256": "a0fbc41f04a399db745baa58fff9975db4e26b8c7f1b233f706863a8cfc899d1",
+          "output_sha256": "fded4f13e6e084a1c18eaaf272f90d723637183ce6b5a778ae05ce776168d7df",
+          "runtime_sha256": "20f67654e977f515f57e42a1b080f251c61d9d0c0054de3ea4f6ebeac5a6513e",
+          "source_execution_sha256": "f57e056aa037660e4335a28b0503b963d5f60785dbca71ce66c0c9d4629b31ac",
+          "source_request_sha256": "7d9e94aacd59001ec2a61011b3c1d881496299eaf95d1cfd4df23cbbe212a5d5",
+          "source_result_sha256": "86fc2597a43a68346d6c91d7c85eaf68dc246158e5a61d4db99cd323a4998429"
+        }
+      },
+      "pr": 1615,
+      "repeat_run": "parent-1595-2b3123470da8420b824efd5dfa0dc543",
+      "repeat_runtime_file_sha256": "a1b73bfbc6ab88c11969e1d7ffd9d89e90ba84b6e66cb9ddc45b5e2f279480a6",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1595#issuecomment-6541963192",
+      "repeat_usage": {
+        "cached_input_tokens": 1894016,
+        "input_tokens": 2032728,
+        "output_tokens": 6043
+      },
+      "review_seconds": 280.350099,
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "602ecb9d3a2f4a1c404792f37f5fa9bffebae95f",
+        "branch": "codex/ci-partial-rerun",
+        "diff_sha256": "c0a64680355f298232c7602acc08ed68921845fad3d941556ac191ba3a6c303d",
+        "head_sha": "dc86c2b855fbe1fead0ba95f152a7df7ac6b1a36",
+        "merge_base_sha": "602ecb9d3a2f4a1c404792f37f5fa9bffebae95f",
+        "number": 1615
+      },
+      "source_request_file_sha256": "19c5327a62f82487a60c4760743e479699bfdd581311082b2ace34ec99c30c59",
+      "source_run": "parent-1595-c37c7bc3ab714cd6beb3780027777a18",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1595#issuecomment-6541817931"
+    },
+    {
+      "agent_seconds": 142.3412787914276,
+      "assessment": {
+        "can_avoid_full_ai_rereview": false,
+        "candidate_verdict": "incomplete",
+        "coverage": [
+          {
+            "coverage": "not_reviewed",
+            "pr": 1625
+          }
+        ],
+        "current_formal_recovery_authorized": false,
+        "evidence_waits": 0,
+        "findings_retained": 0,
+        "reason": "not_reviewed_cannot_be_promoted_or_given_invented_evidence_waits",
+        "requires_parent_verification": true,
+        "validation": {
+          "current_prs": [
+            {
+              "base_ref": "main",
+              "base_sha": "c2442cb0b89d13c181e50ea981cdc86c5db1dc73",
+              "branch": "codex/direct-implementation-registration",
+              "diff_sha256": "25d600fab8ce3cbd2a3f73da91bce7e08f27632bbcfcd1943561e954c661390b",
+              "head_sha": "1438a3d31521d61c7e2d1069f7bbbb7fab9b7ba3",
+              "merge_base_sha": "c2442cb0b89d13c181e50ea981cdc86c5db1dc73",
+              "number": 1625
+            }
+          ],
+          "events_sha256": "19b082bb7868c4180ab4a1fb54bdad5725f1ad919f552c5b30f363432225a2b0",
+          "final_sha256": "2034dff38a41074d69b861eb67b5397850680aeb5ad4a9837aa099e91ffb1837",
+          "output_sha256": "3bdb151916f22300c3b505e8be4260486486d9f4d7f3f3a6bcab1ff7b2a6041e",
+          "runtime_sha256": "340018dc5e30a3dadb0ad120a47b3ed35619e651abf1253783610bf2bca78dc1",
+          "source_execution_sha256": "2964e8c2fd066075c4e3fb9dc34dc1a068291937b2fa9d18da63f80886a7b5f5",
+          "source_request_sha256": "4208b1b986aefe40c12c25eb2a2965ccf6c538505fec1e94a6feecdfb1f33f7f",
+          "source_result_sha256": "77598dbc6abc3baebdf55d3490392fefdd4480ec81820822cbfca9f24f074529"
+        }
+      },
+      "pr": 1625,
+      "repeat_run": "parent-1620-17fafad8df574481a74e2e2640ff9d69",
+      "repeat_runtime_file_sha256": "0b88777eb5f883b403d7df8feb924f1c956ed2e1e7df0ff68d5012e8459a8b8d",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1620#issuecomment-6549386969",
+      "repeat_usage": {
+        "cached_input_tokens": 848640,
+        "input_tokens": 969602,
+        "output_tokens": 5714
+      },
+      "review_seconds": 275.55486,
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "c2442cb0b89d13c181e50ea981cdc86c5db1dc73",
+        "branch": "codex/direct-implementation-registration",
+        "diff_sha256": "25d600fab8ce3cbd2a3f73da91bce7e08f27632bbcfcd1943561e954c661390b",
+        "head_sha": "1438a3d31521d61c7e2d1069f7bbbb7fab9b7ba3",
+        "merge_base_sha": "c2442cb0b89d13c181e50ea981cdc86c5db1dc73",
+        "number": 1625
+      },
+      "source_request_file_sha256": "8b101db859dc9f3288a31fa8c68f943da320a21d937a38633634bece194bb7ce",
+      "source_run": "parent-1620-5fc25514ecb04490b91138f2f5f3af61",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1620#issuecomment-6549276471"
+    },
+    {
+      "agent_seconds": 173.30714225769043,
+      "assessment": {
+        "can_avoid_full_ai_rereview": false,
+        "candidate_verdict": "incomplete",
+        "coverage": [
+          {
+            "coverage": "not_reviewed",
+            "pr": 1625
+          }
+        ],
+        "current_formal_recovery_authorized": false,
+        "evidence_waits": 0,
+        "findings_retained": 0,
+        "reason": "not_reviewed_cannot_be_promoted_or_given_invented_evidence_waits",
+        "requires_parent_verification": true,
+        "validation": {
+          "current_prs": [
+            {
+              "base_ref": "main",
+              "base_sha": "c2442cb0b89d13c181e50ea981cdc86c5db1dc73",
+              "branch": "codex/direct-implementation-registration",
+              "diff_sha256": "25d600fab8ce3cbd2a3f73da91bce7e08f27632bbcfcd1943561e954c661390b",
+              "head_sha": "1438a3d31521d61c7e2d1069f7bbbb7fab9b7ba3",
+              "merge_base_sha": "c2442cb0b89d13c181e50ea981cdc86c5db1dc73",
+              "number": 1625
+            }
+          ],
+          "events_sha256": "f5e978b84ef517543cbd82b17e9ca6517fc4961c235810f7558d37705e8fe4c1",
+          "final_sha256": "f5eaf2dc303350b69dbc501dd8b2db6a28000cad501e7ec2dddcd6bcb7bf7df5",
+          "output_sha256": "6793768ba0412a9031e98bb520bf74ad3bea05566de3d4049730e82a1976c4df",
+          "runtime_sha256": "4497ff1b4c812b8b1e95a16a711f7039a8ccda32785b889c698aa0745cd6612d",
+          "source_execution_sha256": "f49ad2796c45c66907abf3ca09269126ef332ea485dfe2985c29445c874d958a",
+          "source_request_sha256": "7897bc7c3ce81ec96af1f57928c6ec2f7f75c67231aa308504bca569c1cfaf0b",
+          "source_result_sha256": "f3ef8998b67fed6143de0ba490f840ab545f7962e7cfb679373b1ec7430fab93"
+        }
+      },
+      "pr": 1625,
+      "repeat_run": "parent-1620-fc60366f27d54e56b192c87a34e44863",
+      "repeat_runtime_file_sha256": "5546478bc6b8d9386f77a9f163dccdc0c35dbba84a17fccdf32214d3efdcc177",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1620#issuecomment-6549469173",
+      "repeat_usage": {
+        "cached_input_tokens": 945280,
+        "input_tokens": 1057526,
+        "output_tokens": 6303
+      },
+      "review_seconds": 263.564697,
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "c2442cb0b89d13c181e50ea981cdc86c5db1dc73",
+        "branch": "codex/direct-implementation-registration",
+        "diff_sha256": "25d600fab8ce3cbd2a3f73da91bce7e08f27632bbcfcd1943561e954c661390b",
+        "head_sha": "1438a3d31521d61c7e2d1069f7bbbb7fab9b7ba3",
+        "merge_base_sha": "c2442cb0b89d13c181e50ea981cdc86c5db1dc73",
+        "number": 1625
+      },
+      "source_request_file_sha256": "71cf2af974d617794a349f995ce0995d9a316a3320784ec19e593b67ba8af0d6",
+      "source_run": "parent-1620-17fafad8df574481a74e2e2640ff9d69",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1620#issuecomment-6549386969"
+    },
+    {
+      "agent_seconds": 281.1062922477722,
+      "assessment": {
+        "can_avoid_full_ai_rereview": false,
+        "candidate_verdict": "incomplete",
+        "coverage": [
+          {
+            "coverage": "not_reviewed",
+            "pr": 1636
+          }
+        ],
+        "current_formal_recovery_authorized": false,
+        "evidence_waits": 0,
+        "findings_retained": 0,
+        "reason": "not_reviewed_cannot_be_promoted_or_given_invented_evidence_waits",
+        "requires_parent_verification": true,
+        "validation": {
+          "current_prs": [
+            {
+              "base_ref": "main",
+              "base_sha": "1f77a3bf8d637708d02f8f7ecd69549f93aa0438",
+              "branch": "codex/scene-pair-drive-single-writer",
+              "diff_sha256": "5669e51fefc125e2dfb01f47da0298735882051cdd472bbbdba2920d409fa3e7",
+              "head_sha": "0d24803e31bcb342655bdc276b38ccb1a34ca008",
+              "merge_base_sha": "1f77a3bf8d637708d02f8f7ecd69549f93aa0438",
+              "number": 1636
+            }
+          ],
+          "events_sha256": "2daaa7168f9a21f4f94757227fffcb0a2df4dc30bc8831347e93b845ee35b7ce",
+          "final_sha256": "e5c7f9c8e645af24838fda0bbed72ff01b0bb260f5b085fb1d45252799f970e5",
+          "output_sha256": "0adcf2ab3b5e46293ace6595acd2542a84bd04795fa5ac9d9e09ccee62a7984b",
+          "runtime_sha256": "e066b440f4aace60cb86aa2b5c6370294413b25c401f1e8a6980b9c790e32e5b",
+          "source_execution_sha256": "00c1e60c824d934461d5bbbb314ba2812cb01a99c7d83e42ce0cd62b4ef327ee",
+          "source_request_sha256": "5924ecd72408b3d6799318d1f22ec5b3a7499cfd1dd0a7b8178f6a3c7730c4a6",
+          "source_result_sha256": "4ce1807a994189695bd1cf842d83278f0e197190f1d8c2d83dac72f38317c3c2"
+        }
+      },
+      "pr": 1636,
+      "repeat_run": "parent-1581-eb951b95eb9d4b27a738f7d8e4c48e66",
+      "repeat_runtime_file_sha256": "587a057e2a7c8831aab775fd3363aa9efe6715fc2db10f7158055f97240ac08a",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1581#issuecomment-6567630988",
+      "repeat_usage": {
+        "cached_input_tokens": 1939456,
+        "input_tokens": 2088197,
+        "output_tokens": 7453
+      },
+      "review_seconds": 501.931782,
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "1f77a3bf8d637708d02f8f7ecd69549f93aa0438",
+        "branch": "codex/scene-pair-drive-single-writer",
+        "diff_sha256": "5669e51fefc125e2dfb01f47da0298735882051cdd472bbbdba2920d409fa3e7",
+        "head_sha": "0d24803e31bcb342655bdc276b38ccb1a34ca008",
+        "merge_base_sha": "1f77a3bf8d637708d02f8f7ecd69549f93aa0438",
+        "number": 1636
+      },
+      "source_request_file_sha256": "af5fc12e798d6001f3e0e880783e3c9027368424b1da60919d463c473406cbf6",
+      "source_run": "parent-1581-f9e2548862ee4c85a0733ee88e778e8f",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1581#issuecomment-6567342835"
+    },
+    {
+      "agent_seconds": 206.60188698768616,
+      "assessment": {
+        "can_avoid_full_ai_rereview": false,
+        "candidate_verdict": "incomplete",
+        "coverage": [
+          {
+            "coverage": "not_reviewed",
+            "pr": 1668
+          }
+        ],
+        "current_formal_recovery_authorized": false,
+        "evidence_waits": 0,
+        "findings_retained": 0,
+        "reason": "not_reviewed_cannot_be_promoted_or_given_invented_evidence_waits",
+        "requires_parent_verification": true,
+        "validation": {
+          "current_prs": [
+            {
+              "base_ref": "main",
+              "base_sha": "a74e52e23586097b7094a4416fa350d628e0c33a",
+              "branch": "codex/user-reference-ground-truth-loader",
+              "diff_sha256": "389e5066c58c4a9fe2954b53c903015b9e9c9a1b86ee4bba53ad83c567f1e468",
+              "head_sha": "4b7874e5612fdf1a25131858c024dce5deed7606",
+              "merge_base_sha": "a74e52e23586097b7094a4416fa350d628e0c33a",
+              "number": 1668
+            }
+          ],
+          "events_sha256": "97d95b96f17df2e3a2bca076f80b7c80e17a2f1d97c2f86bafd87d9881178b71",
+          "final_sha256": "644671f66868905e54571149f6bddbe757346866916825db9ed4faee445bc106",
+          "output_sha256": "273c9e1b6befa9cde851c0d6e0f8fd0ba0dc71a82a03c755a5e84d8c41093bce",
+          "runtime_sha256": "3ac3c1dc25099b0644ca66aa93cba59a8ae58953c3131eb39b4700f91f83d6cf",
+          "source_execution_sha256": "47a030620a99a8484d71f2d43ba4e65dc5ac3ffe91318d9275cbee14cb68d4a6",
+          "source_request_sha256": "02c7a8c92e4cd0b2ad00f1b61c75eff69bfc1cfcd26bfca39397915f5493a7b4",
+          "source_result_sha256": "23d346c8f62f7df7875d39f7a98f7e2c3e970703deeb90f31d76c7fbadd44086"
+        }
+      },
+      "pr": 1668,
+      "repeat_run": "parent-1554-60b72d6cb0f2453f984e1d2e8eb77fdb",
+      "repeat_runtime_file_sha256": "a1bc3ed0f1717f5a5b7d9d7a3822bffcd8dbf722d69fc64e5ec9591dbf4e91f7",
+      "repeat_url": "https://github.com/Motoki0705/tennis-lab/issues/1554#issuecomment-6596441074",
+      "repeat_usage": {
+        "cached_input_tokens": 760064,
+        "input_tokens": 871910,
+        "output_tokens": 6593
+      },
+      "review_seconds": 424.632258,
+      "snapshot": {
+        "base_ref": "main",
+        "base_sha": "a74e52e23586097b7094a4416fa350d628e0c33a",
+        "branch": "codex/user-reference-ground-truth-loader",
+        "diff_sha256": "389e5066c58c4a9fe2954b53c903015b9e9c9a1b86ee4bba53ad83c567f1e468",
+        "head_sha": "4b7874e5612fdf1a25131858c024dce5deed7606",
+        "merge_base_sha": "a74e52e23586097b7094a4416fa350d628e0c33a",
+        "number": 1668
+      },
+      "source_request_file_sha256": "36a98434f2f87f8cc6d559286fe1dd44ebfa945e9b761c5deedb7326cc951037",
+      "source_run": "parent-1554-eeceb7f70b7447c59549b162dc3aca02",
+      "source_url": "https://github.com/Motoki0705/tennis-lab/issues/1554#issuecomment-6596307507"
+    }
+  ],
+  "schema_version": 1,
+  "unconfirmed": 0
+}

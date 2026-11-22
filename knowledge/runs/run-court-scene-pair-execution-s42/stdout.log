@@ -1,0 +1,6 @@
+{"event": "queue_service_started", "pid": 27075, "worker_pid": 27081}
+[worker] 2026-11-09T23:39:39+00:00 running: 0-8205732420991417185_2026-11-09T23-39-39-008582814Z_28672_court-scene-pair-recovery3-s42-r6.job resource=all slot=all (log: /content/.tennis-colab/court-scene-pair-20261110-recovery5/queue/logs/0-8205732420991417185_2026-11-09T23-39-39-008582814Z_28672_court-scene-pair-recovery3-s42-r6.log)
+[worker] 2026-11-10T04:38:10+00:00 done: 0-8205732420991417185_2026-11-09T23-39-39-008582814Z_28672_court-scene-pair-recovery3-s42-r6.job resource=all slot=all
+[worker] stop requested; waiting for active jobs.
+[worker] 2026-11-10T04:54:28+00:00 worker exited.
+{"event": "child_reaped", "pid": 27081, "role": "worker", "exit_code": 0}

@@ -38,7 +38,7 @@
 ボールは三角測量の前に動きの外れ値を除去し、頑健な2次LOESSで平滑化しています。
 このデモは保存済み検出観測から球だけを再処理し、元のカメラ・人物復元を固定しています。
 補間した2D点は観測に数えず、3Dには実観測2視点以上を要求します。
-比較と制約は[CPU再処理・デモ検証記録](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
+元ストアへのアクセス条件・比較・制約は[CPU再処理・デモ検証記録](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md#replay-source-access)を参照してください。
 
 入力動画は事前に同期し、FPS・解像度・フレーム数を揃えます。入力の制約と、欠測・品質情報を含む出力形式は [パイプラインのREADME](src/tennis_scene/README.md) を参照してください。
 
@@ -84,6 +84,8 @@
 <!-- sample-assets:end -->
 
 配布元への登録・条件への同意・申請が必要な資産もあります。[資産の取得案内](docs/installation/README.ja.md#required-assets)に従って揃えてください。取得CLI（`src.utils.model_weights`・`src.utils.sample_dataset`）は取得ファイルを検査し、[preflight](docs/installation/README.ja.md#preflight)は実行前に必要資産とCUDA拡張を検査します。
+
+ViTPose-H・HMR2の公式GVHMR Driveが上限超過した場合は、[診断と検証付きの復旧手順](docs/installation/README.ja.md#drive-quota)を参照してください。
 
 <a id="run-locally"></a>
 

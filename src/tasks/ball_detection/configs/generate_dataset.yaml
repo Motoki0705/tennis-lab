@@ -17,7 +17,7 @@ sources:
       test: [game10]
   meiji:
     # DATA-root-relative Meiji multi-camera dataset (dataset.json, clips/*/outsource).
-    root: tennis_multivew/processed/meiji_3cam/dataset
+    root: tennis_multiview/processed/meiji_3cam/dataset
     # Split unit is the recording (video); shared with the #936 real-data evaluation.
     split:
       train: [video_002]

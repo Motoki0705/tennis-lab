@@ -1,0 +1,164 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/court-video-shared/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/court-video-shared
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [30 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/tennis_scene/test_video_court.py::test_two_build_callers_share_the_lock_and_publish_one_result 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups1] 
+[gw1] [  3%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups1] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups2] 
+[gw1] [  6%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups2] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_duplicate_measurements_cannot_create_temporal_support 
+[gw1] [ 10%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_duplicate_measurements_cannot_create_temporal_support 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_failed_solve_and_a_displaced_epoch_remain_explicit 
+[gw1] [ 13%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_failed_solve_and_a_displaced_epoch_remain_explicit 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_distinct_valid_courts_are_not_resolved_by_score_or_input_order 
+[gw1] [ 16%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_distinct_valid_courts_are_not_resolved_by_score_or_input_order 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_initializer_clustering_is_stable_and_does_not_count_majority_votes 
+[gw1] [ 20%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_initializer_clustering_is_stable_and_does_not_count_majority_votes 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_rejected_seed_has_one_crop_transform_and_checked_digest 
+[gw1] [ 23%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_rejected_seed_has_one_crop_transform_and_checked_digest 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes0] 
+[gw1] [ 26%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes0] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes1] 
+[gw1] [ 30%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes1] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes2] 
+[gw1] [ 33%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes2] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes3] 
+[gw1] [ 36%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes3] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes4] 
+[gw1] [ 40%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes4] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_multiple_rgb_frames_recover_known_h_with_static_net_and_moving_occlusion 
+[gw0] [ 43%] PASSED tests/integration/tennis_scene/test_video_court.py::test_two_build_callers_share_the_lock_and_publish_one_result 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_common_fit_balances_frames_and_preserves_all_residuals 
+[gw0] [ 46%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_common_fit_balances_frames_and_preserves_all_residuals 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups0] 
+[gw0] [ 50%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups0] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_visible_ground_end_is_not_the_end_of_the_search_window 
+[gw0] [ 53%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_visible_ground_end_is_not_the_end_of_the_search_window 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_algebraic_fit_needs_independent_endpoint_evidence 
+[gw0] [ 56%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_algebraic_fit_needs_independent_endpoint_evidence 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[0.0-ok] 
+[gw0] [ 60%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[0.0-ok] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[5.0-warning] 
+[gw0] [ 63%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[5.0-warning] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[11.0-failed] 
+[gw0] [ 66%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[11.0-failed] 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_drift_observations_are_failed_not_zero_motion 
+[gw0] [ 70%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_drift_observations_are_failed_not_zero_motion 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_local_projective_motion_can_fail_maximum_while_mean_stays_below_ten 
+[gw0] [ 73%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_local_projective_motion_can_fail_maximum_while_mean_stays_below_ten 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_one_wrong_line_is_not_reported_as_coherent_camera_motion 
+[gw0] [ 76%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_one_wrong_line_is_not_reported_as_coherent_camera_motion 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_repeated_initializers_share_measurements_without_manufacturing_support 
+[gw0] [ 80%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_repeated_initializers_share_measurements_without_manufacturing_support 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_different_static_stripes_are_not_averaged_into_a_shared_court 
+[gw0] [ 83%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_different_static_stripes_are_not_averaged_into_a_shared_court 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_baseline_and_one_service_need_a_finite_centre_segment_for_order 
+[gw0] [ 86%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_baseline_and_one_service_need_a_finite_centre_segment_for_order 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_same_stripe_with_edge_outliers_is_not_a_semantic_alternative 
+[gw0] [ 90%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_same_stripe_with_edge_outliers_is_not_a_semantic_alternative 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_estimator_checks_frozen_rgb_before_any_new_measurement 
+[gw0] [ 93%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_estimator_checks_frozen_rgb_before_any_new_measurement 
+[gw1] [ 96%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_multiple_rgb_frames_recover_known_h_with_static_net_and_moving_occlusion 
+tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_rgb_two_transverse_lines_cannot_certify_static_net_identity 
+[gw1] [100%] PASSED tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_rgb_two_transverse_lines_cannot_certify_static_net_identity 
+
+============================== slowest durations ===============================
+1.71s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_multiple_rgb_frames_recover_known_h_with_static_net_and_moving_occlusion
+0.39s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_rgb_two_transverse_lines_cannot_certify_static_net_identity
+0.34s call     tests/integration/tennis_scene/test_video_court.py::test_two_build_callers_share_the_lock_and_publish_one_result
+0.05s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_failed_solve_and_a_displaced_epoch_remain_explicit
+0.05s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_baseline_and_one_service_need_a_finite_centre_segment_for_order
+0.04s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_repeated_initializers_share_measurements_without_manufacturing_support
+0.04s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_visible_ground_end_is_not_the_end_of_the_search_window
+0.03s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_same_stripe_with_edge_outliers_is_not_a_semantic_alternative
+0.03s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_common_fit_balances_frames_and_preserves_all_residuals
+0.03s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_one_wrong_line_is_not_reported_as_coherent_camera_motion
+0.02s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_local_projective_motion_can_fail_maximum_while_mean_stays_below_ten
+0.02s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[5.0-warning]
+0.02s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[11.0-failed]
+0.02s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[0.0-ok]
+0.01s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_different_static_stripes_are_not_averaged_into_a_shared_court
+0.00s setup    tests/integration/tennis_scene/test_video_court.py::test_two_build_callers_share_the_lock_and_publish_one_result
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups1]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_rejected_seed_has_one_crop_transform_and_checked_digest
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_estimator_checks_frozen_rgb_before_any_new_measurement
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_estimator_checks_frozen_rgb_before_any_new_measurement
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes1]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes0]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes3]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes4]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes2]
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_duplicate_measurements_cannot_create_temporal_support
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_algebraic_fit_needs_independent_endpoint_evidence
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_rejected_seed_has_one_crop_transform_and_checked_digest
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups2]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[5.0-warning]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups0]
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_initializer_clustering_is_stable_and_does_not_count_majority_votes
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_common_fit_balances_frames_and_preserves_all_residuals
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_distinct_valid_courts_are_not_resolved_by_score_or_input_order
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_rgb_two_transverse_lines_cannot_certify_static_net_identity
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[11.0-failed]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[0.0-ok]
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_repeated_initializers_share_measurements_without_manufacturing_support
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_same_stripe_with_edge_outliers_is_not_a_semantic_alternative
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_one_wrong_line_is_not_reported_as_coherent_camera_motion
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_duplicate_measurements_cannot_create_temporal_support
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_drift_observations_are_failed_not_zero_motion
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_algebraic_fit_needs_independent_endpoint_evidence
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_different_static_stripes_are_not_averaged_into_a_shared_court
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_failed_solve_and_a_displaced_epoch_remain_explicit
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_baseline_and_one_service_need_a_finite_centre_segment_for_order
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_initializer_clustering_is_stable_and_does_not_count_majority_votes
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_visible_ground_end_is_not_the_end_of_the_search_window
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_multiple_rgb_frames_recover_known_h_with_static_net_and_moving_occlusion
+0.00s setup    tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_local_projective_motion_can_fail_maximum_while_mean_stays_below_ten
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_distinct_valid_courts_are_not_resolved_by_score_or_input_order
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes3]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_rgb_two_transverse_lines_cannot_certify_static_net_identity
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes2]
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes0]
+0.00s teardown tests/integration/tennis_scene/test_video_court.py::test_two_build_callers_share_the_lock_and_publish_one_result
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups1]
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes1]
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes4]
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups0]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_multiple_rgb_frames_recover_known_h_with_static_net_and_moving_occlusion
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_failed_solve_and_a_displaced_epoch_remain_explicit
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_baseline_and_one_service_need_a_finite_centre_segment_for_order
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups2]
+0.00s call     tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_drift_observations_are_failed_not_zero_motion
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_rejected_seed_has_one_crop_transform_and_checked_digest
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_same_stripe_with_edge_outliers_is_not_a_semantic_alternative
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_local_projective_motion_can_fail_maximum_while_mean_stays_below_ten
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_one_wrong_line_is_not_reported_as_coherent_camera_motion
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_distinct_valid_courts_are_not_resolved_by_score_or_input_order
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes0]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_estimator_checks_frozen_rgb_before_any_new_measurement
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_visible_ground_end_is_not_the_end_of_the_search_window
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_different_static_stripes_are_not_averaged_into_a_shared_court
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[11.0-failed]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_common_fit_balances_frames_and_preserves_all_residuals
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_repeated_initializers_share_measurements_without_manufacturing_support
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[5.0-warning]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_initializer_clustering_is_stable_and_does_not_count_majority_votes
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_drift_measures_known_pixel_motion_without_replacing_the_common_h[0.0-ok]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups1]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes3]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups0]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes1]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_semantic_or_temporal_support_has_no_initial_h_fallback[groups2]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_algebraic_fit_needs_independent_endpoint_evidence
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes2]
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_duplicate_measurements_cannot_create_temporal_support
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_missing_drift_observations_are_failed_not_zero_motion
+0.00s teardown tests/unit/tasks/court_detection/geometry/test_video_shared.py::test_frozen_scope_mismatch_never_selects_another_camera[changes4]
+============================= 30 passed in 10.12s ==============================

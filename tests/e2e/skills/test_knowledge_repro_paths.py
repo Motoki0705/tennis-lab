@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -96,3 +97,43 @@ def test_the_repository_bundles_reference_only_reproducible_scripts() -> None:
     completed = subprocess.run([sys.executable, str(ROOT / ".agents/skills/knowledge-control/scripts/kg_repro_paths.py")],
                                cwd=ROOT, capture_output=True, text=True, check=False)
     assert completed.returncode == 0, completed.stdout
+
+
+@pytest.mark.parametrize("case", ["valid", "not_called", "missing_recipe", "untracked_builder",
+                                  "python_source", "invalid_digest", "duplicate_directory", "external_pythonpath", "invalid_version"])
+def test_native_import_requires_inventory_and_an_invoked_reproducible_builder(tmp_path: Path, case: str) -> None:
+    git(tmp_path, "init", "-q")
+    (tmp_path / "build.sh").write_text("# native compiler recipe\n")
+    (tmp_path / "run.py").write_text("")
+    git(tmp_path, "add", ".")
+    git(tmp_path, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+    commit = git(tmp_path, "rev-parse", "HEAD")
+    bundle = tmp_path / "knowledge/runs/run-native"
+    bundle.mkdir(parents=True)
+    recipe = bundle / "native.sh"
+    recipe.write_text("bash build.sh /external/build\n")
+    rebuild = 'bash "$SCRIPT_DIR/native.sh"\n' if case != "not_called" else ""
+    repro = bundle / "repro.sh"
+    repro.write_text(f"git checkout {commit}\n{rebuild}# --- original training command ---\n"
+                     "PYTHONPATH=/external/build/lib .venv/bin/python run.py\n")
+    inventory = {"directory": "/external/build/lib", "rebuild": "native.sh",
+                 "files": {"attention.so": {"sha256": "a" * 64, "bytes": 123}}}
+    if case == "missing_recipe":
+        recipe.unlink()
+    elif case == "untracked_builder":
+        (tmp_path / "later.sh").write_text("")
+        recipe.write_text("bash later.sh /external/build\n")
+    elif case == "python_source":
+        inventory["files"] = {"attention.py": {"sha256": "a" * 64, "bytes": 123}}
+    elif case == "invalid_digest":
+        inventory["files"] = {"attention.so": {"sha256": "unknown", "bytes": 123}}
+    elif case == "external_pythonpath":
+        recipe.write_text("PYTHONPATH=/external/other bash build.sh /external/build\n")
+    (bundle / "native-imports.json").write_text(json.dumps({"version": True if case == "invalid_version" else 1,
+        "imports": [inventory, inventory] if case == "duplicate_directory" else [inventory]}))
+    findings = check_run(tmp_path, repro)
+    if case == "valid":
+        assert [(f.kind, f.status) for f in findings] == [("pythonpath", "ok"), ("file", "ok")]
+    else:
+        assert any(f.kind == "native_build" and f.status == "missing" for f in findings)
+        assert any(f.kind == "pythonpath" and f.status == "missing" for f in findings)

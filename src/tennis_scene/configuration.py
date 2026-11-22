@@ -21,7 +21,13 @@ from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
-from src.tasks.court_side.hypothesis import CourtSideConfig
+from src.tasks.court_side.hypothesis import (
+    CourtSideConfig,
+    EvidenceKind,
+    PlayerCourtSideConfig,
+    SideConfig,
+    evidence_kind,
+)
 from src.tasks.person_tracking.features import FeatureConfig
 from src.tasks.person_tracking.sequence import TrackingConfig
 from src.tasks.player_association.appearance.encoders import encoder_weights
@@ -31,6 +37,7 @@ from src.tasks.player_association.association.config import (
 )
 from src.tasks.player_association.association.config import load_association_config
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
+from src.tennis_scene.pipeline.batching import BatchConfig, BatchSizes
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
 from src.tennis_scene.pipeline.components.court_kp import (
@@ -38,11 +45,16 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPPostprocessConfig,
 )
 from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
+from src.tennis_scene.pipeline.direct_annotation import DirectAnnotationConfig
 from src.tennis_scene.pipeline.feature_flags import (
     OPTIONAL_FEATURES,
     validate_requested_features,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
+from src.tennis_scene.pipeline.video_court.diagnostics import DriftReference
+from src.tennis_scene.pipeline.video_court.policy import validate_unobservable_policy
+from src.tennis_scene.pipeline.video_court.prepare import VideoCourtConfig
 from src.tennis_scene.visualization.blender.export.bundle import BlenderBundleConfig
 from src.tennis_scene.visualization.blender.export.placement import (
     PlacementExportConfig,
@@ -52,6 +64,7 @@ from src.tennis_scene.visualization.blender.export.placement_ranking import (
 )
 from src.utils.configuration import (
     ConfigField,
+    MissingConfigurationKeyError,
     PathResolver,
     PathRole,
     RuntimePathRoots,
@@ -146,6 +159,12 @@ def _single_component(value: str, *, name: str) -> str:
     return value
 
 
+def _check_court_side_mode_fields(side: Mapping[str, object]) -> None:
+    if ("mode" in side) != ("video_shared" in side):
+        missing = "video_shared" if "mode" in side else "mode"
+        raise MissingConfigurationKeyError(f"Missing court_side.{missing}: mode and video_shared must be supplied together")
+
+
 _POSTPROCESS_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp.postprocess",
     fields={
@@ -155,18 +174,27 @@ _POSTPROCESS_SCHEMA = StrictConfigSchema(
         for field in fields(CourtKPPostprocessConfig)
     },
 )
+_PAINT_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.court_kp.region_search.paint",
+    fields={field.name: ConfigField.of(type(getattr(CourtRegionSearchConfig().paint, field.name)))
+            for field in fields(type(CourtRegionSearchConfig().paint))},
+)
 _COURT_REGION_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp.region_search",
     fields={
-        "enabled": ConfigField.of(bool),
-        "min_inliers": ConfigField.of(int),
-        "inlier_distance_ratio": ConfigField.of(float, int),
-        "min_area_ratio": ConfigField.of(float, int),
+        field.name: (ConfigField.mapping(_PAINT_SCHEMA) if field.name == "paint" else
+                     ConfigField.of(type(getattr(CourtRegionSearchConfig(), field.name))))
+        for field in fields(CourtRegionSearchConfig)
     },
 )
+_ACQUISITION_FIELDS = {name: ConfigField.of(str, type(None)) for name in ("action", "directory", "request", "request_sha256", "artifact_digest")}
+_SHARED_FIELDS = {**_ACQUISITION_FIELDS, "rebuild": ConfigField.of(bool), "unobservable_policy": ConfigField.of(str)}
 _COURT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp",
-    fields={"checkpoint": ConfigField.of(str), "subpixel_refine": ConfigField.of(bool),
+    fields={"checkpoint": ConfigField.of(str), "subpixel_refine": ConfigField.of(bool), "mode": ConfigField.of(str),
+            "video_shared": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.court_kp.video_shared", fields={
+                **_SHARED_FIELDS,
+                **{name: ConfigField.of(str, type(None)) for name in ('dataset_id', 'video_id', 'drift_directory', 'drift_digest')}})),
             "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
             "region_search": ConfigField.mapping(_COURT_REGION_SCHEMA)},
 )
@@ -197,7 +225,13 @@ _BALL_SCHEMA = StrictConfigSchema(
     name="tennis_scene.ball_detection",
     fields={
         "enabled": ConfigField.of(bool),
-        "checkpoint": ConfigField.of(str),
+        "method": ConfigField.of(str),
+        "model_type": ConfigField.of(str),
+        "input_channels": ConfigField.of(int),
+        "num_frames": ConfigField.of(int),
+        "precision": ConfigField.of(str),
+        "compile_mode": ConfigField.of(str),
+        "checkpoint": ConfigField.of(str, type(None)),
         "batch_size": ConfigField.of(int),
         "image_size": ConfigField.sequence(ConfigField.of(int)),
         "normalize_imagenet": ConfigField.of(bool),
@@ -230,13 +264,22 @@ _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", field
     "side_min_frames": ConfigField.of(int), "side_max_cost": ConfigField.of(float, int),
     "side_min_support": ConfigField.of(float, int),
 })
-_COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", fields={
+_PLAYER_COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side.player", fields={
+    field.name: ConfigField.of(int) if field.name == "min_frames" else ConfigField.of(float, int)
+    for field in fields(PlayerCourtSideConfig)
+})
+_COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", semantic_checks=(_check_court_side_mode_fields,), fields={
+    "mode": ConfigField.of(str, required=False),
+    "evidence": ConfigField.of(str, required=False),
+    "player": ConfigField.mapping(_PLAYER_COURT_SIDE_SCHEMA, required=False),
+    "video_shared": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.court_side.video_shared", fields=_SHARED_FIELDS), required=False),
     "reprojection_px": ConfigField.of(float, int), "min_motion_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
     "max_cost": ConfigField.of(float, int),
     "min_support": ConfigField.of(float, int), "min_margin": ConfigField.of(float, int),
 })
 _PLAYER_ASSOCIATION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_association", fields={
     "players_per_side": ConfigField.of(int),
+    "reuse_clip_embeddings": ConfigField.of(bool),
 })
 _PLACEMENT_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction.placement", fields={
     name: ConfigField.of(int) if name in {"min_joints", "min_scale_pairs", "max_nfev"} else ConfigField.of(float, int)
@@ -251,6 +294,11 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
+_DIRECT_ANNOTATION_SCHEMA = StrictConfigSchema(name="tennis_scene.direct_annotation", fields={
+    "request": ConfigField.of(str, type(None)), "request_sha256": ConfigField.of(str, type(None)),
+    "bundle": ConfigField.of(str, type(None)), "bundle_sha256": ConfigField.of(str, type(None)),
+    "court_detection": ConfigField.of(str), "publish_dataset": ConfigField.of(bool), "resume": ConfigField.of(str),
+})
 _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "person_tracking": ConfigField.mapping(StrictConfigSchema(name='tennis_scene.person_tracking', fields={
         'method': ConfigField.of(str), 'encoder': ConfigField.of(str), 'aflink_checkpoint': ConfigField.of(str),
@@ -258,6 +306,8 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "execution": ConfigField.mapping(_EXECUTION_SCHEMA),
     "paths": ConfigField.mapping(PATHS_SCHEMA), "video_paths": ConfigField.sequence(ConfigField.of(str)),
     "camera_ids": ConfigField.sequence(ConfigField.of(str)), "output_name": ConfigField.of(str),
+    "clip_id": ConfigField.of(str, type(None)),
+    "direct_annotation": ConfigField.mapping(_DIRECT_ANNOTATION_SCHEMA),
     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
@@ -282,6 +332,43 @@ def pipeline_asset_configuration(
     return value, roots, resolver
 
 
+def _court_side_acquisition(
+    side: Mapping[str, object], court: VideoCourtConfig | None, resolver: PathResolver, cache_source: str,
+) -> tuple[VideoArtifactConfig | None, str]:
+    if "mode" not in side:
+        # The schema has recognized the saved clip format containing only the six thresholds.
+        return None, "warn"
+    options = _mapping(side["video_shared"], name="court_side.video_shared")
+    policy = validate_unobservable_policy(cast(str, options["unobservable_policy"]))
+    if side["mode"] == "clip":
+        if any(options[key] is not None for key in _ACQUISITION_FIELDS) or options["rebuild"] or policy != "warn":
+            raise SemanticConfigurationError("Shared side options require court_side.mode=video_shared")
+        return None, policy
+    if side["mode"] != "video_shared":
+        raise SemanticConfigurationError("court_side.mode must be clip or video_shared")
+    if court is None:
+        raise SemanticConfigurationError("court_side.mode=video_shared requires court_kp.mode=video_shared")
+    config = VideoArtifactConfig.from_mapping({**options, "dataset_id": court.dataset_id, "video_id": court.video_id}, resolver)
+    if cache_source == "load" and config.action != "load":
+        raise SemanticConfigurationError("Load-only execution requires court_side.video_shared.action=load")
+    return config, policy
+
+
+def _court_side_thresholds(side: Mapping[str, object]) -> SideConfig:
+    evidence = side.get("evidence", "ball")
+    if evidence == "player":
+        if "player" not in side:
+            raise MissingConfigurationKeyError("Missing court_side.player for court_side.evidence=player")
+        player = _mapping(side["player"], name="court_side.player")
+        return PlayerCourtSideConfig(**cast(dict[str, Any], dict(player)))
+    if evidence != "ball":
+        raise SemanticConfigurationError("court_side.evidence must be ball or player")
+    return CourtSideConfig(reprojection_px=float(cast(float, side["reprojection_px"])),
+        min_motion_px=float(cast(float, side["min_motion_px"])), min_frames=cast(int, side["min_frames"]),
+        max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
+        min_margin=float(cast(float, side["min_margin"])))
+
+
 @dataclass(frozen=True, slots=True)
 class PipelineRuntimeConfig:
     """Automatic stage configuration; dataset callers can leave run inputs unbound."""
@@ -295,11 +382,12 @@ class PipelineRuntimeConfig:
     max_frames: int | None
     court_kp: CourtKPConfig
     people: PeopleModelConfig
-    ball_detection: BallDetectionConfig
+    ball_detection: BallDetectionConfig | None
     sampling_max_frames: int
     camera_geometry: CameraGeometryConfig
-    court_side: CourtSideConfig
+    court_side: SideConfig
     player_association: AssociationConfig
+    reuse_clip_embeddings: bool
     association_encoder_weights: Path | None  # None: the association config scores no appearance
     human_vis_threshold: float
     person_roi_margins: tuple[float, float]
@@ -320,6 +408,29 @@ class PipelineRuntimeConfig:
     aflink_checkpoint: Path
     merge_duplicate_person_boxes: bool
     ball_smoothing: TemporalSmoothingConfig
+    ball_method: str
+    direct_annotation: DirectAnnotationConfig | None
+    clip_id: str | None
+    video_court: VideoCourtConfig | None
+    video_court_drift: DriftReference | None
+    video_court_unobservable_policy: str
+    video_court_side: VideoArtifactConfig | None
+    court_side_unobservable_policy: str
+
+    def __post_init__(self) -> None:
+        if self.omit_ball_components:
+            requested = [f"execution.{stage}=load" for stage in ("ball_detection", "ball_points", "ball_triangulation")
+                         if self.component_sources.get(stage) == "load"]
+            if requested:
+                raise SemanticConfigurationError(f"Player-only reconstruction omits the requested ball stages ({', '.join(requested)})")
+
+    @property
+    def court_side_evidence(self) -> EvidenceKind:
+        return evidence_kind(self.court_side)
+
+    @property
+    def omit_ball_components(self) -> bool:
+        return self.court_side_evidence == "player" and not self.enabled["ball_detection"]
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -346,11 +457,37 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Cache source must be execute/load; load forbids overwrite")
         cache_directory = resolver.resolve(PathRole.ARTIFACT, cast(str, cache["directory"]))
         court = _mapping(value["court_kp"], name="court_kp")
+        if court['mode'] not in {'clip', 'video_shared'}:
+            raise SemanticConfigurationError('court_kp.mode must be clip or video_shared')
+        shared_values = _mapping(court['video_shared'], name='court_kp.video_shared')
+        unobservable_policy = validate_unobservable_policy(cast(str, shared_values['unobservable_policy']))
+        video_court = VideoCourtConfig.from_mapping(shared_values, resolver) if court['mode'] == 'video_shared' else None
+        drift_directory, drift_digest = shared_values['drift_directory'], shared_values['drift_digest']
+        if (drift_directory is None) != (drift_digest is None):
+            raise SemanticConfigurationError('Drift evidence requires both directory and content digest')
+        video_court_drift = None if drift_directory is None else DriftReference(
+            resolver.resolve(PathRole.ARTIFACT, cast(str, drift_directory)), cast(str, drift_digest))
+        if video_court_drift is not None and (video_court is None or video_court.action != 'load'):
+            raise SemanticConfigurationError('Separate drift evidence requires an immutable shared-court load')
+        if video_court is not None:
+            direct_values = _mapping(value['direct_annotation'], name='direct_annotation')
+            if (_mapping(value['ball_detection'], name='ball_detection')['method'] == 'gpt_annotation'
+                    or any(direct_values[key] is not None for key in ('request', 'bundle'))):
+                raise SemanticConfigurationError('video_shared does not support direct_annotation/fixed geometry import')
+        if video_court is None and (any(shared_values[key] is not None for key in shared_values if key not in {'rebuild', 'unobservable_policy'})
+                                    or shared_values['rebuild'] or unobservable_policy != 'warn'):
+            raise SemanticConfigurationError('Shared court options require court_kp.mode=video_shared')
+        if video_court is not None and (max_frames is not None or (cache_source == 'load' and video_court.action != 'load')):
+            raise SemanticConfigurationError('Shared court requires complete clips and explicit load for load-only execution')
+        from src.tasks.court_detection.geometry.paint_observations import PaintConfig
+
+        region_config = dict(_mapping(court["region_search"], name="court.region_search"))
+        region_config["paint"] = PaintConfig(**cast(dict[str, Any], region_config["paint"]))
         court_config = CourtKPConfig(
             checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, court["checkpoint"])), device=device,
             subpixel_refine=cast(bool, court["subpixel_refine"]),
-            postprocess=CourtKPPostprocessConfig(**dict(_mapping(court["postprocess"], name="court.postprocess"))),
-            region_search=CourtRegionSearchConfig(**dict(_mapping(court["region_search"], name="court.region_search"))),
+            postprocess=CourtKPPostprocessConfig(**cast(dict[str, Any], dict(_mapping(court["postprocess"], name="court.postprocess")))),
+            region_search=CourtRegionSearchConfig(**cast(dict[str, Any], region_config)),
             resolver=resolver,
         )
         models = _mapping(value["people_models"], name="people_models")
@@ -372,19 +509,53 @@ class PipelineRuntimeConfig:
         tracking_weights = encoder_weights(tracking.encoder, checkpoint_root=roots.checkpoint_root,
                                            external_root=roots.external_asset_root)
         aflink_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, tracking_section['aflink_checkpoint']))
-        ball_config = build_ball_detection_config(_mapping(value["ball_detection"], name="ball_detection"), resolver, device=device)
+        side = _mapping(value["court_side"], name="court_side")
+        court_side = _court_side_thresholds(side)
+        video_court_side, side_policy = _court_side_acquisition(side, video_court, resolver, cache_source)
+        ball_section = _mapping(value["ball_detection"], name="ball_detection")
+        ball_method = cast(str, ball_section["method"])
+        if ball_method not in {"model", "gpt_annotation"}:
+            raise SemanticConfigurationError("ball_detection.method must be model/gpt_annotation")
+        direct = _mapping(value["direct_annotation"], name="direct_annotation")
+        direct_config = None
+        if ball_method == "gpt_annotation":
+            import re
+            if evidence_kind(court_side) == "player":
+                raise SemanticConfigurationError("GPT annotation imports a fixed court side and cannot use court_side.evidence=player")
+            if any(direct[k] is None for k in ("request", "request_sha256", "bundle", "bundle_sha256")):
+                raise SemanticConfigurationError("GPT annotation requires a pinned request and fixed geometry bundle")
+            if any(re.fullmatch(r"[0-9a-f]{64}", str(direct[k])) is None for k in ("request_sha256", "bundle_sha256")):
+                raise SemanticConfigurationError("Annotation request/bundle digests must be SHA256")
+            if direct["court_detection"] not in {"stored_artifact", "verified_calibration_frame0"} or direct["resume"] not in {"workflow", "publication"}:
+                raise SemanticConfigurationError("Unknown direct annotation court storage or resume mode")
+            direct_config = DirectAnnotationConfig(
+                request=resolver.resolve(PathRole.ARTIFACT, cast(str, direct["request"])),
+                request_sha256=cast(str, direct["request_sha256"]),
+                bundle=resolver.resolve(PathRole.ARTIFACT, cast(str, direct["bundle"])),
+                bundle_sha256=cast(str, direct["bundle_sha256"]),
+                court_detection=cast(Any, direct["court_detection"]),
+                publish_dataset=cast(bool, direct["publish_dataset"]), resume=cast(Any, direct["resume"]),
+            )
+            if not ball_section["enabled"]:
+                raise SemanticConfigurationError("GPT annotation requires ball_detection.enabled")
+            ball_config = None
+        else:
+            if any(direct[k] is not None for k in ("request", "request_sha256", "bundle", "bundle_sha256")) or direct["publish_dataset"] or direct["resume"] != "workflow":
+                raise SemanticConfigurationError("Direct annotation options require ball_detection.method=gpt_annotation")
+            if evidence_kind(court_side) == "player" and not ball_section["enabled"]:
+                ball_config = None
+            else:
+                if ball_section["checkpoint"] is None:
+                    raise SemanticConfigurationError("Model ball detection requires a checkpoint")
+                ball_config = build_ball_detection_config(ball_section, resolver, device=device)
         ball_smoothing = TemporalSmoothingConfig(**cast(dict[str, Any], dict(_mapping(value["ball_smoothing"], name="ball_smoothing"))))
         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
         _positive(sampling_max_frames, name="frame_sampling.max_frames")
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
         if bind_inputs and geometry.reference_camera is not None and geometry.reference_camera not in camera_ids:
             raise SemanticConfigurationError("Reference camera must be in the source camera IDs")
-        side = _mapping(value["court_side"], name="court_side")
-        court_side = CourtSideConfig(reprojection_px=float(cast(float, side["reprojection_px"])),
-            min_motion_px=float(cast(float, side["min_motion_px"])), min_frames=cast(int, side["min_frames"]),
-            max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
-            min_margin=float(cast(float, side["min_margin"])))
         association_section = _mapping(value["player_association"], name="player_association")
+        reuse_clip_embeddings = cast(bool, association_section["reuse_clip_embeddings"])
         association = load_association_config(resolver.resolve(PathRole.PROJECT, DEFAULT_ASSOCIATION_CONFIG.relative_to(PROJECT_ROOT)),
                                               players_per_side=cast(int, association_section["players_per_side"]))
         association_weights = None if association.appearance is None else encoder_weights(
@@ -413,11 +584,29 @@ class PipelineRuntimeConfig:
         component_sources = {name: str(mode) for name, mode in _mapping(value["execution"], name="execution").items()}
         if any(mode not in {"execute", "load"} for mode in component_sources.values()):
             raise SemanticConfigurationError("Component execution modes must be execute/load")
+        if ball_method == "gpt_annotation":
+            if not enabled["ball_reconstruction"]:
+                raise SemanticConfigurationError("GPT scene annotation requires ball reconstruction")
+            component_sources.update(dict.fromkeys(("court_detection", "court_calibration", "court_side", "camera_alignment", "ball_detection"), "load"))
+            if cache_source == "load" and direct_config is not None and direct_config.resume != "publication":
+                raise SemanticConfigurationError("Use direct_annotation.resume=publication for publication-only recovery")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
+        if isinstance(court_side, PlayerCourtSideConfig):
+            settings["court_side"] = {"evidence": "player", "player": side["player"]}
+        else:
+            settings["court_side"] = {k: v for k, v in side.items() if k not in {"mode", "video_shared", "evidence", "player"}}
+        if video_court_side is not None:
+            settings["court_side"] = {**cast(dict[str, Any], settings["court_side"]), "mode": "video_shared", "unobservable_policy": side_policy}
+        if video_court is not None:
+            if direct_config is not None or ball_method == 'gpt_annotation':
+                raise SemanticConfigurationError('video_shared does not support direct_annotation/fixed geometry import')
+            settings['court_kp'] = {'mode': 'video_shared', 'unobservable_policy': unobservable_policy}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
-            sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
+            sampling_max_frames, geometry, court_side, association, reuse_clip_embeddings, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
-            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing)
+            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
+            ball_method, direct_config, cast(str | None, value["clip_id"]), video_court, video_court_drift, unobservable_policy,
+            video_court_side, side_policy)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(
@@ -903,7 +1092,10 @@ class GenerateDatasetRuntimeConfig:
 
 def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConfig:
     """Validate dataset generation before reading manifests or composing stages."""
-    value = _GENERATE_SCHEMA.validate(_plain(cfg))
+    return _generate_dataset_runtime(_GENERATE_SCHEMA.validate(_plain(cfg)))
+
+
+def _generate_dataset_runtime(value: Mapping[str, object]) -> GenerateDatasetRuntimeConfig:
     roots, resolver = _roots(value["paths"])
     ids = _nullable_string_sequence(value["clip_ids"], name="clip_ids")
     parsed_ids = None
@@ -940,6 +1132,47 @@ def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConf
         continue_on_error=cast(bool, value["continue_on_error"]),
         pipeline_overrides=overrides,
     )
+
+
+_VIDEO_BATCH_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.run_video_batch",
+    fields={**_GENERATE_SCHEMA.fields, "video_id": ConfigField.of(str),
+            "pipeline_config": ConfigField.of(str), "progress_directory": ConfigField.of(str),
+            "batching": ConfigField.of(dict), "record_cuda": ConfigField.of(bool)},
+)
+
+
+@dataclass(frozen=True, slots=True)
+class VideoBatchRuntimeConfig:
+    generation: GenerateDatasetRuntimeConfig
+    video_id: str
+    pipeline_config: str
+    progress_directory: Path
+    batching: BatchConfig
+    record_cuda: bool
+
+
+def parse_video_batch_config(cfg: DictConfig) -> VideoBatchRuntimeConfig:
+    from src.tennis_scene.generate_dataset.manifest import validate_id_component
+
+    value = _VIDEO_BATCH_SCHEMA.validate(_plain(cfg))
+    generation = _generate_dataset_runtime(value)
+    video_id = validate_id_component(cast(str, value["video_id"]), field_name="video_id")
+    pipeline_config = cast(str, value["pipeline_config"])
+    if pipeline_config not in {"pipeline", "pipeline_x3d_dpt"}:
+        raise SemanticConfigurationError("pipeline_config must select pipeline or pipeline_x3d_dpt")
+    batch_value = dict(cast(dict[str, Any], value["batching"]))
+    try:
+        batching = BatchConfig(sizes=BatchSizes(**batch_value.pop("sizes")), **batch_value)
+    except (TypeError, ValueError, KeyError) as error:
+        raise SemanticConfigurationError(f"Invalid batching configuration: {error}") from error
+    return VideoBatchRuntimeConfig(generation, video_id, pipeline_config,
+        PathResolver(generation.roots).resolve(PathRole.OUTPUT, cast(str, value["progress_directory"])), batching,
+        cast(bool, value["record_cuda"]))
+
+
+def validate_video_batch_boundary(cfg: DictConfig) -> None:
+    parse_video_batch_config(cfg)
 
 
 def build_ball_detection_config(
@@ -987,6 +1220,11 @@ def build_ball_detection_config(
         )
     _positive(gate_passes, name="ball_detection.trajectory_gate.max_passes")
     return BallDetectionConfig(
+        model_type=cast(str, ball["model_type"]),
+        input_channels=cast(int, ball["input_channels"]),
+        num_frames=cast(int, ball["num_frames"]),
+        precision=cast(str, ball["precision"]),
+        compile_mode=cast(str, ball["compile_mode"]),
         checkpoint=resolver.resolve(
             PathRole.CHECKPOINT, cast(str, ball["checkpoint"])
         ),

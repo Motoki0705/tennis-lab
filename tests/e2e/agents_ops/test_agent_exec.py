@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import stat
@@ -10,6 +11,11 @@ import sys
 from pathlib import Path
 
 import pytest
+
+from tests.support.agents_ops.model_pins import (
+    REVIEW_FIXED_MODEL,
+    WORKER_DEFAULT_MODEL,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 AGENT_EXEC = ROOT / ".agents/ops/lib/agent_exec.sh"
@@ -81,7 +87,7 @@ def test_prompt_round_trips_to_output(
         tools = args[args.index("--tools") + 1 : args.index("--permission-mode")]
         assert tools == ["Read", "Grep", "Glob"]
     model = args[args.index("--model") + 1]
-    assert model == ("claude-opus-5-5" if agent == "claude" else "gpt-6.1-sol")
+    assert model == ("claude-opus-5-5" if agent == "claude" else WORKER_DEFAULT_MODEL)
     if agent == "claude":
         assert (tmp_path / "cwd.txt").read_text(encoding="utf-8").strip() == str(work)
     else:
@@ -156,15 +162,36 @@ def _codex_args(tmp_path: Path, *extra: str) -> subprocess.CompletedProcess[str]
 
 
 def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
-    result = _codex_args(tmp_path, "--mode", "read-only", "--profile", "review")
+    config = tmp_path / "fixed.conf"
+    config.write_text(
+        (ROOT / ".agents/ops/lib/agents.conf")
+        .read_text()
+        .replace('REVIEW_SELECTION_MODE="select"', 'REVIEW_SELECTION_MODE="fixed"')
+    )
+    result = _codex_args(
+        tmp_path,
+        "--mode",
+        "read-only",
+        "--profile",
+        "review",
+        "--config-file",
+        str(config),
+    )
 
     assert result.returncode == 0, result.stderr
     args = (tmp_path / "args.txt").read_text(encoding="utf-8").splitlines()
-    assert args[args.index("--model") + 1] == "gpt-6-astra"
+    assert args[args.index("--model") + 1] == REVIEW_FIXED_MODEL
     # xhigh, not the default CODEX_EFFORT (max): the profile's own pin is used.
     assert 'model_reasoning_effort="xhigh"' in args
     assert 'service_tier="default"' in args
     assert "profile=review" in result.stderr
+
+
+def test_memory_autodream_profile_refuses_write_mode(tmp_path: Path) -> None:
+    result = _codex_args(tmp_path, "--profile", "memory_autodream", "--mode", "write")
+    assert result.returncode == 2
+    assert "memory_autodream requires read-only mode" in result.stderr
+    assert not (tmp_path / "args.txt").exists()
 
 
 def test_audit_parent_uses_claude_with_read_only_tools(
@@ -177,7 +204,9 @@ def test_audit_parent_uses_claude_with_read_only_tools(
     assert args[args.index("--effort") + 1] == "xhigh"
     assert args[args.index("--output-format") + 1] == "stream-json"
     assert args[args.index("--tools") + 1 : args.index("--permission-mode")] == [
-        "Read", "Grep", "Glob"
+        "Read",
+        "Grep",
+        "Glob",
     ]
     assert args[args.index("--permission-mode") + 1] == "dontAsk"
     assert "--strict-mcp-config" in args
@@ -296,7 +325,7 @@ def _run_installer(
         bin_dir,
         "systemctl",
         f'#!/usr/bin/env bash\necho "$*" >> {calls}\n'
-        f'[[ "$*" == *enable* ]] && exit {systemctl_status}\nexit 0\n',
+        f'[[ "$*" == *daemon-reload* ]] && exit {systemctl_status}\nexit 0\n',
     )
     result = subprocess.run(
         ["bash", str(installer), *args],
@@ -311,26 +340,31 @@ def _run_installer(
 @pytest.mark.parametrize(
     "unit_names", [["demo.service"], ["demo.service", "demo.timer", "zz.service"]]
 )
-def test_install_units_enable_succeeds_and_enables_only_timers(
+def test_install_units_never_enables_units(
     tmp_path: Path, unit_names: list[str]
 ) -> None:
-    result, calls = _run_installer(tmp_path, unit_names, "--enable")
+    result, calls = _run_installer(tmp_path, unit_names)
 
     assert result.returncode == 0, result.stderr
-    enabled = [
-        c for c in calls.read_text(encoding="utf-8").splitlines() if "enable" in c
-    ]
-    assert enabled == (
-        ["--user enable --now demo.timer"] if "demo.timer" in unit_names else []
-    )
+    assert calls.read_text().splitlines() == ["--user daemon-reload"]
 
 
-def test_install_units_propagates_enable_failure(tmp_path: Path) -> None:
+def test_install_units_propagates_reload_failure(tmp_path: Path) -> None:
     result, _ = _run_installer(
-        tmp_path, ["demo.service", "demo.timer"], "--enable", systemctl_status=5
+        tmp_path, ["demo.service", "demo.timer"], systemctl_status=5
     )
 
     assert result.returncode == 5
+
+
+def test_install_units_rejects_removed_enable_before_side_effects(
+    tmp_path: Path,
+) -> None:
+    result, calls = _run_installer(tmp_path, ["demo.service", "demo.timer"], "--enable")
+    assert result.returncode == 2
+    assert "spin ops on <target>" in result.stderr
+    assert not calls.exists()
+    assert not (tmp_path / "config").exists()
 
 
 def test_install_units_creates_missing_unit_dir(tmp_path: Path) -> None:
@@ -344,7 +378,7 @@ def test_install_units_creates_missing_unit_dir(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("cwd_in_worktree", [False, True])
-@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+@pytest.mark.parametrize("extra", [[], ["--dry-run"]])
 def test_install_units_rejects_linked_source_before_side_effects(
     tmp_path: Path, cwd_in_worktree: bool, extra: list[str]
 ) -> None:
@@ -379,7 +413,7 @@ RETIRED_UNITS = [
 
 @pytest.mark.parametrize(("name", "readme"), RETIRED_UNITS)
 @pytest.mark.parametrize("where", ["direct", "dangling", "wants"])
-@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+@pytest.mark.parametrize("extra", [[], ["--dry-run"]])
 def test_installer_refuses_retired_units_before_side_effects(
     tmp_path: Path, name: str, readme: str, where: str, extra: list[str]
 ) -> None:
@@ -406,7 +440,7 @@ def test_installer_refuses_retired_units_before_side_effects(
 
 
 @pytest.mark.parametrize(("name", "readme"), RETIRED_UNITS)
-@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+@pytest.mark.parametrize("extra", [[], ["--dry-run"]])
 def test_installer_never_reintroduces_retired_source(
     tmp_path: Path, name: str, readme: str, extra: list[str]
 ) -> None:
@@ -457,13 +491,11 @@ def test_installer_installs_only_current_report_units(tmp_path: Path) -> None:
         "tennis-lab-ops-triage.service",
         "tennis-lab-ops-triage.timer",
     }
-    result, calls = _run_installer(tmp_path, units, "--enable")
+    result, calls = _run_installer(tmp_path, units)
     assert result.returncode == 0, result.stderr
     assert sorted(p.name for p in (tmp_path / "config/systemd/user").iterdir()) == units
     assert calls.read_text().splitlines() == [
         "--user daemon-reload",
-        "--user enable --now tennis-lab-ops-report.timer",
-        "--user enable --now tennis-lab-ops-triage.timer",
     ]
     service = (source / "tennis-lab-ops-report.service").read_text()
     timer = (source / "tennis-lab-ops-report.timer").read_text()
@@ -473,8 +505,27 @@ def test_installer_installs_only_current_report_units(tmp_path: Path) -> None:
     assert "Persistent=true" in timer
 
 
+def _review_selection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[str, str]:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    settings = importlib.import_module("lib.review_settings")
+    path = tmp_path / "review-choice.json"
+    path.write_text(
+        json.dumps(
+            settings.choose(
+                settings.load_policy(),
+                model=REVIEW_FIXED_MODEL,
+                reason="取得ツールと実行権限の境界を確認するためAstraを選ぶ。",
+            )
+        )
+    )
+    return "--review-selection-file", str(path)
+
+
 def test_review_mcp_is_read_only_and_records_frozen_configuration(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = tmp_path / "mcp.json"
     config.write_text(
@@ -486,6 +537,7 @@ def test_review_mcp_is_read_only_and_records_frozen_configuration(
         "read-only",
         "--profile",
         "review",
+        *_review_selection(tmp_path, monkeypatch),
         "--mcp-config",
         str(config),
     )
@@ -505,15 +557,21 @@ def test_review_mcp_is_read_only_and_records_frozen_configuration(
 
 @pytest.mark.parametrize(
     "profile,model,effort",
-    [(None, "gpt-6.1-sol", "max"), ("review", "gpt-6-astra", "xhigh")],
+    [(None, WORKER_DEFAULT_MODEL, "max"), ("review", REVIEW_FIXED_MODEL, "xhigh")],
 )
 def test_audit_mcp_does_not_change_other_profile_or_implementation_argv(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     profile: str | None,
     model: str,
     effort: str,
 ) -> None:
-    result = _codex_args(tmp_path, *(["--profile", profile] if profile else []))
+    flags = (
+        ("--profile", profile, *_review_selection(tmp_path, monkeypatch))
+        if profile
+        else ()
+    )
+    result = _codex_args(tmp_path, *flags)
     assert result.returncode == 0, result.stderr
     args = (tmp_path / "args.txt").read_text().splitlines()
     assert args == [
@@ -533,7 +591,11 @@ def test_audit_mcp_does_not_change_other_profile_or_implementation_argv(
         f'model_reasoning_effort="{effort}"',
         "-c",
         'service_tier="default"',
-    ] + (["--disable", "multi_agent"] if profile == "review" else []) + ["-"]
+    ] + (
+        ["-c", 'web_search="disabled"', "--disable", "multi_agent"]
+        if profile == "review"
+        else []
+    ) + ["-"]
 
 
 def test_audit_mcp_arguments_are_after_exec_on_read_only_scout_profile(

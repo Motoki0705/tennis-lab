@@ -15,6 +15,7 @@ from scipy.optimize import linear_sum_assignment
 from torch import nn
 
 from src.utils.checksum import dual_sha256
+from src.utils.inference_recording import model_event, span
 
 AF_WEIGHT_SHA256 = 'b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4'
 
@@ -89,10 +90,12 @@ def aflink_inputs(former: np.ndarray, later: np.ndarray) -> tuple[torch.Tensor, 
 
 class AFLink:
     def __init__(self, checkpoint: Path) -> None:
-        if dual_sha256(checkpoint) != AF_WEIGHT_SHA256:
-            raise ValueError('AFLink checkpoint SHA-256 mismatch')
-        self.model = AFLinkNetwork().eval()
-        self.model.load_state_dict(torch.load(checkpoint, map_location='cpu', weights_only=True), strict=True)
+        with model_event("load", "AFLink", weights={"checkpoint": checkpoint},
+                         device="cpu", dtype="float32", instance=str(id(self))):
+            if dual_sha256(checkpoint) != AF_WEIGHT_SHA256:
+                raise ValueError('AFLink checkpoint SHA-256 mismatch')
+            self.model = AFLinkNetwork().eval()
+            self.model.load_state_dict(torch.load(checkpoint, map_location='cpu', weights_only=True), strict=True)
 
     def links(self, boxes: np.ndarray, observed: np.ndarray) -> tuple[dict[int, int], list[dict[str, float | int]]]:
         if boxes.shape != (*observed.shape, 4) or observed.dtype != np.bool_:
@@ -113,7 +116,11 @@ class AFLink:
                     distance = float(np.linalg.norm(right[0, 1:] - left[-1, 1:]))
                     if i == j or not 0 < gap < 30 or distance > 75:
                         continue
-                    probability = float(self.model(*aflink_inputs(left, right))[0, 1])
+                    with span("preprocess", model="AFLink"):
+                        inputs = aflink_inputs(left, right)
+                    with span("inference", model="AFLink", batch_shape=list(inputs[0].shape), second_input_shape=list(inputs[1].shape)):
+                        probability = float(self.model(*inputs)[0, 1])
+                    del inputs
                     costs[i, j] = 1 - probability
                     records.append({'former_row': i, 'later_row': j, 'gap': gap,
                                     'distance_px': distance, 'link_probability': probability})

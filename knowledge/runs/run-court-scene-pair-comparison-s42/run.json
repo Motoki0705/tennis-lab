@@ -1,0 +1,9 @@
+{
+  "schema": "court_scene_pair_local_comparison_run_v1",
+  "source_ref": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "base_ref": "aac0f649a9ad8f26f28b6977799459084aca7e12",
+  "issue": 1586,
+  "raw_reports": "Drive: outputs/court_detection/evaluate/scene-pair-5500-s384-colab/<condition>-s42/evaluation.json",
+  "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python knowledge/runs/run-court-scene-pair-comparison-s42/compare.py --evaluations \"$PAIR_EVALUATIONS\" --output \"$PAIR_COMPARISON_OUTPUT\"",
+  "inference_or_training": false
+}

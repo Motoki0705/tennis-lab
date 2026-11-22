@@ -1,0 +1,167 @@
+{
+  "seed": 42,
+  "input_frames_per_update": 128,
+  "runtime": {
+    "compile_mode": "default",
+    "compile_recompile_limit": 8,
+    "cpu_threads": 2,
+    "image_prefetch": true,
+    "input_verification": "upfront",
+    "jpeg_decoder": "nvjpeg",
+    "num_workers": 4,
+    "pin_memory": true,
+    "precision": "bf16",
+    "prefetch_factor": 2
+  },
+  "stages": [
+    {
+      "name": "length-s1-T64",
+      "model": {
+        "stem_channels": [
+          16,
+          32,
+          64,
+          128
+        ],
+        "mixed_channels": [
+          192,
+          256
+        ],
+        "residual_blocks": [
+          0,
+          1,
+          2,
+          2,
+          1,
+          1
+        ],
+        "decoder_channels": 128,
+        "dim": 256,
+        "heads": 8,
+        "layers": 4,
+        "ffn_dim": 704,
+        "dropout": 0.1,
+        "rope_base": 10000.0,
+        "activation_checkpointing": false,
+        "encoder_variant": "convnext_v2",
+        "temporal_mixing": "factorized",
+        "input_channels": 5,
+        "frames": 64,
+        "frame_chunk_size": null
+      },
+      "budget": {
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "checkpoint_interval": 500,
+        "encoder_lr_ratio": 0.1,
+        "eps": 1e-08,
+        "evaluation_interval": 6000,
+        "freeze_updates": 600,
+        "gamma": 2.0,
+        "gradient_clip": 1.0,
+        "initial_learning_rate": 7.360330616529733e-05,
+        "input_frames": 128,
+        "learning_rate": 7.360330616529733e-05,
+        "loss_normalization": "sum_valid_frame_losses/sum_valid_frames_per_update",
+        "microbatch_windows": 1,
+        "minimum_lr_ratio": 0.0135863462132287,
+        "optimizer": "AdamW",
+        "optimizer_transfer": "inherit",
+        "schedule": "linear_warmup_cosine",
+        "schedule_offset": 0,
+        "schedule_updates": 12000,
+        "seed": 42,
+        "sigma_ratio": 0.012,
+        "updates": 6000,
+        "warmup_updates": 0,
+        "weight_decay": 0.01
+      }
+    },
+    {
+      "name": "length-s2-T64",
+      "model": {
+        "stem_channels": [
+          16,
+          32,
+          64,
+          128
+        ],
+        "mixed_channels": [
+          192,
+          256
+        ],
+        "residual_blocks": [
+          0,
+          1,
+          2,
+          2,
+          1,
+          1
+        ],
+        "decoder_channels": 128,
+        "dim": 256,
+        "heads": 8,
+        "layers": 4,
+        "ffn_dim": 704,
+        "dropout": 0.1,
+        "rope_base": 10000.0,
+        "activation_checkpointing": false,
+        "encoder_variant": "convnext_v2",
+        "temporal_mixing": "factorized",
+        "input_channels": 5,
+        "frames": 64,
+        "frame_chunk_size": null
+      },
+      "budget": {
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "checkpoint_interval": 500,
+        "encoder_lr_ratio": 0.1,
+        "eps": 1e-08,
+        "evaluation_interval": 6000,
+        "freeze_updates": 600,
+        "gamma": 2.0,
+        "gradient_clip": 1.0,
+        "initial_learning_rate": 7.360330616529733e-05,
+        "input_frames": 128,
+        "learning_rate": 7.360330616529733e-05,
+        "loss_normalization": "sum_valid_frame_losses/sum_valid_frames_per_update",
+        "microbatch_windows": 1,
+        "minimum_lr_ratio": 0.0135863462132287,
+        "optimizer": "AdamW",
+        "optimizer_transfer": "inherit",
+        "schedule": "linear_warmup_cosine",
+        "schedule_offset": 6000,
+        "schedule_updates": 12000,
+        "seed": 42,
+        "sigma_ratio": 0.012,
+        "updates": 6000,
+        "warmup_updates": 0,
+        "weight_decay": 0.01
+      }
+    }
+  ],
+  "source_commit": "929ad65645c1c7522e8921f1b439619d636a0128",
+  "adapter_training_commit": "eda5ee08073da498347d411e075905f4ac94e25e",
+  "adapter_acceptance_commit": "f06f1bda6610838313e4b306a92a4db5e42ed579",
+  "initialization": "Same legacy ConvNeXt DPT T32 full10k as baseline; fresh single query initialization verified in original initialization audit.",
+  "resume": {
+    "stage1_update": 5500,
+    "sample_position": 15500,
+    "cuda_rng_devices": 1,
+    "model_optimizer_rng_schedule_sample_restored": true
+  },
+  "device_history": {
+    "initial_query_updates": 5500,
+    "initial_gpu": "NVIDIA L4",
+    "remaining_query_updates": 6500,
+    "continued_gpu": "NVIDIA GeForce RTX 5060 Ti"
+  },
+  "source_drive_run": "outputs/ball_detection/train/query_controls/s42-20261111-main",
+  "drive_outputs": "outputs/ball_detection/train/query_controls/s42-20261111-main/desktop-attempts/20261112-a1",
+  "job_id": "0-8205507466335230348_2026-11-12T14-08-53-664769651Z_1594191_ball-query-length-desktop-production-a1"
+}

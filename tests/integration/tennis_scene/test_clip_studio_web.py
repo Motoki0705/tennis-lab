@@ -16,7 +16,7 @@ from src.tennis_scene.configuration import parse_clip_studio_config
 
 @pytest.fixture
 def web_client(tmp_path):
-    source = tmp_path / "data/tennis_multivew/raw/test/video_000"
+    source = tmp_path / "data/tennis_multiview/raw/test/video_000"
     source.mkdir(parents=True)
     videos = []
     for camera in range(2):
@@ -46,7 +46,7 @@ def web_client(tmp_path):
     cfg.export.fps = 10.0
     cfg.export.width = 64
     cfg.export.height = 48
-    cfg.source_directory = "tennis_multivew/raw/test/video_000"
+    cfg.source_directory = "tennis_multiview/raw/test/video_000"
     runtime = parse_clip_studio_config(cfg)
     project = ClipStudioProject(
         dataset_id="test",
@@ -194,7 +194,7 @@ def test_review_package_cli_opens_saved_project_read_only(web_client, monkeypatc
             "--data-root",
             str(runtime.export.resolver.roots.data_root),
             "--source-directory",
-            "tennis_multivew/raw/test/video_000",
+            "tennis_multiview/raw/test/video_000",
             "--port",
             "8904",
         ]
@@ -219,7 +219,7 @@ def test_review_package_cli_does_not_initialize_missing_project(web_client, monk
                 "--data-root",
                 str(runtime.export.resolver.roots.data_root),
                 "--source-directory",
-                "tennis_multivew/raw/test/video_000",
+                "tennis_multiview/raw/test/video_000",
             ]
         )
     assert not runtime.export.projects_path.exists()
@@ -248,6 +248,22 @@ def test_sync_controls_share_a_collapsible_media_area_with_video(web_client):
         in stylesheet
     )
 
+
+
+def test_playback_settings_and_fullscreen_stage_are_served(web_client):
+    """Rate/step live in the gear menu inside the fullscreen stage with the timeline."""
+    client, _ = web_client
+    index = client.get("/").text
+    stage = index[index.index('<section id="stage"') : index.index('<section id="time-review"')]
+    menu = stage[stage.index('<div id="settings-menu"') :]
+    assert '<select id="rate">' in menu and '<select id="step">' in menu
+    for element in ('id="fullscreen"', 'id="viewers"', 'id="seek"', 'id="clip-track"'):
+        assert element in stage
+    assert '<button id="sync-close">同期終了</button>' in index
+
+    stylesheet = client.get("/static/style.css").text
+    assert ".clip-mode #dataset-map,.clip-mode #time-review{display:none}" in stylesheet
+    assert "#stage:fullscreen" in stylesheet
 
 def test_autosave_revision_and_cross_origin_protection(web_client):
     client, runtime = web_client

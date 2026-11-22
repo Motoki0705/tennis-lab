@@ -1,0 +1,133 @@
+{
+  "cases": [
+    {
+      "key": "meiji_4cam/video_000/clip_004/cam1",
+      "native_crop": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/review/measurements/cam1_clip_004_far_baseline.png",
+      "crop_xyxy": [
+        463,
+        420,
+        901,
+        513
+      ],
+      "quality_replay_matches": true,
+      "mean_error_px": 16.060290856658675,
+      "max_error_px": 28.910413588081962,
+      "lines": [
+        {
+          "line": "far_baseline",
+          "index": 0,
+          "locations": 24,
+          "coverage": 1.0,
+          "distance_to_reference_line_median_px": 12.584466438500584,
+          "distance_to_reference_line_p95_px": 13.517088017046554
+        },
+        {
+          "line": "near_baseline",
+          "index": 1,
+          "locations": 118,
+          "coverage": 0.9919354838709677,
+          "distance_to_reference_line_median_px": 3.329708525991748,
+          "distance_to_reference_line_p95_px": 4.117485768301059
+        },
+        {
+          "line": "left_doubles",
+          "index": 2,
+          "locations": 43,
+          "coverage": 1.0,
+          "distance_to_reference_line_median_px": 2.7512941298764986,
+          "distance_to_reference_line_p95_px": 3.1781670393576005
+        },
+        {
+          "line": "left_singles",
+          "index": 4,
+          "locations": 50,
+          "coverage": 1.0,
+          "distance_to_reference_line_median_px": 3.673390887611724,
+          "distance_to_reference_line_p95_px": 4.026520184909245
+        },
+        {
+          "line": "right_singles",
+          "index": 5,
+          "locations": 9,
+          "coverage": 0.9333333333333333,
+          "distance_to_reference_line_median_px": 3.430644995313486,
+          "distance_to_reference_line_p95_px": 4.7238055284335925
+        },
+        {
+          "line": "centre_service",
+          "index": 8,
+          "locations": 22,
+          "coverage": 0.9375,
+          "distance_to_reference_line_median_px": 3.843010765913135,
+          "distance_to_reference_line_p95_px": 4.027380752517321
+        }
+      ],
+      "worst_reference_line": "far_baseline"
+    },
+    {
+      "key": "meiji_4cam/video_000/clip_023/cam0",
+      "native_crop": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/review/measurements/cam0_clip_023_far_baseline.png",
+      "crop_xyxy": [
+        179,
+        543,
+        969,
+        741
+      ],
+      "quality_replay_matches": true,
+      "mean_error_px": 398.77138633373306,
+      "max_error_px": 831.2817754488515,
+      "lines": [
+        {
+          "line": "far_baseline",
+          "index": 0,
+          "locations": 94,
+          "coverage": 0.99,
+          "distance_to_reference_line_median_px": 219.16654269507728,
+          "distance_to_reference_line_p95_px": 260.9829307645662
+        },
+        {
+          "line": "left_doubles",
+          "index": 2,
+          "locations": 52,
+          "coverage": 0.9811320754716981,
+          "distance_to_reference_line_median_px": 0.5277863503810067,
+          "distance_to_reference_line_p95_px": 1.0850034873329775
+        },
+        {
+          "line": "right_doubles",
+          "index": 3,
+          "locations": 34,
+          "coverage": 1.0,
+          "distance_to_reference_line_median_px": 0.4323372336232296,
+          "distance_to_reference_line_p95_px": 0.6848045829354531
+        },
+        {
+          "line": "left_singles",
+          "index": 4,
+          "locations": 41,
+          "coverage": 0.9807692307692307,
+          "distance_to_reference_line_median_px": 0.4715340790905884,
+          "distance_to_reference_line_p95_px": 1.0099994769213936
+        },
+        {
+          "line": "right_singles",
+          "index": 5,
+          "locations": 37,
+          "coverage": 0.9473684210526315,
+          "distance_to_reference_line_median_px": 0.19112735305122897,
+          "distance_to_reference_line_p95_px": 0.6225697655630709
+        },
+        {
+          "line": "near_service",
+          "index": 7,
+          "locations": 25,
+          "coverage": 0.9827586206896551,
+          "distance_to_reference_line_median_px": 0.5643565700590898,
+          "distance_to_reference_line_p95_px": 1.0056450040569413
+        }
+      ],
+      "worst_reference_line": "far_baseline"
+    }
+  ],
+  "full_measurements": "outputs/tennis_scene/evaluate/court-semantic-support-20261117/rgb-measurement-inspection.json"
+}

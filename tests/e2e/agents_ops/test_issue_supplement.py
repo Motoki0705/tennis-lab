@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import html
 import importlib
 import inspect
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
+import tomllib
 from dataclasses import dataclass
+from importlib import metadata as importlib_metadata
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -21,6 +25,10 @@ import pytest
 import yaml
 
 from tests.support.agents_ops.directory_seed import DirectorySeed
+from tests.support.agents_ops.unsplit_checklists import (
+    WITH_CANDIDATES,
+    WITH_DESCRIPTION,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / ".agents/ops"), str(ROOT / ".agents/ops/lib")]
@@ -147,6 +155,13 @@ class SupplementEnv:
     def save(self, state: dict[str, Any]) -> None:
         (self.root / "github.json").write_text(json.dumps(state))
 
+    def set_checklist(self, text: str) -> None:
+        self.original = self.original.replace(issue_format.NO_CHILDREN, text)
+        self.supplemented = self.supplemented.replace(issue_format.NO_CHILDREN, text)
+        state = self.state()
+        state["issue"]["body"] = self.original
+        self.save(state)
+
     def fail_history(
         self,
         reads_from_now: int = 1,
@@ -257,6 +272,16 @@ def controller_seed(tmp_path_factory: pytest.TempPathFactory) -> DirectorySeed:
         package,
         ignore=shutil.ignore_patterns("__pycache__"),
     )
+    # The model's fixed checkout must include any shipped agy hook assets.
+    # Including the shared path reproduces the exclusive-create failure if it returns.
+    for relative in (
+        ".agents/hooks.json",
+        ".agents/ops/herdr_labels/agy_board_hooks.json",
+    ):
+        if (source := ROOT / relative).is_file():
+            target = repo / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
     (repo / ".gitignore").write_text("*.ignored\n")
     (repo / "history.txt").write_text("previous commit\n")
     git(repo, "init", "-q", "-b", "main")
@@ -435,13 +460,80 @@ def test_uncommitted_prompt_is_rejected_before_calling_the_model(
         "changed\n"
     )
     assert env.run("supplement") == 1
+    assert "dirty_controller_checkout" in {
+        item["rule"] for item in env.bundle()["report"]["reasons"]
+    }
     assert not env.calls("agy") and not env.mutations()
 
 
-def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
+def test_stale_initialized_submodule_does_not_block_supplement_but_staged_gitlink_fails(
     supplement_env: SupplementEnv,
+    tmp_path: Path,
 ) -> None:
     env = supplement_env
+    sub_src = tmp_path / "submodule-src"
+    sub_src.mkdir()
+    git(sub_src, "init", "-q", "-b", "main")
+    git(sub_src, "config", "user.name", "test")
+    git(sub_src, "config", "user.email", "test@example.org")
+    (sub_src / "asset.txt").write_text("v1\n")
+    git(sub_src, "add", ".")
+    git(sub_src, "commit", "-q", "-m", "v1")
+    v1 = git(sub_src, "rev-parse", "HEAD")
+    (sub_src / "asset.txt").write_text("v2\n")
+    git(sub_src, "add", ".")
+    git(sub_src, "commit", "-q", "-m", "v2")
+
+    git(
+        env.repo,
+        "-c",
+        "protocol.file.allow=always",
+        "submodule",
+        "add",
+        str(sub_src),
+        "third_party/sub",
+    )
+    git(env.repo, "commit", "-q", "-m", "add submodule at v2")
+
+    # Simulate a self-hosted runner whose workspace retained an initialized
+    # submodule at an older commit and untracked files under submodules: false.
+    git(env.repo / "third_party/sub", "checkout", "-q", v1)
+    (env.repo / "third_party/sub/untracked.txt").write_text("leftover\n")
+
+    assert env.run("supplement") == 0
+    assert env.bundle()["status"] == "ready"
+    assert env.run("apply") == 0
+    assert labels(env) == {"issue:parent", "enhancement", "supplement:done"}
+    assert git(env.repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+    # Staging a gitlink change in the superproject index must still be rejected.
+    state = env.state()
+    state["issue"]["body"] = env.original
+    state["issue"]["labels"] = [{"name": "issue:parent"}, {"name": "enhancement"}]
+    env.save(state)
+    (env.root / "agy-calls.jsonl").unlink()
+    git(env.repo, "add", "third_party/sub")
+    assert env.run("supplement", attempt=2) == 1
+    assert "dirty_controller_checkout" in {
+        item["rule"] for item in env.bundle(2)["report"]["reasons"]
+    }
+    assert env.calls("agy") == []
+
+
+@pytest.mark.parametrize(
+    "checklist",
+    [
+        pytest.param("未分割（子issue未作成）", id="canonical"),
+        pytest.param(WITH_DESCRIPTION, id="issue-1796"),
+        pytest.param(WITH_CANDIDATES, id="issue-1797"),
+    ],
+)
+def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
+    supplement_env: SupplementEnv,
+    checklist: str,
+) -> None:
+    env = supplement_env
+    env.set_checklist(checklist)
     assert env.run("supplement") == 0
     assert env.state()["issue"]["body"] == env.original and env.mutations() == []
     assert env.run("apply") == 0
@@ -469,6 +561,38 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     assert "/comments?" in calls[patch - 1]["endpoint"]
     assert len(env.state()["edits"]) == 2  # creation version plus our first edit
     assert not any("actions/variables" in call["endpoint"] for call in env.calls("gh"))
+
+
+@pytest.mark.parametrize(
+    "checklist",
+    [
+        pytest.param("- [ ] #<番号> 未作成", id="invalid-row"),
+        pytest.param(WITH_DESCRIPTION + "\n\n- [ ] #11 タスク", id="mixed"),
+    ],
+)
+def test_invalid_child_checklist_reports_fix_without_agent_or_body_write(
+    supplement_env: SupplementEnv, checklist: str
+) -> None:
+    env = supplement_env
+    env.set_checklist(checklist)
+    assert env.run("supplement") == 1
+    bundle = env.bundle()
+    assert bundle["status"] == "failed" and bundle["body"] is None
+    assert bundle["report"]["turns"] == []
+    reasons = bundle["report"]["reasons"]
+    assert len(reasons) == 1 and reasons[0]["rule"] == "invalid_source"
+    diagnostic = reasons[0]["detail"]
+    assert checklist.splitlines()[-1] in diagnostic
+    assert issue_format.NO_CHILDREN in diagnostic
+    assert "- [ ] #123 タスク名" in diagnostic
+    assert "修正:" in diagnostic
+    assert diagnostic in html.unescape((env.root / "summary.md").read_text())
+    assert env.calls("agy") == [] and env.mutations() == []
+    assert env.run("fail") == 0
+    assert labels(env) == {"issue:parent", "enhancement", "supplement:failed"}
+    assert env.state()["issue"]["body"] == env.original
+    assert env.state()["edits"] == []
+    assert not any(call["method"] == "PATCH" for call in env.mutations())
 
 
 @pytest.mark.parametrize("ending", ["success", "error", "timeout"])
@@ -511,6 +635,10 @@ def test_hook_recovery_records_commands_and_keeps_failures_private(
     )
     assert [entry["command"] for entry in capture["commands"]] == writer["commands"]
     if ending == "success":
+        loaded = git(
+            env.repo, "show", "HEAD:.agents/ops/herdr_labels/agy_board_hooks.json"
+        )
+        assert "PreInvocation" in json.loads(loaded)["tennis-lab-parent-board"]
         assert env.run("apply") == 0
         assert env.state()["issue"]["body"] == env.supplemented
     else:
@@ -815,12 +943,25 @@ def judgement(disposition: str = "startable") -> str:
 
 
 @pytest.mark.parametrize("record", [agreement(), execution_basis(), judgement()])
+@pytest.mark.parametrize("medium", ["legacy_parent_comment", "evidence_issue"])
 def test_existing_execution_records_skip_without_agent_calls_or_body_writes(
-    supplement_env: SupplementEnv, record: str
+    supplement_env: SupplementEnv, record: str, medium: str
 ) -> None:
     env = supplement_env
     state = env.state()
-    state["comments"] = [comment(record)]
+    if medium == "legacy_parent_comment":
+        state["comments"] = [comment(record)]
+    else:
+        state["evidence_issues"] = [
+            {
+                **state["issue"],
+                "id": 99,
+                "number": 9,
+                "labels": [{"name": "parent-evidence"}],
+                "body": '<!-- parent-evidence:v1 {"parent": 1, "repo": "o/r"} -->',
+            }
+        ]
+        state["evidence_comments"] = [comment(record)]
     env.save(state)
     assert env.run("supplement") == 0 and env.bundle()["status"] == "skipped"
     assert env.calls("agy") == []
@@ -865,7 +1006,15 @@ def test_corrupt_owned_judgement_fails_closed_instead_of_using_substring_detecti
 
 @pytest.mark.parametrize(
     "change",
-    ["label", "created_before_activation", "disabled", "done", "failed", "skipped"],
+    [
+        "label",
+        "standalone",
+        "created_before_activation",
+        "disabled",
+        "done",
+        "failed",
+        "skipped",
+    ],
 )
 def test_non_targets_and_already_final_automatic_runs_do_nothing(
     supplement_env: SupplementEnv, change: str
@@ -874,6 +1023,10 @@ def test_non_targets_and_already_final_automatic_runs_do_nothing(
     state = env.state()
     if change == "label":
         state["issue"]["labels"] = [{"name": "issue:child"}]
+    elif change == "standalone":
+        state["issue"]["labels"] = [
+            {"name": importlib.import_module("issues").STANDALONE_LABEL}
+        ]
     elif change == "created_before_activation":
         state["issue"]["created_at"] = "2026-10-29T00:00:00Z"
     elif change == "disabled":
@@ -1710,3 +1863,146 @@ def test_manual_validation_uses_production_repair_flow_without_github_writes(
     assert env.mutations() == []
     with pytest.raises(validation.agy.AgyError):
         validation.agy._check_user_settings(env.root)
+
+
+@pytest.mark.parametrize("kind", ["proposal", "extraction"])
+def test_improvement_projection_and_approved_extraction_are_not_supplemented(
+    supplement_env: SupplementEnv, kind: str
+) -> None:
+    env = supplement_env
+    state = env.state()
+    marker = (
+        "<!-- parent-improvement-proposal:v1 parent=2 generation=1 -->"
+        if kind == "proposal"
+        else "<!-- parent-improvement-extraction:v1 parent=2 proposal=3 candidates=I-2-first -->"
+    )
+    state["issue"]["body"] = marker + "\n\n" + env.original
+    if kind == "proposal":
+        state["issue"]["labels"].append({"name": "issue:proposal"})
+    env.save(state)
+    assert env.run("supplement") == 0
+    assert env.bundle()["status"] == "not_target"
+    assert env.calls("agy") == []
+    assert env.run("apply") == 0
+    assert env.state()["issue"]["body"] == state["issue"]["body"]
+
+
+def test_workflow_isolated_dependencies_cover_issue_supplement_imports() -> None:
+    def norm(name: str) -> str:
+        return re.sub(r"[-_.]+", "-", name).lower()
+
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/issue-supplement.yml").read_text(),
+        Loader=yaml.BaseLoader,
+    )
+    lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
+    locked: dict[str, tuple[str, list[str]]] = {}
+    for pkg in lock["package"]:
+        key = norm(pkg["name"])
+        deps = [norm(dep["name"]) for dep in pkg.get("dependencies", [])]
+        locked[key] = (pkg["version"], deps)
+
+    job_specs: dict[str, set[tuple[str, str]]] = {}
+    for job_name, job in workflow["jobs"].items():
+        found: list[set[tuple[str, str]]] = []
+        for step in job["steps"]:
+            script = step.get("run", "")
+            if "python -m issue_supplement" not in script:
+                continue
+            collapsed = script.replace("\\\n", " ")
+            tokens = shlex.split(collapsed)
+            uv_index = tokens.index("uv")
+            assert tokens[uv_index : uv_index + 4] == [
+                "uv",
+                "run",
+                "--isolated",
+                "--no-project",
+            ]
+            specs: set[tuple[str, str]] = set()
+            index = uv_index + 4
+            while index < len(tokens) and tokens[index] == "--with":
+                spec = tokens[index + 1]
+                assert "==" in spec, f"unpinned workflow dependency: {spec}"
+                pkg_name, version = spec.split("==", 1)
+                normalized = norm(pkg_name)
+                assert normalized in locked, f"unknown locked package: {pkg_name}"
+                specs.add((normalized, version))
+                index += 2
+            assert specs, f"{job_name}: missing --with specifications"
+            found.append(specs)
+        assert len(found) == 1, f"{job_name}: expected one issue_supplement command"
+        job_specs[job_name] = found[0]
+
+    declared_sets = list(job_specs.values())
+    assert all(specs == declared_sets[0] for specs in declared_sets), job_specs
+
+    # Transitive closure of distributions declared in --with pins.
+    allowed_dists: set[str] = set()
+    queue = [name for name, _ in declared_sets[0]]
+    while queue:
+        current = queue.pop()
+        if current in allowed_dists:
+            continue
+        allowed_dists.add(current)
+        if current in locked:
+            queue.extend(locked[current][1])
+
+    allowed_modules: set[str] = set()
+    for module, dists in importlib_metadata.packages_distributions().items():
+        if any(norm(dist) in allowed_dists for dist in dists):
+            allowed_modules.add(module)
+
+    ops_root = ROOT / ".agents/ops"
+    local_modules = {
+        path.stem
+        for base in (ops_root, ops_root / "lib")
+        for path in base.iterdir()
+        if path.suffix == ".py" or (path.is_dir() and not path.name.startswith("."))
+    }
+    probe = """
+import importlib, json, os, runpy, sys
+
+allowed = set(json.loads(os.environ["ALLOWED_MODULES"]))
+stdlib = set(sys.stdlib_module_names) | set(sys.builtin_module_names)
+
+class Guard:
+    def find_spec(self, fullname, path=None, target=None):
+        top = fullname.split(".", 1)[0]
+        if top in stdlib or top in allowed:
+            return None
+        raise ModuleNotFoundError(f"No module named {top!r}", name=top)
+
+sys.meta_path.insert(0, Guard())
+sys.argv = ["issue_supplement", "--help"]
+try:
+    runpy.run_module("issue_supplement", run_name="__main__")
+except SystemExit as exc:
+    assert exc.code == 0, f"unexpected exit code: {exc.code}"
+for mod in (
+    "issue_supplement.cli",
+    "issue_supplement.pipeline",
+    "issue_supplement.github",
+    "issue_supplement.invariants",
+    "issue_supplement.markdown",
+    "issue_supplement.publication",
+    "issue_supplement.workspace",
+    "agent_output",
+    "agy_headless",
+):
+    importlib.import_module(mod)
+"""
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(ops_root),
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "ALLOWED_MODULES": json.dumps(sorted(allowed_modules | local_modules)),
+    }
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout

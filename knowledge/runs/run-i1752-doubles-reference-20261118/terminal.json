@@ -1,0 +1,26 @@
+{
+  "status": "complete",
+  "commit": "2cf59a608132c2bf097976491b7b5806dfe26941",
+  "batch_commit": "e296a5fb358bee9ed9974821943d055f31c1e360",
+  "source_tree_unchanged": true,
+  "reference_clip": "video_000/clip_000",
+  "outcomes": {
+    "single": {
+      "variant": "single",
+      "started_at_utc": "2026-11-18T01:54:20.648578+00:00",
+      "status": "complete",
+      "device_memory_sampling_ms": 1000,
+      "device_memory_samples": 1675,
+      "query_timeout_seconds": 10.0,
+      "heartbeat_timeout_seconds": 180.0,
+      "driver": "621.24",
+      "pid": 2127537,
+      "returncode": 0,
+      "finished_at_utc": "2026-11-18T02:23:42.915241+00:00",
+      "device_memory_peak_mib": 4974,
+      "device_memory_min_mib": 797
+    }
+  },
+  "queue_job": "0-8205033148662266457_2026-11-18T01-54-11-337733542Z_2126156_i1752-doubles-reference-20261118-a1",
+  "finished_at_utc": "2026-11-18T02:23:42.915766+00:00"
+}

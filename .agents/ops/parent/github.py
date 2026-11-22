@@ -1,4 +1,4 @@
-"""GitHub I/O. Reuse the shared issues reader; writes use structured JSON stdin."""
+"""GitHub I/O with a shared HTTPS pool and explicit transaction boundaries."""
 
 from __future__ import annotations
 
@@ -6,45 +6,76 @@ import copy
 import json
 import subprocess
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager, nullcontext
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues.cli import GitHub as IssueGitHub
+from issues.evidence import EVIDENCE_LABEL, is_evidence_issue, require_work_issue
+from issues.polling import GETResponse, JobLog
 
 from . import metrics
-from .policy import closing_issues, object_value
+from .judgement_comments import read_json
+from .policy import closing_issues, nonempty, object_value
 
 if TYPE_CHECKING:
+    from .evidence import EvidenceIssues
+    from .history import History
     from .state import Store
 
 
 class GitHub(IssueGitHub):
+    _read_only_cache = False
+
+    def improvement_extractions(self, store: Store) -> dict[str, Any]:
+        from .improvement_receipts import extraction_index
+
+        return extraction_index(store.directory, self.repo)
+
     def __init__(self, repo: str | None, *, store: Store | None = None) -> None:
         super().__init__(repo)
         self._store = store
+        self._outside_store: Store | None = None
+        self.targeted_history = False
         self.parent: int | None = None
         self._cache: dict[tuple[str, bool], object] = {}
         self._fresh = False
+        self.observing = False
+        self._pr_views: dict[tuple[int, tuple[str, ...]], dict[str, Any]] = {}
         self._cache_epoch = -1
+        self._history_rows: list[dict[str, Any]] | None = None
+        self._history_scope = False
+        self.evidence_directory: Path | None = (
+            store.directory / "evidence-issues" if store else None
+        )
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
+        self._require_scope()
+        if self.targeted_history and endpoint.partition("?")[0] in {
+            f"repos/{self.repo}/issues",
+            f"repos/{self.repo}/pulls",
+        }:
+            raise ValueError(
+                "targeted history cannot enumerate repository issues or PRs"
+            )
         if (
             self._store is not None
             and self._cache_epoch != self._store.transaction_epoch
         ):
             self._cache.clear()
+            self._history_rows = None
             self._cache_epoch = self._store.transaction_epoch
         key = (endpoint, missing_parent)
         if (
-            self._store is not None
+            (self._store is not None or self._read_only_cache)
             and self.parent is not None
             and not self._fresh
             and key in self._cache
         ):
             metrics.count("cache_hits")
             return copy.deepcopy(self._cache[key])
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             if "page=" in endpoint:
@@ -53,8 +84,13 @@ class GitHub(IssueGitHub):
                 result = super().get(endpoint, missing_parent=missing_parent)
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
-        self._cache[key] = copy.deepcopy(result)
-        if "/sub_issues?" in endpoint and isinstance(result, list):
+        if self._store is not None or self._read_only_cache:
+            self._cache[key] = copy.deepcopy(result)
+        if (
+            (self._store is not None or self._read_only_cache)
+            and "/sub_issues?" in endpoint
+            and isinstance(result, list)
+        ):
             for issue in result:
                 if (
                     isinstance(issue, dict)
@@ -66,9 +102,126 @@ class GitHub(IssueGitHub):
                     ] = copy.deepcopy(issue)
         return result
 
+    def get_conditional(
+        self, endpoint: str, *, clock: Callable[[], float] = time.time
+    ) -> GETResponse:
+        # Conditional validation is always an HTTP observation, independently
+        # of this transaction's ordinary GET cache.
+        with self.io_scope():
+            started = time.monotonic()
+            metrics.count("github_requests")
+            if "page=" in endpoint:
+                metrics.count("github_pages")
+            try:
+                return super().get_conditional(endpoint, clock=clock)
+            finally:
+                metrics.count("github_seconds", time.monotonic() - started)
+
+    def job_log(self, job_id: int, *, clock: Callable[[], float] = time.time) -> JobLog:
+        with self.io_scope():
+            started = time.monotonic()
+            metrics.count("github_requests")
+            try:
+                return super().job_log(job_id, clock=clock)
+            finally:
+                metrics.count("github_seconds", time.monotonic() - started)
+
+    def authenticated_login(self) -> str:
+        self._require_scope()
+        # gh auth token can block before /user enters get()'s I/O scope.
+        # Revalidate the registry after credential lookup, before the callback
+        # uses the transaction client; it cannot run in a suspended transaction.
+        with self.io_scope():
+            self._http.prepare_authentication()
+        return self._http.authenticated_login(
+            lambda: nonempty(object_value(self.get("user")).get("login"), "gh login")
+        )
+
+    def _require_scope(self) -> None:
+        if self._store is not None:
+            self._store.require_transaction()
+        elif self._outside_store is not None:
+            self._outside_store.require_unlocked()
+
+    @contextmanager
+    def io_scope(self) -> Iterator[None]:
+        """Release only this client's transaction, never infer a missing lock."""
+        self._require_scope()
+        with self._store.unlocked_read() if self._store else nullcontext():
+            yield
+
+    def detached(self) -> GitHub:
+        """Explicit registry-external client without an endpoint GET cache."""
+        client = copy.copy(self)
+        client._outside_store = self._store or self._outside_store
+        client._store = None
+        client._read_only_cache = False
+        client._cache = {}
+        client._cache_epoch = -1
+        client._history_rows = None
+        client._history_scope = False
+        client._fresh = False
+        client.observing = False
+        client._pr_views = {}
+        return client
+
+    @contextmanager
+    def read_observation(self) -> Iterator[None]:
+        """Opt a detached reader into caching for this explicit observation only.
+
+        The caller keeps its registry unlocked and revalidates on return. This
+        cache never reaches a transaction client or another detached reader.
+        """
+        self._require_scope()
+        if self._store is not None or self.observing:
+            raise ValueError("read observation requires a separate detached client")
+        previous = self._read_only_cache
+        self._read_only_cache = self.observing = True
+        self._pr_views.clear()
+        try:
+            with self.history_read_scope():
+                yield
+        finally:
+            self._cache.clear()
+            self._pr_views.clear()
+            self._history_rows = None
+            self._read_only_cache, self.observing = previous, False
+
+    def pr_view(self, pr: int, fields: tuple[str, ...]) -> dict[str, Any]:
+        """Share CLI/GraphQL observations only inside an explicit read scope."""
+        self._require_scope()
+        key = (pr, fields)
+        if self.observing and not self._fresh and key in self._pr_views:
+            metrics.count("cache_hits")
+            return copy.deepcopy(self._pr_views[key])
+        with self.io_scope():
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "view",
+                    str(pr),
+                    "--repo",
+                    self.repo,
+                    "--json",
+                    ",".join(fields),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=60,
+            )
+        data: dict[str, Any] = object_value(read_json(result.stdout))
+        if self.observing:
+            self._pr_views[key] = copy.deepcopy(data)
+        return data
+
     @contextmanager
     def fresh_reads(self) -> Iterator[None]:
         previous, self._fresh = self._fresh, True
+        # Begin one new observation. Repeated history reads within this scope
+        # share its discovery index; endpoint GETs still bypass their cache.
+        self._history_rows = None
         try:
             yield
         finally:
@@ -76,11 +229,14 @@ class GitHub(IssueGitHub):
 
     def invalidate(self, endpoint: str) -> None:
         # Writes invalidate the issue and its relations, retaining unrelated reads.
+        self._history_rows = None
+        self._pr_views.clear()
         root = endpoint.split("/comments")[0].split("/sub_issues")[0]
         self._cache = {
             key: value
             for key, value in self._cache.items()
-            if not key[0].split("?")[0].startswith(root)
+            if key[0].split("?")[0] != root
+            and not key[0].split("?")[0].startswith(root + "/")
         }
 
     def rows(self, endpoint: str) -> list[dict[str, Any]]:
@@ -128,73 +284,116 @@ class GitHub(IssueGitHub):
     def write(
         self, method: str, endpoint: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
+        self._require_scope()
         self.invalidate(endpoint)
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             try:
-                result = subprocess.run(
-                    [
-                        "gh",
-                        "api",
-                        "--method",
-                        method,
-                        "--header",
-                        "Accept: application/vnd.github+json",
-                        "--header",
-                        "X-GitHub-Api-Version: 2022-11-28",
-                        endpoint,
-                        "--input",
-                        "-",
-                    ],
-                    input=json.dumps(payload, ensure_ascii=False),
-                    text=True,
-                    capture_output=True,
-                    timeout=60,
-                    check=False,
-                )
+                result = self._http.request(method, endpoint, payload)
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
         if result.returncode:
-            raise ValueError(f"gh {method} {endpoint} failed: {result.stderr.strip()}")
-        return object_value(json.loads(result.stdout))
+            raise ValueError(
+                f"gh {method} {self._http.redact(endpoint)} failed: {self._http.redact(result.stderr.strip())}"
+            )
+        return object_value(json.loads(self._http.redact_json(result.stdout)))
 
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         """Read GraphQL without caching or holding the registry lock remotely."""
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             try:
-                result = subprocess.run(
-                    ["gh", "api", "graphql", "--input", "-"],
-                    input=json.dumps({"query": query, "variables": variables}),
-                    text=True,
-                    capture_output=True,
-                    timeout=60,
-                    check=False,
+                result = self._http.request(
+                    "POST", "graphql", {"query": query, "variables": variables}
                 )
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
         if result.returncode:
-            raise ValueError(f"gh graphql failed: {result.stderr.strip()}")
-        response = object_value(json.loads(result.stdout))
+            raise ValueError(
+                f"gh graphql failed: {self._http.redact(result.stderr.strip())}"
+            )
+        response = object_value(json.loads(self._http.redact_json(result.stdout)))
         if response.get("errors"):
             raise ValueError(f"gh graphql errors: {response['errors']}")
         data: dict[str, Any] = object_value(response.get("data"))
         return data
 
-    def issue(self, number: int) -> dict[str, Any]:
+    def issue(self, number: int, *, allow_proposal: bool = False) -> dict[str, Any]:
         row = object_value(self.get(f"repos/{self.repo}/issues/{number}"))
         if self.identity(row) != number:
             raise ValueError("GitHub issue identity mismatch")
+        require_work_issue(row, allow_proposal=allow_proposal)
         return row
 
     def issue_rows(self) -> list[dict[str, Any]]:
         return [
             row
             for row in self.rows(f"repos/{self.repo}/issues?state=all")
-            if "pull_request" not in row
+            if "pull_request" not in row and not is_evidence_issue(row)
         ]
+
+    @contextmanager
+    def history_read_scope(self) -> Iterator[None]:
+        """One complete discovery index per read-only collection, never across observations."""
+        self._require_scope()
+        self._cache.clear()
+        previous = getattr(self, "_history_rows", None)
+        active = getattr(self, "_history_scope", False)
+        self._history_rows = None
+        self._history_scope = True
+        try:
+            yield
+        finally:
+            self._history_rows, self._history_scope = previous, active
+
+    def evidence_rows(self) -> list[dict[str, Any]]:
+        self._require_scope()
+        endpoint = f"repos/{self.repo}/issues?state=all&labels={EVIDENCE_LABEL}"
+        if not getattr(self, "_history_scope", False):
+            return self.rows(endpoint)
+        if self._history_rows is None:
+            # A new scope, explicit freshness check or write invalidates discovery.
+            # Do not resurrect an older listing from the transaction GET cache.
+            with self.fresh_reads():
+                self._history_rows = self.rows(endpoint)
+        return self._history_rows
+
+    def evidence_issues(self) -> EvidenceIssues:
+        from .evidence import EvidenceIssues
+        from .state import state_directory
+
+        directory = getattr(self, "evidence_directory", None)
+        if directory is None:
+            directory = (
+                self._store.directory if self._store else state_directory()
+            ) / "evidence-issues"
+        return EvidenceIssues(self, directory)
+
+    def record_history(
+        self, parent: int, login: str | None = None, **kwargs: Any
+    ) -> History:
+        from .history import read_history
+
+        publisher = login or self.authenticated_login()
+        return read_history(self, parent, publisher, **kwargs)
+
+    def parent_comments(
+        self, parent: int, login: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Validated compatibility projection; raw comments() remains a single medium."""
+        return self.record_history(parent, login).comments
+
+    def review_comments(
+        self, issue: int, parent: int, login: str
+    ) -> list[dict[str, Any]]:
+        """PR projections stay on the PR; parent-side evidence uses the shared history."""
+        return (
+            self.parent_comments(parent, login)
+            if issue == parent
+            else self.comments(issue)
+        )
 
     def comments(self, parent: int) -> list[dict[str, Any]]:
         return self.rows(f"repos/{self.repo}/issues/{parent}/comments")

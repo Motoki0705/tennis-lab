@@ -5,6 +5,8 @@
 
 ![研究ライブラリの実験一覧](assets/library.png)
 
+![Papersの一次資料リンク・要約・採録理由](assets/papers.png)
+
 ```bash
 cd knowledge/webui
 npm ci
@@ -17,16 +19,27 @@ npm run build && npm start      # production
 - グラフ: 前提から後続への有向線、グループの囲み、任意の関連線、zoom/minimap。
 - 詳細: 考察、実測metrics、config、曲線、再現bundleのパス、前提・後続・関連実験、論文参照。Escapeで閉じる。
 - 実験比較: 最大4件の条件・metricsを並置しCSV出力。異なる評価条件に自動の優劣を付けない。
-- Papers: 論文情報・読解ノート・PDF閲覧（PDFを保存した論文のみ）・参照実験への逆引き。
+- Papers: 論文情報・要約・採録理由・読解ノート・一次資料URL・参照実験への逆引き。
+- 引用探索: Papersから保存済み探索の起点を選び、役割付きマップと役割別ランキングを閲覧。件数から引用元ごとの判断理由・根拠位置へ移り、外部IDで対応した登録済みPapersの詳細を開ける。完了/中断と停止理由、照会待ち・一意性未確認・未同定・役割判定不能・本文取得失敗を区別する。問題箇所と未完了の照会情報は役割の絞り込み中も表示し、未展開論文は集計に含めない。
 - 研究サマリー: `summary.md` を表示し、根拠ノードへ遷移。
 - URLにタスク・検索・フィルタ・表示・選択ノードを保持。`/?node=<id>`、`/?paper=<id>` で直接開ける。実験の論文絞り込みには別キー `paperFilter` を使う。
+- 引用探索のURLは `citationSearch`（探索ID）・`citationRole`（役割）・`citationPaper`（論文文書ID）・`citationView`（`map` / `ranking`）。例: `/?citationSearch=search-example&citationRole=comparison`。探索やPapers登録はCLIで行い、Web UIは読み取り専用。
 - モバイル対応、キーボード操作、MarkdownのHTMLサニタイズ。
 
 `KNOWLEDGE_DIR` でknowledge rootを変更可能（既定はアプリの親）。既存の
 `KNOWLEDGE_NODES_DIR` / `KNOWLEDGE_RUNS_DIR` もサブディレクトリ指定に使える。
 リクエストごとに正本Markdownを読むため、編集後の再読み込みで反映される。
 読み込み失敗や不正なID・連番を空のライブラリに置き換えず、エラーとして表示する。
-PDFバイナリは一覧に含めず個別routeから配信する。
+Papersは文書だけを保持し、本文は一次資料URLから閲覧する。
+`citation_map/` が無い、または保存済み探索が0件なら「探索なし」を表示する。
+不正な引用文書・参照や世代の不整合・外部IDの矛盾・読み込み失敗は、ファイル名と理由を表示する。
+閲覧可否は探索ごとに決め、その探索文書、世代の `paper_ids`、展開した論文の全引用先が
+不正なら、その探索をエラーにする。役割の絞り込みでエラーを隠さず、無関係な探索は
+マップ・ランキング・件数を保って閲覧できる。未展開論文のcached参考文献まで依存を広げない。
+外部IDが衝突する場合は、登録済みPapersを経由する別名も含め、関係する全ての文書を不正とする。
+Papersへの結合は不正文書を除いて再検証する。文書IDを確定できないファイル名や
+不正な保存構造、一覧取得の失敗など、影響範囲を特定できない場合は全体をエラーにする。
+これはUIの閲覧方針で、文書自体の受理条件やPythonの `kg_validate` / CIによる拒否は変えない。
 
 ## 検証・コードの入口
 
@@ -38,11 +51,31 @@ npx playwright install chromium  # 初回のみ
 npm run test:e2e                 # 専用dev serverを起動
 ```
 
+e2eは既存ライブラリ（3137）と、共有固定例を複製した専用knowledge root（3138）を使う。
+架空の引用論文や登録済みPapersは `.citation-e2e/` にだけ作成する。固定例で開発確認する場合:
+
+```bash
+npx tsx tests/citation-fixture.ts
+KNOWLEDGE_DIR="$PWD/.citation-e2e" npm run dev
+```
+
+![固定例の引用マップ](assets/citation-map.png)
+
 - `src/lib/{content,nodes}.ts`: Markdown/Papers/summary読込とリンク解決。
+- `src/lib/citation-documents.ts`: 引用frontmatter・文書間整合性の厳密な検証、外部IDによるPapers結合。
+- `src/lib/citation-library.ts`: 文書読込、外部ID衝突の全参加文書の特定、探索ごとの依存とエラーの判定。
+- `src/lib/citations.ts`: 探索範囲の引用関係と、異なる引用元数による集計。
 - `src/lib/explorer.ts`: 絞り込み・並び順・CSV。
 - `src/components/ResearchExplorer.tsx`: ライブラリの状態と各ビュー。
 - `src/components/{GraphView,DetailPanel}.tsx`: グラフとノード詳細。
-- `src/app/api/{curves,papers}/[id]/route.ts`: 曲線・PDF。
+- `src/components/{CitationExplorer,CitationMap}.tsx`: 引用マップ・ランキング・根拠と問題箇所の表示。
+- `src/app/api/curves/[id]/route.ts`: 曲線。
+
+共有の状態・lookup・部分展開の正常/異常ケースは `tests/fixtures/knowledge/citation-boundaries.json` にあり、PythonとTSが同じ例を読む。unitとe2eは保存済みWASBの実データも検証し、探索・外部照会は実行しない。
+
+![WASB 比較対象・深さ2の引用マップ](assets/wasb-citation-map.png)
+
+![WASB 比較対象のランキング](assets/wasb-citation-ranking.png)
 
 一覧のDOMはページ単位、グラフは可視範囲だけを描画する。現在の200ノード規模では
 サーバがMarkdownを読み、検索用本文もclientへ渡す。数千〜数万ノードに拡大する際は

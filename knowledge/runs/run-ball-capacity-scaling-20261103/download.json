@@ -1,0 +1,19 @@
+{
+  "schema": "ball_verified_mount_download.v1",
+  "expected_files": 2925,
+  "expected_bytes": 157028755547,
+  "verified_files": 2925,
+  "verified_bytes": 157028755547,
+  "elapsed_seconds": 1158.3484466075897,
+  "complete": true,
+  "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+  "initial_attempt_last_progress": {
+    "verified_files": 1640,
+    "verified_bytes": 20604462637,
+    "elapsed_seconds": 318.3112030029297,
+    "complete": false
+  },
+  "successful_attempt_workers": 12,
+  "canonical_receipt": "outputs/ball_detection/precompute/capacity_scaling/download-20261103/progress.json",
+  "source_version": "ball-mix-v2-existing500-720p-20261018"
+}

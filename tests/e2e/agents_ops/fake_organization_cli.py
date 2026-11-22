@@ -75,6 +75,13 @@ def main() -> None:
     )
     emit({"type": "thread.started", "thread_id": session})
     emit({"type": "turn.started"})
+    if scenario == "reconnect":
+        emit(
+            {
+                "type": "error",
+                "message": "Reconnecting... 2/5 (workspace routing discovery timed out)",
+            }
+        )
     Path(args[args.index("--output-last-message") + 1]).write_text(response)
     emit(
         {

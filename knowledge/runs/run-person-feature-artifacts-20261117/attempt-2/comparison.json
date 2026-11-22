@@ -1,0 +1,13 @@
+{
+  "pose_xy_max_abs_px": 0.0,
+  "pose_confidence_max_abs": 0.0,
+  "embedding_max_abs": 5.960464477539063e-08,
+  "embedding_cosine_distance_max": 2.384185791015625e-07,
+  "appearance_mask_equal": true,
+  "track_ids_equal": true,
+  "track_rows_equal": true,
+  "track_observed_equal": true,
+  "gsi_mask_equal": true,
+  "detection_rows": 3451,
+  "features_within_tolerance": true
+}

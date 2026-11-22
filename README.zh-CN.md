@@ -38,7 +38,7 @@
 球轨迹在三角测量前先去除运动离群点，再使用稳健的二次 LOESS 平滑。
 本演示仅从已保存的检测观测重新处理球，固定原有相机和人物重建。
 插值的 2D 点不计为观测，3D 结果仍要求至少两个真实观测视角。
-比较和限制见 [CPU 重放与演示验证记录](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)。
+原始存储的访问条件、比较和限制见 [CPU 重放与演示验证记录](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md#replay-source-access)。
 
 请预先同步输入视频，并保持 FPS、分辨率和帧数一致。输入限制及包含观测缺失和质量信息的输出格式，见[处理流程 README](src/tennis_scene/README.md)。
 
@@ -84,6 +84,8 @@
 <!-- sample-assets:end -->
 
 部分资产需要在上游注册、同意条款或提交申请。请按照[资产获取说明](docs/installation/README.zh-CN.md#required-assets)获取。下载 CLI（`src.utils.model_weights` 和 `src.utils.sample_dataset`）会验证下载的文件；[运行前预检](docs/installation/README.zh-CN.md#preflight)会在执行前检查所需资产和 CUDA 扩展。
+
+如果 ViTPose-H 或 HMR2 的官方 GVHMR Drive 报告下载配额超限，请按照[配额诊断与验证恢复步骤](docs/installation/README.zh-CN.md#drive-quota)操作。
 
 <a id="run-locally"></a>
 

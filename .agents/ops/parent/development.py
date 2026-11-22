@@ -3,22 +3,25 @@
 from __future__ import annotations
 
 import copy
+import fcntl
 import hashlib
-import importlib
 import os
 import signal
-import sys
 from pathlib import Path
 from typing import Any, cast
 
 from dispatcher.runtime import Runtime, alive, gate, load
 from dispatcher.schedule import Schedule
-from dispatcher.state import DispatchStore
+from dispatcher.state import DispatchStore, require_client
 from dispatcher.supervisor import (
     Supervisor,
     check_handoff_capacity,
+    check_observation,
     children_pending,
+    current_job,
+    job_snapshot,
     managed,
+    observation_intent,
     unstarted,
 )
 from issues import Issue, task_status
@@ -26,11 +29,10 @@ from lib.agent_settings import implementation_model
 from worker_logs import service as worker_logs
 from worker_logs.sources import original, read_original
 
-from . import worker_preflight
+from . import work_targets, worker_preflight, worker_slots
 from .adopted_tasks import check_task_adoptions
 from .execution import (
     authorization,
-    require_request_authorization,
     task_errors,
 )
 from .github import GitHub
@@ -43,7 +45,7 @@ from .policy import (
     replace_section,
 )
 from .session import ParentSession
-from .state import Store
+from .state import RegistryConflict, Store
 from .worker_instruction import prepare_instruction
 
 OPS = Path(__file__).resolve().parents[1]
@@ -127,9 +129,15 @@ def accepted(session: ParentSession, env: dict[str, str]) -> dict[str, Any]:
     return dispatch
 
 
-def worker_jobs(dispatch: dict[str, Any], child: int) -> list[dict[str, Any]]:
+def worker_jobs(
+    dispatch: dict[str, Any], child: int, worker: str = "primary"
+) -> list[dict[str, Any]]:
     return sorted(
-        (j for j in dispatch["jobs"].values() if j["child"] == child),
+        (
+            j
+            for j in dispatch["jobs"].values()
+            if j["child"] == child and j.get("worker_name", "primary") == worker
+        ),
         key=lambda j: j["sequence"],
     )
 
@@ -174,209 +182,334 @@ def start_worker(
     model: str | None,
     branch: str | None = None,
     worktree: Path | None = None,
+    base_ref: str | None = None,
     continuation: str | None = None,
     additional: str | None = None,
     planning: bool = False,
+    handoff_from_astra: str | None = None,
+    handoff_evidence: str | None = None,
 ) -> dict[str, Any]:
     """Reserve via parent.delegate, then use the dispatcher start-child contract.
 
-    The caller must not hold Store.locked(): the dispatcher takes the same lock.
-    A failure between the two claims intentionally leaves the delegation intact.
+    The caller must hold neither a registry nor a parent operation lock. Reconcile
+    may publish logs; only the reservation below owns the operation lock. A
+    failure between the two claims intentionally leaves the delegation intact.
     """
-    implementation_model(model)
+    require_client(session.gh, session.store)
+    if base_ref is not None:
+        if (
+            continuation
+            or handoff_from_astra
+            or branch is not None
+            or worktree is not None
+        ):
+            raise ValueError(
+                "--from cannot be combined with an existing branch, worktree or handoff"
+            )
+        from .snapshot import worker_location
+
+        branch, worktree = worker_location(session.parent, child, session.worker)
     if continuation is None:
+        implementation_model(model)
         nonempty(prompt, "initial worker instruction")
         if additional is not None:
             raise ValueError(
                 "additional instructions require an undelivered planning decision"
             )
     with session.store.locked():
-        session.owner()
-        control = controller(session, directory)
-    control.reconcile(parent=session.parent)
-    with session.store.locked():
-        dispatch = accepted(session, env)
         session.agreed()
         control = controller(session, directory)
-        if authorization(session) != dispatch["authorization"]:
-            raise ValueError("dispatcher execution basis changed")
-        check_dependencies(session, dispatch)
-        check_handoff_capacity(session.store.parents, control.schedule, session.key)
-        jobs = worker_jobs(dispatch, child)
-        previous_record = None
-        prepared = None
+    control.reconcile(parent=session.parent)
+    with session.store.operation(session.key):
+        previous_jobs = []
+        checkpoint = None
         if continuation is not None:
-            worker_preflight.observe(session, child, persist=True)
-        if continuation is not None:
-            nonempty(continuation, "continuation evidence")
-            if not jobs:
+            with session.store.locked():
+                dispatch = accepted(session, env)
+                previous_jobs = [
+                    observation_intent(session.store, session.row, job, "continue")
+                    for job in worker_jobs(dispatch, child, session.worker)
+                ]
+                checkpoint = session.store.checkpoint()
+            for previous in previous_jobs:
+                ended(previous["job"])
+        with session.store.locked():
+            if checkpoint is not None:
+                session.store.revalidate(checkpoint)
+            for previous in previous_jobs:
+                current_job(session.store, session.key, previous)
+            dispatch = accepted(session, env)
+            session.agreed()
+            control = controller(session, directory)
+            if authorization(session) != dispatch["authorization"]:
+                raise ValueError("dispatcher execution basis changed")
+            check_dependencies(session, dispatch)
+            check_handoff_capacity(session.store.parents, control.schedule, session.key)
+            jobs = worker_jobs(dispatch, child, session.worker)
+            previous_record = None
+            prepared = None
+            if continuation is not None:
+                worker_preflight.observe(session, child, persist=True)
+            if continuation is not None:
+                nonempty(continuation, "continuation evidence")
+                if not jobs:
+                    raise ValueError(
+                        "no existing worker session; never create a replacement"
+                    )
+                source = control.resume_source(session.row, jobs[-1])
+                if source is None:
+                    if any(not job.get("cancelled_before_start") for job in jobs):
+                        raise ValueError(
+                            "cancelled reservation lost its saved resume source"
+                        )
+                    if any(
+                        child in closing_issues(p.get("body") or "", session.gh.repo)
+                        for p in session.gh.pulls()
+                    ):
+                        raise ValueError(
+                            "existing PR has no implementation session to resume"
+                        )
+                    implementation_model(
+                        model, previous=implementation_model(jobs[-1]["model"])
+                    )
+                    model = jobs[-1]["model"]
+                else:
+                    record = load(Path(source) / "result.json")
+                    previous_record = record
+                    settings = record["contract"]["settings"]
+                    implementation_model(
+                        model,
+                        previous=nonempty(
+                            settings["selected"]["model"], "saved worker model"
+                        ),
+                    )
+                    # A same-value request must retain the original override provenance.
+                    model = settings["overrides"].get("model")
+                task = session.worker_task(child)
+                branch, worktree = task["branch"], Path(task["worktree"])
+                # Admission precedes a new delegation/job reservation.
+                prepared, prompt = worker_preflight.prepare_turn(
+                    session,
+                    child,
+                    prompt,
+                    resume=True,
+                    additional=additional,
+                    previous_record=previous_record,
+                    planning=planning,
+                )
+            elif jobs and handoff_from_astra is None:
+                raise ValueError("existing worker: inspect it and use continue-worker")
+            if branch is None or worktree is None:
+                raise ValueError("a dedicated branch and worktree are required")
+            if len(children_pending(session.row)) >= dispatch["child_limit"]:
                 raise ValueError(
-                    "no existing worker session; never create a replacement"
+                    "implementation slots are occupied; reconcile workers first"
                 )
-            for job in jobs:
-                ended(job)
-            source = control.resume_source(session.row, jobs[-1])
-            if source is None:
-                if any(not job.get("cancelled_before_start") for job in jobs):
-                    raise ValueError(
-                        "cancelled reservation lost its saved resume source"
-                    )
-                if any(
-                    child in closing_issues(p.get("body") or "", session.gh.repo)
-                    for p in session.gh.pulls()
-                ):
-                    raise ValueError(
-                        "existing PR has no implementation session to resume"
-                    )
-                implementation_model(
-                    model, previous=implementation_model(jobs[-1]["model"])
+            claim = session.delegate(
+                child,
+                "codex",
+                branch,
+                worktree,
+                None,
+                continuation or handoff_evidence,
+                handoff_from_astra=handoff_from_astra,
+                continue_existing=continuation is not None,
+                base_ref=base_ref,
+            )
+            parent, items = session.work_items()
+            check_task_adoptions(session.gh, parent.body)
+            check_task_adoptions(session.gh, items[child].body)
+            check_dependencies(session, dispatch)
+            if authorization(session) != dispatch["authorization"]:
+                raise ValueError("execution basis changed after delegation")
+            task = session.worker_task(child)
+            if prepared is None:
+                prepared, prompt = worker_preflight.prepare_turn(
+                    session,
+                    child,
+                    prompt,
+                    resume=False,
+                    planning=planning,
+                    additional=additional,
                 )
-                model = jobs[-1]["model"]
-            else:
-                record = load(Path(source) / "result.json")
-                previous_record = record
-                settings = record["contract"]["settings"]
-                implementation_model(model, previous=settings["selected"]["model"])
-                # A same-value request must retain the original override provenance.
-                model = settings["overrides"].get("model")
-            task = session.row["tasks"][str(child)]
-            branch, worktree = task["branch"], Path(task["worktree"])
-            # Admission precedes a new delegation/job reservation.
-            prepared, prompt = worker_preflight.prepare_turn(
-                session,
+            with session.gh.io_scope():
+                turn = worker_preflight.commit_turn(task, prepared)
+            session.store.save()
+            prepared_instruction = prepare_instruction(
+                session.parent,
                 child,
-                prompt,
-                resume=True,
-                additional=additional,
-                previous_record=previous_record,
-                planning=planning,
+                worktree,
+                branch,
+                items[child].body,
+                original(prompt),
+                turn,
+                worker=session.worker,
             )
-        elif jobs:
-            raise ValueError("existing worker: inspect it and use continue-worker")
-        if branch is None or worktree is None:
-            raise ValueError("a dedicated branch and worktree are required")
-        if len(children_pending(session.row)) >= dispatch["child_limit"]:
-            raise ValueError(
-                "implementation slots are occupied; reconcile workers first"
-            )
-        claim = session.delegate(
-            child,
-            "codex",
-            branch,
-            worktree,
-            None,
-            continuation,
-            continue_existing=continuation is not None,
+            text = prepared_instruction.text
+            worker_logs.capture(session, child, items[child].body, prepared_instruction)
+            task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
+                text.encode("utf-8")
+            ).hexdigest()
+            session.store.save()
+            delegation = claim["assignment"]["delegation_id"]
+        job_id = control.start_child(
+            session.parent, child, delegation, text, env, model, worker=session.worker
         )
-        parent, items = session.work_items()
-        check_task_adoptions(session.gh, parent.body)
-        check_task_adoptions(session.gh, items[child].body)
-        check_dependencies(session, dispatch)
-        if authorization(session) != dispatch["authorization"]:
-            raise ValueError("execution basis changed after delegation")
-        task = session.row["tasks"][str(child)]
-        if prepared is None:
-            prepared, prompt = worker_preflight.prepare_turn(
-                session,
-                child,
-                prompt,
-                resume=False,
-                planning=planning,
-                additional=additional,
-            )
-        turn = worker_preflight.commit_turn(task, prepared)
-        session.store.save()
-        prepared_instruction = prepare_instruction(
-            session.parent,
-            child,
-            worktree,
-            branch,
-            items[child].body,
-            original(prompt),
-            turn,
-        )
-        text = prepared_instruction.text
-        worker_logs.capture(session, child, items[child].body, prepared_instruction)
-        task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
-            text.encode("utf-8")
-        ).hexdigest()
-        session.store.save()
-        delegation = claim["assignment"]["delegation_id"]
-    job_id = control.start_child(session.parent, child, delegation, text, env, model)
-    return {
-        "child": child,
-        "delegation_id": delegation,
-        "job_id": job_id,
-        "result": "reserved",
-    }
+        return {
+            "child": child,
+            "delegation_id": delegation,
+            "job_id": job_id,
+            "result": "reserved",
+        }
 
 
-def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
-    dispatch = managed(session.owner())
+def _inspection_target(
+    session: ParentSession, child: int
+) -> tuple[dict[str, Any], str | None]:
+    """Read one snapshot's owner/job/delegation and runtime identity without writes."""
+    row = session.owner()
+    dispatch = managed(row)
     if not dispatch:
         raise ValueError("worker inspection requires a managed parent")
-    jobs = worker_jobs(dispatch, child)
+    jobs = worker_jobs(dispatch, child, session.worker)
     if not jobs:
         raise ValueError("no managed runtime for this issue")
     job = jobs[-1]
-    directory = Path(job["directory"]) / "runtime"
-    result: dict[str, Any] = {
-        "child": child,
-        "job_id": job["id"],
-        "phase": job["phase"],
-        "delegation_id": job["delegation_id"],
-        "task_success": None,
-        "termination_confirmed": False,
-        "worker_phase": worker_preflight.observe(session, child),
-        "cancelled_before_start": bool(job.get("cancelled_before_start")),
-    }
+    path = Path(job["directory"]) / "runtime/result.json"
+    run_id = (
+        nonempty(load(path).get("run_id"), "runtime run ID") if path.exists() else None
+    )
+    if job.get("runtime_run_id") is not None and job["runtime_run_id"] != run_id:
+        raise RegistryConflict("saved runtime run identity changed")
     if job.get("cancelled_before_start"):
-        ended(job)
-        result["termination_confirmed"] = True
-    elif (directory / "result.json").exists():
-        evidence = Runtime(Path(job["runner"])).inspect(directory)
-        record = evidence["record"]
-        result.update(
-            runtime_result=record["result"],
-            turn_end_reason=record["turn_end_reason"],
-            termination_confirmed=job["phase"] == "ended"
-            and Runtime(Path(job["runner"])).ended(evidence),
-            settings=record["contract"]["settings"],
-            final_file=str(directory / "final.md"),
-        )
-    return result
+        if job["phase"] != "ended" or not unstarted(job):
+            raise RegistryConflict("cancelled job acquired launch evidence")
+        lifetime = Path(job["directory"]) / "lifetime.lock"
+        if lifetime.exists():
+            with lifetime.open("r", encoding="utf-8") as lock:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError as exc:
+                    raise RegistryConflict(
+                        "cancelled job still has a live launcher"
+                    ) from exc
+    return job_snapshot(row, job), run_id
+
+
+def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
+    """Observe a frozen job unlocked, then recheck it in a new read-only snapshot."""
+    if session.gh._store is not None:
+        require_client(session.gh, session.store)
+    session.store.require_unlocked()
+    session = session.detached()
+    with session.store.snapshot(), session.gh.fresh_reads():
+        expected, run_id = _inspection_target(session, child)
+        worker_phase = worker_preflight.observe(session, child)
+    saved = expected["job"]
+    directory = Path(saved["directory"]) / "runtime"
+    evidence = None
+    cancelled = bool(saved.get("cancelled_before_start"))
+    if not cancelled and run_id is not None:
+        evidence = Runtime(Path(saved["runner"])).inspect(directory)
+        if evidence["record"]["run_id"] != run_id:
+            raise RegistryConflict("runtime run changed during inspection")
+        Supervisor._check_contract(saved, evidence["record"])
+    with session.store.snapshot():
+        actual, current_run = _inspection_target(session, child)
+        if actual != expected or current_run != run_id:
+            raise RegistryConflict(
+                "worker job/run/delegation or generation changed during inspection"
+            )
+        job = actual["job"]
+        result: dict[str, Any] = {
+            "child": child,
+            "job_id": job["id"],
+            "phase": job["phase"],
+            "delegation_id": job["delegation_id"],
+            "task_success": None,
+            "termination_confirmed": cancelled,
+            "worker_phase": worker_phase,
+            "cancelled_before_start": cancelled,
+        }
+        if evidence is not None:
+            record = evidence["record"]
+            result.update(
+                runtime_result=record["result"],
+                turn_end_reason=record["turn_end_reason"],
+                termination_confirmed=job["phase"] == "ended"
+                and Runtime(Path(job["runner"])).ended(evidence),
+                settings=record["contract"]["settings"],
+                final_file=str(directory / "final.md"),
+            )
+        return result
 
 
 def stop_worker(
     session: ParentSession, child: int, detail: dict[str, Any]
 ) -> dict[str, Any]:
-    dispatch = managed(session.owner())
-    if not dispatch:
-        raise ValueError("worker stop requires a managed parent")
-    session.stop_or_resume(child, detail, False)
-    plan = session.launch_plan()
-    targets = {child} | {t["child"] for t in plan["tasks"] if t["state"] == "held"}
-    for job in dispatch["jobs"].values():
-        if job["role"] != "implementation" or job["child"] not in targets:
-            continue
-        if job["phase"] == "ended":
-            continue
-        if job["phase"] == "reserved":
-            Supervisor.cancel_reservation(
-                session.row, job, "cancelled by parent before launch"
+    require_client(session.gh, session.store)
+    with session.store.locked():
+        dispatch = managed(session.owner())
+        if not dispatch:
+            raise ValueError("worker stop requires a managed parent")
+        individual = bool(session.row["tasks"].get(str(child), {}).get("helpers"))
+        stopped = {} if individual else session.stop_or_resume(child, detail, False)
+        plan = None if stopped.get("target_conflict") else session.launch_plan()
+        targets = {child} | (
+            {t["child"] for t in plan["tasks"] if t["state"] == "held"}
+            if plan
+            else set()
+        )
+        jobs = []
+        for job in dispatch["jobs"].values():
+            if (
+                job["role"] != "implementation"
+                or (
+                    individual
+                    and (
+                        job["child"] != child
+                        or job.get("worker_name", "primary") != session.worker
+                    )
+                )
+                or job["child"] not in targets
+                or job["phase"] == "ended"
+            ):
+                continue
+            if job["phase"] == "reserved":
+                Supervisor.cancel_reservation(
+                    session.row, job, "cancelled by parent before launch"
+                )
+            else:
+                job["stop_requested"] = True
+                jobs.append(job)
+        session.store.save()
+        pending = [
+            observation_intent(session.store, session.row, job, "stop") for job in jobs
+        ]
+    for expected in pending:
+        saved = expected["job"]
+        proof = None
+        if saved["observation"]["run_id"] is not None:
+            proof = Runtime(Path(saved["runner"])).inspect(
+                Path(saved["directory"]) / "runtime", stop=True
             )
-        elif (Path(job["directory"]) / "runtime/result.json").exists():
-            Runtime(Path(job["runner"])).inspect(
-                Path(job["directory"]) / "runtime", stop=True
-            )
-        elif alive(job["worker"]):
-            os.kill(job["worker"]["pid"], signal.SIGTERM)
-    session.store.save()
-    return {
-        "child": child,
-        "result": "stop_requested",
-        "launch_plan": session.launch_plan(),
-    }
+            check_observation(saved, proof)
+            Supervisor._check_contract(saved, proof["record"])
+        elif alive(saved["worker"]):
+            os.kill(saved["worker"]["pid"], signal.SIGTERM)
+        with session.store.locked():
+            _, job = current_job(session.store, session.key, expected)
+            if proof is not None:
+                job["runtime_run_id"] = proof["record"]["run_id"]
+                session.store.save()
+    with session.store.locked(), session.gh.fresh_reads():
+        session.owner()
+        return {
+            "child": child,
+            "result": "stop_requested",
+            "launch_plan": session.launch_plan() if plan is not None else None,
+            **({"target_conflict": stopped["target_conflict"]} if plan is None else {}),
+        }
 
 
 def cancellation_workers_ended(session: ParentSession, child: int) -> None:
@@ -384,8 +517,9 @@ def cancellation_workers_ended(session: ParentSession, child: int) -> None:
         raise ValueError(f"#{child}: cancelled worker termination is still pending")
     dispatch = managed(session.row)
     if dispatch:
-        for job in worker_jobs(dispatch, child):
-            ended(job)
+        for job in worker_jobs(dispatch, child, session.worker):
+            with session.gh.io_scope():
+                ended(job)
 
 
 def record_cancellation(
@@ -470,7 +604,7 @@ def verify_cancellation(
 
 
 def verify_completion(session: ParentSession) -> list[int]:
-    """Confirm gate journals against remote merges, closes and parent evidence."""
+    """Confirm implementation acceptance and the saved automatic post-merge result."""
     auth = authorization(session)  # Also works after a standalone issue was closed.
     parent, items = session.work_items()
     if not items:
@@ -484,24 +618,37 @@ def verify_completion(session: ParentSession) -> list[int]:
         check_dependencies(session, dispatch)
         for job in dispatch["jobs"].values():
             if job["role"] == "implementation":
-                ended(job)
+                with session.gh.io_scope():
+                    ended(job)
     check_task_adoptions(session.gh, parent.body)
-    sys.path.insert(0, str(OPS / "review"))
-    merge_gate = importlib.import_module("merge_gate")
+    from lib.ops_review.merge_gate_impl import completion as merge_completion
+
     merged: set[int] = set()
     pulls = session.gh.pulls()
+    work_targets.require_separate_self_prs(parent, pulls, session.gh.repo)
     for n, item in items.items():
         if task_status(item) == "cancelled":
             verify_cancellation(session, item, auth)
             continue
         task = session.row["tasks"].get(str(n), {})
         verification = task.get("verification", {})
+        preflight = task.get("preflight", {})
+        latest_turn = (
+            worker_preflight.result_turn(task) if task.get("delegated") else None
+        )
         if (
             task_status(item) != "completed"
             or task.get("stopped")
             or "needs-human" in item.labels
             or task_errors(task, auth, item.body)
             or not verification.get("evidence")
+            or (
+                task.get("delegated")
+                and latest_turn is not None
+                and preflight.get("accepted_turn_id")
+                != latest_turn["snapshot"]["turn_id"]
+                and not latest_turn.get("repair")
+            )
         ):
             raise ValueError(
                 f"#{n}: close, acceptance evidence or current result verification missing"
@@ -529,40 +676,18 @@ def verify_completion(session: ParentSession) -> list[int]:
             or task.get("branch", pr["head"]["ref"]) != pr["head"]["ref"]
             or pr.get("merged") is not True
             or not pr.get("merged_at")
-            or merge_gate.completion(session, pr, write=False)
         ):
             raise ValueError(f"#{n}: GitHub merge/close is not confirmed")
-        journal = load(
-            merge_gate.attempt_path(session, pr["number"], pr["head"]["sha"])
+        confirmed = merge_completion(
+            session.store, session.gh.repo, session.parent, pr["number"]
         )
-        snapshot = journal["snapshot"]
         if (
-            journal["pr"] != pr["number"]
-            or journal["head_sha"] != pr["head"]["sha"]
-            or snapshot["head_sha"] != pr["head"]["sha"]
-            or snapshot["branch"] != pr["head"]["ref"]
-            or snapshot["base_ref"] != pr["base"]["ref"]
-            or pr["head"]["repo"]["full_name"].casefold() != session.gh.repo.casefold()
-            or pr["base"]["repo"]["full_name"].casefold() != session.gh.repo.casefold()
-            or journal["status"] not in {"merged", "attempting", "unconfirmed"}
-        ):
-            raise ValueError("merged PR differs from the gate's checked snapshot")
-        request = load(
-            session.store.directory
-            / "reviews"
-            / journal["review_run_id"]
-            / "request.json"
-        )
-        require_request_authorization(session, request, required_issues={n})
-        view = merge_gate.collect(session, request)
-        _, _, state, errors = merge_gate.load_evidence(session, request, view)
-        if (
-            errors
-            or view.errors[pr["number"]]
-            or state not in {"fixes_verified", "complete"}
+            confirmed["merge_commit"] != pr["merge_commit_sha"]
+            or confirmed["merge_head"] != pr["head"]["sha"]
+            or n not in confirmed["issues"]
         ):
             raise ValueError(
-                "merged PR's parent review is missing, stale or unconfirmed"
+                "merged PR differs from its automatic post-merge confirmation"
             )
         merged.add(pr["number"])
     if not merged:
@@ -572,25 +697,66 @@ def verify_completion(session: ParentSession) -> list[int]:
     return sorted(merged)
 
 
-def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
+def report(
+    session: ParentSession,
+    spec: dict[str, Any],
+    *,
+    verified_prs: list[int] | None = None,
+) -> dict[str, Any]:
+    completed = spec.get("state") == "completed"
     if (
         set(spec)
         != {"schema_version", "state", "reason", "resume_condition", "evidence"}
+        | ({"finish"} if completed else set())
         or type(spec["schema_version"]) is not int
-        or spec["schema_version"] != 1
+        or spec["schema_version"] != (2 if completed else 1)
         or spec["state"] not in {"waiting", "completed", "failed"}
     ):
-        raise ValueError("invalid workflow report schema")
+        raise ValueError(
+            "invalid workflow report schema; completed requires version 2 and structured finish"
+        )
     session.owner()
     for key in ("reason", "resume_condition", "evidence"):
         nonempty(spec[key], key)
     # Validate public text before any result/state mutation.
     session.public(spec)
-    prs = verify_completion(session) if spec["state"] == "completed" else []
-    session.note(
-        f"開発workflow: {spec['state']}\n\n理由: {spec['reason']}\n\n"
-        f"再開条件: {spec['resume_condition']}\n\n受入・検証の証拠:\n{spec['evidence']}"
+    prs = (
+        verified_prs
+        if verified_prs is not None
+        else verify_completion(session)
+        if completed
+        else []
     )
+    completion = None
+    if completed:
+        from .completion import record
+        from .notifications import completion as published_completion
+
+        notice = published_completion(session)
+        if notice is None:
+            raise ValueError(
+                "completed requires an explicit completion notification; use notify with key=completion and verified achievements/remaining/artifacts"
+            )
+        if spec["finish"].get("state") != "completed":
+            raise ValueError("completed report requires a completed finish")
+        completion = record(session, spec["finish"], prs=prs)
+        session.post(
+            {
+                "event": "workflow_completed",
+                "completion_ref": notice.url,
+                "report_sha256": digest(spec),
+            },
+            f"開発workflow: completed\n\n全体の成果・未達・残件: {notice.url}\n検証記録: {digest(spec)}",
+        )
+    else:
+        session.note(
+            f"開発workflow: {spec['state']}\n\n理由: {spec['reason']}\n\n"
+            f"再開条件: {spec['resume_condition']}\n\n受入・検証の証拠:\n{spec['evidence']}"
+        )
+    response = {
+        "schema_version": 1,
+        **{k: spec[k] for k in ("state", "reason", "resume_condition")},
+    }
     session.row["development_result"] = {
         "schema_version": 1,
         "report_sha256": digest(spec),
@@ -603,10 +769,18 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
         if spec["state"] == "completed"
         else [],
     }
+    if completion is not None:
+        dispatch = managed(session.row)
+        session.row["development_result"]["completion_receipt"] = {
+            "job": dispatch["active_job"] if dispatch else None,
+            "generation": session.row["generation"],
+            "authorization": authorization(session),
+            "response_sha256": digest(response),
+            "finish_sha256": completion["finish_sha256"],
+        }
     session.store.save()
-    return {
-        k: spec[k] for k in ("schema_version", "state", "reason", "resume_condition")
-    }
+    session.sync_progress()
+    return response
 
 
 def refresh_worker_plan(
@@ -630,12 +804,30 @@ def refresh_worker_plan(
 def worker_command(
     args: Any, gh: GitHub, parent: int, identity: str, store: Store
 ) -> dict[str, Any]:
-    with store.locked():
+    if args.command == "inspect-worker":
+        if gh._store is not None:
+            require_client(gh, store)
+        store.require_unlocked()
+        gh = gh.detached()
+    else:
+        require_client(gh, store)
+    with store.snapshot() if args.command == "inspect-worker" else store.locked():
         session = ParentSession(gh, store, parent, identity)
-        if args.command == "inspect-worker":
-            return inspect_worker(session, args.child)
-        if args.command == "stop-worker":
-            return stop_worker(session, args.child, load(Path(args.spec)))
+        session.worker = worker_slots.select(
+            session.row,
+            args.child,
+            getattr(args, "worker", None),
+            creating=args.command == "start-worker",
+        )
+        manual = session.row.get("dispatch") is None
+    if manual and args.command in {"inspect-worker", "stop-worker"}:
+        from .manual_workers import inspect_manual
+
+        return inspect_manual(session, args.child, stop=args.command == "stop-worker")
+    if args.command == "inspect-worker":
+        return inspect_worker(session, args.child)
+    if args.command == "stop-worker":
+        return stop_worker(session, args.child, load(Path(args.spec)))
     return start_worker(
         session,
         args.dispatcher_state_dir,
@@ -644,6 +836,7 @@ def worker_command(
         prompt=read_original(args.prompt_file) if args.prompt_file else None,
         model=args.model,
         branch=getattr(args, "branch", None),
+        base_ref=getattr(args, "base_ref", None),
         worktree=getattr(args, "worktree", None),
         continuation=(
             Path(args.evidence_file).read_text(encoding="utf-8")
@@ -653,6 +846,10 @@ def worker_command(
         if args.command == "continue-worker"
         else None,
         planning=args.planning,
+        handoff_from_astra=getattr(args, "handoff_from_astra", None),
+        handoff_evidence=Path(args.handoff_evidence_file).read_text()
+        if getattr(args, "handoff_evidence_file", None)
+        else None,
         additional=read_original(args.additional_instruction_file)
         if getattr(args, "additional_instruction_file", None)
         else None,

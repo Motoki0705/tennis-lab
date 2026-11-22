@@ -4,7 +4,7 @@ Scenes are BLCS synthetic rallies with known physical cameras. Each trial
 chooses cameras and a reference, builds their camera-local calibrations
 (cameras beyond the net are half-turned locally, as in ``camera_view_v2``),
 perturbs calibration and observations, and stores the threshold-free
-:class:`BallSideEvidence`. Thresholds are then judged on the stored evidence
+:class:`SideEvidence`. Thresholds are then judged on the stored evidence
 by the production :func:`judge_side_evidence`, so the benchmark and the
 pipeline share one decision rule.
 """
@@ -23,9 +23,9 @@ from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
 from src.tasks.court_side.hypothesis import (
-    BallSideEvidence,
     CourtSideConfig,
     CourtSideUndecided,
+    SideEvidence,
     collect_side_evidence,
     judge_side_evidence,
 )
@@ -81,7 +81,7 @@ class Trial:
     scene_id: str
     condition: str
     expected: tuple[bool, ...]
-    evidence: BallSideEvidence
+    evidence: SideEvidence
 
 
 @dataclass(frozen=True)

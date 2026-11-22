@@ -26,6 +26,7 @@ from tests.e2e.agents_ops.test_board_messages import labels as labels
 from tests.e2e.agents_ops.test_board_messages import world as world
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.hook_process import hook_command
 
 THREAD = "11111111-2222-4333-8444-555555555555"
 
@@ -522,8 +523,11 @@ def test_codex_fake_runtime_and_durable_no_duplicate(
         "o/r",
         1,
         "question",
+        "codex:" + THREAD,
+        1,
     )
-    b.modules.notifiers.codex(b.w.env(), notification)
+    with b.w.board.delivery.ownership_fence(b.w.env()):
+        b.modules.notifiers.codex(b.w.env(), notification)
     assert len(calls.read_text().splitlines()) == 1
     assert alternative == []
 
@@ -594,7 +598,7 @@ def hook(
     env: dict[str, str], event: str = "SessionStart", **fields: Any
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(OPS / "board/claude_hook.py")],
+        hook_command(OPS / "board/claude_hook.py"),
         env=env,
         input=json.dumps(
             {
@@ -666,11 +670,11 @@ def test_hook_rejects_unmarked_nested_and_unrelated_foreground(bells: Bells) -> 
         script = """
 import ctypes,json,subprocess,sys
 ctypes.CDLL(None).prctl(15,b'claude',0,0,0)
-r=subprocess.run([sys.executable,sys.argv[1]],input=json.dumps({'hook_event_name':'SessionStart','session_id':'unmarked-child'}),text=True)
+r=subprocess.run(sys.argv[1:],input=json.dumps({'hook_event_name':'SessionStart','session_id':'unmarked-child'}),text=True)
 raise SystemExit(r.returncode)
 """
         result = subprocess.run(
-            [sys.executable, "-c", script, str(OPS / "board/claude_hook.py")],
+            [sys.executable, "-c", script, *hook_command(OPS / "board/claude_hook.py")],
             env=env,
             text=True,
             capture_output=True,
@@ -692,6 +696,7 @@ def confirm_parent_display(bells: Bells) -> dict[str, Any]:
     pane["display_agent"] = "Parent label"
     pane["tokens"].update(
         tl_parent="#1",
+        tl_issue="#1",
         tl_topic="topic",
         tl_engine="claude",
         tl_owner=owner_token("claude:board-owner-1"),
@@ -865,11 +870,11 @@ def test_headless_root_hook_uses_native_ancestor_and_rejects_unowned_process(
         script = """
 import ctypes,json,subprocess,sys
 ctypes.CDLL(None).prctl(15,b'claude',0,0,0)
-r=subprocess.run([sys.executable,sys.argv[1]],input=json.dumps({'hook_event_name':'SessionStart','session_id':'board-owner-3','source':'resume'}),text=True)
+r=subprocess.run(sys.argv[1:],input=json.dumps({'hook_event_name':'SessionStart','session_id':'board-owner-3','source':'resume'}),text=True)
 raise SystemExit(r.returncode)
 """
         result = subprocess.run(
-            [sys.executable, "-c", script, str(OPS / "board/claude_hook.py")],
+            [sys.executable, "-c", script, *hook_command(OPS / "board/claude_hook.py")],
             env=env,
             text=True,
             capture_output=True,

@@ -1,0 +1,139 @@
+{
+  "record": {
+    "data": {
+      "action_id": "c1d61cefd9ca4f0f82aaf25e33fbd7c2",
+      "auxiliary": {
+        "effective_model": {
+          "status": "observed",
+          "value": {
+            "effort": {
+              "status": "observed",
+              "value": "max"
+            },
+            "model": {
+              "status": "observed",
+              "value": "gpt-6.1-sol"
+            },
+            "source": {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=result.json; content_sha256=bf10ca6070fd9b71ade458786de80dfcfe0d0336643edc9875afe684e05ca5b5; private evidence"
+            }
+          }
+        },
+        "elapsed_seconds": {
+          "status": "observed",
+          "value": {
+            "source": {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=result.json; content_sha256=bf10ca6070fd9b71ade458786de80dfcfe0d0336643edc9875afe684e05ca5b5; private evidence"
+            },
+            "value": 919.114016532898
+          }
+        },
+        "selected_model": {
+          "status": "observed",
+          "value": {
+            "effort": "max",
+            "model": "gpt-6.1-sol",
+            "source": {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=contract.settings (selection_sources retained in private snapshot); content_sha256=3231a2e16ccb6e3d96f58de5115e3821d625e502be5f7ee9e2403a5171f2cb28; private evidence"
+            },
+            "specified_by": "parent_choice"
+          }
+        },
+        "usage": {
+          "status": "observed",
+          "value": {
+            "basis": "turn",
+            "cached_input_tokens": {
+              "status": "observed",
+              "value": 50768640
+            },
+            "counter_key": "6d395fad84f24cc8befed358efec9396",
+            "input_tokens": {
+              "status": "observed",
+              "value": 51406573
+            },
+            "output_tokens": {
+              "status": "observed",
+              "value": 231612
+            },
+            "source": {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=result.json; content_sha256=bf10ca6070fd9b71ade458786de80dfcfe0d0336643edc9875afe684e05ca5b5; private evidence"
+            },
+            "total_tokens": {
+              "reason": "total_tokens not reported",
+              "status": "unavailable"
+            }
+          }
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.run-worker; artifact=result.json; content_sha256=bf10ca6070fd9b71ade458786de80dfcfe0d0336643edc9875afe684e05ca5b5; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.worker-context; artifact=saved preflight comparison inputs; content_sha256=746e0c7d1bf6ba62229f7cd3eca072d8d84c5ead70e812cee6e4fc9b0a18df41; private evidence"
+        }
+      ],
+      "final_report": {
+        "status": "observed",
+        "value": {
+          "kind": "unavailable",
+          "reason": "capture_source=runner.result; artifact=final.md; content_sha256=9da10b1405cb4c466ea11e61d9cd872ac1eb74219420b3814065a64a29cffba8; private evidence"
+        }
+      },
+      "observer": "machine",
+      "previous_result_id": "69d73a48f97b443aa93dd34d2a3c00a3",
+      "repeat": null,
+      "status": "success",
+      "summary": "runner.result: completed; turn_end_reason=completed; exit_code=0; task acceptance unconfirmed",
+      "verifies": []
+    },
+    "id": "134f326b0e4146d49203a174060fba14",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "b9073842940d4674810642c836d9dee5",
+      "delegation": {
+        "key": "d-2968076048af45308f9eeca06cdf1bfc",
+        "turn": 4
+      },
+      "issue": 1816,
+      "parent": 1796,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "status": "observed",
+        "value": "2026-11-11T00:41:24.507336+00:00"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-11T00:41:24.539887+00:00"
+      },
+      "recorded_at": "2026-11-11T00:41:24.539894+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

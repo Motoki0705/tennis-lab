@@ -86,6 +86,7 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
             "collection": status.get("collection"),
             "task_states": status.get("task_states"),
             "annotation": status.get("annotation"),
+            "reviews": status.get("reviews"),
             "workflow": None
             if status.get("workflow") is None
             else {
@@ -138,6 +139,9 @@ def main() -> None:
             "benchmark_condition",
             "benchmark_comparison",
             "benchmark_runtime",
+            "scene_annotation",
+            "blank_condition",
+            "blank_comparison",
         ),
         required=True,
     )
@@ -210,6 +214,11 @@ def main() -> None:
         measurement.add_argument("--operation", type=Path, required=True)
         measurement.add_argument("--sha256", required=True)
         measurement.add_argument("--test-root", type=Path)
+    for name in ("blank-register", "blank-compare"):
+        blank = commands.add_parser(name)
+        blank.add_argument("--operation", type=Path, required=True)
+        blank.add_argument("--sha256", required=True)
+        blank.add_argument("--test-root", type=Path)
     args = parser.parse_args()
     if args.command == "worker-decision":
         from src.tasks.base.annotation.worker_decision import load_worker_decision
@@ -222,8 +231,10 @@ def main() -> None:
             ConditionSpec,
         )
 
+        from .benchmark.blank import BlankComparisonRequest, BlankConditionRegistration
         from .benchmark.contracts import BenchmarkRuntime
         from .configuration import Configuration
+        from .scene_workflow import SceneAnnotationRequest
 
         models: dict[str, type[Document]] = {
             "configuration": Configuration,
@@ -234,6 +245,9 @@ def main() -> None:
             "benchmark_condition": ConditionSpec,
             "benchmark_comparison": ComparisonSpec,
             "benchmark_runtime": BenchmarkRuntime,
+            "scene_annotation": SceneAnnotationRequest,
+            "blank_condition": BlankConditionRegistration,
+            "blank_comparison": BlankComparisonRequest,
         }
         print(
             json.dumps(
@@ -265,12 +279,41 @@ def main() -> None:
         if args.command == "configure"
         else "operation"
         if args.command
-        in {"stage", "benchmark-observe", "benchmark-report", "benchmark-stage"}
+        in {
+            "stage",
+            "benchmark-observe",
+            "benchmark-report",
+            "benchmark-stage",
+            "blank-register",
+            "blank-compare",
+        }
         else "runtime"
     )
     ref = annotation_reference(layout, paths.declared(primary).path)
     if ref.digest != args.sha256:
         raise ValueError("CLI input digest does not match its pinned bytes")
+    if args.command in {"blank-register", "blank-compare"}:
+        from .benchmark.blank import (
+            BlankComparisonRequest,
+            BlankConditionRegistration,
+            compare_blank_conditions,
+            register_blank_condition,
+        )
+
+        if args.command == "blank-register":
+            spec = read_document(layout, ref, BlankConditionRegistration)
+            saved = register_blank_condition(
+                layout, spec.source_plan, spec.condition_id, spec.policy
+            )
+        else:
+            comparison = read_document(layout, ref, BlankComparisonRequest)
+            saved = compare_blank_conditions(
+                layout,
+                comparison.conditions,
+                reference_annotations=comparison.reference_annotations,
+            )
+        print(saved.model_dump_json())
+        return
     if args.command == "configure":
         from .configuration import Configuration, configure
 
@@ -348,6 +391,21 @@ def main() -> None:
             else build_report(layout, ref)
         )
         print(measured.model_dump_json())
+        return
+    if (
+        json.loads(layout.artifact_path(ref).read_bytes()).get("schema_version")
+        == "annotation.local-runtime.v1"
+    ):
+        from .local_cli import execute_local
+
+        execute_local(
+            layout,
+            ref,
+            args,
+            paths.declared("operation").path
+            if getattr(args, "operation", None) is not None
+            else None,
+        )
         return
     from .controller import Controller
 

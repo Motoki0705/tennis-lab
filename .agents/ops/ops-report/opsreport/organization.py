@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Any, cast
 
 from dispatcher import collect as inputs
+from dispatcher.state import client_for, repository_scope
 from issues import (
     CHILD_LABEL,
     PARENT_LABEL,
+    STANDALONE_LABEL,
     Issue,
     ParentRef,
     ProposalSource,
@@ -26,11 +28,13 @@ from issues import (
     render_parent_body,
     render_standalone_body,
 )
+from issues.evidence import is_proposal_issue
+from lib.agent_events import runtime_errors_failed
 from parent.github import GitHub
+from parent.history import from_projection
 from parent.policy import (
     child_stopped,
     digest,
-    events,
     nonempty,
     number,
     object_value,
@@ -87,12 +91,14 @@ def proposal_input(report: int, prop: ParsedProposal) -> dict[str, Any]:
 
 
 def collect(gh: GitHub, store: Store, root: Path) -> dict[str, Any]:
-    rows = gh.issue_rows()
-    seeds = inputs.unique_numbers(rows, "all issues")
-    snapshot = inputs.collect(gh, store, root, seeds=seeds)
+    gh = client_for(gh, store)
+    with repository_scope(store), gh.fresh_reads():
+        rows = [row for row in gh.issue_rows() if not is_proposal_issue(row)]
+        seeds = inputs.unique_numbers(rows, "all issues")
+        snapshot = inputs.collect(gh, store, root, seeds=seeds)
     if set(snapshot["issues"]) != {str(n) for n in seeds}:
         raise ValueError("all-issue listing changed during proposal collection")
-    return cast(dict[str, Any], snapshot)
+    return snapshot
 
 
 def material(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -139,7 +145,12 @@ def occupied(
             in {label["name"] for label in snapshot["issues"][str(k)]["labels"]}
             or child_stopped(snapshot["issues"][str(k)]["body"])
             or phase(
-                events(snapshot["issues"][str(k)]["comments"], snapshot["publisher"], k)
+                from_projection(
+                    snapshot["repo"],
+                    k,
+                    snapshot["publisher"],
+                    snapshot["issues"][str(k)]["comments"],
+                ).session_events()
             )
             in {"checking", "agreed"}
             for k in family
@@ -244,7 +255,7 @@ def execute(root: Path, run_dir: Path) -> Any:
         or settings.get("profile") is not None
         or settings.get("overrides") != {}
         or selected != settings.get("defaults")
-        or runtime.get("runtime_errors")
+        or runtime_errors_failed(evidence)
         or evidence.get("cleanup_complete") is not True
         or any(
             object_value(effective.get(k)).get("status") != "observed"
@@ -538,6 +549,9 @@ def render_node(
             render_child_body(n, sections),
         )
         labels.append(CHILD_LABEL)
-    else:
+    elif role == "standalone":
         title, body = node["summary"], render_standalone_body(sections)
+        labels.append(STANDALONE_LABEL)
+    else:
+        raise ValueError("unknown new organization node role")
     return {"title": title, "body": body, "labels": labels}

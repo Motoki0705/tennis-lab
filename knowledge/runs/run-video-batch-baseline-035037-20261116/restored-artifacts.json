@@ -1,0 +1,6 @@
+{
+  "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/coco_fullframe/i964-r5-20260929/dino_extension/lib/MultiScaleDeformableAttention.so",
+  "destination": "outputs/tennis_scene/evaluate/video-batch-baseline-035037-20261116/toolchain/MultiScaleDeformableAttention.so",
+  "sha256": "e4effe790b4cd9b47d45cf68bbc26958d1be658574fc7a1dd84089b4dc647f3f",
+  "bytes": 12097672
+}

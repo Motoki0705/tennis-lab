@@ -8,8 +8,10 @@ import gc
 import json
 import math
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, cast
@@ -20,6 +22,7 @@ import yaml
 sys.path.insert(0, str(c.REPO))
 sys.path.insert(0, str(c.REPO / ".agents/skills/tennis-drive/scripts"))
 from drive_core import RcloneBackend  # noqa: E402
+from drive_tree import download_tree  # noqa: E402
 
 POOL = Path("data/court_scene_diversity_6000_v1")
 REGISTRY = Path(
@@ -145,16 +148,26 @@ class ColabBackend:
             store.publish_file(path)
         self.verify_remote(path, relative)
 
-    def restore_state(self) -> None:
+    def restore_state(self, progress: c.Progress) -> None:
         if self.exists(c.STATE):
-            # Merge only the campaign's small evidence files; verify the full tree.
-            self.cli(
-                "download",
-                c.STATE.as_posix(),
-                str(self.state),
-                "--verify",
-                "--overwrite",
-            )
+            # The restored progress belongs to an earlier VM. Keep this VM's live
+            # progress visible locally while verifying all restored evidence.
+            with tempfile.TemporaryDirectory(prefix="scene-pair-state-") as temporary:
+                restored = Path(temporary) / "state"
+                download_tree(
+                    self.drive, c.STATE.as_posix(), restored, progress=progress
+                )
+                shutil.copytree(
+                    restored,
+                    self.state,
+                    dirs_exist_ok=True,
+                    ignore=lambda root, names: (
+                        ["progress.json", "progress.json.tmp"]
+                        if Path(root) == restored
+                        else []
+                    ),
+                )
+        progress(operation="completed", force=True)
 
     def inventory(self, root: Path) -> list[str]:
         if not self.exists(root):
@@ -183,7 +196,7 @@ class ColabBackend:
             if os.environ.get(name) != "1":
                 raise ValueError(f"Set {name}=1 explicitly")
 
-    def prepare(self) -> dict[str, Any]:
+    def prepare(self, progress: c.Progress) -> dict[str, Any]:
         from omegaconf import OmegaConf
 
         from src.synthetic_data_generation.dataset.court.scale.publication import (
@@ -195,11 +208,43 @@ class ColabBackend:
         self.require_l4()
         plan = c.read(PREP / "plan.json")
         # Inputs are acquired only once per VM; subsequent runs verify existing bytes.
-        self.fetch(POOL)
-        self.fetch(Path("data/court_detection/tennis_court_detector-v1"))
-        self.fetch(REGISTRY)
         weight = Path("ckpt") / c.baseline()["model"]["encoder"]["checkpoint_path"]
-        self.fetch(weight)
+        assets = (
+            (POOL, True),
+            (Path("data/court_detection/tennis_court_detector-v1"), True),
+            (REGISTRY, False),
+            (weight, False),
+        )
+        for index, (relative, directory) in enumerate(assets):
+            progress(
+                phase="restoring",
+                operation="input_download",
+                current_path=relative.as_posix(),
+                completed_items=index,
+                total_items=len(assets),
+                completed_files=0,
+                total_files=None,
+                completed_bytes=0,
+                total_bytes=None,
+            )
+            if directory:
+                download_tree(
+                    self.drive,
+                    relative.as_posix(),
+                    c.REPO / relative,
+                    progress=progress,
+                )
+            else:
+                self.fetch(relative)
+            progress(
+                phase="restoring", completed_items=index + 1, total_items=len(assets)
+            )
+        progress(
+            phase="validating_inputs",
+            operation="pool_publication",
+            completed_items=0,
+            total_items=10,
+        )
         if (
             c.sha(c.REPO / REGISTRY) != plan["real_registry_sha256"]
             or c.sha(c.REPO / weight) != plan["pretrained_sha256"]
@@ -258,7 +303,13 @@ class ColabBackend:
             raise ValueError("Original 2211-image validation order changed")
         configs = self.state / "configs"
         configs.mkdir(exist_ok=True)
-        for condition in c.PAIRS:
+        progress(completed_items=1)
+        for index, condition in enumerate(c.PAIRS):
+            progress(
+                operation="data_module",
+                current_path=condition,
+                completed_items=index + 1,
+            )
             config = c.make_config(condition)
             changes = c.validate_config(config, condition)
             (configs / f"{condition}.yaml").write_text(
@@ -281,11 +332,18 @@ class ColabBackend:
             }
             del dm
             gc.collect()
+            progress(completed_items=index + 2)
         # Exact immutable old checkpoint paths and bytes come from prior evidence.
-        for condition in c.LEGACY:
+        for index, condition in enumerate(c.LEGACY):
+            progress(
+                operation="legacy_checkpoint",
+                current_path=condition,
+                completed_items=index + 6,
+            )
             final = legacy_final_checkpoint(condition)
             self.fetch(Path(final["checkpoint"]))
             self.checkpoint(condition, Path(final["checkpoint"]))
+            progress(completed_items=index + 7)
         result_path = self.state / "inputs.json"
         c.write(result_path, result)
         self.publish(result_path)
@@ -297,6 +355,31 @@ class ColabBackend:
             },
         )
         self.publish(self.state / "config-audit.json")
+        adapter_record = self.state / "adapters" / f"{uuid.uuid4().hex}.json"
+        c.write(
+            adapter_record,
+            {
+                "schema": "court_scene_pair_adapter_v1",
+                "operational_adapter_sha256": result["bundle_sha256"],
+                "drive_adapter_sha256": {
+                    name: c.sha(c.REPO / ".agents/skills/tennis-drive/scripts" / name)
+                    for name in (
+                        "drive.py",
+                        "drive_core.py",
+                        "drive_management.py",
+                        "drive_tree.py",
+                    )
+                },
+                "git_commit": subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"], cwd=c.REPO, text=True
+                ).strip(),
+                "identity_adapter_sha256": c.ORIGINAL_ADAPTERS,
+                "inputs_identity": c.inputs_identity(result),
+                "source_objects": result["source_objects"],
+            },
+        )
+        self.publish(adapter_record)
+        progress(operation="completed", completed_items=10, total_items=10)
         return result
 
     def ready(self) -> dict[str, Any]:
@@ -379,6 +462,7 @@ class ColabBackend:
         assert condition is not None
         if stage.kind in {"probe", "train"}:
             probe = stage.kind == "probe"
+            progress(phase="restoring", operation="checkpoint_inventory")
             saved = self.latest(condition, probe=probe)
             maximum = 3 if probe else c.FINAL_STEP
             if saved is not None and saved["global_step"] == maximum:
@@ -402,6 +486,11 @@ class ColabBackend:
             c.write(path, restart)
             self.publish(path)
             progress(
+                phase="validating_inputs",
+                operation="starting_trainer",
+                actual_training_update=None,
+                completed_items=0,
+                total_items=1,
                 saved_step=step,
                 resume_update=step,
                 restart_record=path.relative_to(c.REPO).as_posix(),
@@ -571,14 +660,20 @@ class ColabBackend:
             if synthetic["scene_macro_mean"][metric] != mean:
                 raise ValueError("Scene macro mean is not the simple four-scene mean")
 
-    def verify(self, stage: c.Stage, result: dict[str, Any]) -> None:
+    def verify(
+        self,
+        stage: c.Stage,
+        result: dict[str, Any],
+        progress: c.Progress = lambda **kwargs: None,
+    ) -> None:
         if stage.kind == "inputs":
-            if result != self.ready():
+            if c.compatible_inputs(result) != c.compatible_inputs(self.ready()):
                 raise ValueError(
                     "Input completion disagrees with current VM validation"
                 )
             return
         assert stage.condition is not None
+        progress(operation="checkpoint", completed_items=0, total_items=1)
         relative = Path(result["checkpoint"])
         self.fetch(relative)
         checked = self.checkpoint(
@@ -588,23 +683,37 @@ class ColabBackend:
             raise ValueError("Completed checkpoint changed")
         if checked["global_step"] != (3 if stage.kind == "probe" else c.FINAL_STEP):
             raise ValueError("Completion requires the final update")
+        progress(
+            completed_items=1,
+            actual_training_update=checked["global_step"],
+            saved_step=checked["global_step"],
+        )
         if stage.kind == "evaluate":
-            expected = c.eval_root(stage.condition) / "evaluation.json"
+            root = c.eval_root(stage.condition)
+            expected = root / "evaluation.json"
             if result["evaluation"] != expected.as_posix():
                 raise ValueError("Completed evaluation path changed")
-            report = self.fetch(expected)
+            files = {}
+            for relative, expected_sha in result["evaluation_files"].items():
+                artifact = Path(relative)
+                if not artifact.is_relative_to(root) or ".." in artifact.parts:
+                    raise ValueError("Evaluation artifact escapes its condition")
+                files[artifact.relative_to(root).as_posix()] = expected_sha
+            if files.get("evaluation.json") != result["evaluation_sha256"]:
+                raise ValueError(
+                    "Evaluation report missing or inconsistent in file manifest"
+                )
+            download_tree(
+                self.drive,
+                root.as_posix(),
+                c.REPO / root,
+                expected_files=files,
+                progress=progress,
+            )
+            report = c.REPO / expected
             if c.sha(report) != result["evaluation_sha256"]:
                 raise ValueError("Completed evaluation bytes changed")
             self.check_evaluation(c.read(report), checked)
-            for relative, expected_sha in result["evaluation_files"].items():
-                artifact = Path(relative)
-                if (
-                    not artifact.is_relative_to(c.eval_root(stage.condition))
-                    or ".." in artifact.parts
-                ):
-                    raise ValueError("Evaluation artifact escapes its condition")
-                if c.sha(self.fetch(artifact)) != expected_sha:
-                    raise ValueError("Completed evaluation artifact changed")
 
 
 def ordered_digest(ids: list[str]) -> str:
@@ -646,6 +755,15 @@ def train(condition: str, probe: bool, resume: str | None) -> None:
         def save_checkpoint(
             self, checkpoint: Any, path: Any, storage_options: Any = None
         ) -> None:
+            update = Path(path).name.startswith("update-")
+            if update:
+                progress.progress(
+                    stage,
+                    phase="verifying_drive",
+                    operation="checkpoint_save",
+                    actual_training_update=checkpoint["global_step"],
+                    force=True,
+                )
             super().save_checkpoint(checkpoint, path, storage_options)
             if not Path(path).name.startswith("update-"):
                 return
@@ -655,9 +773,27 @@ def train(condition: str, probe: bool, resume: str | None) -> None:
             record = backend.saved_record(relative)
             c.write(record, checked)
             backend.publish(record)
-            progress.progress(stage, saved_step=checked["global_step"])
+            progress.progress(
+                stage,
+                phase="training",
+                operation="training",
+                saved_step=checked["global_step"],
+                actual_training_update=checked["global_step"],
+                force=True,
+            )
 
     class Recorder(pl.Callback):
+        def on_train_start(self, trainer: Any, module: Any) -> None:
+            progress.progress(
+                stage,
+                phase="training",
+                operation="first_batch",
+                actual_training_update=trainer.global_step,
+                completed_items=trainer.global_step,
+                total_items=3 if probe else c.FINAL_STEP,
+                force=True,
+            )
+
         def on_before_optimizer_step(
             self, trainer: Any, module: Any, optimizer: Any
         ) -> None:
@@ -671,6 +807,15 @@ def train(condition: str, probe: bool, resume: str | None) -> None:
         def on_train_batch_end(
             self, trainer: Any, module: Any, outputs: Any, batch: Any, batch_idx: Any
         ) -> None:
+            progress.progress(
+                stage,
+                publish=False,
+                phase="training",
+                operation="training",
+                actual_training_update=trainer.global_step,
+                completed_items=trainer.global_step,
+                total_items=3 if probe else c.FINAL_STEP,
+            )
             if probe:
                 loss = outputs["loss"] if isinstance(outputs, dict) else outputs
                 if (
@@ -681,6 +826,18 @@ def train(condition: str, probe: bool, resume: str | None) -> None:
                     raise ValueError("Probe loss, batch shape or supervision changed")
 
     class Runner(CourtDetectionTrainingRunner):
+        def build_datamodule(self, config: Any) -> Any:
+            progress.progress(
+                stage,
+                phase="validating_inputs",
+                operation="trainer_data_module",
+                completed_items=0,
+                total_items=1,
+            )
+            datamodule = super().build_datamodule(config)
+            progress.progress(stage, operation="trainer_setup", completed_items=1)
+            return datamodule
+
         def build_trainer(
             self,
             config: Any,

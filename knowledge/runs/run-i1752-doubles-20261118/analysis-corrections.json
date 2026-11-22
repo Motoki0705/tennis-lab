@@ -1,0 +1,17 @@
+{
+  "batch_commit": "e296a5fb358bee9ed9974821943d055f31c1e360",
+  "reference_commit": "2cf59a608132c2bf097976491b7b5806dfe26941",
+  "src_tree_batch": "9467cd5ca0219ae06d7df0b09d5222bba951ea4a",
+  "src_tree_reference": "9467cd5ca0219ae06d7df0b09d5222bba951ea4a",
+  "postprocessing_corrections": [
+    "actual successful frame/camera denominator per stage; blocked work excluded",
+    "fixed resource count checks follow C3: maximum ownership reported, no invented cap1",
+    "known SystemExit guard false alarm audited with raw hashes; original files retained",
+    "court retrieval/first-frame detection scales by clip/camera count, not source frames",
+    "export/publication clip-linear versus source-frame-linear scenarios are separate"
+  ],
+  "original_automatic_summary_sha256": "a39d0811ccb5a7c27fca148f06538fcfda36e23edd71608d793d5a7964957e88",
+  "corrected_summary_sha256": "e5f3cf78de453e7b8e71c90993f8fb3bcc8d1b881b32495e2fb25ba30c1e6b34",
+  "full69_launched": false,
+  "postprocessing_source_sha256": "c5bd92eb094f87a566a4e15d498c0ec23fc2d2d414a659155bde4e70fc789aea"
+}

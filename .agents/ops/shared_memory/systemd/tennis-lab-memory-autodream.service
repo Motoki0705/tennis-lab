@@ -1,0 +1,14 @@
+[Unit]
+Description=Consolidate tennis-lab shared memory
+Documentation=file://%h/projects/tennis-lab/.agents/ops/shared_memory/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=%h/projects/tennis-lab/.agents/ops
+UMask=0077
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/checkout_job.py --repo %h/projects/tennis-lab -- %h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/shared_memory/autodream_job.py run
+KillMode=control-group
+TimeoutStartSec=45min
+TimeoutStopSec=60

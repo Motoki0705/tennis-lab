@@ -1,0 +1,22 @@
+{
+  "commit": "ba0fbdf1c16bd56d0852328db7e9f462f21b5ec3",
+  "queue_job": "0-8205002942712217463_2026-11-18T10-17-37-287782536Z_3032097_i1752-shared-fp16-three-20261118-a1",
+  "started_at_utc": "2026-11-18T10:17:38.131533+00:00",
+  "batch": {
+    "variant": "batch",
+    "started_at_utc": "2026-11-18T10:17:38.132452+00:00",
+    "status": "complete",
+    "device_memory_sampling_ms": 1000,
+    "device_memory_samples": 1811,
+    "query_timeout_seconds": 10.0,
+    "heartbeat_timeout_seconds": 180.0,
+    "driver": "621.24",
+    "pid": 3032401,
+    "returncode": 0,
+    "finished_at_utc": "2026-11-18T10:49:41.430027+00:00",
+    "device_memory_peak_mib": 6198,
+    "device_memory_min_mib": 936
+  },
+  "status": "complete",
+  "finished_at_utc": "2026-11-18T10:49:41.430963+00:00"
+}

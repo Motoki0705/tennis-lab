@@ -1,0 +1,49 @@
+{
+  "clip_id": "video_000/clip_035",
+  "source": {
+    "clip_id": "video_000/clip_035",
+    "videos": [
+      {
+        "camera_id": "cam0",
+        "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/datasets/repeat-1/videos/video_000/clips/clip_035/media/cam0.mp4",
+        "sha256": "dadbd3db21b8b34e600f9153a8203df7399774c9c276fc2d00ff7a53e49fb456",
+        "num_frames": 2108,
+        "fps": 59.94005994005994,
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "camera_id": "cam1",
+        "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/datasets/repeat-1/videos/video_000/clips/clip_035/media/cam1.mp4",
+        "sha256": "f4e84dbe56c7b1d47ad89747b090db9eb3ab33dfab65a787423f8d9645806ee1",
+        "num_frames": 2108,
+        "fps": 59.94005994005994,
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "camera_id": "cam2",
+        "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/datasets/repeat-1/videos/video_000/clips/clip_035/media/cam2.mp4",
+        "sha256": "ef02b4e4eb838b9084b8254f3af9690280d98c72a3ed3c2df829d9a213f4a572",
+        "num_frames": 2108,
+        "fps": 59.94005994005994,
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "camera_id": "cam3",
+        "path": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/datasets/repeat-1/videos/video_000/clips/clip_035/media/cam3.mp4",
+        "sha256": "5fc85ed417f69ae446a1b088381399dcdd5ea720c93646cc0ab34c68e469eaa1",
+        "num_frames": 2108,
+        "fps": 59.94005994005994,
+        "width": 1920,
+        "height": 1080
+      }
+    ]
+  },
+  "source_index_sha256": "7511de2f8d89edfbff0244fa5e33b4a946588581a8d18d218326da9478e2e437",
+  "input_sampling_max_frames": 2048,
+  "original_sampling_max_frames": 1024,
+  "reason_for_explicit_validation_override": "C1 stopped at 1055 sampled frames; replay keeps its complete grid and changes only the validation capacity, equally for both body paths.",
+  "acceptance_scope": "HMR2/GVHMR/body placement boundary parity; not C1 full-pipeline completion or speed benchmark."
+}

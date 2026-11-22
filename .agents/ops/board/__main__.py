@@ -92,11 +92,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "web":
             if not 1 <= args.port <= 65535:
                 raise BoardError("board web port must be between 1 and 65535")
-            # Web dependencies stay outside all other CLI commands.
-            from .web import serve
-
-            serve(env, port=args.port)
-            return 0
+            print(
+                "board web: use checkout_job.py --repo <main> --board-web-port PORT",
+                file=sys.stderr,
+            )
+            return 75
         if args.command in {"post", "reply"}:
             with Path(args.body_file).open(encoding="utf-8") as source:
                 body = source.read(60001)
@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
             result = messages.status(env)
         elif args.command == "dispatch":
             result = dispatch_post(env, configured(env), post_id=args.post, to=args.to)
-            exit_code = 0 if result["status"] == "notified" else 1
+            exit_code = 0 if result["status"] in {"notified", "awaiting_hook"} else 1
         elif args.command == "receipts":
             result = receipts(env)
         else:

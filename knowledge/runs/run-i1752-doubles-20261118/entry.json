@@ -1,0 +1,584 @@
+{
+  "phase": "batch",
+  "status": "failed",
+  "started_at_utc": "2026-11-18T01:06:33.832284+00:00",
+  "clips": [
+    "video_000/clip_000",
+    "video_000/clip_037",
+    "video_000/clip_027"
+  ],
+  "pipeline_config": "pipeline_x3d_dpt",
+  "pipeline_overrides": [
+    "court_kp.mode=video_shared",
+    "court_kp.video_shared.action=load",
+    "court_kp.video_shared.directory=tennis_scene/evaluate/court-video-shared-acceptance-20261117/store",
+    "court_kp.video_shared.dataset_id=meiji_4cam",
+    "court_kp.video_shared.video_id=video_000",
+    "court_kp.video_shared.artifact_digest=4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+    "court_kp.video_shared.drift_directory=tennis_scene/evaluate/court-video-drift-lines-20261117/drift-store",
+    "court_kp.video_shared.drift_digest=7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+    "court_kp.video_shared.unobservable_policy=warn",
+    "player_association.players_per_side=2"
+  ],
+  "single_preset_adapter": false,
+  "cuda_recording_devices": [
+    "cuda:0"
+  ],
+  "players_per_side": 2,
+  "enabled": {
+    "person_observations": true,
+    "ball_detection": true,
+    "player_reconstruction": true,
+    "ball_reconstruction": true,
+    "gvhmr": true
+  },
+  "processing_settings": {
+    "clip_id": null,
+    "direct_annotation": {
+      "request": null,
+      "request_sha256": null,
+      "bundle": null,
+      "bundle_sha256": null,
+      "court_detection": "stored_artifact",
+      "publish_dataset": false,
+      "resume": "workflow"
+    },
+    "device": "cuda",
+    "execution": {
+      "court_detection": "execute",
+      "court_calibration": "execute",
+      "person_detection": "execute",
+      "person_tracking": "execute",
+      "player_selection": "execute",
+      "pose_estimation": "execute",
+      "ball_detection": "execute",
+      "ball_points": "execute",
+      "player_association": "execute",
+      "court_side": "execute",
+      "camera_alignment": "execute",
+      "player_triangulation": "execute",
+      "ball_triangulation": "execute",
+      "body_view_selection": "execute",
+      "gvhmr": "execute",
+      "body_placement": "execute",
+      "scene_assembly": "execute"
+    },
+    "court_kp": {
+      "mode": "video_shared",
+      "unobservable_policy": "warn"
+    },
+    "people_models": {
+      "merge_duplicate_person_boxes": false,
+      "dino_checkpoint": "dino/checkpoint0029_4scale_swin.pth",
+      "dino_repository": "DINO",
+      "vitpose_checkpoint": "vitpose/vitpose-h-multi-coco.pth",
+      "hmr2_checkpoint": "hmr2/epoch=10-step=25000.ckpt",
+      "gvhmr_checkpoint": "gvhmr/gvhmr_siga24_release.ckpt",
+      "body_models_dir": "body_models",
+      "smpl_assets": {
+        "hmr2_mean_params": "body_models/gvhmr/smpl_mean_params.npz",
+        "smplx_to_smpl": "body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_coco17_regressor": "body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smplx_verts437": "body_models/gvhmr/smplx_verts437.pt",
+        "smpl_neutral_joint_regressor": "body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "runtime": {
+        "device": "cuda",
+        "tracking": {
+          "bbox_enlarge": 1.2
+        },
+        "dino_detector": {
+          "confidence": 0.3,
+          "short_side": 800,
+          "max_long_side": 1333
+        },
+        "vitpose": {
+          "flip_test": true,
+          "batch_size": 16,
+          "head": {
+            "in_channels": 1280,
+            "out_channels": 17,
+            "num_deconv_layers": 2,
+            "num_deconv_filters": [
+              256,
+              256
+            ],
+            "num_deconv_kernels": [
+              4,
+              4
+            ],
+            "final_conv_kernel": 1,
+            "num_conv_layers": 0,
+            "num_conv_kernels": []
+          }
+        },
+        "hmr2": {
+          "batch_size": 16
+        },
+        "static_cam": true
+      }
+    },
+    "person_tracking": {
+      "method": "strongsort_pp_pose",
+      "encoder": "clipreid_vitb16_market1501",
+      "aflink_checkpoint": "person_tracking/AFLink_epoch20.pth"
+    },
+    "person_observations": {
+      "enabled": true,
+      "visibility_threshold": 0.15,
+      "sideline_margin_m": 1.0,
+      "baseline_margin_m": 10.0,
+      "max_tracks_per_camera": 6
+    },
+    "ball_detection": {
+      "method": "model",
+      "model_type": "x3d_csn_dpt",
+      "input_channels": 5,
+      "num_frames": 32,
+      "precision": "bf16",
+      "compile_mode": "default",
+      "checkpoint": "ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt",
+      "enabled": true,
+      "batch_size": 1,
+      "image_size": [
+        720,
+        1280
+      ],
+      "normalize_imagenet": false,
+      "score_threshold": 0.5380124449729919,
+      "subpixel_refine": true,
+      "checkpoint_strict": true,
+      "checkpoint_weights_only": true,
+      "prefetch_batches": 1,
+      "window_stride": 16,
+      "tail_policy": "backfill",
+      "overlap_aggregation": "nearest_window_centre_then_earlier_start",
+      "pin_memory": true,
+      "candidates": {
+        "max_candidates": 8,
+        "nms_kernel": 5,
+        "patch_size": 5
+      },
+      "trajectory_gate": {
+        "enabled": true,
+        "max_residual_px": 60,
+        "k_support": 2,
+        "max_support_gap": 5,
+        "max_passes": 2
+      }
+    },
+    "ball_smoothing": {
+      "enabled": true,
+      "consensus_seconds": 0.7,
+      "trials": 80,
+      "minimum_residual_diagonal": 0.012,
+      "residual_mad_multiplier": 4.0,
+      "max_gap_seconds": 0.2,
+      "loess_seconds": 0.35,
+      "seed": 42
+    },
+    "frame_sampling": {
+      "max_frames": 2048
+    },
+    "camera_geometry": {
+      "reference_camera": null,
+      "calibration_error_ratio": 0.005,
+      "side_min_frames": 8,
+      "side_max_cost": 0.5,
+      "side_min_support": 0.5
+    },
+    "court_side": {
+      "reprojection_px": 20.0,
+      "min_motion_px": 5.0,
+      "min_frames": 8,
+      "max_cost": 0.8,
+      "min_support": 0.2,
+      "min_margin": 0.15
+    },
+    "player_association": {
+      "players_per_side": 2
+    },
+    "player_reconstruction": {
+      "enabled": true,
+      "reprojection_px": 40.0,
+      "joint_confidence": 0.3,
+      "placement": {
+        "data_sigma_m": 0.1,
+        "root_acceleration_sigma": 10.0,
+        "yaw_acceleration_sigma": 20.0,
+        "temporal_weight": 0.05,
+        "min_joints": 5,
+        "min_scale_pairs": 6,
+        "min_scale": 0.7,
+        "max_scale": 1.4,
+        "max_reprojection_rms_px": 10.0,
+        "reprojection_weight_sigma_px": 5.0,
+        "max_nfev": 200
+      }
+    },
+    "ball_reconstruction": {
+      "enabled": true,
+      "reprojection_px": 20.0,
+      "min_frames": 5
+    },
+    "gvhmr": {
+      "enabled": true
+    }
+  },
+  "ball_detection": {
+    "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt",
+    "model_type": "x3d_csn_dpt",
+    "input_channels": 5,
+    "num_frames": 32,
+    "precision": "bf16",
+    "compile_mode": "default",
+    "batch_size": 1,
+    "device": "cuda",
+    "image_size": [
+      720,
+      1280
+    ],
+    "normalize_imagenet": false,
+    "score_threshold": 0.5380124449729919,
+    "subpixel_refine": true,
+    "checkpoint_strict": true,
+    "checkpoint_weights_only": true,
+    "prefetch_batches": 1,
+    "window_stride": 16,
+    "tail_policy": "backfill",
+    "overlap_aggregation": "nearest_window_centre_then_earlier_start",
+    "pin_memory": true,
+    "trajectory_gate": {
+      "enabled": true,
+      "max_residual_px": 60.0,
+      "k_support": 2,
+      "max_support_gap": 5,
+      "max_passes": 2
+    },
+    "candidates": {
+      "max_candidates": 8,
+      "nms_kernel": 5,
+      "patch_size": 5
+    },
+    "resolver": {
+      "roots": {
+        "project_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli",
+        "data_root": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118",
+        "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt",
+        "artifact_root": "/home/kamimura/projects/tennis-lab/.worktree-outputs/court-video-shared",
+        "output_root": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118",
+        "cache_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.cache",
+        "external_asset_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/third_party"
+      }
+    }
+  },
+  "batch_returned": true,
+  "progress": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/batch/progress/96c394a0bfed4019a4e1182d091be2d6/progress.json",
+  "recording": "/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-doubles-20261118/batch/progress/96c394a0bfed4019a4e1182d091be2d6/recording.json",
+  "error_type": "SystemExit",
+  "error": "1",
+  "traceback": "Traceback (most recent call last):\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/knowledge/runs/run-video-batch-runtime-20261117/doubles_acceptance.py\", line 187, in worker\n    main()\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/main.py\", line 94, in decorated_main\n    _run_hydra(\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/utils.py\", line 394, in _run_hydra\n    _run_app(\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/utils.py\", line 457, in _run_app\n    run_and_report(\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/utils.py\", line 220, in run_and_report\n    return func()\n           ^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/utils.py\", line 458, in <lambda>\n    lambda: hydra.run(\n            ^^^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/_internal/hydra.py\", line 119, in run\n    ret = run_job(\n          ^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/.venv/lib/python3.11/site-packages/hydra/core/utils.py\", line 189, in run_job\n    ret.return_value = task_function(task_cfg)\n                       ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/utils/hydra.py\", line 128, in validated\n    return function(config)\n           ^^^^^^^^^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-cli/src/tennis_scene/scripts/run_video_batch.py\", line 36, in main\n    raise SystemExit(result.exit_code)\nSystemExit: 1\n",
+  "finished_at_utc": "2026-11-18T01:45:45.510085+00:00",
+  "entry_wall_seconds": 2351.6777486049978,
+  "backend_loads": [
+    {
+      "event": "backend_load_return",
+      "model": "ball",
+      "seconds": 1.9749523230057093,
+      "elapsed_seconds": 666.3025175760049,
+      "at_utc": "2026-11-18T01:17:40.132739+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "dino",
+      "seconds": 3.6155985809964477,
+      "elapsed_seconds": 903.9747734460034,
+      "at_utc": "2026-11-18T01:21:37.804995+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "vitpose",
+      "seconds": 7.463941248002811,
+      "elapsed_seconds": 1458.7111935190042,
+      "at_utc": "2026-11-18T01:30:52.541415+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "appearance",
+      "seconds": 1.0645680179950432,
+      "elapsed_seconds": 1468.211297945003,
+      "at_utc": "2026-11-18T01:31:02.041518+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "hmr2",
+      "seconds": 6.724181623001641,
+      "elapsed_seconds": 2296.761193727005,
+      "at_utc": "2026-11-18T01:44:50.591414+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "gvhmr",
+      "seconds": 1.1815653259982355,
+      "elapsed_seconds": 2302.0454877619995,
+      "at_utc": "2026-11-18T01:44:55.875708+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_vertices",
+      "seconds": 0.6617721479997272,
+      "elapsed_seconds": 2330.0640434590023,
+      "at_utc": "2026-11-18T01:45:23.894264+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_coco17",
+      "seconds": 0.7163678810029523,
+      "elapsed_seconds": 2330.780886695,
+      "at_utc": "2026-11-18T01:45:24.611107+00:00"
+    },
+    {
+      "event": "backend_load_return",
+      "model": "body_root_regressor",
+      "seconds": 0.0020332050044089556,
+      "elapsed_seconds": 2330.7832310790036,
+      "at_utc": "2026-11-18T01:45:24.613449+00:00"
+    }
+  ],
+  "runtime_events": [
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "ball",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt"
+      },
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "instance": "125871411001872:1",
+      "status": "complete",
+      "seconds": 2.116353485995205,
+      "elapsed_seconds": 666.3036514330015,
+      "at_utc": "2026-11-18T01:17:40.133871+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "ball",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt"
+      },
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "instance": "125871411001872:1",
+      "status": "complete",
+      "seconds": 0.5018863919976866,
+      "elapsed_seconds": 809.766288511004,
+      "at_utc": "2026-11-18T01:20:03.596512+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "dino",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:2",
+      "status": "complete",
+      "seconds": 16.28236739899876,
+      "elapsed_seconds": 903.9998149870007,
+      "at_utc": "2026-11-18T01:21:37.830036+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "dino",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:2",
+      "status": "complete",
+      "seconds": 1.0341819129971555,
+      "elapsed_seconds": 1408.910319473005,
+      "at_utc": "2026-11-18T01:30:02.740541+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "vitpose",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:3",
+      "status": "complete",
+      "seconds": 21.27763813999627,
+      "elapsed_seconds": 1458.7117332550042,
+      "at_utc": "2026-11-18T01:30:52.541954+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "appearance",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:4",
+      "status": "complete",
+      "seconds": 3.8368668600014644,
+      "elapsed_seconds": 1468.2120412220029,
+      "at_utc": "2026-11-18T01:31:02.042261+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "vitpose",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:3",
+      "status": "complete",
+      "seconds": 0.9020142599983956,
+      "elapsed_seconds": 2081.407452518004,
+      "at_utc": "2026-11-18T01:41:15.237672+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "appearance",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_association/person_vit_clip_reid.pth"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:4",
+      "status": "complete",
+      "seconds": 0.42289997699845117,
+      "elapsed_seconds": 2092.3507905440056,
+      "at_utc": "2026-11-18T01:41:26.181012+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "hmr2",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt",
+        "mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:5",
+      "status": "complete",
+      "seconds": 19.888443664996885,
+      "elapsed_seconds": 2296.7616384249995,
+      "at_utc": "2026-11-18T01:44:50.591858+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "gvhmr",
+      "weights": {
+        "gvhmr": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+        "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+        "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+        "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+        "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:6",
+      "status": "complete",
+      "seconds": 2.518290188003448,
+      "elapsed_seconds": 2302.0460548430055,
+      "at_utc": "2026-11-18T01:44:55.876275+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "hmr2",
+      "weights": {
+        "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/hmr2/epoch=10-step=25000.ckpt",
+        "mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:5",
+      "status": "complete",
+      "seconds": 0.8780193200000213,
+      "elapsed_seconds": 2327.6018787430003,
+      "at_utc": "2026-11-18T01:45:21.432101+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "gvhmr",
+      "weights": {
+        "gvhmr": "/home/kamimura/projects/tennis-lab/ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+        "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+        "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+        "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+        "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:6",
+      "status": "complete",
+      "seconds": 0.8314323459999287,
+      "elapsed_seconds": 2328.4367673439992,
+      "at_utc": "2026-11-18T01:45:22.266989+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "load",
+      "model": "body_geometry",
+      "weights": {
+        "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+        "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+        "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+        "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:7",
+      "status": "complete",
+      "seconds": 1.9149878649986931,
+      "elapsed_seconds": 2330.7836149560026,
+      "at_utc": "2026-11-18T01:45:24.613834+00:00"
+    },
+    {
+      "event": "runtime_model",
+      "action": "unload",
+      "model": "body_geometry",
+      "weights": {
+        "body_model": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+        "smpl_hmr2_mean_params": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_mean_params.npz",
+        "smpl_smplx_to_smpl": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+        "smpl_smpl_coco17_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+        "smpl_smplx_verts437": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smplx_verts437.pt",
+        "smpl_smpl_neutral_joint_regressor": "/home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
+      },
+      "device": "cuda",
+      "dtype": "float32",
+      "instance": "125871411001872:7",
+      "status": "complete",
+      "seconds": 0.4094122330061509,
+      "elapsed_seconds": 2339.6820510410034,
+      "at_utc": "2026-11-18T01:45:33.512272+00:00"
+    }
+  ]
+}

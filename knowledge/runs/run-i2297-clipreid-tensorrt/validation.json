@@ -1,0 +1,344 @@
+{
+  "tensor_lock_shared_and_dedicated_match": true,
+  "small_gpu_matmul": {
+    "nsys": {
+      "status": "measured",
+      "gpu_kernels": 1,
+      "sum_kernel_duration_ns": 8831,
+      "kernel_names": {
+        "Kernel2": 1
+      }
+    },
+    "ncu": {
+      "status": "unavailable",
+      "reason": "==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM"
+    },
+    "queue_job": "0-8204867217750262733_2026-11-19T23-59-42-249737266Z_3439666_i2297-profilers-qualified"
+  },
+  "nsys_2025_3_2_diagnosis": "Installed CUDA driver version (13.5) is not supported by this build of Nsight Systems; its capture had CUDA API events and no GPU kernel activity table.",
+  "invalid_condition": {
+    "exit_code": 2,
+    "created_run": false,
+    "error": "benchmark.py: error: argument --condition: invalid choice: 'bf16' (choose from '0', '1', '2', '3a', '3b')"
+  },
+  "invalid_onnx": {
+    "exit_code": 1,
+    "created_engine": false,
+    "queue_job": "0-8204867055127376890_2026-11-20T00-02-24-872623109Z_3442779_i2297-tensorrt-invalid-onnx",
+    "error": "(deserializeOnnxModel): MODEL_DESERIALIZE_FAILED: Assertion failed: model->ParseFromCodedStream(&codedInput): Failed to parse the ONNX model."
+  },
+  "trt_fp16_first_attempt": {
+    "exit_code": 1,
+    "queue_job": "0-8204867018039276156_2026-11-20T00-03-01-960723843Z_3447614_i2297-clipreid-2",
+    "error": "RuntimeError: No engine layer exposes fp16 tensors. See outputs/trt-phase1a/2/clipreid.layers.json",
+    "inspector_dtype": "Half",
+    "inspector_half_tensor_appearances": 311,
+    "retry_job": "0-8204866850404061685_2026-11-20T00-05-49-595938314Z_3468051_i2297-clipreid-2-retry"
+  },
+  "trt_fp16_profile_reuse": {
+    "exit_code": 0,
+    "same_engine": true,
+    "gpu_kernels": 114,
+    "queue_job": "0-8204866538101366440_2026-11-20T00-11-01-898633559Z_3504414_i2297-clipreid-2-profile-reuse"
+  },
+  "onnx_cpu_diagnostic": {
+    "provider": "CPUExecutionProvider",
+    "sample_indices": [
+      0,
+      20,
+      40,
+      60,
+      80,
+      100,
+      120,
+      140,
+      160,
+      180,
+      200,
+      220
+    ],
+    "graphs": {
+      "3a/export.onnx": {
+        "input_type": "<class 'numpy.float32'>",
+        "cosine_vs_pytorch_fp32": {
+          "min": 0.9999999999985445,
+          "median": 0.9999999999991009,
+          "max": 0.999999999999392
+        },
+        "cosine_vs_tensorrt_condition": {
+          "min": 0.491575811423268,
+          "median": 0.5340073900959144,
+          "max": 0.6054096066241867
+        }
+      },
+      "3a/quantized.onnx": {
+        "input_type": "<class 'numpy.float32'>",
+        "cosine_vs_pytorch_fp32": {
+          "min": 0.5076965130563783,
+          "median": 0.5596284016304736,
+          "max": 0.6039776467526685
+        },
+        "cosine_vs_tensorrt_condition": {
+          "min": 0.6416876558434405,
+          "median": 0.6641202881096594,
+          "max": 0.756364298088796
+        }
+      },
+      "3b/quantized.onnx": {
+        "input_type": "<class 'numpy.float32'>",
+        "cosine_vs_pytorch_fp32": {
+          "min": 0.9877226818588676,
+          "median": 0.9936767254172603,
+          "max": 0.9956795397534237
+        },
+        "cosine_vs_tensorrt_condition": {
+          "min": 0.9869828040038909,
+          "median": 0.9946620431435176,
+          "max": 0.9953462309897779
+        }
+      }
+    }
+  },
+  "ncu_permission_recheck": {
+    "date": "2026-11-20",
+    "queue_job": "0-8204864221996100457_2026-11-20T00-49-38-003899542Z_3540033_i2297-ncu-permission-recheck",
+    "exit_code": 0,
+    "process": "fresh CUDA process on the same WSL instance",
+    "raw_csv": "ncu-permission-after-controlpanel/ncu.csv",
+    "raw_csv_sha256": "b310d9d6effe497dccf40b9a3755290546090edcbceae085896dacc65a71a478",
+    "ncu": {
+      "status": "measured",
+      "profiled_kernels": 1,
+      "dram_read_bytes": 29440,
+      "dram_write_bytes": 0,
+      "tensor_active_pct_time_weighted": 31.09,
+      "stall_pct_time_weighted": {
+        "long_scoreboard": 4.02,
+        "short_scoreboard": 2.63,
+        "lg_throttle": 3.02,
+        "mio_throttle": 0.98
+      }
+    },
+    "gpu_time_duration_ns": 8800
+  },
+  "ncu_dram_write_check": {
+    "queue_job": "0-8204864025751226127_2026-11-20T00-52-54-248773872Z_3560193_i2297-ncu-dram-write-check",
+    "workload": "Warm up torch.zeros(67108864, dtype=float32, device=cuda); profile one buffer.fill_(3.125)",
+    "buffer_bytes": 268435456,
+    "raw_csv": "ncu-dram-write-check/ncu.csv",
+    "raw_csv_sha256": "66b65ea831c84e63346c0938d992dc4307c38f200040c5edfce33eb577d8b7d6",
+    "ncu": {
+      "status": "measured",
+      "profiled_kernels": 1,
+      "dram_read_bytes": 4864,
+      "dram_write_bytes": 258687232,
+      "tensor_active_pct_time_weighted": 0.0,
+      "stall_pct_time_weighted": {
+        "long_scoreboard": 0.0,
+        "short_scoreboard": 15.93,
+        "lg_throttle": 24.96,
+        "mio_throttle": 34.48
+      }
+    },
+    "fbpa_dram_write_bytes": 258687232
+  },
+  "ncu_followup": {
+    "date": "2026-11-20",
+    "profile_address": [
+      "video_000/clip_000",
+      "cam0",
+      178,
+      0
+    ],
+    "units": {
+      "gpu__time_duration.sum": "ns",
+      "dram__bytes_op_read.sum": "byte",
+      "dram__bytes_op_write.sum": "byte",
+      "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": "%",
+      "smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct": "%",
+      "smsp__warp_issue_stalled_short_scoreboard_per_warp_active.pct": "%",
+      "smsp__warp_issue_stalled_lg_throttle_per_warp_active.pct": "%",
+      "smsp__warp_issue_stalled_mio_throttle_per_warp_active.pct": "%"
+    },
+    "conditions": {
+      "0": {
+        "queue_job": "0-8204864177025535035_2026-11-20T00-50-22-974464964Z_3541034_i2297-clipreid-0-ncu",
+        "exit_code": 0,
+        "raw_csv": "ncu-after-controlpanel/0/ncu.csv",
+        "raw_csv_sha256": "666c17d8da7af40c5d141875dae447bc7ad317962b9c3b0a720049f6c93c128e",
+        "ncu_kernel_count": 188,
+        "nsys_kernel_count": 188,
+        "sum_ncu_gpu_duration_ns": 5393216,
+        "identity_verified": true
+      },
+      "1": {
+        "queue_job": "0-8204864176778836987_2026-11-20T00-50-23-221163012Z_3541072_i2297-clipreid-1-ncu",
+        "exit_code": 0,
+        "raw_csv": "ncu-after-controlpanel/1/ncu.csv",
+        "raw_csv_sha256": "5fde191f42366525959ceea44e88b7ae30c84763fc9afb46f566c4c6e597bb4d",
+        "ncu_kernel_count": 166,
+        "nsys_kernel_count": 166,
+        "sum_ncu_gpu_duration_ns": 1863104,
+        "identity_verified": true
+      },
+      "2": {
+        "queue_job": "0-8204863795956040101_2026-11-20T00-56-44-043959898Z_3574763_i2297-clipreid-2-ncu-omit-layer-nvtx",
+        "exit_code": 0,
+        "raw_csv": "ncu-without-trt-layer-nvtx/2/ncu.csv",
+        "raw_csv_sha256": "1fb65374380267eae9e5f14945c329e2deebc9234d94068af3e645e179ca9bf3",
+        "ncu_kernel_count": 114,
+        "nsys_kernel_count": 114,
+        "sum_ncu_gpu_duration_ns": 1254304,
+        "identity_verified": true
+      },
+      "3a": {
+        "queue_job": "0-8204863795709133592_2026-11-20T00-56-44-290866407Z_3574802_i2297-clipreid-3a-ncu-omit-layer-nvtx",
+        "exit_code": 0,
+        "raw_csv": "ncu-without-trt-layer-nvtx/3a/ncu.csv",
+        "raw_csv_sha256": "f807556a998447fecb21e376377710bbc17593a613056b241536de9b3b6ca696",
+        "ncu_kernel_count": 117,
+        "nsys_kernel_count": 117,
+        "sum_ncu_gpu_duration_ns": 860576,
+        "identity_verified": true
+      },
+      "3b": {
+        "queue_job": "0-8204863795462601406_2026-11-20T00-56-44-537398593Z_3574847_i2297-clipreid-3b-ncu-omit-layer-nvtx",
+        "exit_code": 0,
+        "raw_csv": "ncu-without-trt-layer-nvtx/3b/ncu.csv",
+        "raw_csv_sha256": "6116a1258dae81f5acc2c4c0125b003bfc41ada507118f92f1ed5790d99d9eb0",
+        "ncu_kernel_count": 139,
+        "nsys_kernel_count": 139,
+        "sum_ncu_gpu_duration_ns": 923648,
+        "identity_verified": true
+      }
+    },
+    "rejected_detailed_trt_nvtx_csv": {
+      "2": {
+        "queue_job": "0-8204864176531012407_2026-11-20T00-50-23-468987592Z_3541114_i2297-clipreid-2-ncu",
+        "reason": "zip() argument 2 is longer than argument 1",
+        "first_row_columns": 327,
+        "header_columns": 295,
+        "raw_csv": "ncu-after-controlpanel/2/ncu.csv",
+        "raw_csv_sha256": "d816e96431d9a7b82234180ea4ff92c0b2d2a9881e89cd24b2bb6fa2c46e1c6b"
+      },
+      "3a": {
+        "queue_job": "0-8204864176271511724_2026-11-20T00-50-23-728488275Z_3541154_i2297-clipreid-3a-ncu",
+        "reason": "zip() argument 2 is longer than argument 1",
+        "first_row_columns": 327,
+        "header_columns": 295,
+        "raw_csv": "ncu-after-controlpanel/3a/ncu.csv",
+        "raw_csv_sha256": "3526663945a38933f2f511fbddcf242ac81b2dbca17961d9e0cf1c4859e0ec93"
+      },
+      "3b": {
+        "queue_job": "0-8204864176007917530_2026-11-20T00-50-23-992082469Z_3541360_i2297-clipreid-3b-ncu",
+        "reason": "zip() argument 2 is longer than argument 1",
+        "first_row_columns": 327,
+        "header_columns": 295,
+        "raw_csv": "ncu-after-controlpanel/3b/ncu.csv",
+        "raw_csv_sha256": "e0f136b75854949c9c4b7ba49dbaf29ee650344dbfcbc0386e60f9637947816e"
+      }
+    }
+  },
+  "formal_review": {
+    "reviewed_head": "e78be9632b7e6a449bec1b46f866588ca7a6f443",
+    "trt_timing_nvtx_none": {
+      "2": {
+        "queue_job": "0-8204860815683590951_2026-11-20T01-46-24-316409048Z_3646189_i2297-review-nvtx-none-2",
+        "source_run": "2-retry",
+        "result": "review-nvtx-none/2/result.json",
+        "result_sha256": "96f7fc8ecc8e945ff31d9e46698cf3b266446ea0d672380f35397e8fac8fa1dd",
+        "engine_sha256": "f0d6bc297176a5f252a2ebca1560a86816a12329d7c753ac3ff22c4ae79d0bb4",
+        "identical_feature_sha256": "6a227db5f5d9d4db6e7d9fcfe3639e99b4abe917d95ff6fb732376213193eb52",
+        "archived_inspector_sha256": "3600693b7978990708e329573cde53845f306383a409bdd2e1fd20fe69932b24"
+      },
+      "3a": {
+        "queue_job": "0-8204860815437290466_2026-11-20T01-46-24-562709533Z_3646228_i2297-review-nvtx-none-3a",
+        "source_run": "3a",
+        "result": "review-nvtx-none/3a/result.json",
+        "result_sha256": "a591c1e4269365de731e1dafb687e9eff5dea448e938a823f4f34bcdf82a215e",
+        "engine_sha256": "326aca570d4d3449928d941d397ae37851b68e3440b9e519973436a1b6f5de11",
+        "identical_feature_sha256": "2c27d14a84c16d0f03e453db33d78686eaa903bb8a70356f81470c9f6207874d",
+        "archived_inspector_sha256": "dfffb6d2812818d5274ec16fef025eb46c292c5507306c15f3124097e1ce9782"
+      },
+      "3b": {
+        "queue_job": "0-8204860815188866640_2026-11-20T01-46-24-811133359Z_3646268_i2297-review-nvtx-none-3b",
+        "source_run": "3b",
+        "result": "review-nvtx-none/3b/result.json",
+        "result_sha256": "f60c879cb79e673cff1049e9d9044273bbae27a458e044d76381843aa7d40ced",
+        "engine_sha256": "06c0cc26534071ea74e30a81c749a8f88c3776565f2030a215b09423b459903a",
+        "identical_feature_sha256": "ee5816ced493cb77fc791446386c8b98ae1eb0d1d3ce27e3b70e41af8ce7f081",
+        "archived_inspector_sha256": "339eca4ff6cd727de28ae871fe40df27f7149fda7ac643f477b1e2ccd0615456"
+      }
+    },
+    "ncu_profile_from": {
+      "condition": "2",
+      "queue_job": "0-8204860814930881924_2026-11-20T01-46-25-069118075Z_3646319_i2297-review-ncu-crosscheck-2",
+      "receipt": "review-ncu-crosscheck-2/result.json",
+      "ncu_csv": "review-ncu-crosscheck-2/ncu.csv",
+      "ncu_csv_sha256": "74ae5d153bead2f329719422cc4ae76079ad3ac9e7bc9ddc472a59de8534ca63",
+      "nsys_source": "2-retry/result.json",
+      "nsys_kernels": 114,
+      "ncu": {
+        "status": "measured",
+        "profiled_kernels": 114,
+        "dram_read_bytes": 161099008,
+        "dram_write_bytes": 0,
+        "tensor_active_pct_time_weighted": 31.400335754558842,
+        "stall_pct_time_weighted": {
+          "long_scoreboard": 9.309810280896025,
+          "short_scoreboard": 3.6483641489307668,
+          "lg_throttle": 0.4221996749123788,
+          "mio_throttle": 1.5475877482602736
+        }
+      },
+      "exit_code": 0
+    },
+    "qdq_environment_probe": {
+      "queue_job": "0-8204860814662302695_2026-11-20T01-46-25-337697304Z_3646163_i2297-review-qdq-probe",
+      "exit_code": 0,
+      "compute_capability": [
+        12,
+        0
+      ],
+      "tensorrt": "10.14.1.48.post1",
+      "probes": {
+        "int8": {
+          "output": 64.0,
+          "compute_precision": {
+            "engine_layers_by_precision": {
+              "int8": 1
+            }
+          }
+        },
+        "fp8": {
+          "output": 64.0,
+          "compute_precision": {
+            "engine_layers_by_precision": {
+              "fp8": 1
+            }
+          }
+        }
+      }
+    },
+    "cpu_regressions": [
+      {
+        "test": "test_engine_inspection_rejects_fp32_gemm_with_low_precision_cast",
+        "mutated_behavior": "accepted low-precision cast output as proof",
+        "failure": "DID NOT RAISE RuntimeError",
+        "failed_cases": 3
+      },
+      {
+        "test": "test_ncu_followup_fails_when_reused_nsys_kernel_count_differs",
+        "mutated_behavior": "ignored the saved nsys result",
+        "failure": "returned 0 with 1 ncu kernel versus 114 nsys kernels",
+        "failed_cases": 1
+      },
+      {
+        "test": "test_dino_matching_counts_same_score_box_replacements_as_missing_and_extra",
+        "mutated_behavior": "accepted matches at IoU below 0.50",
+        "failure": "counted 0 missing boxes instead of 2",
+        "failed_cases": 1
+      }
+    ]
+  }
+}

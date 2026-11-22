@@ -67,6 +67,7 @@ def record_source() -> tuple[dict[str, Any], dict[str, Any]]:
         "runtime": {
             "session_id": "private-session-value",
             "turn_id": "private-turn-value",
+            "runtime_errors": [],
             "effective": {
                 k: {"status": "observed", "value": v}
                 for k, v in {"model": "gpt-6.1-sol", "effort": "max"}.items()
@@ -91,6 +92,7 @@ class FakeGitHub:
         self.mergeable: bool | None = True
         self.change_head_on_second_get = False
         self.gets = 0
+        self.pause_reads = False
         self.lock = threading.RLock()
 
     def repository(self) -> dict[str, Any]:
@@ -105,13 +107,31 @@ class FakeGitHub:
 
     def get(self, number: int) -> dict[str, Any]:
         with self.lock:
+            if self.pause_reads:
+                raise journal.PublicationError("github_failed", "injected GET boundary")
             self.gets += 1
             pr = self.rows[number]
             if self.change_head_on_second_get and self.gets == 2:
                 pr["head"]["sha"] = "f" * 40
-            value = copy.deepcopy(pr)
-            value["base"]["sha"] = self.main()
-            return value
+            return copy.deepcopy(pr)
+
+    def files(self, number: int) -> list[dict[str, Any]]:
+        head = self.rows[number]["head"]["sha"]
+        fields = git(
+            self.upstream,
+            "diff",
+            "--name-status",
+            "--no-renames",
+            "-z",
+            f"main...{head}",
+        ).split("\0")
+        return [
+            {
+                "filename": fields[i + 1],
+                "status": {"A": "added", "M": "modified", "D": "removed"}[fields[i]],
+            }
+            for i in range(0, len(fields) - 1, 2)
+        ]
 
     def find(self, branch: str) -> list[dict[str, Any]]:
         return [
@@ -144,6 +164,7 @@ class FakeGitHub:
                     "repo": {"full_name": self.repo},
                 },
             }
+            self.rows[n]["changed_files"] = len(self.files(n))
             if self.failure == "create_response_lost":
                 self.failure = None
                 raise journal.PublicationError(
@@ -154,9 +175,7 @@ class FakeGitHub:
             return self.get_without_count(n)
 
     def get_without_count(self, number: int) -> dict[str, Any]:
-        value = copy.deepcopy(self.rows[number])
-        value["base"]["sha"] = self.main()
-        return value
+        return copy.deepcopy(self.rows[number])
 
     def merge(self, number: int, head: str) -> None:
         with self.lock:
@@ -209,6 +228,8 @@ class LogEnv:
         child: int = 10,
         instruction: str = "\n実際に送った指示\r\n",
         phase: str = "planning",
+        repair: dict[str, Any] | None = None,
+        legacy: bool = False,
     ) -> tuple[Path, dict[str, Any]]:
         tree = self.root / f".claude/worktrees/worker-{parent}-{child}"
         branch = f"codex/worker-{parent}-{child}"
@@ -221,7 +242,7 @@ class LogEnv:
             "previous_turn_id": None,
             "decision_id": None,
         }
-        turn = {
+        turn: dict[str, Any] = {
             "snapshot": snapshot,
             "source": str(directory),
             "head_at_start": self.base,
@@ -233,7 +254,7 @@ class LogEnv:
                 "issue_sha256": schema.sha(b"issue body"),
             },
         }
-        task = {
+        task: dict[str, Any] = {
             "worktree": str(tree),
             "branch": branch,
             "delegation_id": turn["delegation_id"],
@@ -243,23 +264,45 @@ class LogEnv:
                 "decisions": [],
             },
         }
+        if repair is not None:
+            previous = copy.deepcopy(turn)
+            previous["snapshot"]["turn_id"] = "private-previous-turn"
+            previous["snapshot"]["phase"] = "implementing"
+            snapshot.update(
+                phase="implementing", previous_turn_id="private-previous-turn"
+            )
+            turn["repair"] = repair
+            task["preflight"]["turns"] = [previous, turn]
         session = SimpleNamespace(
             row={
                 "session": "codex:private-parent-session",
+                "status": "active",
+                "generation": 1,
+                "reviews": [],
                 "tasks": {str(child): task},
             },
             store=SimpleNamespace(directory=self.state),
             gh=SimpleNamespace(repo="o/r"),
             parent=parent,
         )
+        session.worker_task = lambda number: session.row["tasks"][str(number)]
         prompt = "standard\n" + str(tree) + "\n" + instruction
         path = sources.freeze(session, child, prompt, self.standard)
+        if legacy:
+            old = journal.read(path)
+            old.pop("publication_mode")
+            journal.atomic(path, old)
         self.sessions.append(session)
         source, receipt = record_source()
         record = receipt["record"]
         record["contract"].update(
             task_id=task["delegation_id"], cwd=str(tree), branch=branch, mode="write"
         )
+        if repair is not None:
+            record["contract"]["repair"] = repair
+            record["contract"]["settings"]["role"] = "implementation"
+            record["contract"]["settings"]["selected"]["effort"] = "high"
+            record["runtime"]["effective"]["effort"]["value"] = "high"
         record["prompt_sha256"] = schema.sha(prompt.encode())
         record["run_id"] = directory.name
         directory.mkdir(parents=True)

@@ -1,0 +1,23 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "継続判断を保存したwork/service lockを解放してからauthorize_retryを呼ぶため、timeoutと競合したpool.stop()が、その間に同じattemptをcancelledへ確定できます。authorize_retryはcancelledも再試行可能状態として受け付けるため、attempt照合を通過してreadyへ戻し、次tickで取消済みcameraを自動起動します。これは「取消後は明示retryを待つ」という要件に反します。現在状態がtimed_outであることの照合とretry許可を、同じロック下で原子的に行う必要があります。実行再現ではなく、状態遷移の静的解析による指摘です。",
+          "id": "pr-1766-1",
+          "line": 80,
+          "path": "src/tasks/annotation/recovery.py",
+          "rule": "取消を自動継続の許可で上書きしない",
+          "severity": "major"
+        }
+      ],
+      "number": 1766,
+      "summary": "指定base/headのコンテキスト、差分全文、関連コードの静的レビューを完了しました。"
+    }
+  ],
+  "summary": "静的レビューで major の競合不具合を1件確認しました。CPU検証は未実行です。保存済みのCI結論は成功です。",
+  "verdict": "request_changes"
+}

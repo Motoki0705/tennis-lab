@@ -1,0 +1,27 @@
+# main統合のCPU確認（2026-11-19）
+
+mainのmerge commit 326088547（#2182、#2240、#2244）を58b52a519へ統合した。この検証ではGPUと本番queueを使っていない。既存のGPU記録はba0fbdf1c/6bf5b7e13当時のもので、現在のmain統合版のGPU再測定ではない。補助Ball evidenceの厳密比較未達は未変更である。
+
+## 解消した衝突
+
+- 人物モデル宣言はmainのものを採用し、FP16のfactory引数・ModelSpec dtypeとDINOのsource/native pinを保持した。重複していたC4のprecision helperを除き、既存testの期待dtypeは独立した値で確認する。
+- runtimeはmainの抑制hookを越えた失敗伝播と資産照合を保ち、C4のclip失敗分離・共有初期化失敗のfatal扱い・C1計測を合わせた。
+- runnerはmainのcleanup成功後にartifact自体をpublishする順序を採用し、C4のcontinue_on_error・進捗・C1 spanを残した。
+- publicationはmainの共有side採否・component origin・配列検査を、C4のlock、export世代Path、内容照合の中に置いた。orchestratorはmainのモデル公開identity・精度付き公開再開と、C4の完成export保持を併存させた。
+- precisionの既存ノードはmainの48/49/50へ戻した。mainのruntime53/54/55と重なるC4ノードは66/67/68へ移し、参照とallocatorを更新した。元のID・測定値・run原記録は保持した。
+
+## テスト
+
+tests/unit/tennis_scene全1,144件、関連integration212件、submodules193件、実Hydra一括CLI2件の合計1,551件が148.99秒で成功。CUDA_VISIBLE_DEVICES空、4worker。CLIの既存2ケースに、受け取ったruntimeでDINO/ViTPoseともFP16になるassertを追加し、新しいparametrize caseは増やしていない。collect-onlyの最大展開は30件。変更された58 Pythonファイルのruff/mypyも成功した。
+
+mainで共有side取得のimport先がprepareサブモジュールになったため、既存の取得回数テスト2件の監視先を修正した。初回の全体テストは移動ノードのstaging前にGit索引の旧パスを見て1件失敗したが、索引確定後に同じ全1,551件を再実行して成功した。Optional型の既存assertもNone確認を加えて明示した。
+
+実store・公開・障害注入と実Hydra CLIを検証する既存の層を維持しているため、5秒超のcaseがある。全caseのsetup/call/teardownは[OUTPUTのraw参照](main-integration-raw-reference-20261119.json)へ、5秒超の抜粋は[slow cases](main-integration-slow-cases-20261119.txt)へ、最大case/setupはtest-summaryへ記録した。Gitへコピーした全量logが256KiBを超えたため、未mergeのGitコピーは保存対象から外し、初回commit・size/hash・保持先をraw参照に記録した。mainのknowledge正本には元fileがないため、正本の削除記録は作っていない。raw自体はOUTPUTに保持している。ケース数・時間を減らすための削除やskipはしていない。
+
+## 69clipコマンド
+
+この初回統合時はfull69-command.txtの推論・queueコマンドを変更しなかった。当時の内容はfull69-command-ball-evidence-20261118.txtへ保存した。後のplayer-only構成のCPU統合は別ノードrun-i1752-player-main-cpu-20261119を参照する。check_full69_command.pyはこのファイルを文字列として解析し、実CLIと同じHydra設定合成を使う。GPU初期化、nn.Module構築、BaseInferenceModel.load、native inference loader、InferenceRuntimeの開始、PlanExecutor.runをguardし、storeはTemporaryDirectoryに置いた。
+
+全69clip・4camera・46,228 source frame/cameraを検証し、共有court/sideをload、全clipの採否を照合して1つの2,622node計画を構築した。共有sideは51ok・18warning・0failed。DINO float16宣言276、追跡ViTPose float16宣言276、pose evidence再利用276であり、mainでpose再推論を宣言しない契約も確認した。DINO拡張の内容pinはコマンドの選択先に束縛されている。検証に620.957秒かかった。
+
+既存の完成markerは0件のまま、新しいmarkerも作っていない。ここでのnative load=0はDINOの2つの推論拡張を指す（実行中processのmappingにも両方なし）。通常のCPU Pythonライブラリのimportは行っている。最新Ball観測を生成するnode、GPU推論、scene export、GPU数値一致はこの検証の範囲外であり、本番コマンドを登録・起動した証拠ではない。

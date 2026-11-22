@@ -28,6 +28,24 @@ class DoublingModel(BaseInferenceModel[int, int]):
 
 
 class TestBaseInferenceModel:
+    @pytest.mark.parametrize("failure", [RuntimeError, KeyboardInterrupt])
+    def test_failed_load_releases_partially_allocated_weights(self, failure: type[BaseException]) -> None:
+        class Partial(DoublingModel):
+            weight: torch.Tensor | None = None
+
+            def _load_impl(self) -> None:
+                self.weight = torch.ones(2)
+                raise failure("initialization failed")
+
+            def _unload_impl(self) -> None:
+                self.weight = None
+                super()._unload_impl()
+
+        model = Partial()
+        with pytest.raises(failure, match="initialization failed"):
+            model.load()
+        assert not model.is_loaded and model.weight is None and model.unload_calls == 1
+
     def test_load_is_idempotent(self):
         model = DoublingModel()
         assert not model.is_loaded

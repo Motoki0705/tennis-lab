@@ -1,0 +1,8 @@
+{
+  "reason": "CI found original command target absent from captured patch; supplement from the already-saved original script, without changing the historical command or script",
+  "source_sha256": "81a19e61ebbd40a45ebf8bfc8883cc2273c93523ac6b89d69a28e2b056f86fbc",
+  "patch_before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "patch_after_sha256": "39db28e66b963148c6df5e6187ac8836a78f9c7bf99e3dc5b465b480369b0536",
+  "ci_run": 43839870930,
+  "date": "2026-11-16"
+}

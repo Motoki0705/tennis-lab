@@ -5,13 +5,243 @@ from __future__ import annotations
 import copy
 import importlib
 import json
+from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import pytest
 
 from tests.support.agents_ops.worker_logs import journal, record_source, schema, sources
 
 safety: Any = importlib.import_module("worker_logs.safety")
+board_safety: Any = importlib.import_module("board.safety")
+
+
+@pytest.mark.parametrize("changed", [None, "session", "generation"])
+def test_publication_admission_rechecks_its_frozen_owner(
+    tmp_path: Path, changed: str | None
+) -> None:
+    state = importlib.import_module("parent.state")
+    ownership = importlib.import_module("worker_logs.ownership")
+    store = state.Store(tmp_path / "state")
+    owner = {
+        "session": "codex:original",
+        "generation": 1,
+        "status": "active",
+        "tasks": {},
+        "reviews": [],
+    }
+    document = {"version": 1, "parents": {"o/r#1": owner}}
+    journal.atomic(store.path, document)
+    check = ownership.publication_owner(store, "O/R", 1, "codex:original", 1)
+    ownership.require_owner(check)
+    if changed is not None:
+        owner[changed] = "codex:successor" if changed == "session" else 2
+        journal.atomic(store.path, document)
+    before = store.path.read_bytes()
+    if changed is None:
+        ownership.require_owner(check)
+    else:
+        with pytest.raises(journal.PublicationError, match="log_owner_mismatch"):
+            ownership.require_owner(check)
+    assert store.path.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "観測/補間/遮蔽推定など",
+        "「遮蔽（座標あり/なし）」",
+        "カメラ/ボール",
+        "あり/なし",
+        "観測/補間",
+        "カタカナ/テスト",
+        "観測/補間をv3に保存",
+        "𠮷/漢字",
+        "Ａ/Ｂ",
+        "A/B tests/example.py:12 https://example.com/report",
+        "https://example.com/?mode=あり/なし#観測/補間",
+        "https://example.com/?mode=%E3%81%82%E3%82%8A%2F%E3%81%AA%E3%81%97",
+    ],
+)
+def test_japanese_word_separators_preserve_public_text(value: str) -> None:
+    board_safety.public(value, {}, {})
+    result = safety.Guard().sanitize(value)
+    assert result.text == value
+    assert result.replacements == 0 and result.local_paths == {}
+
+
+@pytest.mark.parametrize(
+    ("value", "expected", "kind"),
+    [
+        ("保存先 /mnt/unknown/report.txt。", "保存先 [local path]。", "posix"),
+        ("パスは/home/user/x", "パスは[local path]", "posix"),
+        ("/home/利用者/非公開.txt", "[local path]", "posix"),
+        ("/資料/非公開.txt", "[local path]", "posix"),
+        ("（/.ssh/config）", "（[local path]）", "posix"),
+        ("（/./private/file）", "（[local path]）", "posix"),
+        ("（/+private/file）", "（[local path]）", "posix"),
+        ("設定は~/.ssh/config", "設定は[local path]", "home"),
+        ("~/.config/app/settings", "[local path]", "home"),
+        (r"参照 C:\Users\unknown\report.txt", "参照 [local path]", "windows"),
+        ("C:/Users/unknown/report.txt", "[local path]", "windows"),
+        (r"\\server\private\report.txt", "[local path]", "unc"),
+        ("git -C/unknown/repo status", "git -C[local path] status", "posix"),
+        ("compiler -I/unknown/header", "compiler -I[local path]", "posix"),
+        (r"compiler -IC:\unknown\header", "compiler -I[local path]", "windows"),
+        (r"compiler -I\unknown/header", "compiler -I[local path]", "windows"),
+        ("/", "[local path]", "posix"),
+        ("保存先 %2Fhome%2Fuser%2Fx", "保存先 [local path]", "posix"),
+        ("%252Fhome%252Fuser%252Fx", "[local path]", "posix"),
+        ("保存先 ／home/user/x", "保存先 [local path]", "posix"),
+        (
+            "%E4%BF%9D%E5%AD%98%20%2Fhome%2Fuser%2Fx%20%E7%B5%82%E4%BA%86",
+            "%E4%BF%9D%E5%AD%98%20[local path]%20%E7%B5%82%E4%BA%86",
+            "posix",
+        ),
+        ('参照 "/home/user/a b.txt"。', '参照 "[local path]"。', "posix"),
+        ("[資料](/unknown/report.txt)", "[資料]([local path])", "posix"),
+        ("[資料](/unknown/(data)/file.txt)", "[資料]([local path])", "posix"),
+        ("/home/[unknown]/report.txt", "[local path]", "posix"),
+        (
+            "保存 `/unknown/run\n次の指示 `",
+            "保存 `[local path]\n次の指示 `",
+            "posix",
+        ),
+    ],
+)
+def test_local_paths_are_detected_then_masked(
+    value: str, expected: str, kind: str
+) -> None:
+    guard = safety.Guard()
+    with pytest.raises(journal.PublicationError, match="absolute_path"):
+        guard.check(value)
+    result = guard.sanitize(value)
+    assert result.text == expected
+    assert result.replacements == 1 and result.local_paths == {kind: 1}
+    guard.check(result.text)
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["パスは/home/user/x", "参照先：/private/state", "設定は~/.ssh", "設定は~/.config"],
+)
+def test_board_keeps_rejecting_real_paths_next_to_japanese(value: str) -> None:
+    with pytest.raises(board_safety.BoardError, match="private path"):
+        board_safety.public(value, {}, {})
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("[資料](/資料/非公開.txt)", "[資料]([local path])"),
+        ("`/資料/非公開.txt`", "`[local path]`"),
+        ("保存先:/資料/非公開.txt", "保存先:[local path]"),
+        ("保存先：/資料/非公開.txt", "保存先：[local path]"),
+        ("（/資料/x）", "（[local path]）"),
+        ("(/資料/x)", "([local path])"),
+        ("[/資料/x]", "[[local path]]"),
+        ("資料=/資料/x", "資料=[local path]"),
+        (" /資料/x", " [local path]"),
+        ('"/資料/x"', '"[local path]"'),
+        ("'/資料/x'", "'[local path]'"),
+        ("保存先:/ひみつ/ファイル.txt", "保存先:[local path]"),
+        ("保存先：／資料/x", "保存先：[local path]"),
+        ("[資料](%2F資料%2F非公開.txt)", "[資料]([local path])"),
+        ("%60%2F資料%2F非公開.txt%60", "%60[local path]%60"),
+        ("保存先:%252F資料%252F非公開.txt", "保存先:[local path]"),
+        ("保存先%EF%BC%9A%2F資料%2F非公開.txt", "保存先%EF%BC%9A[local path]"),
+        ("＋/－", "＋[local path]"),
+        ("（/）", "（[local path]）"),
+        ("○/×", "○[local path]"),
+    ],
+)
+def test_japanese_named_paths_at_boundaries_are_rejected_or_masked(
+    value: str, expected: str
+) -> None:
+    with pytest.raises(board_safety.BoardError, match="private path"):
+        board_safety.public(value, {}, {})
+    guard = safety.Guard()
+    with pytest.raises(journal.PublicationError, match="absolute_path"):
+        guard.check(value)
+    result = guard.sanitize(value)
+    assert result.text == expected
+    assert result.replacements == 1 and result.local_paths == {"posix": 1}
+    guard.check(result.text)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "https://example.com/?file=/資料/非公開.txt",
+        "https://example.com/#保存先:/資料/非公開.txt",
+        "https://example.com/?file=（/資料/x）",
+        "https://example.com/?file=%2F資料%2F非公開.txt",
+        "https://example.com/#保存先%EF%BC%9A%252F資料%252F非公開.txt",
+        "https://example.com/?file=%60%2F資料%2F非公開.txt%60",
+        "https://example.com/#%5B%2F資料%2F非公開.txt%5D",
+        "%68%74%74%70%73%3A%2F%2Fexample.com%2F%3Ffile%3D%2F資料%2F非公開.txt",
+    ],
+)
+def test_japanese_named_paths_in_url_queries_and_fragments_are_rejected(
+    value: str,
+) -> None:
+    with pytest.raises(board_safety.BoardError, match="private path"):
+        board_safety.public(value, {}, {})
+    guard = safety.Guard()
+    with pytest.raises(journal.PublicationError, match="unsafe_url"):
+        guard.check(value)
+    with pytest.raises(journal.PublicationError, match="unsafe_url"):
+        guard.sanitize(value)
+
+
+@pytest.mark.parametrize("encoding_layers", [4, 5])
+def test_path_decoding_limit_is_shared(encoding_layers: int) -> None:
+    value = "/資料/x"
+    for _ in range(encoding_layers):
+        value = quote(value, safe="")
+    with pytest.raises(board_safety.BoardError):
+        board_safety.public(value, {}, {})
+    guard = safety.Guard()
+    if encoding_layers == 5:
+        with pytest.raises(journal.PublicationError, match="ambiguous_encoding"):
+            guard.sanitize(value)
+    else:
+        result = guard.sanitize(value)
+        assert result.text == "[local path]"
+        assert result.replacements == 1 and result.local_paths == {"posix": 1}
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "保存 /unknown/report token=undisclosed",
+        "/unknown/ghp_" + "x" * 30,
+        "/unknown/%67%68%70%5F" + "x" * 30,
+        "/unknown/report\x1b[0m",
+        "/unknown/01234567-89ab-cdef-0123-456789abcdef",
+        "https://example.com/?file=%2Fhome%2Fuser%2Fx",
+        "https://example.com/#%252Fhome%252Fuser%252Fx",
+        "https://example.com/?file=パスは%2Fhome%2Fuser%2Fx",
+    ],
+)
+def test_path_masking_keeps_rejecting_other_secrets_and_unsafe_urls(value: str) -> None:
+    with pytest.raises(journal.PublicationError):
+        safety.Guard().sanitize(value)
+
+
+def test_masked_output_is_rechecked(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(safety, "mask_local_paths", lambda text: (text, {"posix": 1}))
+    with pytest.raises(journal.PublicationError, match="absolute_path"):
+        safety.Guard().sanitize("保存 /home/unknown/report.txt")
+
+
+def test_known_identifier_inside_unknown_path_is_fully_masked() -> None:
+    result = safety.Guard(["private-session-value"]).sanitize(
+        "保存 /unknown/private-session-value/report.txt。"
+    )
+    assert result.text == "保存 [local path]。"
+    assert result.replacements == 2 and result.local_paths == {"posix": 1}
 
 
 @pytest.mark.parametrize(
@@ -45,6 +275,12 @@ def test_schema_and_receipts_fail_closed(case: str) -> None:
         assert files["instruction.md"].decode() == source["instruction"]
         assert meta["artifacts"]["prs"] == [42]
         assert meta["worker"]["selected"] == {"model": "gpt-6.1-sol", "effort": "max"}
+        assert meta["sanitization"] == {
+            "version": 1,
+            "instruction": 0,
+            "final": 0,
+            "additional": 0,
+        }
         return
     meta = json.loads(files["meta.json"])
     if case == "version":
@@ -67,6 +303,77 @@ def test_schema_and_receipts_fail_closed(case: str) -> None:
         schema.validate(files)
 
 
+def test_high_effort_without_a_repair_is_rejected_at_both_log_boundaries() -> None:
+    source, receipt = record_source()
+    files = sources.render(source, receipt)
+    meta = json.loads(files["meta.json"])
+    meta["worker"]["selected"]["effort"] = "high"
+    meta["worker"]["effective"]["effort"]["value"] = "high"
+    files["meta.json"] = schema.json_bytes(meta)
+    with pytest.raises(ValueError, match="record_worker"):
+        schema.validate(files)
+    receipt["record"]["contract"]["settings"]["selected"]["effort"] = "high"
+    with pytest.raises(ValueError, match="runner_settings_changed"):
+        sources.render(source, receipt)
+
+
+def test_mask_counts_cover_instruction_final_and_additional_text() -> None:
+    source, receipt = record_source()
+    source["instruction"] = "観測/補間。パスは/home/unknown/report.txt。"
+    source["additional"] = ["設定は~/.config/app", "参照は~/.ssh/config"]
+    receipt["final"] = (
+        r"確認は C:\Users\unknown\report.txt と \\server\private\report.txt"
+    )
+    receipt["final_sha256"] = schema.sha(receipt["final"].encode())
+    files = sources.render(source, receipt)
+    meta = schema.validate(files)
+    assert files["instruction.md"].decode() == "観測/補間。パスは[local path]。"
+    assert files["final.md"].decode() == "確認は [local path] と [local path]"
+    assert meta["instruction"]["additional_instructions"] == [
+        "設定は[local path]",
+        "参照は[local path]",
+    ]
+    assert meta["sanitization"] == {
+        "version": 2,
+        "instruction": 1,
+        "final": 2,
+        "additional": 2,
+        "local_paths": {"posix": 1, "home": 2, "windows": 1, "unc": 1},
+    }
+
+
+@pytest.mark.parametrize(
+    "counts",
+    [
+        {"posix": 0},
+        {"home": -1},
+        {"windows": True},
+        {"unc": 2},
+        {"private-path": 1},
+        {},
+    ],
+)
+def test_invalid_mask_counts_cannot_cross_publication_boundary(
+    counts: dict[str, int],
+) -> None:
+    source, receipt = record_source()
+    source["instruction"] = "保存 /unknown/report.txt"
+    files = sources.render(source, receipt)
+    meta = json.loads(files["meta.json"])
+    meta["sanitization"]["local_paths"] = counts
+    files["meta.json"] = schema.json_bytes(meta)
+    with pytest.raises(journal.PublicationError, match="record_sanitization"):
+        schema.validate(files)
+    with pytest.raises(journal.PublicationError, match="record_sanitization"):
+        journal.view(
+            {
+                "source": {"public_key": "a" * 32, "sequence": 1},
+                "state": "ready",
+                "files": {name: value.decode() for name, value in files.items()},
+            }
+        )
+
+
 @pytest.mark.parametrize(
     "case",
     [
@@ -86,31 +393,36 @@ def test_publication_safety_preserves_or_blocks(case: str) -> None:
     guard = safety.Guard(["private-value"], ["/private/checkout"])
     value: Any = "日本語の根拠。tests/example.py:12 https://github.com/o/r/pull/42\n"
     if case == "checkout_path":
-        text, count = guard.sanitize("確認: /private/checkout/tests/example.py:12\n")
-        assert text == "確認: ./tests/example.py:12\n" and count == 1
+        result = guard.sanitize("確認: /private/checkout/tests/example.py:12\n")
+        assert (
+            result.text == "確認: ./tests/example.py:12\n" and result.replacements == 1
+        )
         references = safety.Guard(
             [], ["/private/checkout"], repo="o/r", commit="a" * 40
         )
-        linked, _ = references.sanitize("[根拠](/private/checkout/tests/example.py:12)")
+        linked = references.sanitize("[根拠](/private/checkout/tests/example.py:12)")
         assert (
-            linked
+            linked.text
             == "[根拠](https://github.com/o/r/blob/"
             + "a" * 40
             + "/tests/example.py#L12)"
         )
         return
     if case == "known_identity":
-        text, count = guard.sanitize("実行は private-value で確認。")
-        assert text == "実行は [private identifier] で確認。" and count == 1
+        result = guard.sanitize("実行は private-value で確認。")
+        assert (
+            result.text == "実行は [private identifier] で確認。"
+            and result.replacements == 1
+        )
         return
     if case == "ordinary":
-        assert guard.sanitize(value) == (value, 0)
+        assert guard.sanitize(value) == safety.Sanitized(value, 0, {})
         for url in (
             "HTTPS://EXAMPLE.COM/path",
             "Http://example.com/path",
             "%48%54%54%50%53%3A%2F%2Fexample.com/path",
         ):
-            assert guard.sanitize(url) == (url, 0)
+            assert guard.sanitize(url) == safety.Sanitized(url, 0, {})
         return
     if case == "url_credentials":
         for url in (
@@ -163,6 +475,100 @@ def test_publication_safety_preserves_or_blocks(case: str) -> None:
             journal.view(bad)
 
 
+@pytest.fixture
+def log_pr_identity() -> tuple[dict[str, Any], dict[str, Any]]:
+    row = {
+        "source": {"repo": "o/r"},
+        "branch": "worker-log/d-abc/0001",
+        "head": "a" * 40,
+        "pr_body": "marker",
+    }
+    pr = {
+        "number": 7,
+        "html_url": "https://github.com/o/r/pull/7",
+        "draft": False,
+        "body": "marker",
+        "head": {
+            "ref": row["branch"],
+            "sha": row["head"],
+            "repo": {"full_name": "o/r"},
+        },
+        "base": {"ref": "main", "repo": {"full_name": "o/r"}},
+    }
+    return row, pr
+
+
+@pytest.mark.parametrize(
+    ("repo", "base_repo", "head_repo", "source_repo", "url_repo"),
+    [
+        ("motoki0705/tennis-lab",) * 5,
+        (
+            "motoki0705/tennis-lab",
+            "Motoki0705/tennis-lab",
+            "Motoki0705/tennis-lab",
+            "motoki0705/tennis-lab",
+            "Motoki0705/tennis-lab",
+        ),
+        (
+            "Motoki0705/Tennis-Lab",
+            "motoki0705/TENNIS-LAB",
+            "MOTOKI0705/tennis-lab",
+            "Motoki0705/TENNIS-LAB",
+            "motoki0705/tennis-lab",
+        ),
+    ],
+    ids=["lowercase", "dispatcher", "mixed-case"],
+)
+def test_pr_identity_accepts_repo_casing(
+    log_pr_identity: tuple[dict[str, Any], dict[str, Any]],
+    repo: str,
+    base_repo: str,
+    head_repo: str,
+    source_repo: str,
+    url_repo: str,
+) -> None:
+    row, pr = log_pr_identity
+    row["source"]["repo"] = source_repo
+    pr["base"]["repo"]["full_name"] = base_repo
+    pr["head"]["repo"]["full_name"] = head_repo
+    pr["html_url"] = f"https://github.com/{url_repo}/pull/7"
+    schema.identity(pr, row, repo)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://github.com/o/r/pull/8",
+        "https://github.com/other/r/pull/7",
+        "https://github.com/o/other/pull/7",
+        "https://gitlab.com/o/r/pull/7",
+        "https://github.com.example.invalid/o/r/pull/7",
+        "https://github.com@other.example/o/r/pull/7",
+        "https://github.com:443/o/r/pull/7",
+        "http://github.com/o/r/pull/7",
+        "HTTPS://github.com/o/r/pull/7",
+        "https://github.com/o/r/Pull/7",
+        "https://github.com/o/r/issues/7",
+        "https://github.com/o/r/pull/7/files",
+        "https://github.com/o/r/pull/7/",
+        "https://github.com/o/r/pull/07",
+        "https://github.com/o/r/pull/7?other=8",
+        "https://github.com/o/r/pull/7#discussion",
+        "https://github.com/%6f/r/pull/7",
+        "https://github.com/o/r/pull/7\n",
+        None,
+    ],
+)
+def test_pr_identity_rejects_changed_url(
+    log_pr_identity: tuple[dict[str, Any], dict[str, Any]], url: str | None
+) -> None:
+    row, pr = log_pr_identity
+    pr["html_url"] = url
+    with pytest.raises(journal.PublicationError, match="pr_identity_changed") as exc:
+        schema.identity(pr, row, "o/r")
+    assert exc.value.detail == "PR identity mismatch: html_url"
+
+
 @pytest.mark.parametrize(
     "case",
     [
@@ -174,18 +580,32 @@ def test_publication_safety_preserves_or_blocks(case: str) -> None:
         "executable",
         "gitlink",
         "repository",
+        "base.repo",
+        "source.repo",
         "base",
         "head",
+        "head.ref",
+        "body",
     ],
 )
-def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
+def test_merge_policy_rejects_unsafe_diff_or_identity(
+    case: str, log_pr_identity: tuple[dict[str, Any], dict[str, Any]]
+) -> None:
     expected = {"logs/instruction.md", "logs/final.md", "logs/meta.json"}
     raw = b"".join(
         f":000000 100644 {'0' * 40} {'a' * 40} A\0{p}\0".encode()
         for p in sorted(expected)
     )
     schema.additions(raw, expected)
-    if case in {"repository", "base", "head"}:
+    if case in {
+        "repository",
+        "base.repo",
+        "source.repo",
+        "base",
+        "head",
+        "head.ref",
+        "body",
+    }:
         if case == "repository":
             normalize = importlib.import_module(
                 "worker_logs.publication"
@@ -202,34 +622,31 @@ def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
             assert normalize("https://user:pass@github.com/o/r.git") != normalize(
                 "https://github.com/o/r"
             )
-        row = {
-            "source": {"repo": "o/r"},
-            "branch": "worker-log/d-abc/0001",
-            "head": "a" * 40,
-            "pr_body": "marker",
-        }
-        pr: dict[str, Any] = {
-            "number": 7,
-            "html_url": "https://github.com/o/r/pull/7",
-            "draft": False,
-            "body": "marker",
-            "head": {
-                "ref": row["branch"],
-                "sha": row["head"],
-                "repo": {"full_name": "o/r"},
-            },
-            "base": {"ref": "main", "repo": {"full_name": "o/r"}},
-        }
+        row, pr = log_pr_identity
         schema.identity(pr, row, "o/r")
         bad = copy.deepcopy(pr)
         if case == "repository":
             bad["head"]["repo"]["full_name"] = "other/r"
+        elif case == "base.repo":
+            bad["base"]["repo"]["full_name"] = "other/r"
+        elif case == "source.repo":
+            row["source"]["repo"] = "other/r"
         elif case == "base":
             bad["base"]["ref"] = "release"
-        else:
+        elif case == "head":
             bad["head"]["sha"] = "b" * 40
-        with pytest.raises(journal.PublicationError, match="pr_identity_changed"):
+        elif case == "head.ref":
+            bad["head"]["ref"] = "other-branch"
+        else:
+            bad["body"] = "other marker"
+        with pytest.raises(
+            journal.PublicationError, match="pr_identity_changed"
+        ) as exc:
             schema.identity(bad, row, "o/r")
+        field = {"repository": "head.repo", "base": "base.ref", "head": "head.sha"}.get(
+            case, case
+        )
+        assert field in exc.value.detail
         return
     changes = {
         "outside": (b"logs/final.md", b"code.py"),
@@ -243,3 +660,69 @@ def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
     before, after = changes[case]
     with pytest.raises(journal.PublicationError, match="unsafe_diff"):
         schema.additions(raw.replace(before, after, 1), expected)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "none",
+        "outside",
+        "modified",
+        "removed",
+        "renamed",
+        "extra",
+        "missing",
+        "duplicate",
+    ],
+)
+def test_github_changed_files_must_be_exactly_the_three_additions(change: str) -> None:
+    expected = {"logs/instruction.md", "logs/final.md", "logs/meta.json"}
+    changes = [{"filename": name, "status": "added"} for name in sorted(expected)]
+    if change == "none":
+        schema.pr_additions(changes, expected)
+        return
+    if change == "outside":
+        changes[0]["filename"] = "outside.txt"
+    elif change in {"modified", "removed", "renamed"}:
+        changes[0]["status"] = change
+        if change == "renamed":
+            changes[0]["previous_filename"] = "existing.txt"
+    elif change == "extra":
+        changes.append({"filename": "extra.txt", "status": "added"})
+    elif change == "missing":
+        changes.pop()
+    else:
+        changes[0] = changes[1]
+    with pytest.raises(journal.PublicationError, match="unsafe_diff"):
+        schema.pr_additions(changes, expected)
+
+
+@pytest.mark.parametrize("response", ["three_files", "full_page", "object"])
+def test_github_file_endpoint_cannot_hide_a_larger_diff(
+    monkeypatch: pytest.MonkeyPatch, response: str
+) -> None:
+    github = importlib.import_module("worker_logs.publication").GitHub("o/r")
+    expected = {"logs/instruction.md", "logs/final.md", "logs/meta.json"}
+    changes: Any = [{"filename": name, "status": "added"} for name in sorted(expected)]
+    if response == "full_page":
+        changes += [
+            {"filename": f"extra-{i}.txt", "status": "added"} for i in range(97)
+        ]
+    elif response == "object":
+        changes = {"message": "invalid response"}
+    requests = []
+
+    def request(endpoint: str) -> Any:
+        requests.append(endpoint)
+        return changes
+
+    monkeypatch.setattr(github, "request", request)
+    if response == "three_files":
+        schema.pr_additions(github.files(7), expected)
+    else:
+        with pytest.raises(
+            journal.PublicationError,
+            match="github_invalid_response" if response == "object" else "unsafe_diff",
+        ):
+            schema.pr_additions(github.files(7), expected)
+    assert requests == ["repos/o/r/pulls/7/files?per_page=100"]

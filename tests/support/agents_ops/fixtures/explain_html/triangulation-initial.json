@@ -1,0 +1,289 @@
+{
+  "source": "PR #1807 / issue #1721: published triangulation initial candidate and its original verifier input, before claim-faithfulness changes. Public document/evidence only; no verdict or private logs.",
+  "input": {
+    "mode": "initial",
+    "context": {
+      "purpose": "三角測量がなぜ3D位置を決められ、どの条件で不確かになるかを説明する。",
+      "audience": "画像のピクセル座標は知っているが3D復元を初めて学ぶテニス動画解析の読者。",
+      "evidence": [
+        {
+          "evidence_id": "projection",
+          "statement": "校正したピンホールカメラでは、3D点を画像へ写す変換を内部パラメータと外部パラメータで表す。画像の1点だけではその観測方向に沿う奥行きは決まらず、複数視点の対応点と投影行列を用いて三角測量する。",
+          "provenance": {
+            "kind": "reference",
+            "source": "https://docs.opencv.org/4.13.0/d9/d0c/group__calib3d.html"
+          },
+          "values": {},
+          "conditions": [
+            "レンズ歪みの補正と座標系を揃えること。",
+            "動くボールは同時刻の同一点を対応付けること。"
+          ]
+        },
+        {
+          "evidence_id": "trial",
+          "statement": "整列済みピンホールステレオの仮想例。焦点距離 f=800 px、基線 B=1 m、視差 d=40 px のとき Z=fB/d=20 m。視差は左右の対応点の横座標差で、この式のZはカメラ座標の奥行き。",
+          "provenance": {
+            "kind": "hypothetical",
+            "source": "この説明のための仮想的な試算。実測ではない。"
+          },
+          "values": {
+            "focal_px": 800,
+            "baseline_m": 1,
+            "disparity_px": 40,
+            "depth_m": 20
+          },
+          "conditions": [
+            "平行光軸に整列した校正済みステレオ。",
+            "正しい対応と同期。一般の任意配置へそのまま適用しない。"
+          ]
+        }
+      ],
+      "authorized_evidence_changes": [],
+      "assets": [
+        {
+          "asset_id": "court_concept",
+          "path": "assets/court_concept.png",
+          "media_type": "image/png",
+          "sha256": "f01a832796729466f6d1e47ba4aa0b3d036a89ebf84772a078f7c31b4eb66547",
+          "kind": "image",
+          "caption": "2台の固定カメラで同じテニスコートを見る場面。AI生成の概念イラスト。寸法・ボールの大きさは正確ではない。",
+          "alt": "コートの異なる角にある2台のカメラと空中のボール。",
+          "provenance": {
+            "kind": "generated_concept",
+            "source": "Codex interactive imagegen, 2026-11-09; 場面理解のための概念イラスト。"
+          }
+        },
+        {
+          "asset_id": "rays",
+          "path": "assets/rays.svg",
+          "media_type": "image/svg+xml",
+          "sha256": "ff003757a3fa5ad8adf7ecf0601318787dd7e7152fc80d4107d613bd718cf26c",
+          "kind": "svg",
+          "caption": "2台からの観測方向が対象点Pを拘束する模式図。長さ・角度は縮尺を持たない。",
+          "alt": "カメラLとRからの2本の観測方向が上方の対象点Pで交わる。カメラ間が基線B。",
+          "provenance": {
+            "kind": "hypothetical",
+            "source": "説明用の幾何模式図。実際の校正結果ではない。"
+          }
+        }
+      ],
+      "figures": [
+        {
+          "figure_id": "court-scene",
+          "content_id": "scene",
+          "kind": "image",
+          "asset_ids": [
+            "court_concept"
+          ],
+          "caption": "2台の固定カメラで同じテニスコートを見る場面。AI生成の概念イラスト。寸法・ボールの大きさは正確ではない。",
+          "alt": "コートの異なる角にある2台のカメラと空中のボール。",
+          "provenance": {
+            "kind": "generated_concept",
+            "source": "Codex interactive imagegen, 2026-11-09; 場面理解のための概念イラスト。"
+          },
+          "renderer": null,
+          "definition": {}
+        },
+        {
+          "figure_id": "two-rays",
+          "content_id": "geometry",
+          "kind": "svg",
+          "asset_ids": [
+            "rays"
+          ],
+          "caption": "2台からの観測方向が対象点Pを拘束する模式図。長さ・角度は縮尺を持たない。",
+          "alt": "カメラLとRからの2本の観測方向が上方の対象点Pで交わる。カメラ間が基線B。",
+          "provenance": {
+            "kind": "hypothetical",
+            "source": "説明用の幾何模式図。実際の校正結果ではない。"
+          },
+          "renderer": null,
+          "definition": {}
+        }
+      ],
+      "change_summaries": [],
+      "preferences": "日本語の丁寧な説明。専門用語は最初に平易に導入。結論だけにせず、理由、具体例、図の着目点と結論、適用条件を本文で説明し、長い導出はdetailsに置く。読み手は画像座標を知るが射影幾何の初学者。全体像から順に深く進むAが基本。提供根拠を保持し、実測でない値を試算例と明記。生成画像は概念イラストで実測画像や正確な校正図と呼ばない。画像・SVGは用意されたFigureの空slotを対応content_idの中に置く。グラフの軸・前提・単位と操作前の読み方を近傍に説明する。HTML lang=ja、UTF-8、viewport meta、head/body明示。レスポンシブで390px幅でも横に溢れないCSS、画像max-width:100%、grid/flexのmin-width:0、tableは必要ならoverflowコンテナ、details・rangeのkeyboard、見えるfocus、十分なcontrast、reduced-motionに対応。章やカードの固定テンプレートを使わない。小さなfooterに「保存版は閲覧専用です。編集は元の起動URLで行えます。」と記す。CSSはstyle要素へ。CSSのコメント・バックスラッシュescape・URL・@importは使わない。任意JS・CDN・svg inlineは作らず、準備された図slotのみを使用。root外のresourceなし。用意されたfiguresとassets metadataは完全に保持。sourceがHTTP(S)の各evidenceを該当data-evidence-idに実リンクで示す。\nThe runtime's conservative CSS validator rejects declaration names ending in behavior, including scroll-behavior. Omit those declarations entirely; use normal instant scrolling. Use prefers-reduced-motion without that property."
+    },
+    "current_revision": null,
+    "request": {
+      "document_id": "triangulation",
+      "base_revision": null,
+      "request_id": "initial-64ca326894a048c2b2e0b3442c599cd8",
+      "target": {
+        "kind": "document"
+      },
+      "instruction": "A中心の読み物として、冒頭の場面から二つの観測方向、校正・対応・同期の理由、20 mの具体例、交わらない実観測と最適化の考えへ導く。Bの「1台ではなぜ不足か」を自然に挿入。大きな導入画像と段階的な縦の物語を使い、比較ダッシュボードにしない。sceneとgeometryのcontent blockを作り用意したFigureを配置。"
+    },
+    "candidate": {
+      "request": {
+        "document_id": "triangulation",
+        "base_revision": null,
+        "request_id": "initial-64ca326894a048c2b2e0b3442c599cd8",
+        "target": {
+          "kind": "document"
+        },
+        "instruction": "A中心の読み物として、冒頭の場面から二つの観測方向、校正・対応・同期の理由、20 mの具体例、交わらない実観測と最適化の考えへ導く。Bの「1台ではなぜ不足か」を自然に挿入。大きな導入画像と段階的な縦の物語を使い、比較ダッシュボードにしない。sceneとgeometryのcontent blockを作り用意したFigureを配置。"
+      },
+      "document": {
+        "schema_version": 1,
+        "document_id": "triangulation",
+        "purpose": "三角測量がなぜ3D位置を決められ、どの条件で不確かになるかを説明する。",
+        "audience": "画像のピクセル座標は知っているが3D復元を初めて学ぶテニス動画解析の読者。",
+        "evidence": [
+          {
+            "evidence_id": "projection",
+            "statement": "校正したピンホールカメラでは、3D点を画像へ写す変換を内部パラメータと外部パラメータで表す。画像の1点だけではその観測方向に沿う奥行きは決まらず、複数視点の対応点と投影行列を用いて三角測量する。",
+            "provenance": {
+              "kind": "reference",
+              "source": "https://docs.opencv.org/4.13.0/d9/d0c/group__calib3d.html"
+            },
+            "values": {},
+            "conditions": [
+              "レンズ歪みの補正と座標系を揃えること。",
+              "動くボールは同時刻の同一点を対応付けること。"
+            ]
+          },
+          {
+            "evidence_id": "trial",
+            "statement": "整列済みピンホールステレオの仮想例。焦点距離 f=800 px、基線 B=1 m、視差 d=40 px のとき Z=fB/d=20 m。視差は左右の対応点の横座標差で、この式のZはカメラ座標の奥行き。",
+            "provenance": {
+              "kind": "hypothetical",
+              "source": "この説明のための仮想的な試算。実測ではない。"
+            },
+            "values": {
+              "baseline_m": 1,
+              "depth_m": 20,
+              "disparity_px": 40,
+              "focal_px": 800
+            },
+            "conditions": [
+              "平行光軸に整列した校正済みステレオ。",
+              "正しい対応と同期。一般の任意配置へそのまま適用しない。"
+            ]
+          }
+        ],
+        "html": "<!DOCTYPE html>\n<html lang=\"ja\">\n<head><meta data-visual-policy=\"1\" http-equiv=\"Content-Security-Policy\" content=\"default-src &#x27;none&#x27;; script-src &#x27;none&#x27;; img-src &#x27;self&#x27;; style-src &#x27;self&#x27; &#x27;unsafe-inline&#x27;; connect-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;\">\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>テニス動画解析のための三角測量入門：なぜ2台のカメラでボールの3D位置が決まるのか</title>\n  <style>\n    * {\n      box-sizing: border-box;\n    }\n    body {\n      margin: 0;\n      padding: 1.5rem 1rem;\n      background-color: #f8fafc;\n      color: #1e293b;\n      font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;\n      line-height: 1.75;\n      overflow-wrap: break-word;\n      word-break: break-word;\n    }\n    main {\n      max-width: 840px;\n      margin: 0 auto;\n      background-color: #ffffff;\n      padding: 2.5rem 2rem;\n      border-radius: 12px;\n      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);\n      min-width: 0;\n    }\n    h1 {\n      font-size: 1.85rem;\n      line-height: 1.35;\n      color: #0f172a;\n      margin-top: 0;\n      margin-bottom: 1.5rem;\n      font-weight: 700;\n    }\n    h2 {\n      font-size: 1.4rem;\n      line-height: 1.4;\n      color: #1e3a8a;\n      margin-top: 2.5rem;\n      margin-bottom: 1rem;\n      padding-bottom: 0.5rem;\n      border-bottom: 2px solid #e2e8f0;\n      font-weight: 600;\n    }\n    h3 {\n      font-size: 1.15rem;\n      line-height: 1.45;\n      color: #1e293b;\n      margin-top: 1.75rem;\n      margin-bottom: 0.75rem;\n      font-weight: 600;\n    }\n    p {\n      margin-top: 0;\n      margin-bottom: 1.25rem;\n    }\n    section {\n      margin-bottom: 2.5rem;\n      min-width: 0;\n    }\n    figure {\n      margin: 2rem 0;\n      padding: 1rem;\n      background-color: #f1f5f9;\n      border: 1px solid #cbd5e1;\n      border-radius: 8px;\n      min-width: 0;\n    }\n    figure img, figure svg {\n      max-width: 100%;\n      height: auto;\n      display: block;\n      margin: 0 auto;\n    }\n    figcaption {\n      margin-top: 0.75rem;\n      font-size: 0.875rem;\n      color: #475569;\n      text-align: center;\n      line-height: 1.5;\n    }\n    .info-box {\n      background-color: #eff6ff;\n      border-left: 4px solid #3b82f6;\n      padding: 1rem 1.25rem;\n      margin: 1.5rem 0;\n      border-radius: 0 8px 8px 0;\n      font-size: 0.95rem;\n    }\n    .warning-box {\n      background-color: #fffbeb;\n      border-left: 4px solid #f59e0b;\n      padding: 1rem 1.25rem;\n      margin: 1.5rem 0;\n      border-radius: 0 8px 8px 0;\n      font-size: 0.95rem;\n    }\n    .table-container {\n      width: 100%;\n      overflow-x: auto;\n      margin: 1.5rem 0;\n    }\n    table {\n      width: 100%;\n      border-collapse: collapse;\n      font-size: 0.95rem;\n      min-width: 0;\n    }\n    th, td {\n      border: 1px solid #cbd5e1;\n      padding: 0.75rem 0.85rem;\n      text-align: left;\n    }\n    th {\n      background-color: #f1f5f9;\n      font-weight: 600;\n      color: #0f172a;\n    }\n    code {\n      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;\n      background-color: #e2e8f0;\n      padding: 0.2em 0.4em;\n      border-radius: 4px;\n      font-size: 0.9em;\n      color: #0f172a;\n    }\n    details {\n      background-color: #f8fafc;\n      border: 1px solid #cbd5e1;\n      border-radius: 8px;\n      padding: 0.85rem 1.2rem;\n      margin: 1.5rem 0;\n    }\n    summary {\n      font-weight: 600;\n      color: #1d4ed8;\n      cursor: pointer;\n      user-select: none;\n    }\n    summary:focus-visible {\n      outline: 2px solid #2563eb;\n      outline-offset: 3px;\n    }\n    details[open] summary {\n      margin-bottom: 0.85rem;\n      padding-bottom: 0.5rem;\n      border-bottom: 1px dashed #cbd5e1;\n    }\n    a {\n      color: #2563eb;\n      text-decoration: underline;\n      text-underline-offset: 3px;\n    }\n    a:hover {\n      color: #1d4ed8;\n    }\n    a:focus-visible {\n      outline: 2px solid #2563eb;\n      outline-offset: 2px;\n    }\n    ul, ol {\n      margin-top: 0;\n      margin-bottom: 1.25rem;\n      padding-left: 1.5rem;\n    }\n    li {\n      margin-bottom: 0.5rem;\n    }\n    footer {\n      margin-top: 3.5rem;\n      padding-top: 1.5rem;\n      border-top: 1px solid #e2e8f0;\n      font-size: 0.825rem;\n      color: #64748b;\n      text-align: center;\n    }\n    @media (max-width: 600px) {\n      main {\n        padding: 1.5rem 1rem;\n      }\n      h1 {\n        font-size: 1.5rem;\n      }\n      h2 {\n        font-size: 1.25rem;\n      }\n    }\n    @media (prefers-reduced-motion: reduce) {\n      * {\n        animation: none !important;\n        transition: none !important;\n      }\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <header>\n      <h1>テニス動画解析のための三角測量入門：なぜ2台のカメラでボールの3D位置が決まるのか</h1>\n      <p>テニスの試合映像からボール検出モデルを使って「画像上の座標 <code>(x, y)</code> ピクセル」を得ることは、現代の画像処理ライブラリを用いれば比較的身近に行えるようになりました。しかし、テニス動画解析の最終目標である「ボールの落下点はインかアウトか」「ボールの空中軌道や最高到達点は何メートルか」といった問いに答えるには、画像内の2次元ピクセル座標から現実世界の3次元空間座標 <code>(X, Y, Z)</code> を導き出さなければなりません。</p>\n      <p>本稿では、テニス動画解析を始めたばかりの方に向けて、<strong>三角測量（Triangulation）</strong>によってなぜ物体の3次元位置が一意に定まるのか、そしてどのような条件下でその推定が不確かになるのかを、直感的な幾何学と具体的な計算例を交えて丁寧に解説します。</p>\n    </header>\n\n    <section data-content-id=\"scene\">\n      <h2>1. 冒頭の場面：テニスコートを見渡す2台の固定カメラ</h2>\n      <p>まず、テニスコートを分析する典型的な撮影シーンを想像してみましょう。下図のように、コートの異なる角（あるいはスタンドの高所）に2台の固定カメラ（カメラLとカメラR）が設置され、空中を飛翔するテニスボールを同時に撮影しています。</p>\n\n      <figure data-figure-id=\"court-scene\"><img data-asset-id=\"court_concept\" src=\"assets/court_concept.png\" alt=\"コートの異なる角にある2台のカメラと空中のボール。\" style=\"max-width:100%;height:auto\"><figcaption><p>2台の固定カメラで同じテニスコートを見る場面。AI生成の概念イラスト。寸法・ボールの大きさは正確ではない。</p><p>Generated concept — Codex interactive imagegen, 2026-11-09; 場面理解のための概念イラスト。</p></figcaption></figure>\n\n      <div class=\"info-box\">\n        <p><strong>図の着目点と理解のポイント：</strong>この図は場面理解のためのAI生成概念イラストであり、実際のコート寸法やボールの比率は正確ではありません。着目すべき点は、「コートから離れた異なる位置にある2台のカメラが、同一の空間領域（テニスコート）を異なる角度から同時に見渡している」という状況配置です。</p>\n      </div>\n\n      <h3>なぜ1台のカメラでは3D位置を特定できないのか？（奥行きの不定性）</h3>\n      <p>テニス動画解析の初学者が最初につまずきやすいのが、「なぜ高解像度カメラ1台ではダメなのか」という疑問です。カメラの撮像素子（イメージセンサー）に光が届くとき、3次元空間の光景は2次元の画像平面へと射影（投影）されます。</p>\n      <p>ピンホールカメラモデルにおいて、ある画素 <code>(x, y)</code> にボールが写っているということは、数学的には<strong>「カメラの焦点中心（光学中心）と画像上の画素 <code>(x, y)</code> を結ぶ直線（視線・射影レイ）のどこかにボールが存在する」</strong>という情報しか与えません。</p>\n      <ul>\n        <li>カメラのすぐ近くにある低めのボールも、</li>\n        <li>カメラから遠く離れた場所にある高い軌道のボールも、</li>\n      </ul>\n      <p>その視線上に乗っていれば、まったく同じ <code>(x, y)</code> ピクセルに写り込んでしまいます。つまり、<strong>単一カメラの1点だけでは、その観測方向に沿った「奥行き（距離）」は原理的に決まりません</strong>。これが1台のカメラが持つ「奥行きの不定性（Depth Ambiguity）」です。</p>\n    </section>\n\n    <section data-content-id=\"geometry\">\n      <h2>2. 幾何学的原理：2本の視線が空間で交わる点（三角測量）</h2>\n      <p>1台では直線（1本の視線）しか定まらない奥行きを確定させるために用いられるのが、<strong>2台目のカメラ</strong>です。異なる視点から撮影したもう1台のカメラを用意すると、そこからも対象のボールに向けた「もう1本の視線」が引かれます。</p>\n\n      <figure data-figure-id=\"two-rays\"><img data-asset-id=\"rays\" src=\"assets/rays.svg\" alt=\"カメラLとRからの2本の観測方向が上方の対象点Pで交わる。カメラ間が基線B。\" style=\"max-width:100%;height:auto\"><figcaption><p>2台からの観測方向が対象点Pを拘束する模式図。長さ・角度は縮尺を持たない。</p><p>Hypothetical example — 説明用の幾何模式図。実際の校正結果ではない。</p></figcaption></figure>\n\n      <div class=\"info-box\">\n        <p><strong>図の幾何構造と着目点：</strong>上図は2台のカメラから伸びる観測方向が対象点Pを空間的に拘束する幾何模式図です（長さ・角度は縮尺を持たない概念図）。左のカメラ中心Lと右のカメラ中心Rの間の距離を<strong>基線長（Baseline: 記号 $B$）</strong>と呼びます。点Lから伸びる視線レイと、点Rから伸びる視線レイが空間の1点 $P$ で交差しています。</p>\n      </div>\n\n      <p>空間幾何学において、空間内に離れて置かれた2本の直線が平行でなければ、それらは高々1点でしか交わりません。2台のカメラの位置と姿勢、そして各カメラ画像上でのボールの観測方向があらかじめ分かっていれば、<strong>「2本の視線が交差する唯一の3次元座標 $P(X, Y, Z)$」</strong>を計算によって一意に求めることができます。カメラ間を結ぶ線分（基線 $B$）を底辺とし、対象点 $P$ を頂点とする三角形が形成されることから、この手法を<strong>三角測量（Triangulation）</strong>と呼びます。</p>\n    </section>\n\n    <section data-content-id=\"calibration-sync\">\n      <h2>3. 3D復元を成立させる3大前提：校正・対応・同期</h2>\n      <p>「2本の直線を引いて交点を求める」という幾何学的な説明は非常にシンプルですが、テニス動画解析の実務においてこれを成り立たせるためには、厳格な前提条件を満たす必要があります。</p>\n\n      <div class=\"info-box\" data-evidence-id=\"projection\">\n        <p><strong>必須の基盤技術（カメラ投影変換）：</strong>校正したピンホールカメラでは、3D点を画像へ写す変換を<strong>内部パラメータ</strong>と<strong>外部パラメータ</strong>で表します。画像の1点だけではその観測方向に沿う奥行きは決まらず、複数視点の対応点と投影行列を用いて三角測量します（根拠：<a href=\"https://docs.opencv.org/4.13.0/d9/d0c/group__calib3d.html\" data-evidence-id=\"projection\" rel=\"noopener noreferrer\" target=\"_blank\">OpenCV: Camera Calibration and 3D Reconstruction</a>）。</p>\n      </div>\n\n      <p>具体的には、次の3つの要件がすべて満たされている必要があります：</p>\n\n      <div class=\"table-container\">\n        <table>\n          <thead>\n            <tr>\n              <th>要件</th>\n              <th>内容とテニス動画解析における役割</th>\n              <th>満たされない場合の影響</th>\n            </tr>\n          </thead>\n          <tbody>\n            <tr>\n              <td><strong>1. カメラ校正（Calibration）</strong></td>\n              <td>内部パラメータ（焦点距離 $f$、光学中心 $(c_x, c_y)$、レンズ歪み係数）と外部パラメータ（コートに対するカメラの3D位置と回転姿勢）を精密に計測し、統一されたコート座標系を定義すること。</td>\n              <td>画素から引く視線の方向や角度がずれ、空間上で計算されるボール位置が数メートル単位でずれてしまう。</td>\n            </tr>\n            <tr>\n              <td><strong>2. 対応付け（Correspondence）</strong></td>\n              <td>カメラLの画像で見つかった黄色いボールのピクセルと、カメラRの画像で見つかったピクセルが、空間の「同一のボール」であることを正しく関連付けること。</td>\n              <td>審判や選手の頭、コート上の別の黄色い物体と誤って結びつけると、まったく無意味な虚構の交点が計算される。</td>\n            </tr>\n            <tr>\n              <td><strong>3. 時間同期（Synchronization）</strong></td>\n              <td>2台のカメラが、物理的に「完全な同時刻」のシャッタータイミングでボールを撮影していること。</td>\n              <td>ボールは高速移動するため、ミリ秒単位の時間差でも深刻な位置ずれを引き起こす（後述）。</td>\n            </tr>\n          </tbody>\n        </table>\n      </div>\n\n      <div class=\"warning-box\">\n        <p><strong>動くボールにおける時間同期の重大性：</strong>テニスのサーブや強烈なストロークでは、ボールの移動速度は時速150〜200 km（秒速約42〜55 m）に達します。もし2台のカメラの撮影フレームがわずか <code>10 ms (1/100秒)</code> ずれていた場合、ボールはその間に約 <code>40〜55 cm</code> も進んでしまいます。同時刻の同一点を捉えていなければ、視線が交差することは原理的にあり得ません。</p>\n      </div>\n    </section>\n\n    <section data-content-id=\"trial-calculation\">\n      <h2>4. 仮想的な試算例：整列ステレオによる奥行き20 mの導出</h2>\n      <p>三角測量の数学的なイメージを掴むために、数式を用いた具体的な試算を行ってみましょう。ここでは理解を深めるため、光軸が完全に平行に揃った「整列済みピンホールステレオカメラ」の仮想例を用います。</p>\n\n      <div class=\"info-box\" data-evidence-id=\"trial\">\n        <p><strong>仮想試算の設定（実測値ではありません）：</strong></p>\n        <ul>\n          <li>平行光軸に整列した校正済みステレオカメラシステム</li>\n          <li>カメラの焦点距離：<code data-evidence-id=\"trial\">f = 800 px</code></li>\n          <li>カメラ間の基線長：<code data-evidence-id=\"trial\">B = 1 m</code></li>\n          <li>左右画像におけるボールの水平座標の差（視差）：<code data-evidence-id=\"trial\">d = 40 px</code></li>\n          <li>計算されるカメラ座標系の奥行き：<code data-evidence-id=\"trial\">Z = 20 m</code></li>\n        </ul>\n        <p>※本数値はこの説明のための仮想的な試算例であり、実際のテニスコート計測データではありません。また、任意配置のカメラへそのまま適用できる式ではありません。</p>\n      </div>\n\n      <h3>基本公式と数値のあてはめ</h3>\n      <p>整列ステレオカメラでは、カメラ座標系における被写体の奥行き $Z$ は、焦点距離 $f$、基線長 $B$、視差 $d$ を用いて以下のシンプルな関係式で表されます：</p>\n      <p><code data-evidence-id=\"trial\">Z = \\frac{f \\cdot B}{d}</code></p>\n      <p>与えられた試算値を代入すると、奥行き $Z$ は次のように計算されます：</p>\n      <p><code data-evidence-id=\"trial\">Z = \\frac{800 \\text{ px} \\times 1 \\text{ m}}{40 \\text{ px}} = 20 \\text{ m}</code></p>\n      <p>このように、左右の画像でボールが水平方向にどれだけずれて写っているか（視差 $d$）を計測することで、カメラからボールまでの奥行き距離が $20\\text{ m}$（テニスコートのベースライン間距離に近いオーダー）であると算出できます。</p>\n\n      <details>\n        <summary>整列ステレオの公式 Z = fB / d の幾何学的導出（クリックして展開）</summary>\n        <p>なぜこの式が成り立つのか、相似な三角形から導出してみましょう。光軸が平行な2台のピンホールカメラが $X$ 軸方向に距離 $B$ だけ離れて並んでいるとします。</p>\n        <ol>\n          <li>空間の点 $P$ のカメラ座標を $(X, Y, Z)$ とします。</li>\n          <li>左カメラの光学中心を原点とすると、画像平面上の水平位置はピンホールの相似関係から $x_L = f \\cdot \\frac{X}{Z}$ となります。</li>\n          <li>右カメラの光学中心は $(B, 0, 0)$ にあるため、右カメラから見た被写体の水平相対位置は $X - B$ です。したがって右画像上の水平位置は $x_R = f \\cdot \\frac{X - B}{Z}$ となります。</li>\n          <li>視差 $d$ は左右の横座標差 $x_L - x_R$ と定義されるため：\n            <br><code>d = x_L - x_R = f \\cdot \\frac{X}{Z} - f \\cdot \\frac{X - B}{Z} = f \\cdot \\frac{B}{Z}</code>\n          </li>\n          <li>この式を奥行き $Z$ について解くと：\n            <br><code>Z = \\frac{f \\cdot B}{d}</code>\n          </li>\n        </ol>\n        <p>以上により、幾何学的な相似比から公式が導かれました。</p>\n      </details>\n\n      <h3>視差の測定誤差と奥行きの不確かさ（誤差感度）</h3>\n      <p>この試算例から、三角測量における重要な性質「不確かさの振る舞い」が見えてきます。もし画像検出のノイズによって視差 $d$ にわずか <code>1 px</code> の測定誤差が生じたらどうなるでしょうか？</p>\n      <ul>\n        <li>$d = 40 \\text{ px}$ のとき：$Z = \\frac{800 \\times 1}{40} = 20.00 \\text{ m}$</li>\n        <li>$d = 39 \\text{ px}$（-1 pxの誤差）のとき：$Z = \\frac{800 \\times 1}{39} \\approx 20.51 \\text{ m}$（+51 cmのずれ）</li>\n        <li>$d = 41 \\text{ px}$（+1 pxの誤差）のとき：$Z = \\frac{800 \\times 1}{41} \\approx 19.51 \\text{ m}$（-49 cmのずれ）</li>\n      </ul>\n      <p>たった <code>1 ピクセル</code> の検出誤差が、奥行き方向において約 <code>50 cm</code> もの誤差に跳ね上がります。微分を用いると、誤差感度は以下の式で近似されます：</p>\n      <p><code>|\\Delta Z| \\approx \\frac{Z^2}{f \\cdot B} \\cdot |\\Delta d|</code></p>\n      <p>この式が示す決定的な結論は、<strong>「奥行きの不確かさは、対象までの距離 $Z$ の2乗に比例して爆発的に増大する」</strong>ということです。遠くのボールほど、わずかなピクセル検出精度の甘さが巨大な位置誤差を生む原因になります。</p>\n    </section>\n\n    <section data-content-id=\"real-world-optimization\">\n      <h2>5. 現実の観測：視線は交わらない（ねじれ）と最適化の考え方</h2>\n      <p>教科書的な幾何学では「2本の視線が交差する点」として説明されますが、現実のテニス動画解析において<strong>2本の視線が空間で完全に1点で交わることはまずありません</strong>。</p>\n\n      <h3>なぜ現実の視線は交わらないのか？（ねじれの位置）</h3>\n      <p>3次元空間における任意の2直線は、平行でなければ一般に<strong>「ねじれの位置（Skew lines）」</strong>にあります。現実の解析では、以下の要因によって不可避なノイズが混入します：</p>\n      <ul>\n        <li>画像検出における整数の画素グリッド化（ピクセル離散化）やサブピクセル推定のゆらぎ</li>\n        <li>高速移動するボールの輪郭ボケ（モーションブラー）による中心座標のずれ</li>\n        <li>カメラのレンズ歪み補正のわずかな残留誤差</li>\n        <li>カメラ設置台の微小な振動や熱膨張による外部パラメータ（姿勢角）の微小な狂い</li>\n      </ul>\n      <p>その結果、カメラLから伸びる直線とカメラRから伸びる直線は、空間内ですれ違い、交点を持たなくなります。</p>\n\n      <h3>実務での解決策：最適化による最確3D位置の推定</h3>\n      <p>視線が交わらない現実のシステムでは、3D位置を一意に決定するために以下のいずれかの最適化アルゴリズムを解きます：</p>\n      <ol>\n        <li><strong>最短公垂線の中点法（Midpoint Method）：</strong>2本の視線が最も近づく線分（共通の垂線）を幾何学的に求め、その線分の中点をボールの推定3D位置とする線形解法。計算が高速で初期値推定に適しています。</li>\n        <li><strong>再投影誤差最小化（Reprojection Error Minimization）：</strong>ある仮想の3D点 $\\hat{P}$ を各カメラの投影行列で2次元画像へ逆投影したとき、画像上で実際に観測されたピクセル位置との距離（再投影誤差）の二乗和が最小になる点 $\\hat{P}^*$ を、レーベンバーグ・マーカート法などの非線形最適化で探索する厳密な手法。</li>\n      </ol>\n\n      <h3>どのような条件で推定が不確か（不安定）になるか？</h3>\n      <p>三角測量を用いた3D位置推定が著しく不安定になり、誤差が拡大する条件をまとめると次の通りです：</p>\n      <div class=\"table-container\">\n        <table>\n          <thead>\n            <tr>\n              <th>条件・要因</th>\n              <th>幾何学的・物理的メカニズム</th>\n              <th>テニス解析現場での対策</th>\n            </tr>\n          </thead>\n          <tbody>\n            <tr>\n              <td><strong>基線長 $B$ が短すぎる / 交差角が浅い</strong></td>\n              <td>2台のカメラが近すぎると2本の視線がほぼ平行になり、わずかな角度誤差で交点が前後へ激しく移動する。</td>\n              <td>コートの両サイドや対角線上のポールなど、十分な基線長（大きな視差角）が取れる位置にカメラを分散配置する。</td>\n            </tr>\n            <tr>\n              <td><strong>ボールまでの距離 $Z$ が遠すぎる</strong></td>\n              <td>前節の感度分析で示した通り、距離の2乗 ($Z^2$) で誤差が拡大する。</td>\n              <td>望遠レンズで実効的な焦点距離 $f$ を稼ぐか、対象エリアの近傍にカメラを増設する。</td>\n            </tr>\n            <tr>\n              <td><strong>フレーム間の同期ずれ</strong></td>\n              <td>ボールの移動によって左右の画像で見ている物理時刻がずれ、視線が空間的に大きく乖離する。</td>\n              <td>ソフトウェア同期ではなく、ハードウェアの同期信号（Genlock）を用いた高精度な同時シャッター撮影を行う。</td>\n            </tr>\n            <tr>\n              <td><strong>カメラの校正不足・歪み未補正</strong></td>\n              <td>広角レンズ特有の樽型・糸巻き型歪みが残っていると、画面端で視線の方向が大きく曲がる。</td>\n              <td>チェッカーボードやコートの白線を用いた高精度な校正を実施し、座標系をミリメートル精度で揃える。</td>\n            </tr>\n          </tbody>\n        </table>\n      </div>\n\n      <div class=\"warning-box\">\n        <p><strong>未確定要素と追加検証に必要な条件：</strong>本稿で示した数値は仮想の平行ステレオモデルに基づくものです。実際のトーナメントで使用される審判支援システム（ホークアイ等）では、8〜12台以上の同期高速カメラ（300 fps以上）をコート全周に配置し、複数台の視線を同時に束ねるバンドル調整（Bundle Adjustment）を行うことでサブセンチメートルの精度を達成しています。実環境で高精度な3D復元を実現するには、実際のコートラインの測量座標、各カメラの歪みプロファイル、およびミリ秒未満の同期トリガー情報が追加データとして不可欠です。</p>\n      </div>\n    </section>\n\n    <footer>\n      <p>保存版は閲覧専用です。編集は元の起動URLで行えます。</p>\n    </footer>\n  </main>\n</body>\n</html>\n",
+        "assets": [
+          {
+            "asset_id": "court_concept",
+            "path": "assets/court_concept.png",
+            "media_type": "image/png",
+            "sha256": "f01a832796729466f6d1e47ba4aa0b3d036a89ebf84772a078f7c31b4eb66547",
+            "kind": "image",
+            "caption": "2台の固定カメラで同じテニスコートを見る場面。AI生成の概念イラスト。寸法・ボールの大きさは正確ではない。",
+            "alt": "コートの異なる角にある2台のカメラと空中のボール。",
+            "provenance": {
+              "kind": "generated_concept",
+              "source": "Codex interactive imagegen, 2026-11-09; 場面理解のための概念イラスト。"
+            }
+          },
+          {
+            "asset_id": "rays",
+            "path": "assets/rays.svg",
+            "media_type": "image/svg+xml",
+            "sha256": "ff003757a3fa5ad8adf7ecf0601318787dd7e7152fc80d4107d613bd718cf26c",
+            "kind": "svg",
+            "caption": "2台からの観測方向が対象点Pを拘束する模式図。長さ・角度は縮尺を持たない。",
+            "alt": "カメラLとRからの2本の観測方向が上方の対象点Pで交わる。カメラ間が基線B。",
+            "provenance": {
+              "kind": "hypothetical",
+              "source": "説明用の幾何模式図。実際の校正結果ではない。"
+            }
+          }
+        ],
+        "figures": [
+          {
+            "figure_id": "court-scene",
+            "content_id": "scene",
+            "kind": "image",
+            "asset_ids": [
+              "court_concept"
+            ],
+            "caption": "2台の固定カメラで同じテニスコートを見る場面。AI生成の概念イラスト。寸法・ボールの大きさは正確ではない。",
+            "alt": "コートの異なる角にある2台のカメラと空中のボール。",
+            "provenance": {
+              "kind": "generated_concept",
+              "source": "Codex interactive imagegen, 2026-11-09; 場面理解のための概念イラスト。"
+            },
+            "renderer": null,
+            "definition": {}
+          },
+          {
+            "figure_id": "two-rays",
+            "content_id": "geometry",
+            "kind": "svg",
+            "asset_ids": [
+              "rays"
+            ],
+            "caption": "2台からの観測方向が対象点Pを拘束する模式図。長さ・角度は縮尺を持たない。",
+            "alt": "カメラLとRからの2本の観測方向が上方の対象点Pで交わる。カメラ間が基線B。",
+            "provenance": {
+              "kind": "hypothetical",
+              "source": "説明用の幾何模式図。実際の校正結果ではない。"
+            },
+            "renderer": null,
+            "definition": {}
+          }
+        ]
+      },
+      "changes": [
+        {
+          "content_id": "calibration-sync",
+          "kind": "added"
+        },
+        {
+          "content_id": "geometry",
+          "kind": "added"
+        },
+        {
+          "content_id": "real-world-optimization",
+          "kind": "added"
+        },
+        {
+          "content_id": "scene",
+          "kind": "added"
+        },
+        {
+          "content_id": "trial-calculation",
+          "kind": "added"
+        }
+      ],
+      "evidence_changes": [
+        {
+          "evidence_id": "projection",
+          "kind": "added",
+          "reason": "初回ドラフトのため、コンテキストから提供された校正ピンホールカメラの投影変換および同期・対応条件を新規登録。"
+        },
+        {
+          "evidence_id": "trial",
+          "kind": "added",
+          "reason": "初回ドラフトのため、コンテキストから提供された整列ステレオの仮想試算数値（f=800px, B=1m, d=40px, Z=20m）を新規登録。"
+        }
+      ],
+      "change_summary": "テニス動画解析の初学者を対象に、三角測量の幾何学的原理と不確かさの発生条件を体系的に解説するHTMLドキュメント（初回版）を作成しました。冒頭のテニスコート導入場面（court-scene）から単一カメラでの奥行き不定性、2本の視線交差（two-rays）、カメラ校正（OpenCV Calib3d準拠）と時間同期の必須条件、整列ステレオによる仮想試算例（f=800px, B=1m, d=40px -> Z=20m）と感度導出、現実の視線のねじれに対する再投影誤差最小化と不確かさの要因までを段階的なストーリーとして論理的に構成しました。実測でない仮想試算例およびAI生成概念図である旨を明記し、未確定要素と追加検証に必要な条件も明記しています。"
+    },
+    "candidate_digest": "17ef81ec3163650997bdbdf1d873473b82c09b9935982b284329fa3b2ef2345f"
+  },
+  "expected_findings": [
+    {
+      "kind": "unsupported_claim",
+      "needle": "8〜12",
+      "description": "Unprovided Hawk-Eye camera count, frame rate and sub-centimetre accuracy."
+    },
+    {
+      "kind": "unsupported_claim",
+      "needle": "150〜200",
+      "description": "Unprovided tennis speed presented as an empirical fact."
+    },
+    {
+      "kind": "technical_error",
+      "needle": "光学中心",
+      "description": "Image principal point (c_x,c_y) confused with 3D optical centre."
+    },
+    {
+      "kind": "technical_error",
+      "needle": "原理的にあり得ません",
+      "description": "Asynchrony does not make all ray intersections impossible."
+    }
+  ]
+}

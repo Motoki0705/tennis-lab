@@ -3,13 +3,29 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
 from . import journal, schema
 from .journal import PublicationError, require
 from .sources import guard_for, render
+
+
+class GitHubHTTPError(PublicationError):
+    """A definite GitHub response, distinct from a lost transport response."""
+
+    def __init__(self, status: int, detail: str) -> None:
+        super().__init__("github_failed", detail)
+        self.status = status
+
+
+class MergeRejected(PublicationError):
+    def __init__(self, status: int, code: str, detail: str | None = None) -> None:
+        super().__init__(code, detail)
+        self.status = status
 
 
 def canonical_remote(value: str) -> str:
@@ -34,6 +50,9 @@ class GitHub:
             method,
             endpoint,
         ]
+        merge_request = method == "PUT" and endpoint.endswith("/merge")
+        if merge_request:
+            command.append("--include")
         if payload is not None:
             command += ["--input", "-"]
         result = subprocess.run(
@@ -43,13 +62,38 @@ class GitHub:
             check=False,
             timeout=60,
         )
+        raw = result.stdout
+        response_status = None
+        if merge_request:
+            # gh --include emits HTTP status/headers followed by a blank line.
+            match = re.match(rb"HTTP/\S+\s+(\d{3})[^\r\n]*\r?\n", raw)
+            if match:
+                status = int(match[1])
+                response_status = status
+                parts = re.split(rb"\r?\n\r?\n", raw, maxsplit=1)
+                require(len(parts) == 2, "github_invalid_response")
+                raw = parts[1]
+                if status != 200:
+                    raise GitHubHTTPError(
+                        status, raw.decode("utf-8", errors="replace")[:65536]
+                    )
+            elif not result.returncode:
+                raise PublicationError("github_invalid_response")
         if result.returncode:
+            if response_status is not None:
+                raise GitHubHTTPError(
+                    response_status, "gh failed after the HTTP response"
+                )
             raise PublicationError(
                 "github_failed", result.stderr.decode("utf-8", errors="replace")[:65536]
             )
         try:
-            return json.loads(result.stdout, object_pairs_hook=journal.unique)
+            return json.loads(raw, object_pairs_hook=journal.unique)
         except (ValueError, UnicodeError):
+            if response_status is not None:
+                raise GitHubHTTPError(
+                    response_status, "merge response is not valid JSON"
+                ) from None
             raise PublicationError("github_invalid_response") from None
 
     def repository(self) -> dict[str, Any]:
@@ -88,6 +132,13 @@ class GitHub:
         require(isinstance(result, dict), "github_invalid_response")
         return dict(result)
 
+    def files(self, number: int) -> list[Any]:
+        # A frozen batch has at most 32 turns (96 files). An extra page cannot
+        # hide a valid diff: a full first page already exceeds that limit.
+        result = self.request(f"repos/{self.repo}/pulls/{number}/files?per_page=100")
+        require(isinstance(result, list), "github_invalid_response")
+        return list(result)
+
     def create(self, branch: str, title: str, body: str) -> dict[str, Any]:
         result = self.request(
             f"repos/{self.repo}/pulls",
@@ -104,15 +155,31 @@ class GitHub:
         return dict(result)
 
     def merge(self, number: int, head: str) -> None:
-        result = self.request(
-            f"repos/{self.repo}/pulls/{number}/merge",
-            "PUT",
-            {"merge_method": "merge", "sha": head},
-        )
-        require(
-            isinstance(result, dict) and result.get("merged") is True,
-            "merge_unconfirmed",
-        )
+        try:
+            result = self.request(
+                f"repos/{self.repo}/pulls/{number}/merge",
+                "PUT",
+                {"merge_method": "merge", "sha": head},
+            )
+        except GitHubHTTPError as exc:
+            if not 400 <= exc.status < 500:
+                # A server/proxy failure may follow a committed merge. Only
+                # definite client refusals authorize clearing merge_attempted.
+                raise
+            code = "merge_conflict" if exc.status in {405, 409} else "merge_rejected"
+            if exc.status == 409:
+                try:
+                    observed = self.get(number)
+                except (ValueError, OSError, subprocess.SubprocessError):
+                    # The mutation was definitely refused even when the
+                    # follow-up read is unavailable. Never mark it ambiguous.
+                    pass
+                else:
+                    if (observed.get("head") or {}).get("sha") != head:
+                        code = "pr_identity_changed"
+            raise MergeRejected(exc.status, code, exc.detail) from None
+        if not isinstance(result, dict) or result.get("merged") is not True:
+            raise GitHubHTTPError(200, "merge response did not confirm merged=true")
 
 
 class Publisher:
@@ -236,7 +303,11 @@ class Publisher:
                 if ancestor == tree:
                     break
                 require(not ancestor.is_symlink(), "worktree_symlink")
-            target.mkdir(parents=True, exist_ok=False)
+            target.mkdir(parents=True, exist_ok=bool(row.get("members")))
+            for directory in sorted(
+                {(target / name).parent for name in files} - {target}
+            ):
+                directory.mkdir(exist_ok=False)
             for name, raw in files.items():
                 with (target / name).open("xb") as stream:
                     stream.write(raw)
@@ -262,10 +333,44 @@ class Publisher:
         value = self.github.get(row["pr_number"])
         schema.identity(value, row, self.github.repo)
         require(
-            value["number"] == row["pr_number"] and value.get("changed_files") == 3,
+            value["number"] == row["pr_number"],
             "pr_identity_changed",
+            "PR identity mismatch: number",
+        )
+        require(
+            type(value.get("changed_files")) is int
+            and value["changed_files"] == 3 * len(row.get("members", [None])),
+            "pr_identity_changed",
+            "PR identity mismatch: changed_files",
         )
         return value
+
+    def verify_main(
+        self, row: dict[str, Any], main: str, directories: set[str] | None = None
+    ) -> None:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", row["base"], main],
+            cwd=self.root,
+            capture_output=True,
+            check=False,
+            timeout=60,
+        )
+        require(
+            result.returncode in {0, 1},
+            "git_failed",
+            result.stderr.decode("utf-8", errors="replace")[:65536],
+        )
+        require(
+            result.returncode == 0,
+            "base_not_ancestor",
+            f"Pinned base {row['base']} is not an ancestor of main {main}",
+        )
+        require(
+            not self.git(
+                "ls-tree", main, "--", *sorted(directories or {row["directory"]})
+            ).strip(),
+            "record_already_exists",
+        )
 
     def confirm_main(
         self, row: dict[str, Any], files: dict[str, bytes], pr: dict[str, Any]
@@ -304,7 +409,7 @@ class Publisher:
             self.git("worktree", "remove", str(tree))
 
     def publish(self, *, dry_run: bool = False, retry: bool = False) -> dict[str, Any]:
-        with journal.locked(self.path):
+        with nullcontext() if dry_run else journal.locked(self.path):
             row = journal.read(self.path)
             try:
                 if (
@@ -335,6 +440,15 @@ class Publisher:
                 )
                 guard = guard_for(row["source"], row["receipt"]["record"])
                 meta = schema.validate(files, guard)
+                directory = schema.path(meta)
+                branch = f"worker-log/{meta['delegation_key']}/{meta['turn']['sequence']:04d}"
+                directories = {directory}
+                if "members" in row:
+                    from .batches import payload
+
+                    files, directories = payload(self.path, row)
+                    directory = str(Path(directory).parent)
+                    branch = f"worker-log-batch/{meta['delegation_key']}/{meta['turn']['sequence']:04d}"
                 if dry_run:
                     return {
                         **journal.view(row),
@@ -365,22 +479,23 @@ class Publisher:
                 if "base" not in row:
                     row.update(
                         base=main,
-                        directory=schema.path(meta),
-                        branch=f"worker-log/{meta['delegation_key']}/{meta['turn']['sequence']:04d}",
+                        directory=directory,
+                        branch=branch,
                         state="pending",
                         error=None,
                     )
                     journal.atomic(self.path, row)
                 require(
-                    row["directory"] == schema.path(meta)
-                    and row["branch"]
-                    == f"worker-log/{meta['delegation_key']}/{meta['turn']['sequence']:04d}",
+                    row["directory"] == directory and row["branch"] == branch,
                     "publication_identity_changed",
                 )
                 if "head" not in row:
                     self.commit(row, files)
                 self.verify(row, files)
                 expected_body = f"<!-- worker-log:v1 key={meta['delegation_key']} turn={meta['turn']['sequence']} head={row['head']} -->\n\nRefs #{meta['parent']}, #{meta['issue']}\n\n検査済みworkerログ3ファイルの追加。専用入口が固定HEADとmainへの保存を照合する。\n"
+                if "members" in row:
+                    turns = ",".join(map(str, row["members"]))
+                    expected_body = f"<!-- worker-log:v2 key={meta['delegation_key']} turns={turns} head={row['head']} -->\n\nRefs #{meta['parent']}, #{meta['issue']}\n"
                 require(
                     row.get("pr_body", expected_body) == expected_body,
                     "publication_identity_changed",
@@ -421,7 +536,9 @@ class Publisher:
                         journal.atomic(self.path, row)
                         created = self.github.create(
                             row["branch"],
-                            f"workerログ: #{meta['issue']} turn {meta['turn']['sequence']}",
+                            f"workerログ: #{meta['issue']} turns {turns}"
+                            if "members" in row
+                            else f"workerログ: #{meta['issue']} turn {meta['turn']['sequence']}",
                             row["pr_body"],
                         )
                     schema.identity(created, row, self.github.repo)
@@ -434,25 +551,44 @@ class Publisher:
                 require(pr.get("state") == "open", "closed_unmerged")
                 require(not row.get("merge_attempted"), "merge_response_uncertain")
                 # Another parent's independent additions may have advanced main.
-                self.git("merge-base", "--is-ancestor", row["base"], main)
-                require(
-                    not self.git("ls-tree", main, "--", row["directory"]).strip(),
-                    "record_already_exists",
+                main = self.main()
+                self.verify_main(row, main, directories)
+                require(pr.get("mergeable") is not False, "merge_conflict")
+                self.verify(row, files)
+                schema.pr_additions(
+                    self.github.files(row["pr_number"]),
+                    {row["directory"] + "/" + name for name in files},
                 )
-                if pr.get("mergeable") is None:
-                    return journal.view(row)
-                require(pr.get("mergeable") is True, "merge_conflict")
                 fresh = self.pr(row)
                 require(
-                    fresh.get("state") == "open"
-                    and fresh.get("mergeable") is True
-                    and fresh["base"]["sha"] == main,
+                    fresh.get("state") == "open",
                     "pr_identity_changed",
+                    "PR identity mismatch: state",
                 )
-                self.verify(row, files)
-                row.update(merge_attempted=True, stage="merge_attempted")
+                require(fresh.get("mergeable") is not False, "merge_conflict")
+                # base.sha is GitHub's PR snapshot, not the current main ref.
+                # Revalidate old blocked records through every guard above;
+                # neither --retry nor a stale base SHA bypasses identity checks.
+                if fresh["base"].get("sha") != main:
+                    row["diagnostic"] = json.dumps(
+                        {
+                            "reason": "stale_pr_base_sha",
+                            "pr_base": fresh["base"].get("sha"),
+                            "base": row["base"],
+                            "main": main,
+                        },
+                        sort_keys=True,
+                    )
+                row.update(
+                    state="pending",
+                    error=None,
+                    merge_attempted=True,
+                    stage="merge_attempted",
+                )
+                row.pop("merge_http_status", None)
                 journal.atomic(self.path, row)
                 self.github.merge(row["pr_number"], row["head"])
+                row["merge_http_status"] = 200
                 self.confirm_main(row, files, self.pr(row))
                 return journal.view(row)
             except (
@@ -467,15 +603,33 @@ class Publisher:
                 code = (
                     str(exc)
                     if isinstance(exc, PublicationError)
+                    else "merge_response_uncertain"
+                    if row.get("merge_attempted")
+                    and isinstance(exc, subprocess.SubprocessError)
+                    else "git_failed"
+                    if isinstance(exc, subprocess.SubprocessError)
                     else "publication_failed"
                 )
                 if dry_run:
                     return {**journal.view(row), "dry_run": True, "error": code}
                 if isinstance(exc, PublicationError) and exc.detail:
                     row["diagnostic"] = exc.detail
+                if isinstance(exc, GitHubHTTPError):
+                    row["merge_http_status"] = exc.status
+                if isinstance(exc, MergeRejected):
+                    row.update(
+                        merge_attempted=False,
+                        stage="merge_rejected",
+                        merge_http_status=exc.status,
+                    )
+                elif row.get("merge_attempted") and code in {
+                    "github_failed",
+                    "github_invalid_response",
+                }:
+                    code = "merge_response_uncertain"
                 # Transient transport errors remain retryable, but an ambiguous
                 # POST/merge is reconciled before ever issuing another mutation.
-                pending = code in {
+                pending = not isinstance(exc, MergeRejected) and code in {
                     "github_failed",
                     "git_failed",
                     "github_invalid_response",

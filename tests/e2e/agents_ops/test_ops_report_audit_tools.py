@@ -19,7 +19,7 @@ audit: Any = importlib.import_module("opsreport.audit")
 ledger: Any = importlib.import_module("opsreport.ledger")
 retrieval: Any = importlib.import_module("opsreport.retrieval")
 audit_tools: Any = importlib.import_module("opsreport.audit_tools")
-mcp: Any = importlib.import_module("opsreport.mcp_server")
+mcp: Any = importlib.import_module("opsreport.mcp_server_impl")
 SLOT = "20261012"
 
 
@@ -287,7 +287,10 @@ def test_pr_head_changes_preserve_old_receipt_and_require_a_new_acquisition(
     body = "first version\n" * 200
 
     def github(argv: list[str], **_kw: Any) -> bytes:
+        if argv == ["gh", "--version"]:
+            return b"gh version 2.97.0 (fixture)\n"
         assert argv[:2] == ["gh", "api"] and "GET" in argv
+        assert "--allow-escape-sequences" in argv
         return (
             b"HTTP/1.1 200 OK\n\n"
             + json.dumps(
@@ -456,8 +459,9 @@ def test_resume_rejects_live_or_unconfirmed_runner(tools_env: Any) -> None:
         audit.ensure_quiescent([str(runtime.runtime)])
 
 
+@pytest.mark.parametrize("reason", ["startup_failed", "cli_signal"])
 def test_previous_startup_failure_does_not_erase_a_later_verified_success(
-    tools_env: Any,
+    tools_env: Any, reason: str
 ) -> None:
     server, runtime, ops = tools_env
     old = ops.tmp / "startup-failed"
@@ -467,7 +471,10 @@ def test_previous_startup_failure_does_not_erase_a_later_verified_success(
             {
                 "schema_version": 1,
                 "result": "failed",
-                "turn_end_reason": "startup_failed",
+                "turn_end_reason": reason,
+                "exit_code": 143 if reason == "cli_signal" else 127,
+                "cli_exit_code": -15 if reason == "cli_signal" else 127,
+                "cli_exit_signal": 15 if reason == "cli_signal" else None,
                 "contract": {"mode": "read-only", "settings": {"agent": "codex"}},
                 "cleanup_complete": True,
                 "runtime": {"session_id": None},

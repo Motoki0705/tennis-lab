@@ -1,0 +1,10 @@
+[Unit]
+Description=Expire tennis-lab improvement proposals daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+Unit=tennis-lab-improvement-expire.service
+
+[Install]
+WantedBy=timers.target

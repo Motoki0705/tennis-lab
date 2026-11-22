@@ -1,0 +1,133 @@
+"""Read CI and training-queue results for a manual follow-up."""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+from .policy import object_value
+
+if TYPE_CHECKING:
+    from lib.ops_review.progression_backend import LiveBackend
+
+QUEUE_COMPLETION_GRACE = 60.0
+
+
+def require_ci_target(
+    pr: dict[str, Any], repo: str, branch: str, request: dict[str, Any]
+) -> None:
+    head = object_value(pr.get("head"))
+    if (
+        pr.get("number") != request["pr"]
+        or pr.get("state") != "open"
+        or head.get("ref") != branch
+        or str(object_value(head.get("repo")).get("full_name")).casefold()
+        != repo.casefold()
+        or head.get("sha") != request["head"]
+    ):
+        raise ValueError("CI target differs from the open PR on the reserved HEAD")
+
+
+def ci_result(
+    backend: LiveBackend, request: dict[str, Any], branch: str
+) -> dict[str, Any] | None:
+    pr, head = request["pr"], request["head"]
+    require_ci_target(backend.pr(pr), backend.repo, branch, request)
+    ci = backend.ci(pr, head)
+    if "ci_python_head_mismatch" in ci["reasons"]:
+        raise ValueError("CI check was returned for a different HEAD")
+    if ci["status"] == "pending":
+        return None
+    result = {
+        "kind": "ci",
+        "pr": pr,
+        "head": head,
+        "status": ci["status"],
+        "reasons": ci["reasons"],
+    }
+    if ci["status"] == "failure":
+        failure = backend.failure({"number": pr}, ci)
+        result.update(
+            failed_jobs=[
+                {
+                    **{key: job[key] for key in ("name", "run_id", "attempt", "url")},
+                    "failed_steps": [
+                        step["name"]
+                        for step in job["steps"]
+                        if step.get("conclusion") == "failure"
+                    ],
+                    "log_excerpt": _log_excerpt(job["log"]),
+                    "log_unavailable_reason": job["log_unavailable_reason"],
+                }
+                for job in failure["failed_jobs"]
+            ],
+            missing_details=failure["missing_details"],
+        )
+    require_ci_target(backend.pr(pr), backend.repo, branch, request)
+    return result
+
+
+def _log_excerpt(log: str | None) -> str | None:
+    if not log:
+        return None
+    lines = log.splitlines()
+    errors = [line for line in lines if re.search(r"error|fail|traceback", line, re.I)]
+    return "\n".join(line[-400:] for line in (errors or lines)[-12:])
+
+
+def queue_result(
+    queue: Path, job: str, *, now: float, missing_completion_since: dict[str, float]
+) -> dict[str, Any] | None:
+    from src.utils.training_queue import TERMINAL, read_completion, regular
+
+    # A stopped worker can requeue a job before it starts. Recheck jobs/ if
+    # both active paths were absent: the rename may have crossed those reads.
+    queued = regular(queue / "jobs" / job)
+    running = regular(queue / "running" / job)
+    active = queued or running or regular(queue / "jobs" / job)
+    # Shell first moves the job, then publishes the record after verified
+    # teardown. A terminal file alone starts a bounded publication grace.
+    terminal = [state for state in TERMINAL if regular(queue / state / job)]
+    record = read_completion(queue, job)
+    if record is None:
+        if terminal:
+            since = missing_completion_since.setdefault(job, now)
+            if now - since >= QUEUE_COMPLETION_GRACE:
+                raise ValueError(f"missing training-queue completion record for {job}")
+        elif not active:
+            raise ValueError(f"unknown training-queue job_id: {job}")
+        return None
+    missing_completion_since.pop(job, None)
+    if terminal and terminal != [record["state"]]:
+        raise ValueError(f"training-queue terminal state disagrees for {job}")
+    if (
+        not terminal
+        and "expired_at_ns" not in record
+        and not regular(queue / record["state"] / job)
+    ):
+        # Collection can remove the terminal file while we read it.
+        current = read_completion(queue, job)
+        if current is None or "expired_at_ns" not in current:
+            raise ValueError(f"missing terminal job evidence for {job}")
+    stem = job.removesuffix(".job")
+    log_path = queue / "logs" / f"{stem}.log"
+    repro = queue / "repro" / stem
+    pointer = repro / "output_dir.txt"
+    exit_code = None
+    log = None
+    if regular(log_path):
+        with log_path.open("rb") as stream:
+            size = stream.seek(0, 2)
+            stream.seek(max(0, size - 16384))
+            codes = re.findall(rb"^exit_code=(\d+)$", stream.read(), re.M)
+        exit_code = int(codes[-1]) if codes else None
+        log = str(log_path)
+    return {
+        "job_id": job,
+        "state": record["state"],
+        "exit_code": exit_code,
+        "log": log,
+        "repro": str(repro) if repro.is_dir() else None,
+        "output_dir": pointer.read_text().strip() or None if regular(pointer) else None,
+    }

@@ -7,6 +7,10 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from src.tasks.ball_detection.annotation.video.agent.contracts import (
+    DEFAULT_POLICY,
+    AnnotationPolicy,
+)
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     artifact_lock,
@@ -88,12 +92,15 @@ class LocalVideoConfiguration(Document):
 
 
 def configure_local_videos(
-    layout: AnnotationLayout, data: LocalVideoConfiguration
+    layout: AnnotationLayout,
+    data: LocalVideoConfiguration,
+    *,
+    annotation_policy: AnnotationPolicy = DEFAULT_POLICY,
 ) -> ArtifactRef:
     """Freeze local inputs and register camera work, without launching any worker."""
     from .local_videos import register_local_videos
 
-    return register_local_videos(layout, data)
+    return register_local_videos(layout, data, annotation_policy=annotation_policy)
 
 
 def validate_runtime(

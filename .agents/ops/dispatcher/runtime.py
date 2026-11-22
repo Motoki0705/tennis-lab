@@ -6,11 +6,12 @@ import fcntl
 import signal
 import subprocess
 import sys
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import checkout_subprocess_options
 from parent.policy import object_value
 
 from .records import read_json
@@ -46,6 +47,7 @@ class Runtime:
         self.runner = runner.resolve()
         self.stopping = False
         self.launcher: subprocess.Popen[bytes] | None = None
+        self.launch_context: Callable[[], AbstractContextManager[Any]] = nullcontext
 
     def request_stop(self) -> None:
         self.stopping = True
@@ -55,7 +57,10 @@ class Runtime:
     def stop_requested(self) -> bool:
         return self.stopping
 
-    def inspect(self, directory: Path, *, stop: bool = False) -> dict[str, Any]:
+    def inspect(
+        self, directory: Path, *, stop: bool = False, timeout: float | None = 60
+    ) -> dict[str, Any]:
+        before = load(directory / "result.json")
         proc = subprocess.run(
             [
                 str(self.runner),
@@ -66,6 +71,8 @@ class Runtime:
             capture_output=True,
             text=True,
             check=False,
+            timeout=timeout,
+            **checkout_subprocess_options(),
         )
         if proc.returncode:
             raise ValueError(
@@ -76,8 +83,10 @@ class Runtime:
         if (
             summary.get("schema_version") != 1
             or record.get("schema_version") != 1
+            or not isinstance(summary.get("run_id"), str)
             or not summary.get("run_id")
             or summary["run_id"] != record.get("run_id")
+            or before.get("run_id") != record.get("run_id")
             or any(
                 type(summary.get(k)) is not bool
                 for k in ("runner_alive", "agent_alive", "agent_group_alive")
@@ -153,14 +162,37 @@ class Runtime:
             cmd += ["--branch", job["branch"]]
         if job.get("model"):
             cmd += ["--model", job["model"]]
-        with (
-            (directory / "runner.stdout").open("wb") as out,
-            (directory / "runner.stderr").open("wb") as err,
-            subprocess.Popen(cmd, stdout=out, stderr=err, pass_fds=(gate_fd,)) as proc,
-        ):
-            self.launcher = proc
-            # A TERM received during Popen must also stop the newly created
-            # launcher, before result.json necessarily exists.
+        if "repair" in job:
+            from lib.repair_turn import validate_request
+
+            validate_request(job["repair"])
+            cmd += [
+                "--repair-id",
+                job["repair"]["repair_id"],
+                "--repair-pr",
+                str(job["repair"]["pr"]),
+                "--effort",
+                "high",
+            ]
+        from decision_logs.observations import job_environment
+
+        with self.launch_context():
             if self.stop_requested():
-                self.request_stop()
+                return 143
+            with (
+                (directory / "runner.stdout").open("wb") as out,
+                (directory / "runner.stderr").open("wb") as err,
+            ):
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=out,
+                    stderr=err,
+                    pass_fds=(gate_fd,),
+                    env=job_environment(job),
+                )
+                self.launcher = proc
+                if self.stop_requested():
+                    self.request_stop()
+        # Admission locks cover Popen/identity binding, never the running job.
+        with proc:
             return proc.wait()

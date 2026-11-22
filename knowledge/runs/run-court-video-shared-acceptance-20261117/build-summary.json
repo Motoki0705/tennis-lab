@@ -1,0 +1,73 @@
+{
+  "artifact_digest": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "manifest": {
+    "cameras": {
+      "cam0": "c6aa4182f2532846160c983c7dc2312b382607c4a6020389fefb95a2c8f569e1",
+      "cam1": "486ae330629487e7e9e17bf3e7558a33ccb672624787f4a96fe6620ec82cc1a0",
+      "cam2": "42823f7bba7a6408c37bcdc241c47ccba90a0f8b2b982cd9870319379255df5a",
+      "cam3": "c5c343c9d27fb5f3283c7f5fc0950e717f8754a5ff887efe6de573a585c570f4"
+    },
+    "dataset_id": "meiji_4cam",
+    "schema": "video_court_bundle_v1",
+    "video_id": "video_000"
+  },
+  "seconds": 2252.069574378984,
+  "cameras": {
+    "cam0": {
+      "status": "accepted",
+      "reasons": [],
+      "clip_status_counts": {
+        "failed": 25,
+        "ok": 44
+      },
+      "clip_reason_counts": {
+        "null": 44,
+        "drift_unobservable": 25
+      },
+      "selected_initializer": "video_000/clip_061/cam0/region_06/measured/video_000/clip_033/82",
+      "fit_frames": 199
+    },
+    "cam1": {
+      "status": "accepted",
+      "reasons": [],
+      "clip_status_counts": {
+        "failed": 9,
+        "ok": 57,
+        "warning": 3
+      },
+      "clip_reason_counts": {
+        "null": 57,
+        "drift_unobservable": 9,
+        "camera_moved_possible": 3
+      },
+      "selected_initializer": "video_000/clip_064/cam1/region_06/measured/video_000/clip_001/112",
+      "fit_frames": 186
+    },
+    "cam2": {
+      "status": "accepted",
+      "reasons": [],
+      "clip_status_counts": {
+        "failed": 66,
+        "ok": 3
+      },
+      "clip_reason_counts": {
+        "drift_unobservable": 66,
+        "null": 3
+      },
+      "selected_initializer": "video_000/clip_001/cam2/region_00/measured/video_000/clip_067/108",
+      "fit_frames": 127
+    },
+    "cam3": {
+      "status": "accepted",
+      "reasons": [],
+      "clip_status_counts": {
+        "failed": 69
+      },
+      "clip_reason_counts": {
+        "drift_unobservable": 69
+      },
+      "selected_initializer": "video_000/clip_001/cam3/region_00/measured/video_000/clip_001/112",
+      "fit_frames": 146
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "at_utc": "2026-11-17T16:43:07.588166+00:00",
+  "kind": "worker_heartbeat_timeout",
+  "variant": "main",
+  "detail": "{\"pid\": 164183, \"timeout_seconds\": 180.0, \"last_heartbeat\": {\"at_utc\": \"2026-11-17T16:40:06.610112+00:00\", \"monotonic\": 4447.649044184, \"phase\": \"pipeline_run\", \"model\": \"dino\", \"operation\": \"_tennis_lab_third_party_dino_models.dino.deformable_transformer.DeformableTransformer.forward\", \"file\": \"/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/deformable_transformer.py\", \"line\": 289, \"event\": \"c_return\"}, \"command\": [\"/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-inference-runtime-baseline/.venv/bin/python\", \"-u\", \"/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/benchmark.py\", \"--directory\", \"/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/main\", \"--pin\", \"/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/inputs.json\"]}",
+  "log": "/home/kamimura/projects/tennis-lab/.worktree-outputs/scene-inference-runtime/tennis_scene/evaluate/runtime-i1751-20261118-a4/main.log",
+  "pid": 164183
+}

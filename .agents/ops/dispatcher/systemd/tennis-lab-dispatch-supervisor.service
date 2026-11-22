@@ -7,7 +7,7 @@ Type=simple
 WorkingDirectory=%h/projects/tennis-lab
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 UMask=0077
-ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/dispatcher/dispatch.py supervise
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/checkout_job.py --repo %h/projects/tennis-lab --supervisor
 TimeoutStopSec=30
 KillMode=control-group
 # Restart does not override local disable/shutdown or create new agent sessions.

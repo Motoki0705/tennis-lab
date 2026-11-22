@@ -1,0 +1,227 @@
+"""Signed stripe offsets and a four-parameter image similarity diagnostic.
+
+Line identities come exclusively from the shared fit. This module never fits a
+new court homography, and never combines measurements across different frames.
+Two spatial anchors per physical line cap its statistical weight independently
+of the number of pixels sampled along that line.
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, replace
+from itertools import combinations, product
+from typing import Any
+
+import numpy as np
+from numpy.typing import NDArray
+
+from ..homography import court_template_xy
+from ..hybrid_homography import project_candidate
+from ..line_evidence import FloatArray
+from ..paint_observations import (
+    PAINT_NAMES,
+    PaintConfig,
+    PaintLine,
+    extract_paint_lines,
+    image_lines,
+)
+
+TRANSVERSE = frozenset((0, 1, 6, 7))
+
+
+@dataclass(frozen=True)
+class DriftConfig:
+    """Pixel units are normalized to the diagonal of 1920 x 1080."""
+
+    version: str = 'signed_line_similarity_v1'
+    min_lines: int = 4
+    min_transverse: int = 1
+    min_longitudinal: int = 2
+    min_direction_degrees: float = 12.
+    max_line_residual_px: float = 3.
+    line_anchor_sigma_px: float = 1.
+    max_projection_std_px: float = 5.
+    ambiguity_displacement_px: float = 3.
+    search_radius_px: float = 48.
+    max_condition: float = 10000.
+
+    def __post_init__(self) -> None:
+        if self.version != 'signed_line_similarity_v1':
+            raise ValueError('Unknown drift profile')
+        if any(not np.isfinite(v) or v <= 0 for k, v in asdict(self).items() if k != 'version'):
+            raise ValueError('Drift settings must be positive and finite')
+        if not 4 <= self.min_lines <= 9 or self.min_direction_degrees >= 90:
+            raise ValueError('Invalid drift support requirements')
+
+
+def _anchors(points: FloatArray) -> FloatArray:
+    centre = points.mean(axis=0)
+    _, _, vh = np.linalg.svd(points - centre, full_matrices=False)
+    along = (points - centre) @ vh[0]
+    return np.asarray(centre + np.quantile(along, [.1, .9])[:, None] * vh[0], dtype=np.float64)
+
+
+def _system(points: FloatArray, line: FloatArray, size: tuple[int, int]) -> tuple[FloatArray, FloatArray]:
+    u = (points - np.asarray(size) / 2) / np.hypot(*size)
+    n = line[:2]
+    return np.column_stack((np.full(len(points), n[0]), np.full(len(points), n[1]),
+                            u @ n, u @ np.array([n[1], -n[0]]))), -(points @ n + line[2])
+
+
+def _forward(parameters: FloatArray, points: FloatArray, size: tuple[int, int]) -> FloatArray:
+    tx, ty, a, b = parameters
+    linear = np.eye(2) + np.array([[a, -b], [b, a]]) / np.hypot(*size)
+    offset = np.array([tx, ty]) - (linear - np.eye(2)) @ (np.asarray(size) / 2)
+    return np.asarray((points - offset) @ np.linalg.inv(linear).T, dtype=np.float64)
+
+
+def solve_offsets(shared: FloatArray, lines: tuple[PaintLine, ...], size_wh: tuple[int, int],
+                  config: DriftConfig) -> dict[str, Any]:
+    """Inspect one frame's stripe proposals; alternatives cannot default to zero."""
+    scale = float(np.hypot(*size_wh) / np.hypot(1920, 1080))
+    predicted = image_lines(shared)
+    projected = project_candidate(shared, court_template_xy().astype(float))
+    if projected is None:
+        raise ValueError('Invalid shared court projection')
+    visible = ((projected >= 0) & (projected <= np.asarray(size_wh) - 1)).all(axis=1)
+    options = {line.index: [_anchors(points) for points in (line.points, *line.alternatives)]
+               for line in lines if line.status == 'ok' and len(line.points) >= 4}
+    if len({line.index for line in lines}) != len(lines):
+        raise ValueError('Duplicate physical line observations')
+    diagnostic: dict[str, Any] = {
+        'schema': config.version, 'status': 'failed', 'reason': 'drift_unobservable', 'geometry_reasons': [],
+        'mean_displacement_px': None, 'max_displacement_px': None,
+        'mean_displacement_std_px': None, 'max_visible_projection_std_px': None,
+        'temporal_pooling': False, 'model': 'image_similarity_4dof',
+        'thresholds_px': {'warning': 3 * scale, 'mean_failure': 10 * scale, 'max_failure': 25 * scale},
+        'common_line_residuals': [
+            {'line': PAINT_NAMES[line.index], 'status': line.status, 'coverage': line.coverage,
+             'points': len(line.points), 'alternatives': len(line.alternatives),
+             'signed_median_px': float(np.median(line.points @ predicted[line.index, :2] + predicted[line.index, 2])) if len(line.points) else None}
+            for line in lines]}
+
+    def fail(reason: str) -> dict[str, Any]:
+        diagnostic['geometry_reasons'].append(reason)
+        return diagnostic
+
+    keys = set(options)
+    if (len(keys) < config.min_lines or len(keys & TRANSVERSE) < config.min_transverse
+            or len(keys - TRANSVERSE) < config.min_longitudinal or not visible.any()):
+        return fail('insufficient_independent_line_support')
+    # Pairwise normal separation, plus the full rank test below, explicitly
+    # disallow an unmeasured translation along one family of parallel stripes.
+    pairs = [(i, j) for i, j in combinations(sorted(keys), 2)
+             if abs(predicted[i, :2] @ predicted[j, :2]) < np.cos(np.deg2rad(config.min_direction_degrees))]
+    if not pairs:
+        return fail('insufficient_line_directions')
+    systems = {(i, j): _system(points, predicted[i], size_wh)
+               for i, values in options.items() for j, points in enumerate(values)}
+    solutions = []
+    seen = set()
+    threshold = config.max_line_residual_px * scale
+    # Two intersecting lines leave scale about their intersection free. A third
+    # physical line is necessary even though two anchors give four equations.
+    triples = [ids for ids in combinations(sorted(keys), 3) if any(i in ids and j in ids for i, j in pairs)]
+    for ids in triples:
+        for choices in product(*(range(len(options[i])) for i in ids)):
+            seed = tuple(zip(ids, choices, strict=True))
+            a = np.vstack([systems[k][0] for k in seed])
+            b = np.concatenate([systems[k][1] for k in seed])
+            p, _, rank, _ = np.linalg.lstsq(a, b, rcond=None)
+            if rank != 4:
+                continue
+            matches = []
+            for k in sorted(keys):
+                errors = [float(np.max(np.abs(aa @ p - bb))) for aa, bb in (systems[k, n] for n in range(len(options[k]))) ]
+                choice = int(np.argmin(errors))
+                if errors[choice] <= threshold:
+                    matches.append((k, choice))
+            signature = tuple(matches)
+            if signature in seen or len(signature) < config.min_lines:
+                continue
+            seen.add(signature)
+            a = np.vstack([systems[k][0] for k in signature])
+            b = np.concatenate([systems[k][1] for k in signature])
+            p, _, rank, _ = np.linalg.lstsq(a, b, rcond=None)
+            residual = a @ p - b
+            if rank == 4 and np.abs(residual).max() <= threshold:
+                solutions.append((len(signature), float(np.mean(residual ** 2)), signature, p, a, residual))
+    if not solutions:
+        return fail('inconsistent_line_offsets')
+    solutions.sort(key=lambda item: (-item[0], item[1], item[2]))
+    count, _, assignment, p, a, residual = solutions[0]
+    diagnostic['supported_lines'] = [PAINT_NAMES[i] for i, _ in assignment]
+    diagnostic['unsupported_observed_lines'] = [PAINT_NAMES[i] for i in sorted(keys - {i for i, _ in assignment})]
+    if count != len(keys):
+        # A physical line that contradicts the four-DOF motion is not silently
+        # dropped. It may be a wrong stripe or genuine non-similarity motion.
+        return fail('non_similarity_or_conflicting_line')
+    actual = _forward(p, projected, size_wh)
+    alternatives = []
+    for n, _, signature, other, _, _ in solutions[1:]:
+        if n == count and np.linalg.norm(_forward(other, projected, size_wh) - actual, axis=1)[visible].max() > config.ambiguity_displacement_px * scale:
+            alternatives.append({'assignments': [[PAINT_NAMES[i], j] for i, j in signature], 'parameters': other.tolist()})
+    diagnostic['alternative_motions'] = alternatives
+    if alternatives:
+        return fail('ambiguous_line_offsets')
+    condition = float(np.linalg.cond(a))
+    diagnostic['condition'] = condition
+    if condition > config.max_condition:
+        return fail('unobservable_similarity_components')
+    sigma = max(config.line_anchor_sigma_px * scale, float(np.sqrt(residual @ residual / (len(residual) - 4))))
+    covariance = np.linalg.inv(a.T @ a) * sigma ** 2
+    derivative = np.stack([(_forward(p + np.eye(4)[i] * 1e-4, projected, size_wh)
+                            - _forward(p - np.eye(4)[i] * 1e-4, projected, size_wh)) / 2e-4 for i in range(4)], axis=-1)
+    pcov = np.einsum('nij,jk,nlk->nil', derivative, covariance, derivative)
+    std = np.sqrt(np.maximum(np.linalg.eigvalsh(pcov)[:, -1], 0))
+    difference = actual - projected
+    distance = np.linalg.norm(difference, axis=1)
+    unit = np.divide(difference, distance[:, None], out=np.zeros_like(difference), where=distance[:, None] > 1e-10)
+    gradient = np.einsum('ni,nij->j', unit[visible], derivative[visible]) / int(visible.sum())
+    mean_std = float(np.sqrt(max(0., gradient @ covariance @ gradient)))
+    mean, maximum = float(distance[visible].mean()), float(distance[visible].max())
+    diagnostic.update(inverse_similarity_parameters=p.tolist(), parameter_covariance=covariance.tolist(),
+                      visible_keypoint_indices=np.flatnonzero(visible).tolist(), keypoint_displacements_px=difference.tolist(),
+                      keypoint_std_px=std.tolist(), mean_displacement_px=mean, max_displacement_px=maximum,
+                      mean_displacement_std_px=mean_std, max_visible_projection_std_px=float(std[visible].max()),
+                      line_residuals=[{'line': PAINT_NAMES[i], 'alternative_index': j,
+                                       'anchor_residual_px': (systems[i, j][0] @ p - systems[i, j][1]).tolist()}
+                                      for i, j in assignment])
+    if std[visible].max() > config.max_projection_std_px * scale:
+        return fail('uncertain_local_projection')
+    if mean > 10 * scale or maximum > 25 * scale:
+        diagnostic.update(status='failed', reason='camera_drift_exceeds_tolerance')
+    elif mean - 2 * mean_std > 3 * scale:
+        diagnostic.update(status='warning', reason='camera_moved_possible')
+    else:
+        diagnostic.update(status='ok', reason=None)
+    return diagnostic
+
+
+def inspect_frame(image: NDArray[np.uint8], shared: FloatArray, supported_lines: tuple[str, ...],
+                  config: DriftConfig) -> dict[str, Any]:
+    if image.dtype != np.uint8 or image.ndim != 3 or image.shape[-1] != 3:
+        raise ValueError('Drift inspection requires source uint8 RGB')
+    if not supported_lines or len(set(supported_lines)) != len(supported_lines) or any(n not in PAINT_NAMES for n in supported_lines):
+        raise ValueError('Drift inspection requires unique shared-fit line identities')
+    projected = project_candidate(shared, court_template_xy().astype(float))
+    if projected is None:
+        raise ValueError('Invalid shared court')
+    size = (image.shape[1], image.shape[0])
+    scale = float(np.hypot(*size) / np.hypot(1920, 1080))
+    # Reuse edge-pair extraction, not per-frame semantic court re-identification.
+    paint = replace(PaintConfig(), line_inlier_distance_px=1.5 * scale,
+                    ambiguity_separation_px=3 * scale, sample_spacing_px=8 * scale)
+    lines = extract_paint_lines(image.min(axis=2).astype(float), projected, config.search_radius_px * scale, paint)
+    return solve_offsets(shared, tuple(line for line in lines if PAINT_NAMES[line.index] in supported_lines), size, config)
+
+
+def summarize_clip(frames: list[dict[str, Any]]) -> dict[str, Any]:
+    """Worst measured frame; no same-pose assumption or temporal pooling."""
+    if not frames or len({f['frame_index'] for f in frames}) != len(frames):
+        raise ValueError('Clip requires distinct diagnostic frames')
+    rank = {'ok': 0, 'warning': 1, 'failed': 2}
+    worst = max(frames, key=lambda f: (rank[f['status']], f['reason'] == 'drift_unobservable',
+                                     f.get('max_displacement_px') or 0, -f['frame_index']))
+    return {'status': worst['status'], 'reason': worst['reason'], 'worst_frame_index': worst['frame_index'],
+            'temporal_pooling': False, 'frames': sorted(frames, key=lambda f: f['frame_index'])}

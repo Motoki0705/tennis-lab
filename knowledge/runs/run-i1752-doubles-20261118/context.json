@@ -1,0 +1,28 @@
+{
+  "measurement_head": "e296a5fb358bee9ed9974821943d055f31c1e360",
+  "environment": {
+    "torch": "2.13.0",
+    "numpy": "2.3.5",
+    "hydra-core": "1.3.6",
+    "smplx": "0.1.28",
+    "scipy": "1.17.1"
+  },
+  "input_manifest_sha256": "8009fb1befa7ed8c3c89402fa9808acc1f48e025f6eac274869b7b06ecfdbd3b",
+  "frozen_clip_order": [
+    "video_000/clip_000",
+    "video_000/clip_037",
+    "video_000/clip_027"
+  ],
+  "frames_per_camera": 883,
+  "all69_inventory": {
+    "clips": 69,
+    "frames_per_camera": 46228
+  },
+  "observer": "existing C3 a5 Observer + health_guard; global sys.setprofile, all-thread faulthandler, NVML 1s; timing includes instrumentation",
+  "stack_snapshot": {
+    "pid": 1623769,
+    "at_utc": "2026-11-18T01:11:59Z",
+    "reason": "Read-only startup diagnosis, not a CUDA anomaly. CPU was traversing video_shared drift bundle JSON in standard_definition under the observer."
+  },
+  "full69_launched": false
+}

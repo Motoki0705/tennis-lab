@@ -17,14 +17,14 @@ from lib import codex_queue
 from lib.identity import session_identity
 from parent.state import Store as ParentStore
 
-from .access import parent_state
+from .access import ownership_fence, parent_state
 from .errors import BoardError
 from .names import for_parent
 from .storage import Store, directory
 
 
 def root(env: Mapping[str, str]) -> Path:
-    path = directory(env) / "receivers"
+    path: Path = directory(env) / "receivers"
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
     directory(env).chmod(0o700)
     path.chmod(0o700)
@@ -152,7 +152,11 @@ def capture_claude(env: Mapping[str, str], source: str, native: dict[str, Any]) 
         "accepting": accepting,
         "source": source,
     }
-    with parent_state(env) as parents, locked(root(env) / "routes.lock"):
+    with (
+        ownership_fence(env),
+        parent_state(env) as parents,
+        locked(root(env) / "routes.lock"),
+    ):
         if process(native["pid"]) != native:
             raise BoardError("Claude receiver process changed")
         # Even /clear with an unchanged session ID/socket must require a fresh
@@ -202,25 +206,51 @@ def _codex(env: Mapping[str, str], identity: str) -> dict[str, Any] | None:
 
 def bind_receiver(env: Mapping[str, str]) -> dict[str, str]:
     """Run after parent register/accept, with its registry writer lock released."""
+    env = dict(env)
     identity = session_identity(env)
     engine = identity.partition(":")[0]
-    with parent_state(env) as parents, locked(root(env) / "routes.lock"):
+    with (
+        ownership_fence(env),
+        parent_state(env) as parents,
+        locked(root(env) / "routes.lock"),
+    ):
         binding = _binding(env, identity, parents)
         if binding is None:
             raise BoardError("receiver has no active board assignment")
+        if engine == "agy":
+            return {"status": "awaiting_hook"}
         path = root(env) / f"{owner_token(identity)}.json"
         if engine == "codex":
             # Registration that discovers a broken/ambiguous runtime must not
             # leave an older same-generation route usable by later posts.
-            write(path, {"version": 1, "identity": identity, "binding": None})
-            record = _codex(env, identity)
+            pending = {
+                "version": 1,
+                "identity": identity,
+                "binding": None,
+                "epoch": uuid.uuid4().hex,
+            }
+            write(path, pending)
         else:
             record = read(path)
+            if record is None:
+                return {"status": "not_configured", "reason": "route_unavailable"}
+            _check_claude(env, record)
+            record["binding"] = binding
+            write(path, record)
+            return {"status": "bound"}
+    # Directory discovery and rollout validation can be arbitrarily expensive.
+    # Keep both registry and routes locks free, then reject superseded results.
+    record = _codex(env, identity)
+    with (
+        ownership_fence(env),
+        parent_state(env) as parents,
+        locked(root(env) / "routes.lock"),
+    ):
+        if _binding(env, identity, parents) != binding or read(path) != pending:
+            raise BoardError("receiver assignment or discovery epoch changed")
         if record is None:
             return {"status": "not_configured", "reason": "route_unavailable"}
-        if engine == "claude":
-            _check_claude(env, record)
-        record["binding"] = binding
+        record.update(binding=binding, epoch=pending["epoch"])
         write(path, record)
     return {"status": "bound"}
 
@@ -240,11 +270,21 @@ def _check_claude(env: Mapping[str, str], record: dict[str, Any]) -> None:
 
 
 def resolve(env: Mapping[str, str], notification: Any) -> dict[str, Any]:
-    """Caller holds routes.lock and the dispatcher already fences the registry."""
+    """Caller holds routes.lock; dispatch holds the common ownership fence.
+
+    Read the atomic ownership index without acquiring registry.lock under
+    routes.lock. The fence keeps it stable; normal task updates may proceed.
+    Never substitute a different live owner for the pinned notification.
+    """
     row = registry(env).get(f"{notification.repo}#{notification.parent}")
     if not row or row["status"] != "active":
         raise BoardError("receiver assignment is unavailable")
     identity = row["session"]
+    if (
+        identity != notification.owner_session
+        or row["generation"] != notification.owner_generation
+    ):
+        raise BoardError("notification owner changed")
     if identity.partition(":")[0] != notification.engine:
         raise BoardError("receiver engine changed")
     record = read(root(env) / f"{owner_token(identity)}.json")

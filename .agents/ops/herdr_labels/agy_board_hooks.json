@@ -1,0 +1,11 @@
+{
+  "tennis-lab-parent-board": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "exec \"${TENNIS_LAB_AGY_HOOK_ENTRY:?agy parent hook: launcher entry is missing}\" --hook=pre-invocation",
+        "timeout": 5
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "new_correct_rejected_candidates": 38,
+  "reason_counts": {
+    "unstable_line_influence": 11,
+    "unstable_projection": 28,
+    "visible_line_mismatch": 14
+  },
+  "cam3_reason_counts": {
+    "visible_line_mismatch": 6,
+    "unstable_projection": 7,
+    "unstable_line_influence": 4
+  }
+}

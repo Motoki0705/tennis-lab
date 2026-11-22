@@ -4,18 +4,73 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from lib.agent_events import runtime_errors_failed
 from parent.policy import object_value
 
 from .records import read_json
+from .runtime import Runtime, load
 
 RUNNER = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
 OUTPUT_SCHEMA = Path(__file__).with_name("judgement.schema.json").resolve()
 
 
-def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> Any:
+@dataclass
+class StopRequest:
+    requested: bool = False
+    started: bool = False
+
+    def check(self) -> None:
+        if self.requested:
+            raise InterruptedError("scheduled judgment was explicitly stopped")
+
+
+def _execute(
+    command: list[str], runtime_dir: Path, stop: StopRequest | None
+) -> subprocess.CompletedProcess[str]:
+    if stop is not None:
+        stop.check()
+    with subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    ) as process:
+        if stop is not None:
+            stop.started = True
+        sent_stop = False
+        while True:
+            try:
+                stdout, stderr = process.communicate(timeout=0.1 if stop else None)
+                return subprocess.CompletedProcess(
+                    command, process.returncode, stdout, stderr
+                )
+            except subprocess.TimeoutExpired:
+                if stop is None or not stop.requested or sent_stop:
+                    continue
+                path = runtime_dir / "result.json"
+                # The runner installs its stop handler before spawning the CLI.
+                # A request during startup must wait for that ownership handoff.
+                if path.exists():
+                    record = load(path)
+                    if (
+                        record.get("agent_spawned") is True
+                        and record.get("result") == "running"
+                    ):
+                        Runtime(Path(command[0])).inspect(runtime_dir, stop=True)
+                        sent_stop = True
+
+
+def judge(
+    root: Path,
+    run_dir: Path,
+    timeout: float,
+    runner: Path = RUNNER,
+    *,
+    stop: StopRequest | None = None,
+) -> Any:
+    if stop is not None:
+        stop.check()
     input_dir = (run_dir / "agent-input").resolve()
     prompt = Path(__file__).with_name("prompt.md").read_text(encoding="utf-8")
     prompt += f"\n\n固定入力の索引: {input_dir / 'index.json'}\n"
@@ -23,7 +78,7 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
     prompt_path.write_text(prompt, encoding="utf-8")
     runtime_dir = run_dir / "agent-runtime"
     schema_sha256 = hashlib.sha256(OUTPUT_SCHEMA.read_bytes()).hexdigest()
-    result = subprocess.run(
+    result = _execute(
         [
             str(runner),
             "--agent",
@@ -47,12 +102,13 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
             "--timeout",
             str(timeout),
         ],
-        text=True,
-        capture_output=True,
-        check=False,
+        runtime_dir,
+        stop,
     )
     (run_dir / "runner.stdout").write_text(result.stdout, encoding="utf-8")
     (run_dir / "runner.stderr").write_text(result.stderr, encoding="utf-8")
+    if stop is not None:
+        stop.check()
     if result.returncode:
         diagnostic = result.stderr.strip()[:2048]
         failure_path = runtime_dir / "result.json"
@@ -103,7 +159,7 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
         or selected != settings.get("defaults")
         or model.get("status") != "observed"
         or model.get("value") != selected["model"]
-        or runtime.get("runtime_errors")
+        or runtime_errors_failed(evidence)
         or evidence.get("cleanup_complete") is not True
     ):
         raise ValueError("judgement runtime contract/effective model/cleanup mismatch")

@@ -7,6 +7,7 @@
 ## Modules
 
 ### Top-level
+- **[`inference_recording.py`](inference_recording.md)**: opt-inな推論実行provenance。モデルload/unload、段階別span、実batch、RAM/VRAM・一時diskをJSONへ記録し、成果物とcache identityから分離する。
 - **`paths.py`**: `PROJECT_ROOT` と `resolve_project_path()`。repo ルート基準のパス解決が必要なときに見る。
 - **`device.py`**: strictな `resolve_device()` と `select_accelerator()`。availabilityに応じた選択は`"auto"`だけが行い、明示CUDA/GPU要求を満たせない場合は`DeviceSelectionError`でmodel/Trainer構築前に失敗する。
 - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
@@ -23,6 +24,7 @@
 ### `configuration/`
 - **`cli.py`**: 明示されたselectorで操作を選ぶ。literalな委譲先mapを`discovery.py`が再帰的に追跡し、全ての終端のschema/path validatorをcatalogと監査へ結び付ける。未知・動的・循環する経路は検証済みとして扱わない。
 - **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。設定値や path role の暗黙補完は行わない。
+- **`local_storage.py`**: E:だけにある入力の取得案内と、明示された未管理DATA参照の検証。[配置・参照・dry-run契約](../../.agents/ops/storage_tier/README.md)の設定を読み、参照名を二重管理しない。
 - **`discovery.py`**: runtime boundary を source-only に列挙する下位 discovery の唯一の実装。`catalog.py` と `audit.py` はこの module を一方向に参照する。
 - **`catalog.py`**: source declaration と runtime boundary を結び付けた inspectable contract catalog の唯一の import path。
 - **`audit.py` / `inventory.py`**: 現在の repository-owned source から configuration/path の禁止パターンを直接検査し、明示的な runtime boundary 契約と照合する library API。行番号依存の migration/exemption snapshot は保持しない。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。

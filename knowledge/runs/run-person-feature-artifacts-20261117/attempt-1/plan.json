@@ -1,0 +1,37 @@
+{
+  "head": "0ba3c0e45cd2139d04d2c2fe0c5a7c0199d87668",
+  "legacy": "f7b016700",
+  "recorder": "a1a05d0e0ea7f44da7ed7b29eee3450b1319338b",
+  "inputs": [
+    {
+      "path": "videos/video_000/clips/clip_037/clip.json",
+      "sha256": "dc89788e4406ba99a0d36c73491b077f6bb88b545385ba998d142d8d0be91a94",
+      "bytes": 2062,
+      "probe": null
+    },
+    {
+      "path": "videos/video_000/clips/clip_037/media/cam0.mp4",
+      "sha256": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+      "bytes": 6617788,
+      "probe": {
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "60000/1001",
+        "nb_read_frames": "292"
+      }
+    }
+  ],
+  "tolerance": {
+    "pose_xy_atol_px": 0.05,
+    "pose_confidence_atol": 0.0001,
+    "embedding_atol": 1e-05,
+    "embedding_cosine_distance": 1e-06,
+    "rtol": 0.0
+  },
+  "scope": "video_000/clip_037 cam0 full 292 frames; not full scene or all cameras",
+  "vitpose_batch_size": 16,
+  "appearance_batch_size": 64,
+  "dtype": "float32",
+  "flip_test": true,
+  "allocator_limit_gib": 10
+}

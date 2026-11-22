@@ -1,0 +1,2 @@
+ M knowledge/nodes/tennis_scene/000045-run-hmr2-feature-parity-clip037-20261117.md
+?? knowledge/runs/run-hmr2-feature-parity-clip037-20261117/qualification-main/

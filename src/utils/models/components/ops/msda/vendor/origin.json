@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/fundamentalvision/Deformable-DETR",
+  "commit": "11169a60c33333af00a4849f1808023eba96a931",
+  "license": "Apache-2.0",
+  "paths": [
+    "models/ops/modules/ms_deform_attn.py",
+    "models/ops/functions/ms_deform_attn_func.py"
+  ],
+  "changes": [
+    "Only native-extension import/calls are made lazy and explicit; algorithms unchanged."
+  ]
+}

@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -16,7 +17,8 @@ from typing import Any
 import pytest
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops/ops-report"))
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / ".agents/ops/ops-report"))
 
 # The ops tooling lives outside src/; import it like other .agents script tests.
 agent: Any = importlib.import_module("opsreport.agent")
@@ -433,6 +435,99 @@ def test_concurrent_reports_create_one_issue(ops_env: Any) -> None:
         results
     )
     assert sum(1 for i in ops_env.state["issues"] if "ops-report" in i["labels"]) == 1
+
+
+def test_direct_manual_report_is_refused_before_running_a_job(ops_env: Any) -> None:
+    wrapped = ops_env._cmd(("report", "--dry-run"))
+    raw = wrapped[wrapped.index("--") + 1 :]
+    result = subprocess.run(
+        raw,
+        cwd=ops_env.repo,
+        env=ops_env.env,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=20,
+    )
+    assert result.returncode == 75, result.stdout + result.stderr
+    assert "checkout_job.py" in result.stderr
+    assert not (ops_env.tmp / "logs").exists()
+
+
+def test_manual_report_holds_checkout_lock_while_its_service_is_inactive(
+    ops_env: Any,
+) -> None:
+    upstream = _with_upstream(ops_env)
+    producer = ops_env.tmp / "producer"
+    _git(ops_env.tmp, "clone", "-q", str(upstream), str(producer))
+    (producer / "new.py").write_text("upstream = True\n")
+    _git(producer, "add", "new.py")
+    _git(
+        producer,
+        "-c", "user.name=t", "-c", "user.email=t@example.com",
+        "commit", "-qm", "upstream update",
+    )  # fmt: skip
+    _git(producer, "push", "-q", "origin", "main")
+    target = _git(producer, "rev-parse", "HEAD")
+    ready, release = (
+        ops_env.tmp / "manual-report-ready",
+        ops_env.tmp / "manual-report-release",
+    )
+    os.mkfifo(release)
+    gh = ops_env.tmp / "bin/gh"
+    shebang, source = gh.read_text().split("\n", 1)
+    gh.write_text(
+        shebang
+        + "\n"
+        + f"from pathlib import Path\nif not Path({str(ready)!r}).exists():\n    Path({str(ready)!r}).touch()\n    with open({str(release)!r}) as gate: gate.read()\n"
+        + source
+    )
+    with subprocess.Popen(
+        ops_env._cmd(("report", "--dry-run")),
+        cwd=ops_env.repo,
+        env=ops_env.env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    ) as report:
+        try:
+            deadline = time.monotonic() + 10
+            while not ready.exists():
+                assert report.poll() is None
+                assert time.monotonic() < deadline
+                time.sleep(0.02)
+            before = _git(ops_env.repo, "rev-parse", "HEAD")
+            assert before != target
+            # No service is active here. The real manual report process owns
+            # the same shared lock as a timer-launched report.
+            sync = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / ".agents/ops/git_sync/sync.py"),
+                    "--repo",
+                    str(ops_env.repo),
+                ],
+                cwd=ops_env.repo,
+                env=ops_env.env,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=20,
+            )
+            assert sync.returncode == 75, sync.stdout + sync.stderr
+            assert json.loads(sync.stdout)["reason"] == "checkout_jobs_running"
+            assert _git(ops_env.repo, "rev-parse", "HEAD") == before
+            assert not (ops_env.repo / "new.py").exists()
+            fd = os.open(release, os.O_RDWR | os.O_NONBLOCK)
+            os.write(fd, b"continue")
+            os.close(fd)
+            stdout, stderr = report.communicate(timeout=30)
+            assert report.returncode == 0, stdout + stderr
+        finally:
+            if report.poll() is None:
+                os.killpg(report.pid, signal.SIGTERM)
+                report.communicate(timeout=10)
 
 
 def _alive(pid: int) -> bool:
