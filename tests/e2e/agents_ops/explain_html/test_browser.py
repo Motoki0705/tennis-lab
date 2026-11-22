@@ -6,12 +6,14 @@ import subprocess
 import time
 from pathlib import Path
 
+from tests.support.agents_ops.explain_html import require_playwright
 from tests.support.agents_ops.explain_html_ui import live_browser_server
 
 REPO = Path(__file__).resolve().parents[4]
 
 
 def test_browser_reader_editor_workflow(tmp_path: Path) -> None:
+    require_playwright("playwright")
     setup = time.monotonic()
     with live_browser_server(tmp_path / "runtime") as live:
         setup_seconds = time.monotonic() - setup
