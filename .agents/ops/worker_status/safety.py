@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from board.errors import BoardError
-from board.safety import public
+from board.safety import public, truncate
 from parent.worker_slots import workers
 
 PRIVATE_ENV_KEYS = (
@@ -97,17 +97,19 @@ class Guard:
             return {"status": "unavailable", "text": None, "truncated": False}
         if not isinstance(value, str):
             raise ValueError("invalid free text")
+        hidden = {"status": "hidden", "text": None, "truncated": False}
+        if any(secret in value for secret in self.text_environment):
+            return hidden
         try:
             self.check(value)
+            shown = value.split("\n", 1)[0] if first_line else value
+            prefix = truncate(shown, limit)
+            if prefix != value:
+                self.check(prefix)
         except StatusError:
-            safe = False
-        else:
-            safe = not any(secret in value for secret in self.text_environment)
-        if not safe:
-            return {"status": "hidden", "text": None, "truncated": False}
-        shown = value.split("\n", 1)[0] if first_line else value
+            return hidden
         return {
             "status": "visible",
-            "text": shown[:limit],
-            "truncated": len(shown) > limit,
+            "text": prefix,
+            "truncated": len(prefix) < len(shown),
         }

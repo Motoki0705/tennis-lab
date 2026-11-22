@@ -28,7 +28,7 @@ from worker_status.records import claude_messages, tail, timed_text, timestamp
 from worker_status.safety import Guard
 
 from .errors import BoardError
-from .safety import public
+from .safety import public, truncate
 from .service import STATES, _runtime_state
 
 PRIVATE_KEYS = ("pane_id", "terminal_id", "cwd", "foreground_cwd")
@@ -247,10 +247,13 @@ def _project(
         title = row.get("terminal_title_stripped", "")
         if not isinstance(title, str):
             raise ValueError("invalid agent title")
-        title = title[:200]
         title_status = "available"
         try:
             public(title, secrets, env)
+            shortened = truncate(title, 200)
+            if shortened != title:
+                public(shortened, secrets, env)
+            title = shortened
         except BoardError:
             title, title_status = "", "redacted"
         counts[engine] += 1

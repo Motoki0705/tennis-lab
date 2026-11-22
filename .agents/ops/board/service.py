@@ -35,7 +35,6 @@ from .storage import Store, directory
 
 STATES = {"idle", "working", "blocked", "done"}
 REFERENCE = re.compile(r"([a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+)#([1-9][0-9]*)")
-ABSOLUTE_PATH = re.compile(r"(?:^|[\s\"'`(=：])(?:/|~[/\\]|[a-zA-Z]:[/\\]|\\\\)")
 
 
 def _reference(key: str) -> tuple[str, int]:
@@ -50,13 +49,11 @@ def _public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> N
 
 
 def _identifier(value: str, parents: Mapping[str, Any], env: Mapping[str, str]) -> str:
-    if (
-        not value
-        or any(unicodedata.category(c).startswith("C") for c in value)
-        or ABSOLUTE_PATH.search(value)
-    ):
-        raise BoardError("parent identifier must be public text without paths")
-    _public(value, parents, env)
+    if not value or any(unicodedata.category(c).startswith("C") for c in value):
+        raise BoardError(
+            "parent identifier must be nonempty text without control characters"
+        )
+    public(value, parents, env)
     return value
 
 
