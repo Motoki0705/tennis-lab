@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from lib.opsproc import process_identity
+from lib.opsproc import pidfd_open, pidfd_send_signal, process_identity
 
 from .paths import SafeDirectory
 from .schema import ContractError, ErrorResponse, Identifier, Model, parse
@@ -222,14 +222,18 @@ def _stop(root: Path) -> None:
         print(json.dumps({"running": False}))
         return
     try:
-        descriptor = os.pidfd_open(session.pid)
+        descriptor = pidfd_open(session.pid)
     except ProcessLookupError:
         print(json.dumps({"running": False}))
         return
     try:
         if process_identity(session.pid) != session.identity:
             raise ContractError("interrupted")
-        signal.pidfd_send_signal(descriptor, signal.SIGTERM)
+        try:
+            pidfd_send_signal(descriptor, signal.SIGTERM)
+        except ProcessLookupError:
+            print(json.dumps({"running": False}))
+            return
         if not select.select([descriptor], [], [], 15)[0]:
             raise ContractError("timeout")
     finally:
