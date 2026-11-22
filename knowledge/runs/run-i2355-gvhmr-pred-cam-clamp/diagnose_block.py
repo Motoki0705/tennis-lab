@@ -179,7 +179,7 @@ def run_variant(
     result = {
         "exit_code": completed.returncode,
         "wall_seconds": time.monotonic() - started,
-        "graph": str(graph.relative_to(root)),
+        "graph": str(graph),
         "options": options,
         "log": str(log.relative_to(root)),
         "plan_published": plan.is_file(),
