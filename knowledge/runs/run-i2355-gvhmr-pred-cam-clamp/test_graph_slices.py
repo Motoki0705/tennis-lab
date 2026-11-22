@@ -3,9 +3,8 @@ from pathlib import Path
 import numpy as np
 import onnx
 import pytest
-from onnx import TensorProto, helper, numpy_helper
-
 from graph_slices import infer_tensor_specs, slice_graph
+from onnx import TensorProto, helper, numpy_helper
 
 
 def write_branching_graph(path: Path) -> None:
@@ -24,9 +23,7 @@ def write_branching_graph(path: Path) -> None:
             numpy_helper.from_array(np.full((3,), 2, dtype=np.float16), name="scale"),
         ],
         value_info=[
-            helper.make_tensor_value_info(
-                "boundary", TensorProto.FLOAT16, [2, 3]
-            ),
+            helper.make_tensor_value_info("boundary", TensorProto.FLOAT16, [2, 3]),
             helper.make_tensor_value_info("hidden", TensorProto.FLOAT16, [2, 3]),
         ],
     )

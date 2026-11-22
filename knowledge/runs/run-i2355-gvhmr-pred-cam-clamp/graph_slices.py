@@ -116,9 +116,7 @@ def slice_graph(
     }
     consumed = {name for node in nodes for name in node.input}
     unused_promoted = sorted(
-        name
-        for name in promoted_inputs
-        if name not in consumed and name != output_name
+        name for name in promoted_inputs if name not in consumed and name != output_name
     )
     inputs = [
         original_inputs[name]
