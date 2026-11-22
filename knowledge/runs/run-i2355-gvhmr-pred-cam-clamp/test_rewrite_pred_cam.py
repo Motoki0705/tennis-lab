@@ -2,8 +2,10 @@
 
 from pathlib import Path
 
+import numpy as np
 import onnx
 import pytest
+from graph_slices import slice_graph
 from minimal_repro import compare_minimal, export_minimal
 from rewrite_pred_cam import rewrite_pred_cam_clamp
 
@@ -52,3 +54,39 @@ def test_rewrite_rejects_a_graph_without_the_exact_exporter_pattern(tmp_path: Pa
         rewrite_pred_cam_clamp(source, target)
 
     assert not target.exists()
+
+
+def test_graph_slice_can_promote_an_internal_tensor_to_a_checked_input(tmp_path: Path):
+    source = tmp_path / "source.onnx"
+    target = tmp_path / "head.onnx"
+    x = onnx.helper.make_tensor_value_info("x", onnx.TensorProto.FLOAT, [2, 3])
+    y = onnx.helper.make_tensor_value_info("y", onnx.TensorProto.FLOAT, [2, 3])
+    one = onnx.numpy_helper.from_array(np.ones((1,), dtype=np.float32), name="one")
+    graph = onnx.helper.make_graph(
+        [
+            onnx.helper.make_node("Add", ["x", "one"], ["middle"]),
+            onnx.helper.make_node("Mul", ["middle", "middle"], ["y"]),
+        ],
+        "promoted-input",
+        [x],
+        [y],
+        [one],
+    )
+    onnx.save(
+        onnx.helper.make_model(graph, opset_imports=[onnx.helper.make_opsetid("", 19)]),
+        source,
+    )
+
+    report = slice_graph(
+        source,
+        target,
+        output_name="y",
+        output_type=onnx.TensorProto.FLOAT,
+        output_shape=(2, 3),
+        promoted_inputs={"middle": (onnx.TensorProto.FLOAT, (2, 3))},
+    )
+
+    model = onnx.load(target)
+    assert report["inputs"] == ["middle"]
+    assert [node.op_type for node in model.graph.node] == ["Mul"]
+    assert [value.name for value in model.graph.input] == ["middle"]

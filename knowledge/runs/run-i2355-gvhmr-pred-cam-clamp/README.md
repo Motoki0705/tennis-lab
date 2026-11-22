@@ -49,3 +49,21 @@ campaignは次を別プロセスで記録する。
 - B=0/5、L=144/178をTensorRT自身が非ゼロで拒否することを確認する。
 - B=1/2/4 × L=145/177で速度、throughput、Peak VRAM、nsys kernel数、
   length・mask・復号後COCO-17関節差を #2335 と同じharnessで測る。
+
+## 原因切り分けcampaign
+
+ScatterND単体とScatterND除去後の実モデルを比べた後、実モデルの静的
+B=2/L=145グラフをmask、入力embedding、`pred_cam` head、Transformer block prefixへ
+切り分ける。各engine buildを別プロセスにし、SIGSEGV後も次の比較を記録する。
+
+```bash
+bundle=knowledge/runs/run-i2355-gvhmr-pred-cam-clamp
+common=knowledge/runs/run-i2297-clipreid-tensorrt
+gvhmr=knowledge/runs/run-i2305-gvhmr-tensorrt
+trt_env="$HOME/.venvs/tennis-lab-trt"
+PYTHONPATH="$PWD:$PWD/$bundle:$PWD/$common:$PWD/$gvhmr" \
+  PATH="/usr/local/cuda/bin:$PATH" \
+  "$trt_env/bin/python" -B -X faulthandler "$bundle/diagnose.py" \
+  --source "$static_b2_l145_concat_onnx" \
+  --output outputs/trt-gvhmr-i2355/diagnosis-1
+```
