@@ -67,3 +67,16 @@ PYTHONPATH="$PWD:$PWD/$bundle:$PWD/$common:$PWD/$gvhmr" \
   --source "$static_b2_l145_concat_onnx" \
   --output outputs/trt-gvhmr-i2355/diagnosis-1
 ```
+
+最初のblockをさらに、LayerNorm、Q/K/V投影、RoPE、QK MatMul、局所mask、
+padding mask、Softmax、V MatMul、出力投影、MLPへ切り分ける。block入力と2つの
+maskをgraph入力へ昇格した版、元の埋め込み・mask生成と融合できる版、演算coreだけの
+版を比較し、単独演算の失敗と境界をまたぐ融合の失敗を区別する。
+
+```bash
+PYTHONPATH="$PWD:$PWD/$bundle:$PWD/$common:$PWD/$gvhmr" \
+  PATH="/usr/local/cuda/bin:$PATH" \
+  "$trt_env/bin/python" -B -X faulthandler "$bundle/diagnose_block.py" \
+  --source "$static_b2_l145_concat_onnx" \
+  --output outputs/trt-gvhmr-i2355/diagnosis-block0
+```

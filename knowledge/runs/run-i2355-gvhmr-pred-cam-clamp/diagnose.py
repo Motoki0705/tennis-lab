@@ -44,7 +44,12 @@ def child_command(*arguments: object) -> list[str]:
 
 
 def run_build(
-    report: dict[str, object], root: Path, source: Path, name: str
+    report: dict[str, object],
+    root: Path,
+    source: Path,
+    name: str,
+    *,
+    builder_optimization_level: int = 3,
 ) -> dict[str, object]:
     destination = root / "cases" / name
     plan = destination / "model.plan"
@@ -59,7 +64,7 @@ def run_build(
         "--report",
         receipt,
         "--builder-optimization-level",
-        3,
+        builder_optimization_level,
     )
     started = time.monotonic()
     with log.open("x") as stream:
@@ -84,6 +89,7 @@ def run_build(
         "log": str(log.relative_to(root)),
         "plan_published": plan.is_file(),
         "receipt_published": receipt.is_file(),
+        "builder_optimization_level": builder_optimization_level,
         "last_timing_runner": timing_runners[-1] if timing_runners else None,
     }
     report.setdefault("builds", {})[name] = result

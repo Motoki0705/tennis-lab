@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 
 
@@ -9,6 +10,47 @@ def _value_info(name: str, elem_type: int, shape: tuple[int | str, ...]):
     from onnx import helper
 
     return helper.make_tensor_value_info(name, elem_type, list(shape))
+
+
+def infer_tensor_specs(
+    source: Path, names: Iterable[str]
+) -> dict[str, tuple[int, tuple[int | str, ...]]]:
+    """Return inferred ONNX dtype/shape pairs for selected static graph values."""
+    import onnx
+
+    requested = tuple(dict.fromkeys(names))
+    model = onnx.load(source.resolve(strict=True), load_external_data=True)
+    inferred = onnx.shape_inference.infer_shapes(
+        model,
+        strict_mode=True,
+        data_prop=True,
+    )
+    values = {
+        value.name: value
+        for collection in (
+            inferred.graph.input,
+            inferred.graph.value_info,
+            inferred.graph.output,
+        )
+        for value in collection
+    }
+    missing = set(requested) - values.keys()
+    if missing:
+        raise ValueError(f"No inferred tensor metadata for: {sorted(missing)}")
+
+    result = {}
+    for name in requested:
+        tensor = values[name].type.tensor_type
+        shape: list[int | str] = []
+        for axis, dimension in enumerate(tensor.shape.dim):
+            if dimension.HasField("dim_value"):
+                shape.append(int(dimension.dim_value))
+            elif dimension.dim_param:
+                shape.append(dimension.dim_param)
+            else:
+                raise ValueError(f"Tensor {name!r} has unknown dimension {axis}")
+        result[name] = (int(tensor.elem_type), tuple(shape))
+    return result
 
 
 def slice_graph(
@@ -20,7 +62,11 @@ def slice_graph(
     output_shape: tuple[int | str, ...],
     promoted_inputs: dict[str, tuple[int, tuple[int | str, ...]]] | None = None,
 ) -> dict[str, object]:
-    """Retain only dependencies of one output, stopping at promoted inputs."""
+    """Retain only dependencies of one output, stopping at promoted inputs.
+
+    Promoted inputs that the retained nodes never consume are not added to the
+    sliced graph; they are listed in ``unused_promoted_inputs`` instead.
+    """
     import onnx
 
     source = source.resolve(strict=True)
@@ -68,6 +114,12 @@ def slice_graph(
     used_original_inputs = {
         name for node in nodes for name in node.input if name in original_inputs
     }
+    consumed = {name for node in nodes for name in node.input}
+    unused_promoted = sorted(
+        name
+        for name in promoted_inputs
+        if name not in consumed and name != output_name
+    )
     inputs = [
         original_inputs[name]
         for name in original_inputs
@@ -76,6 +128,7 @@ def slice_graph(
     inputs.extend(
         _value_info(name, elem_type, shape)
         for name, (elem_type, shape) in promoted_inputs.items()
+        if name not in unused_promoted
     )
     del graph.node[:]
     graph.node.extend(nodes)
@@ -104,5 +157,6 @@ def slice_graph(
         "inputs": [value.name for value in inputs],
         "nodes": len(nodes),
         "initializers": len(initializers),
-        "promoted_inputs": sorted(promoted_inputs),
+        "promoted_inputs": sorted(set(promoted_inputs) - set(unused_promoted)),
+        "unused_promoted_inputs": unused_promoted,
     }
