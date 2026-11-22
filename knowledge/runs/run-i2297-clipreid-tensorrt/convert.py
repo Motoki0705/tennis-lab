@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -38,6 +38,12 @@ CUBLAS_GEMVX_OPERANDS = re.compile(
     r"_cublas_gemvx_(f16|i8|e4m3|f32|tf32|bf16)(f16|i8|e4m3|f32|tf32|bf16)_"
 )
 INT8_SMALL_K_OPERANDS = re.compile(r"^sm\d+_xmma_conv_fprop_smallk_(i8)(i8)_i32_")
+HMR2_KV_PROJECTION = re.compile(
+    r"/hmr/smpl_head/transformer/transformer/layers\.[0-5]\.1/fn/to_kv/MatMul"
+)
+HMR2_SELF_VALUE = re.compile(
+    r"/hmr/smpl_head/transformer/transformer/layers\.[0-5]\.0/fn/MatMul_1"
+)
 
 
 def require_queue():
@@ -200,7 +206,7 @@ def _attention_inputs(inputs):
     if len(inputs) != 5:
         return inputs
     shapes = [tuple(tensor.get("Dimensions", ())) for tensor in inputs]
-    if any(len(shape) != 3 or min(shape) <= 0 for shape in shapes):
+    if any(len(shape) != 3 or min(shape[1:]) <= 0 for shape in shapes):
         return inputs
     row, col, query, key, value = shapes
     windows = row[0]
@@ -210,7 +216,8 @@ def _attention_inputs(inputs):
     if (
         mask_name
         and inputs[1].get("Name") == mask_name
-        and batches % windows == 0
+        and windows > 0
+        and (batches == -1 or (batches > 0 and batches % windows == 0))
         and row == (windows, 1, tokens)
         and col == (windows, tokens, 1)
         and key == (batches, head_size, tokens)
@@ -233,6 +240,57 @@ def _residual_input_matches_output(layer):
     )
 
 
+def _hmr2_single_token_operands(tensors):
+    if len(tensors) != 2:
+        return False
+    shapes = [tuple(tensor["Dimensions"]) for tensor in tensors]
+    for scalar, value in (shapes, shapes[::-1]):
+        if len(scalar) == 4 and scalar[0] > 0 and scalar[1:] == (8, 1, 1):
+            batch = scalar[0]
+            return value in {(batch * 8, 1, 64), (batch, 8, 1, 64)}
+    return False
+
+
+def _hmr2_packed_kv(layer, operations):
+    """Identify the head's packed K/V input so its producing GEMM can be checked."""
+    tensors, outputs = layer.get("Inputs", []), layer.get("Outputs", [])
+    if len(tensors) != 2 or len(outputs) != 1:
+        return None
+    packed, query = (tuple(tensor["Dimensions"]) for tensor in tensors)
+    if (
+        len(query) != 3
+        or query[1:] != (1, 64)
+        or (query[0] != -1 and (query[0] <= 0 or query[0] % 8))
+        or packed != (-1 if query[0] == -1 else query[0] * 24, 1024)
+        or tuple(outputs[0]["Dimensions"]) != query
+    ):
+        return None
+    for projection in operations:
+        if not HMR2_KV_PROJECTION.fullmatch(projection):
+            continue
+        prefix = projection.removesuffix("to_kv/MatMul")
+        if operations == {projection, prefix + "MatMul", prefix + "MatMul_1"}:
+            return tensors[0]["Name"], projection
+    return None
+
+
+def _hmr2_packed_self_value(layer, operations):
+    tensors, outputs = layer.get("Inputs", []), layer.get("Outputs", [])
+    if len(tensors) != 2 or len(outputs) != 1 or len(operations) != 1:
+        return False
+    packed, scalar = (tuple(tensor["Dimensions"]) for tensor in tensors)
+    return (
+        HMR2_SELF_VALUE.fullmatch(next(iter(operations))) is not None
+        and len(packed) == 3
+        and packed[1:] == (1, 3 * 8 * 64)
+        and (packed[0] == -1 or packed[0] > 0)
+        and scalar == (packed[0], 8, 1, 1)
+        and tuple(outputs[0]["Dimensions"])
+        == (-1 if packed[0] == -1 else packed[0] * 8, 1, 64)
+        and outputs[0]["Format/Datatype"] == "Half"
+    )
+
+
 def verify_compute_precision(
     details, required_precision, *, expected_operations=None, constant_operations=()
 ):
@@ -244,6 +302,8 @@ def verify_compute_precision(
     masked_attention_layers = 0
     residual_layers = 0
     small_k_layers = 0
+    fp16_gemm_outputs = defaultdict(set)
+    packed_attention = []
     for layer in details["Layers"]:
         kind = layer["LayerType"].lower()
         tactic = layer.get("TacticName") or ""
@@ -262,7 +322,7 @@ def verify_compute_precision(
         singleton_matmul = (
             kind == "kgen"
             and bool(operations)
-            and tactic.startswith("__myl_ReshMoveMul_")
+            and tactic.startswith(("__myl_ReshMoveMul_", "__myl_SlicReshReshReshMul_"))
         )
         if (
             kind not in COMPUTE_TYPES
@@ -296,14 +356,26 @@ def verify_compute_precision(
             matches = len(qkv) == 3 and all(pattern.search(dtype) for dtype in qkv)
             if matches and attention_tensors is not tensors:
                 masked_attention_layers += 1
+            if (
+                precision == "fp16"
+                and tactic.startswith("_gemv_mha_v1_")
+                and tactic.endswith("_vec")
+                and all(pattern.search(dtype) for dtype in inputs)
+                and (packed_kv := _hmr2_packed_kv(layer, operations)) is not None
+            ):
+                packed_attention.append((name, *packed_kv))
+                matches = True
         elif singleton_matmul:
             # HMR2 self-attention has one token. TensorRT lowers its value
             # MatMul to one scalar multiply per head and channel.
-            shapes = sorted(tuple(t["Dimensions"]) for t in layer["Inputs"])
             matches = (
                 precision == "fp16"
                 and len(operations) == 1
-                and shapes == [(1, 8, 1, 1), (8, 1, 64)]
+                and (
+                    _hmr2_packed_self_value(layer, operations)
+                    if tactic.startswith("__myl_SlicReshReshReshMul_")
+                    else _hmr2_single_token_operands(tensors)
+                )
                 and all(pattern.search(dtype) for dtype in inputs)
             )
         else:
@@ -356,6 +428,10 @@ def verify_compute_precision(
                 residual_layers += 1
             if matches and small_k:
                 small_k_layers += 1
+            if matches and precision == "fp16" and kind == "gemm":
+                for output in layer.get("Outputs", []):
+                    if pattern.search(output["Format/Datatype"]):
+                        fp16_gemm_outputs[output["Name"]].update(operations)
         if not matches:
             raise RuntimeError(
                 f"Compute layer {name} expected {precision} operands, "
@@ -366,9 +442,16 @@ def verify_compute_precision(
 
     if not precisions[required_precision]:
         raise RuntimeError(f"No compute layers verified at {required_precision}")
+    for name, binding, projection in packed_attention:
+        if projection not in fp16_gemm_outputs[binding]:
+            raise RuntimeError(
+                f"Packed K/V for {name} lacks an FP16 GEMM for {projection}"
+            )
     evidence = {"engine_layers_by_precision": dict(precisions)}
     if masked_attention_layers:
         evidence["masked_attention_layers"] = masked_attention_layers
+    if packed_attention:
+        evidence["packed_hmr2_attention_layers"] = len(packed_attention)
     if implicit_operands:
         evidence["constant_operand_operations"] = sorted(implicit_operands)
     if residual_layers:
@@ -412,6 +495,7 @@ def build_checked_plan(
     profile_shapes=None,
     builder_optimization_level=None,
     verbose=False,
+    workspace_bytes=WORKSPACE_BYTES,
 ):
     import tensorrt as trt
     import torch
@@ -439,7 +523,9 @@ def build_checked_plan(
             raise RuntimeError(
                 "TensorRT did not apply the requested builder optimization level"
             )
-    config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, WORKSPACE_BYTES)
+    config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, workspace_bytes)
+    if config.get_memory_pool_limit(trt.MemoryPoolType.WORKSPACE) != workspace_bytes:
+        raise RuntimeError(f"TensorRT rejected workspace limit {workspace_bytes} bytes")
     config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
     if not allow_tf32:
         config.clear_flag(trt.BuilderFlag.TF32)
@@ -460,7 +546,8 @@ def build_checked_plan(
             raise RuntimeError("TensorRT did not accept the first optimization profile")
         config.clear_flag(trt.BuilderFlag.TF32)
         print(
-            f"Building TensorRT at optimization level {config.builder_optimization_level} with profile {profile_shapes}",
+            f"Building TensorRT at optimization level {config.builder_optimization_level} "
+            f"with workspace {workspace_bytes} bytes and profile {profile_shapes}",
             flush=True,
         )
     elif verbose:
@@ -531,6 +618,7 @@ def build_engine(
     profile_shapes=None,
     constant_operations=(),
     builder_optimization_level=None,
+    min_free_gib=6,
 ):
     return build_checked_plan(
         onnx_file,
@@ -543,6 +631,7 @@ def build_engine(
         ),
         profile_shapes=profile_shapes,
         builder_optimization_level=builder_optimization_level,
+        min_free_gib=min_free_gib,
     )
 
 
@@ -585,8 +674,8 @@ def modelopt_ptq(
     model = onnx.load(target, load_external_data=False)
     restored = restore_shape_inputs(model.graph) if restore_dynamic_shapes else 0
     if restored:
-        onnx.checker.check_model(model)
         onnx.save_model(model, target)
+        onnx.checker.check_model(str(target))
     ops = Counter(node.op_type for node in model.graph.node)
     if not ops["QuantizeLinear"] or not ops["DequantizeLinear"]:
         raise RuntimeError(f"{mode} PTQ produced no explicit Q/DQ pairs")

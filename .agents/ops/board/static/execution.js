@@ -17,11 +17,26 @@ const HERDR_STATUS = {
   not_observed: "Herdr未照合（担当の登録・世代がHerdr取得後に変わりました）",
   not_requested: "Herdr未取得",
 };
-const MATCH_METHOD = {
-  owner: "担当表示の確認済み対応",
-  native: "Herdrのセッション参照",
-  owner_native: "担当表示の確認済み対応・Herdrのセッション参照",
-};
+const BRAND_ICONS = new Map([
+  ["claude", "/static/icon-claude.svg"],
+  ["agy", "/static/icon-gemini.svg"],
+  ["gemini", "/static/icon-gemini.svg"],
+  ["codex", "/static/icon-codex.svg"],
+]);
+const DRAWER_MIN_WIDTH = 320;
+const DRAWER_MAX_WIDTH = 960;
+const DRAWER_GRAPH_WIDTH = 240;
+
+function addBrandIcon(node, engine) {
+  const src = BRAND_ICONS.get(engine?.toLowerCase());
+  if (!src) return;
+  const image = element("img", "", "brand-icon");
+  image.src = src;
+  image.alt = "";
+  node.textContent = "";
+  node.classList.add("has-brand-icon");
+  node.append(image);
+}
 
 class ExecutionView {
   constructor() {
@@ -38,7 +53,7 @@ class ExecutionView {
     this.refreshRevision = -1;
     this.refreshEpoch = null;
     this.needsLocal = false;
-    // UI state survives every 10s re-render: selected node and opened folds.
+    // UI state survives every 10s re-render: selected node, opened folds and drawer width.
     this.selected = null;
     this.expanded = new Set();
     this.drawerSignature = null;
@@ -49,6 +64,46 @@ class ExecutionView {
     byId("execution-drawer").addEventListener("keydown", (event) => {
       if (event.key === "Escape") this.select(null);
     });
+    this.setupResizer();
+  }
+
+  setupResizer() {
+    const drawer = byId("execution-drawer");
+    const resizer = byId("execution-drawer-resizer");
+    let drag = null;
+    resizer.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const delta = event.key === "ArrowLeft" ? 24 : -24;
+      this.setDrawerWidth(drawer.getBoundingClientRect().width + delta);
+    });
+    resizer.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || drag) return;
+      event.preventDefault();
+      resizer.focus();
+      resizer.setPointerCapture(event.pointerId);
+      drag = {
+        id: event.pointerId,
+        x: event.clientX,
+        width: drawer.getBoundingClientRect().width,
+      };
+    });
+    resizer.addEventListener("pointermove", (event) => {
+      if (drag?.id === event.pointerId)
+        this.setDrawerWidth(drag.width + drag.x - event.clientX);
+    });
+    resizer.addEventListener("lostpointercapture", () => { drag = null; });
+  }
+
+  setDrawerWidth(width) {
+    const body = byId("execution-body");
+    const max = Math.min(DRAWER_MAX_WIDTH, body.clientWidth - DRAWER_GRAPH_WIDTH);
+    const clamped = Math.max(
+      DRAWER_MIN_WIDTH,
+      Math.min(max, Math.round(width)),
+    );
+    body.style.setProperty("--drawer-width", `${clamped}px`);
+    byId("execution-drawer-resizer").setAttribute("aria-valuenow", String(clamped));
   }
 
   setActive(active) {
@@ -205,10 +260,10 @@ class ExecutionView {
   }
 
   fold(child) {
-    if (child.status === RUNNING) return null;
+    if (child.status === RUNNING) return "children";
     if (this.done(child)) return "done";
     if (child.status === "not_delegated") return "undelegated";
-    return null;
+    return "children";
   }
 
   childTitle(child) {
@@ -230,12 +285,32 @@ class ExecutionView {
     return `${this.setting(worker.model)} · ${this.setting(worker.effort)}`;
   }
 
-  graph() {
-    const data = this.data;
-    const items = data.parents.map((parent, index) => {
+  visibleParents() {
+    const { parents, herdr } = this.data;
+    if (herdr.status !== "observed") return parents;
+    return parents.filter((parent) => parent.herdr.status === "matched");
+  }
+
+  sessionRank(state) {
+    if (state === "working") return 0;
+    if (state === "blocked") return 1;
+    if (state === "idle") return 2;
+    return 3;
+  }
+
+  parentRank(parent, children) {
+    const stateRank = this.sessionRank(parent.herdr.session?.state);
+    if (children.some(({ child }) => child.status === RUNNING)) return 0;
+    const workerRank = children.some(({ child }) => ATTENTION.has(child.status))
+      ? 1
+      : children.length ? 2 : 3;
+    return Math.min(stateRank, workerRank);
+  }
+
+  graph(parents) {
+    const items = parents.map((parent) => {
       const key = `parent:${parent.repo}#${parent.parent}`;
-      const visible = [];
-      const folded = { done: [], undelegated: [] };
+      const folded = { children: [], done: [], undelegated: [] };
       for (const child of parent.children) {
         const node = {
           key: `child:${parent.repo}#${parent.parent}/${child.child}`,
@@ -243,41 +318,31 @@ class ExecutionView {
           child,
         };
         const kind = this.fold(child);
-        if (kind) folded[kind].push(node);
-        else visible.push(node);
+        folded[kind].push(node);
       }
-      const statuses = visible.map((node) => node.child.status);
-      const group = statuses.includes(RUNNING)
-        ? 0
-        : statuses.some((status) => ATTENTION.has(status))
-          ? 1
-          : visible.length
-            ? 2
-            : 3;
-      return { key, kind: "parent", parent, visible, folded, group, index };
+      return {
+        key,
+        kind: "parent",
+        parent,
+        folded,
+        group: this.parentRank(parent, folded.children),
+      };
     });
-    data.sessions.forEach((session, index) =>
+    for (const session of this.data.sessions) {
       items.push({
         key: `session:${session.key}`,
         kind: "session",
         session,
-        visible: [],
-        folded: { done: [], undelegated: [] },
-        group: 3,
-        index: data.parents.length + index,
-      }),
-    );
-    return items.sort((a, b) => a.group - b.group || a.index - b.index);
+        group: this.sessionRank(session.state),
+      });
+    }
+    return items.sort((a, b) => a.group - b.group);
   }
 
   find(items, key) {
     for (const item of items) {
       if (item.key === key) return item;
-      for (const node of [
-        ...item.visible,
-        ...item.folded.done,
-        ...item.folded.undelegated,
-      ])
+      for (const node of Object.values(item.folded || {}).flat())
         if (node.key === key) return { ...node, kind: "child" };
     }
     return null;
@@ -290,15 +355,20 @@ class ExecutionView {
     return `${name} · #${parent.parent}`;
   }
 
+  parentIdentity(parent) {
+    return [this.parentName(parent), parent.roster.identifier].filter(Boolean).join(" · ");
+  }
+
   sessionTitle(session) {
     if (session.title_status === "redacted")
       return "タイトル非表示（ローカル情報を含むため）";
     return session.title || "タイトルなし";
   }
 
-  icon(text, className, state) {
+  icon(text, className, state, engine = null) {
     const node = element("span", text, `graph-icon ${className}`);
     node.setAttribute("aria-hidden", "true");
+    addBrandIcon(node, engine);
     if (state !== undefined)
       node.append(element("span", "", `graph-dot state-${state}`));
     return node;
@@ -331,6 +401,7 @@ class ExecutionView {
           session.engine.slice(0, 2).toUpperCase(),
           "engine",
           session.state,
+          session.engine,
         ),
         text,
       );
@@ -338,12 +409,10 @@ class ExecutionView {
     }
     const parent = item.parent;
     const herdr = parent.herdr;
-    const name = this.parentName(parent);
-    const registered = [name, parent.roster.identifier]
-      .filter(Boolean)
-      .join(" · ");
+    const registered = this.parentIdentity(parent);
     const session = herdr.session;
     const state = session ? session.state : "absent";
+    const engine = session?.engine || parent.engine || null;
     // Joined: the terminal title leads, followed by the board name. Without a
     // usable title (or without Herdr) the board name and identifier lead.
     const titled = session?.title_status === "available" && session.title;
@@ -364,7 +433,12 @@ class ExecutionView {
       element("span", secondary, "graph-sub"),
     );
     node.append(
-      this.icon((parent.roster.name || "?")[0].toUpperCase(), "parent", state),
+      this.icon(
+        (parent.roster.name || "?")[0].toUpperCase(),
+        "parent",
+        state,
+        engine,
+      ),
       text,
     );
     return node;
@@ -396,6 +470,8 @@ class ExecutionView {
       this.icon(
         agent ? agent.slice(0, 2).toUpperCase() : "—",
         `agent agent-${agent || "none"}`,
+        undefined,
+        agent,
       ),
       text,
     );
@@ -410,9 +486,14 @@ class ExecutionView {
     const nodes = item.folded[kind];
     const key = `${item.key}|${kind}`;
     const open = this.expanded.has(key);
+    const runningCount =
+      kind === "children"
+        ? nodes.filter((n) => n.child.status === RUNNING).length
+        : 0;
+    const suffix = runningCount ? `（実行中 ${runningCount}）` : "";
     const node = button(
-      `${open ? "−" : "+"}${nodes.length} ${label}`,
-      `graph-fold fold-${kind}`,
+      `${open ? "−" : "+"}${nodes.length} ${label}${suffix}`,
+      `graph-fold fold-${kind}${runningCount ? " has-running" : ""}`,
       () => {
         if (this.expanded.has(key)) this.expanded.delete(key);
         else this.expanded.add(key);
@@ -429,16 +510,19 @@ class ExecutionView {
     const row = element("section", "", `graph-row group-${item.group}`);
     row.dataset.row = item.key;
     row.append(this.parentNode(item));
+    if (item.kind === "session") return row;
     const folds = element("div", "", "graph-folds");
+    if (item.folded.children.length)
+      folds.append(this.foldButton(item, "children", "子worker"));
     if (item.folded.done.length)
       folds.append(this.foldButton(item, "done", "完了"));
     if (item.folded.undelegated.length)
       folds.append(this.foldButton(item, "undelegated", "未委任"));
-    if (item.kind === "parent" && !item.parent.children.length)
-      folds.append(element("span", "子の登録なし", "graph-empty"));
     if (folds.children.length) row.append(folds);
     const entries = [
-      ...item.visible.map((entry) => [entry, false]),
+      ...(this.expanded.has(`${item.key}|children`)
+        ? item.folded.children.map((entry) => [entry, false])
+        : []),
       ...["done", "undelegated"].flatMap((kind) =>
         this.expanded.has(`${item.key}|${kind}`)
           ? item.folded[kind].map((entry) => [entry, true])
@@ -466,12 +550,13 @@ class ExecutionView {
     byId("execution-observed").textContent =
       `ローカル ${this.time(data.observed_at)} · GitHub ${this.time(data.github.fetched_at)} · Herdr ${this.time(data.herdr.observed_at)}`;
     byId("execution-dispatcher").textContent = data.dispatcher.label;
-    const items = this.graph();
+    const visibleParents = this.visibleParents();
+    const items = this.graph(visibleParents);
     this.items = items;
-    const children = data.parents.flatMap((parent) => parent.children);
+    const children = visibleParents.flatMap((parent) => parent.children);
     const running = children.filter((child) => child.status === RUNNING).length;
     byId("execution-summary").textContent =
-      `担当親 ${data.parents.length} · 未登録セッション ${data.sessions.length} · 実行中の子 ${running}` +
+      `担当親 ${visibleParents.length} · 未登録セッション ${data.sessions.length} · 実行中の子 ${running}` +
       (data.herdr.status === "observed" ? "" : " · Herdr未取得");
     const focused = document.activeElement?.dataset?.node;
     const focusedFold = document.activeElement?.dataset?.fold;
@@ -481,7 +566,9 @@ class ExecutionView {
         : [
             element(
               "p",
-              "担当中・引継ぎ待ちの親とHerdrの稼働セッションはありません。",
+              data.herdr.status === "observed"
+                ? "Herdrの稼働セッションはありません。"
+                : "Herdrの稼働セッションは未取得です。",
               "empty",
             ),
           ]),
@@ -525,14 +612,16 @@ class ExecutionView {
     const item = this.items ? this.find(this.items, this.selected) : null;
     // Every local poll stamps a new observed_at; the toolbar shows it. The
     // drawer is rebuilt only when the selected node itself changed, so reading
-    // position, opened evidence and focus survive the 10s refresh.
+    // position and focus survive the 10s refresh.
     const signature = JSON.stringify(
       [
         this.selected,
-        item?.parent ?? null,
-        item?.session ?? null,
-        item?.child ?? null,
-        this.data?.github.fetched_at ?? null,
+        item?.child ?? item?.session ?? (item?.parent && {
+          roster: item.parent.roster,
+          engine: item.parent.engine,
+          herdr: item.parent.herdr,
+          summary: item.parent.summary,
+        }),
         this.data?.stale_after_seconds ?? null,
       ],
       (key, value) => (key === "observed_at" ? undefined : value),
@@ -541,14 +630,7 @@ class ExecutionView {
     this.drawerSignature = signature;
     const content = byId("execution-drawer-content");
     const scroll = content.scrollTop;
-    const opened = new Set(
-      [...(content.querySelectorAll?.("details[open]") || [])].map(
-        (node) => node.dataset.key,
-      ),
-    );
-    const focusable = () => [
-      ...(content.querySelectorAll?.("a, button, summary") || []),
-    ];
+    const focusable = () => [...content.querySelectorAll("a")];
     const focused = focusable().indexOf(document.activeElement);
     let nodes;
     if (!item)
@@ -567,115 +649,70 @@ class ExecutionView {
       : item.kind === "child"
         ? `#${item.child.child} ${this.childTitle(item.child)}`
         : item.kind === "parent"
-          ? this.parentName(item.parent)
+          ? item.parent.herdr.session?.title || this.parentIdentity(item.parent)
           : this.sessionTitle(item.session);
     content.replaceChildren(...nodes);
-    for (const node of content.querySelectorAll?.("details") || [])
-      if (opened.has(node.dataset.key)) node.open = true;
     content.scrollTop = scroll;
     if (focused >= 0) focusable()[focused]?.focus();
   }
 
-  field(label, value) {
-    const row = element("div", "", "detail-field");
-    row.append(element("dt", label));
-    const data = element("dd");
-    if (typeof value === "string") data.textContent = value;
-    else data.append(value);
-    row.append(data);
-    return row;
+  detailHeader(workerText, badges = []) {
+    const header = element("div", "", "execution-detail-header");
+    header.append(element("p", `ワーカー ${workerText}`, "execution-detail-worker"));
+    if (badges.length) {
+      const heading = element("div", "", "execution-detail-links");
+      heading.append(...badges);
+      header.append(heading);
+    }
+    return header;
   }
 
-  sessionFields(session) {
-    return [
-      this.field("端末タイトル", this.sessionTitle(session)),
-      this.field(
-        "Herdr",
-        `${session.label} · ${labels[session.state] || session.state}`,
-      ),
-    ];
+  actionSummaries(summary) {
+    const box = element("div", "", "execution-summary");
+    box.append(element("h3", "行動説明・思考サマリー"));
+    const messages = summary?.messages || [];
+    if (!messages.length) {
+      box.append(element("p", "未取得", "execution-note"));
+    } else {
+      const list = element("ol", "", "execution-steps");
+      for (const msg of messages) {
+        const step = element("li", "", "execution-step");
+        const when = msg.received_at
+          ? element("time", this.time(msg.received_at), "execution-step-time")
+          : element("span", "時刻未取得", "execution-step-time");
+        if (msg.received_at) when.dateTime = msg.received_at;
+        step.append(when);
+        step.append(element("p", this.text(msg), "execution-step-text"));
+        list.append(step);
+      }
+      box.append(list);
+    }
+    if (summary?.tail_truncated)
+      box.append(
+        element(
+          "p",
+          "読取上限により過去の要約を省略しています。",
+          "execution-note",
+        ),
+      );
+    return box;
   }
 
   sessionDetail(session) {
-    const list = element("dl", "", "detail-fields");
-    list.append(
-      ...this.sessionFields(session),
-      this.field(
-        "掲示板",
-        "担当親として未登録、またはHerdrと担当を照合できない会話です。",
-      ),
-    );
-    return [list];
+    return [
+      this.detailHeader(session.label),
+      this.actionSummaries(session.summary),
+    ];
   }
 
   parentDetail(item) {
     const { parent } = item;
-    const herdr = parent.herdr;
-    const list = element("dl", "", "detail-fields");
-    const issue = element("span");
-    issue.append(
-      this.link(parent.repo, parent.parent),
-      document.createTextNode(` · ${parent.repo}`),
-    );
-    list.append(
-      this.field("親issue", issue),
-      this.field("名前", parent.roster.name || "未割当"),
-      this.field("識別名", parent.roster.identifier || "なし"),
-      this.field(
-        "担当",
-        `${parent.assignment === "active" ? "担当中" : "引継ぎ待ち"} · 世代 ${parent.generation}`,
-      ),
-      this.field(
-        "Herdr",
-        herdr.status === "matched"
-          ? `${HERDR_STATUS.matched}（${MATCH_METHOD[herdr.method] || herdr.method}）`
-          : HERDR_STATUS[herdr.status] || herdr.status,
-      ),
-    );
-    if (herdr.session) list.append(...this.sessionFields(herdr.session));
-    list.append(
-      this.field("取得元", `${parent.source} · 名前 ${parent.roster.source}`),
-    );
-    const nodes = [list];
-    const counts = {};
-    for (const child of parent.children)
-      counts[child.label] = (counts[child.label] || 0) + 1;
-    nodes.push(
-      element(
-        "p",
-        parent.children.length
-          ? `子 ${parent.children.length}件 · ${Object.entries(counts)
-              .map(([label, count]) => `${label} ${count}`)
-              .join(
-                " · ",
-              )} · 完了 ${item.folded.done.length}（GitHub取得時の判定）`
-          : "子の登録なし",
-        "execution-meta",
-      ),
-    );
-    if (parent.children.length) {
-      const children = element("ul", "", "detail-children");
-      for (const child of parent.children) {
-        const row = element("li");
-        const key = `child:${parent.repo}#${parent.parent}/${child.child}`;
-        const open = button(
-          `#${child.child} ${this.childTitle(child)}`,
-          "detail-child-link",
-          () => this.select(key),
-        );
-        row.append(
-          open,
-          element(
-            "span",
-            child.label,
-            `execution-badge status-${child.status}`,
-          ),
-        );
-        children.append(row);
-      }
-      nodes.push(children);
-    }
-    return nodes;
+    return [
+      this.detailHeader(parent.herdr.session?.label || parent.engine || "未取得", [
+        this.link(parent.repo, parent.parent),
+      ]),
+      this.actionSummaries(parent.summary),
+    ];
   }
 
   stopRecord(record, label) {
@@ -696,69 +733,31 @@ class ExecutionView {
   }
 
   childDetail({ parent, child }) {
-    const nodes = [];
-    const heading = element("div", "", "execution-child-heading");
-    heading.append(
-      this.link(parent.repo, child.child),
-      element("span", child.label, `execution-badge status-${child.status}`),
-    );
     const github = child.github;
-    heading.append(
+    const issueState = github.status === "observed" ? github.issue?.state : null;
+    const issueLabel = issueState === "open"
+      ? "Issue 未完了（OPEN）"
+      : issueState === "closed" ? "Issue 完了（CLOSED）" : "Issue 未取得";
+    const badges = [
+      this.link(parent.repo, child.child),
       element(
         "span",
-        github.status === "observed"
-          ? `Issue ${github.issue.state === "open" ? "未完了（OPEN）" : github.issue.state.toUpperCase()}`
-          : "Issue 未取得",
+        issueLabel,
         "execution-badge issue-state",
       ),
-    );
-    nodes.push(heading);
+    ];
+    if (github.status === "observed") {
+      for (const pr of github.pull_requests) {
+        const prBadge = this.link(parent.repo, pr.number, "pull", `PR #${pr.number}`);
+        prBadge.className = "execution-badge";
+        badges.push(prBadge);
+      }
+    }
     const worker = child.worker;
-    const list = element("dl", "", "detail-fields");
-    list.append(
-      this.field("親", `${this.parentName(parent)}`),
-      this.field(
-        "題名",
-        `${this.childTitle(child)}${child.title.source === "github.issue" ? "（GitHub取得値）" : ""}`,
-      ),
-      this.field(
-        "worker",
-        worker.agent
-          ? `${worker.agent} · ${this.workerLine(child)}`
-          : this.workerLine(child),
-      ),
-    );
-    if (worker.model.basis === "selected" || worker.effort.basis === "selected")
-      list.append(
-        this.field(
-          "設定の根拠",
-          "（指定値）は実行記録の選択値です。CLIが報告した実効値を取得できていません。",
-        ),
-      );
-    list.append(
-      this.field(
-        "委任・run",
-        [child.delegation, child.run?.alias].filter(Boolean).join(" · ") ||
-          "なし",
-      ),
-      this.field("最終活動", this.time(child.last_activity_at)),
-    );
-    if (child.run)
-      list.append(
-        this.field(
-          "ターン",
-          `開始 ${this.time(child.run.started_at)} · 終了 ${this.time(child.run.finished_at)} · 終了理由 ${child.run.turn_end_reason || "未取得"}`,
-        ),
-      );
-    nodes.push(list);
-    if (child.status === "turn_completed")
-      nodes.push(
-        element(
-          "p",
-          "ターン終了はIssueの受入完了を意味しません。",
-          "execution-note",
-        ),
-      );
+    const workerText = worker.agent
+      ? `${worker.agent} · ${this.workerLine(child)}`
+      : this.workerLine(child);
+    const nodes = [this.detailHeader(workerText, badges)];
     if (child.updates_stalled)
       nodes.push(
         element(
@@ -767,103 +766,14 @@ class ExecutionView {
           "execution-warning",
         ),
       );
-    if (child.cached_local_observation)
-      nodes.push(
-        element(
-          "p",
-          "ローカル委任記録なし · 前回のGitHub更新時の観測を表示しています。",
-          "execution-note",
-        ),
-      );
-    for (const dependency of child.dependencies) {
-      const row = element("p", "依存先 ", "execution-meta");
-      row.append(
-        this.link(parent.repo, dependency.child),
-        document.createTextNode(
-          ` · ${dependency.status === "stopped" ? "停止記録あり" : "状態未取得"}`,
-        ),
-      );
-      nodes.push(row);
-    }
-    const message = child.summary.message;
-    const summary = element("div", "", "execution-summary");
-    summary.append(
-      element("h4", `最後の発言 · ${this.time(message.received_at)}`),
-    );
-    summary.append(element("p", this.text(message)));
-    summary.append(element("h4", "直近のツール"));
-    if (!child.summary.tools.length) summary.append(element("p", "未取得"));
-    for (const tool of child.summary.tools) {
-      const row = element("p", `${tool.kind} · ${this.time(tool.received_at)}`);
-      const text =
-        tool.kind === "command_execution"
-          ? this.text(tool.command)
-          : tool.kind === "mcp_tool_call"
-            ? `${this.text(tool.server)} · ${this.text(tool.tool)}`
-            : `変更 ${tool.change_count}件`;
-      row.append(element("code", text));
-      summary.append(row);
-    }
-    if (child.summary.tail_truncated)
-      summary.append(
-        element(
-          "p",
-          "読取上限により過去の要約を省略しています。",
-          "execution-note",
-        ),
-      );
-    nodes.push(summary);
-    const remote = element("div", "", "execution-github");
-    remote.append(
-      element(
-        "p",
-        `GitHub取得 ${this.time(github.fetched_at)}${github.issue?.state_reason ? ` · ${github.issue.state_reason}` : ""}`,
-        "execution-meta",
-      ),
-    );
-    if (github.status !== "observed")
-      remote.append(
-        element("p", "更新ボタンでIssue・PRの状態を取得できます。"),
-      );
-    else {
-      if (!github.pull_requests.length)
-        remote.append(element("p", "対応PRなし（取得時点）"));
-      for (const pr of github.pull_requests) {
-        const row = element("p");
-        row.append(
-          this.link(parent.repo, pr.number, "pull", `PR #${pr.number}`),
-          document.createTextNode(
-            ` · ${pr.merged ? "MERGED" : pr.state.toUpperCase()}`,
-          ),
-        );
-        remote.append(row);
-      }
-      for (const reason of github.launch.reasons)
-        remote.append(
-          element("p", `${reason.code}: ${this.text(reason.message)}`),
-        );
-      if (github.stopped)
-        remote.append(this.stopRecord(github.stop_record, "GitHubの停止記録"));
-    }
-    nodes.push(
-      remote,
-      this.stopRecord(child.stop_record, "ローカルの停止記録"),
-    );
-    const evidence = element("details", "", "execution-evidence");
-    evidence.dataset.key = "evidence";
-    evidence.append(element("summary", "取得元・判定根拠"));
-    for (const row of child.evidence)
-      evidence.append(
-        element("p", `${row.source} · ${row.code} · ${row.fields.join(", ")}`),
-      );
-    evidence.append(
-      element(
-        "p",
-        `worker設定 · ${worker.source || "なし"} · model ${worker.model.basis} · effort ${worker.effort.basis}`,
-      ),
-      element("p", `題名 · ${child.title.source || "未取得"}`),
-    );
-    nodes.push(evidence);
+    const remoteStop = github.status === "observed" && github.stopped
+      ? github.stop_record : null;
+    if (remoteStop)
+      nodes.push(this.stopRecord(remoteStop, "GitHubの停止記録"));
+    // The collector can also project the GitHub reason into stop_record.
+    if (JSON.stringify(child.stop_record) !== JSON.stringify(remoteStop))
+      nodes.push(this.stopRecord(child.stop_record, "ローカルの停止記録"));
+    nodes.push(this.actionSummaries(child.summary));
     return nodes;
   }
 }

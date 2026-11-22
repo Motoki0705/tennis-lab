@@ -137,6 +137,7 @@ github.launch_plan）、`fields`（判断に使った入力フィールド名）
 | `dependencies[]` | ローカル委任記録の依存子番号`child`と`status`。停止記録ありはstopped、それ以外はunobserved。ローカルだけではGitHubの完了・利用できる依存PRを推定しない |
 | `stop_record` | 明示停止のreason/facts/impact/resume_condition/next_action。値は下記の秘匿済みtext object。通常は空object |
 | `summary.message` | 読めた範囲の最後のユーザー向け発言先頭300字。text objectにreceived_at・time_statusを付ける |
+| `summary.messages[]` | 行動説明・思考サマリーの直近20件をイベント順に返す。各要素は先頭300字のtext objectと`received_at`・`time_status`を持つ |
 | `summary.tools[]` | 直近ツール。kind・received_at・time_status。command_executionはcommand先頭行、mcp_tool_callはserver/tool、file_changeはchange_countだけ |
 | `summary.tail_truncated` | 末尾読取り上限により省略された可能性がある |
 | `github`（子） | 未指定時は`{status:not_requested}`。指定時は下記のGitHub観測 |
@@ -147,9 +148,12 @@ github.launch_plan）、`fields`（判断に使った入力フィールド名）
 
 text objectは`{status:visible|hidden|unavailable, text:string|null, truncated:bool}`。
 `hidden`は秘匿検査により**非表示**、`unavailable`は**未取得**。どちらも本文はnull。
-messageとツールには`received_at`と`time_status=observed|unavailable`を付け、
+発言・要約とツールには`received_at`と`time_status=observed|unavailable`を付け、
 旧runのツール時刻は未取得と明示する。同じitem IDのツール更新は最新の1件へまとめる。
-ユーザー向け発言が末尾範囲に無ければmessageは未取得。
+`message`は最後のユーザー向け発言を保持する。末尾範囲に該当する発言が無ければ未取得になる。
+`messages`にはCodexの完了した`agent_message`・`reasoning`と、Claudeの`assistant`イベントの`thinking`・`text`ブロックおよび
+`result`の文字列を含める。連続する同一原文は初出の1件を表示する。`message`と`tools`はCLIからも引き続き取得できる。
+`tail_truncated`はバイト数の読取り上限に対応する。
 
 `command_execution.command`は、展開なしに「シェル・オプション・1引数」と確定できる
 `/bin/bash -lc`・`bash -lc`・`/bin/sh -c`・`sh -c`だけを1段外す。

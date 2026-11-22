@@ -50,7 +50,7 @@ class Element {
   }
 }
 const elements = new Map();
-const tabs = ["timeline", "waiting", "issues", "execution"].map((view) => {
+const tabs = ["timeline", "execution", "waiting", "issues"].map((view) => {
   const node = new Element("button");
   node.dataset.view = view;
   return node;
@@ -150,8 +150,8 @@ const context = vm.createContext({
             title_status: "redacted",
           },
           {
-            label: "codex 2",
-            engine: "codex",
+            label: "agy 1",
+            engine: "agy",
             state: "working",
             title: "u",
             title_status: "available",
@@ -228,6 +228,10 @@ const foldButton = (key) =>
 const graphText = () => graph().textContent;
 
 async function main() {
+  const parent = input.local.parents[0];
+  const session = input.local.sessions.find((row) => row.title === "CI確認");
+  parent.summary.messages = [{ status: "visible", text: "親の途中報告" }];
+  session.summary.messages = [{ status: "visible", text: "未登録の途中報告" }];
   assert.equal(requests.length, 0, "hidden pages do not poll");
   document.visibilityState = "visible";
   view("execution");
@@ -243,22 +247,36 @@ async function main() {
   );
   assert.equal(elements.get("feed-composer").hidden, true);
   assert.equal(elements.get("execution-panel").hidden, false);
-  assert.equal(tabs[3]["aria-pressed"], "true");
-  const parent = input.local.parents[0];
+  assert.equal(tabs[1]["aria-pressed"], "true");
   const parentKey = `parent:${parent.repo}#${parent.parent}`;
   const childKey = (number) =>
     `child:${parent.repo}#${parent.parent}/${number}`;
-  // Graph order: the parent with a running child, then unregistered sessions.
-  const rows = graph().children;
-  assert.equal(rows[0].dataset.row, parentKey);
+  const rowKeys = graph().children.map((row) => row.dataset.row);
+  // Running child, working parent and working unregistered session precede idle/done.
   assert.deepEqual(
-    rows.slice(1).map((row) => row.dataset.row.split(":")[0]),
-    input.local.sessions.map(() => "session"),
+    rowKeys.slice(0, 3),
+    [parentKey, "parent:o/r#2", `session:${session.key}`],
   );
+  assert.ok(rowKeys.includes(`session:${input.local.sessions.find((row) => row.state === "done").key}`));
+  assert.ok(!rowKeys.includes("parent:o/r#5"), "absent parent is hidden");
+  assert.ok(!rowKeys.includes("parent:o/r#3"), "an unobserved generation is hidden after Herdr was read");
+  assert.equal(vm.runInContext("executionView.visibleParents().some(parent => parent.parent === 3)", context), false);
+  const handoffSession = input.local.sessions.find((row) => row.title === "引継ぎ後の観測待ち");
+  assert.ok(nodeButton(`session:${handoffSession.key}`));
   // Joined parent: Herdr terminal title, then the board name and number.
   const parentText = nodeButton(parentKey).textContent;
   assert.ok(parentText.includes("子の進行管理"), parentText);
   assert.ok(parentText.includes(`${parent.roster.name} · #1`), parentText);
+  const children = `${parentKey}|children`;
+  const undelegated = `${parentKey}|undelegated`;
+  assert.equal(foldButton(children).textContent, "+7 子worker（実行中 1）");
+  assert.equal(foldButton(children)["aria-expanded"], "false");
+  assert.equal(nodeButton(childKey(11)), undefined);
+  assert.equal(nodeButton(childKey(17)), undefined);
+  foldButton(undelegated).events.click();
+  assert.ok(nodeButton(childKey(17)));
+  assert.equal(nodeButton(childKey(11)), undefined);
+  foldButton(children).events.click();
   for (const label of [
     "#11 子11の作業",
     "gpt-6.1-sol · max",
@@ -273,22 +291,17 @@ async function main() {
     "委任予約済み・未起動",
     "状態不明",
     "更新途絶",
-    "+1 未委任",
     "調査メモ",
     "CI確認",
     "未登録セッション",
   ])
     assert.ok(graphText().includes(label), label);
-  // Undelegated children are folded until the badge opens them.
-  assert.ok(!graphText().includes("#17"));
   assert.ok(!graphText().includes("undefined"));
-  const undelegated = `${parentKey}|undelegated`;
-  foldButton(undelegated).events.click();
   assert.ok(graphText().includes("#17 子17の作業"));
   assert.equal(foldButton(undelegated)["aria-expanded"], "true");
   assert.equal(
-    descendants(graph()).filter((node) => node.tagName === "IMG").length,
-    0,
+    descendants(nodeButton(childKey(13))).find((node) => node.tagName === "IMG").src,
+    "/static/icon-claude.svg",
   );
   assert.equal(elements.get("execution-drawer").hidden, true);
   // Every node opens the same drawer; previous card details live there.
@@ -304,14 +317,18 @@ async function main() {
     "codex · gpt-6.1-sol · max",
     "停止とは限りません",
     "非表示（秘匿検査）",
-    "runner.result",
-    "identity_verified",
-    "lookup · search",
-    "変更 2件",
     "読取上限",
     "<img src=x onerror=alert(1)> を文字として表示",
   ])
     assert.ok(drawer().textContent.includes(label), label);
+  const steps = descendants(drawer()).find((node) => node.className === "execution-steps");
+  assert.equal(steps.tagName, "OL");
+  assert.deepEqual(
+    steps.children.map((step) => step.children.at(-1).textContent),
+    ["先に入力を確認します", "非表示（秘匿検査）", "<img src=x onerror=alert(1)> を文字として表示"],
+  );
+  for (const removed of ["最後の発言", "直近のツール", "取得元・判定根拠", "委任・run"])
+    assert.ok(!drawer().textContent.includes(removed));
   assert.equal(
     descendants(drawer()).filter((node) => node.tagName === "IMG").length,
     0,
@@ -319,44 +336,16 @@ async function main() {
   nodeButton(childKey(14)).events.click();
   assert.ok(drawer().textContent.includes("親が差分を確認する"));
   nodeButton(childKey(12)).events.click();
-  assert.ok(drawer().textContent.includes("（指定値）は実行記録の選択値です"));
+  assert.ok(drawer().textContent.includes("gpt-6.1-sol（指定値） · max（指定値）"));
   nodeButton(parentKey).events.click();
-  for (const label of [
-    "Herdrで照合済み（担当表示の確認済み対応）",
-    "子の進行管理",
-    "#17 子17の作業",
-  ])
-    assert.ok(drawer().textContent.includes(label), label);
-  const session = input.local.sessions[0];
+  assert.equal(elements.get("execution-drawer-heading").textContent, "子の進行管理");
+  assert.ok(drawer().textContent.includes("親の途中報告"));
+  assert.ok(!drawer().textContent.includes("#17"));
   nodeButton(`session:${session.key}`).events.click();
-  assert.ok(drawer().textContent.includes("未登録"));
+  assert.equal(elements.get("execution-drawer-heading").textContent, "CI確認");
+  assert.ok(drawer().textContent.includes("未登録の途中報告"));
   elements.get("close-execution-drawer").events.click();
   assert.equal(elements.get("execution-drawer").hidden, true);
-  // Evidence remains a collector projection: new contract codes render through
-  // the same text-only path, without Web-side state inference or field values.
-  for (const [code, status, label] of [
-    ["contract_verified", "turn_completed", "ターン終了"],
-    ["contract_missing", "unknown", "状態不明"],
-    ["contract_mismatch", "unknown", "状態不明"],
-  ]) {
-    context.contractParent = parent;
-    context.contractChild = {
-      ...structuredClone(parent.children[0]),
-      status,
-      label,
-      evidence: [
-        { source: "runner.result", code, fields: ["contract.branch"] },
-      ],
-    };
-    const nodes = vm.runInContext(
-      "executionView.childDetail({ parent: contractParent, child: contractChild })",
-      context,
-    );
-    const text = nodes.map((node) => node.textContent).join("");
-    assert.ok(text.includes(`${code} · contract.branch`));
-    assert.ok(text.includes(label));
-    assert.ok(!text.includes("undefined"));
-  }
   // Selection, opened folds and the drawer itself survive the 10s refresh.
   // A new local timestamp alone does not rebuild the drawer.
   nodeButton(childKey(11)).events.click();
@@ -369,7 +358,7 @@ async function main() {
   assert.equal(drawer().children[0], opened);
   assert.equal(nodeButton(childKey(11))["aria-pressed"], "true");
   assert.ok(graphText().includes("#17 子17の作業"));
-  input.local.parents[0].children[0].summary.message.text = "新しい発言";
+  input.local.parents[0].children[0].summary.messages.push({ status: "visible", text: "新しい発言" });
   await tick();
   assert.notEqual(drawer().children[0], opened);
   assert.ok(drawer().textContent.includes("新しい発言"));
@@ -382,20 +371,23 @@ async function main() {
   );
   assert.ok(drawer().textContent.includes("Issue 未完了（OPEN）"));
   assert.ok(drawer().textContent.includes("PR #88"));
+  nodeButton(childKey(14)).events.click();
+  assert.ok(drawer().textContent.includes("GitHubの停止記録"));
+  assert.ok(!drawer().textContent.includes("ローカルの停止記録"));
   // Completion comes from GitHub only: merged PR (#12) and closed Issue (#17).
   assert.ok(graphText().includes("+2 完了"), graphText());
-  assert.ok(!graphText().includes("未委任"));
+  assert.ok(nodeButton(childKey(19)));
   assert.ok(!graphText().includes("#12"));
-  foldButton(`${parentKey}|done`).events.click();
+  const done = `${parentKey}|done`;
+  foldButton(done).events.click();
   assert.ok(graphText().includes("#12 GitHub上の題名12"));
   assert.ok(graphText().includes("完了（GitHub）"));
-  nodeButton(childKey(12)).events.click();
-  assert.ok(
-    drawer().textContent.includes(
-      "ターン終了はIssueの受入完了を意味しません。",
-    ),
-  );
-  assert.ok(drawer().textContent.includes("（GitHub取得値）"));
+  nodeButton(childKey(17)).events.click();
+  assert.ok(drawer().textContent.includes("Issue 完了（CLOSED）"));
+  foldButton(children).events.click();
+  assert.equal(nodeButton(childKey(11)), undefined);
+  assert.ok(nodeButton(childKey(19)) && nodeButton(childKey(12)));
+  foldButton(children).events.click();
   holdRefresh = true;
   elements.get("refresh-execution").events.click();
   await settle();
@@ -496,6 +488,8 @@ async function main() {
   await settle();
   assert.equal(elements.get("execution-error").hidden, true);
   // A failed first Herdr read is shown, then local records load at once.
+  const cached = input.local;
+  input.local = input.unobserved;
   vm.runInContext("executionView.herdrRequested = false", context);
   fail = true;
   await vm.runInContext("executionView.load()", context);
@@ -507,6 +501,9 @@ async function main() {
   assert.ok([...timers.values()].some((t) => t.delay === 0));
   fail = false;
   await tick(0);
+  assert.ok(nodeButton("parent:o/r#5"), "unobserved parents remain visible");
+  assert.ok(graphText().includes("Herdr未取得"));
+  input.local = cached;
   assert.deepEqual(executionRequests().slice(-2), [
     "/api/execution?herdr=true",
     "/api/execution",
@@ -541,6 +538,10 @@ async function main() {
       .textContent.startsWith("3エージェント（作業中 2 · 待機中 1）"),
   );
   assert.equal(elements.get("runtime-agents").children.length, 3);
+  assert.deepEqual(
+    descendants(elements.get("runtime-agents")).filter((node) => node.tagName === "IMG").map((node) => node.src),
+    ["/static/icon-codex.svg", "/static/icon-claude.svg", "/static/icon-gemini.svg"],
+  );
   assert.equal(elements.get("runtime-agents").hidden, true);
   elements.get("toggle-runtime").events.click();
   assert.equal(elements.get("runtime-agents").hidden, false);
