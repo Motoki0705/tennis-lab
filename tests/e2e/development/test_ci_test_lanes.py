@@ -1037,6 +1037,8 @@ def test_ci_measurements_are_retained_when_preparation_or_tests_fail() -> None:
         ("bad_archive", 1, "preparation failed"),
         ("version_failure", 44, "broken executable"),
         ("missing_codec", 1, "libx264"),
+        ("missing_probe", 1, "ffprobe"),
+        ("bad_probe_version", 1, "unexpected ffprobe version"),
         ("signature_failure", 43, "invalid signature"),
         ("wrong_signer", 1, "pinned signer"),
         ("signed_pin_mismatch", 1, "differs from signed SHA256SUMS"),
@@ -1079,6 +1081,20 @@ def test_system_dependencies_are_verified_and_failures_are_not_hidden(
                 info = tarfile.TarInfo(row["member"])
                 info.size = len(source)
                 tar.addfile(info, io.BytesIO(source))
+                if scenario != "missing_probe":
+                    probe_source = (
+                        f"#!{sys.executable}\nimport sys\n"
+                        + (
+                            "print('invalid probe version')\n"
+                            if scenario == "bad_probe_version"
+                            else f"print('ffprobe version {row['version']} fixture')\n"
+                        )
+                    ).encode()
+                    probe_info = tarfile.TarInfo(
+                        row["member"].removesuffix("ffmpeg") + "ffprobe"
+                    )
+                    probe_info.size = len(probe_source)
+                    tar.addfile(probe_info, io.BytesIO(probe_source))
         else:
             with zipfile.ZipFile(archive, "w") as zipped:
                 zipped.writestr(row["member"], source)
@@ -1111,6 +1127,7 @@ def test_system_dependencies_are_verified_and_failures_are_not_hidden(
     executable("sudo", "sys.exit('Ubuntu unavailable: sudo must never run')\n")
     executable("apt-get", "sys.exit('Ubuntu unavailable: apt must never run')\n")
     executable("ffmpeg", "sys.exit('unverified host binary must never run')\n")
+    executable("ffprobe", "sys.exit('unverified host binary must never run')\n")
     executable("rclone", "sys.exit('unverified host binary must never run')\n")
     executable(
         "curl",
@@ -1169,7 +1186,7 @@ def test_system_dependencies_are_verified_and_failures_are_not_hidden(
         assert reason in completed.stdout + completed.stderr
     calls = [json.loads(line) for line in log.read_text().splitlines()]
     assert not any(
-        Path(row[0]).name in {"apt-get", "sudo", "ffmpeg", "rclone"} for row in calls
+        Path(row[0]).name in {"apt-get", "sudo", "ffmpeg", "ffprobe", "rclone"} for row in calls
     )
     if scenario in {
         "cached",
@@ -1181,7 +1198,7 @@ def test_system_dependencies_are_verified_and_failures_are_not_hidden(
         assert not any(Path(row[0]).name == "curl" for row in calls)
     if expected == 0:
         assert github_path.read_text().strip() == str(output / "bin")
-        assert (output / "bin/ffmpeg").is_file() and (output / "bin/rclone").is_file()
+        assert all((output / "bin" / name).is_file() for name in ("ffmpeg", "ffprobe", "rclone"))
         assert "Verified rclone SHA256SUMS signature" in completed.stdout
     else:
         assert not github_path.exists()
