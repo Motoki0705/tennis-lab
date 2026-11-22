@@ -10,14 +10,16 @@ from onnx import TensorProto, helper, numpy_helper
 from rewrite_attention_mask import rewrite_attention_mask
 
 
-def write_masked_softmax(path: Path, *, fill: float = -np.inf) -> None:
+def write_masked_softmax(
+    path: Path, *, fill: float = -np.inf, dtype=np.float32
+) -> None:
     """Mirror the exporter's masked_fill lowering for a padding mask."""
     constants = {
         "mask_shape": np.array([2, 1, 1, 3], dtype=np.int64),
         "sentinel_shape": np.array([2, 2, -1, -1], dtype=np.int64),
         "ones_shape": np.array([4], dtype=np.int64),
         "minus_one": np.array(-1, dtype=np.int64),
-        "fill": np.array(fill, dtype=np.float32),
+        "fill": np.array(fill, dtype=dtype),
     }
     nodes = [
         helper.make_node("Reshape", ["mask", "mask_shape"], ["mask4"], name="reshape"),
@@ -45,12 +47,18 @@ def write_masked_softmax(path: Path, *, fill: float = -np.inf) -> None:
         nodes,
         "masked-softmax",
         [
-            helper.make_tensor_value_info("scores", TensorProto.FLOAT, [2, 2, 3, 3]),
+            helper.make_tensor_value_info(
+                "scores",
+                TensorProto.FLOAT16 if dtype == np.float16 else TensorProto.FLOAT,
+                [2, 2, 3, 3],
+            ),
             helper.make_tensor_value_info("mask", TensorProto.BOOL, [2, 3]),
         ],
         [
             helper.make_tensor_value_info(
-                "probabilities", TensorProto.FLOAT, [2, 2, 3, 3]
+                "probabilities",
+                TensorProto.FLOAT16 if dtype == np.float16 else TensorProto.FLOAT,
+                [2, 2, 3, 3],
             )
         ],
         initializer=[
@@ -64,7 +72,7 @@ def write_masked_softmax(path: Path, *, fill: float = -np.inf) -> None:
     onnx.save(model, path)
 
 
-@pytest.mark.parametrize("mode", ["drop-expand", "additive"])
+@pytest.mark.parametrize("mode", ["drop-expand", "additive", "additive-finite"])
 def test_mask_rewrite_is_bit_exact_and_removes_expand(tmp_path: Path, mode: str):
     source = tmp_path / "source.onnx"
     target = tmp_path / "target.onnx"
@@ -80,11 +88,29 @@ def test_mask_rewrite_is_bit_exact_and_removes_expand(tmp_path: Path, mode: str)
     operations = [node.op_type for node in onnx.load(target).graph.node]
     assert report["rewritten_masks"] == 1
     assert "Expand" not in operations
-    assert operations.count("Add") == (mode == "additive")
+    assert operations.count("Add") == mode.startswith("additive")
     expected = run_onnx(source, feeds)["probabilities"]
     actual = run_onnx(target, feeds)["probabilities"]
     np.testing.assert_array_equal(actual, expected)
     assert np.all(expected[1, :, :, 1:] == 0)
+
+
+def test_finite_additive_mask_is_bit_exact_in_fp16(tmp_path: Path):
+    source = tmp_path / "source.onnx"
+    target = tmp_path / "target.onnx"
+    write_masked_softmax(source, dtype=np.float16)
+    rng = np.random.default_rng(1)
+    feeds = {
+        "scores": (rng.normal(size=(2, 2, 3, 3)) * 30).astype(np.float16),
+        "mask": np.array([[False, False, True], [False, True, True]]),
+    }
+
+    rewrite_attention_mask(source, target, mode="additive-finite", expected=1)
+
+    expected = run_onnx(source, feeds)["probabilities"]
+    actual = run_onnx(target, feeds)["probabilities"]
+    np.testing.assert_array_equal(actual, expected)
+    assert np.isfinite(actual).all()
 
 
 def test_mask_rewrite_rejects_a_finite_fill(tmp_path: Path):

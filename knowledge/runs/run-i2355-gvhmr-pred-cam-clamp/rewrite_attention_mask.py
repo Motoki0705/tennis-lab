@@ -5,8 +5,13 @@ The legacy exporter lowers ``scores.masked_fill(mask, -inf)`` to
 broadcasts its condition, so the explicit ``Expand`` (and the bool-to-bool
 ``Cast``) is redundant.  ``drop_mask_expand`` feeds the reshaped mask to
 ``Where`` directly; ``additive_mask`` additionally replaces the full-size
-``Where`` with ``scores + Where(mask, -inf, 0)``.  Both rewrites only accept
-the exact pattern and fail on anything else.
+``Where`` with ``scores + Where(mask, -inf, 0)``.  ``additive-finite`` uses
+``FINITE_FILL`` instead of ``-inf`` in that bias.  Its softmax is bit-equal to
+the source whenever each softmax row keeps an unmasked score, because
+``exp(FINITE_FILL + score - max)`` underflows to exactly 0 in FP16 and FP32;
+a fully masked row would give a uniform row instead of NaN, so callers check
+bit parity on every served shape.  All rewrites only accept the exact pattern
+and fail on anything else.
 """
 
 from __future__ import annotations
@@ -21,7 +26,9 @@ from rewrite_pred_cam import (
     sha256_file,
 )
 
-MODES = ("drop-expand", "additive")
+MODES = ("drop-expand", "additive", "additive-finite")
+# Exact in FP16; |score| stays far below 65504 - 32768, so the sum stays finite.
+FINITE_FILL = -32768.0
 
 
 def _mask_where_nodes(model):
@@ -178,11 +185,17 @@ def rewrite_attention_mask(
         model.graph.initializer.append(
             numpy_helper.from_array(np.zeros((), dtype=dtype), name=zero)
         )
+        fill = where.input[1]
+        if mode == "additive-finite":
+            fill = f"{prefix}_fill"
+            model.graph.initializer.append(
+                numpy_helper.from_array(np.array(FINITE_FILL, dtype=dtype), name=fill)
+            )
         position = list(model.graph.node).index(where)
         model.graph.node.insert(
             position,
             helper.make_node(
-                "Where", [mask, where.input[1], zero], [bias], name=f"{prefix}/Bias"
+                "Where", [mask, fill, zero], [bias], name=f"{prefix}/Bias"
             ),
         )
         output = where.output[0]

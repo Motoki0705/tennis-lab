@@ -369,6 +369,8 @@ def measure_engine(
     conversion: Path,
     reference_root: Path,
     report: dict[str, object],
+    *,
+    experiment: Path = EXPERIMENT,
 ) -> None:
     measurements = {}
     for length in LENGTHS:
@@ -380,7 +382,7 @@ def measure_engine(
                 report,
                 f"measure-{name}",
                 child_command(
-                    EXPERIMENT,
+                    experiment,
                     "--condition",
                     "2",
                     "--length",

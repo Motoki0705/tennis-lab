@@ -59,6 +59,7 @@ from rewrite_pred_cam import rewrite_pred_cam_clamp  # noqa: E402
 OUTPUTS = ("pred_x", "pred_cam", "static_conf_logits", "mask_out", "length_out")
 INPUTS = ("length", "obs", "f_cliffcam", "f_cam_angvel", "f_imgseq")
 MASKS = 24
+EXPERIMENT = HERE / "experiment_additive.py"
 
 
 def eval_batch(segments, length: int, batch: int):
@@ -84,7 +85,9 @@ def assert_bit_equal(actual, expected) -> None:
         np.testing.assert_array_equal(actual[name], expected[name], err_msg=name)
 
 
-def verify_fp32(root: Path, segments, checkpoint: Path, report: dict) -> None:
+def verify_fp32(
+    root: Path, segments, checkpoint: Path, report: dict, mode: str
+) -> None:
     arrays = eval_batch(segments, 145, 2)
     directory = root / "fp32-equivalence"
     directory.mkdir(parents=True)
@@ -103,7 +106,7 @@ def verify_fp32(root: Path, segments, checkpoint: Path, report: dict) -> None:
         network, {145: arrays}, scatter, torch.float32, 145, dynamic_length=False
     )
     pred_cam = rewrite_pred_cam_clamp(scatter, concat)
-    masks = rewrite_attention_mask(concat, additive, mode="additive", expected=MASKS)
+    masks = rewrite_attention_mask(concat, additive, mode=mode, expected=MASKS)
     if masks["unverified_broadcast"]:
         raise RuntimeError("Static FP32 masks must have folded broadcast shapes")
     source_values = run_onnx(concat, feeds(arrays, np.float32))
@@ -136,7 +139,7 @@ def verify_fp32(root: Path, segments, checkpoint: Path, report: dict) -> None:
     gc.collect()
 
 
-def export_dynamic(root: Path, segments, checkpoint: Path, report: dict):
+def export_dynamic(root: Path, segments, checkpoint: Path, report: dict, mode: str):
     profile = sweep_profile(4, 4)
     samples = representatives(segments, profile)
     conversion = root / "engine-additive"
@@ -159,7 +162,7 @@ def export_dynamic(root: Path, segments, checkpoint: Path, report: dict):
     masks = rewrite_attention_mask(
         concat,
         graph,
-        mode="additive",
+        mode=mode,
         expected=MASKS,
         allow_input_dependent_expand=True,
     )
@@ -235,6 +238,9 @@ def main() -> None:
     parser.add_argument("--reference-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--checkpoints", default=Path("ckpt"), type=Path)
+    parser.add_argument(
+        "--mask-mode", required=True, choices=("additive", "additive-finite")
+    )
     args = parser.parse_args()
     require_queue()
     inputs = args.inputs.resolve(strict=True)
@@ -249,15 +255,18 @@ def main() -> None:
         "queue_job": os.environ["TENNIS_RUN_ID"],
         "inputs": str(inputs),
         "reference_root": str(reference_root),
+        "mask_mode": args.mask_mode,
         "stages": {},
     }
     write_json(root / "campaign.json", report)
     segments, checkpoint = checked_segments(inputs, args.checkpoints)
-    verify_fp32(root, segments, checkpoint, report)
-    exported = export_dynamic(root, segments, checkpoint, report)
+    verify_fp32(root, segments, checkpoint, report, args.mask_mode)
+    exported = export_dynamic(root, segments, checkpoint, report, args.mask_mode)
     conversion = build(root, inputs, exported, report)
     probe_engine(root, inputs, conversion, report)
-    measure_engine(root, inputs, conversion, reference_root, report)
+    measure_engine(
+        root, inputs, conversion, reference_root, report, experiment=EXPERIMENT
+    )
     report["status"] = "done"
     write_json(root / "campaign.json", report)
 
