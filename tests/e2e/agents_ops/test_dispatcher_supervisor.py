@@ -26,6 +26,7 @@ from tests.e2e.agents_ops.test_dispatcher_judgement import (
     decision,
     issue,
 )
+from tests.support.agents_ops.capacity_admission import late_capacity_runner
 from tests.support.agents_ops.locks import available
 from tests.support.agents_ops.model_pins import (
     OLD_SOL,
@@ -937,6 +938,73 @@ def test_dispatcher_refuses_before_spawn_and_before_runner_popen(
     with d.control.launch_admission("o/r#1", job_id):
         pass
     assert d.job()["phase"] == "starting"
+
+
+def test_dispatcher_retries_same_reservation_after_runner_refusal(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare_family(11)
+    runner, low = late_capacity_runner(d.h.root)
+    with d.h.store.locked():
+        state = d.schedule.read()
+        state["config"]["runner"] = str(runner)
+        d.schedule.write(state)
+    with monkeypatch.context() as patch:
+        fixture_runtime(d, patch)
+        d.control.assign()
+        env = d.accepted()
+        row = d.row()
+        row["tasks"]["11"] = d.child_task(11, "delegation-11")
+        d.update(row)
+        identifier = d.control.start_child(1, 11, "delegation-11", "task", env)
+        d.runtime(d.job())
+        d.control.reconcile()
+    job = d.row()["dispatch"]["jobs"][identifier]
+    directory = Path(job["directory"])
+    d.publish_github(monkeypatch)
+    fake = d.h.root / "bin/codex"
+    shutil.copyfile(Path(__file__).with_name("fake_dispatch_cli.py"), fake)
+    fake.chmod(0o700)
+    calls = d.h.root / "runtime-calls.jsonl"
+    monkeypatch.setenv("FAKE_DISPATCH_CALLS", str(calls))
+    command = [
+        sys.executable,
+        str(ROOT / ".agents/ops/dispatcher/worker.py"),
+        "--store",
+        str(d.h.store.directory),
+        "--state-dir",
+        str(d.schedule.directory),
+        "--key",
+        "o/r#1",
+        "--job",
+        job["id"],
+    ]
+    subprocess.run(command, check=True, timeout=20)
+    result_path = directory / "runtime/result.json"
+    refused = json.loads(result_path.read_text())
+    assert refused["turn_end_reason"] == "capacity_blocked"
+    assert refused["agent_spawned"] is False
+    assert d.row()["dispatch"]["jobs"][identifier]["runner_exit"] == 75
+    assert not calls.exists()
+    d.control.reconcile()
+    row = d.row()
+    assert row["dispatch"]["jobs"][identifier]["phase"] == "reserved"
+    assert row["dispatch"]["jobs"][identifier]["delegation_id"] == "delegation-11"
+    assert "worker_ended" not in row["tasks"]["11"]
+
+    low.unlink()
+    subprocess.run(command, check=True, timeout=20)
+    accepted = json.loads(result_path.read_text())
+    assert accepted["result"] == "completed"
+    assert accepted["run_id"] != refused["run_id"]
+    d.control.reconcile()
+    assert d.row()["dispatch"]["jobs"][identifier]["phase"] == "ended"
+    assert d.row()["tasks"]["11"]["worker_ended"]["delegation_id"] == "delegation-11"
+    assert len(calls.read_text().splitlines()) == 1
+    assert any(
+        json.loads(path.read_text())["run_id"] == refused["run_id"]
+        for path in directory.glob("capacity-refusals/*/runtime/result.json")
+    )
 
 
 def test_worker_claim_preserves_explicit_parent_stop(

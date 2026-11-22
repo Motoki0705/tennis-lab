@@ -16,7 +16,14 @@ from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any
 
-from lib.ops_review.progression import Engine, new_state, read, save
+from lib.ops_review.progression import (
+    Engine,
+    new_state,
+    read,
+    review_attempt,
+    review_launch_directory,
+    save,
+)
 from lib.review_settings import run_id
 from parent.execution import authorization
 from parent.policy import closing_issues, dependencies, nonempty, object_value
@@ -220,36 +227,56 @@ def review_usage(path: Path, state: dict[str, Any]) -> dict[str, Any]:
     """One row per launch, including legacy rounds. Missing measurements stay null."""
     rounds = []
     for directory in sorted(path.parent.glob("review-*"), key=lambda d: d.name):
-        if not (directory / "execution.json").exists():
+        execution_path = directory / "execution.json"
+        if not execution_path.exists():
             continue
-        runtime = directory / "agent-runtime/result.json"
+        review_round = int(directory.name.removeprefix("review-"))
         try:
-            record = read(runtime) if runtime.is_file() else {}
+            latest_attempt = review_attempt(execution_path)
         except (OSError, ValueError):
             rounds.append(
                 {
-                    "round": int(directory.name.removeprefix("review-")),
+                    "round": review_round,
                     "started_at": None,
-                    "error": "runtime_record_unavailable",
+                    "error": "execution_record_unavailable",
                 }
             )
             continue
-        usage = (record.get("runtime") or {}).get("usage", {}).get("value") or {}
-        start, finish = record.get("started_at"), record.get("finished_at")
-        rounds.append(
-            {
-                "round": int(directory.name.removeprefix("review-")),
-                "started_at": start,
-                "agent_spawned": record.get("agent_spawned"),
-                "duration_seconds": finish - start
-                if finish is not None and start is not None
-                else None,
-                **{
-                    key: usage.get(key)
-                    for key in ("input_tokens", "cached_input_tokens", "output_tokens")
-                },
+        for attempt in range(latest_attempt + 1):
+            runtime = (
+                review_launch_directory(directory, attempt)
+                / "agent-runtime/result.json"
+            )
+            row: dict[str, Any] = {
+                "round": review_round,
+                "attempt": attempt,
+                "started_at": None,
             }
-        )
+            try:
+                record = read(runtime) if runtime.is_file() else {}
+            except (OSError, ValueError):
+                row["error"] = "runtime_record_unavailable"
+            else:
+                usage = (record.get("runtime") or {}).get("usage", {}).get(
+                    "value"
+                ) or {}
+                start, finish = record.get("started_at"), record.get("finished_at")
+                row.update(
+                    started_at=start,
+                    agent_spawned=record.get("agent_spawned"),
+                    duration_seconds=finish - start
+                    if finish is not None and start is not None
+                    else None,
+                    **{
+                        key: usage.get(key)
+                        for key in (
+                            "input_tokens",
+                            "cached_input_tokens",
+                            "output_tokens",
+                        )
+                    },
+                )
+            rounds.append(row)
     starts = [r["started_at"] for r in rounds if r["started_at"] is not None]
     return {
         "launch_intents": len(rounds),

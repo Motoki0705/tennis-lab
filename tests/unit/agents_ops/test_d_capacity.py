@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import MagicMock
 from xml.etree import ElementTree
 
 import pytest
@@ -18,6 +19,8 @@ import pytest
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 GIB = 1 << 30
 NOW_NS = 1_795_329_000_000_000_000
+NOW_BOOTTIME_NS = 300 * 10**9
+BOOT_ID = "f016a5a3-0a01-4104-a377-f7f933e7c885"
 DRIVE_MOUNT = (
     r"137 85 0:72 / /mnt/d rw,noatime - 9p D:\134 rw,aname=drvfs;path=D:\;uid=1000"
 )
@@ -30,9 +33,14 @@ def capacity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
     monkeypatch.syspath_prepend(str(OPS))
     mod = importlib.import_module("lib.d_capacity")
     monkeypatch.setattr(mod, "MOUNTINFO", tmp_path / "mountinfo")
+    boot_id_file = tmp_path / "boot_id"
+    boot_id_file.write_text(BOOT_ID + "\n")
+    monkeypatch.setattr(mod, "BOOT_ID_FILE", boot_id_file)
     monkeypatch.setattr(mod, "CONFIG_PATH", tmp_path / "default.toml")
     monkeypatch.delenv(mod.CONFIG_ENV, raising=False)
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     monkeypatch.setattr(mod.time, "time_ns", lambda: NOW_NS)
+    monkeypatch.setattr(mod.time, "clock_gettime_ns", lambda clock: NOW_BOOTTIME_NS)
     return mod
 
 
@@ -172,9 +180,92 @@ def test_watchdog_records_initial_low_even_if_toast_result_is_ambiguous(
         raise watchdog.ToastError("PowerShell timed out")
 
     assert watchdog.observe(path, notify) is False
-    assert "PowerShell timed out" in capsys.readouterr().err
+    diagnostic = capsys.readouterr().err
+    assert "PowerShell timed out" in diagnostic
+    assert "delivery uncertain. Duplicate protection applied" in diagnostic
+    path.unlink()
     assert watchdog.observe(path, notify) is True
     assert notifications == ["tennis-lab D: capacity low"]
+
+
+def test_watchdog_retries_when_powershell_could_not_start(
+    capacity: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: Any
+) -> None:
+    watchdog = importlib.import_module("d_capacity.watchdog")
+    path = tmp_path / "status.json"
+    monkeypatch.setattr(capacity, "measure_available_bytes", lambda: 0)
+    attempts = []
+
+    def popen(arguments: list[str], **kwargs: Any) -> MagicMock:
+        attempts.append(arguments[0])
+        if len(attempts) == 1:
+            raise FileNotFoundError("WSL interop unavailable")
+        proc = MagicMock(returncode=0)
+        proc.communicate.return_value = ("", "")
+        return proc
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+    assert watchdog.observe(path) is False
+    assert "toast not sent. Will retry" in capsys.readouterr().err
+    with pytest.raises(capacity.CapacityError, match="below the"):
+        capacity.require_capacity(path)
+    path.unlink()
+    assert watchdog.observe(path) is True
+    assert watchdog.observe(path) is True
+    assert len(attempts) == 2
+
+
+def test_watchdog_notifies_recovery_after_runtime_state_is_lost(
+    capacity: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    watchdog = importlib.import_module("d_capacity.watchdog")
+    path = tmp_path / "status.json"
+    available = 19 * GIB
+    monkeypatch.setattr(capacity, "measure_available_bytes", lambda: available)
+    titles: list[str] = []
+
+    def notify(title: str, body: str) -> None:
+        titles.append(title)
+
+    assert watchdog.observe(path, notify)
+    path.unlink()
+    available = 20 * GIB
+    assert watchdog.observe(path, notify)
+    assert watchdog.observe(path, notify)
+    assert titles == ["tennis-lab D: capacity low", "tennis-lab D: capacity recovered"]
+
+
+def test_expired_status_stays_expired_after_wall_clock_rollback(
+    capacity: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "status.json"
+    elapsed = 0
+    wall_elapsed = 0
+    monkeypatch.setattr(capacity, "measure_available_bytes", lambda: 20 * GIB)
+    monkeypatch.setattr(capacity.time, "time_ns", lambda: NOW_NS + wall_elapsed)
+    monkeypatch.setattr(
+        capacity.time, "clock_gettime_ns", lambda clock: 300 * 10**9 + elapsed
+    )
+    path.write_text(capacity.sample().to_json())
+    capacity.require_capacity(path)
+    elapsed = wall_elapsed = 91 * 10**9
+    with pytest.raises(capacity.CapacityError, match="older than 90 seconds"):
+        capacity.require_capacity(path)
+    wall_elapsed = 10**9
+    with pytest.raises(capacity.CapacityError, match="older than 90 seconds"):
+        capacity.require_capacity(path)
+
+
+def test_status_from_another_boot_is_refused(
+    capacity: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "status.json"
+    monkeypatch.setattr(capacity, "measure_available_bytes", lambda: 20 * GIB)
+    path.write_text(capacity.sample().to_json())
+    capacity.require_capacity(path)
+    capacity.BOOT_ID_FILE.write_text("f016a5a3-0a01-4104-a377-f7f933e7c886\n")
+    with pytest.raises(capacity.CapacityError, match="different boot"):
+        capacity.require_capacity(path)
 
 
 def test_ci_requires_fresh_coherent_watchdog_status_and_never_measures(
@@ -186,21 +277,22 @@ def test_ci_requires_fresh_coherent_watchdog_status_and_never_measures(
     )
     with pytest.raises(capacity.CapacityError, match="status is missing"):
         capacity.require_capacity(path)
-    freshness_boundary = NOW_NS - 90 * 10**9
+    freshness_boundary = NOW_BOOTTIME_NS - 90 * 10**9
     data = {
-        "schema_version": 1,
+        "schema_version": 2,
         "available_bytes": 20 * GIB,
         "threshold_bytes": 20 * GIB,
-        "measured_at_ns": freshness_boundary,
+        "measured_at_ns": NOW_NS - 90 * 10**9,
+        "boot_id": BOOT_ID,
+        "boottime_ns": freshness_boundary,
         "decision": "allow",
-        "last_measured_decision": "allow",
         "error": None,
     }
     path.write_text(json.dumps(data))
     capacity.require_capacity(path)
     for update, message in [
-        ({"measured_at_ns": freshness_boundary - 1}, "older than 90 seconds"),
-        ({"measured_at_ns": NOW_NS + 1}, "future measurement time"),
+        ({"boottime_ns": freshness_boundary - 1}, "older than 90 seconds"),
+        ({"boottime_ns": NOW_BOOTTIME_NS + 1}, "future measurement time"),
         ({"available_bytes": 19 * GIB}, "invalid D: watchdog status"),
     ]:
         path.write_text(json.dumps({**data, **update}))
@@ -211,25 +303,30 @@ def test_ci_requires_fresh_coherent_watchdog_status_and_never_measures(
         capacity.require_capacity(path)
 
 
+@pytest.mark.parametrize(
+    ("exit_code", "error_name"), [(9, "ToastError"), (10, "ToastNotSent")]
+)
 def test_windows_toast_uses_powershell_and_keeps_text_literal(
-    capacity: Any, monkeypatch: pytest.MonkeyPatch
+    capacity: Any, monkeypatch: pytest.MonkeyPatch, exit_code: int, error_name: str
 ) -> None:
     module = importlib.import_module("lib.windows_toast")
     title = "D: 空き容量 <threshold>"
     body = "A & B '$()'"
 
-    def run(arguments: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def popen(arguments: list[str], **kwargs: Any) -> MagicMock:
         assert arguments[0].endswith("/powershell.exe")
         assert arguments[-2] == "-EncodedCommand"
-        assert kwargs["timeout"] > 0
         script = base64.b64decode(arguments[-1]).decode("utf-16-le")
         assert ".Show(" in script
         payload = re.search(r"FromBase64String\('([^']+)'\)", script)
         assert payload
         xml = ElementTree.fromstring(base64.b64decode(payload[1]))
         assert [element.text for element in xml.findall(".//text")] == [title, body]
-        return subprocess.CompletedProcess(arguments, 9, "", "notifier failed")
+        proc = MagicMock(returncode=exit_code)
+        proc.communicate.return_value = ("", "notifier failed")
+        return proc
 
-    monkeypatch.setattr(module.subprocess, "run", run)
-    with pytest.raises(module.ToastError, match="notifier failed"):
+    monkeypatch.setattr(module.subprocess, "Popen", popen)
+    with pytest.raises(module.ToastError, match="notifier failed") as failure:
         module.send_windows_toast(title, body)
+    assert type(failure.value).__name__ == error_name

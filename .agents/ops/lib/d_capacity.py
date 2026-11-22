@@ -8,12 +8,14 @@ import os
 import sys
 import time
 import tomllib
+import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
 
 D_MOUNT = "/mnt/d"
 MOUNTINFO = Path("/proc/self/mountinfo")
+BOOT_ID_FILE = Path("/proc/sys/kernel/random/boot_id")
 CONFIG_PATH = Path("/etc/tennis-lab-d-capacity.toml")
 CONFIG_ENV = "TENNIS_D_CAPACITY_CONFIG"
 STATE_PATH = Path("/run/tennis-lab-d-capacity/status.json")
@@ -102,14 +104,15 @@ def decide(available: int, threshold: int) -> Decision:
 @dataclass(frozen=True)
 class CapacityStatus:
     measured_at_ns: int
+    boot_id: str
+    boottime_ns: int
     available_bytes: int | None
     threshold_bytes: int | None
     decision: Literal["allow", "blocked", "error"]
-    last_measured_decision: Decision | None
     error: str | None = None
 
     def to_json(self) -> str:
-        return json.dumps({"schema_version": 1, **asdict(self)}, sort_keys=True) + "\n"
+        return json.dumps({"schema_version": 2, **asdict(self)}, sort_keys=True) + "\n"
 
     def require_allowed(self) -> None:
         if self.decision == "error":
@@ -121,21 +124,37 @@ class CapacityStatus:
             )
 
 
-def sample(previous: Decision | None = None) -> CapacityStatus:
+def boot_clock() -> tuple[str, int]:
+    try:
+        boot_id = str(uuid.UUID(BOOT_ID_FILE.read_text(encoding="ascii").strip()))
+        return boot_id, time.clock_gettime_ns(time.CLOCK_BOOTTIME)
+    except (OSError, ValueError) as exc:
+        raise CapacityError(f"cannot read the D: watchdog boot clock: {exc}") from exc
+
+
+def sample() -> CapacityStatus:
+    boot_id, boottime = boot_clock()
+    measured_at = time.time_ns()
     threshold = None
     try:
         threshold = threshold_bytes()
         available = measure_available_bytes()
     except CapacityError as exc:
         return CapacityStatus(
-            time.time_ns(), None, threshold, "error", previous, str(exc)
+            measured_at, boot_id, boottime, None, threshold, "error", str(exc)
         )
-    decision = decide(available, threshold)
-    return CapacityStatus(time.time_ns(), available, threshold, decision, decision)
+    return CapacityStatus(
+        measured_at,
+        boot_id,
+        boottime,
+        available,
+        threshold,
+        decide(available, threshold),
+    )
 
 
 def read_status(path: Path) -> CapacityStatus:
-    """Read a published status, including stale samples for transition history."""
+    """Read and validate the schema of a published status."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -145,13 +164,15 @@ def read_status(path: Path) -> CapacityStatus:
     try:
         if not isinstance(data, dict) or type(data.get("schema_version")) is not int:
             raise ValueError
-        if data.pop("schema_version") != 1:
+        if data.pop("schema_version") != 2:
             raise ValueError
         status = CapacityStatus(**data)
         if (
             type(status.measured_at_ns) is not int
-            or status.measured_at_ns <= 0
-            or status.last_measured_decision not in (None, "blocked", "allow")
+            or not isinstance(status.boot_id, str)
+            or str(uuid.UUID(status.boot_id)) != status.boot_id
+            or type(status.boottime_ns) is not int
+            or status.boottime_ns < 0
             or (
                 status.threshold_bytes is not None
                 and (
@@ -173,7 +194,6 @@ def read_status(path: Path) -> CapacityStatus:
             or status.available_bytes < 0
             or status.threshold_bytes is None
             or status.decision != decide(status.available_bytes, status.threshold_bytes)
-            or status.last_measured_decision != status.decision
             or status.error is not None
         ):
             raise ValueError
@@ -190,7 +210,12 @@ def require_capacity(state_file: Path | None = None) -> None:
         status = read_status(state_file)
     except FileNotFoundError as exc:
         raise CapacityError(f"D: watchdog status is missing: {state_file}") from exc
-    age_ns = time.time_ns() - status.measured_at_ns
+    boot_id, boottime = boot_clock()
+    if status.boot_id != boot_id:
+        raise CapacityError(
+            f"D: watchdog status is from a different boot: {state_file}"
+        )
+    age_ns = boottime - status.boottime_ns
     if age_ns < 0:
         raise CapacityError(
             f"D: watchdog status has a future measurement time: {state_file}"

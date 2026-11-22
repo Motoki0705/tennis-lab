@@ -39,6 +39,11 @@ def main() -> None:
             {"type": "system", "subtype": "init", "session_id": session, "model": model}
         )
     else:
+        effort = next(
+            json.loads(arg.removeprefix("model_reasoning_effort="))
+            for arg in args
+            if arg.startswith("model_reasoning_effort=")
+        )
         emit({"type": "thread.started", "thread_id": session})
         transcript = Path(os.environ["CODEX_HOME"]) / "sessions" / (session + ".jsonl")
         transcript.parent.mkdir(parents=True, exist_ok=True)
@@ -54,7 +59,7 @@ def main() -> None:
                             "turn_id": str(uuid.uuid4()),
                             "cwd": str(Path.cwd()),
                             "model": model,
-                            "effort": "max",
+                            "effort": effort,
                         },
                     }
                 )

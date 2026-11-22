@@ -70,6 +70,7 @@ Windowsの電源・sleep設定もそれに合わせる。
 
 CIキューは `/mnt/d` を隔離したまま、[物理D:のwatchdog](../../.agents/ops/d_capacity/README.md) が
 `/run/tennis-lab-d-capacity/status.json` に公開した判定を読み取る。判定待ちのジョブはキューに残る。
+新版の判定を使うため、キューの配布ファイルとwatchdogの両方を更新する。
 更新時は、新規の学習投入を控え、実行中のジョブが完了してからキューサービスを停止する。
 更新したメインcheckoutから次を実行する。初回は既存サービスの停止手順を省く。
 

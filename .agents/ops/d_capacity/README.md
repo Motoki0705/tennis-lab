@@ -22,18 +22,25 @@ check, set `TENNIS_D_CAPACITY_CONFIG` to the path of another TOML file.
 `tennis-lab-d-capacity.service` runs under the main checkout owner's user
 manager. It samples every 30 seconds and atomically publishes
 `/run/tennis-lab-d-capacity/status.json` with available bytes, threshold,
-decision and Unix measurement time in nanoseconds. The queue service reads that
-file while its mount namespace hides `/mnt/d`. A measurement error, missing or
-invalid status, a future measurement, or a sample older than 90 seconds blocks
-new admissions. The queue retains the FIFO head and checks again until a fresh
-allowed decision arrives.
+decision, Unix time, `CLOCK_BOOTTIME` in nanoseconds and the kernel boot ID.
+The queue service reads that file while its mount namespace hides `/mnt/d`.
+It checks the boot ID and computes age from `CLOCK_BOOTTIME`, independent of
+wall-clock updates. The Unix time is for diagnosis. A measurement error,
+missing or invalid status, a different boot ID, a future boot time, or a
+sample older than 90 seconds blocks new admissions. The queue retains the
+FIFO head until a fresh allowed decision arrives.
 
 The watchdog asks Windows PowerShell to show a toast on the first low sample,
 on a transition to low, and on recovery. Toasts use Windows Terminal's
 registered notification identity. Windows interop and Windows Terminal
-notifications must be enabled. The watchdog records each transition before
-sending the toast, so a restart or an uncertain send result does not repeat it.
-Measurement and toast errors go to the user journal. [Windows toast API](https://learn.microsoft.com/en-us/windows/win32/shell/quickstart-sending-desktop-toast)
+notifications must be enabled. The watchdog records each transition in
+`${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/d-capacity/notification.json`
+before submitting the toast. The history survives restarts and can trigger a
+recovery toast after the loss of the status file in `/run`. A confirmed
+pre-submission failure, such as failure to start PowerShell, makes the current
+transition eligible for retry at the next sample. An uncertain outcome, such as
+a timeout, suppresses a repeat of that transition. The user journal records both
+outcomes and measurement errors. [Windows toast API](https://learn.microsoft.com/en-us/windows/win32/shell/quickstart-sending-desktop-toast)
 
 ## Deployment
 
@@ -60,5 +67,5 @@ python3 -B .agents/ops/lib/d_capacity.py --state-file /run/tennis-lab-d-capacity
 A refusal prints its reason and exits with status 75.
 
 Other operations can call `lib.windows_toast.send_windows_toast(title, message)`
-with `.agents/ops` on the Python import path. The helper raises `ToastError` when
-PowerShell fails or times out.
+with `.agents/ops` on the Python import path. The helper raises `ToastError` on
+failure. Its subtype `ToastNotSent` indicates a confirmed pre-submission failure.

@@ -429,12 +429,14 @@ def test_installed_ci_queue_holds_job_until_fresh_watchdog_verdict(
             temporary.write_text(
                 json.dumps(
                     {
-                        "schema_version": 1,
+                        "schema_version": 2,
                         "measured_at_ns": time.time_ns() - age_seconds * 10**9,
+                        "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
+                        "boottime_ns": time.clock_gettime_ns(time.CLOCK_BOOTTIME)
+                        - age_seconds * 10**9,
                         "available_bytes": available,
                         "threshold_bytes": 21_474_836_480,
                         "decision": decision,
-                        "last_measured_decision": decision,
                         "error": None,
                     }
                 )
