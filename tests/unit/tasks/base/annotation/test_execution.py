@@ -57,6 +57,8 @@ from src.tasks.base.annotation.resources.measurements import process_usage
 from src.tasks.base.annotation.workers.processes import owned_members, process_snapshot
 from src.utils.paths import PROJECT_ROOT
 from src.utils.training_queue import RETENTION_NS
+from tests.support.d_capacity import PROBE_PATH
+from tests.support.d_capacity import fake_d_drive as fake_d_drive
 
 
 @pytest.fixture
@@ -375,9 +377,11 @@ def queue_config(layout: AnnotationLayout) -> QueueConfiguration:
     )
 
 
+@pytest.fixture
 def live_queue_config(
-    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch
+    setup: tuple, monkeypatch: pytest.MonkeyPatch, fake_d_drive: Path
 ) -> QueueConfiguration:
+    layout, _manager, _launch = setup
     config = queue_config(layout)
     script = Path(config.script)
     subprocess.run(
@@ -410,6 +414,8 @@ def live_queue_config(
         check=True,
     )
     # Every namespace, including the system-lock probe, belongs to this test.
+    monkeypatch.setenv("PYTHONPATH", PROBE_PATH, prepend=os.pathsep)
+    monkeypatch.delenv("TRAINING_QUEUE_CAPACITY_STATUS_FILE", raising=False)
     for name in tuple(os.environ):
         if name.startswith("TRAINING_QUEUE_TEST_"):
             monkeypatch.delenv(name)
@@ -477,10 +483,13 @@ def gpu_launch(launch: StageLaunch, config: QueueConfiguration) -> StageLaunch:
 
 @pytest.mark.parametrize("capacity", ["pss", "storage"])
 def test_queued_capacity_wait_reuses_unexecuted_request(
-    setup: tuple, monkeypatch: pytest.MonkeyPatch, capacity: str
+    setup: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+    capacity: str,
+    live_queue_config: QueueConfiguration,
 ) -> None:
     layout, manager, launch = setup
-    config = live_queue_config(layout, monkeypatch)
+    config = live_queue_config
     reservation = launch.resource.model_copy(
         update={
             "request_id": "reservation",
@@ -545,10 +554,10 @@ def test_queued_capacity_wait_reuses_unexecuted_request(
 
 @pytest.mark.parametrize("action", ["budget_stop", "resource_cancel", "queue_cancel"])
 def test_queued_capacity_wait_does_not_retry_stop_or_cancel(
-    setup: tuple, monkeypatch: pytest.MonkeyPatch, action: str
+    setup: tuple, action: str, live_queue_config: QueueConfiguration
 ) -> None:
     layout, manager, launch = setup
-    config = live_queue_config(layout, monkeypatch)
+    config = live_queue_config
     reservation = launch.resource.model_copy(
         update={"request_id": "reservation", "storage_bytes": 70_000_000}
     )
@@ -609,10 +618,10 @@ def test_queued_capacity_wait_does_not_retry_stop_or_cancel(
 
 
 def test_live_queue_waits_for_registration_lock_handoff(
-    setup: tuple, monkeypatch: pytest.MonkeyPatch
+    setup: tuple, monkeypatch: pytest.MonkeyPatch, live_queue_config: QueueConfiguration
 ) -> None:
     layout, _manager, launch = setup
-    config = live_queue_config(layout, monkeypatch)
+    config = live_queue_config
     launch = gpu_launch(launch, config)
     runner = StageRunner(layout)
     registered, release = Event(), Event()

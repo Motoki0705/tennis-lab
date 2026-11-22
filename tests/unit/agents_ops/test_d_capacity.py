@@ -25,6 +25,8 @@ DRIVE_MOUNT = (
 
 @pytest.fixture
 def capacity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
+    # Other agents-ops tests also expose the standalone lib directory.
+    monkeypatch.syspath_prepend(str(OPS / "lib"))
     monkeypatch.syspath_prepend(str(OPS))
     mod = importlib.import_module("lib.d_capacity")
     monkeypatch.setattr(mod, "MOUNTINFO", tmp_path / "mountinfo")
