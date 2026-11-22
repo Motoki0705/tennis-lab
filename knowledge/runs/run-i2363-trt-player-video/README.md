@@ -44,6 +44,23 @@ bash "$queue" add "$command" --name i2363-trt-qualification-v2 --issue 2363 \
 
 代表clipは #2362 と同じ `video_000/clip_037`。同一の映像・pass・profileを用い、ホスト計時、同期付き計時の順に実行する。各条件は別プロセスでcomponent cacheが空の状態から開始する。OSのファイルcacheを共有する。資源記録は両条件で0.5秒間隔とし、OMP・MKL・OpenBLASのスレッド上限を2に固定する。全件評価はホスト計時とし、`--progress` で実際に通ったGVHMRの全shapeをORTで照合する。元datasetのmanifestとmediaを評価用ディレクトリへ複製し、評価結果を同ディレクトリへ公開する。
 
+## 代表クリップの結果
+
+`clip_037` は両条件で `generated`。38 nodeを実行し、各選手で3D関節の有効frameは290/292、root・SMPLは289/292だった。38件のcomponent参照と318個のcomponent/scene exportファイルを照合し、artifact ID、execution key、ファイルのSHA-256が一致した。
+
+| 計時用CUDA同期 | CLI wall (秒) | 記録区間 (秒) | CUDA同期span (秒) | Peak VRAM (GiB) | Peak RSS (GiB) | 資源採取中央値 (ms) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| なし | 739.79 | 722.96 | 0.176 | 1.76 | 3.67 | 5.79 |
+| あり | 899.28 | 878.64 | 141.009 | 1.76 | 3.63 | 8.87 |
+
+同期ありのCLIは159.49秒（21.56%）長かった。同一clipで順に1回ずつ測った値で、OSのファイルcacheや他プロセスの負荷は固定していない。Peak VRAMはNVMLのdevice使用量、Peak RSSはプロセスの最大RSS。WSL全体の空きメモリは計測中に最小22.74 GiBだった。両条件で5モデルのforwardを確認した。この条件で全件評価を行う。
+
+GVHMRは24 shapeでONNX書換え前後の出力がビット一致した。B=1/4 × L=2/177/1055の6 shapeで出力が有限であり、各shapeで110演算、加算mask付きfused MHA 12層、K=2のFP16積和を照合した。代表クリップで実際に通ったshapeはB=4、L=145。 [代表検証の指標と層精度](qualification-v2.json)
+
+ホスト計時の代表clipだけで86,924 spanが記録された。全クリップ実行では、時間窓ごとに完了spanをディスクへ退避し、最終 `recording.json` に全spanと集計を書き出す。 [記録形式](../../../src/utils/inference_recording.md)
+
+## 全クリップ実行
+
 ```bash
 printf -v command '%q ' env "PYTHONPATH=$PWD" .venv/bin/python -B "$bundle/run.py" \
     i2363-all-v1 --dataset "$MEIJI_DATASET" all \

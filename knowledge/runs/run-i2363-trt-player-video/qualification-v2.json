@@ -1,0 +1,1477 @@
+{
+  "job_id": "0-8204646797739929593_2026-11-22T13-13-22-260070406Z_4106821_i2363-trt-qualification-v2.job",
+  "commit": "80db8e57a0bfe3642aa636e12f3da87a1fdd0f5f",
+  "output_directory": "outputs/i2363/i2363-qualification-v2",
+  "clip": "video_000/clip_037",
+  "references_sha256_equal": 38,
+  "artifact_files_sha256_equal": 318,
+  "gvhmr_qualification": {
+    "engine": {
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "device_name": "NVIDIA GeForce RTX 5060 Ti",
+        "tensorrt_version": "10.14.1.48.post1"
+      },
+      "export_sha256": "5f42b379c7c2fd2400503553bcfd2bedfa60dffa544772ebb4861153298187ac",
+      "plan_sha256": "a9fd68e29a5be557bf4ca1e31d87605dcba8c808072acafe436feb15bb74c556",
+      "profiles": {
+        "f_cam_angvel": {
+          "maximum": [
+            4,
+            1055,
+            6
+          ],
+          "minimum": [
+            1,
+            2,
+            6
+          ],
+          "optimum": [
+            4,
+            177,
+            6
+          ]
+        },
+        "f_cliffcam": {
+          "maximum": [
+            4,
+            1055,
+            3
+          ],
+          "minimum": [
+            1,
+            2,
+            3
+          ],
+          "optimum": [
+            4,
+            177,
+            3
+          ]
+        },
+        "f_imgseq": {
+          "maximum": [
+            4,
+            1055,
+            1024
+          ],
+          "minimum": [
+            1,
+            2,
+            1024
+          ],
+          "optimum": [
+            4,
+            177,
+            1024
+          ]
+        },
+        "length": {
+          "maximum": [
+            4
+          ],
+          "minimum": [
+            1
+          ],
+          "optimum": [
+            4
+          ]
+        },
+        "obs": {
+          "maximum": [
+            4,
+            1055,
+            17,
+            3
+          ],
+          "minimum": [
+            1,
+            2,
+            17,
+            3
+          ],
+          "optimum": [
+            4,
+            177,
+            17,
+            3
+          ]
+        }
+      },
+      "version": 1
+    },
+    "export": {
+      "inputs": {
+        "f_cam_angvel": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            -1,
+            6
+          ]
+        },
+        "f_cliffcam": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            -1,
+            3
+          ]
+        },
+        "f_imgseq": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            -1,
+            1024
+          ]
+        },
+        "length": {
+          "dtype": "int64",
+          "shape": [
+            -1
+          ]
+        },
+        "obs": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            -1,
+            17,
+            3
+          ]
+        }
+      },
+      "model": "gvhmr_siga24_denoiser",
+      "onnx_files": {
+        "model.onnx": "2f2bac501e49c3fbe4ea7e59a3507ad69a7fb37690d25b67f56b480c4480fd3d"
+      },
+      "outputs": {
+        "length_out": {
+          "dtype": "int64",
+          "shape": [
+            -1
+          ]
+        },
+        "mask_out": {
+          "dtype": "bool",
+          "shape": [
+            -1,
+            -1
+          ]
+        },
+        "pred_cam": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            -1,
+            3
+          ]
+        },
+        "pred_x": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            -1,
+            -1
+          ]
+        },
+        "static_conf_logits": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            -1,
+            6
+          ]
+        }
+      },
+      "precision": "fp16",
+      "settings": {
+        "attention_mask": "additive-finite",
+        "attention_window": 120,
+        "max_rotary_frames": 4096
+      },
+      "sources": {
+        "checkpoint": "4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91"
+      },
+      "version": 1
+    },
+    "mask_reference_sha256": "b1beedeb5b1b25e97d53ac3fc145465163b164ee07ed876ecf9b9b4fc6dcd115",
+    "onnxruntime": "1.30.0",
+    "ort_provider": "CPUExecutionProvider",
+    "shapes": {
+      "B1_L1055": {
+        "inspector": "gvhmr-qualification-B1_L1055-layers.json",
+        "onnx_mask_parity": "bit_equal",
+        "tensorrt_finite": true,
+        "tensorrt_layer_precision": {
+          "elementwise_small_k": [
+            "__myl_SlicSlicMulMulAdd_myl0_2"
+          ],
+          "fp16_operations": {
+            "/network/blocks.0/attn/MatMul": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/MatMul_1": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/key/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/proj/MatMul": "__myl_FcMulAdd_myl0_27",
+            "/network/blocks.0/attn/query/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/value/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_29",
+            "/network/blocks.0/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_30",
+            "/network/blocks.1/attn/MatMul": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/MatMul_1": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/key/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/proj/MatMul": "__myl_FcMulAdd_myl0_40",
+            "/network/blocks.1/attn/query/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/value/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_42",
+            "/network/blocks.1/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_43",
+            "/network/blocks.10/attn/MatMul": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/MatMul_1": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/key/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/proj/MatMul": "__myl_FcMulAdd_myl0_157",
+            "/network/blocks.10/attn/query/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/value/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_159",
+            "/network/blocks.10/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_160",
+            "/network/blocks.11/attn/MatMul": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/MatMul_1": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/key/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/proj/MatMul": "__myl_FcMulAdd_myl0_170",
+            "/network/blocks.11/attn/query/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/value/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_172",
+            "/network/blocks.11/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_173",
+            "/network/blocks.2/attn/MatMul": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/MatMul_1": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/key/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/proj/MatMul": "__myl_FcMulAdd_myl0_53",
+            "/network/blocks.2/attn/query/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/value/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_55",
+            "/network/blocks.2/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_56",
+            "/network/blocks.3/attn/MatMul": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/MatMul_1": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/key/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/proj/MatMul": "__myl_FcMulAdd_myl0_66",
+            "/network/blocks.3/attn/query/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/value/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_68",
+            "/network/blocks.3/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_69",
+            "/network/blocks.4/attn/MatMul": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/MatMul_1": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/key/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/proj/MatMul": "__myl_FcMulAdd_myl0_79",
+            "/network/blocks.4/attn/query/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/value/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_81",
+            "/network/blocks.4/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_82",
+            "/network/blocks.5/attn/MatMul": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/MatMul_1": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/key/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/proj/MatMul": "__myl_FcMulAdd_myl0_92",
+            "/network/blocks.5/attn/query/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/value/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_94",
+            "/network/blocks.5/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_95",
+            "/network/blocks.6/attn/MatMul": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/MatMul_1": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/key/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/proj/MatMul": "__myl_FcMulAdd_myl0_105",
+            "/network/blocks.6/attn/query/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/value/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_107",
+            "/network/blocks.6/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_108",
+            "/network/blocks.7/attn/MatMul": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/MatMul_1": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/key/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/proj/MatMul": "__myl_FcMulAdd_myl0_118",
+            "/network/blocks.7/attn/query/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/value/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_120",
+            "/network/blocks.7/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_121",
+            "/network/blocks.8/attn/MatMul": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/MatMul_1": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/key/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/proj/MatMul": "__myl_FcMulAdd_myl0_131",
+            "/network/blocks.8/attn/query/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/value/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_133",
+            "/network/blocks.8/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_134",
+            "/network/blocks.9/attn/MatMul": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/MatMul_1": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/key/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/proj/MatMul": "__myl_FcMulAdd_myl0_144",
+            "/network/blocks.9/attn/query/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/value/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_146",
+            "/network/blocks.9/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_147",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.0/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_0/MatMul_myl0_8",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.3/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_3/MatMul_myl0_10",
+            "/network/cliffcam_embedder/cliffcam_embedder.0/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_0/MatMul_myl0_5",
+            "/network/cliffcam_embedder/cliffcam_embedder.3/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_3/MatMul_myl0_7",
+            "/network/embed_noisyobs/fc1/MatMul": "__myl_Fc_myl0_4",
+            "/network/embed_noisyobs/fc2/MatMul": "__myl_FcAddAddAdd_myl0_13",
+            "/network/final_layer/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/final_layer/fc2/MatMul": "__mye251035+__mye251047+__mye251023_myl0_178",
+            "/network/imgseq_embedder/imgseq_embedder.1/MatMul": "/network/imgseq_embedder/imgseq_embedder_1/MatMul_myl0_12",
+            "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2",
+            "/network/pred_cam_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/pred_cam_head/fc2/MatMul": "/network/pred_cam_head/fc2/MatMul_myl0_182",
+            "/network/static_conf_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/static_conf_head/fc2/MatMul": "/network/static_conf_head/fc2/MatMul_myl0_176"
+          },
+          "fused_additive_attention": [
+            "_gemm_mha_v2_myl0_25",
+            "_gemm_mha_v2_myl0_39",
+            "_gemm_mha_v2_myl0_52",
+            "_gemm_mha_v2_myl0_65",
+            "_gemm_mha_v2_myl0_78",
+            "_gemm_mha_v2_myl0_91",
+            "_gemm_mha_v2_myl0_104",
+            "_gemm_mha_v2_myl0_117",
+            "_gemm_mha_v2_myl0_130",
+            "_gemm_mha_v2_myl0_143",
+            "_gemm_mha_v2_myl0_156",
+            "_gemm_mha_v2_myl0_169"
+          ]
+        }
+      },
+      "B1_L119": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B1_L120": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B1_L121": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B1_L145": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B1_L177": {
+        "inspector": "gvhmr-qualification-B1_L177-layers.json",
+        "onnx_mask_parity": "bit_equal",
+        "tensorrt_finite": true,
+        "tensorrt_layer_precision": {
+          "elementwise_small_k": [
+            "__myl_SlicSlicMulMulAdd_myl0_2"
+          ],
+          "fp16_operations": {
+            "/network/blocks.0/attn/MatMul": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/MatMul_1": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/key/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/proj/MatMul": "__myl_FcMulAdd_myl0_27",
+            "/network/blocks.0/attn/query/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/value/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_29",
+            "/network/blocks.0/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_30",
+            "/network/blocks.1/attn/MatMul": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/MatMul_1": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/key/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/proj/MatMul": "__myl_FcMulAdd_myl0_40",
+            "/network/blocks.1/attn/query/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/value/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_42",
+            "/network/blocks.1/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_43",
+            "/network/blocks.10/attn/MatMul": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/MatMul_1": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/key/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/proj/MatMul": "__myl_FcMulAdd_myl0_157",
+            "/network/blocks.10/attn/query/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/value/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_159",
+            "/network/blocks.10/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_160",
+            "/network/blocks.11/attn/MatMul": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/MatMul_1": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/key/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/proj/MatMul": "__myl_FcMulAdd_myl0_170",
+            "/network/blocks.11/attn/query/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/value/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_172",
+            "/network/blocks.11/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_173",
+            "/network/blocks.2/attn/MatMul": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/MatMul_1": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/key/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/proj/MatMul": "__myl_FcMulAdd_myl0_53",
+            "/network/blocks.2/attn/query/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/value/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_55",
+            "/network/blocks.2/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_56",
+            "/network/blocks.3/attn/MatMul": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/MatMul_1": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/key/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/proj/MatMul": "__myl_FcMulAdd_myl0_66",
+            "/network/blocks.3/attn/query/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/value/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_68",
+            "/network/blocks.3/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_69",
+            "/network/blocks.4/attn/MatMul": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/MatMul_1": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/key/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/proj/MatMul": "__myl_FcMulAdd_myl0_79",
+            "/network/blocks.4/attn/query/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/value/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_81",
+            "/network/blocks.4/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_82",
+            "/network/blocks.5/attn/MatMul": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/MatMul_1": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/key/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/proj/MatMul": "__myl_FcMulAdd_myl0_92",
+            "/network/blocks.5/attn/query/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/value/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_94",
+            "/network/blocks.5/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_95",
+            "/network/blocks.6/attn/MatMul": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/MatMul_1": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/key/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/proj/MatMul": "__myl_FcMulAdd_myl0_105",
+            "/network/blocks.6/attn/query/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/value/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_107",
+            "/network/blocks.6/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_108",
+            "/network/blocks.7/attn/MatMul": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/MatMul_1": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/key/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/proj/MatMul": "__myl_FcMulAdd_myl0_118",
+            "/network/blocks.7/attn/query/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/value/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_120",
+            "/network/blocks.7/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_121",
+            "/network/blocks.8/attn/MatMul": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/MatMul_1": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/key/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/proj/MatMul": "__myl_FcMulAdd_myl0_131",
+            "/network/blocks.8/attn/query/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/value/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_133",
+            "/network/blocks.8/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_134",
+            "/network/blocks.9/attn/MatMul": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/MatMul_1": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/key/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/proj/MatMul": "__myl_FcMulAdd_myl0_144",
+            "/network/blocks.9/attn/query/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/value/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_146",
+            "/network/blocks.9/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_147",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.0/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_0/MatMul_myl0_8",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.3/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_3/MatMul_myl0_10",
+            "/network/cliffcam_embedder/cliffcam_embedder.0/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_0/MatMul_myl0_5",
+            "/network/cliffcam_embedder/cliffcam_embedder.3/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_3/MatMul_myl0_7",
+            "/network/embed_noisyobs/fc1/MatMul": "__myl_Fc_myl0_4",
+            "/network/embed_noisyobs/fc2/MatMul": "__myl_FcAddAddAdd_myl0_13",
+            "/network/final_layer/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/final_layer/fc2/MatMul": "__mye251035+__mye251047+__mye251023_myl0_178",
+            "/network/imgseq_embedder/imgseq_embedder.1/MatMul": "/network/imgseq_embedder/imgseq_embedder_1/MatMul_myl0_12",
+            "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2",
+            "/network/pred_cam_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/pred_cam_head/fc2/MatMul": "/network/pred_cam_head/fc2/MatMul_myl0_182",
+            "/network/static_conf_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/static_conf_head/fc2/MatMul": "/network/static_conf_head/fc2/MatMul_myl0_176"
+          },
+          "fused_additive_attention": [
+            "_gemm_mha_v2_myl0_25",
+            "_gemm_mha_v2_myl0_39",
+            "_gemm_mha_v2_myl0_52",
+            "_gemm_mha_v2_myl0_65",
+            "_gemm_mha_v2_myl0_78",
+            "_gemm_mha_v2_myl0_91",
+            "_gemm_mha_v2_myl0_104",
+            "_gemm_mha_v2_myl0_117",
+            "_gemm_mha_v2_myl0_130",
+            "_gemm_mha_v2_myl0_143",
+            "_gemm_mha_v2_myl0_156",
+            "_gemm_mha_v2_myl0_169"
+          ]
+        }
+      },
+      "B1_L2": {
+        "inspector": "gvhmr-qualification-B1_L2-layers.json",
+        "onnx_mask_parity": "bit_equal",
+        "tensorrt_finite": true,
+        "tensorrt_layer_precision": {
+          "elementwise_small_k": [
+            "__myl_SlicSlicMulMulAdd_myl0_2"
+          ],
+          "fp16_operations": {
+            "/network/blocks.0/attn/MatMul": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/MatMul_1": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/key/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/proj/MatMul": "__myl_FcMulAdd_myl0_27",
+            "/network/blocks.0/attn/query/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/value/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_29",
+            "/network/blocks.0/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_30",
+            "/network/blocks.1/attn/MatMul": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/MatMul_1": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/key/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/proj/MatMul": "__myl_FcMulAdd_myl0_40",
+            "/network/blocks.1/attn/query/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/value/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_42",
+            "/network/blocks.1/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_43",
+            "/network/blocks.10/attn/MatMul": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/MatMul_1": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/key/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/proj/MatMul": "__myl_FcMulAdd_myl0_157",
+            "/network/blocks.10/attn/query/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/value/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_159",
+            "/network/blocks.10/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_160",
+            "/network/blocks.11/attn/MatMul": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/MatMul_1": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/key/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/proj/MatMul": "__myl_FcMulAdd_myl0_170",
+            "/network/blocks.11/attn/query/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/value/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_172",
+            "/network/blocks.11/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_173",
+            "/network/blocks.2/attn/MatMul": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/MatMul_1": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/key/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/proj/MatMul": "__myl_FcMulAdd_myl0_53",
+            "/network/blocks.2/attn/query/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/value/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_55",
+            "/network/blocks.2/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_56",
+            "/network/blocks.3/attn/MatMul": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/MatMul_1": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/key/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/proj/MatMul": "__myl_FcMulAdd_myl0_66",
+            "/network/blocks.3/attn/query/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/value/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_68",
+            "/network/blocks.3/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_69",
+            "/network/blocks.4/attn/MatMul": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/MatMul_1": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/key/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/proj/MatMul": "__myl_FcMulAdd_myl0_79",
+            "/network/blocks.4/attn/query/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/value/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_81",
+            "/network/blocks.4/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_82",
+            "/network/blocks.5/attn/MatMul": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/MatMul_1": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/key/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/proj/MatMul": "__myl_FcMulAdd_myl0_92",
+            "/network/blocks.5/attn/query/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/value/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_94",
+            "/network/blocks.5/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_95",
+            "/network/blocks.6/attn/MatMul": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/MatMul_1": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/key/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/proj/MatMul": "__myl_FcMulAdd_myl0_105",
+            "/network/blocks.6/attn/query/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/value/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_107",
+            "/network/blocks.6/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_108",
+            "/network/blocks.7/attn/MatMul": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/MatMul_1": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/key/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/proj/MatMul": "__myl_FcMulAdd_myl0_118",
+            "/network/blocks.7/attn/query/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/value/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_120",
+            "/network/blocks.7/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_121",
+            "/network/blocks.8/attn/MatMul": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/MatMul_1": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/key/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/proj/MatMul": "__myl_FcMulAdd_myl0_131",
+            "/network/blocks.8/attn/query/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/value/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_133",
+            "/network/blocks.8/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_134",
+            "/network/blocks.9/attn/MatMul": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/MatMul_1": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/key/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/proj/MatMul": "__myl_FcMulAdd_myl0_144",
+            "/network/blocks.9/attn/query/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/value/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_146",
+            "/network/blocks.9/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_147",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.0/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_0/MatMul_myl0_8",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.3/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_3/MatMul_myl0_10",
+            "/network/cliffcam_embedder/cliffcam_embedder.0/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_0/MatMul_myl0_5",
+            "/network/cliffcam_embedder/cliffcam_embedder.3/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_3/MatMul_myl0_7",
+            "/network/embed_noisyobs/fc1/MatMul": "__myl_Fc_myl0_4",
+            "/network/embed_noisyobs/fc2/MatMul": "__myl_FcAddAddAdd_myl0_13",
+            "/network/final_layer/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/final_layer/fc2/MatMul": "__mye251035+__mye251047+__mye251023_myl0_178",
+            "/network/imgseq_embedder/imgseq_embedder.1/MatMul": "/network/imgseq_embedder/imgseq_embedder_1/MatMul_myl0_12",
+            "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2",
+            "/network/pred_cam_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/pred_cam_head/fc2/MatMul": "/network/pred_cam_head/fc2/MatMul_myl0_182",
+            "/network/static_conf_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/static_conf_head/fc2/MatMul": "/network/static_conf_head/fc2/MatMul_myl0_176"
+          },
+          "fused_additive_attention": [
+            "_gemm_mha_v2_myl0_25",
+            "_gemm_mha_v2_myl0_39",
+            "_gemm_mha_v2_myl0_52",
+            "_gemm_mha_v2_myl0_65",
+            "_gemm_mha_v2_myl0_78",
+            "_gemm_mha_v2_myl0_91",
+            "_gemm_mha_v2_myl0_104",
+            "_gemm_mha_v2_myl0_117",
+            "_gemm_mha_v2_myl0_130",
+            "_gemm_mha_v2_myl0_143",
+            "_gemm_mha_v2_myl0_156",
+            "_gemm_mha_v2_myl0_169"
+          ]
+        }
+      },
+      "B2_L119": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B2_L120": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B2_L121": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B2_L145": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B2_L177": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B3_L119": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B3_L120": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B3_L121": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B3_L145": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B3_L177": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B4_L1055": {
+        "inspector": "gvhmr-qualification-B4_L1055-layers.json",
+        "onnx_mask_parity": "bit_equal",
+        "tensorrt_finite": true,
+        "tensorrt_layer_precision": {
+          "elementwise_small_k": [
+            "__myl_SlicSlicMulMulAdd_myl0_2"
+          ],
+          "fp16_operations": {
+            "/network/blocks.0/attn/MatMul": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/MatMul_1": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/key/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/proj/MatMul": "__myl_FcMulAdd_myl0_27",
+            "/network/blocks.0/attn/query/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/value/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_29",
+            "/network/blocks.0/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_30",
+            "/network/blocks.1/attn/MatMul": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/MatMul_1": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/key/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/proj/MatMul": "__myl_FcMulAdd_myl0_40",
+            "/network/blocks.1/attn/query/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/value/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_42",
+            "/network/blocks.1/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_43",
+            "/network/blocks.10/attn/MatMul": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/MatMul_1": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/key/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/proj/MatMul": "__myl_FcMulAdd_myl0_157",
+            "/network/blocks.10/attn/query/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/value/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_159",
+            "/network/blocks.10/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_160",
+            "/network/blocks.11/attn/MatMul": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/MatMul_1": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/key/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/proj/MatMul": "__myl_FcMulAdd_myl0_170",
+            "/network/blocks.11/attn/query/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/value/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_172",
+            "/network/blocks.11/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_173",
+            "/network/blocks.2/attn/MatMul": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/MatMul_1": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/key/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/proj/MatMul": "__myl_FcMulAdd_myl0_53",
+            "/network/blocks.2/attn/query/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/value/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_55",
+            "/network/blocks.2/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_56",
+            "/network/blocks.3/attn/MatMul": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/MatMul_1": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/key/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/proj/MatMul": "__myl_FcMulAdd_myl0_66",
+            "/network/blocks.3/attn/query/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/value/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_68",
+            "/network/blocks.3/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_69",
+            "/network/blocks.4/attn/MatMul": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/MatMul_1": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/key/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/proj/MatMul": "__myl_FcMulAdd_myl0_79",
+            "/network/blocks.4/attn/query/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/value/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_81",
+            "/network/blocks.4/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_82",
+            "/network/blocks.5/attn/MatMul": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/MatMul_1": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/key/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/proj/MatMul": "__myl_FcMulAdd_myl0_92",
+            "/network/blocks.5/attn/query/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/value/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_94",
+            "/network/blocks.5/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_95",
+            "/network/blocks.6/attn/MatMul": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/MatMul_1": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/key/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/proj/MatMul": "__myl_FcMulAdd_myl0_105",
+            "/network/blocks.6/attn/query/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/value/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_107",
+            "/network/blocks.6/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_108",
+            "/network/blocks.7/attn/MatMul": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/MatMul_1": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/key/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/proj/MatMul": "__myl_FcMulAdd_myl0_118",
+            "/network/blocks.7/attn/query/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/value/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_120",
+            "/network/blocks.7/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_121",
+            "/network/blocks.8/attn/MatMul": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/MatMul_1": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/key/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/proj/MatMul": "__myl_FcMulAdd_myl0_131",
+            "/network/blocks.8/attn/query/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/value/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_133",
+            "/network/blocks.8/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_134",
+            "/network/blocks.9/attn/MatMul": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/MatMul_1": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/key/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/proj/MatMul": "__myl_FcMulAdd_myl0_144",
+            "/network/blocks.9/attn/query/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/value/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_146",
+            "/network/blocks.9/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_147",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.0/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_0/MatMul_myl0_8",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.3/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_3/MatMul_myl0_10",
+            "/network/cliffcam_embedder/cliffcam_embedder.0/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_0/MatMul_myl0_5",
+            "/network/cliffcam_embedder/cliffcam_embedder.3/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_3/MatMul_myl0_7",
+            "/network/embed_noisyobs/fc1/MatMul": "__myl_Fc_myl0_4",
+            "/network/embed_noisyobs/fc2/MatMul": "__myl_FcAddAddAdd_myl0_13",
+            "/network/final_layer/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/final_layer/fc2/MatMul": "__mye251035+__mye251047+__mye251023_myl0_178",
+            "/network/imgseq_embedder/imgseq_embedder.1/MatMul": "/network/imgseq_embedder/imgseq_embedder_1/MatMul_myl0_12",
+            "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2",
+            "/network/pred_cam_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/pred_cam_head/fc2/MatMul": "/network/pred_cam_head/fc2/MatMul_myl0_182",
+            "/network/static_conf_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/static_conf_head/fc2/MatMul": "/network/static_conf_head/fc2/MatMul_myl0_176"
+          },
+          "fused_additive_attention": [
+            "_gemm_mha_v2_myl0_25",
+            "_gemm_mha_v2_myl0_39",
+            "_gemm_mha_v2_myl0_52",
+            "_gemm_mha_v2_myl0_65",
+            "_gemm_mha_v2_myl0_78",
+            "_gemm_mha_v2_myl0_91",
+            "_gemm_mha_v2_myl0_104",
+            "_gemm_mha_v2_myl0_117",
+            "_gemm_mha_v2_myl0_130",
+            "_gemm_mha_v2_myl0_143",
+            "_gemm_mha_v2_myl0_156",
+            "_gemm_mha_v2_myl0_169"
+          ]
+        }
+      },
+      "B4_L119": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B4_L120": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B4_L121": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B4_L145": {
+        "onnx_mask_parity": "bit_equal"
+      },
+      "B4_L177": {
+        "inspector": "gvhmr-qualification-B4_L177-layers.json",
+        "onnx_mask_parity": "bit_equal",
+        "tensorrt_finite": true,
+        "tensorrt_layer_precision": {
+          "elementwise_small_k": [
+            "__myl_SlicSlicMulMulAdd_myl0_2"
+          ],
+          "fp16_operations": {
+            "/network/blocks.0/attn/MatMul": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/MatMul_1": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/key/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/proj/MatMul": "__myl_FcMulAdd_myl0_27",
+            "/network/blocks.0/attn/query/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/value/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_29",
+            "/network/blocks.0/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_30",
+            "/network/blocks.1/attn/MatMul": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/MatMul_1": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/key/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/proj/MatMul": "__myl_FcMulAdd_myl0_40",
+            "/network/blocks.1/attn/query/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/value/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_42",
+            "/network/blocks.1/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_43",
+            "/network/blocks.10/attn/MatMul": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/MatMul_1": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/key/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/proj/MatMul": "__myl_FcMulAdd_myl0_157",
+            "/network/blocks.10/attn/query/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/value/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_159",
+            "/network/blocks.10/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_160",
+            "/network/blocks.11/attn/MatMul": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/MatMul_1": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/key/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/proj/MatMul": "__myl_FcMulAdd_myl0_170",
+            "/network/blocks.11/attn/query/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/value/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_172",
+            "/network/blocks.11/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_173",
+            "/network/blocks.2/attn/MatMul": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/MatMul_1": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/key/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/proj/MatMul": "__myl_FcMulAdd_myl0_53",
+            "/network/blocks.2/attn/query/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/value/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_55",
+            "/network/blocks.2/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_56",
+            "/network/blocks.3/attn/MatMul": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/MatMul_1": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/key/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/proj/MatMul": "__myl_FcMulAdd_myl0_66",
+            "/network/blocks.3/attn/query/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/value/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_68",
+            "/network/blocks.3/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_69",
+            "/network/blocks.4/attn/MatMul": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/MatMul_1": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/key/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/proj/MatMul": "__myl_FcMulAdd_myl0_79",
+            "/network/blocks.4/attn/query/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/value/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_81",
+            "/network/blocks.4/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_82",
+            "/network/blocks.5/attn/MatMul": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/MatMul_1": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/key/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/proj/MatMul": "__myl_FcMulAdd_myl0_92",
+            "/network/blocks.5/attn/query/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/value/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_94",
+            "/network/blocks.5/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_95",
+            "/network/blocks.6/attn/MatMul": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/MatMul_1": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/key/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/proj/MatMul": "__myl_FcMulAdd_myl0_105",
+            "/network/blocks.6/attn/query/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/value/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_107",
+            "/network/blocks.6/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_108",
+            "/network/blocks.7/attn/MatMul": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/MatMul_1": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/key/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/proj/MatMul": "__myl_FcMulAdd_myl0_118",
+            "/network/blocks.7/attn/query/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/value/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_120",
+            "/network/blocks.7/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_121",
+            "/network/blocks.8/attn/MatMul": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/MatMul_1": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/key/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/proj/MatMul": "__myl_FcMulAdd_myl0_131",
+            "/network/blocks.8/attn/query/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/value/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_133",
+            "/network/blocks.8/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_134",
+            "/network/blocks.9/attn/MatMul": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/MatMul_1": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/key/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/proj/MatMul": "__myl_FcMulAdd_myl0_144",
+            "/network/blocks.9/attn/query/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/value/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_146",
+            "/network/blocks.9/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_147",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.0/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_0/MatMul_myl0_8",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.3/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_3/MatMul_myl0_10",
+            "/network/cliffcam_embedder/cliffcam_embedder.0/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_0/MatMul_myl0_5",
+            "/network/cliffcam_embedder/cliffcam_embedder.3/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_3/MatMul_myl0_7",
+            "/network/embed_noisyobs/fc1/MatMul": "__myl_Fc_myl0_4",
+            "/network/embed_noisyobs/fc2/MatMul": "__myl_FcAddAddAdd_myl0_13",
+            "/network/final_layer/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/final_layer/fc2/MatMul": "__mye251035+__mye251047+__mye251023_myl0_178",
+            "/network/imgseq_embedder/imgseq_embedder.1/MatMul": "/network/imgseq_embedder/imgseq_embedder_1/MatMul_myl0_12",
+            "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2",
+            "/network/pred_cam_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/pred_cam_head/fc2/MatMul": "/network/pred_cam_head/fc2/MatMul_myl0_182",
+            "/network/static_conf_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/static_conf_head/fc2/MatMul": "/network/static_conf_head/fc2/MatMul_myl0_176"
+          },
+          "fused_additive_attention": [
+            "_gemm_mha_v2_myl0_25",
+            "_gemm_mha_v2_myl0_39",
+            "_gemm_mha_v2_myl0_52",
+            "_gemm_mha_v2_myl0_65",
+            "_gemm_mha_v2_myl0_78",
+            "_gemm_mha_v2_myl0_91",
+            "_gemm_mha_v2_myl0_104",
+            "_gemm_mha_v2_myl0_117",
+            "_gemm_mha_v2_myl0_130",
+            "_gemm_mha_v2_myl0_143",
+            "_gemm_mha_v2_myl0_156",
+            "_gemm_mha_v2_myl0_169"
+          ]
+        }
+      },
+      "B4_L2": {
+        "inspector": "gvhmr-qualification-B4_L2-layers.json",
+        "onnx_mask_parity": "bit_equal",
+        "tensorrt_finite": true,
+        "tensorrt_layer_precision": {
+          "elementwise_small_k": [
+            "__myl_SlicSlicMulMulAdd_myl0_2"
+          ],
+          "fp16_operations": {
+            "/network/blocks.0/attn/MatMul": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/MatMul_1": "_gemm_mha_v2_myl0_25",
+            "/network/blocks.0/attn/key/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/proj/MatMul": "__myl_FcMulAdd_myl0_27",
+            "/network/blocks.0/attn/query/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/attn/value/MatMul": "/network/blocks_0/attn/value/MatMul+/network/blocks_0/attn/key/MatMul+/network/blocks_0/attn/query/MatMul_myl0_16",
+            "/network/blocks.0/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_29",
+            "/network/blocks.0/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_30",
+            "/network/blocks.1/attn/MatMul": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/MatMul_1": "_gemm_mha_v2_myl0_39",
+            "/network/blocks.1/attn/key/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/proj/MatMul": "__myl_FcMulAdd_myl0_40",
+            "/network/blocks.1/attn/query/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/attn/value/MatMul": "/network/blocks_1/attn/value/MatMul+/network/blocks_1/attn/key/MatMul+/network/blocks_1/attn/query/MatMul_myl0_32",
+            "/network/blocks.1/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_42",
+            "/network/blocks.1/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_43",
+            "/network/blocks.10/attn/MatMul": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/MatMul_1": "_gemm_mha_v2_myl0_156",
+            "/network/blocks.10/attn/key/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/proj/MatMul": "__myl_FcMulAdd_myl0_157",
+            "/network/blocks.10/attn/query/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/attn/value/MatMul": "/network/blocks_10/attn/value/MatMul+/network/blocks_10/attn/key/MatMul+/network/blocks_10/attn/query/MatMul_myl0_149",
+            "/network/blocks.10/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_159",
+            "/network/blocks.10/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_160",
+            "/network/blocks.11/attn/MatMul": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/MatMul_1": "_gemm_mha_v2_myl0_169",
+            "/network/blocks.11/attn/key/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/proj/MatMul": "__myl_FcMulAdd_myl0_170",
+            "/network/blocks.11/attn/query/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/attn/value/MatMul": "/network/blocks_11/attn/value/MatMul+/network/blocks_11/attn/key/MatMul+/network/blocks_11/attn/query/MatMul_myl0_162",
+            "/network/blocks.11/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_172",
+            "/network/blocks.11/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_173",
+            "/network/blocks.2/attn/MatMul": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/MatMul_1": "_gemm_mha_v2_myl0_52",
+            "/network/blocks.2/attn/key/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/proj/MatMul": "__myl_FcMulAdd_myl0_53",
+            "/network/blocks.2/attn/query/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/attn/value/MatMul": "/network/blocks_2/attn/value/MatMul+/network/blocks_2/attn/key/MatMul+/network/blocks_2/attn/query/MatMul_myl0_45",
+            "/network/blocks.2/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_55",
+            "/network/blocks.2/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_56",
+            "/network/blocks.3/attn/MatMul": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/MatMul_1": "_gemm_mha_v2_myl0_65",
+            "/network/blocks.3/attn/key/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/proj/MatMul": "__myl_FcMulAdd_myl0_66",
+            "/network/blocks.3/attn/query/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/attn/value/MatMul": "/network/blocks_3/attn/value/MatMul+/network/blocks_3/attn/key/MatMul+/network/blocks_3/attn/query/MatMul_myl0_58",
+            "/network/blocks.3/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_68",
+            "/network/blocks.3/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_69",
+            "/network/blocks.4/attn/MatMul": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/MatMul_1": "_gemm_mha_v2_myl0_78",
+            "/network/blocks.4/attn/key/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/proj/MatMul": "__myl_FcMulAdd_myl0_79",
+            "/network/blocks.4/attn/query/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/attn/value/MatMul": "/network/blocks_4/attn/value/MatMul+/network/blocks_4/attn/key/MatMul+/network/blocks_4/attn/query/MatMul_myl0_71",
+            "/network/blocks.4/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_81",
+            "/network/blocks.4/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_82",
+            "/network/blocks.5/attn/MatMul": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/MatMul_1": "_gemm_mha_v2_myl0_91",
+            "/network/blocks.5/attn/key/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/proj/MatMul": "__myl_FcMulAdd_myl0_92",
+            "/network/blocks.5/attn/query/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/attn/value/MatMul": "/network/blocks_5/attn/value/MatMul+/network/blocks_5/attn/key/MatMul+/network/blocks_5/attn/query/MatMul_myl0_84",
+            "/network/blocks.5/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_94",
+            "/network/blocks.5/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_95",
+            "/network/blocks.6/attn/MatMul": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/MatMul_1": "_gemm_mha_v2_myl0_104",
+            "/network/blocks.6/attn/key/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/proj/MatMul": "__myl_FcMulAdd_myl0_105",
+            "/network/blocks.6/attn/query/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/attn/value/MatMul": "/network/blocks_6/attn/value/MatMul+/network/blocks_6/attn/key/MatMul+/network/blocks_6/attn/query/MatMul_myl0_97",
+            "/network/blocks.6/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_107",
+            "/network/blocks.6/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_108",
+            "/network/blocks.7/attn/MatMul": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/MatMul_1": "_gemm_mha_v2_myl0_117",
+            "/network/blocks.7/attn/key/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/proj/MatMul": "__myl_FcMulAdd_myl0_118",
+            "/network/blocks.7/attn/query/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/attn/value/MatMul": "/network/blocks_7/attn/value/MatMul+/network/blocks_7/attn/key/MatMul+/network/blocks_7/attn/query/MatMul_myl0_110",
+            "/network/blocks.7/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_120",
+            "/network/blocks.7/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_121",
+            "/network/blocks.8/attn/MatMul": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/MatMul_1": "_gemm_mha_v2_myl0_130",
+            "/network/blocks.8/attn/key/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/proj/MatMul": "__myl_FcMulAdd_myl0_131",
+            "/network/blocks.8/attn/query/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/attn/value/MatMul": "/network/blocks_8/attn/value/MatMul+/network/blocks_8/attn/key/MatMul+/network/blocks_8/attn/query/MatMul_myl0_123",
+            "/network/blocks.8/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_133",
+            "/network/blocks.8/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_134",
+            "/network/blocks.9/attn/MatMul": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/MatMul_1": "_gemm_mha_v2_myl0_143",
+            "/network/blocks.9/attn/key/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/proj/MatMul": "__myl_FcMulAdd_myl0_144",
+            "/network/blocks.9/attn/query/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/attn/value/MatMul": "/network/blocks_9/attn/value/MatMul+/network/blocks_9/attn/key/MatMul+/network/blocks_9/attn/query/MatMul_myl0_136",
+            "/network/blocks.9/mlp/fc1/MatMul": "__myl_FcMulMulMulAddMulTanhAddMulMul_myl0_146",
+            "/network/blocks.9/mlp/fc2/MatMul": "__myl_FcMulAdd_myl0_147",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.0/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_0/MatMul_myl0_8",
+            "/network/cam_angvel_embedder/cam_angvel_embedder.3/MatMul": "/network/cam_angvel_embedder/cam_angvel_embedder_3/MatMul_myl0_10",
+            "/network/cliffcam_embedder/cliffcam_embedder.0/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_0/MatMul_myl0_5",
+            "/network/cliffcam_embedder/cliffcam_embedder.3/MatMul": "/network/cliffcam_embedder/cliffcam_embedder_3/MatMul_myl0_7",
+            "/network/embed_noisyobs/fc1/MatMul": "__myl_Fc_myl0_4",
+            "/network/embed_noisyobs/fc2/MatMul": "__myl_FcAddAddAdd_myl0_13",
+            "/network/final_layer/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/final_layer/fc2/MatMul": "__mye251035+__mye251047+__mye251023_myl0_178",
+            "/network/imgseq_embedder/imgseq_embedder.1/MatMul": "/network/imgseq_embedder/imgseq_embedder_1/MatMul_myl0_12",
+            "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2",
+            "/network/pred_cam_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/pred_cam_head/fc2/MatMul": "/network/pred_cam_head/fc2/MatMul_myl0_182",
+            "/network/static_conf_head/fc1/MatMul": "__myl_Fc_myl0_174",
+            "/network/static_conf_head/fc2/MatMul": "/network/static_conf_head/fc2/MatMul_myl0_176"
+          },
+          "fused_additive_attention": [
+            "_gemm_mha_v2_myl0_25",
+            "_gemm_mha_v2_myl0_39",
+            "_gemm_mha_v2_myl0_52",
+            "_gemm_mha_v2_myl0_65",
+            "_gemm_mha_v2_myl0_78",
+            "_gemm_mha_v2_myl0_91",
+            "_gemm_mha_v2_myl0_104",
+            "_gemm_mha_v2_myl0_117",
+            "_gemm_mha_v2_myl0_130",
+            "_gemm_mha_v2_myl0_143",
+            "_gemm_mha_v2_myl0_156",
+            "_gemm_mha_v2_myl0_169"
+          ]
+        }
+      }
+    },
+    "status": "complete"
+  },
+  "gvhmr_representative_shapes": {
+    "B4_L145": {
+      "onnx_mask_parity": "bit_equal"
+    }
+  },
+  "passes": {
+    "host": {
+      "batch_shapes": {
+        "AFLink": {
+          "[1, 1, 30, 3]": 2
+        },
+        "CLIP-ReID": {
+          "[15, 3, 256, 128]": 1,
+          "[16, 3, 256, 128]": 600
+        },
+        "DINO": {
+          "[1, 3, 750, 1333]": 1168
+        },
+        "GVHMR-network": {
+          "[4, 145, 1024]": 1
+        },
+        "HMR2": {
+          "[16, 3, 256, 256]": 36,
+          "[4, 3, 256, 256]": 1
+        },
+        "SMPL-COCO17": {
+          "[1, 63]": 4,
+          "[32, 63]": 36
+        },
+        "SMPL-vertices": {
+          "[1, 63]": 4,
+          "[32, 63]": 36
+        },
+        "ViTPose": {
+          "[16, 3, 256, 192]": 1170
+        }
+      },
+      "cli_wall_seconds": 739.7909388830012,
+      "cuda_sync_seconds": 0.175640909,
+      "gpu_timing": "host_wall",
+      "recorded_wall_seconds": 722.964598167,
+      "resources": {
+        "cuda": {
+          "cuda:0": {
+            "allocated_peak_bytes": 155129344,
+            "reserved_peak_bytes": 167772160
+          }
+        },
+        "nvml": {
+          "cuda:0": {
+            "total_bytes": 17103323136,
+            "used_peak_bytes": 1891733504
+          }
+        },
+        "ram_process_lifetime_peak_bytes": 3938643968,
+        "ram_rss_sampled_peak_bytes": 3938885632,
+        "system_memory_available_min_bytes": 30736031744,
+        "system_memory_total_bytes": 42061246464,
+        "temporary_disk_peak_bytes": 98700905
+      },
+      "sample_cost_median_ms": 5.7869395,
+      "progress": "outputs/i2363/i2363-qualification-v2/host/progress/9c634d0a51034d6f9cdb114695941e28/progress.json",
+      "recording": "outputs/i2363/i2363-qualification-v2/host/progress/9c634d0a51034d6f9cdb114695941e28/recording.json",
+      "exit_code": 0,
+      "outcome": "ok",
+      "validity_statistics": {
+        "ball_3d_frames": 0,
+        "player_joint_frames": [
+          290,
+          290,
+          290,
+          290
+        ],
+        "player_root_frames": [
+          289,
+          289,
+          289,
+          289
+        ],
+        "player_smpl_frames": [
+          289,
+          289,
+          289,
+          289
+        ]
+      },
+      "executed_nodes": 38,
+      "events": 86924,
+      "samples": 1252,
+      "stage_wall_seconds": {
+        "artifact_load": 2.695322424,
+        "batch_dispatch": 67.982855549,
+        "cuda_sync": 0.175640909,
+        "decode": 10.184221951,
+        "inference": 17.497748143,
+        "measurement": 185.140630512,
+        "model_load": 93.114360343,
+        "model_unload": 4.286948358,
+        "planning": 0.097825226,
+        "postprocess": 156.273076745,
+        "preprocess": 58.687820101,
+        "progress_write": 5.485296304,
+        "publication": 13.385324736,
+        "save": 2.20198546,
+        "transfer": 67.127713753,
+        "unattributed": 38.156660454,
+        "video_read": 0.471167199
+      },
+      "idle_cpu_top_10": [
+        {
+          "stage": "postprocess",
+          "operation": "player_triangulation",
+          "node": "player_triangulation",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 39.328624816,
+          "thread_wall_seconds": 39.517921843
+        },
+        {
+          "stage": "publication",
+          "operation": "ClipStore.record_export",
+          "node": "",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 5.1311719,
+          "thread_wall_seconds": 5.210989715
+        },
+        {
+          "stage": "postprocess",
+          "operation": "body_placement",
+          "node": "body_placement",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 5.061840187642462,
+          "thread_wall_seconds": 5.141832196
+        },
+        {
+          "stage": "preprocess",
+          "operation": "prepare_video_court",
+          "node": "",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 4.471883413,
+          "thread_wall_seconds": 4.557324145
+        },
+        {
+          "stage": "postprocess",
+          "operation": "gvhmr",
+          "node": "gvhmr",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.624522348,
+          "thread_wall_seconds": 2.643048337
+        },
+        {
+          "stage": "postprocess",
+          "operation": "person_tracking",
+          "node": "person_tracking/cam0",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.291723748,
+          "thread_wall_seconds": 2.306006363
+        },
+        {
+          "stage": "preprocess",
+          "operation": "input_assembly",
+          "node": "court_detection/cam0",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.275905521,
+          "thread_wall_seconds": 2.28018396
+        },
+        {
+          "stage": "preprocess",
+          "operation": "input_assembly",
+          "node": "court_detection/cam2",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.255891862,
+          "thread_wall_seconds": 2.259044642
+        },
+        {
+          "stage": "preprocess",
+          "operation": "input_assembly",
+          "node": "court_detection/cam3",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.047010892,
+          "thread_wall_seconds": 2.04876632
+        },
+        {
+          "stage": "preprocess",
+          "operation": "input_assembly",
+          "node": "court_detection/cam1",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 1.944324951,
+          "thread_wall_seconds": 1.948462472
+        }
+      ]
+    },
+    "relative_cli_wall_change": 0.21558474544146344,
+    "sync": {
+      "batch_shapes": {
+        "AFLink": {
+          "[1, 1, 30, 3]": 2
+        },
+        "CLIP-ReID": {
+          "[15, 3, 256, 128]": 1,
+          "[16, 3, 256, 128]": 600
+        },
+        "DINO": {
+          "[1, 3, 750, 1333]": 1168
+        },
+        "GVHMR-network": {
+          "[4, 145, 1024]": 1
+        },
+        "HMR2": {
+          "[16, 3, 256, 256]": 36,
+          "[4, 3, 256, 256]": 1
+        },
+        "SMPL-COCO17": {
+          "[1, 63]": 4,
+          "[32, 63]": 36
+        },
+        "SMPL-vertices": {
+          "[1, 63]": 4,
+          "[32, 63]": 36
+        },
+        "ViTPose": {
+          "[16, 3, 256, 192]": 1170
+        }
+      },
+      "cli_wall_seconds": 899.2785801219943,
+      "cuda_sync_seconds": 141.008635707,
+      "gpu_timing": "synchronized_wall",
+      "recorded_wall_seconds": 878.641456816,
+      "resources": {
+        "cuda": {
+          "cuda:0": {
+            "allocated_peak_bytes": 155129344,
+            "reserved_peak_bytes": 167772160
+          }
+        },
+        "nvml": {
+          "cuda:0": {
+            "total_bytes": 17103323136,
+            "used_peak_bytes": 1891733504
+          }
+        },
+        "ram_process_lifetime_peak_bytes": 3893989376,
+        "ram_rss_sampled_peak_bytes": 3894865920,
+        "system_memory_available_min_bytes": 24420880384,
+        "system_memory_total_bytes": 42061246464,
+        "temporary_disk_peak_bytes": 98700905
+      },
+      "sample_cost_median_ms": 8.87177,
+      "progress": "outputs/i2363/i2363-qualification-v2/sync/progress/1660c10f9f104aea84ab87f46d2c8cd2/progress.json",
+      "recording": "outputs/i2363/i2363-qualification-v2/sync/progress/1660c10f9f104aea84ab87f46d2c8cd2/recording.json",
+      "exit_code": 0,
+      "outcome": "ok",
+      "validity_statistics": {
+        "ball_3d_frames": 0,
+        "player_joint_frames": [
+          290,
+          290,
+          290,
+          290
+        ],
+        "player_root_frames": [
+          289,
+          289,
+          289,
+          289
+        ],
+        "player_smpl_frames": [
+          289,
+          289,
+          289,
+          289
+        ]
+      },
+      "executed_nodes": 38,
+      "events": 110122,
+      "samples": 1503,
+      "stage_wall_seconds": {
+        "artifact_load": 3.618740774,
+        "batch_dispatch": 72.999749504,
+        "cuda_sync": 141.008635707,
+        "decode": 22.735756826,
+        "inference": 24.626259881,
+        "measurement": 192.233286306,
+        "model_load": 113.682082302,
+        "model_unload": 6.531120911,
+        "planning": 0.154769087,
+        "postprocess": 100.336369755,
+        "preprocess": 121.519913657,
+        "progress_write": 6.083627665,
+        "publication": 15.807775453,
+        "save": 2.812639762,
+        "transfer": 7.367724352,
+        "unattributed": 46.577280491,
+        "video_read": 0.545724383
+      },
+      "idle_cpu_top_10": [
+        {
+          "stage": "postprocess",
+          "operation": "player_triangulation",
+          "node": "player_triangulation",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 55.31912637,
+          "thread_wall_seconds": 55.921353073
+        },
+        {
+          "stage": "publication",
+          "operation": "ClipStore.record_export",
+          "node": "",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 5.26168924,
+          "thread_wall_seconds": 7.315946002
+        },
+        {
+          "stage": "preprocess",
+          "operation": "prepare_video_court",
+          "node": "",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 4.894634178,
+          "thread_wall_seconds": 4.947601478
+        },
+        {
+          "stage": "postprocess",
+          "operation": "body_placement",
+          "node": "body_placement",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 4.170387236136251,
+          "thread_wall_seconds": 6.3071675
+        },
+        {
+          "stage": "postprocess",
+          "operation": "person_tracking",
+          "node": "person_tracking/cam0",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 3.250660117,
+          "thread_wall_seconds": 3.333995726
+        },
+        {
+          "stage": "postprocess",
+          "operation": "gvhmr",
+          "node": "gvhmr",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.870184749928729,
+          "thread_wall_seconds": 3.955731411
+        },
+        {
+          "stage": "preprocess",
+          "operation": "input_assembly",
+          "node": "court_detection/cam2",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.845274812,
+          "thread_wall_seconds": 2.870861784
+        },
+        {
+          "stage": "preprocess",
+          "operation": "input_assembly",
+          "node": "court_detection/cam0",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.733489683,
+          "thread_wall_seconds": 2.791000988
+        },
+        {
+          "stage": "postprocess",
+          "operation": "player_association",
+          "node": "player_association",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.477916252375152,
+          "thread_wall_seconds": 2.58835706
+        },
+        {
+          "stage": "preprocess",
+          "operation": "input_assembly",
+          "node": "court_detection/cam1",
+          "model": "",
+          "thread_role": "main",
+          "estimated_thread_cpu_seconds": 2.436664352,
+          "thread_wall_seconds": 2.460949065
+        }
+      ]
+    }
+  }
+}
