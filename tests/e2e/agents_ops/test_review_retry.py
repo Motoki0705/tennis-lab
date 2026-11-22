@@ -28,6 +28,13 @@ from tests.e2e.agents_ops.test_progression_cli import (
 SERVICE_UNAVAILABLE = "Codex backend 503 Service Unavailable"
 
 
+def startup_hook(p: ParentEnv, source: str, **env: str) -> dict[str, str]:
+    hook = p.root / "startup-hook"
+    hook.mkdir()
+    (hook / "sitecustomize.py").write_text(source)
+    return {**env, "PYTHONPATH": os.pathsep.join((str(hook), p.env["PYTHONPATH"]))}
+
+
 def retry_args(
     p: ParentEnv, value: dict[str, Any], *, failed_round: int = 1
 ) -> tuple[str, ...]:
@@ -83,9 +90,52 @@ def test_retry_after_503_obeys_current_head_ci(parent_env: ParentEnv, ci: str) -
     remote["prs"][0]["statusCheckRollup"][0]["conclusion"] = ci
     p.save(remote)
     args = retry_args(p, initial)
-    result = json.loads(p.cli(*args).stdout)
+    env = (
+        startup_hook(
+            p,
+            """import fcntl, os, subprocess, sys
+from pathlib import Path
+
+if Path(sys.argv[0]).name == 'merge_gate.py':
+    from lib.ops_review import parent_review_impl as review
+    from parent.policy import digest
+
+    def assert_operation_locked():
+        store = Path(os.environ['REVIEW_PARENT_STORE'])
+        with (store / ('operation-' + digest('o/r#1') + '.lock')).open('rb') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return
+        raise AssertionError('review launch does not hold the parent operation lock')
+
+    save = review.save
+
+    def checked_save(path, value):
+        if path.name == 'execution.json' and value['status'] == 'running':
+            assert_operation_locked()
+        save(path, value)
+
+    popen = subprocess.Popen
+
+    def checked_popen(command, *args, **kwargs):
+        if command[0] == os.environ['REVIEW_EXPECTED_RUNNER'] and '--profile' in command:
+            assert_operation_locked()
+        return popen(command, *args, **kwargs)
+
+    review.save = checked_save
+    subprocess.Popen = checked_popen
+""",
+            REVIEW_PARENT_STORE=str(state_file.parents[2]),
+            REVIEW_EXPECTED_RUNNER=str(fake),
+        )
+        if ci == "SUCCESS"
+        else None
+    )
+    result = json.loads(p.cli(*args, extra=env).stdout)
     join_controller(state_file)
     assert result["review"]["round"] == 2
+    assert "result" in result["review"], result["review"]
     assert result["review"]["result"]["reviewed_heads"] == {str(numbers[0]): head}
     assert result["review_history"][0]["failure"]["turn_end_reason"] == "runtime_error"
     usage = json.loads(
@@ -122,17 +172,16 @@ def test_concurrent_retry_reserves_each_round_once_and_enforces_limit(
     ready = Barrier(2, timeout=10)
     failure = {"REVIEW_AGENT_FINAL_EXIT": "1", "REVIEW_RUNTIME_REASON": "usage_limit"}
 
-    def retry() -> subprocess.CompletedProcess[str]:
+    def retry() -> tuple[int, str]:
         ready.wait()
-        return p.cli(*args, ok=None, extra=failure)
+        response = p.cli(*args, ok=None, extra=failure)
+        return int(response.returncode), str(response.stdout)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         first, second = pool.submit(retry), pool.submit(retry)
         responses = [first.result(), second.result()]
-    assert sorted(response.returncode for response in responses) == [0, 2]
-    paused = json.loads(
-        next(response.stdout for response in responses if response.returncode == 0)
-    )
+    assert sorted(code for code, _ in responses) == [0, 2]
+    paused = json.loads(next(stdout for code, stdout in responses if code == 0))
     assert paused["review"]["round"] == 2 and paused["status"] == "parent_wait"
     join_controller(state_file)
     assert p.cli(*args, ok=False).returncode == 2
@@ -194,6 +243,65 @@ def test_retry_rejects_unconfirmed_cleanup_changed_head_and_unauthorized_parent(
     assert p.cli(*args, ok=False).returncode == 2
     assert len(calls.read_text().splitlines()) == 1
     assert not (state_file.parent / "review-2").exists()
+    assert not any(c[:2] == ["pr", "merge"] for c in p.calls())
+
+
+@pytest.mark.parametrize("change", ["head", "authority"])
+def test_retry_rechecks_after_worktrees_are_ready(
+    parent_env: ParentEnv, change: str
+) -> None:
+    p = parent_env
+    numbers, fake, calls = prepared(p)
+    initial = request(p, numbers, fake, REVIEW_AGENT_FINAL_EXIT="1")
+    state_file = progression_path(p, initial)
+    join_controller(state_file)
+    reason = p.root / "revocation.md"
+    reason.write_text("レビュー起動前に実行根拠を取り消す。")
+    observed = p.root / "worktrees-ready"
+    env = startup_hook(
+        p,
+        """import json, os, subprocess, sys
+from contextlib import contextmanager
+from pathlib import Path
+
+if Path(sys.argv[0]).name == 'merge_gate.py':
+    from lib.ops_review import parent_review_impl as review
+    workspace = review.workspace
+
+    @contextmanager
+    def change_after_checkout(*args):
+        with workspace(*args) as cwd:
+            assert (cwd / 'pr-100/.git').is_file()
+            if os.environ['REVIEW_WORKSPACE_CHANGE'] == 'head':
+                path = Path(os.environ['PARENT_GH_STATE'])
+                remote = json.loads(path.read_text())
+                remote['prs'][0]['head']['sha'] = 'f' * 40
+                path.write_text(json.dumps(remote))
+            else:
+                subprocess.run(
+                    [sys.executable, '-m', 'parent', '--repo', 'o/r', '--parent', '1',
+                     'basis-revoke', '--reason-file', os.environ['REVIEW_REVOCATION_FILE']],
+                    check=True, timeout=30, capture_output=True, text=True,
+                )
+            Path(os.environ['REVIEW_WORKSPACE_CHANGED']).touch()
+            yield cwd
+
+    review.workspace = change_after_checkout
+""",
+        REVIEW_WORKSPACE_CHANGE=change,
+        REVIEW_REVOCATION_FILE=str(reason),
+        REVIEW_WORKSPACE_CHANGED=str(observed),
+    )
+    result = json.loads(p.cli(*retry_args(p, initial), extra=env).stdout)
+    join_controller(state_file)
+    assert observed.is_file(), result
+    assert len(calls.read_text().splitlines()) == 1
+    assert result["status"] == "parent_wait"
+    message = (
+        "previous review target and HEAD" if change == "head" else "有効な実行根拠"
+    )
+    assert message in result["review"]["error"]
+    assert not (state_file.parent / "review-2/execution.json").exists()
     assert not any(c[:2] == ["pr", "merge"] for c in p.calls())
 
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import sys
-from collections.abc import Callable
-from contextlib import ExitStack
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, ExitStack, contextmanager, nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -237,7 +237,11 @@ def completed_result(
 
 
 def run_review(
-    state: dict[str, Any], directory: Path, gh: GitHub, *, authorize: Callable[[], None]
+    state: dict[str, Any],
+    directory: Path,
+    gh: GitHub,
+    *,
+    retry_launch: Callable[[Callable[[], None]], AbstractContextManager[None]],
 ) -> dict[str, Any]:
     from dispatcher.runtime import gate
     from lib.opsproc import run_process_group
@@ -409,22 +413,30 @@ def run_review(
     )
     runtime = review_dir / "agent-runtime"
     scratch = workspace_path(root, request["review_run_id"])
-    if retry_heads is not None:
+    execution = {
+        "status": "running",
+        "agent_invocations": 1,
+        "guarded_launch": True,
+    }
+
+    def verify_heads() -> None:
         for target in request["prs"]:
             target_pr(gh, target, retry_heads)
-        authorize()
+
+    @contextmanager
+    def launch_retry() -> Iterator[None]:
+        with retry_launch(verify_heads):
+            save(execution_path, execution)
+            yield
+
     with ExitStack() as launch:
         lock_fd = launch.enter_context(gate(review_dir / "launch.lock"))
         if lock_fd is None:
             raise ValueError("reviewer launcher is already active")
-        # Persist the intent while the lock is held, before workspace creation
-        # or Popen. The runner inherits the lock even if the controller dies.
-        execution = {
-            "status": "running",
-            "agent_invocations": 1,
-            "guarded_launch": True,
-        }
-        save(execution_path, execution)
+        # The runner inherits the lock even if the controller dies. A retry
+        # commits its intent at launch, after the worktrees and final checks.
+        if retry_heads is None:
+            save(execution_path, execution)
         cwd = launch.enter_context(workspace(scratch, materials, context, diffs))
         run_process_group(
             [
@@ -461,6 +473,7 @@ def run_review(
             timeout=config.get("agent_timeout", 1800),
             env=runtime_env,
             pass_fds=(lock_fd,),
+            launch_context=launch_retry if retry_heads is not None else nullcontext,
         )
     result = completed_result(review_dir, materials, read(runtime / "result.json"))
     reviewed(operation, result)

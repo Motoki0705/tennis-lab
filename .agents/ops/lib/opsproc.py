@@ -19,7 +19,8 @@ import shlex
 import signal
 import subprocess
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from threading import Event
 from typing import TextIO
@@ -245,6 +246,7 @@ def run_process_group(
     cancel: Event | None = None,
     reap_descendants: bool = False,
     pass_fds: tuple[int, ...] = (),
+    launch_context: Callable[[], AbstractContextManager[None]] = nullcontext,
 ) -> str:
     """Run ``cmd`` in its own process group and return stdout.
 
@@ -259,25 +261,27 @@ def run_process_group(
     A dedicated job process can become a subreaper and also clean up detached children
     before waiting for inherited output pipes to close.
     Use ``pass_fds`` for descriptors the immediate child must retain across exec.
+    ``launch_context`` covers Popen and releases its locks before waiting for the child.
     """
     if cancel is not None and cancel.is_set():
         raise ProcessCancelled("process cancelled before launch")
     if reap_descendants:
         enable_child_subreaper()
-    try:
-        proc = subprocess.Popen(
-            list(cmd),
-            cwd=cwd,
-            text=True,
-            stdin=stdin_file,
-            stdout=subprocess.PIPE if stdout_file is None else stdout_file,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
-            env=None if env is None else dict(env),
-            pass_fds=pass_fds,
-        )
-    except FileNotFoundError as exc:
-        raise CommandError(f"{cmd[0]}: command not found") from exc
+    with launch_context():
+        try:
+            proc = subprocess.Popen(
+                list(cmd),
+                cwd=cwd,
+                text=True,
+                stdin=stdin_file,
+                stdout=subprocess.PIPE if stdout_file is None else stdout_file,
+                stderr=subprocess.PIPE,
+                start_new_session=True,
+                env=None if env is None else dict(env),
+                pass_fds=pass_fds,
+            )
+        except FileNotFoundError as exc:
+            raise CommandError(f"{cmd[0]}: command not found") from exc
     pgid = proc.pid  # session leader: its pid is the process group id
 
     def cleanup() -> list[int]:

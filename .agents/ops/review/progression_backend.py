@@ -6,7 +6,8 @@ import json
 import os
 import subprocess
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -74,18 +75,21 @@ class LiveBackend:
         self.gh = ProgressionGitHub(self.repo, clock=clock)
         self.gh.evidence_directory = store.directory / "evidence-issues"
 
+    def _owns(self, state: dict[str, Any]) -> bool:
+        row = self.store.parents.get(self.key, {})
+        return bool(
+            row.get("status") == "active"
+            and row.get("session") == state["owner"]
+            and row.get("generation") == state["generation"]
+        )
+
     def local(self, state: dict[str, Any]) -> str | None:
         if state["request"].get("kind") != "post_merge_confirmation" and not auto_merge(
             os.environ.get("AGENT_AUTO_MERGE")
         ):
             return "auto_merge_disabled"
         with self.store.consistent_snapshot():
-            row = self.store.parents.get(self.key, {})
-            if (
-                row.get("status") != "active"
-                or row.get("session") != state["owner"]
-                or row.get("generation") != state["generation"]
-            ):
+            if not self._owns(state):
                 return "owner_changed"
         return None
 
@@ -97,11 +101,25 @@ class LiveBackend:
             if authorization(session) != self.state["request"]["authorization"]:
                 raise ValueError("progression execution authority changed")
 
+    @contextmanager
+    def retry_launch(self, verify_heads: Callable[[], None]) -> Iterator[None]:
+        # The parent CLI uses this same operation lock for basis-revoke. Pin
+        # the owner through spawn, including changes made by the dispatcher.
+        with self.store.operation(self.key):
+            self.authorize()
+            with self.store.locked():
+                self.store.focus(self.key)
+                if not self._owns(self.state):
+                    raise ValueError("progression owner changed before review launch")
+                with self.store.unlocked_read():
+                    verify_heads()
+                yield
+
     def review(self, state: dict[str, Any], directory: Path) -> dict[str, Any]:
         from lib.ops_review.parent_review_impl import run_review
 
         self.authorize()
-        return run_review(state, directory, self.gh, authorize=self.authorize)
+        return run_review(state, directory, self.gh, retry_launch=self.retry_launch)
 
     def pr(self, number: int) -> dict[str, Any]:
         result = object_value(self.gh.get(f"repos/{self.repo}/pulls/{number}"))
