@@ -34,6 +34,8 @@ E: 是挂载到 `/mnt/wsl/tennis-data` 的 HDD ext4（`noatime`），保存权�
 Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必须在 readlink 前拒绝，以保持 dry-run 只读。
 管理 payload 应使用实际文件或硬链接；本工具不改写已有链接。
 
+[config.toml](config.toml) 设置 `worktree_outputs_on_mirror = true` 时，worktree 持久输出只放在 E:。此时 D: 的 `<main>/.worktree-outputs` 必须是字面目标恰为其 E: 对应路径的 symlink，目标是挂载上的实际目录；D: 实际目录、其他目标或缺失链接都报错。worktree 的 `outputs` 链接仍指向 `<main>/.worktree-outputs/<name>`。由于 D: 与 E: 经由链接指向同一份 bytes，这些输出在两层都不作为 mirror/evict/hydrate 单元，与 D: data 之间的 hardlink 以 `EXDEV` 失败。未设置该键时要求上述 D: 布局并拒绝链接化的 root。
+
 硬链接只能用于 D: 内或 E: 内，不能跨 tier。复制保留**单位内**硬链接，单位之间、tier 之间使用独立 inode。
 清理只删除目标单位的名字。审计区分逻辑大小、去重后的分配量、外部硬链接、预计可回收量与文件系统空闲差值。
 其他名字仍存在时，磁盘块可能完全不释放。hydrate 创建新的 D: inode，不恢复跨单位硬链接。

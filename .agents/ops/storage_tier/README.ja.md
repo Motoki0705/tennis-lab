@@ -36,6 +36,8 @@ storage CLIにはメインoutputsか `.worktree-outputs` の正規pathを指定�
 単位内のすべてのsymlinkを拒否する。LinuxのreadlinkはO_PATHのfdを使っても古いsymlinkのatimeを更新するため、
 読取専用dry-runを守るためにreadlink前に拒否する。管理payloadは実ファイル/hardlinkを使い、既存リンクは書き換えない。
 
+[config.toml](config.toml) の `worktree_outputs_on_mirror = true` では、worktreeの永続出力をE:だけに置く。このときD:の `<main>/.worktree-outputs` は、E:の対応pathをそのまま指すsymlinkでなければならない。リンク先はmount上の実ディレクトリとする。D:の実ディレクトリ、別のリンク先、リンクの欠落はエラーにする。worktreeの `outputs` リンクは引き続き `<main>/.worktree-outputs/<name>` を指す。リンクを通してD:とE:が同じbytesを指すので、これらの出力はどちらの層でもmirror/evict/hydrateの単位にしない。D:のdataとの間のhardlinkは `EXDEV` で失敗する。この設定がなければ上のD:配置を要求し、リンクにしたrootを拒否する。
+
 hardlinkはD:内またはE:内で使い、D:/E:間では使わない。コピーは**単位内**のhardlinkを維持し、
 別単位・別tierには独立したinodeを作る。削除するのは対象単位の名前だけ。記録には論理サイズ、
 重複を除いた割当量、外部hardlink、回収見積り、filesystem空きの実測差を分けて残す。

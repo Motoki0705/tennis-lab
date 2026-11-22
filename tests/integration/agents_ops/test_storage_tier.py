@@ -3414,3 +3414,39 @@ def test_orphan_stage_requires_explicit_archival_before_daily_cycle(lab: Lab) ->
         lab.filesystem.read_bytes(archive / "unverified.bin")
         == b"unrecorded orphan payload"
     )
+
+
+def test_e_resident_worktree_outputs_are_never_storage_units(lab: Lab) -> None:
+    """Through the link D: and E: name the same bytes; none may be evicted."""
+    import dataclasses
+
+    config = dataclasses.replace(lab.config, worktree_outputs_on_mirror=True)
+    main = lab.unit("outputs/task/train/experiment/run-001")
+    root = config.mirror / ".worktree-outputs"
+    run = root / "worker/task/evaluate/experiment/run-002"
+    run.mkdir(parents=True)
+    (run / "a.bin").write_bytes(b"only copy\n")
+    (config.repo / ".worktree-outputs").symlink_to(root, target_is_directory=True)
+    local = lab.layout.discover(config, config.repo)
+    assert local.units == [main] and local.errors == []
+    archive = lab.layout.discover(config, config.mirror)
+    assert archive.units == [] and archive.errors == []
+    assert not any(".worktree-outputs" in path for path in archive.unmanaged)
+    engine = lab.module.Engine(
+        config,
+        inspector=lab.usage.Inspector(lab.proc),
+        mount_check=lambda config: None,
+        clock=lambda: lab.now,
+    )
+    for operation in ("mirror", "evict", "hydrate"):
+        try:
+            code, _ = engine.run(operation, [".worktree-outputs/worker"], dry_run=False)
+        except lab.filesystem.StorageError:
+            code = 1
+        assert code != 0
+    assert (run / "a.bin").read_bytes() == b"only copy\n"
+    (config.repo / ".worktree-outputs").unlink()
+    (config.repo / ".worktree-outputs").symlink_to(
+        config.repo, target_is_directory=True
+    )
+    assert lab.layout.discover(config, config.repo).errors
