@@ -43,6 +43,15 @@ symlinks inside a unit are rejected. Linux readlink updates old symlink atimes e
 with an O_PATH descriptor; rejecting them before readlink keeps dry-runs read-only.
 Use ordinary files/hardlinks for managed payloads; this tool never rewrites existing links.
 
+With `worktree_outputs_on_mirror = true` in [config.toml](config.toml), persistent
+worktree outputs live only on E:. D: `<main>/.worktree-outputs` must then be a symlink
+whose literal target is its exact E: counterpart, a real directory on the mount; a
+real D: directory, another target or a missing link is an error. Worktree `outputs`
+links still name `<main>/.worktree-outputs/<name>`. Because D: and E: name the same
+bytes through the link, these outputs are never mirror/evict/hydrate units on either
+tier, and hardlinks between them and D: data fail with `EXDEV`. Without the key the
+D: layout above is required and a linked root is rejected.
+
 Hardlinks work within D: and within E:, never across them. Copies preserve hardlinks
 **within** one unit, but use independent inodes between units and tiers. Eviction
 removes only that unit's names. The audit separates logical bytes, unique allocated
