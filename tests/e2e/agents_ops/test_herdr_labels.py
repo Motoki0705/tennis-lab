@@ -1804,6 +1804,11 @@ def test_rejected_assignment_comment_still_syncs_and_can_be_retried(
         # needs the record of the current generation before it can act on it.
         blocked = p.cli("create-child", "--spec", agreement, ok=False, extra=extra)
         assert "assignment record missing" in blocked.stderr
+        offset = len(p.calls())
+        wrong_retry = p.cli("register", ok=False, extra=extra)
+        retry_receipt = json.loads(wrong_retry.stdout)
+        assert "handoff --accept" in retry_receipt["assignment_evidence"]["retry"]
+        assert not any("POST" in call for call in p.calls()[offset:])
 
     endpoint = f"repos/o/r/issues/{evidence_number(p.state())}/comments"
     offset = len(p.calls())
@@ -1820,4 +1825,7 @@ def test_rejected_assignment_comment_still_syncs_and_can_be_retried(
         for c in p.comments()
     ]
     assert [e["generation"] for e in records if e["event"] == event] == [generation]
+    if event == "handoff":
+        p.cli("register", extra=extra)
+        assert sum("POST" in c and endpoint in c for c in p.calls()[offset:]) == 1
     p.cli("agree", "--spec", agreement, extra=extra)

@@ -54,7 +54,7 @@ from .policy import (
     registration,
     replace_section,
 )
-from .state import Store
+from .state import Store, start_fresh_assignment
 
 TASK_MARKER = re.compile(
     r"(?m)^<!-- parent-task:v1 parent=([1-9][0-9]*) key=([a-z0-9][a-z0-9-]{0,63}) spec=([0-9a-f]{64}) -->$"
@@ -270,32 +270,24 @@ class ParentSession:
         row = self.row
         new_assignment = row.get("status") != "active"
         if new_assignment:
-            row = {
-                **row,
-                "session": self.session,
-                "status": "active",
-                "generation": row.get("generation", 0) + 1,
-                "tasks": row.get("tasks", {}),
-                "reviews": row.get("reviews", []),
-            }
-            for field in (
-                "owner_runtime",
-                "handoff_generation",
-                "handoff_note_sha256",
-                "handoff_recovery",
-            ):
-                row.pop(field, None)
+            row = start_fresh_assignment(
+                row, self.session, row.get("generation", 0) + 1, origin="register"
+            )
             self.store.parents[self.key] = row
         runtime_changed = self.capture_owner_runtime()
         if new_assignment or runtime_changed or row.get("display_summary") != summary:
             row["display_summary"] = summary
             self.store.save()
+        if self._assignment_record_event() != "assigned":
+            return self._finish_assignment()
         return self._finish_assignment(
             {"event": "assigned"},
             "担当開始。担当指定と要件合意は別段階です。要件を確認してから分割・委任します。",
         )
 
-    def _finish_assignment(self, event: dict[str, Any], text: str) -> dict[str, Any]:
+    def _finish_assignment(
+        self, event: dict[str, Any] | None = None, text: str = ""
+    ) -> dict[str, Any]:
         # The owner has already been saved. Reporting a failed evidence step
         # must still let the CLI confirm the display destination for this owner.
         row = self.row
@@ -308,10 +300,13 @@ class ParentSession:
             "phase": None,
         }
         try:
-            self.post({**event, "generation": row["generation"]}, text)
-            if event["event"] == "handoff":
-                return self.reconcile()
-            receipt["phase"] = PHASES[phase(self.history())]
+            if event is not None:
+                self.post({**event, "generation": row["generation"]}, text)
+                if event["event"] == "handoff":
+                    return self.reconcile()
+            history = self.history()
+            self.require_assignment_record(history)
+            receipt["phase"] = PHASES[phase(history)]
         except (
             ValueError,
             OSError,
@@ -322,28 +317,56 @@ class ParentSession:
             receipt["assignment_evidence"] = {
                 "status": "error",
                 "error": str(exc),
-                "retry": ASSIGNMENT_RETRIES[event["event"]],
+                "retry": ASSIGNMENT_RETRIES[
+                    self._assignment_record_event() or "assigned"
+                ],
             }
         return receipt
+
+    def _assignment_record_event(
+        self, history: list[dict[str, Any]] | None = None
+    ) -> str | None:
+        row = self.row
+        origin = row.get("assignment_origin")
+        if origin is not None:
+            return {"register": "assigned", "handoff": "handoff", "dispatcher": None}[
+                origin
+            ]
+        generation = row["generation"]
+        handoff = row.get("handoff_generation")
+        if handoff == generation:
+            return "handoff"
+        if handoff is None and "handoff_note_sha256" in row:
+            # Older registers could retain an earlier handoff's note. Use
+            # current-generation history to recognize a completed re-register.
+            events = {
+                e["event"] for e in history or () if e.get("generation") == generation
+            }
+            return (
+                "assigned"
+                if "assigned" in events and "handoff" not in events
+                else "handoff"
+            )
+        dispatch = row.get("dispatch")
+        if (
+            dispatch is not None
+            and dispatch.get("candidate", {}).get("generation", generation)
+            == generation
+        ):
+            return None
+        return "assigned"
 
     def _missing_assignment_record(self, history: list[dict[str, Any]]) -> str | None:
         row = self.row
         if row.get("status") != "active":
             return None
-        generation = row["generation"]
-        handoff = row.get("handoff_generation") == generation
-        # A dispatcher controller may be rebound without changing assignment.
-        # Require its handoff comment only for an actual manual handoff generation.
-        if row.get("dispatch") is not None and not handoff:
-            return None
-        events = ("handoff",) if handoff else ASSIGNMENT_RETRIES
-        if any(
-            event["event"] in events and event.get("generation") == generation
+        required = self._assignment_record_event(history)
+        if required is not None and not any(
+            event["event"] == required and event.get("generation") == row["generation"]
             for event in history
         ):
-            return None
-        event = "handoff" if "handoff_note_sha256" in row else "assigned"
-        return ASSIGNMENT_RETRIES[event]
+            return ASSIGNMENT_RETRIES[required]
+        return None
 
     def require_assignment_record(self, history: list[dict[str, Any]]) -> None:
         if retry := self._missing_assignment_record(history):
@@ -527,7 +550,7 @@ class ParentSession:
             row
             and row["status"] == "active"
             and row["session"] == self.session
-            and row.get("handoff_generation", row["generation"]) == row["generation"]
+            and self._assignment_record_event() == "handoff"
             and row.get("handoff_note_sha256") == digest(note)
         )
         if same_retry:
@@ -577,11 +600,12 @@ class ParentSession:
             session=self.session,
             status="active",
             generation=generation,
-            handoff_generation=generation,
+            assignment_origin="handoff",
             handoff_note_sha256=digest(note),
             handoff_recovery=recover,
             display_summary=summary,
         )
+        row.pop("handoff_generation", None)
         self.capture_owner_runtime()
         if row.get("dispatch") is not None:
             from .development import transfer_controller
