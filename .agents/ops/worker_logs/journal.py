@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import errno
 import fcntl
 import json
 import os
 import re
+import stat
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -129,6 +131,48 @@ def require(condition: bool, code: str, detail: str | None = None) -> None:
         raise PublicationError(code, detail)
 
 
+def failure_diagnostic(exc: Exception) -> str:
+    """Summarize the failure without persisting exception messages or arguments."""
+    if isinstance(exc, OSError):
+        number = exc.errno
+        reason = errno.errorcode.get(number) if type(number) is int else None
+        reason = reason or "unknown errno"
+        summary = f"System operation failed ({reason})"
+    elif isinstance(exc, UnicodeError):
+        summary = "Publication text could not be encoded or decoded"
+    elif isinstance(exc, KeyError):
+        summary = "Required publication data was missing"
+    elif isinstance(exc, (TypeError, AttributeError)):
+        summary = "Unexpected publication data type"
+    elif isinstance(exc, ValueError):
+        summary = "Invalid publication data or state"
+    else:
+        summary = "Unexpected publication failure"
+    return f"{type(exc).__name__}: {summary}"
+
+
+def unavailable_reason(exc: Exception) -> str:
+    if isinstance(exc, PermissionError):
+        return "journal_access_denied"
+    if isinstance(exc, FileNotFoundError):
+        return "journal_not_found"
+    if isinstance(exc, OSError):
+        return "journal_read_failed"
+    if isinstance(exc, PublicationError):
+        code = str(exc)
+        if code == "journal_unavailable":
+            return "journal_read_failed"
+        # read() preserves its public error code while distinguishing IO failures.
+        if code == "journal_invalid" and exc.detail in (
+            "journal_access_denied",
+            "journal_not_found",
+            "journal_read_failed",
+        ):
+            return exc.detail
+        return code
+    return "journal_invalid"
+
+
 def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     require(len(pairs) == len({k for k, _ in pairs}), "duplicate_json_key")
     return dict(pairs)
@@ -189,8 +233,14 @@ def locked(path: Path) -> Iterator[None]:
 
 def read(path: Path) -> dict[str, Any]:
     try:
-        require(not path.is_symlink(), "private_storage_symlink")
-        row = decode(path.read_bytes())
+        mode = path.lstat().st_mode
+        require(not stat.S_ISLNK(mode), "private_storage_symlink")
+        require(stat.S_ISREG(mode), "journal_invalid", "journal_read_failed")
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise PublicationError("journal_invalid", unavailable_reason(exc)) from None
+    try:
+        row = decode(raw)
         require(
             type(row.get("version")) is int and row["version"] == 1, "journal_version"
         )
@@ -232,7 +282,7 @@ def read(path: Path) -> dict[str, Any]:
                 "journal_source",
             )
         return row
-    except (OSError, ValueError, KeyError, TypeError):
+    except (ValueError, KeyError, TypeError):
         raise PublicationError("journal_invalid") from None
 
 
@@ -242,7 +292,54 @@ def fail(path: Path, row: dict[str, Any], code: str, *, state: str = "blocked") 
     atomic(path, row)
 
 
+def unstarted(row: dict[str, Any]) -> bool:
+    if row.get("stage") != "not_started" and row.get("error") != "runner_not_started":
+        return False
+    directory = row["source"].get("run_directory")
+    require(
+        row.get("state") == "worker_failed"
+        and row.get("stage") == "not_started"
+        and row.get("error") == "runner_not_started"
+        and isinstance(directory, str)
+        and Path(directory).is_absolute()
+        and row.keys().isdisjoint(
+            {
+                "receipt",
+                "files",
+                "base",
+                "head",
+                "branch",
+                "pr_number",
+                "publication_batch",
+                "merge_commit",
+                "main_observed",
+                "merge_http_status",
+            }
+        ),
+        "journal_invalid",
+    )
+    return True
+
+
+def retryable_rejection(row: dict[str, Any]) -> bool:
+    return bool(
+        row["state"] == "blocked"
+        and row.get("stage") == "merge_rejected"
+        and row.get("merge_http_status") == 405
+        and row.get("error") == "merge_conflict"
+        and row.get("merge_attempted") is False
+        and "files" in row
+    )
+
+
+def retry_action(row: dict[str, Any]) -> str | None:
+    if row["state"] == "blocked" and not retryable_rejection(row):
+        return "After fixing the failure, rerun publish-worker-log with --child and --retry."
+    return None
+
+
 def view(row: dict[str, Any]) -> dict[str, Any]:
+    unstarted(row)
     source = row["source"]
     require(
         type(source.get("sequence")) is int and source["sequence"] > 0, "journal_turn"
@@ -282,6 +379,9 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
         "pr": number,
         "saved_to_main": row["state"] == "merged",
     }
+    action = retry_action(row)
+    if action is not None:
+        result["next_action"] = action
     if "publication_batch" in row:
         result["batch_first_turn"] = row["publication_batch"]
     if "merge_http_status" in row:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import importlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -25,6 +26,7 @@ from tests.support.agents_ops.model_pins import (
     WORKER_DEFAULT_MODEL,
     previous_config,
 )
+from tests.support.agents_ops.worker_logs import LogEnv
 
 ENTRY = """
 import os, sys
@@ -60,6 +62,28 @@ if os.environ.get("MANUAL_ADMISSION_FAILURE"):
             raise ValueError("injected admission rejection before Popen")
         return original_popen(command, *args, **kwargs)
     subprocess.Popen = rejected_popen
+if os.environ.get("MANUAL_ENVIRONMENT_TEST"):
+    from decision_logs import parent_commands
+    from parent import improvement_runtime, log_publication
+    from parent.state import Store
+    from worker_logs import service
+
+    def unexpected_write(*args, **kwargs):
+        raise AssertionError("environment refusal performed a write")
+
+    parent_commands.begin = unexpected_write
+    log_publication.continue_workers = unexpected_write
+    Store.save = unexpected_write
+    service.capture = unexpected_write
+    if os.environ["MANUAL_ENVIRONMENT_TEST"] == "late-python":
+        require = improvement_runtime.require
+
+        def remove_python_after_admission(*args, **kwargs):
+            require(*args, **kwargs)
+            if len(args) == 2:
+                manual_workers.RUNNER_PYTHON.unlink()
+
+        improvement_runtime.require = remove_python_after_admission
 from parent.cli_impl import main
 sys.exit(main(sys.argv[2:]))
 """
@@ -545,6 +569,54 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
     assert plan["active_reservations"] == []
 
 
+def test_resume_rechecks_capacity_before_committing_reservation(
+    reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = reserved
+    p.cli(
+        "configure-delegation",
+        "--max-parallel-children",
+        "1",
+        "--reason-file",
+        p.note(),
+    )
+    run(p)
+    ended(p)
+    before = task(p)
+    p.child("other")
+    competing_tree = p.worktree("other")
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    api = importlib.import_module("parent.manual_workers")
+    monkeypatch.setattr(api, "RUNNER", p.root / "fake-runner")
+    admission = importlib.import_module("parent.improvement_runtime")
+    execute = admission.execute_manual
+
+    def delegate_then_execute(*args: Any, **kwargs: Any) -> Any:
+        p.cli(*delegation_args(competing_tree, child=11))
+        return execute(*args, **kwargs)
+
+    monkeypatch.setattr(admission, "execute_manual", delegate_then_execute)
+    registry = store(p)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    with pytest.raises(api.WorkerCapacityUnavailable, match="reservation limit"):
+        api.run_worker(
+            gh,
+            registry,
+            1,
+            "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+            child=10,
+            prompt=Path(p.note()),
+            resume=True,
+            restart_evidence="前回runの終了確認済み",
+        )
+    assert task(p) == before
+    assert json.loads(p.cli("status").stdout)["launch_plan"]["active_reservations"] == [
+        11
+    ]
+
+
 def test_resume_uses_latest_run_without_implicitly_releasing_slot(
     reserved: ParentEnv,
 ) -> None:
@@ -763,33 +835,158 @@ def test_registration_rejects_wrong_contract_without_saving(
     assert store(p).read_data() == before
 
 
-@pytest.mark.parametrize("preflight", [False, True])
-def test_runner_failure_preserves_record_and_exit_code(
-    reserved: ParentEnv, preflight: bool
+def test_runner_failure_preserves_record_and_exit_code(reserved: ParentEnv) -> None:
+    p = reserved
+    result = run(p, ok=False, MANUAL_RUNNER_EXIT="7")
+    output = json.loads(result.stdout)
+    assert output["exit_code"] == result.returncode == 7
+    assert output["runner_summary"]["exit_code"] == 7
+    assert len(task(p)["worker_runs"]) == 1 and "worker_ended" in task(p)
+    assert output["final_file"] == str(latest(p) / "final.md")
+
+
+@pytest.mark.parametrize("missing", ["python", "runner", "late-python"])
+def test_runner_environment_refuses_before_reserving_or_capturing(
+    reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch, missing: str
 ) -> None:
     p = reserved
-    result = run(
+    before = task(p)
+    tree = Path(before["worktree"])
+    checkout_ops = tree / ".agents/ops"
+    shutil.copytree(OPS, checkout_ops, ignore=shutil.ignore_patterns("__pycache__"))
+    assert not (tree / ".venv").exists()
+    required = tree / ".venv/bin/python"
+    if missing == "late-python":
+        required.parent.mkdir(parents=True)
+        required.symlink_to(sys.executable)
+    runner = checkout_ops / "lib/agent_exec.sh"
+    if missing == "runner":
+        required = runner
+        required.chmod(0o600)
+    fixture_root = p.root / "publication-fixture"
+    fixture_root.mkdir()
+    logs = LogEnv(fixture_root, monkeypatch)
+    logs.ready(legacy=True)
+    shutil.copytree(logs.state / "worker-logs", state_dir(p) / "worker-logs")
+
+    def state_files() -> dict[Path, bytes]:
+        return {path: path.read_bytes() for path in state_dir(p).rglob("*.json")}
+
+    saved = state_files()
+    result = manual(
         p,
+        "run-worker",
+        "--child",
+        "10",
+        "--prompt-file",
+        p.note(),
         ok=False,
-        **(
-            {"MANUAL_PREFLIGHT_FAILURE": "1"}
-            if preflight
-            else {"MANUAL_RUNNER_EXIT": "7"}
-        ),
+        runner=runner,
+        PYTHONPATH=str(checkout_ops),
+        MANUAL_ENVIRONMENT_TEST=missing,
     )
-    output = json.loads(result.stdout)
-    assert output["exit_code"] == result.returncode == (2 if preflight else 7)
-    assert (output["runner_summary"] is None) == preflight
-    if preflight:
-        # The launcher was spawned; its exit code and absent run dir do not
-        # prove that no descendant started. Keep the reservation for recovery.
-        assert len(task(p)["worker_runs"]) == 1
-        assert output["launch_state"] == "runtime_unconfirmed"
-        assert "worker_ended" not in task(p)
-        assert not task(p)["preflight"]["turns"][-1].get("cancelled")
+    assert result.returncode == 2
+    assert f"requires an executable file: {required}" in result.stderr
+    assert task(p) == before and not (state_dir(p) / "worker-runs").exists()
+    assert state_files() == saved
+
+
+@pytest.mark.parametrize("exit_evidence", ["pid_identity", "reaped"])
+def test_cancel_unstarted_launch_closes_log_and_retries_same_delegation(
+    reserved: ParentEnv, exit_evidence: str
+) -> None:
+    p = reserved
+    failed = run(p, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    output = json.loads(failed.stdout)
+    assert output["exit_code"] == failed.returncode == 2
+    assert output["launch_state"] == "runtime_unconfirmed"
+    current = task(p)
+    directory = latest(p)
+    assert output["run_dir"] == str(directory) and not directory.exists()
+    assert "worker_ended" not in current
+    log = Path(current["preflight"]["turns"][-1]["log"]["journal"])
+    assert json.loads(log.read_text())["stage"] == "awaiting_final"
+    assert run(p, ok=False).returncode == 2
+    assert task(p) == current
+    inspection = json.loads(p.cli("inspect-worker", "--child", "10").stdout)
+    assert inspection["run_dir"] == str(directory)
+    assert inspection["result"] == "runtime_unconfirmed"
+
+    launcher = current["manual_launcher"]
+    if exit_evidence == "pid_identity":
+        # Existing reservations have a launcher identity but no wait receipt.
+        assert launcher["process"] is not None
+        launcher.pop("exit_code")
     else:
-        assert len(task(p)["worker_runs"]) == 1 and "worker_ended" in task(p)
-        assert output["final_file"] == str(latest(p) / "final.md")
+        # The launcher can exit before its PID identity is sampled.
+        assert launcher["exit_code"] == 2
+        launcher["process"] = None
+    update(p, manual_launcher=launcher)
+    result = p.cli("cancel-worker-launch", "--child", "10", "--run-dir", str(directory))
+    cancelled = json.loads(result.stdout)
+    assert cancelled["result"] == "cancelled_unstarted"
+    assert cancelled["log_publication"]["stage"] == "not_started"
+    updated = task(p)
+    assert updated["worker_runs"] == [] and "manual_launcher" not in updated
+    assert updated["preflight"]["turns"][-1]["cancelled"]
+
+    restarted = json.loads(run(p).stdout)
+    assert (
+        restarted["delegation_id"]
+        == current["delegation_id"]
+        == cancelled["delegation_id"]
+    )
+    assert restarted["run_dir"] != str(directory) and not directory.exists()
+    assert restarted["runner_summary"]["result"] == "completed"
+    status = p.cli("worker-log-status", "--child", "10", "--turn", "1", ok=False)
+    (old,) = json.loads(status.stdout)["logs"]
+    assert (old["state"], old["stage"], old["error"]) == (
+        "worker_failed",
+        "not_started",
+        "runner_not_started",
+    )
+
+
+@pytest.mark.parametrize(
+    ("evidence", "error"),
+    [
+        ("live", "manual launcher is still alive"),
+        ("unknown", "manual launcher liveness is unconfirmed"),
+        ("directory", "run directory exists"),
+        ("receipt", "could not confirm unstarted worker log"),
+        ("publication", "could not confirm unstarted worker log"),
+    ],
+)
+def test_cancel_worker_launch_requires_death_and_absent_directory(
+    reserved: ParentEnv, evidence: str, error: str
+) -> None:
+    p = reserved
+    run(p, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    directory = latest(p)
+    launcher = task(p)["manual_launcher"]
+    log = Path(task(p)["preflight"]["turns"][-1]["log"]["journal"])
+    if evidence == "directory":
+        directory.mkdir(parents=True)
+    elif evidence in {"receipt", "publication"}:
+        saved = json.loads(log.read_text())
+        if evidence == "receipt":
+            saved["receipt"] = {"record": {"result": "completed"}}
+        else:
+            saved["base"] = "a" * 40
+        log.write_text(json.dumps(saved))
+    else:
+        launcher.pop("exit_code")
+        identity = importlib.import_module("lib.opsproc").process_identity(os.getpid())
+        assert identity is not None
+        launcher["process"] = identity if evidence == "live" else None
+        update(p, manual_launcher=launcher)
+    before = task(p)
+    original = log.read_bytes()
+    result = p.cli(
+        "cancel-worker-launch", "--child", "10", "--run-dir", str(directory), ok=False
+    )
+    assert result.returncode == 2 and error in result.stderr
+    assert task(p) == before and log.read_bytes() == original
 
 
 @pytest.mark.parametrize("failure", ["command", "http403", "transport", "value", "os"])
@@ -1334,6 +1531,9 @@ def test_from_commit_prepares_and_starts_separate_manual_workers(
     p.child("worker")
     for name in ("data", "outputs", "ckpt", ".venv"):
         (p.repo / name).mkdir(exist_ok=True)
+    python = p.repo / ".venv/bin/python"
+    python.parent.mkdir()
+    python.symlink_to(sys.executable)
 
     # The CLI loads storage config from its own runtime. Point a private copy
     # at the test mirror so the real checkout launcher can prepare the links.

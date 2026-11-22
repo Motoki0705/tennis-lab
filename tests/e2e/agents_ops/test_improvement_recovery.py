@@ -205,10 +205,8 @@ def test_manual_revocation_between_preparation_and_spawn_never_starts_runner(
     )
 
     def revoke_then_execute(*args: Any, **kwargs: Any) -> Any:
-        assert (
-            json.loads(decide(p, "revoke", value, ok=False).stdout)["state"]
-            == "revoked"
-        )
+        stopped = json.loads(decide(p, "revoke", value).stdout)
+        assert stopped["state"] == "revoked" and stopped["stop"]["state"] == "stopped"
         return real_execute(*args, **kwargs)
 
     monkeypatch.setattr(admission, "execute_manual", revoke_then_execute)

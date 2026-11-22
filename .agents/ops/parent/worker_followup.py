@@ -32,6 +32,49 @@ def current(task: dict[str, Any]) -> dict[str, Any] | None:
     return cast(dict[str, Any], record)
 
 
+def for_run(
+    task: dict[str, Any], directories: list[Path], index: int
+) -> dict[str, Any] | None:
+    history = task.get("manual_followup_history", {})
+    if not isinstance(history, dict):
+        raise ValueError("invalid manual worker follow-up history")
+    latest = current(task)
+    matches = []
+    first = directories[index]
+    successors = {str(path) for path in directories[index:]}
+    for record in [latest, *history.values()]:
+        if record is None:
+            continue
+        if not isinstance(record, dict):
+            raise ValueError("invalid saved manual worker follow-up")
+        end = record.get("run_dir")
+        if (
+            record.get("delegation_id") != task["delegation_id"]
+            or end not in successors
+        ):
+            continue
+        members = record.get("run_dirs")
+        # Older records only name the first and current directories. Automatic
+        # resumes are contiguous while that follow-up owns the worker.
+        if members is None:
+            belongs = end == str(first) or any(
+                path.name == record["id"] for path in directories[: index + 1]
+            )
+        else:
+            if (
+                not isinstance(members, list)
+                or any(not isinstance(path, str) for path in members)
+                or end not in members
+            ):
+                raise ValueError("invalid manual follow-up run directories")
+            belongs = str(first) in members
+        if belongs:
+            matches.append(record)
+    if len(matches) > 1:
+        raise ValueError("ambiguous manual worker follow-up")
+    return matches[0] if matches else None
+
+
 def same_owner(row: dict[str, Any], record: dict[str, Any]) -> bool:
     return (
         row.get("status") == "active"
@@ -66,6 +109,8 @@ def reserve(
 ) -> None:
     record = current(task)
     if automatic is None:
+        if record is not None:
+            task.setdefault("manual_followup_history", {})[record["id"]] = record
         record = {
             "id": directory.name,
             "delegation_id": task["delegation_id"],
@@ -74,6 +119,7 @@ def reserve(
             "resumptions": list(record["resumptions"]) if record else [],
             "wait": None,
             "monitor_started": False,
+            "run_dirs": [],
         }
         task["manual_followup"] = record
     assert record is not None
@@ -81,6 +127,8 @@ def reserve(
         # Consume the observed event only when this transaction claims a slot
         # and saves the new turn. A full parent can leave it pending.
         record["resumptions"].append(event_key(record["wait"]))
+    if "run_dirs" in record:
+        record["run_dirs"].append(str(directory))
     record.update(
         state="running",
         run_dir=str(directory),

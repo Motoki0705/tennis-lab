@@ -132,11 +132,12 @@ class Engine:
         path: Path,
         backend: Backend,
         *,
+        state: dict[str, Any] | None = None,
         clock: Callable[[], float] = time.time,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.path, self.backend, self.clock, self.sleep = path, backend, clock, sleep
-        self.state = read(path)
+        self.state = read(path) if state is None else state
         if self.state.get("schema_version") != 1:
             raise ValueError("unknown progression state version")
         numbers = [p["number"] for p in self.state["request"]["prs"]]
@@ -287,8 +288,8 @@ class Engine:
         ):
             review.update(stage="accepted", major_repaired=evidence)
         elif review["stage"] == "parent_wait":
-            # Re-enter the same round. Its durable launch intent either yields
-            # the saved result or blocks an uncertain second invocation.
+            # A normal continuation re-enters the same round. A retry has
+            # already reserved a new round in prepare().
             review.update(stage="running")
         for target in self.state["targets"].values():
             if prs is not None and target["number"] not in prs:

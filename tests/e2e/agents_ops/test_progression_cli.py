@@ -81,6 +81,54 @@ def request(
     return cast(dict[str, Any], json.loads(result.stdout))
 
 
+def progression_path(p: ParentEnv, value: dict[str, Any]) -> Path:
+    return (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/progressions"
+        / str(value["review_run_id"])
+        / "state.json"
+    )
+
+
+def join_controller(state_file: Path) -> None:
+    with state_file.with_suffix(".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+
+
+def interrupt_review(p: ParentEnv, state_file: Path, *, when: str) -> None:
+    # Run the production controller with a process exit at one atomic write.
+    entry = """
+import os
+import sys
+from lib.ops_review import merge_gate_impl, parent_review_impl
+
+save = parent_review_impl.save
+boundary = sys.argv[2]
+
+def interrupt(path, value):
+    match = path.parent.name == 'review-1' and path.name == boundary
+    if match and boundary == 'result.json':
+        os._exit(75)
+    save(path, value)
+    if match and boundary == 'execution.json':
+        os._exit(75)
+
+parent_review_impl.save = interrupt
+sys.argv[1:] = ['--state', sys.argv[1]]
+sys.exit(merge_gate_impl.main())
+"""
+    process = subprocess.run(
+        [sys.executable, "-c", entry, str(state_file), when],
+        cwd=p.repo,
+        env=p.env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert process.returncode == 75, process.stdout + process.stderr
+
+
 @pytest.mark.parametrize("base", ["main", "trunk"])
 def test_public_request_detached_review_merge_completion(
     parent_env: ParentEnv, base: str
@@ -127,13 +175,26 @@ def test_public_major_continue_and_history_display(parent_env: ParentEnv) -> Non
                 "verdict": "major",
                 "summary": "修正が必要",
                 "major": [
-                    {"prs": numbers, "title": "誤動作", "detail": "修正して確認する。"}
+                    {
+                        "prs": [999, *numbers, 999],
+                        "title": "誤動作",
+                        "detail": "修正して確認する。",
+                    }
                 ],
             }
         )
     )
     result = request(p, numbers, fake)
     assert result["status"] == "parent_wait"
+    finding = result["review"]["result"]["major"][0]
+    assert finding["prs"] == numbers and finding["related_prs"] == [999]
+    saved = json.loads(
+        (progression_path(p, result).parent / "review-1/result.json").read_text()
+    )
+    assert saved["major"] == [finding]
+    comment = p.comments(numbers[0])[0]["body"]
+    assert f"対象 PR #{numbers[0]}。参照 PR #999。" in comment
+    assert p.comments(999) == []
     assert not any(c[:2] == ["pr", "merge"] for c in p.calls())
     Path(p.env["REVIEW_AGENT_OUTPUT"]).write_text(
         json.dumps({"verdict": "approve", "summary": "修正確認済み", "major": []})
@@ -620,25 +681,59 @@ def test_saved_terminal_review_recovers_after_controller_error(
             }
         )
     )
-    result = request(p, numbers, fake)
-    directory = (
-        Path(p.env["XDG_STATE_HOME"])
-        / "tennis-lab-agents/parent-sessions/progressions"
-        / result["review_run_id"]
+    result = request(p, numbers, fake, AGENT_AUTO_MERGE="0")
+    state_file = progression_path(p, result)
+    join_controller(state_file)
+    interrupt_review(p, state_file, when="result.json")
+    review_dir = state_file.parent / "review-1"
+    assert (
+        json.loads((review_dir / "execution.json").read_text())["status"] == "running"
     )
-    state_file = directory / "state.json"
-    state = json.loads(state_file.read_text())
-    state["review"] = {"round": 1, "stage": "parent_wait", "error": "interrupted"}
-    state_file.write_text(json.dumps(state))
-    (directory / "review-1/result.json").unlink()
+    runtime = json.loads((review_dir / "agent-runtime/result.json").read_text())
+    assert runtime["result"] == "completed" and runtime["cleanup_complete"]
+    assert not (review_dir / "result.json").exists()
+    assert p.comments(numbers[0]) == []
+    retry = p.cli(
+        "merge-continue",
+        "--run-id",
+        result["review_run_id"],
+        "--retry-review",
+        "1",
+        "--instruction-file",
+        p.note("recover"),
+        ok=False,
+    )
+    assert "review runtime completed" in retry.stderr
     recovered = json.loads(
         p.cli(
             "merge-continue", "--instruction-file", p.note("recover"), "--wait"
         ).stdout
     )
     assert recovered["review"]["result"]["verdict"] == "major"
+    assert (
+        json.loads((review_dir / "result.json").read_text())
+        == recovered["review"]["result"]
+    )
+    assert len(p.comments(numbers[0])) == 1
     assert len(calls.read_text().splitlines()) == 1
     assert "merge" not in [c[1] for c in p.calls() if c[:1] == ["pr"]]
+    join_controller(state_file)
+    adopted_state = state_file.read_bytes()
+    before_adoption = json.loads(adopted_state)
+    before_adoption["review"] = {"round": 1, "stage": "running"}
+    state_file.write_text(json.dumps(before_adoption))
+    rejected = p.cli(
+        "merge-continue",
+        "--run-id",
+        result["review_run_id"],
+        "--retry-review",
+        "1",
+        "--instruction-file",
+        p.note("recovery after saving the result"),
+        ok=False,
+    )
+    assert "without a saved result" in rejected.stderr
+    state_file.write_bytes(adopted_state)
     final = json.loads(
         p.cli(
             "merge-continue",

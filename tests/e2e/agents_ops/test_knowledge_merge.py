@@ -518,6 +518,15 @@ def test_knowledge_continuation_checks_attestation_and_pr_body_at_new_head(
     successful_run(p, state, pr)
     p.save(state)
     continuation = ("merge-continue", "--run-id", initial["review_run_id"])
+    rejected = p.cli(
+        *continuation,
+        "--retry-review",
+        "1",
+        "--instruction-file",
+        p.note(acceptance_evidence(pr)),
+        ok=False,
+    )
+    assert "--retry-review requires a formal review run" in rejected.stderr
 
     for changes, reason in [
         ({"pr_number": 102}, "identify each selected PR"),

@@ -65,6 +65,58 @@ def test_publication_accepts_canonical_repo_url(
     assert logs.github.calls == ["create", "merge"]
 
 
+@pytest.mark.parametrize("recovered", [True, False])
+def test_publication_rereads_worker_pr_head_after_push(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, recovered: bool
+) -> None:
+    publication = importlib.import_module("worker_logs.publication")
+    path = logs.ready()
+    delays: list[float] = []
+    snapshots = []
+    create, get = logs.github.create, logs.github.get
+
+    def create_with_stale_head(branch: str, title: str, body: str) -> dict[str, Any]:
+        pr: dict[str, Any] = create(branch, title, body)
+        if recovered:
+            pr["head"]["sha"] = ""
+        return pr
+
+    def observe(number: int) -> dict[str, Any]:
+        pr: dict[str, Any] = get(number)
+        assert git(logs.upstream, "rev-parse", pr["head"]["ref"]) == pr["head"]["sha"]
+        snapshots.append(journal.read(path))
+        if not recovered or len(snapshots) in (1, 4):
+            pr["head"]["sha"] = logs.base
+        return pr
+
+    monkeypatch.setattr(publication, "sleep", delays.append, raising=False)
+    monkeypatch.setattr(logs.github, "create", create_with_stale_head)
+    monkeypatch.setattr(logs.github, "get", observe)
+    value = logs.publisher(path).publish()
+    if recovered:
+        assert value["saved_to_main"] and logs.github.calls == ["create", "merge"]
+        # Create returned an empty HEAD, the first reread returned the base,
+        # and the final pre-merge check also observed the old HEAD once.
+        assert len(delays) == 3
+    else:
+        assert value["error"] == "pr_identity_changed" and not value["saved_to_main"]
+        assert len(snapshots) == 4 and len(delays) == 3
+        assert all(row == snapshots[0] for row in snapshots)
+        assert logs.github.calls == ["create"] and logs.github.main() == logs.base
+        saved = journal.read(path)
+        for key in (
+            "source",
+            "receipt",
+            "files",
+            "base",
+            "head",
+            "branch",
+            "pr_number",
+        ):
+            assert saved[key] == snapshots[0][key]
+        assert not saved.get("merge_attempted")
+
+
 @pytest.mark.parametrize(
     "repair_id", ["a", "f" * 32, "12345678-1234-1234-1234-123456789abc"]
 )

@@ -40,6 +40,7 @@ COMMANDS = {
     "continue-worker": "continue_ai",
     "record-worker-run": "record",
     "record-worker-ended": "verify",
+    "cancel-worker-launch": "stop",
     "record-result": "verify",
     "decide-worker-plan": "record",
     "note": "record",
