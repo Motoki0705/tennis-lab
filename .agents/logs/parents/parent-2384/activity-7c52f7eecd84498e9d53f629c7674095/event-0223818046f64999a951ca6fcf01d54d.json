@@ -1,0 +1,85 @@
+{
+  "record": {
+    "data": {
+      "action_id": "b11c44502787434c8543d2b99a0c5a3b",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.merge-continue; artifact=saved parent verification; content_sha256=975744f4c1eb5ee5349e5a4c563296fd6a79bfc8e9b9daa86003534a85f37a28; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=975744f4c1eb5ee5349e5a4c563296fd6a79bfc8e9b9daa86003534a85f37a28; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2399]; 正式レビュー `[private identifier]` の major 指摘 5 件をすべて修正し（`bb3fa5178`・`main` 取込 `a4d43f38f`）、さらに実機 Ubuntu / WSL2 既定環境の上位ディレクトリ（`0775` 単一ユーザー専用グループ UPG）の互換対応（`958a940be66b0c9031ea36a50e7a100aa8458f40`）を追加・検証しました。",
+      "verifies": [
+        "3d1531c03cfd4fe6866c8641c773d4fa"
+      ]
+    },
+    "id": "0223818046f64999a951ca6fcf01d54d",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "7c52f7eecd84498e9d53f629c7674095",
+      "delegation": null,
+      "issue": null,
+      "parent": 2384,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-22T15:50:50.358463+00:00"
+      },
+      "recorded_at": "2026-11-22T15:50:50.358486+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 1,
+    "version": 2
+  }
+}
