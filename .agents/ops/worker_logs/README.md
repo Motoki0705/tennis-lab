@@ -149,7 +149,8 @@ workerの終了値はrunnerの結果であり、公開CLIも保留なら0を返�
 | `legacy / pre_capture_turn` | 導入前。公開せず次の正規turnから記録 |
 
 起動前に拒否され実行されなかった指示は `worker_failed / not_started` として残す。
-`--retry` はその記録の最終報告を探さず、後続の公開可能なログを処理する。指示の再試行には別のsequenceを使う。
+未起動が確認されて取り消した指示も同じ状態で終結し、親の公開残件から外す。
+`--retry` は後続の公開可能なログを処理する。指示の再試行には別のsequenceを使う。
 
 commit直後のjournal中断は期待した親・内容からcommitを再利用する。PR作成直後・merge直後の応答喪失も
 同じbranch・marker・HEADを照合して再利用する。dirtyな専用worktreeや破損journalを自動reset・初期化しない。
@@ -163,7 +164,8 @@ PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致
 
 ## 続行・一括回収・終了checkpoint
 
-新規turnの公開時点は上記の節目に集約する。移行前のturnは従来どおり、親の書込み操作で続行し、次のworker予約前にも照合する。
+新規turnの公開時点は上記の節目に集約する。移行前のturnは親の書込み操作で続行する。
+手動 `run-worker` では実行環境の拒否を先に処理し、公開の続行はターンの結果を返すときに行う。
 所有確認は親operation lock→registry lockで行い、公開中は両方を解放する。
 各journalの公開開始直前にも担当・generationを照合し、引継ぎ後は以降のjournalを開始しない。
 同じ照合をsupervisorと明示的な一括回収にも渡し、orphan PRの巡回も世代変更で停止する。

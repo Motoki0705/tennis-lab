@@ -431,6 +431,23 @@ def test_queue_waits_for_every_job_and_duplicate_controller_cannot_resume(
     prompt = (latest(p) / "prompt.md").read_text()
     assert "outputs/100_1_first" in prompt and "outputs/101_1_second" in prompt
 
+    first_run = state_dir(p) / task(p)["worker_runs"][0]["run_dir"]
+    second_run = latest(p)
+    failed = json.loads(
+        run(p, "--resume", ok=False, MANUAL_PREFLIGHT_FAILURE="1").stdout
+    )
+    p.cli("cancel-worker-launch", "--child", "10", "--run-dir", failed["run_dir"])
+    assert task(p)["manual_followup"]["run_dirs"] == []
+    assert joined(p)["followup"]["id"] == result["followup"]["id"]
+    run(p, "--resume")
+    assert latest(p) != second_run
+    for anchor in ("none", str(first_run)):
+        original = json.loads(
+            manual(p, "wait-worker", "--child", "10", "--after-run", anchor).stdout
+        )
+        assert original["run_dir"] == str(second_run)
+        assert original["followup"] == result["followup"]
+
 
 @pytest.mark.parametrize(
     ("repeated", "count", "reason"),

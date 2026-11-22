@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from dispatcher.runtime import Runtime
+from dispatcher.runtime import Runtime, alive
 
 from . import manual_workers, worker_followup, worker_slots
 from .policy import object_value
@@ -29,11 +29,7 @@ class Target:
     worker: str = "primary"
     parent_binding: tuple[Any, ...] | None = None
     first_run: Path | None = None
-
-    @property
-    def followup(self) -> dict[str, Any] | None:
-        record = worker_followup.current(self.task) if self.job is None else None
-        return record if record and record["run_dir"] == str(self.directory) else None
+    followup: dict[str, Any] | None = None
 
     @property
     def delegation(self) -> tuple[Any, ...] | None:
@@ -111,7 +107,10 @@ def target(
     if after_run is None:
         if not runs:
             raise ValueError("no recorded run for the current manual worker delegation")
-        return Target(task, manual_workers.run_directory(store, runs[-1]))
+        directory = manual_workers.run_directory(store, runs[-1])
+        return Target(
+            task, directory, followup=worker_followup.for_run(task, [directory], 0)
+        )
 
     directories = [manual_workers.run_directory(store, run) for run in runs]
     index = 0
@@ -122,18 +121,17 @@ def target(
                 "--after-run must identify a recorded run of the current delegation"
             )
         index = matches[0] + 1
-    first = directory = directories[index] if index < len(directories) else None
-    followup = worker_followup.current(task)
-    if first is not None and followup and followup["run_dir"]:
-        followup_dir = Path(followup["run_dir"])
-        # The follow-up chain keeps the first manual directory's name as its ID
-        # while automatic resumes advance its current run.
-        if followup_dir in directories[index:] and any(
-            path.name == followup["id"] for path in directories[: index + 1]
-        ):
-            directory = followup_dir
+    first = directories[index] if index < len(directories) else None
+    followup = (
+        worker_followup.for_run(task, directories, index) if first is not None else None
+    )
     return Target(
-        task, directory, worker=name, parent_binding=parent_binding, first_run=first
+        task,
+        Path(followup["run_dir"]) if followup else first,
+        worker=name,
+        parent_binding=parent_binding,
+        first_run=first,
+        followup=followup,
     )
 
 
@@ -166,6 +164,22 @@ def validate_evidence(record: dict[str, Any]) -> None:
         or (result == "failed" and (code == 0 or reason == "completed"))
     ):
         raise ValueError("invalid runner termination evidence")
+
+
+def repair_starting(
+    task: dict[str, Any], directory: Path, attempt: dict[str, Any]
+) -> bool:
+    if attempt["launch_state"] == "reserved":
+        return True
+    if attempt["launch_state"] != "starting":
+        return False
+    launcher = task.get("manual_launcher", {})
+    if launcher.get("directory") == str(directory):
+        if type(launcher.get("exit_code")) is int:
+            return False
+        if alive(launcher.get("process")):
+            return True
+    return alive(attempt.get("claim_process"))
 
 
 def wait_worker(
@@ -258,15 +272,32 @@ def wait_worker(
         if directory is None:
             sleep(1.0 if remaining is None else min(1.0, remaining))
             continue
-        followup = current.followup
-        if followup and not (directory / "result.json").exists():
-            if followup["state"] != "running" or not worker_followup.live(followup):
-                latest = read_bound()
-                if latest.followup != followup or (directory / "result.json").exists():
-                    continue
-                return 2, response("liveness_unknown", "followup_runtime_unconfirmed")
-            sleep(1.0 if remaining is None else min(1.0, remaining))
-            continue
+        if not (directory / "result.json").exists():
+            followup = current.followup
+            repair = (
+                manual_workers.repair_for_run(current.task, directory)
+                if current.job is None and followup is None
+                else None
+            )
+            if followup or repair:
+                starting = (
+                    followup["state"] == "running" and worker_followup.live(followup)
+                    if followup is not None
+                    else repair_starting(current.task, directory, repair)
+                    if repair is not None
+                    else False
+                )
+                if not starting:
+                    if read_bound() != current or (directory / "result.json").exists():
+                        continue
+                    return 2, response(
+                        "liveness_unknown",
+                        "followup_runtime_unconfirmed"
+                        if followup
+                        else "repair_runtime_unconfirmed",
+                    )
+                sleep(1.0 if remaining is None else min(1.0, remaining))
+                continue
         # While the CLI monitors a job, the recovered runtime cannot change.
         # Inspect again only if the current turn is still live or a resume
         # created a new run directory.

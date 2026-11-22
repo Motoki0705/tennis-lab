@@ -17,6 +17,8 @@
 
 `runtime_unconfirmed` の手動起動は、`run-worker` または `inspect-worker` が返した `run_dir` を `cancel-worker-launch --child CHILD --run-dir RUN_DIR` で指定できる。複数担当なら `--worker` も指定する。最新の予約を照合し、ランナーの消滅とrun dirの不在を確認できた場合に、ログ捕捉を `worker_failed / not_started` として終結して起動予約を取り消す。その後は同じ委任で元の `run-worker` を再実行する。消滅を確認できない場合やrun dirが存在する場合は、runnerの終了と回収の照合へ進む。
 
+正式レビューの修正ターンも確認済みの未起動予約を取り消せる。同じ修正ID・PR・指示で元のrunから再開すると、新しいrun dirを割り当てる。取消済みのログは `worker-log-status` で確認できる。
+
 通常の修正は同じワーカーのsession・branch・worktreeで継続する。手動委任で元sessionが使えないと保存記録から確かめた場合に限り、`run-worker --replace-session --prompt-file next.md --restart-evidence-file reason.md` で次の指示と、終了・再開不能の証拠を渡す。
 
 旧Astra担当に修正が残るときは、終了・回収を確認し、元のPR・branch・worktree、残るmajorと検証結果を引き継ぐ。手動は `delegate --handoff-from-astra 旧委任ID --restart-evidence-file 引継ぎ文` のあと通常の `run-worker`、自律は `start-worker --handoff-from-astra 旧委任ID --handoff-evidence-file 引継ぎ文`。各コマンドには通常の担当・worktree等の引数も渡す。

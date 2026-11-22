@@ -44,6 +44,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --chi
 
 - `launch_plan` の `action=ready`、既存予約、依存・枠の待機理由を確認する。別の担当を同じIssueへ追加するときは、成果PRがopenでも新しい名前とworktreeを指定できる。複数人になったら、既存担当への操作にも `--worker primary` または補助担当名を付ける。
 - 初回の手動起動を待つには `wait-worker --child 1217 --worker quality --after-run none --timeout 900` を使う。再開時は起動前に `inspect-worker` などで直前の `run_dir` を控え、`--after-run RUN_DIR` を指定する。指定後の最初のrunが記録されるまで待つ。オプションを省略すると記録済みの最新runを待つ。
+- `--after-run` は選んだrunの自動再開系列を追い、後続の手動起動後もその系列の結果を返す。正式レビューの手動修正ターンも、修正予約からrunnerの記録が作られるまで待てる。
 - `wait_state=ended` は、宣言を受けた監視と自動再開がある場合はその一連の終了まで含む。最後のrunの成否は `runner_summary`、成果は `final_file`、監視の成否・親の判断・再開回数は `followup` で確認する。終了コード124は読取側の時間満了。同じ指定で再待機できる。終了コード2は理由を読んで [復旧](recovery.md) へ進む。
 - 調査だけを任せるターンは `--planning`。結果から次の方針を決め、必要に応じて `decide-worker-plan` で回答を結び付ける。同じ担当に続きやmajor修正を頼むときは、終了・回収を照合して手動の `run-worker --resume` または自律の `continue-worker` を使う。
 - 補助担当はcommitまたは測定結果を返す。統合担当が競合を解消して統合HEADを検証し、担当Issueを閉じるPRに `Closes #1217` を書く。親はPRのbranch・HEADと条件ごとの証拠を確かめ、[正式レビュー](review.md) の `review-request` へ一度渡す。個別に受入だけを記録する場合は `record-result`。

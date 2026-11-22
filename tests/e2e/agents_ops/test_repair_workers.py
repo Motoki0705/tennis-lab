@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import importlib
 import json
-import socket
 import subprocess
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -23,6 +23,7 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.e2e.agents_ops.test_wait_worker import command, connected, listening, message
 from tests.unit.agents_ops.test_repair_turn import report
 
 
@@ -74,27 +75,55 @@ def test_same_repair_reservation_before_during_and_after_launch(
     )
     socket_path = p.root / "repair.sock"
     # A socket handshake holds the launched runner before it creates a receipt.
-    with socket.socket(socket.AF_UNIX) as listener, ThreadPoolExecutor() as executor:
-        listener.settimeout(30)
-        listener.bind(str(socket_path))
-        listener.listen()
-        launched = executor.submit(
-            manual,
-            p,
-            *args,
-            runner=runner,
-            MANUAL_REPAIR_SOCKET=str(socket_path),
-            MANUAL_PLANNING_FINAL=json.dumps(report()),
-        )
-        connection, _ = listener.accept()
-        with connection:
-            connection.settimeout(30)
-            assert connection.recv(7) == b"started"
-            duplicate = json.loads(manual(p, *args, runner=runner).stdout)
-            assert duplicate["launch_state"] == "starting"
-            assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2
-            connection.sendall(b"x")
-        result = json.loads(launched.result(timeout=45).stdout)
+    with tempfile.TemporaryDirectory(prefix="repair-wait-") as temp:
+        pending = Path(temp) / "pending.sock"
+        with listening(pending) as waiting_server, listening(socket_path) as listener:
+            waiter = subprocess.Popen(
+                command(
+                    runner, "wait-worker", "--child", "10", "--after-run", str(first)
+                ),
+                cwd=p.repo,
+                env={**p.env, "WAIT_PENDING_SOCKET": str(pending)},
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            try:
+                with connected(waiting_server) as waiting:
+                    assert message(waiting) == b"pending\n"
+                    assert waiter.poll() is None and not latest(p).exists()
+                    waiting.sendall(b"C")
+                with ThreadPoolExecutor() as executor:
+                    launched = executor.submit(
+                        manual,
+                        p,
+                        *args,
+                        runner=runner,
+                        MANUAL_REPAIR_SOCKET=str(socket_path),
+                        MANUAL_PLANNING_FINAL=json.dumps(report()),
+                    )
+                    with connected(listener) as connection:
+                        assert connection.recv(7) == b"started"
+                        assert waiter.poll() is None
+                        duplicate = json.loads(manual(p, *args, runner=runner).stdout)
+                        assert duplicate["launch_state"] == "starting"
+                        assert (
+                            len(
+                                (p.root / "runner-calls.jsonl").read_text().splitlines()
+                            )
+                            == 2
+                        )
+                        connection.sendall(b"x")
+                    result = json.loads(launched.result(timeout=45).stdout)
+                stdout, stderr = waiter.communicate(timeout=15)
+                assert waiter.returncode == 0, stderr + stdout
+            finally:
+                if waiter.poll() is None:
+                    waiter.kill()
+                    waiter.communicate(timeout=10)
+    waited = json.loads(stdout)
+    assert waited["run_dir"] == result["run_dir"]
+    assert waited["wait_state"] == "ended" and waited["cleanup_complete"]
     ended = json.loads(manual(p, *args, runner=runner).stdout)
     assert ended["launch_state"] == "ended"
     assert result["run_dir"] == ended["run_dir"]
@@ -208,6 +237,57 @@ def test_rejected_caller_cannot_reset_a_competing_repair_launch(
     replay = run(p, "--resume", "--repair-id", "ci-race", "--repair-pr", "42")
     assert json.loads(replay.stdout)["launch_state"] == "starting"
     assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2
+
+
+def test_confirmed_unstarted_repair_can_retry_only_the_same_request(
+    reserved: ParentEnv,
+) -> None:
+    p = reserved
+    first = creating_worker(p)
+    args = ("--resume", "--repair-id", "ci-cancelled", "--repair-pr", "42")
+    failed = json.loads(run(p, *args, ok=False, MANUAL_PREFLIGHT_FAILURE="1").stdout)
+    assert failed["launch_state"] == "runtime_unconfirmed"
+    directory = Path(failed["run_dir"])
+    delegation = task(p)["delegation_id"]
+    assert task(p)["repair_attempts"]["ci-cancelled"]["launch_state"] == "starting"
+    assert not directory.exists()
+    replay = json.loads(run(p, *args).stdout)
+    assert replay["run_dir"] == str(directory) and replay["launch_state"] == "starting"
+
+    result = p.cli("cancel-worker-launch", "--child", "10", "--run-dir", str(directory))
+    assert json.loads(result.stdout)["log_publication"]["stage"] == "not_started"
+    attempt = task(p)["repair_attempts"]["ci-cancelled"]
+    assert (
+        attempt["launch_state"] == "cancelled_unstarted"
+        and "launch_claim" not in attempt
+    )
+    assert latest(p) == first
+    changed = manual(
+        p,
+        "run-worker",
+        "--child",
+        "10",
+        "--prompt-file",
+        p.note("変更した修正指示"),
+        *args,
+        ok=False,
+    )
+    assert "already bound" in changed.stderr
+
+    restarted = json.loads(
+        run(p, *args, MANUAL_PLANNING_FINAL=json.dumps(report())).stdout
+    )
+    assert restarted["delegation_id"] == delegation
+    assert restarted["run_dir"] != str(directory)
+    assert json.loads(run(p, *args).stdout)["launch_state"] == "ended"
+    calls = (p.root / "runner-calls.jsonl").read_text().splitlines()
+    assert len(calls) == 3
+    record = json.loads((latest(p) / "result.json").read_text())
+    assert record["contract"]["repair"] == attempt["request"]
+    assert (
+        record["runtime"]["session_id"]
+        == json.loads((first / "result.json").read_text())["runtime"]["session_id"]
+    )
 
 
 @pytest.mark.parametrize(

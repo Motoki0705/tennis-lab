@@ -128,7 +128,7 @@ def remaining_publications(
     result: list[RemainingPublication] = []
     for path in worker_paths(repo, parent, state_dir=state_dir):
         row = worker_row(path, repo)
-        if row["state"] in {"merged", "legacy"}:
+        if row["state"] in {"merged", "legacy"} or journal.unstarted(row):
             continue
         source = row["source"]
         result.append(
@@ -233,6 +233,7 @@ def continue_workers(
                 or only is not None
                 and key not in only
                 or row["state"] in {"merged", "legacy"}
+                or journal.unstarted(row)
             ):
                 continue
             if row.get("publication_mode") == "delegation_batch" and not milestone:

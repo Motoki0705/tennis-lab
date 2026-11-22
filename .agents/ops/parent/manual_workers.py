@@ -9,6 +9,8 @@ import os
 import re
 import subprocess
 import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -38,7 +40,7 @@ from .policy import closing_issues, digest, nonempty, object_value
 from .session import ParentSession
 from .snapshot import git, validate_worktree
 from .state import RegistryConflict, Store, unique_object
-from .worker_instruction import prepare_instruction
+from .worker_instruction import PreparedInstruction, prepare_instruction
 
 RUNNER_LIB = Path(__file__).resolve().parents[1] / "lib"
 RUNNER = RUNNER_LIB / "agent_exec.sh"
@@ -172,6 +174,16 @@ def latest_run(session: ParentSession, task: dict[str, Any]) -> Path:
     return current_runs(session, task)[-1]
 
 
+def repair_for_run(task: dict[str, Any], directory: Path) -> dict[str, Any] | None:
+    for attempt in task.get("repair_attempts", {}).values():
+        if attempt["delegation_id"] != task["delegation_id"]:
+            continue
+        command = attempt["command"]
+        if command[command.index("--run-dir") + 1] == str(directory):
+            return object_value(attempt)
+    return None
+
+
 def matching_contract(task: dict[str, Any], record: dict[str, Any]) -> None:
     contract = object_value(record.get("contract"))
     cwd = contract.get("cwd")
@@ -243,6 +255,8 @@ def append_run(
     model: str,
     model_reason: str | None,
     turn: dict[str, Any] | None = None,
+    *,
+    persist: bool = True,
 ) -> None:
     root = session.store.directory.resolve()
     path = directory.resolve()
@@ -260,7 +274,8 @@ def append_run(
         },
     ]
     task.update(model=model, model_reason=model_reason)
-    session.store.save()
+    if persist:
+        session.store.save()
 
 
 def record_worker_run(
@@ -478,6 +493,30 @@ def replacement_evidence(
     }
 
 
+@dataclass(frozen=True)
+class PreparedRun:
+    command: list[str]
+    delegation: str
+    instruction: str
+    log: tuple[str, PreparedInstruction] | None = None
+
+
+def capture_run(
+    session: ParentSession, child: int, body: str, instruction: PreparedInstruction
+) -> None:
+    phase = session.worker_task(child)["preflight"]
+    # Log capture annotates legacy turns. Preserve replaced lineages.
+    old_turns = (
+        copy.deepcopy(phase["turns"][:-1])
+        if phase.get("session_replacements")
+        else None
+    )
+    with session.unlocked() as external:
+        worker_logs.capture(external, child, body, instruction)
+    if old_turns is not None:
+        phase["turns"][:-1] = old_turns
+
+
 def prepare_run(
     session: ParentSession,
     child: int,
@@ -491,7 +530,9 @@ def prepare_run(
     replace_session: bool = False,
     repair: dict[str, Any] | None = None,
     automatic: str | None = None,
-) -> tuple[list[str], str, str]:
+    *,
+    persist: bool = True,
+) -> PreparedRun:
     task = current_task(session, child)
     worker_followup.check_admission(session.row, task, automatic)
     if automatic is not None:
@@ -541,7 +582,16 @@ def prepare_run(
                     "repair ID is already bound to another request/delegation"
                 )
             implementation_model(model, previous=task["model"])
-            return list(saved["command"]), task["delegation_id"], saved["instruction"]
+            if saved["launch_state"] != "cancelled_unstarted":
+                return PreparedRun(
+                    list(saved["command"]), task["delegation_id"], saved["instruction"]
+                )
+            command = saved["command"]
+            if (
+                str(latest_run(session, task))
+                != command[command.index("--resume-from") + 1]
+            ):
+                raise ValueError("cancelled repair must resume the same worker run")
     if replace_session and resume:
         raise ValueError("--replace-session and --resume are mutually exclusive")
     if replace_session:
@@ -766,16 +816,9 @@ def prepare_run(
         worker=session.worker,
     )
     text = prepared_instruction.text
-    # Log capture annotates legacy turns. Preserve replaced lineages on every turn.
-    old_turns = (
-        copy.deepcopy(phase["turns"][:-1])
-        if phase.get("session_replacements")
-        else None
-    )
-    with session.unlocked() as external:
-        worker_logs.capture(external, child, items[child].body, prepared_instruction)
-    if old_turns is not None:
-        phase["turns"][:-1] = old_turns
+    if persist:
+        require_runner_environment()
+        capture_run(session, child, items[child].body, prepared_instruction)
     task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
         text.encode("utf-8")
     ).hexdigest()
@@ -811,8 +854,14 @@ def prepare_run(
         model,
         model_reason,
         turn,
+        persist=persist,
     )
-    return command, task["delegation_id"], text
+    return PreparedRun(
+        command,
+        task["delegation_id"],
+        text,
+        (items[child].body, prepared_instruction) if not persist else None,
+    )
 
 
 def rollback_launch(
@@ -858,12 +907,18 @@ def rollback_launch(
     followup = worker_followup.current(task)
     if followup and followup["run_dir"] == str(directory):
         automatic = followup["id"] != directory.name
+        if "run_dirs" in followup:
+            followup["run_dirs"] = [
+                path for path in followup["run_dirs"] if path != str(directory)
+            ]
         followup.update(
             state="needs_parent" if automatic else "error",
             reason=reason
             + (": " + stderr.decode(errors="replace") if automatic else ""),
             run_dir=str(run_directory(store, runs[-2]))
-            if len(runs) > 1 and runs[-2]["delegation_id"] == task["delegation_id"]
+            if automatic
+            and len(runs) > 1
+            and runs[-2]["delegation_id"] == task["delegation_id"]
             else None,
         )
     store.save()
@@ -937,9 +992,16 @@ def cancel_worker_launch(
         or turns[-1].get("source") != str(directory)
         or turns[-1].get("cancelled")
         or turns[-1]["snapshot"] != runs[-1].get("preflight")
-        or "repair" in turns[-1]
     ):
         raise ValueError("no matching manual worker turn to cancel")
+    attempt = repair_for_run(task, directory)
+    if "repair" in turns[-1] and (
+        attempt is None
+        or attempt["launch_state"] != "starting"
+        or not attempt.get("launch_claim")
+        or attempt["request"] != turns[-1]["repair"]
+    ):
+        raise ValueError("no matching started repair claim to cancel")
     launcher = object_value(task.get("manual_launcher", {}))
     if launcher.get("directory") != str(directory):
         raise ValueError("manual launcher liveness is unconfirmed")
@@ -955,6 +1017,10 @@ def cancel_worker_launch(
             "could not confirm unstarted worker log; inspect the journal before retrying"
         )
     evidence = "Manual launcher exited without creating the reserved run directory."
+    if attempt is not None:
+        attempt["launch_state"] = "cancelled_unstarted"
+        attempt.pop("launch_claim", None)
+        attempt.pop("claim_process", None)
     rollback_launch(
         session.store,
         task,
@@ -992,18 +1058,21 @@ def run_worker(
     repair: dict[str, Any] | None = None,
     worker: str | None = None,
     automatic: str | None = None,
+    begin_capture: Callable[[], None] | None = None,
 ) -> tuple[int, dict[str, Any]]:
     if automatic is not None and (not resume or repair or replace_session):
         raise ValueError("automatic follow-up requires a normal session resume")
     require_runner_environment()
     if repair is not None:
         gh.targeted_history = True
+    announcements: list[Callable[[], None]] = []
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
         worker = worker_slots.select(
             session.row, child, worker, creating=base_ref is not None
         )
         session.worker = worker
+        previous_task = copy.deepcopy(session.worker_task(child))
         if automatic is None:
             session.agreed()
         if base_ref is not None:
@@ -1027,7 +1096,14 @@ def run_worker(
             existing = session.worker_task(child)
             if not existing.get("delegated"):
                 session.delegate(
-                    child, "codex", branch, tree, None, None, base_ref=base_ref
+                    child,
+                    "codex",
+                    branch,
+                    tree,
+                    None,
+                    None,
+                    base_ref=base_ref,
+                    deferred=announcements,
                 )
             elif (
                 existing.get("worker_runs")
@@ -1048,7 +1124,7 @@ def run_worker(
                         store.directory,
                     )
         previous_ended = copy.deepcopy(current_task(session, child).get("worker_ended"))
-        command, delegation, instruction = prepare_run(
+        prepared = prepare_run(
             session,
             child,
             prompt,
@@ -1061,6 +1137,12 @@ def run_worker(
             replace_session,
             repair,
             automatic,
+            persist=False,
+        )
+        command, delegation, instruction = (
+            prepared.command,
+            prepared.delegation,
+            prepared.instruction,
         )
         if repair is not None:
             attempt = current_task(session, child)["repair_attempts"][
@@ -1068,18 +1150,10 @@ def run_worker(
             ]
             if attempt["launch_state"] != "reserved":
                 return 0, repair_receipt(child, delegation, command, attempt)
-        log_path = (
-            session.worker_task(child)["preflight"]["turns"][-1]
-            .get("log", {})
-            .get("journal")
-        )
-        from decision_logs.observations import bind_worker_task
-
-        bind_worker_task(session.worker_task(child))
         reserved_owner = {
             k: session.row[k] for k in ("session", "status", "generation")
         }
-        reserved_task = session.worker_task(child)
+        reserved_task = copy.deepcopy(session.worker_task(child))
         reserved_run = copy.deepcopy(worker_runs(reserved_task)[-1])
         reserved_turn = copy.deepcopy(reserved_task["preflight"]["turns"][-1])
         reserved_replacement = (
@@ -1087,6 +1161,68 @@ def run_worker(
             if replace_session
             else None
         )
+    committed = prepared.log is None
+    log_path = reserved_turn.get("log", {}).get("journal")
+    missing = object()
+
+    def apply_reservation() -> None:
+        if prepared.log is None:
+            return
+        store.focus(session.key)
+        row = session.owner()
+        live = session.worker_task(child)
+        changed = {
+            key
+            for key in previous_task.keys() | reserved_task.keys()
+            if previous_task.get(key, missing) != reserved_task.get(key, missing)
+        }
+        if (
+            any(row.get(k) != v for k, v in reserved_owner.items())
+            or live.get("delegation_id") != previous_task.get("delegation_id")
+            or any(
+                live.get(k, missing) != previous_task.get(k, missing) for k in changed
+            )
+        ):
+            raise RegistryConflict("worker changed before launch reservation")
+        if not live.get("delegated") or live.get("worker_ended"):
+            policy = launch_policy(row.get("launch_policy", DEFAULT_LAUNCH_POLICY))
+            limit = policy["max_parallel_children"]
+            if limit is not None and len(active_reservations(row["tasks"])) >= limit:
+                raise WorkerCapacityUnavailable(
+                    "implementation reservation limit reached"
+                )
+        primary = row["tasks"].setdefault(str(child), {})
+        live = (
+            primary
+            if worker == "primary"
+            else primary.setdefault("helpers", {}).setdefault(worker, {})
+        )
+        for key in changed:
+            if key in reserved_task:
+                live[key] = reserved_task[key]
+            else:
+                live.pop(key)
+
+    def commit_reservation(admitted: bool) -> None:
+        nonlocal committed, log_path
+        if begin_capture is not None:
+            begin_capture()
+        if not admitted and not previous_task.get("delegated"):
+            return
+        if prepared.log is not None:
+            capture_run(session, child, *prepared.log)
+            turn = session.worker_task(child)["preflight"]["turns"][-1]
+            reserved_turn.clear()
+            reserved_turn.update(copy.deepcopy(turn))
+            log_path = turn.get("log", {}).get("journal")
+            store.save()
+            committed = True
+            for announce in announcements:
+                announce()
+        from decision_logs.observations import bind_worker_task
+
+        bind_worker_task(session.worker_task(child))
+
     # A foreground runner must not hold a registry or parent operation lock.
     # Bytes in both directions: the runner reads UTF-8 and the locale may not be.
     from .improvement_runtime import execute_manual
@@ -1104,6 +1240,8 @@ def run_worker(
         worker=worker,
         reserved_run=reserved_run,
         reserved_turn=reserved_turn,
+        apply_reservation=apply_reservation,
+        commit_reservation=commit_reservation,
     )
     proc = admission.completed
     code = proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
@@ -1117,6 +1255,14 @@ def run_worker(
             ]
             return 0, repair_receipt(child, delegation, command, attempt)
     if not admission.spawned:
+        if not committed:
+            return code, {
+                "child": child,
+                "delegation_id": delegation,
+                "exit_code": code,
+                "launch_state": "rejected_before_start",
+                "reason": proc.stderr.decode(errors="replace"),
+            }
         if repair is not None:
             with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
                 store.focus(session.key)
@@ -1138,6 +1284,7 @@ def run_worker(
                 ):
                     attempt["launch_state"] = "reserved"
                     attempt.pop("launch_claim")
+                    attempt.pop("claim_process", None)
                 elif attempt["launch_state"] != "reserved":
                     return 0, repair_receipt(child, delegation, command, attempt)
                 store.save()
@@ -1197,11 +1344,6 @@ def run_worker(
             "launch_state": "rejected_before_start",
             "next_action": "retry_same_operation",
             "log_publication": log_result,
-            **(
-                {"reason": admission.rejection_reason}
-                if admission.rejection_reason
-                else {}
-            ),
         }
     if directory_absent(directory):
         # Retain the reservation. The parent may cancel after checking that the

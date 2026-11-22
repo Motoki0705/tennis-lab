@@ -16,7 +16,9 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
+from tests.e2e.agents_ops.test_manual_worker_runs import run, state_dir, task
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.worker_logs import (
     FakeGitHub,
@@ -394,6 +396,94 @@ def test_foreign_unassigned_journal_replay_and_inventory_are_read_only_until_exe
     assert result[0]["saved_to_main"] is True
     assert journal.read(path)["source"]["public_key"] == inventory[0]["public_key"][2:]
     assert logs.github.calls == ["create", "merge"]
+
+
+def test_cancel_and_publish_retry_leaves_no_publication_at_parent_exit(
+    reserved: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    p = reserved
+    failed = json.loads(run(p, ok=False, MANUAL_PREFLIGHT_FAILURE="1").stdout)
+    p.cli("cancel-worker-launch", "--child", "10", "--run-dir", failed["run_dir"])
+    resumed = json.loads(run(p).stdout)
+    assert resumed["delegation_id"] == failed["delegation_id"]
+    assert resumed["log_publication"]["state"] == "ready", resumed
+
+    upstream = p.root / "upstream.git"
+    run_git(p.root, "clone", "--bare", str(p.repo), str(upstream))
+    run_git(p.repo, "remote", "add", "origin", str(upstream))
+    run_git(p.repo, "fetch", "origin")
+    github = FakeGitHub(p.repo, upstream)
+    monkeypatch.setattr(
+        service,
+        "Publisher",
+        lambda root, path: publication.Publisher(root, path, github),
+    )
+    # Worker journals go through the real publisher backed by Git. The
+    # independent decision-log publisher already has an empty backlog here.
+    log_publication = importlib.import_module("parent.log_publication")
+    monkeypatch.setattr(
+        log_publication, "publish_decisions", lambda *a, **kw: {"error": None}
+    )
+    monkeypatch.setattr(
+        importlib.import_module("decision_logs.lifecycle"),
+        "capture_checkpoint",
+        lambda *a, **kw: True,
+    )
+    monkeypatch.setattr(
+        recovery,
+        "decision_journal",
+        lambda repo, parent, **kw: SimpleNamespace(
+            path=p.root / "decision" / "journal.json",
+            repo=repo,
+            status=lambda: [],
+        ),
+    )
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    cli = importlib.import_module("parent.cli_impl")
+
+    def invoke(*args: str) -> dict[str, Any]:
+        code = cli.main(["--repo", "o/r", "--parent", "1", *args])
+        captured = capsys.readouterr()
+        assert code == 0, captured.err + captured.out
+        value: dict[str, Any] = json.loads(captured.out)
+        return value
+
+    assert [
+        item["sequence"]
+        for item in recovery.remaining_publications("o/r", 1, state_dir=state_dir(p))
+    ] == [2]
+    published = invoke("publish-worker-log", "--child", "10")["logs"]
+    assert [(item["sequence"], item["state"]) for item in published] == [
+        (1, "worker_failed"),
+        (2, "merged"),
+    ]
+    assert github.calls == ["create", "merge"]
+    assert [turn.get("cancelled", False) for turn in task(p)["preflight"]["turns"]] == [
+        True,
+        False,
+    ]
+    assert recovery.remaining_publications("o/r", 1, state_dir=state_dir(p)) == []
+    assert invoke("status")["remaining_publications"] == []
+    checkpoint = invoke("release", "--ended", "--note-file", p.note())[
+        "publication_exit"
+    ]
+    assert checkpoint["remaining_complete"] and checkpoint["remaining"] == []
+    assert checkpoint["error"] is None
+
+
+def test_unstarted_marker_with_runtime_receipt_is_a_corrupt_inventory(
+    logs: LogEnv,
+) -> None:
+    path = logs.ready()
+    row = journal.read(path)
+    row.update(state="worker_failed", stage="not_started", error="runner_not_started")
+    journal.atomic(path, row)
+    with pytest.raises(journal.PublicationError, match="journal_invalid"):
+        recovery.remaining_publications("o/r", 1, state_dir=logs.state)
 
 
 def test_bulk_recovery_requires_recovery_owner_and_reuses_foreign_journal(

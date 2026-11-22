@@ -242,7 +242,37 @@ def fail(path: Path, row: dict[str, Any], code: str, *, state: str = "blocked") 
     atomic(path, row)
 
 
+def unstarted(row: dict[str, Any]) -> bool:
+    if row.get("stage") != "not_started" and row.get("error") != "runner_not_started":
+        return False
+    directory = row["source"].get("run_directory")
+    require(
+        row.get("state") == "worker_failed"
+        and row.get("stage") == "not_started"
+        and row.get("error") == "runner_not_started"
+        and isinstance(directory, str)
+        and Path(directory).is_absolute()
+        and row.keys().isdisjoint(
+            {
+                "receipt",
+                "files",
+                "base",
+                "head",
+                "branch",
+                "pr_number",
+                "publication_batch",
+                "merge_commit",
+                "main_observed",
+                "merge_http_status",
+            }
+        ),
+        "journal_invalid",
+    )
+    return True
+
+
 def view(row: dict[str, Any]) -> dict[str, Any]:
+    unstarted(row)
     source = row["source"]
     require(
         type(source.get("sequence")) is int and source["sequence"] > 0, "journal_turn"

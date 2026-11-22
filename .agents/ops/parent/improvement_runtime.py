@@ -6,11 +6,12 @@ import os
 import signal
 import subprocess
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from decision_logs.capture import runtime_environment
+from decision_logs.capture import CaptureInputError, runtime_environment
 from dispatcher.runtime import Runtime, alive, process_identity
 from issues.improvement import human_state
 
@@ -32,7 +33,6 @@ class ManualExecution:
     spawned: bool
     reused: bool = False
     repair_claim: str | None = None
-    rejection_reason: str | None = None
 
 
 def execute_manual(
@@ -49,9 +49,12 @@ def execute_manual(
     worker: str = "primary",
     reserved_run: dict[str, Any],
     reserved_turn: dict[str, Any],
+    apply_reservation: Callable[[], None],
+    commit_reservation: Callable[[bool], None],
 ) -> ManualExecution:
     from .manual_workers import (
         RunnerEnvironmentUnavailable,
+        WorkerCapacityUnavailable,
         current_task,
         latest_run,
         require_runner_environment,
@@ -67,64 +70,81 @@ def execute_manual(
             store.operation(f"{gh.repo.casefold()}#{parent}"),
             store.locked(),
         ):
-            session = ParentSession(gh, store, parent, identity, worker=worker)
-            task = current_task(session, child)
-            attempt = None
-            if "--repair-id" in command:
-                repair_id = command[command.index("--repair-id") + 1]
-                attempt = task["repair_attempts"][repair_id]
+            apply_reservation()
+            try:
+                session = ParentSession(gh, store, parent, identity, worker=worker)
+                task = current_task(session, child)
+                attempt = None
+                if "--repair-id" in command:
+                    repair_id = command[command.index("--repair-id") + 1]
+                    attempt = task["repair_attempts"][repair_id]
+                    if (
+                        attempt["command"] != command
+                        or attempt["instruction"] != instruction
+                    ):
+                        raise ValueError("repair launch differs from its reservation")
+                    if attempt["launch_state"] != "reserved":
+                        return ManualExecution(
+                            subprocess.CompletedProcess(command, 0, b"", b""),
+                            False,
+                            True,
+                        )
+                require(session, fresh=True)
+                current = authorization(session)
+                require(session, child, fresh=True)
                 if (
-                    attempt["command"] != command
-                    or attempt["instruction"] != instruction
+                    task["delegation_id"] != delegation
+                    or session.row["generation"] != generation
+                    or worker_runs(task)[-1] != reserved_run
+                    or task["preflight"]["turns"][-1] != reserved_turn
+                    or task["worktree"] != command[command.index("--cwd") + 1]
+                    or task["branch"] != command[command.index("--branch") + 1]
+                    or task.get("model") != reserved_run["model"]
+                    or latest_run(session, task) != directory
+                    or task.get("worker_ended")
+                    or task.get("stopped")
+                    or session.row["tasks"][str(child)].get("stopped")
+                    or task.get("authorization") != current
                 ):
-                    raise ValueError("repair launch differs from its reservation")
-                if attempt["launch_state"] != "reserved":
-                    return ManualExecution(
-                        subprocess.CompletedProcess(command, 0, b"", b""), False, True
+                    raise ValueError(
+                        "manual reservation/authority changed before runtime admission"
                     )
-            require(session, fresh=True)
-            current = authorization(session)
-            require(session, child, fresh=True)
-            if (
-                task["delegation_id"] != delegation
-                or session.row["generation"] != generation
-                or worker_runs(task)[-1] != reserved_run
-                or task["preflight"]["turns"][-1] != reserved_turn
-                or task["worktree"] != command[command.index("--cwd") + 1]
-                or task["branch"] != command[command.index("--branch") + 1]
-                or task.get("model") != reserved_run["model"]
-                or latest_run(session, task) != directory
-                or task.get("worker_ended")
-                or task.get("stopped")
-                or session.row["tasks"][str(child)].get("stopped")
-                or task.get("authorization") != current
-            ):
-                raise ValueError(
-                    "manual reservation/authority changed before runtime admission"
-                )
+                followup = worker_followup.current(task)
+                if followup and followup["run_dir"] == str(directory):
+                    if followup["state"] != "running":
+                        raise ValueError(
+                            "worker follow-up no longer authorizes this launch"
+                        )
+                    wait = followup["wait"]
+                    if followup["monitor_started"] and wait and wait["kind"] == "ci":
+                        from .policy import object_value
+                        from .worker_wait_sources import require_ci_target
+
+                        with session.gh.fresh_reads():
+                            pr = session.gh.get(f"repos/{gh.repo}/pulls/{wait['pr']}")
+                        require_ci_target(
+                            object_value(pr), gh.repo, task["branch"], wait
+                        )
+                        require_repair_labels(session, child, wait["pr"])
+            except Exception:
+                # Keep the rejection receipt for ordinary admission failures.
+                # A bad environment leaves the launch draft entirely in memory.
+                require_runner_environment()
+                commit_reservation(False)
+                raise
+            require_runner_environment()
+            commit_reservation(True)
             if attempt is not None:
                 # Save intent before Popen. An interrupted starting claim is
                 # recovered by inspection, never by resubmitting the launch.
                 repair_claim = uuid.uuid4().hex
-                attempt.update(launch_state="starting", launch_claim=repair_claim)
+                attempt.update(
+                    launch_state="starting",
+                    launch_claim=repair_claim,
+                    claim_process=process_identity(os.getpid()),
+                )
                 store.save()
                 require_repair_labels(session, child, attempt["request"]["pr"])
-            followup = worker_followup.current(task)
-            if followup and followup["run_dir"] == str(directory):
-                if followup["state"] != "running":
-                    raise ValueError(
-                        "worker follow-up no longer authorizes this launch"
-                    )
-                wait = followup["wait"]
-                if followup["monitor_started"] and wait and wait["kind"] == "ci":
-                    from .policy import object_value
-                    from .worker_wait_sources import require_ci_target
-
-                    with session.gh.fresh_reads():
-                        pr = session.gh.get(f"repos/{gh.repo}/pulls/{wait['pr']}")
-                    require_ci_target(object_value(pr), gh.repo, task["branch"], wait)
-                    require_repair_labels(session, child, wait["pr"])
-            require_runner_environment()
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
@@ -149,6 +169,8 @@ def execute_manual(
             True,
             repair_claim=repair_claim,
         )
+    except (CaptureInputError, RunnerEnvironmentUnavailable, WorkerCapacityUnavailable):
+        raise
     except (Exception, KeyboardInterrupt) as exc:
         if process is not None:
             # A failed post-spawn persistence is not a pre-start rejection.
@@ -170,9 +192,6 @@ def execute_manual(
             ),
             False,
             repair_claim=repair_claim,
-            rejection_reason=str(exc)
-            if isinstance(exc, RunnerEnvironmentUnavailable)
-            else None,
         )
 
 

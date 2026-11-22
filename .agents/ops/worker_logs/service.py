@@ -131,15 +131,19 @@ def reject_unstarted(path: str | None, directory: Path) -> dict[str, Any]:
                     "runtime_changed",
                 )
                 if (
-                    row.get("stage") == "not_started"
+                    journal.unstarted(row)
                     or row.get("stage") not in {None, "awaiting_final"}
                     or row["state"] not in {"captured", "blocked"}
                     or "receipt" in row
                 ):
                     return journal.view(row)
-                row["stage"] = "not_started"
-                journal.fail(target, row, "runner_not_started", state="worker_failed")
-                result: dict[str, Any] = journal.view(row)
+                row.update(
+                    state="worker_failed",
+                    stage="not_started",
+                    error="runner_not_started",
+                )
+                result = journal.view(row)
+                journal.atomic(target, row)
             from decision_logs.observations import worker_log
 
             worker_log(target, result, entrypoint="worker_logs.reject-unstarted")
@@ -262,7 +266,7 @@ def _command(
                         }
                     )
                     break
-            if row.get("stage") == "not_started":
+            if journal.unstarted(row):
                 results.append(journal.view(row))
                 continue
             if row["state"] == "captured" or retry and "receipt" not in row:

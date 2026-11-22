@@ -26,6 +26,7 @@ from tests.support.agents_ops.model_pins import (
     WORKER_DEFAULT_MODEL,
     previous_config,
 )
+from tests.support.agents_ops.worker_logs import LogEnv
 
 ENTRY = """
 import os, sys
@@ -61,6 +62,28 @@ if os.environ.get("MANUAL_ADMISSION_FAILURE"):
             raise ValueError("injected admission rejection before Popen")
         return original_popen(command, *args, **kwargs)
     subprocess.Popen = rejected_popen
+if os.environ.get("MANUAL_ENVIRONMENT_TEST"):
+    from decision_logs import parent_commands
+    from parent import improvement_runtime, log_publication
+    from parent.state import Store
+    from worker_logs import service
+
+    def unexpected_write(*args, **kwargs):
+        raise AssertionError("environment refusal performed a write")
+
+    parent_commands.begin = unexpected_write
+    log_publication.continue_workers = unexpected_write
+    Store.save = unexpected_write
+    service.capture = unexpected_write
+    if os.environ["MANUAL_ENVIRONMENT_TEST"] == "late-python":
+        require = improvement_runtime.require
+
+        def remove_python_after_admission(*args, **kwargs):
+            require(*args, **kwargs)
+            if len(args) == 2:
+                manual_workers.RUNNER_PYTHON.unlink()
+
+        improvement_runtime.require = remove_python_after_admission
 from parent.cli_impl import main
 sys.exit(main(sys.argv[2:]))
 """
@@ -546,6 +569,54 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
     assert plan["active_reservations"] == []
 
 
+def test_resume_rechecks_capacity_before_committing_reservation(
+    reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = reserved
+    p.cli(
+        "configure-delegation",
+        "--max-parallel-children",
+        "1",
+        "--reason-file",
+        p.note(),
+    )
+    run(p)
+    ended(p)
+    before = task(p)
+    p.child("other")
+    competing_tree = p.worktree("other")
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    api = importlib.import_module("parent.manual_workers")
+    monkeypatch.setattr(api, "RUNNER", p.root / "fake-runner")
+    admission = importlib.import_module("parent.improvement_runtime")
+    execute = admission.execute_manual
+
+    def delegate_then_execute(*args: Any, **kwargs: Any) -> Any:
+        p.cli(*delegation_args(competing_tree, child=11))
+        return execute(*args, **kwargs)
+
+    monkeypatch.setattr(admission, "execute_manual", delegate_then_execute)
+    registry = store(p)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    with pytest.raises(api.WorkerCapacityUnavailable, match="reservation limit"):
+        api.run_worker(
+            gh,
+            registry,
+            1,
+            "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+            child=10,
+            prompt=Path(p.note()),
+            resume=True,
+            restart_evidence="前回runの終了確認済み",
+        )
+    assert task(p) == before
+    assert json.loads(p.cli("status").stdout)["launch_plan"]["active_reservations"] == [
+        11
+    ]
+
+
 def test_resume_uses_latest_run_without_implicitly_releasing_slot(
     reserved: ParentEnv,
 ) -> None:
@@ -774,9 +845,9 @@ def test_runner_failure_preserves_record_and_exit_code(reserved: ParentEnv) -> N
     assert output["final_file"] == str(latest(p) / "final.md")
 
 
-@pytest.mark.parametrize("missing", ["python", "runner"])
+@pytest.mark.parametrize("missing", ["python", "runner", "late-python"])
 def test_runner_environment_refuses_before_reserving_or_capturing(
-    reserved: ParentEnv, missing: str
+    reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch, missing: str
 ) -> None:
     p = reserved
     before = task(p)
@@ -785,22 +856,39 @@ def test_runner_environment_refuses_before_reserving_or_capturing(
     shutil.copytree(OPS, checkout_ops, ignore=shutil.ignore_patterns("__pycache__"))
     assert not (tree / ".venv").exists()
     required = tree / ".venv/bin/python"
+    if missing == "late-python":
+        required.parent.mkdir(parents=True)
+        required.symlink_to(sys.executable)
+    runner = checkout_ops / "lib/agent_exec.sh"
     if missing == "runner":
-        required = checkout_ops / "lib/agent_exec.sh"
+        required = runner
         required.chmod(0o600)
-    result = p.cli(
+    fixture_root = p.root / "publication-fixture"
+    fixture_root.mkdir()
+    logs = LogEnv(fixture_root, monkeypatch)
+    logs.ready(legacy=True)
+    shutil.copytree(logs.state / "worker-logs", state_dir(p) / "worker-logs")
+
+    def state_files() -> dict[Path, bytes]:
+        return {path: path.read_bytes() for path in state_dir(p).rglob("*.json")}
+
+    saved = state_files()
+    result = manual(
+        p,
         "run-worker",
         "--child",
         "10",
         "--prompt-file",
         p.note(),
         ok=False,
-        extra={"PYTHONPATH": str(checkout_ops)},
+        runner=runner,
+        PYTHONPATH=str(checkout_ops),
+        MANUAL_ENVIRONMENT_TEST=missing,
     )
     assert result.returncode == 2
     assert f"requires an executable file: {required}" in result.stderr
     assert task(p) == before and not (state_dir(p) / "worker-runs").exists()
-    assert not list((state_dir(p) / "worker-logs").rglob("journal.json"))
+    assert state_files() == saved
 
 
 @pytest.mark.parametrize("exit_evidence", ["pid_identity", "reaped"])
@@ -866,6 +954,7 @@ def test_cancel_unstarted_launch_closes_log_and_retries_same_delegation(
         ("unknown", "manual launcher liveness is unconfirmed"),
         ("directory", "run directory exists"),
         ("receipt", "could not confirm unstarted worker log"),
+        ("publication", "could not confirm unstarted worker log"),
     ],
 )
 def test_cancel_worker_launch_requires_death_and_absent_directory(
@@ -878,9 +967,12 @@ def test_cancel_worker_launch_requires_death_and_absent_directory(
     log = Path(task(p)["preflight"]["turns"][-1]["log"]["journal"])
     if evidence == "directory":
         directory.mkdir(parents=True)
-    elif evidence == "receipt":
+    elif evidence in {"receipt", "publication"}:
         saved = json.loads(log.read_text())
-        saved["receipt"] = {"record": {"result": "completed"}}
+        if evidence == "receipt":
+            saved["receipt"] = {"record": {"result": "completed"}}
+        else:
+            saved["base"] = "a" * 40
         log.write_text(json.dumps(saved))
     else:
         launcher.pop("exit_code")
