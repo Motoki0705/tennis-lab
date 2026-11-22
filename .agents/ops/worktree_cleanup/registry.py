@@ -14,7 +14,7 @@ from lib.checkout_lock import registry_checkout_lock
 from parent.policy import digest
 from parent.state import Store
 
-from .storage import CleanupError, read_json, sync_directory, write_json
+from .storage import CleanupError
 
 
 class ExpiryStore(Store):
@@ -25,44 +25,49 @@ class ExpiryStore(Store):
     existing CLI's refusal of inconsistent ownership or overwriting newer data.
     """
 
-    write_json = staticmethod(write_json)
-
     @property
     def journal(self) -> Path:
         return Path(self.directory) / "worktree-expiry-transaction.json"
 
     def recover(self) -> None:
-        if not self.journal.exists():
-            return
-        value = read_json(self.journal)
-        if (
-            set(value) != {"schema_version", "changes"}
-            or value["schema_version"] != 1
-            or not isinstance(value["changes"], list)
-        ):
-            raise CleanupError("invalid worktree expiry registry transaction")
-        for change in value["changes"]:
+        with self._files() as files:
+            self._verify_files(files)
+            try:
+                value = self._read_object(self.journal, files.root)
+            except FileNotFoundError:
+                return
             if (
-                not isinstance(change, dict)
-                or set(change) != {"path", "before", "after"}
-                or not isinstance(change["path"], str)
-                or not isinstance(change["after"], dict)
-                or re.fullmatch(
-                    r"registry\.json|parents/[0-9a-f]{64}\.json", change["path"]
-                )
-                is None
+                set(value) != {"schema_version", "changes"}
+                or value["schema_version"] != 1
+                or not isinstance(value["changes"], list)
             ):
-                raise CleanupError("invalid worktree expiry registry transaction path")
-            path = self.directory / change["path"]
-            current = read_json(path) if path.exists() else None
-            if current not in (change["before"], change["after"]):
-                raise CleanupError(
-                    "expiry transaction conflicts with newer parent state"
-                )
-        for change in value["changes"]:
-            write_json(self.directory / change["path"], change["after"])
-        self.journal.unlink()
-        sync_directory(self.directory)
+                raise CleanupError("invalid worktree expiry registry transaction")
+            for change in value["changes"]:
+                if (
+                    not isinstance(change, dict)
+                    or set(change) != {"path", "before", "after"}
+                    or not isinstance(change["path"], str)
+                    or not isinstance(change["after"], dict)
+                    or re.fullmatch(
+                        r"registry\.json|parents/[0-9a-f]{64}\.json", change["path"]
+                    ) is None
+                ):
+                    raise CleanupError("invalid worktree expiry registry transaction path")
+                path = self.directory / change["path"]
+                try:
+                    current = self._read_object(path, files.directory_for(path))
+                except FileNotFoundError:
+                    current = None
+                if current not in (change["before"], change["after"]):
+                    raise CleanupError("expiry transaction conflicts with newer parent state")
+            self._verify_files(files)
+            for change in value["changes"]:
+                path = self.directory / change["path"]
+                directory = files.directory_for(path, create=True)
+                self._write_json(path, change["after"], directory)
+                os.fsync(directory.fd)
+            os.unlink(self.journal.name, dir_fd=files.root.fd)
+            os.fsync(files.root.fd)
 
     @contextmanager
     def locked(self) -> Iterator[Store]:
@@ -73,14 +78,7 @@ class ExpiryStore(Store):
 
     @contextmanager
     def _recovered(self) -> Iterator[Store]:
-        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-        fd = os.open(
-            self.directory / "registry.lock",
-            os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW,
-            0o600,
-        )
-        with os.fdopen(fd, "w") as stream:
-            fcntl.flock(stream, fcntl.LOCK_EX)
+        with self._hold_lock("registry.lock", fcntl.LOCK_EX):
             self.recover()
         with super().locked():
             yield self
@@ -105,15 +103,26 @@ class ExpiryStore(Store):
                     for key, row in self.parents.items()
                 },
             }
-        changes = []
-        for name, after in targets.items():
-            path = self.directory / name
-            before = read_json(path) if path.exists() else None
-            if before != after:
-                changes.append({"path": name, "before": before, "after": after})
-        if changes:
-            write_json(self.journal, {"schema_version": 1, "changes": changes})
-        super().save()
-        if self.journal.exists():
-            self.journal.unlink()
-            sync_directory(self.directory)
+        with self._files() as files:
+            self._verify_files(files)
+            changes = []
+            for name, after in targets.items():
+                path = self.directory / name
+                try:
+                    before = self._read_object(path, files.directory_for(path))
+                except FileNotFoundError:
+                    before = None
+                if before != after:
+                    changes.append({"path": name, "before": before, "after": after})
+            if changes:
+                self._write_json(
+                    self.journal, {"schema_version": 1, "changes": changes}, files.root
+                )
+                os.fsync(files.root.fd)
+            super().save()
+            if changes:
+                if files.parents is not None:
+                    os.fsync(files.parents.fd)
+                os.fsync(files.root.fd)
+                os.unlink(self.journal.name, dir_fd=files.root.fd)
+                os.fsync(files.root.fd)

@@ -2098,6 +2098,43 @@ def test_dirty_code_and_broken_registry_fail_before_agent(h: Harness) -> None:
     assert h.gh.writes == []
 
 
+def test_judgement_cli_refuses_symlinked_run_parent(
+    h: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    link = h.root / "judgements"
+    target = h.root / "private-judgements"
+    target.mkdir(mode=0o700)
+    link.symlink_to(target, target_is_directory=True)
+
+    def github(repo: str, *, store: Any) -> Any:
+        client = copy.copy(h.gh)
+        client._store = store
+        return client
+
+    monkeypatch.setattr(h.mod, "GitHub", github)
+    h.response(decision(1))
+    lock = importlib.import_module("lib.checkout_lock")
+    umask = os.umask(0o077)
+    try:
+        with lock.checkout_lock(h.work) as fd:
+            monkeypatch.setenv(lock.CHECKOUT_ROOT_ENV, str(h.work))
+            monkeypatch.setenv(lock.CHECKOUT_FD_ENV, str(fd))
+            code = h.mod.main(
+                [
+                    "--repo", "o/r", "--cwd", str(h.work),
+                    "--run-dir", str(link / "run"),
+                    "--parent-state-dir", str(h.store.directory),
+                ]
+            )
+    finally:
+        os.umask(umask)
+    output = capsys.readouterr()
+    assert code == 2 and json.loads(output.out)["result"] == "failed"
+    assert "symbolic link" in output.err and str(target) not in output.err
+    assert link.is_symlink() and list(target.iterdir()) == []
+    assert not h.calls.exists() and h.gh.writes == []
+
+
 def test_shared_transaction_clients_keep_parent_pr_scope_and_refresh_comments(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

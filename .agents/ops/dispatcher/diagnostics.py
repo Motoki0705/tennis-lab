@@ -5,7 +5,9 @@ from __future__ import annotations
 import errno
 import sys
 
+from lib.checkout_lock import CheckoutUnavailable
 from lib.state_files import StateFileError
+from parent.state import RegistryStateError
 
 README = ".agents/ops/dispatcher/README.md"
 STOP = "Stop the dispatcher with `spin ops off dispatcher`."
@@ -22,6 +24,8 @@ _STATE_PATHS = {
     "registry-v1.backup.json": "parent-sessions/registry-v1.backup.json",
     "judgement.lock": "dispatcher/judgement.lock",
     "supervisor.lock": "dispatcher/supervisor.lock",
+    "judgements": "dispatcher/judgements",
+    "workers": "dispatcher/workers",
     "index.json": "agent-input/index.json",
     "start-input.json": "worker start-input.json",
     "input.json": "private input.json",
@@ -34,10 +38,19 @@ _STATE_REASONS = {
     "wrong_owner": "is owned by a different user",
     "hardlink": "has multiple hard links",
     "shared_write": "is writable by other users",
+    "directory_changed": "was replaced during state access",
+    "lock_changed": "was replaced while acquiring or holding the lock",
+    "file_changed": "changed during registry rollback",
     "temporary_collision": "already exists",
     "temporary_changed": "changed during the write",
     "access_failed": "could not be accessed",
     "write_failed": "could not be written",
+}
+_REGISTRY_REASONS = {
+    "registry_json": "contains malformed JSON",
+    "registry_format": "has an unsupported or invalid registry format",
+    "registry_mismatch": "disagrees with its parent records",
+    "registry_record_missing": "is missing a parent record listed in the index",
 }
 
 
@@ -81,6 +94,11 @@ def state_failure(exc: StateFileError) -> DispatcherError:
         )
     elif exc.reason in {"access_failed", "write_failed"}:
         recovery = "Check the state filesystem, directory ownership and write permissions, then retry."
+    elif exc.entry == "directory":
+        recovery = (
+            f"{STOP} Verify the configured state directory and its ancestors. Use real "
+            f"directories with trusted owners and private write permissions. See {README}."
+        )
     elif exc.path.suffix == ".lock":
         recovery = (
             f"{STOP} Inspect the lock entry and identify its holder. Confirm all holders "
@@ -94,6 +112,23 @@ def state_failure(exc: StateFileError) -> DispatcherError:
 def report_failure(exc: Exception) -> dict[str, str]:
     if isinstance(exc, StateFileError):
         exc = state_failure(exc)
+    elif isinstance(exc, RegistryStateError):
+        path = _STATE_PATHS.get(exc.path.name, "parent-sessions/parents record")
+        exc = DispatcherError(
+            exc.reason,
+            f"{path} {_REGISTRY_REASONS[exc.reason]}.",
+            f"{STOP} Preserve the registry and records. Follow the registry recovery "
+            f"procedure in {README} to verify and restore a backup.",
+            state_path=path,
+        )
+    elif isinstance(exc, CheckoutUnavailable):
+        exc = DispatcherError(
+            "checkout_unavailable",
+            "The dispatcher checkout configured in dispatcher/schedule.json is unavailable.",
+            f"{STOP} Verify the configured checkout. Restore it at the configured location "
+            f"or repair the saved path before restarting. See {README}.",
+            state_path="dispatcher/schedule.json",
+        )
     if not isinstance(exc, DispatcherError):
         exc = DispatcherError(
             "unclassified_error",

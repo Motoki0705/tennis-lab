@@ -55,7 +55,7 @@ class Schedule:
     def read(self) -> dict[str, Any]:
         try:
             return self._validate(object_value(read_json(read_state_text(self.path))))
-        except (ValueError, KeyError, TypeError, OverflowError) as exc:
+        except (ValueError, KeyError, TypeError, OverflowError, RecursionError) as exc:
             raise DispatcherError(
                 "invalid_schedule",
                 "dispatcher/schedule.json contains invalid state.",
@@ -127,6 +127,14 @@ class Schedule:
                 or run["phase"] not in {"running", "recovery_required", *RESULTS}
                 or run["id"] in seen
                 or not isinstance(run["candidates"], dict)
+                or any(
+                    not isinstance(candidate, dict)
+                    or set(candidate) != {"state", "reason"}
+                    or candidate["state"]
+                    not in {"assigned", "capacity_wait", "existing_owner", "stale"}
+                    or not isinstance(candidate["reason"], str)
+                    for candidate in run["candidates"].values()
+                )
             ):
                 raise ValueError("invalid dispatcher run journal")
             seen.add(run["id"])

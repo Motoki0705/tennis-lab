@@ -293,6 +293,7 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 schedule/runの正本は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/dispatcher/schedule.json`。
 初期化はdisabledで、初期化時点の直前slotまでを消費済みにする。過去の予定を導入直後に実行しない。
 `--state-dir` と `--parent-state-dir` は使い捨て試験用にも指定できる。
+両ディレクトリと判定runの保存経路には [状態ルートの所有者・権限](../parent/README.md#排他とio) の条件が適用される。
 scheduleもregistryと同じ `Store.locked()` 内で保存し、長い判定の重複は別の `judgement.lock`、
 supervisorの重複は `supervisor.lock` で防ぐ。JSON破損・未知version・不正設定は停止し、初期化し直さない。
 
@@ -420,6 +421,9 @@ sessionが取れなかったrunから別sessionを自動生成しない。この
 破損stateや起動記録の復元では原本を退避し、実プロセス・runtimeとの照合結果を残す。lockファイルを削除して排他を回避しない。
 
 ### registry欠落からの復旧
+
+journal が registry JSON の破損、形式不正、索引と親レコードの不一致・欠落を表示した場合も、この手順で原本を退避し、照合できるバックアップを復元する。
+v2 は `registry.json` と対応する `parents/` のレコードを同じ保存時点の組として復元する。
 
 初回initはscheduleとjudgements/workersの記録がない場合だけ、欠落したregistryを初期状態として扱う。
 registryを先に保存してからdisabledのscheduleを作る。初期状態の空registryや、まだ一度も担当を予約していない

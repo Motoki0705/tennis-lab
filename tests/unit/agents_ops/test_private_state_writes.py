@@ -116,6 +116,20 @@ def test_write_refuses_symlinked_ancestor_without_creating_directories(
     assert not list(outside.iterdir())
 
 
+def test_write_refuses_shared_write_ancestor(tmp_path: Path) -> None:
+    store = importlib.import_module("parent.state").Store
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    shared.chmod(0o770)
+    directory = shared / "private"
+    directory.mkdir(mode=0o700)
+
+    with pytest.raises(OSError, match="shared_write"):
+        store.write_json(directory / "registry.json", {})
+
+    assert not list(directory.iterdir())
+
+
 def test_overlapping_writes_commit_complete_files(tmp_path: Path) -> None:
     state_files = importlib.import_module("lib.state_files")
     path = tmp_path / "registry.json"

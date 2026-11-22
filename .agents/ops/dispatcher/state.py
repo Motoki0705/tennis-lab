@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from lib.state_files import open_state_directory
 from parent.github import GitHub
 from parent.state import Store
 
@@ -61,6 +63,14 @@ class RepositoryStore(Store):
         self._focus = None
 
 
+def _has_records(path: Path) -> bool:
+    try:
+        with open_state_directory(path) as directory:
+            return bool(os.listdir(directory.fd))
+    except FileNotFoundError:
+        return False
+
+
 class DispatchStore(RepositoryStore):
     def __init__(self, directory: Path, schedule: Schedule) -> None:
         super().__init__(directory)
@@ -87,11 +97,9 @@ class DispatchStore(RepositoryStore):
 
     def _require_registry(self) -> None:
         schedule = self.schedule.read_optional()
-        workers = self.schedule.directory / "workers"
-        judgements = self.schedule.directory / "judgements"
-        worker_records = workers.exists() and any(workers.iterdir())
-        judgement_records = judgements.exists() and any(judgements.iterdir())
-        missing = not (self.path.exists() or self.path.is_symlink())
+        worker_records = _has_records(self.schedule.directory / "workers")
+        judgement_records = _has_records(self.schedule.directory / "judgements")
+        missing = not self.registry_exists()
         assigned = schedule is not None and any(
             candidate.get("state") == "assigned"
             for run in schedule["runs"]

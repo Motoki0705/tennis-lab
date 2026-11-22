@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from lib.state_files import atomic_state_writer
+from lib.state_files import atomic_state_writer, create_state_directory
 from parent.state import Store
 
 from .collect import related
@@ -36,9 +36,9 @@ def _write_index(path: Path, index: dict[str, Any]) -> None:
 
 
 def write_agent_input(snapshot: dict[str, Any], directory: Path) -> Path:
-    directory.mkdir(mode=0o700, exist_ok=False)
+    create_state_directory(directory)
     for name in ("issues", "pulls"):
-        (directory / name).mkdir(mode=0o700)
+        create_state_directory(directory / name)
 
     def write(relative: str, value: Any) -> str:
         Store.write_json(directory / relative, value)
@@ -129,7 +129,7 @@ def write_agent_input(snapshot: dict[str, Any], directory: Path) -> Path:
     for n in sorted(selected):
         raw = snapshot["issues"][str(n)]
         prefix = f"issues/{n}"
-        (directory / prefix).mkdir(mode=0o700)
+        create_state_directory(directory / prefix)
         summary = {k: v for k, v in raw.items() if k not in {"body", "comments"}}
         if n in snapshot["subjects"]:
             summary["mechanical_guard"] = guard(snapshot, n)
@@ -147,7 +147,7 @@ def write_agent_input(snapshot: dict[str, Any], directory: Path) -> Path:
         index["issues"][str(n)] = summary
     for pull in pulls:
         n = pull["number"]
-        (directory / f"pulls/{n}").mkdir(mode=0o700)
+        create_state_directory(directory / f"pulls/{n}")
         index["pulls"][str(n)] = {
             "issues": pull["issues"],
             "file": write(

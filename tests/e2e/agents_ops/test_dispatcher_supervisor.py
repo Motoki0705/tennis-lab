@@ -2210,6 +2210,114 @@ def test_supervisor_journal_identifies_unsafe_state_without_private_values(
     assert target.read_bytes() == content
 
 
+def test_scheduled_judgement_refuses_symlinked_judgements_directory(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    directory = d.schedule.directory / "judgements"
+    target = d.h.root / "private-judgements"
+    target.mkdir(mode=0o700)
+    directory.symlink_to(target, target_is_directory=True)
+    before = d.schedule.path.read_bytes()
+    d.h.response(decision(1))
+    d.publish_github(monkeypatch)
+
+    result = dispatcher_cli(
+        d.h.work, d.schedule.directory, d.h.store.directory, "run", "--explicit"
+    )
+
+    assert result.returncode == 2
+    failure = json.loads(result.stdout)
+    assert failure["reason"] == "symlink" and "judgements" in failure["state_path"]
+    assert str(target) not in result.stdout + result.stderr
+    assert directory.is_symlink() and list(target.iterdir()) == []
+    assert d.schedule.path.read_bytes() == before
+    assert not d.h.calls.exists()
+
+
+@pytest.mark.parametrize("fault", ["checkout", "candidate"])
+def test_supervisor_journal_redacts_invalid_checkout_and_candidate_values(
+    d: DispatchHarness, fault: str
+) -> None:
+    private = str(d.h.root / "private-location")
+    state = d.schedule.read()
+    if fault == "checkout":
+        state["config"]["cwd"] = private
+        reason = "checkout_unavailable"
+    else:
+        state["runs"].append(
+            {
+                "id": "fixture",
+                "slot": state["cursor"],
+                "phase": "recorded",
+                "explicit": False,
+                "controller": None,
+                "directory": private,
+                "diagnostic": None,
+                "candidates": {"1": private},
+            }
+        )
+        reason = "invalid_schedule"
+    d.schedule.write(state)
+    before = d.schedule.path.read_bytes()
+
+    result = dispatcher_cli(
+        d.h.work, d.schedule.directory, d.h.store.directory, "supervise", "--once"
+    )
+
+    assert result.returncode == 2
+    failure = json.loads(result.stdout)
+    assert failure["reason"] == reason
+    assert failure["diagnostic"] in result.stderr and failure["recovery"] in result.stderr
+    for output in (result.stdout, result.stderr):
+        assert str(d.h.root) not in output and "Traceback" not in output
+    assert d.schedule.path.read_bytes() == before
+
+
+@pytest.mark.parametrize("fault", ["json", "format", "mismatch"])
+def test_supervisor_journal_identifies_corrupt_registry(
+    d: DispatchHarness, fault: str
+) -> None:
+    store = d.h.store
+    secret = "private-registry-record"
+    path = store.path
+    if fault == "json":
+        path.write_text(f'{{"version":1,"parents":{{"{secret}":')
+    elif fault == "format":
+        path.write_text(json.dumps({"version": 1, "parents": {secret: []}}))
+    else:
+        with store.locked():
+            store.parents["o/r#1"] = {
+                "session": "claude:original",
+                "status": "active",
+                "generation": 1,
+                "tasks": {},
+                "reviews": [],
+            }
+            store.save()
+            store.migrate()
+        digest = importlib.import_module("parent.policy").digest
+        path = store.directory / "parents" / (digest("o/r#1") + ".json")
+        row = json.loads(path.read_text())
+        row["session"] = secret
+        path.write_text(json.dumps(row))
+    before = path.read_bytes()
+
+    result = dispatcher_cli(
+        d.h.work, d.schedule.directory, store.directory, "supervise", "--once"
+    )
+
+    assert result.returncode == 2
+    failure = json.loads(result.stdout)
+    assert failure["reason"] == f"registry_{fault}"
+    assert failure["state_path"] == "parent-sessions/registry.json"
+    assert "README" in failure["recovery"] and "backup" in failure["recovery"]
+    assert failure["diagnostic"] in result.stderr and failure["recovery"] in result.stderr
+    for output in (result.stdout, result.stderr):
+        assert secret not in output and str(d.h.root) not in output
+        assert "Traceback" not in output
+    assert path.read_bytes() == before
+
+
 def test_dispatcher_cli_reports_disk_full_and_preserves_state(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

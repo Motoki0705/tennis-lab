@@ -15,6 +15,11 @@
 
 担当変更と掲示板配送は同じownership fenceを使う。取得順は操作lock、ownership、registry。GitHub・runnerへのI/O中はregistryを解放し、復帰後に担当・対象記録を照合する。読取はsnapshotを使う。版移行と競合時の再検証は [state.py](state.py)、GitHubの取得範囲とキャッシュ境界は [github.py](github.py) を参照。
 
+状態ルートは実ディレクトリを指定する。状態ルートと `parents/` は実行ユーザーが所有し、上位は root または実行ユーザーが所有する。
+経路上のグループ・その他ユーザーの書込み権限を外す。`/tmp` のように sticky bit が付いた信頼できる上位ディレクトリは、次のパス要素の所有者も照合する。
+registry lock と読み書きは同じディレクトリに固定し、名前が別の実体を指したら処理を中止する。
+v2 の更新は索引と親レコードの新しい内容を先に準備する。置換に失敗した場合は、同じロックの内側で置換済みの親レコードを元に戻す。
+
 ## 実装の入口
 
 - [session.py](session.py) と [execution.py](execution.py) が担当と実行根拠を照合する。

@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from lib.state_files import open_state_directory
 from parent.github import GitHub
 from parent.policy import nonempty
 from parent.state import Store
@@ -142,7 +143,8 @@ def run_due(
                 return {"result": "not_due"}
             identifier = uuid.uuid4().hex
             directory = schedule.directory / "judgements" / identifier
-            directory.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            with open_state_directory(directory.parent, create=True):
+                pass
             run = {
                 "id": identifier,
                 "slot": slot,

@@ -12,13 +12,13 @@ from pathlib import Path
 from typing import Any
 
 from lib.checkout_lock import require_checkout_job
-from lib.state_files import StateFileError
+from lib.state_files import StateFileError, create_state_directory
 from parent.execution import POLICY_VERSION, execution_input, record_autonomous, sha256
 from parent.github import GitHub
 from parent.policy import digest, nonempty, number, object_value
 from parent.record_writer import write_record
 from parent.session import ParentSession
-from parent.state import Store, state_directory
+from parent.state import RegistryStateError, Store, state_directory
 
 from .agent import RUNNER, StopRequest, judge
 from .agent_input import write_agent_input
@@ -289,8 +289,8 @@ def run(
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be a finite positive number")
     require_client(gh, store)
-    root, run_dir = root.resolve(), run_dir.resolve()
-    run_dir.mkdir(parents=True, mode=0o700, exist_ok=False)
+    root, run_dir = root.resolve(), run_dir.absolute()
+    create_state_directory(run_dir, target=run_dir.parent, parents=True)
     result: dict[str, Any] = {
         "schema_version": RESULT_VERSION,
         "result": "failed",
@@ -375,7 +375,7 @@ def run(
         KeyError,
         TypeError,
     ) as exc:
-        if isinstance(exc, StateFileError):
+        if isinstance(exc, (StateFileError, RegistryStateError)):
             report_failure(exc)
         result["result"] = "failed"
         result["candidates"] = []
@@ -417,7 +417,7 @@ def main(argv: list[str] | None = None) -> int:
             runner=args.agent_exec.resolve(),
         )
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
-        if isinstance(exc, StateFileError):
+        if isinstance(exc, (StateFileError, RegistryStateError)):
             report_failure(exc)
         result = {
             "schema_version": RESULT_VERSION,

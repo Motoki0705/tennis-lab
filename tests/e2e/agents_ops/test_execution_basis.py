@@ -584,6 +584,35 @@ def test_missing_registry_symlink_target_is_not_an_empty_assignment(
     assert path.is_symlink() and not missing.exists()
 
 
+@pytest.mark.parametrize("command", ["register", "release"])
+def test_parent_cli_refuses_symlinked_state_directory(
+    parent_env: ParentEnv, command: str
+) -> None:
+    p = parent_env
+    link = registry(p).parent
+    target = p.root / "private-target"
+    args: tuple[str, ...]
+    if command == "register":
+        target.mkdir(mode=0o700)
+        args = ("register",)
+    else:
+        p.cli("register")
+        link.rename(target)
+        args = ("--state-dir", str(link), "release", "--note-file", p.note())
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(target, target_is_directory=True)
+    before = {file.name: file.read_bytes() for file in target.iterdir() if file.is_file()}
+    entries = set(target.iterdir())
+    calls = len(p.calls())
+
+    result = p.cli(*args, ok=None)
+
+    assert result.returncode != 0 and "symlink" in result.stderr
+    assert set(target.iterdir()) == entries and link.is_symlink()
+    assert {name: (target / name).read_bytes() for name in before} == before
+    assert len(p.calls()) == calls
+
+
 @pytest.mark.parametrize("kind", ["parent-session", "parent-review"])
 def test_unknown_public_marker_version_is_rejected(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, kind: str

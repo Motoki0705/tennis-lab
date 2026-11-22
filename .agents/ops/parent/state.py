@@ -7,14 +7,23 @@ import fcntl
 import json
 import os
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock
 from typing import Any, NoReturn, TextIO
 
 from lib.identity import session_identity as session_identity
-from lib.state_files import atomic_state_writer, open_state_lock, read_state_text
+from lib.state_files import (
+    PreparedStateWrite,
+    StateDirectory,
+    atomic_state_writer,
+    open_state_directory,
+    open_state_lock,
+    prepare_state_write,
+    read_state_text,
+)
 
 from . import metrics
 from .execution import validate_authorization
@@ -23,6 +32,48 @@ from .policy import digest, object_value
 
 class RegistryConflict(ValueError):
     """An observation no longer authorizes writes in this transaction."""
+
+
+class RegistryStateError(ValueError):
+    """Persisted registry data failed to load or validate."""
+
+    def __init__(self, reason: str, path: Path, detail: str) -> None:
+        super().__init__(detail)
+        self.reason = reason
+        self.path = path
+
+
+@dataclass
+class _RegistryFiles:
+    root: StateDirectory
+    stack: ExitStack
+    index: Path
+    parents: StateDirectory | None = None
+    lock: TextIO | None = None
+
+    def parent_directory(self, *, create: bool = False) -> StateDirectory:
+        if self.parents is None:
+            self.parents = self.stack.enter_context(
+                open_state_directory(
+                    self.root.path / "parents",
+                    target=self.index,
+                    anchor=self.root,
+                    create=create,
+                )
+            )
+        return self.parents
+
+    def verify(self) -> None:
+        self.root.verify(self.index)
+        if self.parents is not None:
+            self.parents.verify(self.index, anchor=self.root)
+
+    def directory_for(self, path: Path, *, create: bool = False) -> StateDirectory:
+        if path.parent.absolute() == self.root.path:
+            return self.root
+        if path.parent.absolute() != self.root.path / "parents":
+            raise ValueError("unexpected parent registry record path")
+        return self.parent_directory(create=create)
 
 
 @dataclass(frozen=True)
@@ -56,6 +107,9 @@ class Store:
         self._write_invalid = False
         self._suspended = False
         self._transaction_guard = RLock()
+        self._bound_files: ContextVar[_RegistryFiles | None] = ContextVar(
+            "parent registry files", default=None
+        )
         self.transaction_epoch = 0
 
     def _require_current(self) -> None:
@@ -102,10 +156,49 @@ class Store:
         self._focus = key.casefold()
 
     @contextmanager
+    def _files(self, *, create: bool = False) -> Iterator[_RegistryFiles]:
+        files = self._bound_files.get()
+        if files is not None:
+            yield files
+            return
+        with ExitStack() as stack:
+            root = stack.enter_context(
+                open_state_directory(self.directory, target=self.path, create=create)
+            )
+            files = _RegistryFiles(root, stack, self.path)
+            token = self._bound_files.set(files)
+            try:
+                yield files
+            finally:
+                self._bound_files.reset(token)
+
+    def _verify_files(self, files: _RegistryFiles) -> None:
+        files.verify()
+        if files.lock is not None:
+            files.root.verify_lock(self.directory / "registry.lock", files.lock)
+
+    @contextmanager
+    def _hold_lock(self, name: str, mode: int) -> Iterator[TextIO]:
+        path = self.directory / name
+        with (
+            self._files(create=True) as files,
+            open_state_lock(path, directory=files.root) as lock,
+        ):
+            metrics.flock(lock, mode)
+            files.verify()
+            files.root.verify_lock(path, lock)
+            if name == "registry.lock":
+                files.lock = lock
+            try:
+                yield lock
+            finally:
+                if files.lock is lock:
+                    files.lock = None
+
+    @contextmanager
     def operation(self, key: str) -> Iterator[None]:
         """Serialize a parent's mutations while its registry lock is released."""
-        with open_state_lock(self.directory / f"operation-{digest(key)}.lock") as lock:
-            metrics.flock(lock, fcntl.LOCK_EX)
+        with self._hold_lock(f"operation-{digest(key)}.lock", fcntl.LOCK_EX):
             yield
 
     @contextmanager
@@ -130,11 +223,16 @@ class Store:
                 raise ValueError(
                     "ownership fence must precede the registry transaction"
                 )
-        with open_state_lock(self.directory / "ownership.lock") as lock:
-            metrics.flock(lock, fcntl.LOCK_EX)
+        with self._hold_lock("ownership.lock", fcntl.LOCK_EX):
             yield
 
     def _validate_loaded(self) -> None:
+        try:
+            self._validate_rows()
+        except (ValueError, KeyError, TypeError, OverflowError, RecursionError) as exc:
+            raise RegistryStateError("registry_format", self.path, str(exc)) from exc
+
+    def _validate_rows(self) -> None:
         if (
             set(self.data) != {"version", "parents"}
             or type(self.data["version"]) is not int
@@ -213,8 +311,7 @@ class Store:
         from lib.checkout_lock import registry_checkout_lock
 
         with registry_checkout_lock():
-            with open_state_lock(self.directory / "registry.lock") as lock:
-                metrics.flock(lock, fcntl.LOCK_SH)
+            with self._hold_lock("registry.lock", fcntl.LOCK_SH) as lock:
                 try:
                     data = self.read_data()
                 finally:
@@ -237,18 +334,17 @@ class Store:
 
     @contextmanager
     def _locked(self) -> Iterator[Store]:
-        with open_state_lock(self.directory / "registry.lock") as lock:
-            metrics.flock(lock, fcntl.LOCK_EX)
+        with self._hold_lock("registry.lock", fcntl.LOCK_EX) as lock:
             self.transaction_epoch += 1
             self._write_invalid = False
             self._suspended = False
-            self.data = self.read_data()
-            self._saved = copy.deepcopy(self.data)
-            self._validate_loaded()
             # Keep the envelope readable by active older CLIs. Versioned evidence
             # is additive inside tasks/reviews; never rewrite legacy evidence.
             self._lock = lock
             try:
+                self.data = self.read_data()
+                self._saved = copy.deepcopy(self.data)
+                self._validate_loaded()
                 yield self
             finally:
                 self._lock = None
@@ -330,27 +426,81 @@ class Store:
     def parents(self) -> dict[str, Any]:
         return object_value(self.data["parents"])
 
+    def registry_exists(self) -> bool:
+        try:
+            with self._files() as files:
+                self._verify_files(files)
+                os.stat(self.path.name, dir_fd=files.root.fd, follow_symlinks=False)
+        except FileNotFoundError:
+            return False
+        return True
+
     def read_data(self) -> dict[str, Any]:
         try:
-            raw = read_state_text(self.path)
+            with self._files() as files:
+                self._verify_files(files)
+                return self._read_registry(files)
         except FileNotFoundError:
             return {"version": 1, "parents": {}}
-        data = object_value(json.loads(raw, object_pairs_hook=unique_object))
+
+    @staticmethod
+    def _read_object(path: Path, directory: StateDirectory) -> dict[str, Any]:
+        try:
+            value = json.loads(
+                read_state_text(path, directory=directory),
+                object_pairs_hook=unique_object,
+            )
+        except (ValueError, RecursionError) as exc:
+            raise RegistryStateError("registry_json", path, str(exc)) from exc
+        if not isinstance(value, dict):
+            raise RegistryStateError(
+                "registry_format", path, "registry entry must be an object"
+            )
+        return value
+
+    def _read_registry(self, files: _RegistryFiles) -> dict[str, Any]:
+        data = self._read_object(self.path, files.root)
+        if (
+            set(data) != {"version", "parents"}
+            or type(data["version"]) is not int
+            or data["version"] not in {1, 2}
+            or not isinstance(data["parents"], dict)
+        ):
+            raise RegistryStateError(
+                "registry_format",
+                self.path,
+                "unknown or malformed parent-session state",
+            )
         if data.get("version") != 2:
             return data
-        if set(data) != {"version", "parents"} or type(data["version"]) is not int:
-            raise ValueError("unknown or malformed parent-session state")
         parents = {}
-        for key, owner in object_value(data["parents"]).items():
+        for key, owner in data["parents"].items():
+            if (
+                not isinstance(owner, dict)
+                or set(owner) != {"session", "status", "generation"}
+                or not isinstance(owner["session"], str)
+                or not isinstance(owner["status"], str)
+                or type(owner["generation"]) is not int
+            ):
+                raise RegistryStateError(
+                    "registry_format", self.path, "invalid ownership index entry"
+                )
             path = self.directory / "parents" / (digest(key) + ".json")
-            row = object_value(
-                json.loads(read_state_text(path), object_pairs_hook=unique_object)
-            )
+            try:
+                row = self._read_object(path, files.parent_directory())
+            except FileNotFoundError as exc:
+                raise RegistryStateError(
+                    "registry_record_missing",
+                    path,
+                    "a parent record listed in the registry is missing",
+                ) from exc
             if {
                 field: row.get(field) for field in ("session", "status", "generation")
             } != owner:
-                raise ValueError(
-                    "parent ownership index disagrees with its record; restore the saved migration/transaction backup"
+                raise RegistryStateError(
+                    "registry_mismatch",
+                    self.path,
+                    "parent ownership index disagrees with its record; restore the saved migration/transaction backup",
                 )
             parents[key] = row
         return {"version": 2, "parents": parents}
@@ -361,17 +511,23 @@ class Store:
         if self.data["version"] == 2:
             return
         backup = self.directory / "registry-v1.backup.json"
-        try:
-            previous = read_state_text(backup)
-        except FileNotFoundError:
-            self.write_json(backup, self.data)
-        else:
-            if json.loads(previous) != self.data:
-                raise ValueError(
-                    "migration backup exists for different state; inspect before retry"
-                )
+        with self._files() as files:
+            self._verify_files(files)
+            try:
+                previous = read_state_text(backup, directory=files.root)
+            except FileNotFoundError:
+                self._write_json(backup, self.data, files.root)
+            else:
+                if json.loads(previous) != self.data:
+                    raise ValueError(
+                        "migration backup exists for different state; inspect before retry"
+                    )
         self.data["version"] = 2
-        self.save()
+        try:
+            self.save()
+        except (Exception, KeyboardInterrupt, SystemExit):
+            self.data["version"] = 1
+            raise
 
     def save(self) -> None:
         self.require_transaction()
@@ -384,31 +540,110 @@ class Store:
             raise ValueError(
                 "registry contains multiple active parents for one session"
             )
-        if self.data["version"] == 1:
-            self.write_json(self.path, self.data)
-        else:
-            ownership_index: dict[str, Any] = {}
-            for key, row in self.parents.items():
-                path = self.directory / "parents" / (digest(key) + ".json")
-                if (
-                    self._saved.get("version") != 2
-                    or self._saved.get("parents", {}).get(key) != row
-                ):
-                    self.write_json(path, row)
-                ownership_index[key] = {
+        with self._files() as files:
+            self._verify_files(files)
+            if self.data["version"] == 1:
+                self._write_json(self.path, self.data, files.root)
+            else:
+                self._save_split(files)
+        self._saved = copy.deepcopy(self.data)
+
+    def _save_split(self, files: _RegistryFiles) -> None:
+        index = {
+            "version": 2,
+            "parents": {
+                key: {
                     field: row[field] for field in ("session", "status", "generation")
                 }
-            index = {"version": 2, "parents": ownership_index}
+                for key, row in self.parents.items()
+            },
+        }
+        previous_parents = (
+            self._saved["parents"] if self._saved.get("version") == 2 else {}
+        )
+        changed = [
+            (key, row)
+            for key, row in self.parents.items()
+            if previous_parents.get(key) != row
+        ]
+        try:
+            current_index = self._read_object(self.path, files.root)
+        except FileNotFoundError:
+            current_index = None
+
+        with ExitStack() as stack:
+            # Prepare the index first so unsafe entries and write failures are
+            # detected before any record is published.
+            pending_index = None
+            if current_index != index:
+                pending_index = stack.enter_context(
+                    prepare_state_write(
+                        self.path,
+                        lambda stream: self._dump_json(stream, index),
+                        directory=files.root,
+                    )
+                )
+            pending_rows: list[
+                tuple[PreparedStateWrite, PreparedStateWrite | None]
+            ] = []
+            if changed:
+                parent_dir = files.parent_directory(create=True)
+                for key, row in changed:
+                    path = self.directory / "parents" / (digest(key) + ".json")
+                    pending_rows.append(self._prepare_row(stack, path, row, parent_dir))
+
+            self._verify_files(files)
+            published = []
             try:
-                raw_index = read_state_text(self.path)
-            except FileNotFoundError:
-                raw_index = None
-            if raw_index is None or json.loads(raw_index) != index:
-                self.write_json(self.path, index)
-        self._saved = copy.deepcopy(self.data)
+                for update, backup in pending_rows:
+                    update.publish()
+                    published.append((update, backup))
+                if pending_index is not None:
+                    pending_index.publish()
+            except (Exception, KeyboardInterrupt, SystemExit):
+                try:
+                    for update, backup in reversed(published):
+                        update.restore(backup)
+                except OSError:
+                    self._write_invalid = True
+                    raise
+                raise
+
+    def _prepare_row(
+        self,
+        stack: ExitStack,
+        path: Path,
+        row: dict[str, Any],
+        directory: StateDirectory,
+    ) -> tuple[PreparedStateWrite, PreparedStateWrite | None]:
+        backup = None
+        try:
+            previous = read_state_text(path, directory=directory)
+        except FileNotFoundError:
+            pass
+        else:
+            backup = stack.enter_context(
+                prepare_state_write(
+                    path, lambda stream: stream.write(previous), directory=directory
+                )
+            )
+        pending = stack.enter_context(
+            prepare_state_write(
+                path, lambda stream: self._dump_json(stream, row), directory=directory
+            )
+        )
+        return pending, backup
+
+    @staticmethod
+    def _dump_json(stream: TextIO, value: Any) -> None:
+        json.dump(value, stream, ensure_ascii=False, indent=2, sort_keys=True)
+        stream.write("\n")
 
     @staticmethod
     def write_json(path: Path, value: Any) -> None:
-        with atomic_state_writer(path) as stream:
-            json.dump(value, stream, ensure_ascii=False, indent=2, sort_keys=True)
-            stream.write("\n")
+        Store._write_json(path, value, None)
+
+    @staticmethod
+    def _write_json(path: Path, value: Any, directory: StateDirectory | None) -> None:
+        with atomic_state_writer(path, directory=directory) as stream:
+            Store._dump_json(stream, value)
