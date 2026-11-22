@@ -6,17 +6,59 @@ import json
 import os
 import re
 import subprocess
-from collections.abc import Callable
-from contextlib import nullcontext
+from collections.abc import Callable, Iterator
+from contextlib import ExitStack, contextmanager, nullcontext
 from pathlib import Path
 from time import sleep
 from typing import Any
+from uuid import uuid4
+
+from worktree_cleanup.inventory import open_directory, read_at, rename_no_replace
+from worktree_cleanup.storage import CleanupError
 
 from . import journal, schema
 from .journal import PublicationError, require
 from .sources import guard_for, render
 
 PR_HEAD_RETRY_DELAYS = (0.25, 0.5, 1.0)
+
+
+@contextmanager
+def _parked_directory(
+    path: Path, saved: Path, *, can_restore: Callable[[], bool] | None = None
+) -> Iterator[int]:
+    """Move an entire directory, preserving anything that arrived during the move."""
+    with ExitStack() as stack:
+        source = open_directory(path.parent)
+        stack.callback(os.close, source)
+        destination = open_directory(saved.parent)
+        stack.callback(os.close, destination)
+        already_parked = os.path.lexists(saved)
+        if already_parked:
+            require(not os.path.lexists(path), "worktree_changed")
+        leaf = open_directory(saved if already_parked else path)
+        stack.callback(os.close, leaf)
+        if not already_parked:
+            rename_no_replace(source, path.name, destination, saved.name)
+        try:
+            os.fsync(source)
+            os.fsync(destination)
+            require(
+                os.path.samestat(
+                    os.fstat(leaf),
+                    os.stat(saved.name, dir_fd=destination, follow_symlinks=False),
+                ),
+                "worktree_changed",
+            )
+            yield leaf
+        except BaseException:
+            # Another process may have recreated the original path. In that
+            # case retain the archived data instead of replacing its successor.
+            if can_restore is None or can_restore():
+                rename_no_replace(destination, saved.name, source, path.name)
+                os.fsync(source)
+                os.fsync(destination)
+            raise
 
 
 def pr_head(pr: dict[str, Any]) -> str | None:
@@ -323,8 +365,6 @@ class Publisher:
         return self.git("rev-parse", "HEAD", cwd=tree).decode().strip()
 
     def interrupted_checkout(self, tree: Path, row: dict[str, Any]) -> bool:
-        # The journal lock serializes publishers. An empty checkout with only
-        # its Git link has no user files for a forced worktree removal to erase.
         if list(tree.iterdir()) != [tree / ".git"] or self.git(
             "ls-files", "-z", cwd=tree
         ):
@@ -341,12 +381,91 @@ class Publisher:
             b"\0\0"
         )
 
+    def retire_interrupted_checkout(self, tree: Path, row: dict[str, Any]) -> None:
+        common = Path(
+            os.fsdecode(
+                self.git("rev-parse", "--path-format=absolute", "--git-common-dir")
+            ).rstrip("\n")
+        ).resolve()
+        if "worktree_recovery" not in row:
+            admin = Path(
+                os.fsdecode(
+                    self.git("rev-parse", "--absolute-git-dir", cwd=tree)
+                ).rstrip("\n")
+            )
+            require(admin.parent == common / "worktrees", "worktree_changed")
+            row["worktree_recovery"] = {"id": uuid4().hex, "admin": admin.name}
+            journal.atomic(self.path, row)
+        recovery = row["worktree_recovery"]
+        token, admin_name = recovery["id"], recovery["admin"]
+        require(
+            schema.digest(token, 32)
+            and isinstance(admin_name, str)
+            and admin_name == Path(admin_name).name
+            and admin_name not in {"", ".", ".."},
+            "worktree_changed",
+        )
+        admin = common / "worktrees" / admin_name
+        name = ".worker-log-recovery-" + token
+        checkout = tree.parent / name / "checkout"
+        registration = common / name / "registration"
+        try:
+            for destination in (checkout, registration):
+                destination.parent.mkdir(mode=0o700, exist_ok=True)
+            # Restore the checkout only once its original Git registration is
+            # back in place. Otherwise its Git link could point to a successor.
+            with _parked_directory(
+                tree, checkout, can_restore=lambda: not os.path.lexists(registration)
+            ) as leaf:
+                link = read_at(leaf, ".git").rstrip("\n")
+                require(
+                    os.listdir(leaf) == [".git"]
+                    and link.startswith("gitdir: ")
+                    and Path(os.path.abspath(tree / link.removeprefix("gitdir: ")))
+                    == admin,
+                    "worktree_dirty",
+                )
+                with _parked_directory(admin, registration) as metadata:
+                    # The parked admin is still two levels below the Git common
+                    # directory, so its relative commondir continues to work.
+                    git_dir = f"--git-dir={registration}"
+                    backlink = read_at(metadata, "gitdir").rstrip("\n")
+                    require(
+                        Path(os.path.abspath(admin / backlink)) == tree / ".git"
+                        and self.git(git_dir, "symbolic-ref", "HEAD").decode().strip()
+                        == f"refs/heads/{row['branch']}"
+                        and self.git(git_dir, "rev-parse", "HEAD").decode().strip()
+                        == row["base"]
+                        and not self.git(git_dir, "ls-files", "-z")
+                        and os.listdir(leaf) == [".git"]
+                        and read_at(leaf, ".git").rstrip("\n") == link
+                        and not os.path.lexists(tree)
+                        and not os.path.lexists(admin)
+                        and read_at(metadata, "locked").rstrip("\n") == "initializing",
+                        "worktree_dirty",
+                    )
+        except (OSError, ValueError, CleanupError, subprocess.SubprocessError) as exc:
+            if not any(os.path.lexists(p) for p in (checkout, registration)):
+                row.pop("worktree_recovery")
+            raise PublicationError(
+                "worktree_dirty",
+                f"Interrupted checkout recovery stopped (recovery directory {name}).",
+            ) from exc
+        # Retain the old directories. A process already holding an open file
+        # descriptor could still write there after the final validation.
+        row.pop("worktree_recovery")
+        journal.atomic(self.path, row)
+
     def commit(self, row: dict[str, Any], files: dict[str, bytes]) -> None:
         tree = self.worktree(row)
         require(not tree.is_symlink(), "worktree_changed")
-        current = self.worktree_head(tree, row["branch"]) if tree.exists() else None
-        if current == row["base"] and self.interrupted_checkout(tree, row):
-            self.git("worktree", "remove", "--force", "--force", str(tree))
+        current = None
+        if "worktree_recovery" not in row and tree.exists():
+            current = self.worktree_head(tree, row["branch"])
+        if "worktree_recovery" in row or (
+            current == row["base"] and self.interrupted_checkout(tree, row)
+        ):
+            self.retire_interrupted_checkout(tree, row)
             current = None
         if current is None:
             self.add_worktree(tree, row, files)

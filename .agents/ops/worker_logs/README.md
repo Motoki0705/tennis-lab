@@ -154,6 +154,9 @@ workerの終了値はrunnerの結果であり、公開CLIも保留なら0を返�
 commit直後のjournal中断は期待した親・内容からcommitを再利用する。PR作成直後・merge直後の応答喪失も
 同じbranch・marker・HEADを照合して再利用する。PRのHEADが固定revisionに一致しない観測は短い間隔で最大3回再取得する。
 専用worktreeは、固定branch・baseで `locked (initializing)`、空indexかつGitリンクだけの状態なら作り直す。
+旧checkoutとGit登録はそれぞれのファイルシステム上で非公開の `.worker-log-recovery-<id>` へ移動し、移動した個体を再検査する。
+変更を見つけた場合は公開を拒否し、元の場所が空いていれば復元する。隔離した旧個体は手動プロセスからの書込みも保全するため保持する。
+移動途中の中断はprivate journalに保存した復旧記録から続ける。
 その他のdirty worktreeや破損journalは、親が原因を確認してから再検査する。
 旧blocked記録に診断が無くても `--retry` は現在のPR・main・全差分を再検査する。
 古いPRのbase SHAを許容してmergeへ進む場合は、private `diagnostic` に `stale_pr_base_sha` と
@@ -229,7 +232,7 @@ remaining_publications(repo: str, parent: int, *, state_dir: Path) -> list[Remai
 
 ロック・subprocess・ネットワーク・captureを使わない。一括照合と残件一覧は、読み取れない名前空間を `journal_unavailable` として返す。
 `journal_reason` は固定の理由、`namespace_sha256` はstateディレクトリからの相対パスのSHA-256。
-`journal_identity` はパスから識別した `path_only` または `unknown`。親番号など判明した情報も返す。
+`journal_identity` はパスから識別した `path_only` または `unknown`。識別子として返すのは判明した親番号だけ。
 未mergeの判断ログbatchは、payloadのIDと内容を捕捉journalの固定済み公開envelopeと照合する。
 捕捉・prepareの欠落や不一致はinput_capture_failedとして一覧取得を失敗させ、終了checkpointでは
 remaining_complete=falseを残す。判断ログの公開入口も、未公開ゼロを返す前に同じ照合を行う。
@@ -262,6 +265,7 @@ fieldは `repo, parent, generation, event, observed_at, main_revision, remaining
 resume_command, decision_resume_command, error`。eventはended/handoff_pending/handoff_accepted、時刻はUTC、revision欠測はNone。
 remainingは上記APIの一覧。publication_actorはactiveな親番号、担当者不在ならunassigned。
 破損等で全件を読めないときはremaining_complete=falseとerrorを保存し、空一覧を残件ゼロの証拠にしない。
+名前空間を特定できる診断行はprivate checkpointの `unavailable_namespaces` にも保存する。
 親statusは読み取れた残件と `journal_unavailable` の行を併記する。照合の欠測は `publication_inventory_error` にも示す。
 resume_commandはworkerログ、decision_resume_commandは判断ログの再開先。終了済みの元担当sessionも
 自分の親の公開を再開できる。別の担当中の親はworkerログを一括回収できる。

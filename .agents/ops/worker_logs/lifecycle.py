@@ -136,17 +136,17 @@ def record_exit(
         )
     except (OSError, subprocess.SubprocessError):
         revision = None
+    unavailable = []
     remaining_complete = True
     try:
         inventory = remaining_publications(repo, parent, state_dir=state_dir)
-        # Termination records keep their fixed public schema. An unreadable
-        # namespace makes the inventory incomplete, with details in status.
         remaining = [
             {k: v for k, v in item.items() if k != "next_action"}
             for item in inventory
             if "journal_reason" not in item
         ]
-        remaining_complete = len(remaining) == len(inventory)
+        unavailable = [item for item in inventory if "journal_reason" in item]
+        remaining_complete = not unavailable
         if not remaining_complete:
             publication_error = "journal_unavailable"
     except (ValueError, OSError, KeyError, TypeError):
@@ -165,6 +165,8 @@ def record_exit(
         "remaining_complete": remaining_complete,
         "error": publication_error,
     }
+    if unavailable:
+        checkpoint["unavailable_namespaces"] = unavailable
     path = (
         state_dir
         / "publication-exits"
@@ -203,6 +205,9 @@ def capture_exit(
         publication_error=publication_error,
         persist=False,
     )
+    # The public termination record represents missing inventory with its
+    # existing completeness flag. Keep the diagnostic rows in the private receipt.
+    checkpoint.pop("unavailable_namespaces", None)
     return capture_checkpoint(checkpoint, state_dir=state_dir)
 
 

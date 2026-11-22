@@ -84,7 +84,15 @@ def _journal_paths(
                 yield path, "journal_read_failed"
         elif depth:
             for child in sorted(path.iterdir()):
-                yield from _journal_paths(child, depth - 1)
+                # Parent, issue and turn are positive numbers. The delegation
+                # key is the only hex directory. Sidecars such as publication.lock
+                # and batches are outside the journal namespace.
+                expected = (
+                    schema.digest(child.name, 32)
+                    if depth == 2
+                    else _namespace_number(child.name) is not None
+                )
+                yield from _journal_paths(child, depth - 1, namespace=expected)
         else:
             path = path / "journal.json"
             path.lstat()
@@ -173,29 +181,25 @@ def _unavailable_journal(
     kind: Literal["worker_log", "decision_log"] = (
         "worker_log" if relative_path.parts[0] == "worker-logs" else "decision_log"
     )
-    issue, sequence, key = None, None, None
     identified = True
     if kind == "worker_log":
         parts = relative_path.parts[2:]
-        if parts:
-            parent = _namespace_number(parts[0]) or parent
-        if len(parts) >= 2:
-            issue = _namespace_number(parts[1])
-        if len(parts) >= 3 and schema.digest(parts[2], 32):
-            key = "d-" + parts[2]
-        if len(parts) >= 4:
-            sequence = _namespace_number(parts[3])
+        path_parent = _namespace_number(parts[0]) if parts else None
+        parent = path_parent or parent
         identified = (
             len(parts) == 5
             and parts[4] == "journal.json"
-            and None not in (parent, issue, key, sequence)
+            and path_parent is not None
+            and _namespace_number(parts[1]) is not None
+            and schema.digest(parts[2], 32)
+            and _namespace_number(parts[3]) is not None
         )
     return {
         "kind": kind,
         "parent": parent,
-        "issue": issue,
-        "public_key": key,
-        "sequence": sequence,
+        "issue": None,
+        "public_key": None,
+        "sequence": None,
         "state": "blocked",
         "stage": None,
         "error": "journal_unavailable",
