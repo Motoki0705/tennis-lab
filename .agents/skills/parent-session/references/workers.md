@@ -38,13 +38,13 @@ setsid "${p[@]}" run-worker --child 1217 --worker quality --from "$base" --promp
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --child 1217 --worker primary --from "$base" --prompt-file impl.md
 ```
 
-- コマンド投入やシェルの `exit 0` を起動成功とみなさない。必ず `inspect-worker` で手動runの登録・稼働（`result: "running"` や進行済みの状態）を確認してから、`wait-worker` も同様に `setsid` や末尾 `&` を付けず `run_command` の非同期タスクとして接続する。`--from` のworktree準備中にまだ未登録なら、実行中の `run-worker` タスクの状態を確認し、準備後に `inspect-worker` を再実行する。
-- `inspect-worker` で稼働を確認し `wait-worker` を接続するまで（または準備中の確認手段を確保するまで）、監視がない状態でターンを終了しない。`wait-worker` 接続前に `run-worker` が終了して `followup.state` が継続中の場合は、その完了通知で直ちに `wait-worker` を接続する。
+- `wait-worker --after-run` も `setsid` や末尾 `&` を付けず、`run_command` の非同期タスクとして直接起動する。runの登録前から待てる。起動自体の成否は `run-worker` の結果や `inspect-worker` で確認する。
 
 ## 待つ、追加する、受け入れる
 
 - `launch_plan` の `action=ready`、既存予約、依存・枠の待機理由を確認する。別の担当を同じIssueへ追加するときは、成果PRがopenでも新しい名前とworktreeを指定できる。複数人になったら、既存担当への操作にも `--worker primary` または補助担当名を付ける。
-- 手動runの登録を `inspect-worker` で確認したら、`wait-worker --child 1217 --worker quality` を会話のシェルツールで背景実行して終了通知を受ける（`agy` 手動親では `setsid` / `&` を付けず `run_command` の非同期タスクとして直接起動する）。`wait_state=ended` は、宣言を受けた監視と自動再開がある場合はその一連の終了まで含む。最後のrunの成否は `runner_summary`、成果は `final_file`、監視の成否・親の判断・再開回数は `followup` で確認する。終了コード124は読取側の時間満了。同じ処理をもう一度待てる。終了コード2は異常。保存済みの理由を読んで [復旧](recovery.md) へ進む。
+- 初回の手動起動を待つには `wait-worker --child 1217 --worker quality --after-run none --timeout 900` を使う。再開時は起動前に `inspect-worker` などで直前の `run_dir` を控え、`--after-run RUN_DIR` を指定する。指定後の最初のrunが記録されるまで待つ。オプションを省略すると記録済みの最新runを待つ。
+- `wait_state=ended` は、宣言を受けた監視と自動再開がある場合はその一連の終了まで含む。最後のrunの成否は `runner_summary`、成果は `final_file`、監視の成否・親の判断・再開回数は `followup` で確認する。終了コード124は読取側の時間満了。同じ指定で再待機できる。終了コード2は理由を読んで [復旧](recovery.md) へ進む。
 - 調査だけを任せるターンは `--planning`。結果から次の方針を決め、必要に応じて `decide-worker-plan` で回答を結び付ける。同じ担当に続きやmajor修正を頼むときは、終了・回収を照合して手動の `run-worker --resume` または自律の `continue-worker` を使う。
 - 補助担当はcommitまたは測定結果を返す。統合担当が競合を解消して統合HEADを検証し、担当Issueを閉じるPRに `Closes #1217` を書く。親はPRのbranch・HEADと条件ごとの証拠を確かめ、[正式レビュー](review.md) の `review-request` へ一度渡す。個別に受入だけを記録する場合は `record-result`。
 - 複数担当の一人を止めるには `stop-worker --worker 名前`。Issue全体の保留は `stop` を使う。自律親で担当が一人のときの `stop-worker` は、対象Issueを保留し、依存して保留されたjobにも停止を要求する。影響先は `launch_plan` で確認する。停止要求だけでは終了・枠解放は確定しない。[終了が不明な場合](recovery.md)

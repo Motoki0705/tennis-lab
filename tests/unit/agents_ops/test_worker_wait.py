@@ -140,6 +140,42 @@ def test_deadline_uses_remaining_time_and_never_sleeps_past_limit(
     assert value["termination_recorded"] is False
 
 
+def test_wait_after_run_uses_deadline_without_inspecting_previous_result(
+    evidence: Evidence,
+) -> None:
+    evidence.terminal()
+    clock = Clock()
+    code, value = evidence.wait(clock, timeout=2.5, after_run=str(evidence.directory))
+    assert code == 124 and value["wait_state"] == "timeout"
+    assert value["run_id"] is None and value["final_file"] is None
+    assert clock.sleeps == [1.0, 1.0, 0.5] and evidence.timeouts == []
+
+
+def test_wait_for_first_run_can_precede_delegation(evidence: Evidence) -> None:
+    evidence.terminal()
+    task = evidence.row["tasks"].pop("10")
+    evidence.save()
+    clock = Clock()
+
+    def record_run(seconds: float) -> None:
+        clock.sleep(seconds)
+        evidence.row["tasks"]["10"] = task
+        evidence.save()
+
+    code, value = evidence.module.wait_worker(
+        evidence.store,
+        "o/r#1",
+        10,
+        after_run="none",
+        timeout=2.5,
+        clock=clock.read,
+        sleep=record_run,
+    )
+    assert code == 0 and value["run_id"] == "one-run"
+    assert value["delegation_id"] == task["delegation_id"]
+    assert evidence.timeouts == [1.5]
+
+
 def test_ended_run_never_calls_sleep_or_marks_registry_ended(
     evidence: Evidence,
 ) -> None:

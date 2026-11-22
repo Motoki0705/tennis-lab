@@ -299,6 +299,9 @@ def parser() -> argparse.ArgumentParser:
         "--model-reason-file",
         help="optional note retained with the worker record",
     )
+    cancel_launch = commands.add_parser("cancel-worker-launch")
+    cancel_launch.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
+    cancel_launch.add_argument("--run-dir", type=Path, required=True)
     run_record = commands.add_parser("record-worker-run")
     run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
@@ -306,6 +309,11 @@ def parser() -> argparse.ArgumentParser:
         "wait-worker", help="指定ワーカーの終了・回収と手動委任の後続処理を待つ"
     )
     wait.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
+    wait.add_argument(
+        "--after-run",
+        metavar="RUN_DIR|none",
+        help="手動担当の次のrunを待つ。初回は none、再開時は直前の run_dir",
+    )
     wait.add_argument(
         "--timeout", type=float, help="finite positive seconds; default: no limit"
     )
@@ -397,6 +405,7 @@ def parser() -> argparse.ArgumentParser:
     for name in (
         "delegate",
         "run-worker",
+        "cancel-worker-launch",
         "wait-worker",
         "record-worker-ended",
         "record-worker-run",
@@ -568,6 +577,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 number(args.child),
                 timeout=args.timeout,
                 worker=args.worker,
+                after_run=args.after_run,
             )
             print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
             return code
@@ -994,6 +1004,10 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 from .manual_workers import record_worker_run
 
                 result = record_worker_run(session, number(args.child), args.run_dir)
+            elif command == "cancel-worker-launch":
+                from .manual_workers import cancel_worker_launch
+
+                result = cancel_worker_launch(session, number(args.child), args.run_dir)
             elif command == "delegate":
                 result = session.delegate(
                     number(args.child),

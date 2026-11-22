@@ -119,13 +119,24 @@ def finish(
         }
 
 
-def reject_unstarted(path: str | None) -> dict[str, Any]:
+def reject_unstarted(path: str | None, directory: Path) -> dict[str, Any]:
     """Retain a captured instruction without waiting for an impossible final."""
     if path is not None:
         try:
             target = Path(path)
             with journal.locked(target):
                 row = journal.read(target)
+                require(
+                    row["source"].get("run_directory") == str(directory),
+                    "runtime_changed",
+                )
+                if (
+                    row.get("stage") == "not_started"
+                    or row.get("stage") not in {None, "awaiting_final"}
+                    or row["state"] not in {"captured", "blocked"}
+                    or "receipt" in row
+                ):
+                    return journal.view(row)
                 row["stage"] = "not_started"
                 journal.fail(target, row, "runner_not_started", state="worker_failed")
                 result: dict[str, Any] = journal.view(row)

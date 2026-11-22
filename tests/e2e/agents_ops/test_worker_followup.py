@@ -134,6 +134,7 @@ finally:
 @pytest.fixture
 def service(reserved: ParentEnv) -> ParentEnv:
     p = reserved
+    (p.repo / ".venv").symlink_to(sys.prefix, target_is_directory=True)
     shutil.copytree(
         SOURCE / ".agents/ops",
         p.repo / ".agents/ops",
@@ -385,6 +386,8 @@ def test_queue_waits_for_every_job_and_duplicate_controller_cannot_resume(
                             "wait-worker",
                             "--child",
                             "10",
+                            "--after-run",
+                            "none",
                             "--timeout",
                             "15",
                         ),

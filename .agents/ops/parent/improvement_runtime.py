@@ -32,6 +32,7 @@ class ManualExecution:
     spawned: bool
     reused: bool = False
     repair_claim: str | None = None
+    rejection_reason: str | None = None
 
 
 def execute_manual(
@@ -49,7 +50,13 @@ def execute_manual(
     reserved_run: dict[str, Any],
     reserved_turn: dict[str, Any],
 ) -> ManualExecution:
-    from .manual_workers import current_task, latest_run, worker_runs
+    from .manual_workers import (
+        RunnerEnvironmentUnavailable,
+        current_task,
+        latest_run,
+        require_runner_environment,
+        worker_runs,
+    )
 
     directory = Path(command[command.index("--run-dir") + 1])
     process: subprocess.Popen[bytes] | None = None
@@ -117,6 +124,7 @@ def execute_manual(
                         pr = session.gh.get(f"repos/{gh.repo}/pulls/{wait['pr']}")
                     require_ci_target(object_value(pr), gh.repo, task["branch"], wait)
                     require_repair_labels(session, child, wait["pr"])
+            require_runner_environment()
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
@@ -162,6 +170,9 @@ def execute_manual(
             ),
             False,
             repair_claim=repair_claim,
+            rejection_reason=str(exc)
+            if isinstance(exc, RunnerEnvironmentUnavailable)
+            else None,
         )
 
 

@@ -16,8 +16,8 @@ import socket
 import subprocess
 import sys
 import tempfile
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Callable, Iterator
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -36,8 +36,30 @@ from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 ROOT = Path(__file__).resolve().parents[3]
-# The waiting command itself contains the exact text that used to match pgrep.
-WAIT_ENTRY = ENTRY + "\n# run-worker --child 10 --resume\n"
+WAIT_ENTRY = (
+    """
+import os, socket, sys, time
+if os.environ.get("WAIT_LAUNCH_GATED"):
+    assert sys.stdin.buffer.read(1) == b"S"
+if os.environ.get("WAIT_PENDING_SOCKET"):
+    from parent import worker_wait
+    original_wait = worker_wait.wait_worker
+    def wait(*args, **kwargs):
+        def pause(seconds):
+            address = os.environ.pop("WAIT_PENDING_SOCKET", None)
+            if address is None:
+                time.sleep(seconds)
+                return
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+                connection.connect(address)
+                connection.sendall(b"pending\\n")
+                assert connection.recv(1) == b"C"
+        return original_wait(*args, sleep=pause, **kwargs)
+    worker_wait.wait_worker = wait
+"""
+    + ENTRY
+    + "\n# run-worker --child 10 --resume\n"
+)
 
 
 def command(runner: Path, *args: str) -> list[str]:
@@ -98,7 +120,11 @@ class Running:
 
 @contextmanager
 def running(
-    p: ParentEnv, mode: str = "initial", code: int = 0, reason: str = "completed"
+    p: ParentEnv,
+    mode: str = "initial",
+    code: int = 0,
+    reason: str = "completed",
+    before_record: Callable[[Path, dict[str, str]], None] | None = None,
 ) -> Iterator[Running]:
     if mode == "resume":
         run(p)
@@ -131,13 +157,19 @@ def running(
                     *(["--planning"] if mode == "planning" else []),
                 ),
                 cwd=p.repo,
-                env=env,
+                env={**env, "WAIT_LAUNCH_GATED": "1"} if before_record else env,
                 text=True,
+                stdin=subprocess.PIPE if before_record else subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 start_new_session=True,
             )
             try:
+                if before_record:
+                    before_record(runner, env)
+                    assert process.stdin is not None
+                    process.stdin.write("S")
+                    process.stdin.flush()
                 with connected(server) as connection:
                     assert message(connection) == b"ready\n"
                     yield Running(p, process, connection, runner, env)
@@ -165,9 +197,7 @@ def test_wait_uses_latest_run_and_releases_locks_even_with_matching_command_line
             address = Path(short) / "status.sock"
             with listening(address) as server:
                 waiter = subprocess.Popen(
-                    command(
-                        worker.runner, "wait-worker", "--child", "10", "--timeout", "10"
-                    ),
+                    command(worker.runner, "wait-worker", "--child", "10"),
                     cwd=p.repo,
                     env={**worker.env, "WAIT_STATUS_SOCKET": str(address)},
                     text=True,
@@ -269,11 +299,109 @@ def test_already_ended_returns_without_wait_or_state_writes(
     assert p.calls() == gh_calls
 
 
-def test_no_current_run_fails_explicitly(reserved: ParentEnv) -> None:
+def test_no_current_run_requires_explicit_wait_for_first_run(
+    reserved: ParentEnv,
+) -> None:
     p = reserved
     result = p.cli("wait-worker", "--child", "10", ok=False)
     assert result.returncode == 2
     assert "no recorded run" in result.stderr
+    result = p.cli(
+        "wait-worker",
+        "--child",
+        "10",
+        "--after-run",
+        "none",
+        "--timeout",
+        "0.2",
+        ok=False,
+    )
+    assert result.returncode == 124
+    value = json.loads(result.stdout)
+    assert value["wait_state"] == "timeout"
+    assert value["run_dir"] is None and value["runner_summary"] is None
+
+
+@pytest.mark.parametrize("mode", ["initial", "resume"])
+def test_wait_after_run_starts_before_new_run_is_recorded(
+    reserved: ParentEnv, mode: str
+) -> None:
+    p = reserved
+    with (
+        tempfile.TemporaryDirectory(prefix="wait-next-") as short,
+        ExitStack() as stack,
+    ):
+        pending_path = Path(short) / "pending.sock"
+        status_path = Path(short) / "status.sock"
+        pending_server = stack.enter_context(listening(pending_path))
+        status_server = stack.enter_context(listening(status_path))
+        waiter: subprocess.Popen[str]
+        pending: socket.socket
+        after_run: str
+
+        def start_waiter(runner: Path, env: dict[str, str]) -> None:
+            nonlocal waiter, pending, after_run
+            if mode == "resume":
+                # The old run is already terminal but the new one is unrecorded.
+                previous = json.loads(p.cli("inspect-worker", "--child", "10").stdout)
+                after_run = previous["run_dir"]
+                assert previous["termination_confirmed"]
+            else:
+                assert not task(p).get("worker_runs")
+                after_run = "none"
+            waiter = stack.enter_context(
+                subprocess.Popen(
+                    command(
+                        runner,
+                        "wait-worker",
+                        "--child",
+                        "10",
+                        "--after-run",
+                        after_run,
+                    ),
+                    cwd=p.repo,
+                    env={
+                        **env,
+                        "WAIT_PENDING_SOCKET": str(pending_path),
+                        "WAIT_STATUS_SOCKET": str(status_path),
+                    },
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            )
+
+            def stop_waiter() -> None:
+                if waiter.poll() is None:
+                    waiter.kill()
+
+            stack.callback(stop_waiter)
+            pending = stack.enter_context(connected(pending_server))
+            assert message(pending) == b"pending\n"
+            assert waiter.poll() is None
+
+        with running(p, mode, before_record=start_waiter) as worker:
+            directory = latest(p)
+            assert str(directory) != after_run
+            pending.sendall(b"C")
+            with connected(status_server) as status:
+                observed = json.loads(message(status))
+                assert observed["result"] == "running"
+                assert observed["run_id"] == directory.name
+                assert waiter.poll() is None
+                status.sendall(b"C")
+            status_server.close()
+            worker.connection.sendall(b"F")
+            _, stderr = worker.process.communicate(timeout=20)
+            assert worker.process.returncode == 0, stderr
+            stdout, stderr = waiter.communicate(timeout=15)
+            assert waiter.returncode == 0, stderr + stdout
+    value = json.loads(stdout)
+    assert value["wait_state"] == "ended" and value["run_dir"] == str(directory)
+    assert value["runner_summary"]["exit_code"] == 0
+    assert value["cleanup_complete"] and value["worker_ended_recorded"]
+    assert value["followup"]["state"] == "done"
+    assert value["final_file"] == str(directory / "final.md")
 
 
 @pytest.mark.parametrize("when", ["before_wait", "during_wait"])

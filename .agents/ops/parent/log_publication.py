@@ -57,6 +57,7 @@ MUTATIONS = {
     "configure-delegation",
     "record-worker-run",
     "record-worker-ended",
+    "cancel-worker-launch",
     "record-result",
     "record-cancellation",
     "decide-worker-plan",
