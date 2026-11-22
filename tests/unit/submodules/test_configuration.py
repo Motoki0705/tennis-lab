@@ -68,6 +68,51 @@ def test_runtime_rejects_removed_device_fallback_toggle() -> None:
         SubmoduleRuntimeConfig.from_mapping(mapping)
 
 
+@pytest.mark.parametrize("name", ["dino_detector", "vitpose", "hmr2", "clip_reid", "gvhmr"])
+def test_explicit_tensorrt_fp16_and_batch_configuration(name: str, tmp_path: Path) -> None:
+    mapping = _runtime_mapping()
+    mapping["device"] = "cuda:0"
+    options = mapping.setdefault(name, {})
+    assert isinstance(options, dict)
+    batch_size = 1 if name == "gvhmr" else 3
+    options.update(backend="tensorrt", precision="fp16",
+                   engines=[str(tmp_path / name)], batch_size=batch_size)
+    runtime = SubmoduleRuntimeConfig.from_mapping(mapping)
+    selected = getattr(runtime, name)
+    engines = selected.engines if name in {"dino_detector", "vitpose"} else selected.backend.engines
+    assert runtime.uses_tensorrt
+    assert engines == (tmp_path / name,)
+    assert selected.batch_size == batch_size
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"backend": "native"}, "backend must be"),
+        ({"backend": "pytorch"}, "engines require"),
+        ({"precision": "fp32"}, "requires fp16"),
+        ({"engines": []}, "explicit engine directories"),
+        ({"batch_size": 2}, "GVHMR TensorRT requires batch_size=1"),
+        ({"batch_size": 0}, "batch_size must be positive"),
+        ({"batch_size": True}, "expected int"),
+    ],
+)
+def test_gvhmr_invalid_tensorrt_options_fail_during_composition(
+    changes: dict[str, object], message: str, tmp_path: Path
+) -> None:
+    mapping = _runtime_mapping()
+    mapping["device"] = "cuda:0"
+    mapping["gvhmr"] = {
+        "backend": "tensorrt",
+        "precision": "fp16",
+        "engines": [str(tmp_path / "engine")],
+        "batch_size": 1,
+        **changes,
+    }
+    with pytest.raises(ConfigurationError, match=message):
+        SubmoduleRuntimeConfig.from_mapping(mapping)
+
+
 @pytest.mark.parametrize("failure", ["missing", "unknown", "wrong_type"])
 def test_vitpose_head_rejects_incomplete_or_untyped_values(failure: str) -> None:
     mapping = _runtime_mapping()
