@@ -68,6 +68,13 @@ dependencies = [
     "lap>=0.5.12",
 ]
 
+[project.optional-dependencies]
+tensorrt = [
+    "tensorrt-cu13==10.14.1.48.post1; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "onnx==1.21.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "onnxruntime-gpu==1.30.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+
 [project.urls]
 "License scope" = "https://github.com/Motoki0705/tennis-lab/blob/main/LICENSES.md"
 
