@@ -109,6 +109,7 @@ TARGETS = {
     ),
     "worktree-cleanup": timer_target("worktree-cleanup", "tennis-lab-worktree-cleanup"),
     "storage-tier": timer_target("storage-tier", "tennis-lab-storage-tier"),
+    "d-capacity": service_target("d-capacity", "tennis-lab-d-capacity"),
 }
 
 

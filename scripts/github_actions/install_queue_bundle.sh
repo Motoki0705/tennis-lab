@@ -19,6 +19,7 @@ install -m 0755 \
   "$QUEUE_SCRIPTS/queue_history.py" \
   "$QUEUE_SCRIPTS/prune_ckpts.py" \
   "$DESTINATION_BIN/"
+install -m 0644 "$REPOSITORY_ROOT/.agents/ops/lib/d_capacity.py" "$DESTINATION_BIN/"
 install -m 0644 "$REPOSITORY_ROOT/src/__init__.py" "$DESTINATION_BIN/src/"
 install -m 0644 \
   "$REPOSITORY_ROOT/src/utils/__init__.py" \

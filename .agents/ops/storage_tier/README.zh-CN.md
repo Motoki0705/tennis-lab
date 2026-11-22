@@ -97,7 +97,8 @@ payload内容与atime、其他管理metadata、状态文件及目录均保持不
 首次迁移将历史outputs仅保留在E:，D:输出根从空目录开始。
 对常驻输入进行hash校验复制并创建允许的外部引用，与Clip Studio使用者协调切换期间的暂停和恢复时间，
 验证可通过D:原data相对路径打开raw视频和processed的 `projects.json`。
-容量验收以Linux文件系统空闲量为准，Windows物理D:差值只单独记录。VHDX sparse/压缩仍不属于本次迁移。
+迁移容量验收使用Linux文件系统的空闲量。[物理 D: 容量 watchdog](../d_capacity/README.md)
+读取 Windows 卷的空闲量并控制新任务启动。VHDX sparse/压缩仍不属于本次迁移。
 
 ## checkpoint 单位与 CI assets
 

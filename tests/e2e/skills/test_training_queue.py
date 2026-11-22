@@ -24,8 +24,16 @@ from unittest.mock import patch
 
 import pytest
 
+from tests.support.d_capacity import GIB, PROBE_PATH, set_available
+from tests.support.d_capacity import fake_d_drive as fake_d_drive
+
 ROOT = Path(__file__).parents[3]
 QUEUE_SCRIPT = ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_capacity_probe(fake_d_drive: Path) -> None:
+    pass
 
 
 @pytest.mark.parametrize("arguments", [("add", "true"), ("status",), ("serve",)])
@@ -67,10 +75,18 @@ def _queue_env(
     environment = {
         key: value
         for key, value in os.environ.items()
-        if key not in {"TRAINING_QUEUE_LOCK_FILE", "TRAINING_QUEUE_SYSTEM_LOCK_FILE"}
+        if key
+        not in {
+            "TRAINING_QUEUE_LOCK_FILE",
+            "TRAINING_QUEUE_SYSTEM_LOCK_FILE",
+            "TRAINING_QUEUE_CAPACITY_STATUS_FILE",
+        }
         and not key.startswith("TRAINING_QUEUE_TEST_")
     }
     environment["TRAINING_QUEUE_DIR"] = str(queue_dir)
+    environment["PYTHONPATH"] = os.pathsep.join(
+        (PROBE_PATH, environment.get("PYTHONPATH", ""))
+    )
     # --basetemp may live inside a linked worktree. Never let a "non-Git"
     # fixture discover the real repository's shared GPU lock namespace. A
     # repository explicitly initialized below this ceiling is still visible.
@@ -165,6 +181,65 @@ def _wait_for(predicate: Callable[[], bool], *, timeout: float = 5) -> None:
             return
         time.sleep(0.02)
     raise AssertionError("condition was not satisfied before timeout")
+
+
+def test_capacity_change_after_gpu_wait_preserves_fifo_and_running_job(
+    tmp_path: Path, fake_d_drive: Path
+) -> None:
+    queue, lock = tmp_path / "queue", tmp_path / "gpu.lock"
+    ready, release = tmp_path / "ready", tmp_path / "release"
+    order = tmp_path / "order"
+    os.mkfifo(release)
+    first = _add(
+        queue,
+        lock,
+        f"touch {shlex.quote(str(ready))}; read -r _ < {shlex.quote(str(release))}"
+        f" && echo first >> {shlex.quote(str(order))}",
+        cwd=tmp_path,
+        name="active",
+        resource="half",
+    )
+    second = _add(
+        queue, lock, f"echo second >> {shlex.quote(str(order))}", cwd=tmp_path, name="blocked"
+    )
+    third = _add(
+        queue, lock, f"echo third >> {shlex.quote(str(order))}", cwd=tmp_path, name="successor"
+    )
+    state = queue / "state" / f"{second[:-4]}.state"
+    worker = _serve(queue, lock, cwd=tmp_path)
+    try:
+        _wait_for(
+            lambda: ready.exists()
+            and state.exists()
+            and "wait=main-exclusive-lock" in state.read_text()
+        )
+        set_available(fake_d_drive, 20 * GIB - 1)
+        # Handshake with the admitted job. It must finish while D: is low.
+        fd = os.open(release, os.O_WRONLY | os.O_NONBLOCK)
+        try:
+            os.write(fd, b"finish\n")
+        finally:
+            os.close(fd)
+        _wait_for(
+            lambda: state.exists()
+            and "wait=d-capacity" in state.read_text()
+            and (queue / "done" / first).exists()
+        )
+        assert order.read_text().splitlines() == ["first"]
+        assert sorted(path.name for path in (queue / "jobs").glob("*.job")) == sorted(
+            (second, third)
+        )
+        assert not list((queue / "failed").glob("*.job"))
+        set_available(fake_d_drive, 20 * GIB)
+        stdout, stderr = worker.communicate(timeout=8)
+    finally:
+        if worker.poll() is None:
+            worker.terminate()
+            worker.communicate(timeout=8)
+    assert worker.returncode == 0, (stdout, stderr)
+    assert "21474836479 bytes available" in stderr
+    assert order.read_text().splitlines() == ["first", "second", "third"]
+    assert {path.name for path in (queue / "done").glob("*.job")} == {first, second, third}
 
 
 def _wait_for_slot_waiter(queue_dirs: list[Path], lock_file: Path) -> None:

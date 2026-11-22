@@ -23,6 +23,11 @@
 - [review_handoff.py](review_handoff.py) が [マージ自動進行](../review/README.md) へ渡す。
 - [completion.py](completion.py) と [improvements.py](improvements.py) が全体の受入・次回改善を記録する。改善提案の期限処理は [systemd](systemd/) にある。
 
+`run-worker` が `capacity_deferred` と終了コード75を返した場合は、容量が戻ってから同じ委任で
+初回コマンドを再実行するか、最後に実行したターンから `--resume` する。CLI未起動の証拠は
+`refused_run_dir` に残る。自動再開の容量拒否では `followup` の `observation` に観測結果を残し、
+親へ再開を引き渡す。
+
 ## agyの手動親
 
 手動起動したAntigravity CLIの対話ルートで `register`、`status`、`agree`、`run-worker`、`inspect-worker`、`wait-worker`、`handoff`、`release` などの手動親操作を使える。

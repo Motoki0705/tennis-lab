@@ -66,6 +66,7 @@ GPU_LOCK_NAMESPACE_KIND=""
 
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 TERM_GRACE_SECONDS=15
+CAPACITY_WAIT_STATUS=75
 
 _ensure_dirs() {
   if [ -L "$CONTROL_DIR" ] || [ -L "$EXTERNAL_ACK_DIR" ] || [ -L "$REGISTRATION_DIR" ] || [ -L "$COMPLETION_DIR" ]; then
@@ -468,6 +469,25 @@ _history() {
     return 1
   fi
   python3 -B "$helper" "$@"
+}
+
+_check_d_capacity() {
+  local script_dir="${SCRIPT_PATH%/*}" helper
+  local checkout_suffix="/.agents/skills/training-queue/scripts"
+  if [[ "$script_dir" == *"$checkout_suffix" ]]; then
+    helper="${script_dir%"$checkout_suffix"}/.agents/ops/lib/d_capacity.py"
+  else
+    helper="$script_dir/d_capacity.py"
+  fi
+  if [ ! -f "$helper" ]; then
+    echo "error: D: capacity helper is missing: $helper; deploy the complete runtime with scripts/github_actions/install_queue_bundle.sh" >&2
+    return 1
+  fi
+  if [ "${TRAINING_QUEUE_CAPACITY_STATUS_FILE+x}" = x ]; then
+    python3 -B "$helper" --state-file "$TRAINING_QUEUE_CAPACITY_STATUS_FILE"
+  else
+    python3 -B "$helper"
+  fi
 }
 
 _maintain_history() {
@@ -1119,6 +1139,13 @@ cmd_run_job() {
     exec {gate_fd}>&-
   fi
 
+  # Check after the GPU wait, while the FIFO head is still in jobs/. A refusal
+  # releases the wrapper's locks and leaves the original job for the worker.
+  local capacity_detail capacity_rc=0
+  capacity_detail="$(_check_d_capacity 2>&1)" || capacity_rc=$?
+  if [ "$capacity_rc" -ne 0 ]; then
+    _write_job_state "$job" waiting "$resource" - - d-capacity || exit 1
+  fi
   if [ "$wrapper_signal" -ne 0 ]; then
     exit 143
   fi
@@ -1135,6 +1162,11 @@ cmd_run_job() {
     finalized=1
     trap - EXIT TERM INT HUP
     return 0
+  fi
+  if [ "$capacity_rc" -ne 0 ]; then
+    echo "[worker] $(date -Iseconds) $job waiting for D: capacity. $capacity_detail" >&2
+    finalized=1
+    return "$CAPACITY_WAIT_STATUS"
   fi
   if ! mv "$jobfile" "$RUNNING_DIR/$job"; then
     rm -f "$(_state_file "$job")"
@@ -1329,7 +1361,7 @@ cmd_worker() {
     echo "[worker] PID $after_pid finished; starting queue."
   fi
 
-  local idle_elapsed=0 history_checked_at=$SECONDS
+  local idle_elapsed=0 history_checked_at=$SECONDS blocked_job=""
   while [ "$worker_signal" -eq 0 ]; do
     # A foreground worker may remain in use for weeks. Sweep at most once a
     # minute, in addition to public command entry, without a separate timer.
@@ -1375,6 +1407,11 @@ cmd_worker() {
       continue
     fi
     idle_elapsed=0
+    if [ "$job" = "$blocked_job" ] && ! _check_d_capacity >/dev/null 2>&1; then
+      sleep 1
+      continue
+    fi
+    blocked_job=""
 
     # worker.lock belongs only to serve; wrappers must not keep it alive after
     # a supervised worker termination.
@@ -1390,6 +1427,13 @@ cmd_worker() {
       fi
       sleep 0.05
     done
+    if [ -f "$JOBS_DIR/$job" ]; then
+      local admission_rc=0
+      wait "$admission_pid" || admission_rc=$?
+      if [ "$admission_rc" -eq "$CAPACITY_WAIT_STATUS" ]; then
+        blocked_job="$job"
+      fi
+    fi
   done
   if [ "$worker_signal" -ne 0 ]; then
     return 143

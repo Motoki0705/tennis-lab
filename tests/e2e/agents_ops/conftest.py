@@ -17,13 +17,17 @@ from typing import Any
 
 import pytest
 
+from tests.support.d_capacity import fake_d_drive as fake_d_drive
+
 ROOT = Path(__file__).resolve().parents[3]
 OPS_REPORT = ROOT / ".agents/ops/ops-report/ops_report.py"
 NOW = "2026-10-12T08:00:00+09:00"  # Monday of ISO week 2026-W42
 
 
 @pytest.fixture(autouse=True)
-def _isolate_agent_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def _isolate_agent_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_d_drive: Path
+) -> None:
     """No ops test may inherit the live parent's journal or capture namespace."""
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
     for key in (

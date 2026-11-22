@@ -36,6 +36,8 @@ from tests.support.agents_ops.shared_memory import (
     write_entry,
 )
 from tests.support.agents_ops.shared_memory import memory_repo as memory_repo
+from tests.support.d_capacity import CONFIG_ENV
+from tests.support.fake_d_capacity.sitecustomize import BYTES_FILE
 
 autodream = importlib.import_module("shared_memory.autodream")
 publish = importlib.import_module("shared_memory.publish")
@@ -649,6 +651,28 @@ def _install_fake_codex(
         "from fake_agent_cli import main\nmain()\n"
     )
     codex.chmod(0o700)
+    # AutoDream gives the real runner an allowlisted environment. Inject only
+    # its capacity probe, then remove the bootstrap path before Codex is launched.
+    probe = repo.tmp / "autodream-runner-probe"
+    probe.mkdir(exist_ok=True)
+    (probe / "sitecustomize.py").write_text(
+        "import os, sys\nfrom pathlib import Path\n"
+        f"sys.path.insert(0, {str(OPS)!r})\n"
+        "from lib import d_capacity\n"
+        "sys.path.pop(0)\n"
+        f"d_capacity.CONFIG_PATH = Path({os.environ[CONFIG_ENV]!r})\n"
+        "d_capacity.measure_available_bytes = "
+        f"lambda: int(Path({os.environ[BYTES_FILE]!r}).read_text())\n"
+        "del os.environ['PYTHONPATH']\n"
+    )
+    bash = codex.with_name("bash")
+    bash.write_text(
+        "#!/bin/sh\n"
+        f'if [ "$1" = {shlex.quote(str(OPS / "lib/agent_exec.sh"))} ]; then\n'
+        f"    export PYTHONPATH={shlex.quote(str(probe))}\n"
+        'fi\nexec /bin/bash "$@"\n'
+    )
+    bash.chmod(0o700)
     host_home = repo.tmp / "host-codex"
     host_home.mkdir(exist_ok=True)
     (host_home / "AGENTS.md").write_text("Host-only instructions.\n")
