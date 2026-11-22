@@ -207,7 +207,9 @@ def drain_batch_jobs(
         assert job.source is not None
         with recording_context(clip_id=job.key[0], camera_id=job.camera_id, node=job.key[1]):
             try:
-                complete(job.key, job.source.finish())
+                with span("postprocess", operation="batch_finish", model=model):
+                    output = job.source.finish()
+                complete(job.key, output)
             except Exception as error:
                 reject(job, error)
             else:
@@ -221,7 +223,9 @@ def drain_batch_jobs(
         try:
             units = [unit for _, unit in queue]
             sources = {(unit.address.clip_id, unit.address.camera_id) for unit in units}
-            with span("batch_dispatch", model=model, batch_items=len(units), batch_capacity=capacity,
+            addresses = list(dict.fromkeys(job.key for job, _ in queue))
+            with recording_context(batch_nodes=addresses), span(
+                      "batch_dispatch", model=model, batch_items=len(units), batch_capacity=capacity,
                       fill_fraction=len(units) / capacity, source_count=len(sources),
                       clip_count=len({clip for clip, _ in sources}), queued_items=pending + len(queue),
                       active_sources=len(active)):
@@ -236,7 +240,10 @@ def drain_batch_jobs(
                 try:
                     if isinstance(result, Exception):
                         raise result
-                    job.source.write(unit, result)
+                    with recording_context(clip_id=job.key[0], camera_id=job.camera_id, node=job.key[1]), span(
+                        "postprocess", operation="batch_write", model=model,
+                    ):
+                        job.source.write(unit, result)
                 except Exception as error:
                     reject(job, error)
                 else:
@@ -252,15 +259,17 @@ def drain_batch_jobs(
                 continue
             assert job.source is not None
             try:
-                with recording_context(clip_id=job.key[0], camera_id=job.camera_id, node=job.key[1]):
-                    unit = next(job.source.units)
-            except StopIteration:
+                with recording_context(clip_id=job.key[0], camera_id=job.camera_id, node=job.key[1]), span(
+                    "preprocess", operation="batch_source", model=model,
+                ):
+                    unit = next(job.source.units, None)
+            except Exception as error:
+                reject(job, error)
+                continue
+            if unit is None:
                 job.exhausted = True
                 if not job.pending:
                     finish(job)
-                continue
-            except Exception as error:
-                reject(job, error)
                 continue
             if unit.address.clip_id != job.key[0] or (
                 job.camera_id is not None and unit.address.camera_id != job.camera_id

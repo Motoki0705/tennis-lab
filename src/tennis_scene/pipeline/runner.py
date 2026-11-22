@@ -41,7 +41,7 @@ from src.tennis_scene.pipeline.storage.clip_store import (
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SceneResult
-from src.utils.inference_recording import recording_context, span
+from src.utils.inference_recording import measured, recording_context, span
 
 ReadySelector = Callable[[tuple[NodeKey, ...]], NodeKey]
 
@@ -106,14 +106,15 @@ class PlanExecutor:
             for clip_id in self.plan.clips:
                 notify(clip_id)
             while required - self.plan.statuses.keys():
-                ready = self.plan.ready(required)
-                if not ready:
-                    raise ValueError("Execution plan is blocked by a failed component")
-                key = runtime.select_ready(ready) if self.select_ready is None else self.select_ready(ready)
-                if key not in ready:
-                    raise ValueError(f"Selected component is not ready: {key}")
-                event = nullcontext() if self.node_event is None else self.node_event(key)
-                peers = self._batch_peers(key, ready, runtime)
+                with span("planning", operation="select_ready"):
+                    ready = self.plan.ready(required)
+                    if not ready:
+                        raise ValueError("Execution plan is blocked by a failed component")
+                    key = runtime.select_ready(ready) if self.select_ready is None else self.select_ready(ready)
+                    if key not in ready:
+                        raise ValueError(f"Selected component is not ready: {key}")
+                    event = nullcontext() if self.node_event is None else self.node_event(key)
+                    peers = self._batch_peers(key, ready, runtime)
                 if peers:
                     with event:
                         self._execute_batch(peers, runtime, notify, failed, continue_on_error=continue_on_error)
@@ -174,9 +175,11 @@ class PlanExecutor:
                 raise error
 
         def complete(key: NodeKey, output: Any) -> None:
-            plan.nodes[key].validate_output(output)
-            runtime.discard((key,))
-            self._publish(key, output, decisions[key])
+            with span("node", operation="batch_complete", source=plan.nodes[key].source) as event:
+                plan.nodes[key].validate_output(output)
+                runtime.discard((key,))
+                self._publish(key, output, decisions[key])
+                event["outcome"] = plan.statuses[key]
             plan.seconds[key] = time.monotonic() - starts[key]
             notify(key[0])
 
@@ -190,13 +193,16 @@ class PlanExecutor:
                     node = plan.nodes[key]
                     memory = SourceMemory(self.working_memory)
                     try:
-                        with recording_context(clip_id=key[0], camera_id=node.context.camera_id, node=key[1]):
+                        with recording_context(clip_id=key[0], camera_id=node.context.camera_id, node=key[1]), span(
+                            "node", operation="batch_open", source=node.source,
+                        ) as event:
                             decisions[key] = decision = plan.decide(key)
                             if decision.action != "execute":
                                 self._load_reused(key, decision, memory)
                                 memory.close()
                                 runtime.discard((key,))
                                 self._publish(key, None, decision)
+                                event["outcome"] = plan.statuses[key]
                                 plan.seconds[key] = time.monotonic() - starts[key]
                                 notify(key[0])
                                 continue
@@ -219,6 +225,7 @@ class PlanExecutor:
                 job.close()
             plan.active_node = None
 
+    @measured("planning")
     def _runtime(self, required: frozenset[NodeKey]) -> InferenceRuntime:
         declarations = {}
         for key in self.plan.order:
@@ -325,7 +332,7 @@ class PlanExecutor:
         estimate = getattr(node.component, "estimate_working_bytes", None)
         if memory is not None and callable(estimate):
             memory.reserve(estimate(inputs))
-        with span("postprocess", operation="component"):
+        with span("postprocess", operation=key[1].partition("/")[0]):
             output = (node.component.process_with_models(inputs, models)
                       if isinstance(node.component, InferenceComponent) else node.component.process(inputs))
         node.validate_output(output)

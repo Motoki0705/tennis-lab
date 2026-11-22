@@ -9,6 +9,8 @@ from contextvars import copy_context
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
+from src.utils.inference_recording import recording_thread, span
+
 TItem = TypeVar("TItem")
 
 
@@ -28,7 +30,7 @@ class PrefetchIterator(Generic[TItem]):
         self._iterable = iterable
         self._queue: queue.Queue[_QueueItem[TItem]] = queue.Queue(maxsize=max_prefetch)
         context = copy_context()
-        self._thread = threading.Thread(target=context.run, args=(self._run,), daemon=True)
+        self._thread = threading.Thread(target=context.run, args=(self._run,), daemon=True, name="decode-prefetch")
         self._started = False
 
     def __iter__(self) -> Iterator[TItem]:
@@ -37,7 +39,8 @@ class PrefetchIterator(Generic[TItem]):
             self._started = True
 
         while True:
-            item = self._queue.get()
+            with span("decode_queue_wait", operation="read"):
+                item = self._queue.get()
             if item.error is not None:
                 raise item.error
             if item.done:
@@ -47,10 +50,12 @@ class PrefetchIterator(Generic[TItem]):
             yield item.value
 
     def _run(self) -> None:
-        try:
-            for value in self._iterable:
-                self._queue.put(_QueueItem(value=value))
-        except BaseException as exc:
-            self._queue.put(_QueueItem(error=exc))
-        finally:
-            self._queue.put(_QueueItem(done=True))
+        with recording_thread("decode_prefetch"):
+            try:
+                for value in self._iterable:
+                    with span("decode_queue_wait", operation="write"):
+                        self._queue.put(_QueueItem(value=value))
+            except BaseException as exc:
+                self._queue.put(_QueueItem(error=exc))
+            finally:
+                self._queue.put(_QueueItem(done=True))

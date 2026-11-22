@@ -1140,7 +1140,8 @@ _VIDEO_BATCH_SCHEMA = StrictConfigSchema(
     name="tennis_scene.run_video_batch",
     fields={**_GENERATE_SCHEMA.fields, "video_id": ConfigField.of(str),
             "pipeline_config": ConfigField.of(str), "progress_directory": ConfigField.of(str),
-            "batching": ConfigField.of(dict), "record_cuda": ConfigField.of(bool)},
+            "batching": ConfigField.of(dict), "record_cuda": ConfigField.of(bool),
+            "record_cuda_synchronize": ConfigField.of(bool), "record_sample_interval": ConfigField.of(float, int)},
 )
 
 
@@ -1152,6 +1153,8 @@ class VideoBatchRuntimeConfig:
     progress_directory: Path
     batching: BatchConfig
     record_cuda: bool
+    record_cuda_synchronize: bool
+    record_sample_interval: float
 
 
 def parse_video_batch_config(cfg: DictConfig) -> VideoBatchRuntimeConfig:
@@ -1168,9 +1171,12 @@ def parse_video_batch_config(cfg: DictConfig) -> VideoBatchRuntimeConfig:
         batching = BatchConfig(sizes=BatchSizes(**batch_value.pop("sizes")), **batch_value)
     except (TypeError, ValueError, KeyError) as error:
         raise SemanticConfigurationError(f"Invalid batching configuration: {error}") from error
+    sample_interval = float(cast(float, value["record_sample_interval"]))
+    if not math.isfinite(sample_interval) or sample_interval <= 0:
+        raise SemanticConfigurationError("record_sample_interval must be finite and positive")
     return VideoBatchRuntimeConfig(generation, video_id, pipeline_config,
         PathResolver(generation.roots).resolve(PathRole.OUTPUT, cast(str, value["progress_directory"])), batching,
-        cast(bool, value["record_cuda"]))
+        cast(bool, value["record_cuda"]), cast(bool, value["record_cuda_synchronize"]), sample_interval)
 
 
 def validate_video_batch_boundary(cfg: DictConfig) -> None:

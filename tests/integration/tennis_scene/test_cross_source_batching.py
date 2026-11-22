@@ -165,11 +165,21 @@ def test_dino_batches_only_compatible_sources_and_preserves_every_frame(
                 executor.run(continue_on_error=isolate, on_clip_error=lambda clip, error: errors.append((clip, error)))
             if batch_size == 3 and not isolate:
                 import json
-                dispatch = json.loads(recording.read_text())["batch_dispatches"]["dino"]
+                trace = json.loads(recording.read_text())
+                dispatch = trace["batch_dispatches"]["dino"]
                 assert dispatch["batches"] == 5 and dispatch["items"] == 12
                 assert dispatch["cross_clip_batches"] > 0
                 assert dispatch["fill_fraction"] == 12 / 15
                 assert dispatch["peak_active_sources"] == 6 and dispatch["peak_queued_items"] == 5
+                shared = next(e for e in trace["events"] if e["stage"] == "batch_dispatch"
+                              and e["attributes"]["clip_count"] > 1)
+                assert {tuple(address) for address in shared["attributes"]["batch_nodes"]} == {
+                    ("a", "person_detection/cam0"), ("a", "person_detection/cam1"), ("b", "person_detection/cam0"),
+                }
+                for clip, node in shared["attributes"]["batch_nodes"]:
+                    assert trace["timings"]["by_clip_node"][clip][node]["wall_seconds"] >= (
+                        shared["end_ns"] - shared["start_ns"]
+                    ) / 1e9
             return {key: json_value(executor.output(key)) for key in executor.plan.references}
         finally:
             assert executor.working_memory.used == 0
@@ -586,9 +596,11 @@ def test_real_x3d_batch_and_tail_each_report_one_forward(
     sources = {(clip, "cam0"): BallDetectionInput(
         SourceVideo("cam0", tmp_path / f"{clip}.mp4", clip, frames, 30., 40, 24))
         for clip, frames in (("a", 48), ("b", 32))}
-    progress = VideoBatchProgress(tmp_path / "progress", "fixture", "video_000", (), "fixture: x3d\n", {},
-                                  overwrite=False, continue_on_error=True, recording_devices=(),
-                                  batching=BatchConfig(enabled=True, sizes=BatchSizes(ball=2)))
+    progress = VideoBatchProgress(tmp_path / "progress", "video_000", "fixture: x3d\n",
+        overwrite=False, continue_on_error=True, recording_devices=(),
+        batching=BatchConfig(enabled=True, sizes=BatchSizes(ball=2)), recording_sample_interval=.5,
+        synchronize_cuda=False, record_preflight_failure=True)
+    progress.bind_inputs("fixture", ())
     model_config = replace(small_model("dpt", frames=config.num_frames),
                            encoder_variant="x3d_csn", temporal_mixing="depthwise3d")
     predictor = X3DDPTPredictor(MDDDPTDetector(model_config), device=torch.device("cpu"), image_size=image_size,

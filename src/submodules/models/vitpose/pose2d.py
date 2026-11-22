@@ -162,7 +162,7 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
             return Pose2DResult(self._predict_crop_batch(images, boxes_xys).float())
 
     def _predict_crop_batch(self, images: torch.Tensor, boxes: torch.Tensor) -> torch.Tensor:
-        with span("transfer", model="ViTPose"):
+        with span("transfer", model="ViTPose", operation="input_to_device", device=str(self.device)):
             imgs_batch = images[:, :, :, 32:224].to(self._device)
         with span("inference", model="ViTPose", batch_shape=[len(images) * (2 if self.flip_test else 1), *imgs_batch.shape[1:]],
                   batch_items=len(images), flip_test=self.flip_test), torch.autocast(
@@ -178,9 +178,10 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
             else:
                 heatmap = self._forward_heatmaps(imgs_batch.clone())  # (B, J, 64, 48)
 
-        with span("postprocess", model="ViTPose"):
-            # MMPose-style UDP post-processing back to full-image pixels.
+        with span("transfer", model="ViTPose", operation="heatmap_to_host", device=str(self.device)):
             heatmap_np = heatmap.float().cpu().numpy()
+        with span("postprocess", model="ViTPose", operation="decode_heatmaps"):
+            # MMPose-style UDP post-processing back to full-image pixels.
             center = boxes[:, :2].numpy()
             scale = (torch.cat((boxes[:, [2]] * 24 / 32, boxes[:, [2]]), dim=1) / 200).numpy()
             preds, maxvals = keypoints_from_heatmaps(

@@ -10,8 +10,8 @@ import functools
 import heapq
 import json
 import math
-import os
 import resource
+import tempfile
 import threading
 import time
 from collections import Counter, defaultdict
@@ -20,14 +20,21 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
+
+from src.utils.inference_timing import timing_summary
+
+if TYPE_CHECKING:
+    from src.utils.inference_resources import NvmlSampler
 
 STAGES = (
     "node", "clip", "decode", "preprocess", "transfer", "inference",
     "postprocess", "save", "publication", "artifact_load", "model_load",
     "model_unload", "measurement", "video_pass", "video_read", "batch_dispatch",
+    "decode_queue_wait", "cuda_sync", "planning", "progress_write",
 )
 _GPU_STAGES = {"transfer", "inference", "model_load", "model_unload"}
+DEFAULT_SAMPLE_INTERVAL = 0.5
 _ACTIVE: ContextVar[InferenceRecorder | None] = ContextVar("inference_recorder", default=None)
 _ATTRIBUTES: ContextVar[dict[str, Any] | None] = ContextVar("inference_recording_attributes", default=None)
 _STACK: ContextVar[tuple[int, ...]] = ContextVar("inference_recording_stack", default=())
@@ -59,7 +66,7 @@ def wall_breakdown(events: Sequence[Mapping[str, Any]], total_ns: int) -> dict[s
             event = events[index]
             stage = str(event["stage"])
             active.add(index)
-            heapq.heappush(heap, (-int(event["depth"]), -int(stage in _GPU_STAGES), -position, index, stage))
+            heapq.heappush(heap, (-int(event["depth"]), -int(stage in _GPU_STAGES or stage == "cuda_sync"), -position, index, stage))
         else:
             active.discard(index)
     duration["unattributed"] += total_ns - previous
@@ -69,16 +76,22 @@ def wall_breakdown(events: Sequence[Mapping[str, Any]], total_ns: int) -> dict[s
 class InferenceRecorder:
     """One execution's JSON recorder; use as a context manager exactly once."""
 
-    def __init__(self, destination: Path, *, metadata: Mapping[str, Any] | None = None,
-                 devices: Sequence[str] = (), sample_interval: float = 0.1) -> None:
+    def __init__(self, destination: Path | None, *, metadata: Mapping[str, Any] | None = None,
+                 devices: Sequence[str] = (), sample_interval: float = DEFAULT_SAMPLE_INTERVAL,
+                 synchronize_cuda: bool = True, model_aliases: Mapping[str, str] | None = None) -> None:
         if not math.isfinite(sample_interval) or sample_interval <= 0:
             raise ValueError("sample_interval must be finite and positive")
         self.destination = destination
         self.metadata = dict(metadata or {})
         self.devices = tuple(devices)
         self.sample_interval = sample_interval
+        self.synchronize_cuda = synchronize_cuda
+        self.model_aliases = dict(model_aliases or {})
         self.events: list[dict[str, Any]] = []
         self.resources: dict[str, Any] = {"ram_rss_sampled_peak_bytes": 0, "temporary_disk_peak_bytes": 0}
+        self.samples: list[dict[str, Any]] = []
+        self._nvml: NvmlSampler | None = None
+        self._roles: dict[int, str] = {}
         self._assets: dict[Path, tuple[tuple[int, ...], str]] = {}
         self._models: dict[str, dict[str, Any]] = {}
         self._temporary: set[Path] = set()
@@ -91,13 +104,13 @@ class InferenceRecorder:
     def __enter__(self) -> InferenceRecorder:
         if _ACTIVE.get() is not None or self._started_ns is not None:
             raise RuntimeError("Recorders cannot be nested or reused")
-        import psutil  # type: ignore[import-untyped]
+        from src.utils.inference_resources import NvmlSampler, ResourceSampler
 
-        self._process = psutil.Process()
         self._started_ns = time.perf_counter_ns()
         self._started_at = datetime.now(UTC).isoformat()
         self._token = _ACTIVE.set(self)
         self._stack_token = _STACK.set(())
+        self._roles[threading.get_native_id()] = "main"
         try:
             with span("measurement", operation="resource_initialization"):
                 if self.devices:
@@ -106,12 +119,21 @@ class InferenceRecorder:
                     torch.cuda.init()
                     for device in self.devices:
                         torch.cuda.reset_peak_memory_stats(device)
+                    self._nvml = NvmlSampler({
+                        device: str(torch.cuda.get_device_properties(device).uuid) for device in self.devices
+                    })
+                self._sampler = ResourceSampler(self._started_ns, self._nvml)
             self._sample()
             self._thread = threading.Thread(target=self._sample_loop, daemon=True, name="inference-resources")
             self._thread.start()
-        except BaseException:
-            _STACK.reset(self._stack_token)
-            _ACTIVE.reset(self._token)
+        except BaseException as error:
+            try:
+                self._sample_errors.append(f"{type(error).__name__}: {error}")
+                self._close_nvml()
+                self._write_record(type(error), error)
+            finally:
+                _STACK.reset(self._stack_token)
+                _ACTIVE.reset(self._token)
             raise
         return self
 
@@ -126,7 +148,8 @@ class InferenceRecorder:
         self._stop.set()
         self._thread.join()
         try:
-            self._sample()
+            if not self._sample_errors:
+                self._sample()
             self.resources["ram_process_lifetime_peak_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
             if self.devices:
                 import torch
@@ -137,6 +160,22 @@ class InferenceRecorder:
                 } for device in self.devices}
         except Exception as exc:
             self._sample_errors.append(f"{type(exc).__name__}: {exc}")
+        finally:
+            self._close_nvml()
+        self._write_record(kind, error)
+        if self._sample_errors and error is None:
+            raise RuntimeError(f"Inference resource sampling failed: {self._sample_errors}")
+
+    def _close_nvml(self) -> None:
+        if self._nvml is not None:
+            try:
+                self._nvml.close()
+            except Exception as exc:
+                self._sample_errors.append(f"{type(exc).__name__}: {exc}")
+
+    def _write_record(self, kind: Any, error: Any) -> None:
+        if self.destination is None:
+            return
         assert self._started_ns is not None
         total_ns = time.perf_counter_ns() - self._started_ns
         events = sorted(self.events, key=lambda event: event["id"])
@@ -185,23 +224,35 @@ class InferenceRecorder:
             "schema": "inference_recording_v1", "started_at": self._started_at,
             "status": "failed" if error is not None or self._sample_errors else "complete",
             "error_type": None if kind is None else kind.__name__, "metadata": self.metadata,
-            "timing": {"clock": "perf_counter_ns", "gpu": "synchronized_wall" if self.devices else "not_configured",
+            "timing": {"clock": "perf_counter_ns", "gpu": self._gpu_timing(),
                        "wall_attribution": "deepest_span_then_gpu_then_latest", "sample_interval_seconds": self.sample_interval},
             "total_wall_seconds": total_ns / 1e9,
             "stage_wall_seconds": wall_breakdown(events, total_ns),
             "stage_inclusive_seconds": dict(inclusive), "models": list(models.values()),
             "batch_shapes": dict(batches), "batch_dispatches": dispatches, "resources": self.resources,
             "video_reads_by_pass": video_reads, "model_loads_by_pass": pass_loads,
+            "resource_samples": self.samples, "timings": timing_summary(events, self.samples, self.model_aliases),
             "measurement_errors": self._sample_errors, "events": events,
         }
         self.destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.destination.with_name(f".{self.destination.name}.{os.getpid()}.tmp")
-        temporary.write_text(json.dumps(document, ensure_ascii=False, allow_nan=False, separators=(",", ":")) + "\n")
-        temporary.replace(self.destination)
-        if self._sample_errors and error is None:
-            raise RuntimeError(f"Inference resource sampling failed: {self._sample_errors}")
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=self.destination.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+            try:
+                json.dump(document, stream, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+                stream.write("\n")
+                stream.close()
+                temporary.replace(self.destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+
+    def _gpu_timing(self) -> str:
+        if not self.devices:
+            return "not_configured"
+        return "synchronized_wall" if self.synchronize_cuda else "host_wall"
 
     def _sample_loop(self) -> None:
+        with self._lock:
+            self._roles[threading.get_native_id()] = "resource_sampler"
         while not self._stop.wait(self.sample_interval):
             try:
                 self._sample()
@@ -210,25 +261,40 @@ class InferenceRecorder:
                 return
 
     def _sample(self) -> None:
-        rss = self._process.memory_info().rss
         with self._lock:
-            self.resources["ram_rss_sampled_peak_bytes"] = max(self.resources["ram_rss_sampled_peak_bytes"], rss)
-            disk = 0
-            for root in self._temporary:
-                for path in root.rglob("*"):
-                    try:
-                        if path.is_file():
-                            disk += path.stat().st_size
-                    except FileNotFoundError:
-                        pass  # Atomic publication can remove the sampled temporary path.
+            roles = dict(self._roles)
+        sample = self._sampler.sample(roles)
+        self.samples.append(sample)
+        self.resources["ram_rss_sampled_peak_bytes"] = max(
+            self.resources["ram_rss_sampled_peak_bytes"], sample["rss_bytes"])
+        minimum = self.resources.get("system_memory_available_min_bytes", sample["system_memory_available_bytes"])
+        self.resources["system_memory_available_min_bytes"] = min(minimum, sample["system_memory_available_bytes"])
+        self.resources["system_memory_total_bytes"] = sample["system_memory_total_bytes"]
+        for device, gpu in sample["gpu"].items():
+            peak = self.resources.setdefault("nvml", {}).setdefault(device, {
+                "used_peak_bytes": 0, "total_bytes": gpu["total_bytes"]})
+            peak["used_peak_bytes"] = max(peak["used_peak_bytes"], gpu["used_bytes"])
+        self._sample_temporary()
+
+    def _sample_temporary(self) -> None:
+        from src.utils.inference_resources import temporary_bytes
+
+        with self._lock:
+            disk = temporary_bytes(tuple(self._temporary))
             self.resources["temporary_disk_peak_bytes"] = max(self.resources["temporary_disk_peak_bytes"], disk)
 
-    def _synchronize(self, stage: str, device: str = "") -> None:
-        if self.devices and (stage in _GPU_STAGES or device.startswith("cuda")):
-            import torch
+    def _synchronize(self, stage: str, boundary: str, attributes: Mapping[str, Any]) -> None:
+        device = str(attributes.get("device", ""))
+        if not self.devices or not self.synchronize_cuda or stage == "cuda_sync":
+            return
+        if not (device.startswith("cuda") or not device and stage in _GPU_STAGES):
+            return
+        import torch
 
-            for device in self.devices:
-                torch.cuda.synchronize(device)
+        labels = {"model": attributes["model"]} if "model" in attributes else {}
+        with span("cuda_sync", operation="timing", boundary=boundary, awaited_stage=stage, **labels):
+            for cuda_device in self.devices:
+                torch.cuda.synchronize(cuda_device)
 
     def weight_hashes(self, weights: Mapping[str, Path]) -> dict[str, dict[str, str]]:
         from src.utils.checksum import dual_sha256
@@ -261,6 +327,27 @@ def recording_context(**attributes: Any) -> Iterator[None]:
 
 
 @contextmanager
+def recording_thread(role: str) -> Iterator[None]:
+    """Label the OS thread in spans and resource samples."""
+    recorder = _ACTIVE.get()
+    if recorder is None:
+        yield
+        return
+    tid = threading.get_native_id()
+    with recorder._lock:
+        previous = recorder._roles.get(tid)
+        recorder._roles[tid] = role
+    try:
+        yield
+    finally:
+        with recorder._lock:
+            if previous is None:
+                recorder._roles.pop(tid, None)
+            else:
+                recorder._roles[tid] = previous
+
+
+@contextmanager
 def span(stage: str, **attributes: Any) -> Iterator[dict[str, Any]]:
     """Record a completed/error span; yielded attributes may receive outcomes."""
     recorder = _ACTIVE.get()
@@ -276,29 +363,32 @@ def span(stage: str, **attributes: Any) -> Iterator[dict[str, Any]]:
         attributes["batch_shape"] = list(shape)
         attributes.setdefault("batch_items", shape[0])
     stack = _STACK.get()
+    native_thread_id = threading.get_native_id()
     with recorder._lock:
         identifier = recorder._next_id
         recorder._next_id += 1
-    recorder._synchronize(stage, str(attributes.get("device", "")))
+        role = recorder._roles.get(native_thread_id, "native")
     assert recorder._started_ns is not None
     event: dict[str, Any] = {"id": identifier, "parent_id": stack[-1] if stack else None, "depth": len(stack),
-             "thread_id": threading.get_ident(), "stage": stage,
+             "thread_id": threading.get_ident(), "native_thread_id": native_thread_id, "thread_role": role, "stage": stage,
              "start_ns": time.perf_counter_ns() - recorder._started_ns,
+             "thread_cpu_start_ns": time.thread_time_ns(), "process_cpu_start_ns": time.process_time_ns(),
              "attributes": {**(_ATTRIBUTES.get() or {}), **attributes}, "status": "ok"}
     token = _STACK.set((*stack, identifier))
     try:
+        recorder._synchronize(stage, "before", event["attributes"])
         yield event["attributes"]
+        recorder._synchronize(stage, "after", event["attributes"])
     except BaseException as exc:
         event.update(status="error", error_type=type(exc).__name__)
         raise
     finally:
-        try:
-            recorder._synchronize(stage, str(attributes.get("device", "")))
-        finally:
-            event["end_ns"] = time.perf_counter_ns() - recorder._started_ns
-            _STACK.reset(token)
-            with recorder._lock:
-                recorder.events.append(event)
+        event["thread_cpu_ns"] = time.thread_time_ns() - event["thread_cpu_start_ns"]
+        event["process_cpu_ns"] = time.process_time_ns() - event["process_cpu_start_ns"]
+        event["end_ns"] = time.perf_counter_ns() - recorder._started_ns
+        _STACK.reset(token)
+        with recorder._lock:
+            recorder.events.append(event)
 
 
 def measured(stage: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
@@ -383,6 +473,8 @@ def temporary_directory(path: Path) -> Iterator[None]:
     try:
         yield
     finally:
-        recorder._sample()
-        with recorder._lock:
-            recorder._temporary.remove(path)
+        try:
+            recorder._sample_temporary()
+        finally:
+            with recorder._lock:
+                recorder._temporary.remove(path)

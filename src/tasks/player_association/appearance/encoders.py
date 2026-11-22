@@ -163,7 +163,7 @@ class ClipReIDEncoder:
 
     def embed(self, crops: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
-            with span("transfer", model="CLIP-ReID"):
+            with span("transfer", model="CLIP-ReID", operation="input_to_device", device=self.device):
                 pixels = crops.to(self.device)
             with span("preprocess", model="CLIP-ReID", device=self.device):
                 pixels = _normalized(pixels, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -174,8 +174,10 @@ class ClipReIDEncoder:
                     else torch.cat(self.model(pixels), dim=-1)
                 )
             del pixels
-        with span("postprocess", model="CLIP-ReID"):
-            return F.normalize(features.float(), dim=-1).cpu()
+        with span("postprocess", model="CLIP-ReID", operation="normalize_features", device=self.device):
+            features = F.normalize(features.float(), dim=-1)
+        with span("transfer", model="CLIP-ReID", operation="output_to_host", device=self.device):
+            return features.cpu()
 
 
 @dataclass

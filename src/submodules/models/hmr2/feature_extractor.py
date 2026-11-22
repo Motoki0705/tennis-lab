@@ -116,7 +116,7 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
             return ImageFeatureResult(self._predict_crop_batch(images).float())
 
     def _predict_crop_batch(self, images: torch.Tensor) -> torch.Tensor:
-        with span("transfer", model="HMR2"):
+        with span("transfer", model="HMR2", operation="input_to_device", device=str(self.device)):
             imgs_batch = images.to(self._device)
         with span("inference", model="HMR2", batch_shape=list(imgs_batch.shape)):
             if self._runner is not None:
@@ -125,5 +125,5 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
                 feature = self._model({"img": imgs_batch})
             else:
                 raise RuntimeError("HMR2 model did not load before prediction.")
-        with span("postprocess", model="HMR2"):
+        with span("transfer", model="HMR2", operation="output_to_host", device=str(self.device)):
             return feature.detach().cpu()

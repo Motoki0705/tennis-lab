@@ -143,11 +143,14 @@ def test_recording_preserves_artifact_bytes_execution_key_and_cache(tmp_path: Pa
     node = ComponentNode("values/cam0", component, component.io, Assembler(), {}, context, {}, "fixed-main")
     plain = ComponentRunner([node], ClipStore(tmp_path / "plain", {"input": "fixed"}))
     plain.run()
-    with InferenceRecorder(tmp_path / "record.json"):
+    with InferenceRecorder(tmp_path / "record.json", sample_interval=.25, synchronize_cuda=False):
         recorded = ComponentRunner([node], ClipStore(tmp_path / "recorded", {"input": "fixed"}))
         recorded.run()
     reference = plain.references["values/cam0"]
     assert recorded.references["values/cam0"] == reference
+    trace = json.loads((tmp_path / "record.json").read_text())
+    assert trace["timing"]["sample_interval_seconds"] == .25
+    assert trace["timings"]["by_node"]["values/cam0"]["thread_cpu_seconds"] > 0.
     for path in (plain.store.root / reference.path).parent.iterdir():
         assert path.read_bytes() == (recorded.store.root / reference.path).parent.joinpath(path.name).read_bytes()
     np.testing.assert_array_equal(recorded.output("values/cam0").values, [[2., 14.], [10., -6.], [18., 4.]])
@@ -205,14 +208,17 @@ def test_ball_records_the_mdd_forward_shape_instead_of_rgb_shape(tmp_path: Path)
 
 
 def test_x3d_predict_records_full_and_tail_batches_in_video_progress(tmp_path: Path, artifact: Path) -> None:
+    from src.tennis_scene.pipeline.batching import BatchConfig
     from src.tennis_scene.pipeline.video_batch import VideoBatchProgress
 
     predictor = load_x3d(artifact)
     images = torch.arange(3 * 2 * 3 * 24 * 40).remainder(251).to(torch.uint8).reshape(3, 2, 3, 24, 40)
     batches = (images[:2], images[2:])
     expected = [predictor.predict(batch) for batch in batches]
-    progress = VideoBatchProgress(tmp_path / "progress", "fixture", "video_000", (), "fixture: x3d\n", {},
-                                 overwrite=False, continue_on_error=True, recording_devices=())
+    progress = VideoBatchProgress(tmp_path / "progress", "video_000", "fixture: x3d\n",
+        overwrite=False, continue_on_error=True, recording_devices=(), batching=BatchConfig(),
+        recording_sample_interval=.5, synchronize_cuda=False, record_preflight_failure=True)
+    progress.bind_inputs("fixture", ())
     with progress.recorder:
         actual = [predictor.predict(batch) for batch in batches]
     progress.flush()

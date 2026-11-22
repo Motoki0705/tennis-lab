@@ -157,7 +157,7 @@ class DinoPersonDetector(
                 )
             if frame.dtype != np.uint8:
                 raise TypeError(f"frame_bgr must have dtype uint8, got {frame.dtype}")
-            with span("preprocess", model="DINO"):
+            with span("preprocess", model="DINO", operation="resize_and_normalize"):
                 image = preprocess_frame(
                     frame, short_side=self.short_side, max_long_side=self.max_long_side
                 )
@@ -178,9 +178,9 @@ class DinoPersonDetector(
     def _predict_compatible_batch(
         self, images: Sequence[torch.Tensor], image_sizes: Sequence[tuple[int, int]]
     ) -> list[PersonDetectionResult]:
-        with span("preprocess", model="DINO"):
+        with span("preprocess", model="DINO", operation="stack_frames"):
             batch = torch.stack(list(images))
-        with span("transfer", model="DINO"):
+        with span("transfer", model="DINO", operation="input_to_device", device=str(self.device)):
             batch = batch.to(self.device)
         with (
             span("inference", model="DINO", batch_shape=list(batch.shape)),
@@ -196,7 +196,7 @@ class DinoPersonDetector(
             else:
                 raise RuntimeError("DINO model did not load before prediction.")
         del batch
-        with span("postprocess", model="DINO"):
+        with span("postprocess", model="DINO", operation="decode_boxes", device=str(self.device)):
             if self._autocast_dtype is not None:
                 output = {key: output[key].float() for key in ("pred_logits", "pred_boxes")}
             return decode_person_detections(
@@ -249,10 +249,11 @@ def decode_person_detections(
         ).clamp_(0.0, 1.0)
         scale = xyxy.new_tensor([image_width, image_height, image_width, image_height])
         xyxy = xyxy * scale
-        results.append(
-            PersonDetectionResult(
-                boxes_xyxy=xyxy.detach().cpu().numpy().astype(np.float32, copy=False),
-                scores=scores.detach().cpu().numpy().astype(np.float32, copy=False),
+        with span("transfer", model="DINO", operation="output_to_host", device=str(logits.device)):
+            results.append(
+                PersonDetectionResult(
+                    boxes_xyxy=xyxy.detach().cpu().numpy().astype(np.float32, copy=False),
+                    scores=scores.detach().cpu().numpy().astype(np.float32, copy=False),
+                )
             )
-        )
     return results
