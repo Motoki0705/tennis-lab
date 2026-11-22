@@ -11,6 +11,10 @@ authors:
 tasks:
 - tennis_scene
 source: https://ntrs.nasa.gov/citations/20070017872
+summary: Markleyらが提案した、重み付きQuaternion外積行列の最大固有ベクトルを用いる平均姿勢の算出法。Quaternionの符号不定性に影響されない。
+reason: 保存済み選手視点カメラの回転列を時間的に平滑化する#1776の実験的実装に、数学的な平均回転の根拠として採録した。頭部方向の推定精度を保証する研究ではない。
+external_ids:
+  url: https://ntrs.nasa.gov/citations/20070017872
 ---
 
 ## 研究の要点
