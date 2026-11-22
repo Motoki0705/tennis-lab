@@ -67,7 +67,7 @@ def _fold_constant(model, name: str) -> np.ndarray:
         if value in initializers or not value:
             continue
         if value in graph_inputs:
-            raise ValueError(f"{name!r} depends on graph input {value!r}")
+            raise InputDependentShape(f"{name!r} depends on graph input {value!r}")
         node = producer[value]
         if id(node) in used:
             continue
@@ -109,9 +109,26 @@ def _shapes(model) -> dict[str, tuple[int, ...]]:
     }
 
 
+class InputDependentShape(ValueError):
+    """A folded tensor depends on a graph input (a dynamic-shape export)."""
+
+
 def rewrite_attention_mask(
-    source: Path, target: Path, *, mode: str, expected: int
+    source: Path,
+    target: Path,
+    *,
+    mode: str,
+    expected: int,
+    allow_input_dependent_expand: bool = False,
 ) -> dict[str, object]:
+    """Rewrite every exported masked_fill.
+
+    In a dynamic-shape export the ``Expand`` target shape depends on graph
+    inputs and cannot be folded.  Such masks are rejected unless
+    ``allow_input_dependent_expand`` is set; they are then listed in
+    ``unverified_broadcast`` and the caller must prove output parity on every
+    served shape.
+    """
     import onnx
     from onnx import helper, numpy_helper
 
@@ -127,22 +144,31 @@ def rewrite_attention_mask(
         raise ValueError(
             f"Expected {expected} masked_fill lowerings, found {len(matches)}"
         )
+    unverified: list[str] = []
     for index, (where, mask, scores, dtype) in enumerate(matches):
         mask_shape, scores_shape = before[mask], before[scores]
         expand = _producer_map(model.graph)[
             _producer_map(model.graph)[where.input[0]].input[0]
         ]
-        expand_shape = tuple(int(v) for v in _fold_constant(model, expand.input[1]))
-        expanded = np.broadcast_shapes(mask_shape, expand_shape)
-        if len(mask_shape) != len(scores_shape) or any(
-            dim not in {1, full}
-            for shape in (mask_shape, expanded)
-            for dim, full in zip(shape, scores_shape, strict=True)
-        ):
-            raise ValueError(
-                f"{where.name!r} mask {mask_shape} / expanded {expanded} "
-                f"is not a broadcast of scores {scores_shape}"
-            )
+        if len(mask_shape) != len(scores_shape):
+            raise ValueError(f"{where.name!r} mask rank differs from scores")
+        try:
+            expand_shape = tuple(int(v) for v in _fold_constant(model, expand.input[1]))
+        except InputDependentShape:
+            if not allow_input_dependent_expand:
+                raise
+            unverified.append(where.name)
+        else:
+            expanded = np.broadcast_shapes(mask_shape, expand_shape)
+            if any(
+                dim not in {1, full}
+                for shape in (mask_shape, expanded)
+                for dim, full in zip(shape, scores_shape, strict=True)
+            ):
+                raise ValueError(
+                    f"{where.name!r} mask {mask_shape} / expanded {expanded} "
+                    f"is not a broadcast of scores {scores_shape}"
+                )
         if mode == "drop-expand":
             where.input[0] = mask
             continue
@@ -181,6 +207,7 @@ def rewrite_attention_mask(
         "target_sha256": sha256_file(target),
         "mode": mode,
         "rewritten_masks": len(matches),
+        "unverified_broadcast": unverified,
         "pruned_nodes": pruned,
         "target_nodes": len(model.graph.node),
     }
