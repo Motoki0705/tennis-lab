@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import groupby, islice
 from typing import Any
 
 import numpy as np
@@ -25,6 +26,8 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_resources import gvhmr_tensorrt
+from src.tennis_scene.pipeline.tensorrt_assets import tensorrt_identity
 
 
 @dataclass(frozen=True)
@@ -79,11 +82,25 @@ class GVHMRModule(InferenceComponent[GVHMRInput, GVHMROutput]):
         config = self.config
         if not self.enabled:
             return {}
+        runtime = config.runtime.gvhmr
+        assets = {k: v for k, v in config.body_assets().items() if k != "hmr2"}
+        settings: dict[str, Any] = {"static_cam": config.runtime.static_cam}
+        if runtime.batch_size != 1:
+            settings["batch_size"] = runtime.batch_size
+        dtype = "float32"
+        kwargs = {}
+        if runtime.backend.engines:
+            engine = gvhmr_tensorrt(config).bind(
+                runtime.backend.engines[0], device=config.runtime.device, batch_size=runtime.batch_size)
+            engine_assets, identity = tensorrt_identity((engine,), batch_size=runtime.batch_size)
+            assets.update(engine_assets)
+            settings.update(identity)
+            dtype = "float16"
+            kwargs["engine"] = engine
         return {
-            "mesh": ModelSpec("gvhmr", {k: v for k, v in config.body_assets().items() if k != "hmr2"},
-                "gvhmr", config.runtime.device, "float32", {"static_cam": config.runtime.static_cam},
+            "mesh": ModelSpec("gvhmr", assets, "gvhmr", config.runtime.device, dtype, settings,
                 lambda: GvhmrMeshRecovery(config.gvhmr_checkpoint, config.body_models_dir,
-                    device=config.runtime.device, smpl_assets=config.smpl_assets),
+                    device=config.runtime.device, smpl_assets=config.smpl_assets, **kwargs),
                 initialize=lambda model: model.load(), release=lambda model: model.unload()),
         }
 
@@ -91,17 +108,31 @@ class GVHMRModule(InferenceComponent[GVHMRInput, GVHMROutput]):
         if not self.enabled:
             return GVHMROutput(())
         inputs.validate()
-        bodies: list[RecoveredBody] = []
-        for selected, image in zip(inputs.selection.selections, inputs.features.bodies, strict=True):
-            segments: list[RecoveredBodySegment] = []
-            for request, observed_samples, segment in zip(selected.requests, selected.observed_samples, image.segments, strict=True):
-                boxes = torch.from_numpy(np.array(request.boxes_xys, copy=True))
+        selections = inputs.selection.selections
+        segments: list[list[RecoveredBodySegment]] = [[] for _ in selections]
+        jobs = (
+            (i, request, observed, feature)
+            for i, (selected, image) in enumerate(zip(selections, inputs.features.bodies, strict=True))
+            for request, observed, feature in zip(selected.requests, selected.observed_samples, image.segments, strict=True)
+        )
+        limit = self.config.runtime.gvhmr.batch_size
+        for _, compatible in groupby(jobs, key=lambda job: len(job[1].source_frames)):
+            while batch := list(islice(compatible, limit)):
+                requests = [GvhmrRequest(
+                    kp2d=torch.from_numpy(np.array(request.keypoints, copy=True)),
+                    bbx_xys=torch.from_numpy(np.array(request.boxes_xys, copy=True)),
+                    f_imgseq=torch.from_numpy(np.array(feature.features, copy=True)),
+                    width=request.size[0], height=request.size[1], static_cam=True,
+                    K_fullimg=torch.from_numpy(request.intrinsic.astype(np.float32)),
+                ) for _, request, _, feature in batch]
                 model: GvhmrMeshRecovery = models.borrow("mesh")
-                result = model.predict(GvhmrRequest(kp2d=torch.from_numpy(np.array(request.keypoints, copy=True)),
-                    bbx_xys=boxes, f_imgseq=torch.from_numpy(np.array(segment.features, copy=True)), width=request.size[0], height=request.size[1],
-                    static_cam=True, K_fullimg=torch.from_numpy(request.intrinsic.astype(np.float32))))
-                params = result.smpl_params_incam
-                parameters = BodyParameters(**{name: params[name].detach().float().cpu().numpy() for name in ("body_pose", "global_orient", "betas", "transl")})
-                segments.append(RecoveredBodySegment(request.source_frames, parameters, observed_samples))
-            bodies.append(RecoveredBody(selected.person_id, selected.camera_id, tuple(segments)))
-        return GVHMROutput(tuple(bodies))
+                results = [model.predict(requests[0])] if len(requests) == 1 else model.predict_batch(requests)
+                for (i, request, observed, _), result in zip(batch, results, strict=True):
+                    params = result.smpl_params_incam
+                    parameters = BodyParameters(**{name: params[name].detach().float().cpu().numpy()
+                        for name in ("body_pose", "global_orient", "betas", "transl")})
+                    segments[i].append(RecoveredBodySegment(request.source_frames, parameters, observed))
+        return GVHMROutput(tuple(
+            RecoveredBody(selected.person_id, selected.camera_id, tuple(rows))
+            for selected, rows in zip(selections, segments, strict=True)
+        ))

@@ -130,7 +130,8 @@ def standard_model_components(cfg: PipelineRuntimeConfig, ids: tuple[str, ...]) 
         return appearance_model(profile, checkpoint, cfg.device,
             partial(build_encoder, profile, checkpoint=checkpoint, checkpoint_root=cfg.roots.checkpoint_root,
                 external_root=cfg.roots.external_asset_root, device=cfg.device),
-            repository=cfg.roots.external_asset_root / "dinov3" if profile.startswith("dinov3_") else None)
+            repository=cfg.roots.external_asset_root / "dinov3" if profile.startswith("dinov3_") else None,
+            clip=cfg.people.runtime.clip_reid)
 
     encoder = None if not people or name is None or cfg.association_encoder_weights is None else appearance(name, cfg.association_encoder_weights)
     tracking = None if not people else appearance(cfg.tracking.encoder, cfg.tracking_encoder_weights)
@@ -208,6 +209,9 @@ def validate_override_names(overrides: Mapping[str, Any]) -> None:
 def _person_runtime_identity(runtime: DinoDetectorRuntimeConfig | ViTPoseRuntimeConfig,
                              device: str, *, key: str = "runtime") -> dict[str, Any]:
     options = json_value(runtime)
+    del options["engines"]
+    if options.get("batch_size") == 1 and "confidence" in options:
+        del options["batch_size"]
     if runtime.precision == "fp32":
         del options["precision"]
         return {key: options}
@@ -454,7 +458,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("hmr2_features", components["hmr2_features"], HMR2FeaturesInputAssembler(),
         {"selection": "body_view_selection"}, lambda: {
             "assets": hmr2_assets(),
-            "runtime": cfg.people.runtime.hmr2, "enabled": body_enabled})
+            "runtime": {"batch_size": cfg.people.runtime.hmr2.batch_size}, "enabled": body_enabled})
     add("gvhmr", components["gvhmr"], GVHMRInputAssembler(),
         {"selection": "body_view_selection", "features": "hmr2_features"},
         lambda: {"assets": body_assets(), "static_cam": cfg.people.runtime.static_cam, "enabled": body_enabled})

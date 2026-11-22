@@ -240,7 +240,7 @@ appearanceは従来のrounded/clipped box、RGB crop、画像対角に応じた�
 動画は各passで順次decodeし、RGB/crop全体を保持しない。空frame・端数batch・空の末尾も保ち、
 各cameraの数値特徴をnode完了時に直ちに原子的に保存する。clip/cameraをまたぐcrop batchは扱わない。
 
-`people_models.runtime.dino_detector.precision` と `people_models.runtime.vitpose.precision` に
+`backend=pytorch` の `people_models.runtime.dino_detector.precision` と `people_models.runtime.vitpose.precision` に
 `fp32`（既定）、`bf16`、`fp16` を個別に指定できる。半精度はモデルforwardのautocastで選び、
 ViTPoseのheatmap復号とDINOのscore・box復号はFP32で行う。DINOの変形可能アテンションは
 CUDA拡張の入力dtypeに合わせて、混合精度条件でもブロック全体をFP32で実行する。
@@ -329,8 +329,82 @@ HMR2・GVHMR・body geometry資産は各段階の最終需要まで共有し、�
 保存特徴のあるclipと未計算のclipが混在する再開でも、HMR2の解放をGVHMRの読込より先に行う。
 この順序制約はclipをまたぐartifact依存には含めず、部分targetでは選択していないclipを実行しない。
 両推論nodeのModelSpecは共通のcomponent生成表から成果物settingsと完成markerへ束縛する。
-DINO・ViTPoseの精度設定とは独立して、HMR2特徴・GVHMR・身体配置はFP32を使う。
+HMR2特徴とGVHMRは既定でFP32を使い、DINO・ViTPoseとは別に推論バックエンドを指定する。
+身体配置はFP32を使う。
 上流の精度変更は依存artifactのidentityを通じて身体段のcacheへ反映する。
+
+## TensorRT FP16
+
+ViTPose-H、DINO Swin-L、CLIP-ReID ViT-B/16、HMR2、GVHMR SIGA24を個別に選択できます。
+既定のバックエンドはPyTorch FP32です。TensorRTの任意依存はLinux x86-64とCUDA 13用です。
+
+```bash
+uv sync --locked --extra tensorrt
+```
+
+各設定は `people_models.runtime` にあります。TensorRTを使うモデルに
+`backend=tensorrt`、`precision=fp16`、`engines`、`batch_size` を指定します。
+`engines` は `paths.artifact_root`（既定 `outputs`）相対のディレクトリ一覧です。
+
+| 設定キー | `batch_size` の単位 | エンジンの入力 |
+|---|---|---|
+| `vitpose` | pose crop | 256×192。flip有効時の入力はcrop数の2倍 |
+| `dino_detector` | 同じresize後shapeのフレーム | H×Wごとに1ディレクトリ。MSDAは標準GridSample |
+| `clip_reid` | RGBの人物crop | 256×128。追跡特徴と人物対応のCLIP-ReIDで共用 |
+| `hmr2` | 身体viewのcrop | 256×256 |
+| `gvhmr` | 人物系列 | TensorRTでは1人。系列長はprofileの範囲。復号・静止カメラ補正・IKはFP32 |
+
+TensorRTを選んだモデルの `batch_size` は単一clipと横断バッチで共通です。
+横断バッチを有効にしたとき、PyTorchのモデルには既存の `batching.sizes` が適用されます。
+各バッチの端数を処理します。PyTorch GVHMRでは連続する同じ系列長をまとめ、人物ごとに復号します。
+
+### DINO GridSampleの単体精度
+
+DINOのTensorRT FP16は明示設定で選択でき、既定はPyTorch FP32です。
+固定64画像の実測ではIoU P05が0.93056、score差P95が0.01724で、
+単体基準のIoU P05 ≥ 0.98、score差P95 ≤ 0.01をともに満たしていません。
+常設化前のPhase 1でもIoU P05は0.93252、score差P95は0.01726で、同じ2項目が基準外でした。
+採用は全クリップE2Eで判断します。
+[実測記録](../../../knowledge/nodes/tennis_scene/000081-run-i2362-tensorrt-pipeline.md)・
+[全クリップE2E #2363](https://github.com/Motoki0705/tennis-lab/issues/2363)
+
+### エンジンの作成と配置
+
+保存規約は `outputs/tensorrt/<model>/<shape>/<build-tag>/` です。
+`<model>` は `vitpose`、`dino`、`clip`、`hmr2`、`gvhmr` のいずれかです。
+`<shape>` は前処理後のH×W、GVHMRでは系列長のmin・opt・maxを表します。
+ビルドごとに新しいタグを使います。
+
+```bash
+bundle=outputs/tensorrt/vitpose/256x192/example-b2
+.venv/bin/python -m src.tennis_scene.scripts.tensorrt export vitpose "$bundle"
+.venv/bin/python -m src.tennis_scene.scripts.tensorrt build "$bundle" --opt-batch 2 --max-batch 2
+```
+
+保存先はworktreeルートからの相対パス、または絶対パスで指定します。
+ローカルの変換・ビルドは[共有training queue](../../../.agents/skills/training-queue/SKILL.md)で実行します。
+exportはcheckpointやViTPose headの設定を `pipeline.yaml` から読みます。
+個別設定は `--override KEY=VALUE` で渡し、DINOにはresize後の `--image-size HEIGHT WIDTH` を指定します。
+GVHMRのbuildには `--frames MIN OPT MAX` が必要です。
+画像モデルの最小バッチは1です。profile内のバッチサイズは設定だけで変更できます。
+
+```yaml
+people_models:
+  runtime:
+    vitpose:
+      backend: tensorrt
+      precision: fp16
+      batch_size: 2
+      engines:
+      - tensorrt/vitpose/256x192/example-b2
+```
+
+`export.json` は重み・外部実装、精度、`model.onnx` と外部重みのSHA-256、入出力shapeと型を固定します。
+`engine.json` はそのexport、`engine.plan` のSHA-256、TensorRT版、GPU名・compute capabilityと
+各入力のmin/opt/maxを固定します。実行前にこれらを照合し、ロード後にplanのbindingsとprofileを再確認します。
+ファイル欠落、識別不一致、未登録shape、profile範囲外のバッチや系列長はエラーになります。
+バックエンド・精度・バッチサイズ・エンジンの識別は `ModelSpec` とcomponent・publicationのidentityに含まれます。
+既定のFP32では、`tensorrt_fp32_cache_compatibility.json` に一致するソース変更を導入前のハッシュで表します。
 
 ## ball検出証拠
 

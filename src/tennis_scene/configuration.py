@@ -491,7 +491,8 @@ class PipelineRuntimeConfig:
             resolver=resolver,
         )
         models = _mapping(value["people_models"], name="people_models")
-        runtime = SubmoduleRuntimeConfig.from_mapping(_mapping(models["runtime"], name="people_models.runtime"))
+        runtime = SubmoduleRuntimeConfig.from_mapping(
+            _mapping(models["runtime"], name="people_models.runtime"), resolver=resolver)
         if runtime.device != device:
             raise SemanticConfigurationError("People model device must equal pipeline device")
         people = PeopleModelConfig(
@@ -505,7 +506,8 @@ class PipelineRuntimeConfig:
         )
         tracking_section = _mapping(value['person_tracking'], name='person_tracking')
         tracking = TrackingConfig(method=cast(str, tracking_section['method']), encoder=cast(str, tracking_section['encoder']),
-                                  features=FeatureConfig(bbox_enlarge=runtime.tracking.bbox_enlarge))
+                                  features=FeatureConfig(bbox_enlarge=runtime.tracking.bbox_enlarge,
+                                                         appearance_batch_size=runtime.clip_reid.batch_size))
         tracking_weights = encoder_weights(tracking.encoder, checkpoint_root=roots.checkpoint_root,
                                            external_root=roots.external_asset_root)
         aflink_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, tracking_section['aflink_checkpoint']))

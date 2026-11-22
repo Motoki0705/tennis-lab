@@ -22,6 +22,8 @@ from src.submodules.models.dino.architecture import (
     use_fp32_deformable_attention,
 )
 from src.utils.inference_recording import span
+from src.utils.models.tensorrt_artifacts import PLAN_FILE, EngineBundle
+from src.utils.models.tensorrt_runtime import TensorRTRunner
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,7 @@ class DinoPersonDetector(
         short_side: int,
         max_long_side: int,
         precision: InferencePrecision = "fp32",
+        engines: tuple[EngineBundle, ...] = (),
     ) -> None:
         super().__init__(device)
         if type(confidence) is not float:
@@ -78,13 +81,24 @@ class DinoPersonDetector(
         self.max_long_side = max_long_side
         if precision != "fp32" and self.device.type != "cuda":
             raise ValueError("Mixed precision DINO requires a CUDA device")
-        self._autocast_dtype = autocast_dtype(precision, self.device)
+        self._autocast_dtype = None if engines else autocast_dtype(precision, self.device)
         self._model: torch.nn.Module | None = None
+        self._engines = engines
+        self._runners: dict[tuple[int, int], TensorRTRunner] = {}
 
     def recording_assets(self) -> dict[str, Path]:
+        if self._engines:
+            return {f"engine_{i}": bundle.root / PLAN_FILE for i, bundle in enumerate(self._engines)}
         return {"checkpoint": self.checkpoint}
 
     def _load_impl(self) -> None:
+        if self._engines:
+            for bundle in self._engines:
+                _, _, height, width = bundle.export.inputs["pixels"].shape
+                if (height, width) in self._runners:
+                    raise ValueError(f"Duplicate DINO TensorRT input shape: {height}x{width}")
+                self._runners[height, width] = TensorRTRunner(bundle, self.device)
+            return
         if self.device.type != "cuda":
             raise RuntimeError(
                 f"DINO multi-scale deformable attention requires CUDA, got {self.device}"
@@ -100,6 +114,7 @@ class DinoPersonDetector(
 
     def _unload_impl(self) -> None:
         self._model = None
+        self._runners.clear()
 
     def predict_batch(
         self,
@@ -163,8 +178,6 @@ class DinoPersonDetector(
     def _predict_compatible_batch(
         self, images: Sequence[torch.Tensor], image_sizes: Sequence[tuple[int, int]]
     ) -> list[PersonDetectionResult]:
-        if self._model is None:
-            raise RuntimeError("DINO model did not load before prediction.")
         with span("preprocess", model="DINO"):
             batch = torch.stack(list(images))
         with span("transfer", model="DINO"):
@@ -173,7 +186,15 @@ class DinoPersonDetector(
             span("inference", model="DINO", batch_shape=list(batch.shape)),
             torch.autocast(self.device.type, dtype=self._autocast_dtype, enabled=self._autocast_dtype is not None),
         ):
-            output = self._model(batch)
+            if self._engines:
+                height, width = batch.shape[-2:]
+                if (runner := self._runners.get((height, width))) is None:
+                    raise ValueError(f"No DINO TensorRT engine for resized input {height}x{width}")
+                output = runner({"pixels": batch})
+            elif self._model is not None:
+                output = self._model(batch)
+            else:
+                raise RuntimeError("DINO model did not load before prediction.")
         del batch
         with span("postprocess", model="DINO"):
             if self._autocast_dtype is not None:

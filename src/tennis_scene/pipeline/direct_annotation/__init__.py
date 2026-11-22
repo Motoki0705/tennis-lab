@@ -92,6 +92,7 @@ def scene_receipt(
     archive: Path,
     *,
     people_runtime: SubmoduleRuntimeConfig,
+    model_identity: str | None = None,
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "status": "complete",
@@ -100,6 +101,7 @@ def scene_receipt(
         "bundle_sha256": config.bundle_sha256,
         "court_detection": config.court_detection,
         "person_precision": _person_precision(people_runtime),
+        **({"model_identity": model_identity} if model_identity is not None else {}),
         "scene_artifact": json_value(store.references()["scene_assembly"]),
         "archive": str(archive),
         "archive_sha256": dual_sha256(archive),
@@ -115,6 +117,7 @@ def saved_scene(
     request_digest: str,
     *,
     people_runtime: SubmoduleRuntimeConfig,
+    model_identity: str | None = None,
 ) -> tuple[SceneResult, dict[str, object]]:
     receipt = json.loads((store.root / "scene-completion.json").read_text())
     if (
@@ -138,6 +141,8 @@ def saved_scene(
             "Saved scene person precision differs from the selected workflow "
             f"(saved {saved_precision!r}, requested {requested_precision!r})"
         )
+    if receipt.get("model_identity") != model_identity:
+        raise ValueError("Saved scene model identity differs from the selected workflow")
     archive = Path(receipt["archive"])
     required = require_current_body_artifacts(store.root, json_value(store.references()['scene_assembly']))
     if indexed_scene_path(store.root / 'scene.json', required_components=required) != archive.resolve():
