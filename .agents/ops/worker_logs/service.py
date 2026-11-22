@@ -82,6 +82,8 @@ def publish(
             else "journal_unavailable",
             "saved_to_main": False,
         }
+        if result["error"] == "journal_unavailable":
+            result["journal_reason"] = journal.unavailable_reason(exc)
     if not dry_run:
         from decision_logs.observations import worker_log
 

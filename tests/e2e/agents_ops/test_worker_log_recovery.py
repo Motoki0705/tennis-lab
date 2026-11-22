@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import base64
 import copy
+import errno
 import fcntl
 import importlib
 import json
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -164,6 +165,212 @@ class PublicGitHub(FakeGitHub):
 @pytest.fixture
 def logs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> LogEnv:
     return LogEnv(tmp_path, monkeypatch)
+
+
+@pytest.fixture
+def worker_cli(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> Callable[..., tuple[int, dict[str, Any]]]:
+    cli = importlib.import_module("parent.cli_impl")
+    owner = {
+        "session": "codex:recovery",
+        "status": "active",
+        "generation": 1,
+        "tasks": {},
+        "reviews": [],
+    }
+    journal.atomic(
+        logs.state / "registry.json", {"version": 1, "parents": {"o/r#1": owner}}
+    )
+    monkeypatch.setattr(cli, "GitHub", lambda *a, **kw: SimpleNamespace(repo="o/r"))
+    monkeypatch.setattr(cli, "session_identity", lambda _: owner["session"])
+    monkeypatch.setattr(service, "Publisher", lambda root, path: logs.publisher(path))
+    monkeypatch.chdir(logs.root)
+    options = ["--repo", "o/r", "--parent", "1", "--state-dir", str(logs.state)]
+
+    def invoke(*args: str) -> tuple[int, dict[str, Any]]:
+        code = cli._main([*options, *args])
+        captured = capsys.readouterr()
+        assert captured.out, captured.err
+        return code, json.loads(captured.out)
+
+    return invoke
+
+
+@pytest.mark.parametrize(
+    "foreign",
+    [
+        None,
+        "ignored_file",
+        "index",
+        "branch",
+        "lock_reason",
+        "late_file",
+        "late_lock",
+        "successor_registration",
+        "interrupted_retirement",
+    ],
+)
+def test_cli_reopens_only_the_interrupted_worktree(
+    logs: LogEnv,
+    worker_cli: Callable[..., tuple[int, dict[str, Any]]],
+    monkeypatch: pytest.MonkeyPatch,
+    foreign: str | None,
+) -> None:
+    class Interrupted(BaseException):
+        pass
+
+    path = logs.ready()
+    publisher = logs.publisher(path)
+    original_git = publisher.git
+
+    def interrupt(*args: str, **kwargs: Any) -> bytes:
+        if args[:3] == ("worktree", "add", "-b"):
+            _, _, _, branch, tree, base = args
+            git(
+                logs.root,
+                "worktree",
+                "add",
+                "--no-checkout",
+                "--lock",
+                "--reason",
+                "manual" if foreign == "lock_reason" else "initializing",
+                "-b",
+                "other-branch" if foreign == "branch" else branch,
+                tree,
+                base,
+            )
+            if foreign == "ignored_file":
+                (logs.root / ".git/info/exclude").write_text("keep.txt\n")
+                (Path(tree) / "keep.txt").write_text("unknown local data")
+            if foreign == "index":
+                git(Path(tree), "read-tree", base)
+            raise Interrupted()
+        raw: bytes = original_git(*args, **kwargs)
+        return raw
+
+    monkeypatch.setattr(publisher, "git", interrupt)
+    with pytest.raises(Interrupted):
+        publisher.publish()
+    frozen = journal.read(path)
+    tree = publisher.worktree(frozen)
+    index = git(tree, "ls-files")
+    assert bool(index) is (foreign == "index")
+    registry = git(logs.root, "worktree", "list", "--porcelain")
+    before = snapshot(tree)
+    if foreign in {"late_file", "late_lock", "successor_registration"}:
+        rename = publication.rename_no_replace
+        admin = Path(git(tree, "rev-parse", "--absolute-git-dir"))
+        injected = False
+
+        def add_foreign_data(src: int, name: str, dst: int, target: str) -> None:
+            nonlocal injected
+            if foreign == "late_file" and target == "checkout":
+                (tree / "late.txt").write_bytes(b"concurrent local data")
+                injected = True
+            if foreign == "late_lock" and target == "registration":
+                (admin / "locked").write_text("manual\n")
+                injected = True
+            rename(src, name, dst, target)
+            if foreign == "successor_registration" and target == "registration":
+                admin.mkdir()
+                (admin / "locked").write_text("manual successor\n")
+                injected = True
+
+        monkeypatch.setattr(publication, "rename_no_replace", add_foreign_data)
+        if foreign == "late_file":
+            before["late.txt"] = b"concurrent local data"
+        elif foreign == "late_lock":
+            registry = registry.replace("locked initializing", "locked manual")
+    command = ("publish-worker-log", "--child", "10", "--turn", "1")
+    if foreign == "interrupted_retirement":
+        rename = publication.rename_no_replace
+
+        def after_rename(src: int, name: str, dst: int, target: str) -> None:
+            rename(src, name, dst, target)
+            if target == "checkout":
+                raise Interrupted()
+
+        monkeypatch.setattr(publication, "rename_no_replace", after_rename)
+        with pytest.raises(Interrupted):
+            worker_cli(*command)
+        assert not tree.exists() and "worktree_recovery" in journal.read(path)
+        monkeypatch.setattr(publication, "rename_no_replace", rename)
+    code, value = worker_cli(*command)
+    row = value["logs"][0]
+    saved = journal.read(path)
+    for key in ("source", "receipt", "files", "base", "branch", "directory"):
+        assert saved[key] == frozen[key]
+    if foreign and foreign != "interrupted_retirement":
+        assert code == 2 and not row["saved_to_main"]
+        assert row["error"] == (
+            "worktree_changed" if foreign == "branch" else "worktree_dirty"
+        )
+        assert logs.github.main() == logs.base and not logs.github.calls
+        if foreign == "successor_registration":
+            name = ".worker-log-recovery-" + saved["worktree_recovery"]["id"]
+            assert injected and not tree.exists()
+            assert snapshot(tree.parent / name / "checkout") == before
+            assert (admin / "locked").read_text() == "manual successor\n"
+            assert (
+                admin.parent.parent / name / "registration/locked"
+            ).read_text().strip() == "initializing"
+        else:
+            assert snapshot(tree) == before
+            assert git(logs.root, "worktree", "list", "--porcelain") == registry
+            assert git(tree, "ls-files") == index
+            if foreign in {"late_file", "late_lock"}:
+                assert injected and "worktree_recovery" not in saved
+    else:
+        assert code == 0 and row["saved_to_main"], value
+        assert "worktree_recovery" not in saved
+        assert not tree.exists() and logs.github.calls == ["create", "merge"]
+        for name, content in frozen["files"].items():
+            actual = subprocess.check_output(
+                ["git", "show", f"main:{saved['directory']}/{name}"], cwd=logs.upstream
+            )
+            assert actual == content.encode("utf-8")
+
+
+def test_cli_preserves_private_failure_diagnosis_and_shows_explicit_retry(
+    logs: LogEnv,
+    worker_cli: Callable[..., tuple[int, dict[str, Any]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = logs.ready()
+    secret = "unrecognized-private-value"
+    render = publication.render
+
+    def fail_render(*args: Any) -> Any:
+        raise PermissionError(errno.EACCES, secret, str(path))
+
+    monkeypatch.setattr(publication, "render", fail_render)
+    target = ("--child", "10", "--turn", "1")
+    code, value = worker_cli("publish-worker-log", *target)
+    assert code == 2 and value["logs"][0]["error"] == "publication_failed"
+    saved = journal.read(path)
+    diagnostic = saved["diagnostic"]
+    assert "PermissionError" in diagnostic and "EACCES" in diagnostic
+    assert secret not in diagnostic and str(path) not in diagnostic
+
+    # Include a prior blocked receipt from before the prepared files were saved.
+    saved.pop("files")
+    saved.pop("individual_publication")
+    journal.atomic(path, saved)
+    before = path.read_bytes()
+    for command in ("worker-log-status", "publish-worker-log"):
+        code, value = worker_cli(command, *target)
+        row = value["logs"][0]
+        assert code == 2 and row["error"] == "publication_failed"
+        assert "--retry" in row["next_action"]
+        assert "diagnostic" not in row
+        assert secret not in json.dumps(value) and str(path) not in json.dumps(value)
+        assert path.read_bytes() == before
+    assert logs.github.calls == []
+
+    monkeypatch.setattr(publication, "render", render)
+    code, value = worker_cli("publish-worker-log", *target, "--retry")
+    assert code == 0 and value["logs"][0]["saved_to_main"], value
 
 
 def public_pr(logs: LogEnv, *, erase: bool = True) -> tuple[Path, PublicGitHub]:
@@ -482,8 +689,12 @@ def test_unstarted_marker_with_runtime_receipt_is_a_corrupt_inventory(
     row = journal.read(path)
     row.update(state="worker_failed", stage="not_started", error="runner_not_started")
     journal.atomic(path, row)
-    with pytest.raises(journal.PublicationError, match="journal_invalid"):
-        recovery.remaining_publications("o/r", 1, state_dir=logs.state)
+    logs.ready(legacy=True, child=11)
+    invalid, ready = recovery.remaining_publications("o/r", 1, state_dir=logs.state)
+    assert invalid["state"] == "blocked" and invalid["error"] == "journal_unavailable"
+    assert invalid["journal_reason"] == "journal_invalid"
+    assert invalid["journal_identity"] == "path_only" and invalid["sequence"] is None
+    assert ready["issue"] == 11 and ready["state"] == "ready"
 
 
 def test_bulk_recovery_requires_recovery_owner_and_reuses_foreign_journal(
@@ -957,16 +1168,105 @@ def test_existing_journal_merge_refusal_reaches_orphan_cli_exit(
 def test_exit_checkpoint_marks_corrupt_inventory_as_unknown(logs: LogEnv) -> None:
     path = logs.ready(legacy=True)
     path.write_text("invalid JSON")
+    logs.ready(legacy=True, child=11)
     lifecycle = importlib.import_module("worker_logs.lifecycle")
-    with pytest.raises(journal.PublicationError):
-        recovery.remaining_publications("o/r", 1, state_dir=logs.state)
     value = lifecycle.record_exit(
         "o/r", 1, 1, "ended", state_dir=logs.state, root=logs.root
     )
     assert (
         value["remaining_complete"] is False and value["error"] == "journal_unavailable"
     )
+    assert [r["issue"] for r in value["remaining"]] == [11]
     assert value["resume_command"] and value["publication_actor"] == "unassigned"
+
+
+def test_bulk_and_status_identify_unreadable_namespaces(parent_env: ParentEnv) -> None:
+    p = parent_env
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    sha = importlib.import_module("worker_logs.schema").sha
+    digest = sha(b"o/r")
+    root = Path("worker-logs") / digest
+    private_keys = ("a" * 32, "b" * 32, "c" * 32)
+    worker = [
+        root / "1" / "10" / private_keys[0] / "1" / "journal.json",
+        root / "1" / "11" / private_keys[1] / "invalid-turn" / "journal.json",
+        root / "private-unknown" / "12" / private_keys[2] / "x" / "journal.json",
+    ]
+    decision = Path("decision-logs") / digest / "parent-1" / "publication.json"
+    (directory / worker[0]).mkdir(parents=True)
+    for path in [*worker[1:], decision]:
+        (directory / path).parent.mkdir(parents=True)
+        (directory / path).write_text("private raw input")
+
+    before = snapshot(directory)
+    bulk = p.cli("publish-worker-log", "--all-parents", "--dry-run", ok=None)
+    assert bulk.returncode == 2, bulk.stderr
+    rows = json.loads(bulk.stdout)["logs"]
+    assert {r["namespace_sha256"] for r in rows} == {
+        sha(str(path).encode()) for path in worker
+    }
+    assert [r["parent"] for r in rows] == [1, 1, None]
+    assert [r["journal_identity"] for r in rows] == ["path_only", "unknown", "unknown"]
+    assert [r["journal_reason"] for r in rows] == [
+        "journal_read_failed",
+        "journal_invalid",
+        "journal_invalid",
+    ]
+    assert all(
+        r["error"] == "journal_unavailable" and not r["saved_to_main"] for r in rows
+    )
+
+    status = json.loads(p.cli("status").stdout)
+    assert status["publication_inventory_error"] == "journal_unavailable"
+    assert {r["namespace_sha256"] for r in status["remaining_publications"]} == {
+        sha(str(path).encode()) for path in (*worker[:2], decision)
+    }
+    assert {r["journal_reason"] for r in status["remaining_publications"]} == {
+        "journal_read_failed",
+        "journal_invalid",
+        "invalid_json_object",
+    }
+    for row in [*rows, *status["remaining_publications"]]:
+        assert row["public_key"] is row["issue"] is row["sequence"] is None
+    assert all(key not in bulk.stdout + json.dumps(status) for key in private_keys)
+    assert "private raw input" not in json.dumps(status) + bulk.stdout
+    assert "private-unknown" not in bulk.stdout and str(directory) not in bulk.stdout
+    assert snapshot(directory) == before
+
+
+@pytest.mark.parametrize("levels", [1, 2, 3, 4], ids=["parent", "issue", "key", "turn"])
+def test_wrong_namespace_type_is_unavailable_at_exit(
+    logs: LogEnv,
+    worker_cli: Callable[..., tuple[int, dict[str, Any]]],
+    levels: int,
+) -> None:
+    lifecycle = importlib.import_module("worker_logs.lifecycle")
+    sha = importlib.import_module("worker_logs.schema").sha
+    root = Path("worker-logs") / sha(b"o/r")
+    relative = root.joinpath(*("1", "10", "a" * 32, "1")[:levels])
+    malformed = logs.state / relative
+    malformed.parent.mkdir(parents=True)
+    malformed.write_text("unexpected regular file")
+    before = snapshot(logs.state)
+
+    code, bulk = worker_cli("publish-worker-log", "--all-parents", "--dry-run")
+    assert code == 2
+    inventory = recovery.remaining_publications("o/r", 1, state_dir=logs.state)
+    checkpoint = lifecycle.record_exit(
+        "o/r", 1, 1, "ended", state_dir=logs.state, root=logs.root, persist=False
+    )
+    assert checkpoint["remaining_complete"] is False
+    assert checkpoint["error"] == "journal_unavailable"
+    assert checkpoint["unavailable_namespaces"] == inventory
+    expected_digest = sha(str(relative).encode())
+    for rows in (bulk["logs"], inventory):
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["parent"] == 1 and row["state"] == "blocked"
+        assert row["namespace_sha256"] == expected_digest
+        assert row["error"] == "journal_unavailable"
+        assert row["journal_reason"] == "journal_read_failed"
+    assert snapshot(logs.state) == before
 
 
 @pytest.mark.parametrize(

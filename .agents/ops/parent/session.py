@@ -339,7 +339,11 @@ class ParentSession:
             publications = remaining_publications(
                 self.gh.repo, self.parent, state_dir=self.store.directory
             )
-            inventory_error = None
+            inventory_error = (
+                "journal_unavailable"
+                if any("journal_reason" in item for item in publications)
+                else None
+            )
         except (ValueError, OSError, KeyError, TypeError):
             publications = None
             inventory_error = "journal_unavailable"
