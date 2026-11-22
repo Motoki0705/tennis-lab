@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any
@@ -72,15 +72,22 @@ class GvhmrResult:
 
 
 class _TensorRTDenoiser(torch.nn.Module):
-    def __init__(self, runner: TensorRTRunner) -> None:
+    def __init__(
+        self, runner: Callable[[Mapping[str, torch.Tensor]], dict[str, torch.Tensor]]
+    ) -> None:
         super().__init__()
         self.runner = runner
 
     def forward(self, *, length: torch.Tensor, **conditions: torch.Tensor) -> dict[str, torch.Tensor]:
-        outputs = self.runner({"length": length, **conditions})
-        if not torch.equal(outputs.pop("length_out"), length) or not bool(outputs.pop("mask_out").all()):
-            raise ValueError("GVHMR TensorRT changed the complete sequence length or mask")
-        return {name: value.float() for name, value in outputs.items()}
+        return self.runner({"length": length, **conditions})
+
+
+def _adapt_tensorrt_denoiser_output(
+    length: torch.Tensor, outputs: dict[str, torch.Tensor]
+) -> dict[str, torch.Tensor]:
+    if not torch.equal(outputs.pop("length_out"), length) or not bool(outputs.pop("mask_out").all()):
+        raise ValueError("GVHMR TensorRT changed the complete sequence length or mask")
+    return {name: value.float() for name, value in outputs.items()}
 
 
 class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
@@ -114,9 +121,10 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"GVHMR checkpoint not found: {self.checkpoint}")
-        kwargs = {}
+        kwargs: dict[str, Any] = {}
         if self.engine is not None:
             kwargs["denoiser"] = _TensorRTDenoiser(TensorRTRunner(self.engine, self.device))
+            kwargs["adapt_denoiser_output"] = _adapt_tensorrt_denoiser_output
         model = build_gvhmr_demo_model(
             checkpoint_path=self.checkpoint,
             body_models_dir=self.body_models_dir,

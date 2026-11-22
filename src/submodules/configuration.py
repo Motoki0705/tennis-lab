@@ -19,6 +19,8 @@ from src.utils.configuration import (
 __all__ = [
     "SUBMODULE_RUNTIME_SCHEMA",
     "SMPL_ASSET_SCHEMA",
+    "BackendConfig",
+    "BatchedRuntimeConfig",
     "SmplAssetPaths",
     "DinoDetectorRuntimeConfig",
     "Hmr2RuntimeConfig",
@@ -35,13 +37,13 @@ InferencePrecision = Literal["fp32", "bf16", "fp16"]
 
 @dataclass(frozen=True, slots=True)
 class BackendConfig:
-    precision: InferencePrecision = "fp32"
-    engines: tuple[Path, ...] = ()
+    precision: InferencePrecision
+    engines: tuple[Path, ...]
 
 
 _BACKEND_FIELDS = {
-    "backend": ConfigField.of(str, required=False),
-    "engines": ConfigField.sequence(ConfigField.of(str), required=False),
+    "backend": ConfigField.of(str),
+    "engines": ConfigField.sequence(ConfigField.of(str)),
 }
 
 
@@ -52,9 +54,9 @@ def _backend_config(
     device: str,
     resolver: PathResolver | None,
 ) -> BackendConfig:
-    backend = value.get("backend", "pytorch")
-    precision = cast(InferencePrecision, value.get("precision", "fp32"))
-    roots = cast(tuple[str, ...], value.get("engines", ()))
+    backend = value["backend"]
+    precision = cast(InferencePrecision, value["precision"])
+    roots = cast(tuple[str, ...], value["engines"])
     if backend not in {"pytorch", "tensorrt"}:
         raise SemanticConfigurationError(f"{model} backend must be pytorch or tensorrt")
     if backend == "pytorch":
@@ -62,7 +64,7 @@ def _backend_config(
             raise SemanticConfigurationError(f"{model} engines require the TensorRT backend")
         if model not in {"vitpose", "dino_detector"} and precision != "fp32":
             raise SemanticConfigurationError(f"{model} PyTorch inference requires fp32")
-        return BackendConfig(precision)
+        return BackendConfig(precision, ())
     if precision != "fp16" or not roots or (model != "dino_detector" and len(roots) != 1):
         raise SemanticConfigurationError(
             f"{model} TensorRT requires fp16 and explicit engine directories "
@@ -70,7 +72,7 @@ def _backend_config(
         )
     if device != "auto" and not device.startswith("cuda"):
         raise SemanticConfigurationError(f"{model} TensorRT requires CUDA")
-    if model == "gvhmr" and value.get("batch_size", 1) != 1:
+    if model == "gvhmr" and value["batch_size"] != 1:
         raise SemanticConfigurationError("GVHMR TensorRT requires batch_size=1")
     engines = tuple(
         require_absolute_path(path, name=f"{model} engine")
@@ -203,7 +205,7 @@ def _validate_vitpose_head(value: Mapping[str, object]) -> None:
 
 
 def _validate_batch_size(value: Mapping[str, object], *, model: str) -> None:
-    if cast(int, value.get("batch_size", 1)) <= 0:
+    if cast(int, value["batch_size"]) <= 0:
         raise SemanticConfigurationError(
             f"submodules.runtime.{model}.batch_size must be positive."
         )
@@ -223,7 +225,7 @@ _DINO_RUNTIME_SCHEMA = StrictConfigSchema(
         "short_side": ConfigField.of(int),
         "max_long_side": ConfigField.of(int),
         "precision": ConfigField.of(str),
-        "batch_size": ConfigField.of(int, required=False),
+        "batch_size": ConfigField.of(int),
         **_BACKEND_FIELDS,
     },
     semantic_checks=(_validate_dino_runtime,),
@@ -253,18 +255,23 @@ _VITPOSE_RUNTIME_SCHEMA = StrictConfigSchema(
     },
     semantic_checks=(_validate_vitpose_runtime,),
 )
-def _batched_runtime_schema(model: str) -> StrictConfigSchema:
+
+
+def _schema(model: str) -> StrictConfigSchema:
     return StrictConfigSchema(
         name=f"submodules.runtime.{model}",
         fields={
             "batch_size": ConfigField.of(int),
-            "precision": ConfigField.of(str, required=False),
+            "precision": ConfigField.of(str),
             **_BACKEND_FIELDS,
         },
         semantic_checks=(lambda value: _validate_batch_size(value, model=model),),
     )
 
 
+_HMR2_RUNTIME_SCHEMA = _schema("hmr2")
+_CLIP_REID_RUNTIME_SCHEMA = _schema("clip_reid")
+_GVHMR_RUNTIME_SCHEMA = _schema("gvhmr")
 SUBMODULE_RUNTIME_SCHEMA = StrictConfigSchema(
     name="submodules.runtime",
     fields={
@@ -272,9 +279,9 @@ SUBMODULE_RUNTIME_SCHEMA = StrictConfigSchema(
         "tracking": ConfigField.mapping(_TRACKING_RUNTIME_SCHEMA),
         "dino_detector": ConfigField.mapping(_DINO_RUNTIME_SCHEMA),
         "vitpose": ConfigField.mapping(_VITPOSE_RUNTIME_SCHEMA),
-        "hmr2": ConfigField.mapping(_batched_runtime_schema("hmr2")),
-        "clip_reid": ConfigField.mapping(_batched_runtime_schema("clip_reid"), required=False),
-        "gvhmr": ConfigField.mapping(_batched_runtime_schema("gvhmr"), required=False),
+        "hmr2": ConfigField.mapping(_HMR2_RUNTIME_SCHEMA),
+        "clip_reid": ConfigField.mapping(_CLIP_REID_RUNTIME_SCHEMA),
+        "gvhmr": ConfigField.mapping(_GVHMR_RUNTIME_SCHEMA),
         "static_cam": ConfigField.of(bool),
     },
 )
@@ -301,8 +308,8 @@ class DinoDetectorRuntimeConfig:
     short_side: int
     max_long_side: int
     precision: InferencePrecision
-    batch_size: int = 1
-    engines: tuple[Path, ...] = ()
+    batch_size: int
+    engines: tuple[Path, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -313,7 +320,7 @@ class ViTPoseRuntimeConfig:
     batch_size: int
     head: ViTPoseHeadConfig
     precision: InferencePrecision
-    engines: tuple[Path, ...] = ()
+    engines: tuple[Path, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -321,7 +328,7 @@ class BatchedRuntimeConfig:
     """Validated batch size and backend for an inference model."""
 
     batch_size: int
-    backend: BackendConfig = BackendConfig()
+    backend: BackendConfig
 
 
 Hmr2RuntimeConfig = BatchedRuntimeConfig
@@ -337,8 +344,8 @@ class SubmoduleRuntimeConfig:
     vitpose: ViTPoseRuntimeConfig
     hmr2: Hmr2RuntimeConfig
     static_cam: bool
-    clip_reid: BatchedRuntimeConfig = BatchedRuntimeConfig(batch_size=64)
-    gvhmr: BatchedRuntimeConfig = BatchedRuntimeConfig(batch_size=1)
+    clip_reid: BatchedRuntimeConfig
+    gvhmr: BatchedRuntimeConfig
 
     @property
     def uses_tensorrt(self) -> bool:
@@ -357,7 +364,6 @@ class SubmoduleRuntimeConfig:
         dino = _nested_mapping(validated["dino_detector"], name="runtime.dino_detector")
         vitpose = _nested_mapping(validated["vitpose"], name="runtime.vitpose")
         vitpose_head = _nested_mapping(vitpose["head"], name="runtime.vitpose.head")
-        hmr2 = _nested_mapping(validated["hmr2"], name="runtime.hmr2")
         device = cast(str, validated["device"])
         if not device.strip():
             raise SemanticConfigurationError(
@@ -380,10 +386,10 @@ class SubmoduleRuntimeConfig:
         dino_backend = _backend_config(dino, model="dino_detector", device=device, resolver=resolver)
         pose_backend = _backend_config(vitpose, model="vitpose", device=device, resolver=resolver)
 
-        def simple(section: str, default: int) -> BatchedRuntimeConfig:
-            options = _nested_mapping(validated.get(section, {}), name=f"runtime.{section}")
+        def batched_runtime(section: str) -> BatchedRuntimeConfig:
+            options = _nested_mapping(validated[section], name=f"runtime.{section}")
             return BatchedRuntimeConfig(
-                batch_size=cast(int, options.get("batch_size", default)),
+                batch_size=cast(int, options["batch_size"]),
                 backend=_backend_config(options, model=section, device=device, resolver=resolver),
             )
 
@@ -398,7 +404,7 @@ class SubmoduleRuntimeConfig:
                 max_long_side=cast(int, dino["max_long_side"]),
                 precision=dino_backend.precision,
                 engines=dino_backend.engines,
-                batch_size=cast(int, dino.get("batch_size", 1)),
+                batch_size=cast(int, dino["batch_size"]),
             ),
             vitpose=ViTPoseRuntimeConfig(
                 flip_test=cast(bool, vitpose["flip_test"]),
@@ -422,13 +428,10 @@ class SubmoduleRuntimeConfig:
                     ),
                 ),
             ),
-            hmr2=Hmr2RuntimeConfig(
-                batch_size=cast(int, hmr2["batch_size"]),
-                backend=_backend_config(hmr2, model="hmr2", device=device, resolver=resolver),
-            ),
+            hmr2=batched_runtime("hmr2"),
             static_cam=cast(bool, validated["static_cam"]),
-            clip_reid=simple("clip_reid", 64),
-            gvhmr=simple("gvhmr", 1),
+            clip_reid=batched_runtime("clip_reid"),
+            gvhmr=batched_runtime("gvhmr"),
         )
 
 

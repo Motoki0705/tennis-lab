@@ -16,6 +16,7 @@ from src.utils.configuration import ConfigurationError, PathResolver, RuntimePat
 
 
 def _runtime_mapping() -> dict[str, object]:
+    fp32 = {"backend": "pytorch", "precision": "fp32", "engines": ()}
     return {
         "device": "cpu",
         "tracking": {"bbox_enlarge": 1.2},
@@ -23,12 +24,13 @@ def _runtime_mapping() -> dict[str, object]:
             "confidence": 0.35,
             "short_side": 800,
             "max_long_side": 1333,
-            "precision": "fp32",
+            "batch_size": 1,
+            **fp32,
         },
         "vitpose": {
             "flip_test": True,
             "batch_size": 8,
-            "precision": "fp32",
+            **fp32,
             "head": {
                 "in_channels": 1280,
                 "out_channels": 17,
@@ -40,7 +42,9 @@ def _runtime_mapping() -> dict[str, object]:
                 "num_conv_kernels": [],
             },
         },
-        "hmr2": {"batch_size": 8},
+        "hmr2": {"batch_size": 8, **fp32},
+        "clip_reid": {"batch_size": 64, **fp32},
+        "gvhmr": {"batch_size": 1, **fp32},
         "static_cam": True,
     }
 

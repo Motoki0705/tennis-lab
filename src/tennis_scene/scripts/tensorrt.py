@@ -28,6 +28,15 @@ from src.tennis_scene.pipeline.model_resources import (
     vitpose_tensorrt,
 )
 from src.tennis_scene.pipeline.tensorrt_assets import TensorRTModel
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
 from src.utils.models.tensorrt_artifacts import (
     EXPORT_MANIFEST,
     ExportManifest,
@@ -35,6 +44,20 @@ from src.utils.models.tensorrt_artifacts import (
 )
 from src.utils.models.tensorrt_build import build_bundle, export_bundle
 from src.utils.paths import PROJECT_ROOT
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.tensorrt",
+    fields=(
+        BoundaryPathField(
+            "directory", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "export_manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, required=False,
+        ),
+    ),
+)
 
 
 def export_image_model(path: Path, model: torch.nn.Module, spec: TensorRTModel) -> None:
@@ -199,6 +222,23 @@ def main() -> None:
     build.add_argument("--frames", type=int, nargs=3, metavar=("MIN", "OPT", "MAX"))
     build.add_argument("--workspace-mib", type=int, default=1536)
     args = parser.parse_args()
+    directory = (PROJECT_ROOT / args.directory.expanduser()).resolve()
+    roots = RuntimePathRoots(
+        project_root=PROJECT_ROOT,
+        data_root=PROJECT_ROOT,
+        checkpoint_root=PROJECT_ROOT,
+        artifact_root=directory,
+        output_root=directory,
+        cache_root=PROJECT_ROOT,
+        external_asset_root=PROJECT_ROOT,
+    )
+    path_values = {"directory": directory}
+    if args.action == "build":
+        if args.workspace_mib < 1:
+            parser.error("--workspace-mib must be positive")
+        path_values["export_manifest"] = directory / EXPORT_MANIFEST
+    paths = PATH_BOUNDARY.validate(path_values, resolver=PathResolver(roots))
+    args.directory = paths.declared("directory").path
     if args.action == "export":
         with initialize_config_dir(
             config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"),
@@ -209,10 +249,8 @@ def main() -> None:
         torch.backends.mha.set_fastpath_enabled(False)
         _export_model(args, cfg)
     else:
-        if args.workspace_mib < 1:
-            parser.error("--workspace-mib must be positive")
         manifest = ExportManifest.model_validate_json(
-            (args.directory / EXPORT_MANIFEST).read_bytes()
+            paths.declared("export_manifest").path.read_bytes()
         )
         result = build_bundle(
             args.directory,

@@ -381,6 +381,7 @@ bundle=outputs/tensorrt/vitpose/256x192/example-b2
 .venv/bin/python -m src.tennis_scene.scripts.tensorrt build "$bundle" --opt-batch 2 --max-batch 2
 ```
 
+保存先はworktreeルートからの相対パス、または絶対パスで指定します。
 ローカルの変換・ビルドは[共有training queue](../../../.agents/skills/training-queue/SKILL.md)で実行します。
 exportはcheckpointやViTPose headの設定を `pipeline.yaml` から読みます。
 個別設定は `--override KEY=VALUE` で渡し、DINOにはresize後の `--image-size HEIGHT WIDTH` を指定します。

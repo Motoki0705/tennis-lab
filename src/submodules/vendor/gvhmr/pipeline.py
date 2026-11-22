@@ -6,6 +6,7 @@ training losses are not vendored.
 """
 
 import logging
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -40,6 +41,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # EnDecoder statistics used by the released SIGA24 demo checkpoint
 DEMO_ENDECODER_STATS = "MM_V1_AMASS_LOCAL_BEDLAM_CAM"
+
+DenoiserOutputAdapter = Callable[
+    [torch.Tensor, dict[str, torch.Tensor]], dict[str, torch.Tensor]
+]
 
 
 class Pipeline(nn.Module):
@@ -186,9 +191,12 @@ class GvhmrDemoModel(nn.Module):
     (``pipeline.denoiser3d.*`` keys) load directly.
     """
 
-    def __init__(self, pipeline: Pipeline):
+    def __init__(
+        self, pipeline: Pipeline, *, adapt_denoiser_output: DenoiserOutputAdapter | None = None
+    ):
         super().__init__()
         self.pipeline = pipeline
+        self.adapt_denoiser_output = adapt_denoiser_output
 
     def _device(self):
         if self.pipeline.normalize_cam_angvel:
@@ -205,6 +213,12 @@ class GvhmrDemoModel(nn.Module):
             "cam_angvel": data["cam_angvel"][None],
             "f_imgseq": data["f_imgseq"][None],
         }
+
+    def _predict_denoiser(self, batch):
+        outputs = self.pipeline.predict_denoiser(batch)
+        if self.adapt_denoiser_output is not None:
+            outputs = self.adapt_denoiser_output(batch["length"], outputs)
+        return outputs
 
     @torch.no_grad()
     def predict(self, data, *, static_cam):
@@ -226,7 +240,8 @@ class GvhmrDemoModel(nn.Module):
         with span("transfer", model="GVHMR"):
             batch = {k: v.to(device) for k, v in batch.items()}
         with span("inference", model="GVHMR-network", batch_shape=list(batch["f_imgseq"].shape)):
-            outputs = self.pipeline.forward(batch, postproc=True, static_cam=static_cam)
+            prediction = self._predict_denoiser(batch)
+            outputs = self.pipeline.decode_prediction(batch, prediction, static_cam=static_cam)
 
         return self._prediction(data, outputs)
 
@@ -249,7 +264,7 @@ class GvhmrDemoModel(nn.Module):
         with span("transfer", model="GVHMR"):
             batch = {name: torch.cat([item[name] for item in inputs]).to(device) for name in inputs[0]}
         with span("inference", model="GVHMR-network", batch_shape=list(batch["f_imgseq"].shape)):
-            predictions = self.pipeline.predict_denoiser(batch)
+            predictions = self._predict_denoiser(batch)
             return [
                 self._prediction(row, self.pipeline.decode_prediction(
                     {name: value[i:i + 1] for name, value in batch.items()},
@@ -276,6 +291,7 @@ def build_gvhmr_demo_model(
     *,
     smpl_assets,
     denoiser=None,
+    adapt_denoiser_output: DenoiserOutputAdapter | None = None,
 ) -> GvhmrDemoModel:
     """Build the GVHMR demo model with the released SIGA24 configuration."""
     denoiser3d = NetworkEncoderRoPE() if denoiser is None else denoiser
@@ -284,7 +300,10 @@ def build_gvhmr_demo_model(
         smpl_assets=smpl_assets,
         stats_name=DEMO_ENDECODER_STATS,
     )
-    model = GvhmrDemoModel(Pipeline(denoiser3d, endecoder, normalize_cam_angvel=True))
+    model = GvhmrDemoModel(
+        Pipeline(denoiser3d, endecoder, normalize_cam_angvel=True),
+        adapt_denoiser_output=adapt_denoiser_output,
+    )
     if denoiser is None:
         model.load_pretrained_model(checkpoint_path)
     return model
