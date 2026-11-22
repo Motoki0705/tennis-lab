@@ -315,15 +315,22 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     lint = workflow["jobs"]["lint"]
     scope = workflow["jobs"]["scope"]
     assert "needs" not in scope
-    assert scope["steps"][0]["with"]["fetch-depth"] == 2
+    assert scope["steps"][0]["with"]["fetch-depth"] == (
+        "${{ github.event_name == 'pull_request' && '0' || '2' }}"
+    )
     assert (
         scope["outputs"]["shared_memory_only"]
         == "${{ steps.paths.outputs.shared_memory_only }}"
     )
+    assert (
+        scope["outputs"]["knowledge_records_only"]
+        == "${{ steps.knowledge.outputs.records_only }}"
+    )
     assert lint["needs"] == ["scope"]
     assert (
         lint["if"]
-        == "${{ !cancelled() && needs.scope.outputs.shared_memory_only != 'true' }}"
+        == "${{ !cancelled() && needs.scope.outputs.shared_memory_only != 'true' "
+        "&& needs.scope.outputs.knowledge_records_only != 'true' }}"
     )
     commands = [
         shlex.split(step["run"])
@@ -351,7 +358,8 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     assert aggregate["name"] == "Python"
     assert (
         aggregate["if"]
-        == "${{ always() && needs.scope.outputs.shared_memory_only != 'true' }}"
+        == "${{ always() && needs.scope.outputs.shared_memory_only != 'true' "
+        "&& needs.scope.outputs.knowledge_records_only != 'true' }}"
     )
     assert set(aggregate["needs"]) == {"scope", "plan", "lint", "tests", "system-deps"}
     runtime = workflow["jobs"]["system-deps"]

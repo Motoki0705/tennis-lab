@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from dispatcher.runtime import Runtime, load, process_identity
+from dispatcher.runtime import Runtime, capacity_refusal, load, process_identity
 from lib.agent_settings import (
     DEFAULT_CONFIG,
     check_saved_implementation_model,
@@ -24,6 +24,7 @@ from lib.agent_settings import (
     resolve,
     session_contract,
 )
+from lib.d_capacity import REFUSED
 from lib.repair_turn import instruction as repair_instruction
 from lib.repair_turn import validate_contract as validate_repair_contract
 from lib.repair_turn import validate_request as validate_repair_request
@@ -582,7 +583,10 @@ def prepare_run(
                     "repair ID is already bound to another request/delegation"
                 )
             implementation_model(model, previous=task["model"])
-            if saved["launch_state"] != "cancelled_unstarted":
+            if saved["launch_state"] not in {
+                "cancelled_unstarted",
+                "capacity_deferred",
+            }:
                 return PreparedRun(
                     list(saved["command"]), task["delegation_id"], saved["instruction"]
                 )
@@ -591,7 +595,7 @@ def prepare_run(
                 str(latest_run(session, task))
                 != command[command.index("--resume-from") + 1]
             ):
-                raise ValueError("cancelled repair must resume the same worker run")
+                raise ValueError("repair retry must resume the same worker run")
     if replace_session and resume:
         raise ValueError("--replace-session and --resume are mutually exclusive")
     if replace_session:
@@ -874,6 +878,7 @@ def rollback_launch(
     reason: str,
     evidence: str,
     previous_ended: dict[str, Any] | None = None,
+    capacity_reason: str | None = None,
 ) -> None:
     runs = worker_runs(task)
     phase = worker_preflight.state(task)
@@ -895,13 +900,21 @@ def rollback_launch(
             "attempt": directory.name,
             "exit_code": code,
             "stderr_file": str(failure / "stderr.txt"),
+            **(
+                {"runtime_dir": str(directory), "reason": capacity_reason}
+                if capacity_reason
+                else {}
+            ),
         }
     )
     if not task.get("worker_ended"):
-        task["worker_ended"] = previous_ended or {
-            "delegation_id": task["delegation_id"],
-            "evidence": evidence,
-        }
+        if previous_ended is not None:
+            task["worker_ended"] = previous_ended
+        elif capacity_reason is None:
+            task["worker_ended"] = {
+                "delegation_id": task["delegation_id"],
+                "evidence": evidence,
+            }
     if task.get("manual_launcher", {}).get("directory") == str(directory):
         task.pop("manual_launcher")
     followup = worker_followup.current(task)
@@ -911,16 +924,24 @@ def rollback_launch(
             followup["run_dirs"] = [
                 path for path in followup["run_dirs"] if path != str(directory)
             ]
-        followup.update(
-            state="needs_parent" if automatic else "error",
-            reason=reason
-            + (": " + stderr.decode(errors="replace") if automatic else ""),
-            run_dir=str(run_directory(store, runs[-2]))
+        previous = (
+            run_directory(store, runs[-2])
             if automatic
             and len(runs) > 1
             and runs[-2]["delegation_id"] == task["delegation_id"]
-            else None,
+            else None
         )
+        if capacity_reason:
+            worker_followup.defer_capacity(
+                followup, directory, previous, automatic=automatic
+            )
+        else:
+            followup.update(
+                state="needs_parent" if automatic else "error",
+                reason=reason
+                + (": " + stderr.decode(errors="replace") if automatic else ""),
+                run_dir=str(previous) if previous is not None else None,
+            )
     store.save()
 
 
@@ -1254,7 +1275,33 @@ def run_worker(
                 repair["repair_id"]
             ]
             return 0, repair_receipt(child, delegation, command, attempt)
-    if not admission.spawned:
+    refused = None
+    capacity_reason = None
+    if admission.spawned and code == REFUSED and (directory / "result.json").is_file():
+        saved = load(directory / "result.json")
+        if reason := capacity_refusal(saved):
+            runtime = Runtime(RUNNER)
+            proof = runtime.inspect(directory)
+            if runtime.ended(proof) and proof["record"] == saved:
+                model_settings(reserved_task, saved)
+                previous = (
+                    command[command.index("--resume-from") + 1]
+                    if "--resume-from" in command
+                    else None
+                )
+                if (
+                    saved.get("run_dir") != str(directory)
+                    or saved.get("previous_run") != previous
+                    or saved.get("contract", {}).get("repair") != repair
+                    or saved.get("prompt_sha256")
+                    != hashlib.sha256(instruction.encode("utf-8")).hexdigest()
+                ):
+                    raise ValueError(
+                        "capacity refusal does not match the manual reservation"
+                    )
+                refused = {key: proof["summary"][key] for key in SUMMARY_KEYS}
+                capacity_reason = reason
+    if not admission.spawned or capacity_reason:
         if not committed:
             return code, {
                 "child": child,
@@ -1263,7 +1310,7 @@ def run_worker(
                 "launch_state": "rejected_before_start",
                 "reason": proc.stderr.decode(errors="replace"),
             }
-        if repair is not None:
+        if repair is not None and not capacity_reason:
             with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
                 store.focus(session.key)
                 row = store.parents.get(session.key, {})
@@ -1325,6 +1372,15 @@ def run_worker(
                 raise RegistryConflict(
                     "worker reservation changed after rejected launch"
                 )
+            if capacity_reason and repair is not None:
+                attempt = current["repair_attempts"][repair["repair_id"]]
+                if attempt.get("launch_claim") != admission.repair_claim:
+                    raise RegistryConflict(
+                        "repair claim changed after capacity refusal"
+                    )
+                attempt["launch_state"] = "capacity_deferred"
+                attempt.pop("launch_claim")
+                attempt.pop("claim_process", None)
             rollback_launch(
                 store,
                 current,
@@ -1334,16 +1390,24 @@ def run_worker(
                 reason="rejected_before_start",
                 evidence="Runtime admission rejected this attempt before Popen; no worker started.",
                 previous_ended=previous_ended,
+                capacity_reason=capacity_reason,
             )
         log_result = worker_logs.reject_unstarted(log_path, directory)
         return code, {
             "child": child,
             "delegation_id": delegation,
             "exit_code": code,
-            "runner_summary": None,
-            "launch_state": "rejected_before_start",
+            "runner_summary": refused,
+            "launch_state": "capacity_deferred"
+            if capacity_reason
+            else "rejected_before_start",
             "next_action": "retry_same_operation",
             "log_publication": log_result,
+            **(
+                {"reason": capacity_reason, "refused_run_dir": str(directory)}
+                if capacity_reason
+                else {}
+            ),
         }
     if directory_absent(directory):
         # Retain the reservation. The parent may cancel after checking that the

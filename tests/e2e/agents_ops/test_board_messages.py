@@ -295,6 +295,26 @@ def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
     private_output_absent(json.dumps(conversation), w.env())
 
 
+@pytest.mark.parametrize("separator", ["/", "／"])
+def test_reply_subject_keeps_a_safe_prefix_at_the_character_limit(
+    message_world: World, separator: str
+) -> None:
+    w = message_world
+    prefix = "件" * 188
+    subject = f"{prefix} `foo`{separator}`bar`"
+    assert len(subject) == 200
+    root = w.post(subject=subject)
+    assert root["subject"] == subject
+
+    reply = w.board.messages.reply(
+        w.env(2), post_id=root["id"], body="Confirmed.", notifiers=w.routes, now=NOW
+    )["post"]
+
+    assert reply["subject"] == f"Re: {prefix}"
+    thread = w.board.messages.thread(w.env(1), reply["id"])
+    assert [post["subject"] for post in thread["posts"]] == [subject, reply["subject"]]
+
+
 def test_renamed_parents_keep_message_identity_state_and_reply_routes(
     world: World,
 ) -> None:

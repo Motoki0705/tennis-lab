@@ -14,6 +14,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
 
+from lib.d_capacity import CapacityError
 from parent.state import Store, unique_object
 
 POLL_SECONDS = 60
@@ -62,6 +63,17 @@ def read(path: Path) -> dict[str, Any]:
 
 def save(path: Path, value: dict[str, Any]) -> None:
     Store.write_json(path, value)
+
+
+def review_attempt(execution_path: Path) -> int:
+    attempt = read(execution_path).get("attempt", 0)
+    if type(attempt) is not int or attempt < 0:
+        raise ValueError("invalid saved review launch attempt")
+    return attempt
+
+
+def review_launch_directory(review_dir: Path, attempt: int) -> Path:
+    return review_dir / "launches" / str(attempt) if attempt else review_dir
 
 
 def new_state(
@@ -286,8 +298,7 @@ class Engine:
                 review["stage"] = "running"
                 self.state["status"] = "running"
                 self.save()
-                # The reviewer has its own intent/result files. Re-entry reads a
-                # completed result or refuses an uncertain launch, never relaunches.
+                # Re-entry can launch again only after a proven pre-CLI refusal.
                 result = self.backend.review(self.state, self.path.parent)
                 review.pop("error", None)
                 review["result"] = result
@@ -313,7 +324,12 @@ class Engine:
             except Exception as exc:
                 review.update(stage="parent_wait", error=str(exc))
                 self.state["status"] = "parent_wait"
-                self.emit("parent_wait", reason="review_failed: " + str(exc))
+                reason = (
+                    "review_capacity_deferred"
+                    if isinstance(exc, CapacityError)
+                    else "review_failed"
+                )
+                self.emit("parent_wait", reason=f"{reason}: {exc}")
                 return self.state
         if review["stage"] == "parent_wait":
             return self.state
@@ -342,6 +358,8 @@ class Engine:
                         rate_limit={"resume_at": exc.resume_at, "reason": str(exc)},
                     )
                     self.save()
+                except CapacityError as exc:
+                    self.pause(target, f"repair_capacity_deferred: {exc}")
                 except Exception as exc:
                     target["error"] = str(exc)
                     reason = (

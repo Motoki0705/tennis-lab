@@ -200,12 +200,17 @@ def main() -> None:
             )
 
     config = servers["ops_report"]
+    environment = {**os.environ, **config["env"]}
+    # The fixture MCP server launches real scout runners with its own Python path.
+    environment["PYTHONPATH"] = os.pathsep.join(
+        (os.environ["FAKE_SCOUT_CAPACITY_PROBE"], environment["PYTHONPATH"])
+    )
     with subprocess.Popen(
         [config["command"], *config["args"]],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
-        env={**os.environ, **config["env"]},
+        env=environment,
     ) as server:
         try:
             output = audit(server, prompt) if parent else scout(server, prompt)

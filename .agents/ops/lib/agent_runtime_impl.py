@@ -42,6 +42,7 @@ from opsproc import (
     terminate_descendants,
 )
 
+from lib.d_capacity import REFUSED, CapacityError, require_capacity  # noqa: E402
 from lib.review_settings import read_object as read_review_selection  # noqa: E402
 
 VERSION = 1
@@ -562,13 +563,14 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
             "error": None,
         }
 
-        def save() -> None:
+        def save(*, update_session: bool = True) -> None:
             result["runtime"] = events.snapshot()
             if events.session is not None:
                 state["session_id"] = events.session
             state["last_turn_id"] = events.turn or previous_turn
             write_json(run_dir / "result.json", result)
-            write_json(root / "session.json", state)
+            if update_session:
+                write_json(root / "session.json", state)
 
         (run_dir / "prompt.md").write_bytes(prompt)
         schema_path = (
@@ -584,7 +586,6 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         if mcp_path is not None:
             assert mcp_bytes is not None
             mcp_path.write_bytes(mcp_bytes)
-        save()
         env = {
             k: v
             for k, v in os.environ.items()
@@ -597,6 +598,8 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         status: int = 1
         reason: str | None = "invalid_output"
         try:
+            require_capacity()
+            save()
             enable_child_subreaper()
             out.parent.mkdir(parents=True, exist_ok=True)
             out.unlink(missing_ok=True)
@@ -667,6 +670,10 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
                     result["error"] = (
                         f"CLI exited with status {status}; stderr: {stderr_head or '(empty)'}"
                     )
+        except CapacityError as exc:
+            status, reason = REFUSED, "capacity_blocked"
+            result["cleanup_complete"] = True
+            result["error"] = str(exc)
         except FileNotFoundError:
             status, reason = 127, "startup_failed"
             result["error"] = "required executable or runtime file is missing"
@@ -679,7 +686,7 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         if result["process"] is not None and not result["cleanup_complete"]:
             status, reason = 1, "cleanup_failed"
         # Keep whatever runtime evidence exists even on interruption/CLI failure.
-        if reason != "completed" and events.session:
+        if reason not in {"completed", "capacity_blocked"} and events.session:
             try:
                 events.evidence(home, cwd, previous_turn)
             except (ValueError, OSError) as exc:
@@ -690,7 +697,8 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
             exit_code=status if status >= 0 else 128 - status,
             finished_at=time.time(),
         )
-        save()
+        # A capacity refusal leaves the previous turn and any repair slot intact.
+        save(update_session=reason != "capacity_blocked")
         print(
             f"agent_exec: agent={agent} mode={args.mode}"
             + (f" profile={args.profile}" if args.profile else "")
@@ -699,7 +707,9 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         )
         if result["error"]:
             message = (
-                "empty final message"
+                result["error"]
+                if reason == "capacity_blocked"
+                else "empty final message"
                 if "empty final message" in result["error"]
                 else "inspect local result.json and stderr.log for details"
             )

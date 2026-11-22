@@ -66,6 +66,12 @@ bash "$Q" clear       # drop pending (not-yet-started) jobs
 is an error. Omission defaults to `all`, as do legacy job files without a
 resource header. A blocked FIFO head is never bypassed by later local jobs.
 
+After GPU admission, the worker checks [physical D: capacity](../../ops/d_capacity/README.md)
+before starting the command. A refusal leaves the FIFO head in `jobs/`, shows
+`wait=d-capacity` in `list` and records the reason in the worker log. The worker
+rechecks capacity without holding the GPU locks for that job. The CI queue uses
+the watchdog's published verdict.
+
 ## Typical flow (first run native, rest queued)
 
 1. Launch the first training natively (e.g. `nohup python -m ... &`) and note its PID.

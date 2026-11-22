@@ -1,7 +1,7 @@
 name: Knowledge library
 on:
   pull_request:
-    paths:
+    paths: &knowledge_paths
       - 'knowledge/**'
       - '.agents/skills/knowledge-control/**'
       - 'tests/e2e/skills/test_knowledge*.py'
@@ -11,6 +11,7 @@ on:
       - 'tests/integration/skills/test_citation_explore.py'
       - '.agents/ops/lib/agy_headless.py'
       - '.agents/ops/lib/agents.conf'
+      - '.agents/ops/lib/knowledge_ci.py'
       - 'tests/fixtures/knowledge/**'
       - '.github/workflows/knowledge.yml'
       - '.github/workflows/ci.yml'
@@ -19,22 +20,7 @@ on:
       - 'LICENSES.md'
   push:
     branches: [main]
-    paths:
-      - 'knowledge/**'
-      - '.agents/skills/knowledge-control/**'
-      - 'tests/e2e/skills/test_knowledge*.py'
-      - 'tests/unit/skills/test_knowledge_citation_schema.py'
-      - 'tests/unit/skills/test_citation_literature.py'
-      - 'tests/unit/skills/test_citation_openalex.py'
-      - 'tests/integration/skills/test_citation_explore.py'
-      - '.agents/ops/lib/agy_headless.py'
-      - '.agents/ops/lib/agents.conf'
-      - 'tests/fixtures/knowledge/**'
-      - '.github/workflows/knowledge.yml'
-      - '.github/workflows/ci.yml'
-      # Configs tracked by knowledge/registry/deployments.yaml and its source documents.
-      - 'src/tennis_scene/configs/**'
-      - 'LICENSES.md'
+    paths: *knowledge_paths
   workflow_dispatch:
 permissions:
   contents: read
@@ -45,20 +31,35 @@ jobs:
   knowledge:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      records_only: ${{ steps.scope.outputs.records_only }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
+      - name: Check for a knowledge records-only PR
+        id: scope
+        env:
+          PYTHONPATH: .agents/ops
+        run: python3 -m lib.knowledge_ci scope
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Install CPU validation tools
+        env:
+          RECORDS_ONLY: ${{ steps.scope.outputs.records_only }}
         run: |
           python -m venv .venv
-          .venv/bin/python -m pip install PyYAML pytest jsonschema==4.26.0
+          packages=(PyYAML jsonschema==4.26.0)
+          if [[ "$RECORDS_ONLY" != 'true' ]]; then
+            packages+=(pytest)
+          fi
+          .venv/bin/python -m pip install "${packages[@]}"
       - name: Validate graph, run sizes and types, deletion records, references and history
+        id: graph
         env:
-          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE_REF: ${{ steps.scope.outputs.base_sha || github.event.pull_request.base.sha || github.event.before }}
         run: |
           args=(--check-summary)
           if [[ -n "$BASE_REF" ]]; then
@@ -66,14 +67,39 @@ jobs:
           fi
           .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py "${args[@]}"
       - name: Check that repro.sh files reference only reproducible scripts
+        id: repro
         run: .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
       - name: Test storage boundaries, pinned exceptions, deletion integrity and registration
+        if: steps.scope.outputs.records_only != 'true'
         run: .venv/bin/python -m pytest --confcutdir=tests/e2e/skills -o addopts='' tests/e2e/skills/test_knowledge*.py
       - name: Test citation document schema and identity contracts
+        if: steps.scope.outputs.records_only != 'true'
         run: .venv/bin/python -m pytest --confcutdir=tests/unit/skills -o addopts='' tests/unit/skills/test_knowledge_citation_schema.py tests/unit/skills/test_citation_literature.py tests/unit/skills/test_citation_openalex.py
       - name: Test citation traversal and read-only fake agy
+        if: steps.scope.outputs.records_only != 'true'
         run: .venv/bin/python -m pytest --confcutdir=tests/integration/skills -o addopts='' tests/integration/skills/test_citation_explore.py
+      - name: Record knowledge validation result
+        id: result
+        if: ${{ always() && steps.scope.outputs.records_only == 'true' }}
+        env:
+          PYTHONPATH: .agents/ops
+          KG_PR_NUMBER: ${{ steps.scope.outputs.pr_number }}
+          KG_HEAD_SHA: ${{ steps.scope.outputs.head_sha }}
+          KG_BASE_SHA: ${{ steps.scope.outputs.base_sha }}
+          KG_MERGE_SHA: ${{ steps.scope.outputs.merge_sha }}
+          KG_VALIDATE_OUTCOME: ${{ steps.graph.outcome }}
+          KG_REPRO_PATHS_OUTCOME: ${{ steps.repro.outcome }}
+        run: python3 -m lib.knowledge_ci write-result "$RUNNER_TEMP"
+      - name: Upload knowledge validation result
+        if: ${{ always() && steps.result.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.result.outputs.artifact_name }}
+          path: ${{ runner.temp }}/knowledge-records.json
+          if-no-files-found: error
   knowledge-webui:
+    needs: [knowledge]
+    if: ${{ !cancelled() && needs.knowledge.outputs.records_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:

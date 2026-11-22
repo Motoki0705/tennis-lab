@@ -66,6 +66,25 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass \
 Windowsがsleepまたはshutdownしている間はrunnerもofflineになる。常時受付が必要なら、
 Windowsの電源・sleep設定もそれに合わせる。
 
+### 物理Dの容量保護を導入する
+
+CIキューは `/mnt/d` を隔離したまま、[物理D:のwatchdog](../../.agents/ops/d_capacity/README.md) が
+`/run/tennis-lab-d-capacity/status.json` に公開した判定を読み取る。判定待ちのジョブはキューに残る。
+新版の判定を使うため、キューの配布ファイルとwatchdogの両方を更新する。
+更新時は、新規の学習投入を控え、実行中のジョブが完了してからキューサービスを停止する。
+更新したメインcheckoutから次を実行する。初回は既存サービスの停止手順を省く。
+
+```bash
+sudo systemctl stop tennis-lab-training-queue.service
+sudo bash scripts/github_actions/install_self_hosted_runner.sh
+spin ops install d-capacity
+spin ops on d-capacity
+```
+
+インストーラーが `/etc/tmpfiles.d/tennis-lab-d-capacity.conf` を配置し、
+メインcheckoutの所有ユーザーが書き込める公開ディレクトリを毎起動時に用意する。
+watchdogの状態とjournalは [確認コマンド](../../.agents/ops/d_capacity/README.md#deployment) で照合する。
+
 ## 使い方
 
 GitHubの **Actions** タブから次を手動実行する。

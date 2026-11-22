@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -34,6 +35,9 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.capacity_admission import REAL_RUNNER
+from tests.support.d_capacity import GIB, set_available
+from tests.unit.agents_ops.test_repair_turn import report as repair_report
 
 ROOT = Path(__file__).resolve().parents[3]
 WAIT_ENTRY = (
@@ -96,6 +100,88 @@ def connected(server: socket.socket) -> Iterator[socket.socket]:
 def message(connection: socket.socket) -> bytes:
     with connection.makefile("rb") as reader:
         return reader.readline()
+
+
+@pytest.mark.parametrize("mode", ["initial", "resume", "repair"])
+def test_manual_worker_retries_same_delegation_after_runner_refusal(
+    reserved: ParentEnv, fake_d_drive: Path, mode: str
+) -> None:
+    p = reserved
+    fake = p.root / "bin/codex"
+    shutil.copyfile(Path(__file__).with_name("fake_dispatch_cli.py"), fake)
+    fake.chmod(0o700)
+    calls = p.root / "runtime-calls.jsonl"
+    p.env.update(
+        CODEX_HOME=str(p.root / "codex-home"),
+        FAKE_DISPATCH_CALLS=str(calls),
+        FAKE_PLANNING_FINAL=(
+            'PARENT_RESULT {"schema_version":1,"state":"done","wait":null}'
+        ),
+    )
+    args: tuple[str, ...] = ("run-worker", "--child", "10", "--prompt-file", p.note())
+    delegation = task(p)["delegation_id"]
+    resume = mode != "initial"
+    if resume:
+        manual(p, *args, runner=REAL_RUNNER)
+        previous = latest(p)
+        session = (previous / "session.json").read_bytes()
+        args += (
+            "--resume",
+            "--restart-evidence-file",
+            p.note("終了と再開元を確認した。"),
+        )
+    else:
+        previous = None
+        session = None
+    if mode == "repair":
+        state = p.state()
+        state["prs"] = [p.pr(42, 10, branch="codex/worker")]
+        state["prs"][0]["labels"] = []
+        p.save(state)
+        args += ("--repair-id", "ci-attempt-1", "--repair-pr", "42")
+        p.env["FAKE_PLANNING_FINAL"] = json.dumps(repair_report())
+    previous_runs = task(p)["worker_runs"]
+    previous_ended = task(p).get("worker_ended")
+
+    set_available(fake_d_drive, 20 * GIB - 1)
+    rejected = manual(p, *args, runner=REAL_RUNNER, ok=False)
+    assert rejected.returncode == 75, rejected.stderr
+    observed = json.loads(rejected.stdout)
+    refused_path = next(
+        path
+        for path in (state_dir(p) / "worker-runs" / delegation).glob("*/result.json")
+        if path.parent != previous
+    )
+    refused = json.loads(refused_path.read_text())
+    assert refused["turn_end_reason"] == "capacity_blocked"
+    assert refused["agent_spawned"] is False
+    assert task(p)["worker_runs"] == previous_runs
+    assert task(p).get("worker_ended") == previous_ended
+    assert observed["next_action"] == "retry_same_operation"
+    assert observed["log_publication"]["stage"] == "not_started"
+    if previous is not None:
+        assert (previous / "session.json").read_bytes() == session
+        waited = manual(
+            p, "wait-worker", "--child", "10", "--after-run", "none", runner=REAL_RUNNER
+        )
+        assert json.loads(waited.stdout)["run_dir"] == str(previous)
+    assert len(calls.read_text().splitlines() if calls.exists() else []) == int(resume)
+
+    set_available(fake_d_drive, 20 * GIB)
+    completed = manual(p, *args, runner=REAL_RUNNER)
+    if mode == "repair":
+        finished = json.loads(manual(p, *args, runner=REAL_RUNNER).stdout)
+        assert finished["launch_state"] == "ended"
+        assert json.loads(Path(finished["final_file"]).read_text()) == repair_report()
+    else:
+        assert json.loads(completed.stdout)["followup"]["state"] == "done"
+    assert task(p)["delegation_id"] == delegation
+    assert len(task(p)["worker_runs"]) == len(previous_runs) + 1
+    assert len(calls.read_text().splitlines()) == 1 + int(resume)
+    if previous is not None:
+        result = json.loads((latest(p) / "result.json").read_text())
+        assert result["previous_run"] == str(previous)
+    assert json.loads(refused_path.read_text()) == refused
 
 
 @dataclass

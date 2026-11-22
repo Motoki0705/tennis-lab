@@ -13,6 +13,8 @@ from typing import Any
 
 import pytest
 
+from tests.support.d_capacity import PROBE_PATH
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops/ops-report"))
 audit: Any = importlib.import_module("opsreport.audit")
 agent: Any = importlib.import_module("opsreport.agent")
@@ -427,6 +429,7 @@ def test_managed_audit_uses_claude_parent_and_parallel_sol_scouts(
         OPS_REPORT_AGENT_EXEC=str(runner),
         FAKE_SCOUT_CONTROL=str(ops_env.tmp / "scout-control"),
         FAKE_SCOUT_RECONNECT="1" if reconnect else "0",
+        FAKE_SCOUT_CAPACITY_PROBE=PROBE_PATH,
     )
     assert result.returncode == 0, result.stderr
     assert "status=complete" in result.stdout

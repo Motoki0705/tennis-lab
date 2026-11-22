@@ -1,0 +1,14 @@
+[Unit]
+Description=Watch physical Windows D: capacity for tennis-lab
+Documentation=file://%h/projects/tennis-lab/.agents/ops/d_capacity/README.md
+
+[Service]
+Type=simple
+WorkingDirectory=%h/projects/tennis-lab/.agents/ops
+UMask=0077
+ExecStart=/usr/bin/python3 -B -m d_capacity.watchdog
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

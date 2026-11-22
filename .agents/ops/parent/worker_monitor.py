@@ -382,7 +382,10 @@ class Monitor:
                 self.fail(f"automatic_resume_refused: {exc}", state="needs_parent")
                 return False
             if status:
-                self.fail(str(response.get("launch_state", "worker_runtime_failed")))
+                if response.get("launch_state") != "capacity_deferred":
+                    self.fail(
+                        str(response.get("launch_state", "worker_runtime_failed"))
+                    )
                 return False
             return True
 

@@ -7,6 +7,16 @@ unrelated Python tools/fake executables do not import the GitHub client.
 import os
 import sys
 
+# The same subprocess bootstrap also isolates WSL drive probes from the host.
+if "TENNIS_TEST_D_CAPACITY_BYTES_FILE" in os.environ:
+    import runpy
+    from pathlib import Path
+
+    runpy.run_path(
+        str(Path(__file__).resolve().parents[2] / "fake_d_capacity/sitecustomize.py"),
+        run_name="sitecustomize",
+    )
+
 # A fake gh backend never imports the client. Avoid charging importlib's hook
 # machinery to every backend invocation in the HTTP fixtures.
 if (

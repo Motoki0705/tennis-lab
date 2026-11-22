@@ -79,9 +79,10 @@ Manual GPU and `local_data and not cuda` acceptance are documented in the
 
 ## Pinned system runtimes
 
-Tests that execute real ffmpeg/rclone carry `system_deps`. Every PR, main push
-and manual run requires one dedicated **System dependency tests** job in addition
-to the ordinary CPU shards. These marked cases always run, including in files
+Tests that execute real ffmpeg/rclone carry `system_deps`. A run of the ordinary
+CPU suite requires one dedicated **System dependency tests** job in addition to
+the ordinary CPU shards. [Knowledge records-only PRs](../../.agents/ops/lib/README.md#ナレッジ記録専用prのci)
+use the Knowledge library checks before merge. These marked cases run with the CPU suite, including in files
 whose ordinary cases are path-deferred. Only marked cases move to that job;
 unmarked neighbours keep the file registry policy. Two Drive configuration-refusal
 cases use a local configuration fixture and need no rclone. The runtime job is
