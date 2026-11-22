@@ -554,16 +554,21 @@ def test_execution_session_summaries_follow_cached_herdr_identity(
         agent_session={"kind": "id", "value": "native-codex-test"},
     )
     state["panes"]["w1:p2"].update(agent="agy", agent_status="done")
+    state["panes"]["w1:board-1"]["terminal_title_stripped"] = "担当セッション"
+    state["pane_pids"] = {"w1:board-1": 100, "w1:p2": 200}
     world.labels.write(state)
     scope = runtime.owner_token("/fake/herdr.sock")
     proc = tmp_path / "proc"
-    monkeypatch.setattr(runtime, "PROC", proc)
+    coordination = importlib.import_module("herdr_labels.coordination")
+    monkeypatch.setattr(
+        coordination, "Path", lambda name: proc if name == "/proc" else Path(name)
+    )
     saved = proc / "100"
     saved.mkdir(parents=True)
     # A saved Claude root still owns the foreground process named by the record.
     (saved / "stat").write_text("100 (claude) S 1 100 100 42 100 " + "0 " * 13 + "10")
     labels_dir = world.labels.registry.parent.parent / "herdr-labels"
-    owner_pane = runtime.pane_record(labels_dir, scope, "board-terminal-1")
+    owner_pane = coordination.pane_record(labels_dir, scope, "board-terminal-1")
     owner_pane.parent.mkdir(exist_ok=True)
     owner_record = {
         "version": 1,
@@ -574,14 +579,13 @@ def test_execution_session_summaries_follow_cached_herdr_identity(
     # This agy terminal has neither a registry owner nor a native conversation ID.
     agy_tui = proc / "200"
     agy_tui.mkdir()
-    (agy_tui / "comm").write_text("agy\n")
-    (agy_tui / "environ").write_bytes(
-        b"HERDR_SOCKET_PATH=/fake/herdr.sock\0HERDR_PANE_ID=w1:p2\0"
-    )
-    monkeypatch.setattr(
-        runtime.AgyTui, "inspect", lambda pid: runtime.AgyTui(pid, "20")
-    )
-    monkeypatch.setattr(runtime.AgyTui, "conversation", lambda self: "native-agy-test")
+    (agy_tui / "stat").write_text("200 (agy) S 1 200 200 43 200 " + "0 " * 13 + "20")
+
+    def conversation(tui: Any) -> str:
+        assert (tui.pid, tui.start_ticks) == (200, "20")
+        return "native-agy-test"
+
+    monkeypatch.setattr(runtime.AgyTui, "conversation", conversation)
 
     registry_data = json.loads(world.labels.registry.read_text())
     registry_data["version"] = 2
@@ -703,6 +707,8 @@ def test_execution_session_summaries_follow_cached_herdr_identity(
         assert calls == [
             ["session", "list", "--json"],
             ["--session", "default", "agent", "list"],
+            ["--session", "default", "pane", "process-info", "--pane", "w1:board-1"],
+            ["--session", "default", "pane", "process-info", "--pane", "w1:p2"],
         ]
         assert observed["parents"][0]["herdr"]["status"] == "matched"
         messages = observed["parents"][0]["summary"]["messages"]
@@ -745,7 +751,44 @@ def test_execution_session_summaries_follow_cached_herdr_identity(
             row for row in polled["sessions"] if row["key"] == by_title["CI確認"]["key"]
         )
         assert updated["summary"]["messages"][-1]["text"] == "新しい途中報告"
+
+        world.change(1, generation=2)
+        execution.snapshot["parents"][0]["generation"] = 2
+        handoff = client.get("/api/execution").raise_for_status().json()
+        assert handoff["parents"][0]["herdr"]["status"] == "not_observed"
+        assert handoff["parents"][0]["summary"]["messages"] == []
+        old_session = next(
+            row for row in handoff["sessions"] if row["title"] == "担当セッション"
+        )
+        assert old_session["summary"]["messages"] == messages
         assert len(world.labels.read()["calls"]) == before + len(calls)
+
+        # Saved PIDs are still present in both panes, with a second foreground
+        # process of the same engine. The first process cannot identify either session.
+        state = world.labels.read()
+        state["panes"]["w1:p2"]["agent_session"] = {
+            "kind": "id",
+            "value": "native-agy-test",
+        }
+        state["responses"] = {
+            "pane process-info": {
+                "process_info": {
+                    "foreground_processes": [
+                        {"pid": pid, "name": engine}
+                        for engine in ("claude", "agy")
+                        for pid in (100, 200)
+                    ],
+                }
+            }
+        }
+        world.labels.write(state)
+        refreshed = client.get("/api/execution?refresh=true").raise_for_status().json()
+        parent = refreshed["parents"][0]
+        assert parent["herdr"]["status"] == "absent"
+        assert parent["summary"]["messages"] == []
+        by_title = {row["title"]: row for row in refreshed["sessions"] if row["title"]}
+        assert by_title["担当セッション"]["summary"]["messages"] == []
+        assert by_title["CI確認"]["summary"]["messages"] == []
 
 
 @pytest.mark.parametrize(
@@ -754,6 +797,7 @@ def test_execution_session_summaries_follow_cached_herdr_identity(
         "/private/run-directory",
         "session_id=private",
         "01234567-89ab-cdef-0123-456789abcdef",
+        "w1:p1",
     ],
 )
 def test_execution_revalidates_public_response_and_keeps_safe_cache(
@@ -780,6 +824,7 @@ def test_execution_scripts_render_and_poll_only_the_visible_tab(
     runtime = world.labels.read()
     runtime["panes"]["w1:board-1"]["terminal_title_stripped"] = "子の進行管理"
     runtime["panes"]["w1:board-2"]["agent_status"] = "working"
+    runtime["panes"]["w1:board-3"]["terminal_title_stripped"] = "引継ぎ後の観測待ち"
     runtime["panes"]["w1:p2"]["agent_status"] = "working"
     runtime["panes"]["w1:p1"]["agent_status"] = "done"
     world.labels.write(runtime)
@@ -794,7 +839,14 @@ def test_execution_scripts_render_and_poll_only_the_visible_tab(
     unobserved = client.get("/api/execution").raise_for_status().json()
     # Responses in page order: first display (Herdr), local polls, refresh.
     client.get("/api/execution?herdr=true").raise_for_status()
-    local = client.get("/api/execution").json()
+    # A different generation is visible in the registry during polling. Its
+    # previously observed terminal remains in the unregistered session list.
+    world.change(3, generation=2)
+    execution.snapshot["parents"].append(
+        {**parent, "parent": 3, "generation": 2, "children": []}
+    )
+    local = client.get("/api/execution").raise_for_status().json()
+    assert local["parents"][-1]["herdr"]["status"] == "not_observed"
     refreshed = client.get("/api/execution?refresh=true").json()
     result = subprocess.run(
         [
@@ -896,18 +948,27 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
             }
         )
     )
+    late_pane = "記録を確認中 " * 60 + "w1:p1"
+    texts = (
+        ["/private/hidden-output", late_pane]
+        if case == "matching"
+        else ["/private/hidden-output"]
+    )
     (run / "events.jsonl").write_text(
-        json.dumps(
-            {
-                "type": "item.completed",
-                "item": {
-                    "id": "message",
-                    "type": "agent_message",
-                    "text": "/private/hidden-output",
-                },
-            }
+        "".join(
+            json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {
+                        "id": f"message-{index}",
+                        "type": "agent_message",
+                        "text": text,
+                    },
+                }
+            )
+            + "\n"
+            for index, text in enumerate(texts)
         )
-        + "\n"
     )
     parents = json.loads(world.labels.registry.read_text())["parents"]
     parents["o/r#1"]["tasks"]["11"] = {
@@ -970,6 +1031,14 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
         pytest.fail("execution attempted a board transaction")
 
     monkeypatch.setattr(world.board.storage.Store, "transaction", no_write)
+    if case == "matching":
+        runtime_state = world.labels.read()
+        for pane in runtime_state["panes"].values():
+            pane.setdefault("agent_status", "idle")
+        world.labels.write(runtime_state)
+        # Keep the real collector and runner log, with an empty fake GitHub family.
+        collector = importlib.import_module("worker_status.collector")
+        monkeypatch.setattr(collector, "parent_snapshot", lambda *args: {})
     with TestClient(
         web.app.create_app(world.env()), base_url="http://localhost"
     ) as client:
@@ -986,9 +1055,18 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
                 "effort": {"value": "max", "basis": "selected"},
             }
             assert child["run"]["kind"] == "registered"
-            assert child["summary"]["message"]["status"] == "hidden"
-            assert child["summary"]["message"]["text"] is None
-            assert child["summary"]["messages"] == [child["summary"]["message"]]
+            assert child["summary"]["message"]["text"] == late_pane[:300]
+            assert child["summary"]["message"]["truncated"] is True
+            for url in ("/api/execution?refresh=true", "/api/execution"):
+                response = client.get(url).raise_for_status()
+                assert "w1:p1" not in response.text
+                summary = response.json()["parents"][0]["children"][0]["summary"]
+                assert [entry["status"] for entry in summary["messages"]] == [
+                    "hidden",
+                    "hidden",
+                ]
+                assert summary["messages"][-1] == summary["message"]
+                assert summary["message"]["text"] is None
         for private in (
             str(run),
             str(worktree),

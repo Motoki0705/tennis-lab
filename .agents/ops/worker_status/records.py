@@ -349,11 +349,12 @@ def summarize(
         if not isinstance(item, dict):
             raise ValueError("invalid CLI item")
         kind = item.get("type")
-        if kind == "agent_message" and event["type"] == "item.completed":
+        if kind in {"agent_message", "reasoning"} and event["type"] == "item.completed":
             value = item.get("text")
             if value is not None and not isinstance(value, str):
                 raise ValueError("invalid free text")
-            message = (value, when)
+            if kind == "agent_message":
+                message = (value, when)
             if value is not None:
                 append(value, when)
         elif kind in {"command_execution", "mcp_tool_call", "file_change"}:

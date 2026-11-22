@@ -497,7 +497,8 @@ def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> Non
     f.events(
         [
             item("agent_message", text="obsolete"),
-            item("reasoning", text="never publish this"),
+            item("reasoning", text="照合した結果を整理する"),
+            item("reasoning", text="確認手順 " * 80 + "/private/reasoning"),
             item(
                 "command_execution",
                 command="pytest -q\nsecond line",
@@ -506,6 +507,7 @@ def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> Non
             item("mcp_tool_call", server="docs", tool="search"),
             item("file_change", changes=[{"path": "/private/file", "kind": "add"}]),
             item("agent_message", text="完了" * 200),
+            item("reasoning", text="次の確認を準備する"),
         ]
     )
     summary = f.child(tool_limit=2)["summary"]
@@ -513,15 +515,20 @@ def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> Non
     assert summary["message"]["truncated"] is True
     assert [entry["text"] for entry in summary["messages"]] == [
         "obsolete",
+        "照合した結果を整理する",
+        None,
         ("完了" * 200)[:300],
+        "次の確認を準備する",
     ]
-    assert summary["messages"][-1] == summary["message"]
+    assert summary["messages"][-2] == summary["message"]
+    assert summary["messages"][2]["status"] == "hidden"
+    assert all(step["received_at"] == NOW.isoformat() for step in summary["messages"])
     assert [t["kind"] for t in summary["tools"]] == ["mcp_tool_call", "file_change"]
     assert summary["tools"][0]["server"]["text"] == "docs"
     assert summary["tools"][1]["change_count"] == 1
     assert all(t["received_at"] == NOW.isoformat() for t in summary["tools"])
     serialized = json.dumps(summary)
-    assert "never publish" not in serialized and "private output" not in serialized
+    assert "/private/reasoning" not in serialized and "private output" not in serialized
     f.events(
         [
             item("command_execution", command="pytest -q"),

@@ -150,8 +150,8 @@ text objectは`{status:visible|hidden|unavailable, text:string|null, truncated:b
 `hidden`は秘匿検査により**非表示**、`unavailable`は**未取得**。どちらも本文はnull。
 発言・要約とツールには`received_at`と`time_status=observed|unavailable`を付け、
 旧runのツール時刻は未取得と明示する。同じitem IDのツール更新は最新の1件へまとめる。
-ユーザー向け発言が末尾範囲に無ければ`message`は未取得。
-`messages`にはCodexの完了した`agent_message`と、Claudeの`assistant`イベントの`thinking`・`text`ブロックおよび
+`message`は最後のユーザー向け発言を保持する。末尾範囲に該当する発言が無ければ未取得になる。
+`messages`にはCodexの完了した`agent_message`・`reasoning`と、Claudeの`assistant`イベントの`thinking`・`text`ブロックおよび
 `result`の文字列を含める。連続する同一原文は初出の1件を表示する。`message`と`tools`はCLIからも引き続き取得できる。
 `tail_truncated`はバイト数の読取り上限に対応する。
 

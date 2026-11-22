@@ -288,7 +288,7 @@ class ExecutionView {
   visibleParents() {
     const { parents, herdr } = this.data;
     if (herdr.status !== "observed") return parents;
-    return parents.filter((parent) => !["absent", "ambiguous"].includes(parent.herdr.status));
+    return parents.filter((parent) => parent.herdr.status === "matched");
   }
 
   sessionRank(state) {

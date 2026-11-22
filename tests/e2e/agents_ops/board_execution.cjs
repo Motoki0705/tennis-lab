@@ -259,6 +259,10 @@ async function main() {
   );
   assert.ok(rowKeys.includes(`session:${input.local.sessions.find((row) => row.state === "done").key}`));
   assert.ok(!rowKeys.includes("parent:o/r#5"), "absent parent is hidden");
+  assert.ok(!rowKeys.includes("parent:o/r#3"), "an unobserved generation is hidden after Herdr was read");
+  assert.equal(vm.runInContext("executionView.visibleParents().some(parent => parent.parent === 3)", context), false);
+  const handoffSession = input.local.sessions.find((row) => row.title === "引継ぎ後の観測待ち");
+  assert.ok(nodeButton(`session:${handoffSession.key}`));
   // Joined parent: Herdr terminal title, then the board name and number.
   const parentText = nodeButton(parentKey).textContent;
   assert.ok(parentText.includes("子の進行管理"), parentText);

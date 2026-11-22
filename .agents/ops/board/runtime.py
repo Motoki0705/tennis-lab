@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import subprocess
 from collections import Counter
@@ -15,7 +14,13 @@ from pathlib import Path
 from typing import Any
 
 from herdr_labels.client import Herdr
-from herdr_labels.coordination import owner_token, pane_record, read_record, state_root
+from herdr_labels.coordination import (
+    ForegroundAgentUnavailable,
+    owner_token,
+    process_stamp,
+    read_record,
+    state_root,
+)
 from herdr_labels.service import registry
 from lib.agent_events import parse_json
 from lib.agy_session import AgyTui
@@ -29,7 +34,6 @@ from .service import STATES, _runtime_state
 PRIVATE_KEYS = ("pane_id", "terminal_id", "cwd", "foreground_cwd")
 LIVE = {"active", "handoff_pending"}
 SESSION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}")
-PROC = Path("/proc")
 
 
 @dataclass
@@ -275,6 +279,8 @@ def snapshot(env: Mapping[str, str]) -> dict[str, Any]:
 
 
 def _native_session(row: dict[str, Any]) -> str | None:
+    if row.get("agent") == "agy":
+        return None  # agy conversation identity comes from its foreground TUI lock.
     native = row.get("agent_session")
     if (
         isinstance(native, dict)
@@ -287,84 +293,19 @@ def _native_session(row: dict[str, Any]) -> str | None:
     return None
 
 
-def _process_stamp(stamps: Any) -> tuple[int, str] | None:
-    if not isinstance(stamps, list) or len(stamps) != 1:
+def _agy_conversation(server: Server, agent: dict[str, Any]) -> str | None:
+    """Read a conversation lock only from the pane's unique foreground agy TUI."""
+    if not agent.get("pane_id"):
         return None
-    stamp = stamps[0]
-    if (
-        isinstance(stamp, dict)
-        and type(stamp.get("pid")) is int
-        and stamp["pid"] > 0
-        and isinstance(stamp.get("start"), str)
-    ):
-        return stamp["pid"], stamp["start"]
-    return None
-
-
-def _saved_foreground(agent: dict[str, Any], stamps: Any) -> bool:
-    """Recheck a pane's saved foreground process without another Herdr command."""
-    stamp = _process_stamp(stamps)
-    if stamp is None:
-        return False
-    pid, start = stamp
     try:
-        label, stat = (PROC / str(pid) / "stat").read_text().rsplit(")", 1)
-        fields = stat.split()
-        return (
-            label.partition("(")[2] == agent["agent"]
-            and len(fields) >= 20
-            and fields[19] == start
-            and fields[0] != "Z"
-            and fields[4] != "0"
-            and fields[2] == fields[5]
-        )
-    except (OSError, ValueError):
-        return False
-
-
-def _agy_conversation(root: Path, server: Server, agent: dict[str, Any]) -> str | None:
-    record = read_record(pane_record(root, server.scope, agent["terminal_id"]))
-    stamp = (
-        _process_stamp(record.get("processes"))
-        if record and record.get("state") == "active"
-        else None
-    )
-    if stamp is not None:
-        with suppress(OSError, ValueError):
-            session_id = AgyTui(*stamp).conversation()
-            if isinstance(session_id, str):
-                return session_id
+        (stamp,) = process_stamp(server.client, agent)
+    except (ForegroundAgentUnavailable, FileNotFoundError, ProcessLookupError):
+        return None
+    with suppress(OSError, ValueError):
+        session_id = AgyTui(stamp["pid"], stamp["start"]).conversation()
+        if isinstance(session_id, str):
+            return session_id
     return None
-
-
-def _agy_panes(targets: set[tuple[str, str]]) -> dict[tuple[str, str], str]:
-    """Locate unregistered agy TUIs by their inherited Herdr socket and pane."""
-    if not targets:
-        return {}
-    candidates: dict[tuple[str, str], list[str]] = {}
-    for comm in PROC.glob("[0-9]*/comm"):
-        try:
-            if comm.read_text().strip() != "agy":
-                continue
-            env = dict(
-                entry.split(b"=", 1)
-                for entry in comm.with_name("environ").read_bytes().split(b"\0")
-                if entry.startswith((b"HERDR_SOCKET_PATH=", b"HERDR_PANE_ID="))
-            )
-            socket = Path(os.fsdecode(env[b"HERDR_SOCKET_PATH"]))
-            if not socket.is_absolute():
-                continue
-            location = (
-                owner_token(str(socket.resolve())),
-                os.fsdecode(env[b"HERDR_PANE_ID"]),
-            )
-            if location in targets:
-                session_id = AgyTui.inspect(int(comm.parent.name)).conversation()
-                if session_id:
-                    candidates.setdefault(location, []).append(session_id)
-        except (OSError, ValueError, KeyError):
-            continue
-    return {location: ids[0] for location, ids in candidates.items() if len(ids) == 1}
 
 
 def sessions(env: Mapping[str, str]) -> dict[str, Any]:
@@ -422,7 +363,6 @@ def sessions(env: Mapping[str, str]) -> dict[str, Any]:
                             record,
                             server.agents,
                             server.client,
-                            process_matches=_saved_foreground,
                         )
                         != "unknown"
                     ):
@@ -430,9 +370,7 @@ def sessions(env: Mapping[str, str]) -> dict[str, Any]:
             opened = {
                 index
                 for index, native_id in enumerate(native)
-                if engine != "agy"
-                and native_id == session
-                and rows[index]["agent"] == engine
+                if native_id == session and rows[index]["agent"] == engine
             }
             found = owned | opened
             if (
@@ -474,17 +412,12 @@ def sessions(env: Mapping[str, str]) -> dict[str, Any]:
             if match["index"] is not None:
                 row_key = keys[match["index"]]
                 session_ids[row_key] = parents[key]["session"].partition(":")[2]
-        missing_agy = {}
         for (server, agent), row_key in zip(located, keys, strict=True):
             if agent.get("agent") != "agy" or row_key in session_ids:
                 continue
-            session_id = _agy_conversation(root, server, agent)
+            session_id = _agy_conversation(server, agent)
             if session_id:
                 session_ids[row_key] = session_id
-            elif isinstance(agent.get("pane_id"), str):
-                missing_agy[(server.scope, agent["pane_id"])] = row_key
-        for location, session_id in _agy_panes(set(missing_agy)).items():
-            session_ids[missing_agy[location]] = session_id
         private = _private(rows, tuple(session_ids.values()))
         secrets = {**parents, **private}
         if registry(env) != parents:

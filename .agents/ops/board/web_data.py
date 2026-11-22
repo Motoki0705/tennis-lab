@@ -221,7 +221,8 @@ class BoardReader:
         parents = registry(self.env)
         private = herdr["private"] if herdr else {}
         session_ids = herdr["session_ids"] if herdr else {}
-        guard = Guard({**parents, **private}, self.env)
+        secrets = {**parents, **private}
+        guard = Guard(secrets, self.env)
         with self.store.read() as connection:
             for parent in observation["parents"]:
                 assignment = for_parent(connection, parent["repo"], parent["parent"])
@@ -245,7 +246,7 @@ class BoardReader:
             parent["summary"] = session_summary(
                 engine,
                 session_id
-                if parent["herdr"]["status"] not in {"absent", "ambiguous"}
+                if parent["herdr"]["status"] in {"matched", "not_requested"}
                 else None,
                 guard,
                 self.env,
@@ -254,5 +255,5 @@ class BoardReader:
             session["summary"] = session_summary(
                 session["engine"], session_ids.get(session["key"]), guard, self.env
             )
-        public(observation, parents, self.env)
+        public(observation, secrets, self.env)
         return observation

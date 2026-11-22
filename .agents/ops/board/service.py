@@ -6,7 +6,7 @@ import re
 import sqlite3
 import subprocess
 import unicodedata
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from contextlib import nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
@@ -222,8 +222,6 @@ def _runtime_state(
     owner: dict[str, Any],
     agents: list[Any],
     client: Herdr,
-    *,
-    process_matches: Callable[[dict[str, Any], Any], bool] | None = None,
 ) -> str:
     candidates = [
         agent
@@ -245,33 +243,24 @@ def _runtime_state(
     if token != expected and (token or runtime is None):
         return "unknown"
 
-    def matches(stamps: object) -> bool:
-        if process_matches is not None:
-            return process_matches(agent, stamps)
-        return process_stamp(client, agent) == stamps
-
     engine, _, conversation = identity.partition(":")
-    if engine == "agy":
-        if runtime is None or "processes" not in runtime:
-            return "unknown"
-        stamps = runtime["processes"]
+    if runtime is not None and "processes" in runtime:
         try:
-            if not matches(stamps):
-                return "unknown"
+            stamps = process_stamp(client, agent)
         except (ForegroundAgentUnavailable, FileNotFoundError, ProcessLookupError):
             return "unknown"
-        try:
-            if (
-                AgyTui(stamps[0]["pid"], stamps[0]["start"]).conversation()
-                != conversation
-            ):
+        if stamps != runtime["processes"]:
+            return "unknown"
+        if engine == "agy":
+            try:
+                if (
+                    AgyTui(stamps[0]["pid"], stamps[0]["start"]).conversation()
+                    != conversation
+                ):
+                    return "unknown"
+            except (ValueError, FileNotFoundError, ProcessLookupError):
                 return "unknown"
-        except (ValueError, FileNotFoundError, ProcessLookupError):
-            return "unknown"
-    elif runtime is not None and "processes" in runtime:
-        if not matches(runtime["processes"]):
-            return "unknown"
-    elif token != expected:
+    elif engine == "agy" or token != expected:
         return "unknown"
     # Native references, when available, fence a replaced conversation even if
     # its terminal still has old display metadata. Never expose the reference.

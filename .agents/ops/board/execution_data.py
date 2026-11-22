@@ -125,15 +125,16 @@ class ExecutionReader:
             self.herdr = herdr
 
     def _local(self) -> dict[str, Any]:
-        observation = collect_status(
-            state_dir=self.board.store.directory.parent / "parent-sessions",
-            github=False,
-        )
         with self.lock:
             # Published snapshots are immutable. Copy/merge outside the lock,
             # alongside the fresh local observation, without blocking refresh.
             remote, herdr = self.remote, self.herdr
             state = self._refresh_state()
+        observation = collect_status(
+            state_dir=self.board.store.directory.parent / "parent-sessions",
+            github=False,
+            **({"secrets": herdr["private"]} if herdr else {}),
+        )
         self._cached_github(observation, remote)
         self._attach_herdr(observation, herdr)
         observation["github_refresh"] = state
@@ -157,14 +158,15 @@ class ExecutionReader:
             # status=running; the HTTP route returns 202 instead of queuing it.
             return self._local()
         try:
+            observed = runtime.sessions(self.board.env)
             observation = collect_status(
                 state_dir=self.board.store.directory.parent / "parent-sessions",
                 github=True,
+                secrets=observed["private"],
             )
             for parent in observation["parents"]:
                 for child in parent["children"]:
                     child["github"]["fetched_at"] = observation["github"]["fetched_at"]
-            observed = runtime.sessions(self.board.env)
             self._attach_herdr(observation, observed)
             observation = self.board.execution_names(observation, observed)
             published = deepcopy(observation)
