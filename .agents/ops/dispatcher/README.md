@@ -293,6 +293,8 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 schedule/runの正本は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/dispatcher/schedule.json`。
 初期化はdisabledで、初期化時点の直前slotまでを消費済みにする。過去の予定を導入直後に実行しない。
 `--state-dir` と `--parent-state-dir` は使い捨て試験用にも指定できる。
+両ディレクトリと判定runの保存経路には [状態ルートの所有者・権限](../parent/README.md#排他とio) の条件が適用される。
+`~/.local` と `~/.local/state` が `0775` の環境でも、単一ユーザー専用グループの条件を満たせば既定の保存先を使える。
 scheduleもregistryと同じ `Store.locked()` 内で保存し、長い判定の重複は別の `judgement.lock`、
 supervisorの重複は `supervisor.lock` で防ぐ。JSON破損・未知version・不正設定は停止し、初期化し直さない。
 
@@ -421,6 +423,9 @@ sessionが取れなかったrunから別sessionを自動生成しない。この
 
 ### registry欠落からの復旧
 
+journal が registry JSON の破損、形式不正、索引と親レコードの不一致・欠落を表示した場合も、この手順で原本を退避し、照合できるバックアップを復元する。
+v2 は `registry.json` と対応する `parents/` のレコードを同じ保存時点の組として復元する。
+
 初回initはscheduleとjudgements/workersの記録がない場合だけ、欠落したregistryを初期状態として扱う。
 registryを先に保存してからdisabledのscheduleを作る。初期状態の空registryや、まだ一度も担当を予約していない
 判定履歴だけがある空registryは正常である。scheduleまたはrun/worker記録がある状態でregistryが欠落した場合、
@@ -469,6 +474,10 @@ spin ops off dispatcher
 
 再開時はinitを繰り返さず、status/実プロセスを照合して `spin ops on dispatcher` を実行する。
 停止後に管理job・子・判定の照合が残ると非0を返す。既存の復旧手順で確認してから再開する。
+状態ファイルの失敗では `spin ops logs dispatcher` に理由・対象種別・復旧手順が出る。
+表示する `dispatcher/schedule.json` などは既定の保存先に対する識別子で、override 時は指定した状態ディレクトリを確認する。
+同じ所有者の通常の一時ファイルは残っていても次の書き込みが進む。危険な一時ファイルを拒否した場合は
+dispatcher と書き手の停止を確認し、リンクを辿らずに該当エントリを確認・退避してから status を照合する。
 timerはPersistent=trueで復帰時を1回へ集約する。ランダム遅延はなく、精度は1秒。
 supervisorは1秒ごとにruntime/イベントを照合するが、判定agentを呼ばない。
 

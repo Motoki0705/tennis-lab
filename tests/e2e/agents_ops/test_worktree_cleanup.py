@@ -1406,23 +1406,20 @@ def test_split_registry_interruption_is_replayed_before_reading_ownership(
     with store.locked():
         store.migrate()
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
-    ExpiryStore = lab.lifecycle.ExpiryStore
-    original = ExpiryStore.write_json
+    writer = importlib.import_module("lib.state_files").PreparedStateWrite
+    original = writer.publish
 
     class Crash(BaseException):
         pass
 
-    def interrupt(target: Path, value: Any) -> None:
-        if (
-            target == registry
-            and value.get("parents", {}).get("o/r#1", {}).get("status") == "released"
-        ):
+    def interrupt(prepared: Any) -> None:
+        if prepared.path == registry:
             raise Crash()
-        original(target, value)
+        original(prepared)
 
     lab.now += LIFETIME
     with monkeypatch.context() as patch:
-        patch.setattr(ExpiryStore, "write_json", staticmethod(interrupt))
+        patch.setattr(writer, "publish", interrupt)
         with pytest.raises(Crash):
             lab.cleaner().run(cleanup=True)
     assert json.loads(registry.read_text())["parents"]["o/r#1"]["status"] == "active"

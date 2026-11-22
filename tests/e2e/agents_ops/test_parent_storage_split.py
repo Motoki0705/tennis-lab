@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import errno
 import importlib
 import json
+import os
+import shutil
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -47,6 +51,85 @@ def test_migration_preserves_records_and_only_changes_selected_file(
     with module.Store(directory).locked() as store:
         assert store.parents["o/r#1"]["tasks"]["10"]["evidence"] == "updated"
         store.migrate()  # Idempotent; no loss of newer evidence.
+
+
+@pytest.mark.parametrize("replaced", ["registry", "parents"])
+def test_directory_replacement_refuses_save_under_an_old_lock(
+    parent_env: ParentEnv, replaced: str
+) -> None:
+    module = importlib.import_module("parent.state")
+    directory = parent_env.root / "state"
+    store = module.Store(directory)
+    with store.locked():
+        store.parents["o/r#1"] = record("claude:original")
+        store.save()
+        store.migrate()
+    original = directory if replaced == "registry" else directory / "parents"
+    previous = parent_env.root / "previous"
+    replacement = parent_env.root / "replacement"
+    row_name = module.digest("o/r#1") + ".json"
+    row_relative = Path("parents") / row_name if replaced == "registry" else Path(row_name)
+    shutil.copytree(original, replacement)
+    data = (original / row_relative).read_bytes()
+
+    with store.locked():
+        original.rename(previous)
+        replacement.rename(original)
+        store.parents["o/r#1"]["tasks"]["10"]["evidence"] = "must not be saved"
+        with pytest.raises((OSError, ValueError), match="directory.*changed|directory_changed"):
+            store.save()
+
+    assert (original / row_relative).read_bytes() == data
+    assert (previous / row_relative).read_bytes() == data
+
+
+@pytest.mark.parametrize("fault", ["symlink", "replace", "interrupted"])
+def test_v2_index_failure_preserves_split_registry_for_retry(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    module = importlib.import_module("parent.state")
+    directory = parent_env.root / "split"
+    store = module.Store(directory)
+    with store.locked():
+        store.parents["o/r#1"] = record("claude:previous")
+        store.save()
+        store.migrate()
+    index = directory / "registry.json"
+    row = directory / "parents" / (module.digest("o/r#1") + ".json")
+    before = (index.read_bytes(), row.read_bytes())
+    state = store.read_data()
+    link = directory / "registry.json.tmp"
+    target = parent_env.root / "private-target"
+    target.write_text("preserve target")
+    replace = os.replace
+
+    def fail_index(src: str, dst: str, **kwargs: int) -> None:
+        if dst == "registry.json":
+            if fault == "interrupted":
+                raise KeyboardInterrupt
+            raise OSError(errno.EIO, "index replacement failed")
+        replace(src, dst, **kwargs)
+
+    with monkeypatch.context() as patch:
+        if fault == "symlink":
+            link.symlink_to(target)
+        else:
+            patch.setattr(os, "replace", fail_index)
+        expected = KeyboardInterrupt if fault == "interrupted" else OSError
+        with pytest.raises(expected), store.locked():
+            store.parents["o/r#1"]["status"] = "released"
+            store.parents["o/r#2"] = record("claude:new")
+            store.save()
+
+    assert target.read_text() == "preserve target"
+    assert (index.read_bytes(), row.read_bytes()) == before
+    assert set(row.parent.iterdir()) == {row}
+    assert module.Store(directory).read_data() == state
+    link.unlink(missing_ok=True)
+    with module.Store(directory).locked() as retry:
+        retry.parents["o/r#1"]["status"] = "released"
+        retry.save()
+    assert module.Store(directory).read_data()["parents"]["o/r#1"]["status"] == "released"
 
 
 @pytest.mark.parametrize("migrate", [False, True])

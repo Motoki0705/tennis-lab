@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.checkout_lock import (  # noqa: E402
     CHECKOUT_FD_ENV,
     CHECKOUT_ROOT_ENV,
+    CheckoutUnavailable,
     checkout_barrier,
     checkout_lock,
 )
@@ -37,27 +38,31 @@ def main() -> int:
         parser.error("board web port must be between 1 and 65535")
     if (args.state_dir or args.parent_state_dir) and not args.supervisor:
         parser.error("state overrides require --supervisor")
-    with checkout_lock(args.repo) as fd:
-        if checkout_barrier(args.repo).exists():
-            print(
-                "checkout_job: checkout recovery pending; inspect spin ops status git-sync",
-                file=sys.stderr,
-            )
-            return 75
-        if args.supervisor:
-            from dispatcher.cli_impl import main as supervise
-        elif args.board_web_port is not None:
-            from board.web import serve
-        else:
-            assert fd is not None
-            # exec preserves the lock across the actual job and inherited children.
-            os.set_inheritable(fd, True)
-            environment = {
-                **os.environ,
-                CHECKOUT_ROOT_ENV: str(args.repo.resolve()),
-                CHECKOUT_FD_ENV: str(fd),
-            }
-            os.execvpe(command[0], command, environment)
+    try:
+        with checkout_lock(args.repo) as fd:
+            if checkout_barrier(args.repo).exists():
+                print(
+                    "checkout_job: checkout recovery pending; inspect spin ops status git-sync",
+                    file=sys.stderr,
+                )
+                return 75
+            if args.supervisor:
+                from dispatcher.cli_impl import main as supervise
+            elif args.board_web_port is not None:
+                from board.web import serve
+            else:
+                assert fd is not None
+                # exec preserves the lock across the actual job and inherited children.
+                os.set_inheritable(fd, True)
+                environment = {
+                    **os.environ,
+                    CHECKOUT_ROOT_ENV: str(args.repo.resolve()),
+                    CHECKOUT_FD_ENV: str(fd),
+                }
+                os.execvpe(command[0], command, environment)
+    except CheckoutUnavailable:
+        print("checkout_job could not open the configured repository.", file=sys.stderr)
+        return 75
     if args.board_web_port is not None:
         serve(os.environ, port=args.board_web_port)
         return 0

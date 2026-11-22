@@ -338,19 +338,27 @@ def state_root() -> Path:
     return base / "tennis-lab-agents"
 
 
+class CheckoutUnavailable(ValueError):
+    """Git could not identify a checkout's common directory."""
+
+
 def common_directory(root: Path) -> Path:
-    common = subprocess.check_output(
-        [
-            "git",
-            "-C",
-            str(root),
-            "rev-parse",
-            "--path-format=absolute",
-            "--git-common-dir",
-        ],
-        text=True,
-        env=_git_environment(),
-    ).strip()
+    try:
+        common = subprocess.check_output(
+            [
+                "git",
+                "-C",
+                str(root),
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ],
+            text=True,
+            stderr=subprocess.PIPE,
+            env=_git_environment(),
+        ).strip()
+    except (OSError, subprocess.SubprocessError, UnicodeError) as exc:
+        raise CheckoutUnavailable("Git could not locate the checkout") from exc
     return Path(common)
 
 

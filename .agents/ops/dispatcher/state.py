@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from lib.state_files import open_state_directory
 from parent.github import GitHub
 from parent.state import Store
+
+from .diagnostics import README, DispatcherError
 
 if TYPE_CHECKING:
     from .schedule import Schedule
@@ -59,6 +63,14 @@ class RepositoryStore(Store):
         self._focus = None
 
 
+def _has_records(path: Path) -> bool:
+    try:
+        with open_state_directory(path) as directory:
+            return bool(os.listdir(directory.fd))
+    except FileNotFoundError:
+        return False
+
+
 class DispatchStore(RepositoryStore):
     def __init__(self, directory: Path, schedule: Schedule) -> None:
         super().__init__(directory)
@@ -68,14 +80,14 @@ class DispatchStore(RepositoryStore):
     @contextmanager
     def unlocked_read(self) -> Iterator[None]:
         self.require_transaction()
-        before = self.schedule.read() if self.schedule.path.exists() else None
+        before = self.schedule.read_optional()
         try:
             with super().unlocked_read():
                 yield
         finally:
             self.require_transaction()
             try:
-                after = self.schedule.read() if self.schedule.path.exists() else None
+                after = self.schedule.read_optional()
             except (ValueError, OSError, KeyError, TypeError):
                 self.conflict("dispatcher schedule could not be revalidated")
             if before != after:
@@ -84,24 +96,23 @@ class DispatchStore(RepositoryStore):
                 )
 
     def _require_registry(self) -> None:
-        scheduled = self.schedule.path.exists() or self.schedule.path.is_symlink()
-        workers = self.schedule.directory / "workers"
-        judgements = self.schedule.directory / "judgements"
-        worker_records = workers.exists() and any(workers.iterdir())
-        judgement_records = judgements.exists() and any(judgements.iterdir())
-        missing = not (self.path.exists() or self.path.is_symlink())
-        assigned = scheduled and any(
+        schedule = self.schedule.read_optional()
+        worker_records = _has_records(self.schedule.directory / "workers")
+        judgement_records = _has_records(self.schedule.directory / "judgements")
+        missing = not self.registry_exists()
+        assigned = schedule is not None and any(
             candidate.get("state") == "assigned"
-            for run in self.schedule.read()["runs"]
+            for run in schedule["runs"]
             for candidate in run["candidates"].values()
         )
-        if (missing and (scheduled or worker_records or judgement_records)) or (
+        if (missing and (schedule is not None or worker_records or judgement_records)) or (
             not self.parents and (worker_records or assigned)
         ):
-            raise ValueError(
-                "parent registry missing or empty despite dispatcher history; "
-                "保存・割当・起動を停止しました。dispatcher/README.md の "
-                "「registry欠落からの復旧」に従って復元・照合してください"
+            raise DispatcherError(
+                "registry_missing",
+                "The parent registry is missing or empty despite dispatcher history.",
+                f"Follow the registry recovery procedure in {README} to stop the dispatcher and restore a verified backup.",
+                state_path="parent-sessions/registry.json",
             )
 
     @contextmanager

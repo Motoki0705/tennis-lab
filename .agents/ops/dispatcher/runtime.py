@@ -13,6 +13,7 @@ from typing import Any
 
 from lib.checkout_lock import checkout_subprocess_options
 from lib.d_capacity import REFUSED
+from lib.state_files import open_state_lock
 from parent.policy import object_value
 
 from .records import read_json
@@ -57,8 +58,7 @@ def capacity_refusal(record: dict[str, Any]) -> str | None:
 
 @contextmanager
 def gate(path: Path) -> Iterator[int | None]:
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with path.open("a", encoding="utf-8") as stream:
+    with open_state_lock(path) as stream:
         try:
             fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:

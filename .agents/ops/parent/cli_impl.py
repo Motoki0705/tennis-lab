@@ -534,7 +534,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
             raise ValueError(
                 "start agy with .agents/ops/herdr_labels/agy-parent.sh to enable the board hook"
             )
-        args.state_dir = (args.state_dir or state_directory()).resolve()
+        args.state_dir = (args.state_dir or state_directory()).absolute()
         workers = {"start-worker", "continue-worker", "inspect-worker", "stop-worker"}
         store: Store
         if args.command in workers | {

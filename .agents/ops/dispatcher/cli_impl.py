@@ -27,6 +27,7 @@ from parent.state import state_directory
 from worker_logs.sources import read_original
 
 from .agent import RUNNER
+from .diagnostics import README, DispatcherError, report_failure
 from .runtime import gate, load
 from .schedule import Schedule, local_time
 from .service import recover_judgement, run_due, stop_judgement
@@ -97,8 +98,8 @@ def parser() -> argparse.ArgumentParser:
 
     try:
         models = implementation_models()
-    except (OSError, ValueError) as exc:
-        result.error(str(exc))
+    except (OSError, ValueError):
+        result.error("Cannot read implementation model settings")
     child.add_argument(
         "--model",
         help=f"initial model ({', '.join(models)}); resume inherits the saved model",
@@ -108,17 +109,25 @@ def parser() -> argparse.ArgumentParser:
 
 def limits(parents: int, children: int) -> None:
     if parents < 1 or children < 1:
-        raise ValueError("execution limits must be positive integers")
+        raise DispatcherError(
+            "invalid_limits",
+            "Execution limits must be positive integers.",
+            "Set positive values for `--max-parents` and `--max-children` and retry.",
+        )
 
 
 def execute(args: argparse.Namespace) -> dict[str, Any]:
-    parent_directory = (args.parent_state_dir or state_directory()).resolve()
+    parent_directory = (args.parent_state_dir or state_directory()).absolute()
     schedule = Schedule(args.state_dir or parent_directory.parent / "dispatcher")
     store = DispatchStore(parent_directory, schedule)
     if args.command == "init":
         limits(args.max_parents, args.max_children)
         if not math.isfinite(args.judgement_timeout) or args.judgement_timeout <= 0:
-            raise ValueError("judgment timeout must be finite and positive")
+            raise DispatcherError(
+                "invalid_timeout",
+                "Judgment timeout must be finite and positive.",
+                "Set a positive number of seconds for `--judgement-timeout` and retry.",
+            )
         with store.locked():
             store.save()
             schedule.initialize(
@@ -134,7 +143,14 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
             )
         return {"result": "initialized", "enabled": False}
     with store.locked():
-        state = schedule.read()
+        state = schedule.read_optional()
+        if state is None:
+            raise DispatcherError(
+                "schedule_missing",
+                "dispatcher/schedule.json is missing.",
+                f"Verify the state directory. Restore a verified schedule backup for an existing installation or follow initial setup in {README}.",
+                state_path="dispatcher/schedule.json",
+            )
     supervisor = Supervisor(
         GitHub(state["config"]["repo"], store=store), store, schedule
     )
@@ -264,14 +280,5 @@ def main(argv: list[str] | None = None, *, _supervisor_launcher: bool = False) -
         TypeError,
         subprocess.SubprocessError,
     ) as exc:
-        # Detailed inputs/session IDs stay in private journals and runtime logs.
-        print(f"dispatcher: {type(exc).__name__}: {exc}", file=sys.stderr)
-        print(
-            json.dumps(
-                {
-                    "result": "failed",
-                    "diagnostic": "dispatcher input/state/runtime error; inspect private records",
-                }
-            )
-        )
+        print(json.dumps(report_failure(exc)))
         return 2

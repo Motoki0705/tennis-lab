@@ -16,6 +16,7 @@ from typing import Any
 
 from lib.agent_settings import check_saved_implementation_model, implementation_model
 from lib.d_capacity import REFUSED, CapacityError, require_capacity
+from lib.state_files import StateFileError
 from parent import worker_preflight, worker_slots
 from parent.adopted_tasks import check_task_adoptions
 from parent.execution import (
@@ -45,6 +46,7 @@ from .collect import (
     material,
     source_references,
 )
+from .diagnostics import report_failure
 from .outcomes import read_result
 from .runtime import Runtime, alive, capacity_refusal, gate, load, process_identity
 from .schedule import Schedule, latest_slot, next_slot
@@ -1657,6 +1659,8 @@ class Supervisor:
                         except RegistryConflict:
                             raise
                         except (ValueError, OSError) as exc:
+                            if isinstance(exc, StateFileError):
+                                report_failure(exc)
                             dispatch.update(phase="failed", reason=str(exc))
                         self.store.save()
                 if (

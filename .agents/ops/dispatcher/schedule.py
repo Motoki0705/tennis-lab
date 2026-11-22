@@ -8,10 +8,13 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from lib.state_files import read_state_text
+from parent.policy import object_value
 from parent.state import Store
 
+from .diagnostics import RESTORE_STATE, DispatcherError
 from .outcomes import RESULTS
-from .runtime import load
+from .records import read_json
 
 TOKYO = ZoneInfo("Asia/Tokyo")
 
@@ -46,11 +49,27 @@ class Schedule:
     """
 
     def __init__(self, directory: Path) -> None:
-        self.directory = directory.resolve()
+        self.directory = directory.absolute()
         self.path = self.directory / "schedule.json"
 
     def read(self) -> dict[str, Any]:
-        value: dict[str, Any] = load(self.path)
+        try:
+            return self._validate(object_value(read_json(read_state_text(self.path))))
+        except (ValueError, KeyError, TypeError, OverflowError, RecursionError) as exc:
+            raise DispatcherError(
+                "invalid_schedule",
+                "dispatcher/schedule.json contains invalid state.",
+                RESTORE_STATE,
+                state_path="dispatcher/schedule.json",
+            ) from exc
+
+    def read_optional(self) -> dict[str, Any] | None:
+        try:
+            return self.read()
+        except FileNotFoundError:
+            return None
+
+    def _validate(self, value: dict[str, Any]) -> dict[str, Any]:
         if (
             set(value)
             != {"schema_version", "enabled", "cursor", "config", "runs", "active"}
@@ -108,6 +127,14 @@ class Schedule:
                 or run["phase"] not in {"running", "recovery_required", *RESULTS}
                 or run["id"] in seen
                 or not isinstance(run["candidates"], dict)
+                or any(
+                    not isinstance(candidate, dict)
+                    or set(candidate) != {"state", "reason"}
+                    or candidate["state"]
+                    not in {"assigned", "capacity_wait", "existing_owner", "stale"}
+                    or not isinstance(candidate["reason"], str)
+                    for candidate in run["candidates"].values()
+                )
             ):
                 raise ValueError("invalid dispatcher run journal")
             seen.add(run["id"])
@@ -119,9 +146,12 @@ class Schedule:
         Store.write_json(self.path, value)
 
     def initialize(self, config: dict[str, Any], now: datetime) -> None:
-        if self.path.exists() or self.path.is_symlink():
-            raise ValueError(
-                "schedule already exists; inspect it rather than reinitialize"
+        if self.read_optional() is not None:
+            raise DispatcherError(
+                "schedule_exists",
+                "dispatcher/schedule.json already exists.",
+                "Use `spin ops status dispatcher` to inspect the existing installation.",
+                state_path="dispatcher/schedule.json",
             )
         self.write(
             {
