@@ -21,7 +21,7 @@ def parse_output(text: str, numbers: Sequence[int]) -> dict[str, Any]:
     if set(value) != {"verdict", "summary", "major"}:
         raise ValueError("review requires verdict, summary and major")
     nonempty(value["summary"], "review summary")
-    if value["verdict"] not in {"approve", "major"} or not isinstance(
+    if value["verdict"] not in ("approve", "major") or not isinstance(
         value["major"], list
     ):
         raise ValueError("review must approve or list major findings")
@@ -30,15 +30,17 @@ def parse_output(text: str, numbers: Sequence[int]) -> dict[str, Any]:
         if set(finding) != {"prs", "title", "detail"}:
             raise ValueError("major finding requires prs, title and detail")
         prs = finding["prs"]
-        if (
-            not isinstance(prs, list)
-            or not prs
-            or any(type(n) is not int or n not in numbers for n in prs)
-            or len(set(prs)) != len(prs)
-        ):
-            raise ValueError("major finding refers to unknown or duplicate PRs")
+        if not isinstance(prs, list) or any(type(n) is not int or n < 1 for n in prs):
+            raise ValueError("major finding requires positive integer PR numbers")
+        covered = [n for n in prs if n in numbers]
+        if not covered or len(set(covered)) != len(covered):
+            raise ValueError("major finding must identify unique reviewed PRs")
         nonempty(finding["title"], "finding title")
         nonempty(finding["detail"], "finding detail")
+        finding["prs"] = covered
+        related = list(dict.fromkeys(n for n in prs if n not in numbers))
+        if related:
+            finding["related_prs"] = related
     if (value["verdict"] == "approve") != (not value["major"]):
         raise ValueError("review verdict and major findings disagree")
     return value

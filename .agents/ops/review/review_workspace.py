@@ -8,7 +8,7 @@ import string
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from parent.snapshot import git
 
@@ -31,20 +31,17 @@ def changed_paths(before: str, after: str) -> list[str]:
 
 
 def full_diff(before: str, after: str) -> bytes:
-    return cast(
-        bytes,
-        git(
-            "diff",
-            "--no-ext-diff",
-            "--no-textconv",
-            "--binary",
-            "--full-index",
-            "--no-renames",
-            "--no-color",
-            before,
-            after,
-            "--",
-        ),
+    return git(
+        "diff",
+        "--no-ext-diff",
+        "--no-textconv",
+        "--binary",
+        "--full-index",
+        "--no-renames",
+        "--no-color",
+        before,
+        after,
+        "--",
     )
 
 
@@ -54,15 +51,38 @@ def write_new(path: Path, data: bytes) -> None:
         stream.write(data)
 
 
+def workspace_path(checkout: Path, identifier: str) -> Path:
+    common = Path(
+        git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=checkout)
+        .decode()
+        .strip()
+    )
+    return common.parent / ".claude/worktrees" / ("review-" + identifier)
+
+
+def require_clean_workspace(checkout: Path, identifier: str) -> None:
+    path = workspace_path(checkout, identifier)
+    worktrees = git("worktree", "list", "--porcelain", "-z", cwd=checkout)
+    if (
+        path.exists()
+        or path.is_symlink()
+        or any(
+            Path(os.fsdecode(field.removeprefix(b"worktree "))).is_relative_to(path)
+            for field in worktrees.split(b"\0")
+            if field.startswith(b"worktree ")
+        )
+    ):
+        raise ValueError("recovery_required: previous review workspace remains")
+
+
 @contextmanager
 def workspace(
-    root: Path,
+    path: Path,
     request: Mapping[str, Any],
     context: Mapping[str, Any],
     diffs: Mapping[int, bytes],
 ) -> Iterator[Path]:
     # Metadata lives outside PR checkouts: a PR-provided symlink cannot redirect it.
-    path = root / ".claude/worktrees" / ("review-" + request["review_run_id"])
     path.mkdir(parents=True, mode=0o700, exist_ok=False)
     worktrees: list[Path] = []
     try:
