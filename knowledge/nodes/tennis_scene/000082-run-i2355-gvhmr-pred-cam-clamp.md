@@ -2,7 +2,7 @@
 id: run-i2355-gvhmr-pred-cam-clamp
 type: run
 task: tennis_scene
-sequence: 81
+sequence: 82
 recorded_at: '2026-11-22'
 title: GVHMR TensorRT FP16 B>1ビルド異常終了の切り分けと加算mask回避
 issue: 2355
