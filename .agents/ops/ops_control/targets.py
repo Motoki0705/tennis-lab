@@ -8,6 +8,10 @@ from typing import Literal
 FAILURE_NOTIFY_PREFIX = "tennis-lab-failure-notify@"
 
 
+def failure_notify_instance(unit: str) -> str:
+    return f"{FAILURE_NOTIFY_PREFIX}{unit}.service"
+
+
 @dataclass(frozen=True)
 class Step:
     tool: Literal["systemctl", "dispatcher"]
@@ -39,10 +43,7 @@ class Target:
     def journal_units(self) -> tuple[str, ...]:
         if self.failure_notify_for is None:
             return self.units
-        return (
-            *self.units,
-            f"{FAILURE_NOTIFY_PREFIX}{self.failure_notify_for}.service",
-        )
+        return (*self.units, failure_notify_instance(self.failure_notify_for))
 
 
 def service_target(name: str, stem: str) -> Target:

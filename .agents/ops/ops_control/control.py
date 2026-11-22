@@ -17,7 +17,7 @@ from lib.checkout_lock import (
 )
 
 from .systemd import ControlError, ManagerUnavailable, Systemd
-from .targets import Step, Target
+from .targets import Step, Target, failure_notify_instance
 
 
 class Controller:
@@ -197,6 +197,11 @@ class Controller:
                     report["errors"].append(str(exc))
         else:
             try:
+                failure_source = target.failure_notify_for
+                if failure_source is not None and action in {"on", "status"}:
+                    self.systemd.require_on_failure(
+                        failure_source, failure_notify_instance(failure_source)
+                    )
                 if action == "on":
                     for step in target.before_on:
                         self.step(step)

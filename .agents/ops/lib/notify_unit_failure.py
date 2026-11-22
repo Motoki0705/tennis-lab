@@ -6,7 +6,7 @@ import argparse
 import shlex
 import sys
 
-from .windows_toast import ToastError, send_windows_toast
+from .windows_toast import ToastError, ToastNotSent, send_windows_toast
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -17,7 +17,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         send_windows_toast("tennis-lab systemd failure", f"{unit} failed.\n{journal}")
     except ToastError as exc:
-        print(f"Windows toast failed for {unit}. {exc}", file=sys.stderr)
+        outcome = (
+            "was not sent (confirmed)"
+            if isinstance(exc, ToastNotSent)
+            else "submission outcome is unknown (resending may produce a duplicate)"
+        )
+        print(f"Windows toast for {unit} {outcome}. {exc}", file=sys.stderr)
         return 1
     print(f"Windows toast submitted for {unit}")
     return 0

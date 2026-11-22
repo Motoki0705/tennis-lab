@@ -34,19 +34,33 @@ def test_toast_identifies_failed_unit_and_its_journal_command(
     assert output.err == ""
 
 
+@pytest.mark.parametrize(
+    ("exception_type", "outcome"),
+    [
+        ("ToastNotSent", "was not sent (confirmed)"),
+        (
+            "ToastError",
+            "submission outcome is unknown (resending may produce a duplicate)",
+        ),
+    ],
+)
 def test_toast_failure_reports_unit_and_reason_to_journal(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    exception_type: str,
+    outcome: str,
 ) -> None:
     monkeypatch.syspath_prepend(str(OPS))
     notifier = importlib.import_module("lib.notify_unit_failure")
+    helper = importlib.import_module("lib.windows_toast")
     unit = "tennis-lab-storage-tier.service"
 
     def reject(title: str, message: str) -> None:
-        raise notifier.ToastError("Windows notifications are disabled")
+        raise getattr(helper, exception_type)("injected PowerShell error")
 
     monkeypatch.setattr(notifier, "send_windows_toast", reject)
     assert notifier.main(["--", unit]) == 1
     output = capsys.readouterr()
-    assert f"Windows toast failed for {unit}" in output.err
-    assert "Windows notifications are disabled" in output.err
+    assert f"Windows toast for {unit} {outcome}" in output.err
+    assert "injected PowerShell error" in output.err
     assert output.out == ""

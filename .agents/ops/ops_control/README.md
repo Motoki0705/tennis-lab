@@ -106,7 +106,8 @@ unitを追加する担当はserviceの停止時に子プロセスも終了する
 
 Windowsで失敗通知を出すtimer対象は、serviceに `OnFailure=tennis-lab-failure-notify@%n.service` を宣言し、
 `timer_target(..., notify_on_failure=True)` を指定する。`install` は通知テンプレートをリンクし、
-`logs` は通知unitのjournalも含める。
+`logs` は通知unitのjournalも含める。`status` と `on` はuser managerの `OnFailure` と通知unitの
+`LoadState=loaded` を確認する。確認できない場合は非0を返し、`on` は有効化の前に停止する。
 
 有限の運用jobは [checkout_job.py](../checkout_job.py) を経由し、対象コードを読む前から
 終了まで [checkout lock](../lib/README.md#メインcheckoutと運用jobの排他) を保持する。

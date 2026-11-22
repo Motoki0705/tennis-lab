@@ -87,8 +87,16 @@ if command == "show":
                 stream.write(
                     json.dumps(["resident_exited", unit, data.get("MainPID")]) + "\n"
                 )
+    requested = next(
+        (
+            arg.removeprefix("--property=").split(",")
+            for arg in args
+            if arg.startswith("--property=")
+        ),
+        data.keys(),
+    )
     for key, value in data.items():
-        if key not in state.get("omit_properties", []):
+        if key in requested and key not in state.get("omit_properties", []):
             print(f"{key}={value}")
     finish(1 if data["LoadState"] == "not-found" else 0)
 if command == "daemon-reload":
