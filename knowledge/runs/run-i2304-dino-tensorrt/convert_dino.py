@@ -257,7 +257,14 @@ def verify_layers(details, precision, requirements, sampling, method):
 
 
 def build(
-    args, source, typed, graph, *, batch_profile=None, builder_optimization_level=None
+    args,
+    source,
+    typed,
+    graph,
+    *,
+    batch_profile=None,
+    builder_optimization_level=None,
+    workspace_bytes=WORKSPACE_BYTES,
 ):
     method = typed["method"]
     precision = TRT_PRECISIONS[args.condition]
@@ -288,13 +295,14 @@ def build(
         allow_tf32=False,
         profile_shapes=profile,
         builder_optimization_level=builder_optimization_level,
+        workspace_bytes=workspace_bytes,
     )
     write_json(
         args.output / "conversion.json",
         {
             **typed,
             "plan_sha256": sha256_file(plan),
-            "workspace_bytes": WORKSPACE_BYTES,
+            "workspace_bytes": workspace_bytes,
             "compute_precision": performance,
             "queue_job": os.environ["TENNIS_RUN_ID"],
             **(
@@ -317,11 +325,18 @@ def main():
     parser.add_argument("--checkpoint", default=CHECKPOINT, type=Path)
     parser.add_argument("--batch-profile", nargs=2, type=int, metavar=("OPT", "MAX"))
     parser.add_argument("--builder-optimization-level", type=int, choices=range(6))
+    parser.add_argument(
+        "--workspace-mib", type=int, default=WORKSPACE_BYTES // (1024**2)
+    )
     args = parser.parse_args()
     if args.stage == "prepare" and (
-        args.batch_profile is not None or args.builder_optimization_level is not None
+        args.batch_profile is not None
+        or args.builder_optimization_level is not None
+        or args.workspace_mib != WORKSPACE_BYTES // (1024**2)
     ):
         parser.error("Profile and optimization level belong to the build stage")
+    if args.workspace_mib <= 0:
+        parser.error("Workspace limit must be positive")
     require_queue()
     stage = "export" if args.stage == "prepare" else "typed"
     source, receipt = load_manifest(args.source, stage)
@@ -352,6 +367,7 @@ def main():
             onnx.load(source, load_external_data=False).graph,
             batch_profile=args.batch_profile,
             builder_optimization_level=args.builder_optimization_level,
+            workspace_bytes=args.workspace_mib * 1024**2,
         )
 
 

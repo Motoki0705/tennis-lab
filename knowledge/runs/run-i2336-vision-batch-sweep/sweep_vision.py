@@ -217,6 +217,8 @@ def build_conversion(data, condition, root, report, args):
             ):
                 return None
         options.extend(("--condition", "2"))
+        if args.workspace_mib is not None:
+            options.extend(("--workspace-mib", args.workspace_mib))
     else:
         converter = HERE / "convert_vit_batch.py"
         options.extend(("--model", data.model, "--condition", condition))
@@ -357,6 +359,7 @@ def main():
     reusable.add_argument("--build-from", type=Path)
     parser.add_argument("--batch-profile", nargs=2, type=int, metavar=("OPT", "MAX"))
     parser.add_argument("--builder-optimization-level", choices=range(6), type=int)
+    parser.add_argument("--workspace-mib", type=int)
     args = parser.parse_args()
     if set(args.condition or ()) - set(CONDITIONS[args.model]):
         parser.error("Condition unavailable for this model")
@@ -374,6 +377,15 @@ def main():
         parser.error("Reusing an artifact requires one TensorRT condition")
     if args.ncu_timeout <= 0 or (args.ncu_prefix and not args.profile_from):
         parser.error("Invalid ncu retry options")
+    if args.workspace_mib is not None and (
+        args.workspace_mib <= 0
+        or args.model != DINO
+        or args.condition != ["2"]
+        or args.case is not None
+        or args.profile_from is not None
+        or args.reuse_conversion is not None
+    ):
+        parser.error("An explicit workspace limit applies to the DINO GridSample build")
     require_queue()
     args.inputs = args.inputs.resolve(strict=True)
     args.output = args.output.resolve()

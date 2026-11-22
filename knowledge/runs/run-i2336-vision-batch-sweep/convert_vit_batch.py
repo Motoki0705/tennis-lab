@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 
 import numpy as np
-import onnx
 from batching import require_dynamic_axis
 from benchmark import write_json
 from convert import (
@@ -21,10 +20,57 @@ from vision_inputs import CONDITIONS, HMR2, PTQ_RECIPES, VITPOSE, PinnedInputs, 
 
 
 def verify_batch_axes(path):
+    import onnx
+
     graph = onnx.load(path, load_external_data=False).graph
     for value in (*graph.input, *graph.output):
         require_dynamic_axis(value, 0, "batch")
     return graph
+
+
+def simplify_hmr2_token_output(model):
+    """Lower the known one-token output to Squeeze before ModelOpt autocast."""
+    from onnx import TensorProto, helper, numpy_helper
+
+    graph = model.graph
+    (conditional,) = (node for node in graph.node if node.op_type == "If")
+    if conditional.name != "/hmr/smpl_head/If" or list(conditional.output) != [
+        "features"
+    ]:
+        raise ValueError("Unexpected HMR2 token output conditional")
+    branches = {attribute.name: attribute.g for attribute in conditional.attribute}
+    constant, squeeze = branches["then_branch"].node
+    (identity,) = branches["else_branch"].node
+    source = "/hmr/smpl_head/transformer/transformer/Add_17_output_0"
+    if (
+        constant.op_type != "Constant"
+        or squeeze.op_type != "Squeeze"
+        or identity.op_type != "Identity"
+        or list(squeeze.input) != [source, constant.output[0]]
+        or list(identity.input) != [source]
+        or numpy_helper.to_array(
+            helper.get_attribute_value(constant.attribute[0])
+        ).tolist()
+        != [1]
+        or list(squeeze.output)
+        != [value.name for value in branches["then_branch"].output]
+        or list(identity.output)
+        != [value.name for value in branches["else_branch"].output]
+    ):
+        raise ValueError(
+            "HMR2 graph does not squeeze its decoder's singleton token axis"
+        )
+    axis = "hmr2_token_axis"
+    if axis in {name for node in graph.node for name in node.output} | {
+        value.name for value in (*graph.input, *graph.initializer)
+    }:
+        raise ValueError("HMR2 token axis initializer already exists")
+    graph.initializer.append(helper.make_tensor(axis, TensorProto.INT64, [1], [1]))
+    conditional.CopyFrom(
+        helper.make_node(
+            "Squeeze", [source, axis], ["features"], name="/hmr/smpl_head/SqueezeToken"
+        )
+    )
 
 
 def prepare(data, condition, output):
@@ -36,6 +82,14 @@ def prepare(data, condition, output):
     graph, quantization, selected = exported, None, set()
     mode = TRT_PRECISIONS[condition]
     if condition in PTQ_RECIPES:
+        import onnx
+
+        # The fixed SMPL head has one decoder token for every batch item.
+        # ModelOpt 0.48.0 fails during FP16 conversion of its legacy ONNX If.
+        model = onnx.load(exported, load_external_data=False)
+        simplify_hmr2_token_output(model)
+        onnx.save(model, exported)
+        onnx.checker.check_model(str(exported))
         graph = output / "quantized.onnx"
         calibration = np.load(data.directory / "calibration.npy", allow_pickle=False)
         shape = "x".join(map(str, data.adapter.engine_shape))
@@ -47,6 +101,7 @@ def prepare(data, condition, output):
             PTQ_RECIPES[condition],
             calibration_shapes=f"pixels:{shape}",
         )
+        quantization["hmr2_singleton_token_squeeze"] = True
         verify_qdq_scope(verify_batch_axes(graph), selected)
     requirements = data.adapter.compute_requirements(exported, mode, selected)
     write_json(output / "precision.json", requirements)

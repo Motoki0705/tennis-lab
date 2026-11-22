@@ -1,0 +1,73 @@
+{
+  "initial_commit": "af205aa9c976543eb914efe294641ddf2c19f4a6",
+  "initial_output": "outputs/trt-batch-i2336",
+  "environment": {
+    "tensorrt": "10.14.1.48.post1",
+    "modelopt": "0.48.0",
+    "torch": "2.13.0+cu130",
+    "driver": "621.24",
+    "wsl_pid_1_started_jst": "2026-11-22T12:00:14+09:00",
+    "outputs_before": "/dev/sdd",
+    "outputs_after": "/dev/sde ext4 (E:, 3.2 TiB available at recheck)",
+    "crash_cause": null
+  },
+  "initial_jobs": {
+    "vitpose_h": {
+      "job": "0-8204694588545189554_2026-11-21T23-56-51-454810445Z_4147028_i2336-vitpose-timing.job",
+      "exit_code": 124,
+      "verified_batches": {"0": [1, 4, 8, 16, 32], "1": [1, 4, 8, 16]},
+      "stopped_stage": "c1-b32",
+      "evidence": "vitpose_h/c1-b32/measure.log",
+      "measurement_complete": false,
+      "trt_build_started": false
+    },
+    "hmr2": {
+      "job": "0-8204694588289761695_2026-11-21T23-56-51-710238304Z_4147065_i2336-hmr2-timing.job",
+      "queue_state_at_recheck": "running",
+      "wrapper_pid_at_recheck": 494118,
+      "wrapper_present_at_recheck": false,
+      "verified_batches": {"0": [1, 4, 8, 16, 32], "1": [1, 4, 8, 16, 32]},
+      "failures": [
+        {
+          "stage": "build-2",
+          "exit_code": 1,
+          "evidence": "hmr2/logs/build-2.log",
+          "reason": "Serialized build and deserialization reached inspector; dynamic SMPL head packed K/V exposed two FP16 inputs for _gemv_mha_v1_*."
+        },
+        {
+          "stage": "prepare-3a",
+          "exit_code": 1,
+          "evidence": "hmr2/logs/prepare-3a.log",
+          "reason": "ModelOpt PrecisionConverter KeyError in _convert_subgraph_precision with the token squeeze If."
+        },
+        {
+          "stage": "prepare-3b",
+          "exit_code": null,
+          "evidence": "hmr2/logs/prepare-3b.log",
+          "reason": "Last log covers calibration setup before the WSL restart; no graph receipt or terminal status."
+        }
+      ]
+    },
+    "dino_4scale_swin_l": {
+      "job": "0-8204694588023825357_2026-11-21T23-56-51-976174642Z_4147159_i2336-dino-timing.job",
+      "exit_code": 1,
+      "verified_batches": {"0": [1, 2, 4], "1": [1, 2, 4]},
+      "failures": [
+        {
+          "stage": "build-2",
+          "exit_code": 1,
+          "evidence": "dino_4scale_swin_l/logs/build-2.log",
+          "workspace_bytes": 536870912,
+          "tactic_requested_bytes": 994425132,
+          "reason": "TensorRT skipped the tactic with an insufficient memory diagnostic and reported Error Code 10 for ForeignNode."
+        },
+        {
+          "stage": "build-2-plugin",
+          "exit_code": 1,
+          "evidence": "dino_4scale_swin_l/logs/build-2-plugin.log",
+          "reason": "Serialized build and deserialization reached inspector; symbolic leading axes prevented recognition of the two shifted-window mask views."
+        }
+      ]
+    }
+  }
+}

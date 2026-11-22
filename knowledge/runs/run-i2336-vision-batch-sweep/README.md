@@ -49,6 +49,14 @@ enqueue vitpose-ncu-0 vitpose_h "$vit_inputs/vitpose_h" 42m "$out/vitpose-ncu-0"
 
 `sweep.json` と `logs/` は変換、範囲外拒否、計測の終了値を記録する。各ケースの `result.json` は入力・参照・planの識別子、精度とnsys、`measurement.json` は速度とVRAM、`layers.json` は実行shapeのinspectorを保存する。`--profile-from` は同じplan・入力順のnsys結果とncuの件数を照合する。VRAMのガードは#2304と同じく起動時の空き12 GiBとPyTorch allocator上限60%を使う。このrunではTensorRT contextの確保前と計測時のNVMLサンプルで空き3 GiBも確認する。失敗したjobを再試行する場合は出力先を分け、使う条件・バッチ・変換成果物をCLIで指定する。
 
+### 初回出力からの再開
+
+ViTPose-Hは45分のジョブ上限にB=32のFP16計測中に達した。完了済みのFP32 B=32だけで約14分26秒を使ったため、残るPyTorch B=32とTensorRTを独立したジョブにする。HMR2のFP16とDINOのpluginはTensorRT inspectorまで進んだ。HMR2ではpacked K/Vを出したFP16 GEMMとの対応と、単一トークンのvalue積の軸を照合する。DINOでは同じマスクの2視点と、固定のウィンドウ形状を持つQ・K・Vを照合する。どちらも初回のtyped ONNXを使用する。
+
+DINO GridSampleの初回はworkspace上限512 MiBで約948 MiBを要求したtacticが除外された。再試行は同じグラフ・profileで `--workspace-mib 1536` を明示する。HMR2の3aはModelOpt 0.48.0のFP16変換で、単一トークンを除くONNX `If` の分岐処理に失敗した。固定のdecoderではトークン軸が1なので、この出力を `Squeeze` に置換して同じ設定で校正する。3bは準備途中に中断した。 [初回のログと終了値](attempts.json)
+
+再開時は `--condition` で条件を選び、初回の `c0-b1` を `--reference` に指定する。ViTPose-HのFP16は `--condition 1 --batch 32`、HMR2のFP16とDINO各方式は、保存済みtyped ONNXのディレクトリを `--build-from` で指定する。ncuは各条件のnsysが記録されたケースを `--profile-from` に指定する。
+
 ## CPU検証
 
 ```bash

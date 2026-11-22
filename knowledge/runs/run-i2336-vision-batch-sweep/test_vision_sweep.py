@@ -2,9 +2,11 @@
 
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 import sweep_vision
 from benchmark import write_json
+from convert_vit_batch import simplify_hmr2_token_output
 from vision_inputs import VITPOSE, read
 
 
@@ -64,3 +66,78 @@ def test_failed_plan_never_reaches_measurement(tmp_path, monkeypatch, failure):
         else {"build-2", "reject-c2-b0", "reject-c2-b33"}
     )
     assert not (root / "c2-b16").exists()
+
+
+def test_hmr2_ptq_export_lowers_only_the_singleton_token_squeeze():
+    onnx = pytest.importorskip("onnx")
+    from onnx import TensorProto, helper, reference
+
+    source = "/hmr/smpl_head/transformer/transformer/Add_17_output_0"
+
+    def model(axis):
+        when_true = helper.make_graph(
+            [
+                helper.make_node(
+                    "Constant",
+                    [],
+                    ["axis"],
+                    value=helper.make_tensor("axis", TensorProto.INT64, [1], [axis]),
+                ),
+                helper.make_node("Squeeze", [source, "axis"], ["squeezed"]),
+            ],
+            "squeeze",
+            [],
+            [
+                helper.make_tensor_value_info(
+                    "squeezed", TensorProto.FLOAT, ["batch", 1024]
+                )
+            ],
+        )
+        when_false = helper.make_graph(
+            [helper.make_node("Identity", [source], ["unchanged"])],
+            "identity",
+            [],
+            [
+                helper.make_tensor_value_info(
+                    "unchanged", TensorProto.FLOAT, ["batch", 1, 1024]
+                )
+            ],
+        )
+        graph = helper.make_graph(
+            [
+                helper.make_node(
+                    "If",
+                    ["one_token"],
+                    ["features"],
+                    name="/hmr/smpl_head/If",
+                    then_branch=when_true,
+                    else_branch=when_false,
+                )
+            ],
+            "head",
+            [
+                helper.make_tensor_value_info(
+                    source, TensorProto.FLOAT, ["batch", 1, 1024]
+                )
+            ],
+            [
+                helper.make_tensor_value_info(
+                    "features", TensorProto.FLOAT, ["batch", 1024]
+                )
+            ],
+            initializer=[helper.make_tensor("one_token", TensorProto.BOOL, [], [True])],
+        )
+        return helper.make_model(graph, opset_imports=[helper.make_opsetid("", 19)])
+
+    with pytest.raises(ValueError, match="singleton token axis"):
+        simplify_hmr2_token_output(model(0))
+    exported = model(1)
+    original = reference.ReferenceEvaluator(model(1))
+    simplify_hmr2_token_output(exported)
+    onnx.checker.check_model(exported)
+    assert all(node.op_type != "If" for node in exported.graph.node)
+    lowered = reference.ReferenceEvaluator(exported)
+    for batch in (1, 16):
+        token = np.arange(batch * 1024, dtype=np.float32).reshape(batch, 1, 1024)
+        expected = original.run(None, {source: token})[0]
+        np.testing.assert_array_equal(lowered.run(None, {source: token})[0], expected)
