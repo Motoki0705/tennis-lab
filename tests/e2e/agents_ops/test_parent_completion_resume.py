@@ -194,6 +194,7 @@ def completion_workflow(
     monkeypatch.chdir(p.repo)
     mod = importlib.import_module("dispatcher.supervisor")
     development = importlib.import_module("parent.development")
+    parent_state = importlib.import_module("parent.state")
     monkeypatch.setattr(mod, "Runtime", FixtureRuntime)
     monkeypatch.setattr(development, "Runtime", FixtureRuntime)
     clock = importlib.import_module("dispatcher.schedule")
@@ -277,13 +278,16 @@ def completion_workflow(
             }
         )
         schedule.write(scheduled)
-        session.row["session"] = "dispatcher-reservation:fixture-assignment"
-        session.row["dispatch"] = {
+        reservation = "dispatcher-reservation:fixture-assignment"
+        row = parent_state.start_fresh_assignment(
+            session.row, reservation, candidate["generation"], origin="dispatcher"
+        )
+        row["dispatch"] = {
             "schema_version": 1,
             "assignment_id": "fixture-assignment",
             "source_run": "fixture-judgement",
             "phase": "running",
-            "session": session.row["session"],
+            "session": reservation,
             "candidate": candidate,
             "authorization": auth,
             "child_limit": 2,
@@ -291,6 +295,7 @@ def completion_workflow(
             "active_job": None,
             "events": [],
         }
+        store.parents[session.key] = row
         parent = control._job(session.key, session.row)
         implementation = {}
         if not direct:
