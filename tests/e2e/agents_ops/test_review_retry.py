@@ -344,6 +344,74 @@ def test_interruption_just_after_launch_intent_is_retryable(
     assert len(calls.read_text().splitlines()) == 1
 
 
+@pytest.mark.parametrize(
+    "agent_trace", [False, True], ids=["initializing", "agent-trace"]
+)
+def test_retry_checks_runtime_before_first_result(
+    parent_env: ParentEnv, agent_trace: bool
+) -> None:
+    p = parent_env
+    numbers, fake, calls = prepared(p)
+    common_runner = OPS / "lib/agent_exec.sh"
+    # Round 1 uses the real launcher. Round 2 can finish using the offline reviewer.
+    original = fake.read_text().split("\n", 1)[1]
+    fake.write_text(
+        f"#!{sys.executable}\n"
+        f"""import os, sys
+from pathlib import Path
+
+runtime = Path(sys.argv[sys.argv.index('--run-dir') + 1])
+if sys.argv[1] not in ('status', 'stop') and runtime.parent.name == 'review-1':
+    os.execv({str(common_runner)!r}, [{str(common_runner)!r}, *sys.argv[1:]])
+""" + original
+    )
+    env = startup_hook(
+        p,
+        """import os
+from pathlib import Path
+
+replace = os.replace
+
+def interrupt_initial_result(source, target, *args, **kwargs):
+    path = Path(target)
+    if path.name == 'result.json' and path.parent.name == 'agent-runtime' and path.parent.parent.name == 'review-1':
+        os._exit(75)
+    return replace(source, target, *args, **kwargs)
+
+os.replace = interrupt_initial_result
+""",
+    )
+    initial = request(p, numbers, fake, **env)
+    state_file = progression_path(p, initial)
+    join_controller(state_file)
+    runtime = state_file.parent / "review-1/agent-runtime"
+    assert initial["status"] == "parent_wait"
+    assert "exited 75" in initial["review"]["error"]
+    candidate = json.loads((runtime / "result.tmp").read_text())
+    assert candidate["agent_spawned"] is False and candidate["process"] is None
+    assert not (runtime / "result.json").exists()
+    assert not calls.read_text()
+
+    args = retry_args(p, initial)
+    if agent_trace:
+        (runtime / "events.jsonl").write_text('{"type":"thread.started"}\n')
+        result = p.cli(*args, ok=False)
+        assert "runtime state is unconfirmed" in result.stderr
+        assert not (state_file.parent / "review-2").exists()
+        assert not calls.read_text()
+        assert not any(c[:2] == ["pr", "merge"] for c in p.calls())
+    else:
+        result = json.loads(p.cli(*args).stdout)
+        assert result["status"] == "completed"
+        usage = result["review_usage"]
+        assert usage["launch_intents"] == 2 and usage["confirmed_launches"] == 1
+        assert (
+            usage["rounds"][0]["turn_end_reason"]
+            == "interrupted_during_runtime_initialization"
+        )
+        assert len(calls.read_text().splitlines()) == 1
+
+
 def test_live_runner_before_runtime_blocks_retry_after_controller_dies(
     parent_env: ParentEnv,
 ) -> None:

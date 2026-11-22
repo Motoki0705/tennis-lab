@@ -30,6 +30,15 @@ HERE = Path(__file__).resolve().parent
 OPS = HERE.parent
 MAX_REVIEW_ATTEMPTS = 3
 RETRYABLE_END_REASONS = {"runtime_error", "startup_failed", "usage_limit"}
+RUNTIME_INITIALIZATION_FILES = {
+    "session.lock",
+    "review-selection.json",
+    "review-selection.tmp",
+    "prompt.md",
+    "output-schema.json",
+    "mcp-config.json",
+    "result.tmp",
+}
 
 
 def saved_request(review_dir: Path, request: dict[str, Any]) -> dict[str, Any]:
@@ -128,6 +137,64 @@ def target_pr(
     return pr
 
 
+def lock_released(path: Path) -> bool:
+    with path.open("rb") as stream:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return False
+    return True
+
+
+def initialization_only(review_dir: Path, materials: dict[str, Any]) -> bool:
+    """Inspect the common runner's files after its inherited launch lock is free."""
+    from dispatcher.runtime import alive
+
+    runtime = review_dir / "agent-runtime"
+    output = review_dir / "agent_output.md"
+    if output.exists() or output.is_symlink() or runtime.is_symlink():
+        return False
+    if not runtime.exists():
+        return True
+    # The runner saves its initial result before writing session.json and
+    # invocation.json, and opens the CLI logs before spawning the agent.
+    if not runtime.is_dir() or any(
+        path.name not in RUNTIME_INITIALIZATION_FILES
+        or path.is_symlink()
+        or not path.is_file()
+        for path in runtime.iterdir()
+    ):
+        return False
+    session_lock = runtime / "session.lock"
+    if session_lock.exists() and not lock_released(session_lock):
+        return False
+    temporary = runtime / "result.tmp"
+    if not temporary.exists():
+        return True
+    try:
+        record = read(temporary)
+        require_matching_runtime(review_dir, materials, record)
+        runner = object_value(record["runner"])
+        return (
+            type(record.get("schema_version")) is int
+            and record["schema_version"] == 1
+            and record.get("result") == "running"
+            and record.get("agent_spawned") is False
+            and record["process"] is None
+            and record.get("cleanup_complete") is False
+            and type(runner.get("pid")) is int
+            and runner["pid"] > 0
+            and set(runner) == {"pid", "start_ticks", "boot_id"}
+            and all(
+                isinstance(runner[k], str) and runner[k]
+                for k in ("start_ticks", "boot_id")
+            )
+            and not alive(runner)
+        )
+    except (KeyError, OSError, ValueError, TypeError):
+        return False
+
+
 def retry_failure(
     state: dict[str, Any], review_dir: Path, materials: dict[str, Any]
 ) -> dict[str, Any]:
@@ -140,13 +207,8 @@ def retry_failure(
         guard = review_dir / "launch.lock"
         if not guard.is_file() or guard.is_symlink():
             raise ValueError("recovery_required: reviewer launch lock is missing")
-        with guard.open("rb") as stream:
-            try:
-                fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise ValueError(
-                    "recovery_required: reviewer launcher is still active"
-                ) from exc
+        if not lock_released(guard):
+            raise ValueError("recovery_required: reviewer launcher is still active")
     if (runtime / "result.json").is_file():
         record = ended_runtime(state, runtime)
         require_matching_runtime(review_dir, materials, record)
@@ -160,10 +222,16 @@ def retry_failure(
             key: record.get(key)
             for key in ("turn_end_reason", "error", "agent_spawned")
         }
-    if not guarded or runtime.exists() or runtime.is_symlink():
+    if not guarded or not initialization_only(review_dir, materials):
         raise ValueError(
             "recovery_required: reviewer termination or runtime state is unconfirmed"
         )
+    if runtime.is_dir():
+        return {
+            "turn_end_reason": "interrupted_during_runtime_initialization",
+            "error": "reviewer launcher ended before saving its first runtime result",
+            "agent_spawned": False,
+        }
     return {
         "turn_end_reason": "interrupted_before_runtime",
         "error": "reviewer launcher ended before creating its runtime",
