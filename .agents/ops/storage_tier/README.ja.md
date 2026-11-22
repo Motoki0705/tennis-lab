@@ -368,7 +368,7 @@ repo/E:の基準mountから単位rootまで全成分をnofollow FDで開き、�
 D:`<repo>/.storage-tier/audit.jsonl` に、照合・取得・失敗・削除前確認・完了のUTC時刻、単位、サイズ、
 照合方式を残す。変更処理はrepoごとに排他し、dry-runはlockも作らない。同じ場所の `transactions/` に
 削除の永続intentを置く。
-他UIDの除外範囲とストレージ操作の失敗も監査記録に残す。
+他UIDの除外範囲も監査記録に残す。
 通常dirの読取専用 `index --dry-run` は単位quietを省く（rootファイル投影はfd/cwd/mmapを検査）。どちらもE:側mount参照検査の証拠にはならない。
 manifestの認証・削除許可も行わない。実機確認は `verify --dry-run` で両側を検査し、E:の `quiet` 通過とmetadata不変を記録する。
 配置切替前は、既存D:/E:ペアの読取専用対応付けによる確認と、未切替配置を拒否する通常CLIの結果を分ける。

@@ -329,7 +329,7 @@ hydrate 拒绝已存在的 D: 目标，完成 E: 哈希、复制、D: 哈希后�
 
 D:`<repo>/.storage-tier/audit.jsonl` 保存校验、取回、失败、删除确认与完成记录，包含 UTC、单位、大小与校验方式。
 修改操作按 repo 排他；dry-run 不创建锁。持久删除 intent 位于同目录的 `transactions/`。
-审计还记录其他 UID 的排除范围以及存储操作的失败。
+审计还记录其他 UID 的排除范围。
 普通目录的只读index dry-run不调用单位quiet（根文件投影检查fd/cwd/mmap）；两者都不能证明E: mount引用检查成功；
 它也不认证 manifest、不授权删除。实机验证须通过 `verify --dry-run` 检查两边，记录 E: `quiet` 通过与 metadata 不变。
 布局迁移前，必须区分既有 D:/E: 配对的只读路径映射验证与仍拒绝待迁移布局的普通 CLI 结果。

@@ -506,7 +506,7 @@ publishes the whole unit with fresh file atimes and updates the manifest.
 D:`<repo>/.storage-tier/audit.jsonl` records verification, hydration, failure, deletion
 intent and completion with UTC time, unit, byte counts and verification method.
 A single repo lock serializes mutating operations; dry-runs do not acquire/create it.
-The audit records process exclusions and storage operation failures.
+The audit also records the scope of process exclusions.
 Read-only `index --dry-run` reports global process inspection errors but never certifies
 a manifest or authorizes deletion; for directory units it hashes the selected tiny tree without
 unit `quiet` checks (the checkpoint root-file projection also inspects fd/cwd/mmap). It is therefore not evidence that E: mount-reference
