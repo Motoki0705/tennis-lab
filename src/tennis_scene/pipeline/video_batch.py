@@ -103,8 +103,7 @@ class VideoBatchProgress:
         self.document["clips"] = {clip.inputs.record.clip_id: {"status": "pending"} for clip in prepared}
         self.flush()
 
-    @measured("progress_write")
-    def flush(self) -> None:
+    def _collect_events(self) -> None:
         # C1 records the actual model input, including tails and flip-test crops.
         events = self.recorder.events[self.cursor:]
         self.cursor += len(events)
@@ -118,6 +117,10 @@ class VideoBatchProgress:
                 counts = self.document["batch_shapes"].setdefault(name, {})
                 count = counts.setdefault(shape, {"succeeded": 0, "failed": 0, "items": attributes["batch_items"]})
                 count["succeeded" if event["status"] == "ok" else "failed"] += 1
+
+    @measured("progress_write")
+    def flush(self) -> None:
+        self._collect_events()
         if self.plan is not None:
             nodes: dict[str, dict[str, Any]] = {clip_id: {} for clip_id in self.plan.clips}
             for clip_id, name in self.plan.order:
@@ -135,6 +138,8 @@ class VideoBatchProgress:
         finally:
             self.document["active_node"] = None
             self.flush()
+            if self.recorder.checkpoint_events(consume_pending=self._collect_events):
+                self.cursor = 0
 
     def outcome(self, outcome: VideoClipOutcome) -> None:
         self.outcomes[outcome.clip_id] = outcome

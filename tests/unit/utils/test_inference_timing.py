@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from src.utils.inference_timing import timing_summary
+from src.utils.inference_timing import TimingSummary, timing_summary
 
 
 def event(
@@ -65,3 +65,23 @@ def test_shared_batches_charge_each_participating_node_and_use_union_per_group()
     assert report["by_clip_node"]["b"]["predict/cam1"]["wall_seconds"] == 10.
     assert report["by_clip_node"]["b"]["predict/cam0"]["wall_seconds"] == 12.
     assert report["cpu_during_gpu_idle"] == []
+
+
+def test_disjoint_windows_weight_gpu_coverage_and_keep_idle_cpu_totals() -> None:
+    attributes: dict[str, Any] = {"clip_id": "clip", "node": "detection/cam0", "model": "resize", "operation": "resize"}
+    first = event(0, "preprocess", 0, 2, thread_cpu=(0, 2), process_cpu=(0, 2), **attributes)
+    second = event(1, "preprocess", 3, 7, thread_cpu=(2, 2), process_cpu=(2, 3), **attributes)
+    samples = [
+        {"at_ns": second * 10**9, "gpu": {} if usage is None else {"cuda:0": {"utilization_percent": usage}}}
+        for second, usage in ((0, 0), (2, 0), (4, 20), (6, 80), (7, None))
+    ]
+    summary = TimingSummary(samples, {})
+    summary.add([first])
+    summary.add([second])
+    result = summary.result()
+    assert result == timing_summary([first, second], samples, {})
+    assert result["by_node"]["detection/cam0"] == {
+        "wall_seconds": 6., "thread_cpu_seconds": 4., "process_cpu_seconds": 5.,
+        "gpu_observed_wall_seconds": 5., "gpu_active_fraction": .6, "gpu_mean_utilization_percent": 36.,
+    }
+    assert result["cpu_during_gpu_idle"][0]["estimated_thread_cpu_seconds"] == 2.

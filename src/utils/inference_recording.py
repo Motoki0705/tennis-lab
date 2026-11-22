@@ -11,6 +11,7 @@ import heapq
 import json
 import math
 import resource
+import shutil
 import tempfile
 import threading
 import time
@@ -22,7 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
-from src.utils.inference_timing import timing_summary
+from src.utils.inference_timing import TimingSummary
 
 if TYPE_CHECKING:
     from src.utils.inference_resources import NvmlSampler
@@ -43,7 +44,18 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def wall_breakdown(events: Sequence[Mapping[str, Any]], total_ns: int) -> dict[str, float]:
+def _encode_event(event: Mapping[str, Any]) -> str:
+    return json.dumps(event, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+
+
+def _chunk_lines(path: Path) -> Iterator[tuple[int, str]]:
+    with path.open("r", encoding="utf-8") as stream:
+        for row in stream:
+            event_id, data = row.rstrip("\n").split("\t", 1)
+            yield int(event_id), data
+
+
+def wall_breakdown(events: Sequence[Mapping[str, Any]], total_ns: int, *, start_ns: int = 0) -> dict[str, float]:
     """Partition wall time: deepest active span wins; GPU wins equal depths.
 
     Coarse clip/node spans are excluded. Equal-depth CPU ties use the latest
@@ -56,7 +68,7 @@ def wall_breakdown(events: Sequence[Mapping[str, Any]], total_ns: int) -> dict[s
     active: set[int] = set()
     heap: list[tuple[int, int, int, int, str]] = []
     duration: dict[str, int] = defaultdict(int)
-    previous = 0
+    previous = start_ns
     for position, starting, index in sorted(edges):
         while heap and heap[0][3] not in active:
             heapq.heappop(heap)
@@ -100,6 +112,10 @@ class InferenceRecorder:
         self._sample_errors: list[str] = []
         self._started_ns: int | None = None
         self._next_id = 0
+        self._live_spans = 0
+        self._event_directory: Path | None = None
+        self._event_chunks: list[tuple[int, Path]] = []
+        self._video_pass_spans: list[dict[str, Any]] = []
 
     def __enter__(self) -> InferenceRecorder:
         if _ACTIVE.get() is not None or self._started_ns is not None:
@@ -150,7 +166,6 @@ class InferenceRecorder:
         try:
             if not self._sample_errors:
                 self._sample()
-            self.resources["ram_process_lifetime_peak_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
             if self.devices:
                 import torch
 
@@ -173,77 +188,148 @@ class InferenceRecorder:
             except Exception as exc:
                 self._sample_errors.append(f"{type(exc).__name__}: {exc}")
 
+    def checkpoint_events(self, *, minimum_events: int = 100_000,
+                          consume_pending: Callable[[], None] | None = None) -> bool:
+        """Spill completed spans between video-batch nodes or dispatch groups."""
+        with self._lock:
+            if len(self.events) < minimum_events or self._live_spans or self.destination is None:
+                return False
+            if consume_pending is not None:
+                consume_pending()
+            assert self._started_ns is not None
+            cutoff_ns = time.perf_counter_ns() - self._started_ns
+            events, self.events = self.events, []
+        try:
+            with span("measurement", operation="checkpoint_events"):
+                if self._event_directory is None:
+                    self._event_directory = Path(tempfile.mkdtemp(prefix=".recording-", dir=self.destination.parent))
+                chunk = self._event_directory / f"{len(self._event_chunks):06}.tsv"
+                coarse = []
+                with chunk.open("w", encoding="utf-8") as output:
+                    for event in sorted(events, key=lambda item: item["id"]):
+                        if event["stage"] == "video_pass":
+                            coarse.append(event)
+                        else:
+                            output.write(f"{event['id']}\t{_encode_event(event)}\n")
+        except BaseException:
+            with self._lock:
+                self.events[:0] = events
+            raise
+        # A video_pass is a coarse envelope that can span multiple windows.
+        self._video_pass_spans.extend(coarse)
+        self._event_chunks.append((cutoff_ns, chunk))
+        return True
+
+    def _event_windows(self, final_events: list[dict[str, Any]], total_ns: int
+                       ) -> Iterator[tuple[int | None, list[dict[str, Any]]]]:
+        if not self._event_chunks:
+            yield total_ns, final_events
+            return
+        for cutoff_ns, path in self._event_chunks:
+            yield cutoff_ns, [json.loads(data) for _, data in _chunk_lines(path)]
+        yield total_ns, [event for event in final_events if event["stage"] != "video_pass"]
+        yield None, self._video_pass_spans + [event for event in final_events if event["stage"] == "video_pass"]
+
+    def _raw_events(self, final_events: Sequence[dict[str, Any]]) -> Iterator[str]:
+        saved = (item for _, path in self._event_chunks for item in _chunk_lines(path))
+        remaining = ((event["id"], _encode_event(event))
+                     for event in sorted([*self._video_pass_spans, *final_events], key=lambda item: item["id"]))
+        for _, data in heapq.merge(saved, remaining):
+            yield data
+
     def _write_record(self, kind: Any, error: Any) -> None:
         if self.destination is None:
             return
         assert self._started_ns is not None
         total_ns = time.perf_counter_ns() - self._started_ns
-        events = sorted(self.events, key=lambda event: event["id"])
+        final_events = sorted(self.events, key=lambda event: event["id"])
         inclusive: dict[str, float] = defaultdict(float)
         models: dict[str, dict[str, Any]] = {}
         batches: dict[str, Counter[str]] = defaultdict(Counter)
         dispatches: dict[str, dict[str, Any]] = {}
         video_reads: dict[str, Counter[str]] = defaultdict(Counter)
         pass_loads: dict[str, Counter[str]] = defaultdict(Counter)
-        for event in events:
-            seconds = (event["end_ns"] - event["start_ns"]) / 1e9
-            inclusive[event["stage"]] += seconds
-            attrs = event["attributes"]
-            if event["stage"] in {"model_load", "model_unload"}:
-                key = json.dumps({k: attrs[k] for k in ("model", "weights", "device", "dtype")}, sort_keys=True)
-                model = models.setdefault(key, {**{k: attrs[k] for k in ("model", "weights", "device", "dtype")},
-                                               "load_count": 0, "unload_count": 0, "failed_count": 0,
-                                               "load_seconds": 0.0, "unload_seconds": 0.0})
-                action = event["stage"].removeprefix("model_")
-                model[f"{action}_count"] += 1
-                model[f"{action}_seconds"] += seconds
-                model["failed_count"] += event["status"] != "ok"
-                if action == "load" and "video_pass" in attrs:
-                    pass_loads[str(attrs["video_pass"])][attrs["model"]] += 1
-            if "batch_shape" in attrs:
-                batches[str(attrs.get("model", attrs.get("node", "unknown")))][json.dumps(attrs["batch_shape"])] += 1
-            if event["stage"] == "batch_dispatch":
-                stats = dispatches.setdefault(attrs["model"], {"batches": 0, "failed": 0, "items": 0,
-                                             "total_capacity": 0, "sizes": Counter(), "cross_source_batches": 0,
-                                             "cross_clip_batches": 0, "fill_fraction": 0.0,
-                                             "peak_queued_items": 0, "peak_active_sources": 0})
-                stats["batches"] += 1
-                stats["failed"] += event["status"] != "ok"
-                stats["items"] += attrs["batch_items"]
-                stats["total_capacity"] += attrs["batch_capacity"]
-                stats["sizes"][str(attrs["batch_items"])] += 1
-                stats["cross_source_batches"] += attrs["source_count"] > 1
-                stats["cross_clip_batches"] += attrs["clip_count"] > 1
-                stats["fill_fraction"] = stats["items"] / stats["total_capacity"]
-                stats["peak_queued_items"] = max(stats["peak_queued_items"], attrs["queued_items"])
-                stats["peak_active_sources"] = max(stats["peak_active_sources"], attrs["active_sources"])
-            if event["stage"] == "video_read":
-                component = str(attrs.get("node", "unknown")).split("/")[0]
-                video_reads[str(attrs.get("video_pass", "outside_plan"))][component] += 1
+        attributed: dict[str, float] = defaultdict(float)
+        timeline = TimingSummary(self.samples, self.model_aliases)
+        start_ns = 0
+        for cutoff_ns, events in self._event_windows(final_events, total_ns):
+            if cutoff_ns is not None:
+                for stage, seconds in wall_breakdown(events, cutoff_ns, start_ns=start_ns).items():
+                    attributed[stage] += seconds
+                start_ns = cutoff_ns
+            timeline.add(events)
+            for event in events:
+                seconds = (event["end_ns"] - event["start_ns"]) / 1e9
+                inclusive[event["stage"]] += seconds
+                attrs = event["attributes"]
+                if event["stage"] in {"model_load", "model_unload"}:
+                    key = json.dumps({k: attrs[k] for k in ("model", "weights", "device", "dtype")}, sort_keys=True)
+                    model = models.setdefault(key, {**{k: attrs[k] for k in ("model", "weights", "device", "dtype")},
+                                                   "load_count": 0, "unload_count": 0, "failed_count": 0,
+                                                   "load_seconds": 0.0, "unload_seconds": 0.0})
+                    action = event["stage"].removeprefix("model_")
+                    model[f"{action}_count"] += 1
+                    model[f"{action}_seconds"] += seconds
+                    model["failed_count"] += event["status"] != "ok"
+                    if action == "load" and "video_pass" in attrs:
+                        pass_loads[str(attrs["video_pass"])][attrs["model"]] += 1
+                if "batch_shape" in attrs:
+                    batches[str(attrs.get("model", attrs.get("node", "unknown")))][json.dumps(attrs["batch_shape"])] += 1
+                if event["stage"] == "batch_dispatch":
+                    stats = dispatches.setdefault(attrs["model"], {"batches": 0, "failed": 0, "items": 0,
+                                                 "total_capacity": 0, "sizes": Counter(), "cross_source_batches": 0,
+                                                 "cross_clip_batches": 0, "fill_fraction": 0.0,
+                                                 "peak_queued_items": 0, "peak_active_sources": 0})
+                    stats["batches"] += 1
+                    stats["failed"] += event["status"] != "ok"
+                    stats["items"] += attrs["batch_items"]
+                    stats["total_capacity"] += attrs["batch_capacity"]
+                    stats["sizes"][str(attrs["batch_items"])] += 1
+                    stats["cross_source_batches"] += attrs["source_count"] > 1
+                    stats["cross_clip_batches"] += attrs["clip_count"] > 1
+                    stats["fill_fraction"] = stats["items"] / stats["total_capacity"]
+                    stats["peak_queued_items"] = max(stats["peak_queued_items"], attrs["queued_items"])
+                    stats["peak_active_sources"] = max(stats["peak_active_sources"], attrs["active_sources"])
+                if event["stage"] == "video_read":
+                    component = str(attrs.get("node", "unknown")).split("/")[0]
+                    video_reads[str(attrs.get("video_pass", "outside_plan"))][component] += 1
+        self.resources["ram_process_lifetime_peak_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
         document = {
             "schema": "inference_recording_v1", "started_at": self._started_at,
             "status": "failed" if error is not None or self._sample_errors else "complete",
             "error_type": None if kind is None else kind.__name__, "metadata": self.metadata,
             "timing": {"clock": "perf_counter_ns", "gpu": self._gpu_timing(),
-                       "wall_attribution": "deepest_span_then_gpu_then_latest", "sample_interval_seconds": self.sample_interval},
+                       "wall_attribution": "deepest_span_then_gpu_then_latest", "sample_interval_seconds": self.sample_interval,
+                       "event_checkpoints": len(self._event_chunks)},
             "total_wall_seconds": total_ns / 1e9,
-            "stage_wall_seconds": wall_breakdown(events, total_ns),
+            "stage_wall_seconds": dict(sorted(attributed.items())),
             "stage_inclusive_seconds": dict(inclusive), "models": list(models.values()),
             "batch_shapes": dict(batches), "batch_dispatches": dispatches, "resources": self.resources,
             "video_reads_by_pass": video_reads, "model_loads_by_pass": pass_loads,
-            "resource_samples": self.samples, "timings": timing_summary(events, self.samples, self.model_aliases),
-            "measurement_errors": self._sample_errors, "events": events,
+            "resource_samples": self.samples, "timings": timeline.result(),
+            "measurement_errors": self._sample_errors,
         }
         self.destination.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=self.destination.parent, delete=False) as stream:
             temporary = Path(stream.name)
             try:
-                json.dump(document, stream, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
-                stream.write("\n")
+                stream.write("{")
+                for key, value in document.items():
+                    stream.write(f"{json.dumps(key)}:")
+                    json.dump(value, stream, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+                    stream.write(",")
+                stream.write('"events":[')
+                for index, data in enumerate(self._raw_events(final_events)):
+                    if index:
+                        stream.write(",")
+                    stream.write(data)
+                stream.write("]}\n")
                 stream.close()
                 temporary.replace(self.destination)
             finally:
                 temporary.unlink(missing_ok=True)
+        if self._event_directory is not None:
+            shutil.rmtree(self._event_directory)
 
     def _gpu_timing(self) -> str:
         if not self.devices:
@@ -367,6 +453,8 @@ def span(stage: str, **attributes: Any) -> Iterator[dict[str, Any]]:
     with recorder._lock:
         identifier = recorder._next_id
         recorder._next_id += 1
+        if stage != "video_pass":
+            recorder._live_spans += 1
         role = recorder._roles.get(native_thread_id, "native")
     assert recorder._started_ns is not None
     event: dict[str, Any] = {"id": identifier, "parent_id": stack[-1] if stack else None, "depth": len(stack),
@@ -389,6 +477,8 @@ def span(stage: str, **attributes: Any) -> Iterator[dict[str, Any]]:
         _STACK.reset(token)
         with recorder._lock:
             recorder.events.append(event)
+            if stage != "video_pass":
+                recorder._live_spans -= 1
 
 
 def measured(stage: str) -> Callable[[Callable[P, R]], Callable[P, R]]:

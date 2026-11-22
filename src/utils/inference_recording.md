@@ -111,6 +111,14 @@ time in proportion to idle overlap. It also reports the corresponding wall time
 summed across threads. Child work in another thread is attributed to that thread.
 GPU launches, synchronization and queue waits have separate stages.
 
+Video batch progress checkpoints completed spans to temporary files at node
+or dispatch-group boundaries once the buffer reaches 100,000 events. The
+recorder writes all events in ID order to the final `recording.json`. It merges
+timing statistics across the disjoint windows using the same resource samples.
+The `video_pass` span keeps its full duration and is summarized separately.
+`timing.event_checkpoints` counts the windows written to temporary files. These
+files stay beside progress until the final recording is published.
+
 `temporary_directory(path)` samples only caller-owned temporary outputs, including
 their completed size before atomic publication. It never scans the shared
 dataset or unrelated output directories. Resource sampling failures are reported

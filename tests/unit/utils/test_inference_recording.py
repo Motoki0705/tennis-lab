@@ -20,6 +20,7 @@ from src.utils.inference_recording import (
     temporary_directory,
     wall_breakdown,
 )
+from src.utils.inference_timing import timing_summary
 from src.utils.video.prefetch import PrefetchIterator
 
 
@@ -72,6 +73,32 @@ def test_wall_breakdown_partitions_nested_and_prefetched_work() -> None:
         {"stage": "postprocess", "start_ns": 0, "end_ns": 10_000_000_000, "depth": 1},
         {"stage": "decode", "start_ns": 2_000_000_000, "end_ns": 2_000_000_000, "depth": 2},
     ], 10_000_000_000) == {"postprocess": 10., "unattributed": 0.}
+
+
+def test_checkpoints_preserve_parent_order_and_complete_recording(tmp_path: Path) -> None:
+    destination = tmp_path / "recording.json"
+    with InferenceRecorder(destination, sample_interval=60) as recorder:
+        with span("video_pass"), recording_context(clip_id="clip", node="detection/cam0"):
+            with span("preprocess", model="detector"), span("decode"):
+                assert not recorder.checkpoint_events(minimum_events=1)
+            assert recorder.checkpoint_events(minimum_events=1)
+            with span("inference", model="detector", batch_shape=[1, 3]):
+                pass
+        assert recorder.checkpoint_events(minimum_events=1)
+        with span("save"):
+            pass
+    record = json.loads(destination.read_text())
+    assert record["timing"]["event_checkpoints"] == 2
+    assert record["batch_shapes"] == {"detector": {"[1, 3]": 1}}
+    events = record["events"]
+    assert [event["id"] for event in events] == list(range(len(events)))
+    pass_event = next(event for event in events if event["stage"] == "video_pass")
+    inference = next(event for event in events if event["stage"] == "inference")
+    assert inference["parent_id"] == pass_event["id"]
+    assert record["stage_wall_seconds"] == pytest.approx(
+        wall_breakdown(events, round(record["total_wall_seconds"] * 1e9)))
+    assert record["timings"] == timing_summary(events, record["resource_samples"], {})
+    assert not list(tmp_path.glob(".recording-*"))
 
 
 def test_disabled_recording_never_reads_assets_or_creates_files(tmp_path: Path) -> None:
