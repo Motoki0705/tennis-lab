@@ -6,7 +6,7 @@ import copy
 import json
 import re
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -113,6 +113,7 @@ def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any
             "preflight",
             "launch_failures",
             "manual_launcher",
+            "manual_followup_history",
             "repair_attempts",
         }
     } | (
@@ -1261,6 +1262,7 @@ class ParentSession:
         continue_existing: bool = False,
         base_ref: str | None = None,
         handoff_from_astra: str | None = None,
+        deferred: list[Callable[[], None]] | None = None,
     ) -> dict[str, Any]:
         self.agreed()
         auth = execution.authorization(self)
@@ -1521,7 +1523,8 @@ class ParentSession:
             self.row["tasks"][str(child)].setdefault("helpers", {})[self.worker] = task
         else:
             self.row["tasks"][str(child)] = task
-        self.store.save()
+        if deferred is None:
+            self.store.save()
         if helper:
             return {
                 "action": "launch",
@@ -1542,8 +1545,15 @@ class ParentSession:
             "成果物・関連PR",
             (content + "\n\n" + assignment).strip(),
         )
-        self.update_body(child, body, children[child].body)
-        self.sync_progress()
+
+        def announce() -> None:
+            self.update_body(child, body, children[child].body)
+            self.sync_progress()
+
+        if deferred is not None:
+            deferred.append(announce)
+            return {"action": "launch", "child": child}
+        announce()
         return {
             "action": "launch",
             "child": child,

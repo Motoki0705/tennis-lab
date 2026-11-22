@@ -38,7 +38,7 @@ READ_ONLY = {
     "merge-status",
     "state-migrate",
 }
-BEFORE_WORKER = {"run-worker", "start-worker", "continue-worker"}
+BEFORE_WORKER = {"start-worker", "continue-worker"}
 EXPLICIT_PUBLICATION = {"publish-worker-log", "publish-decision-log"}
 MUTATIONS = {
     "register",
@@ -55,8 +55,10 @@ MUTATIONS = {
     "receive-proposal",
     "delegate",
     "configure-delegation",
+    "run-worker",
     "record-worker-run",
     "record-worker-ended",
+    "cancel-worker-launch",
     "record-result",
     "record-cancellation",
     "decide-worker-plan",
@@ -202,11 +204,11 @@ class Continuation:
         except (ValueError, OSError, KeyError, TypeError, AttributeError):
             self.initial_owner = {}
         if (
-            args.command in EXPLICIT_PUBLICATION
+            args.command in EXPLICIT_PUBLICATION | {"run-worker"}
             and self.initial_owner.get("session") == identity
         ):
-            # Explicit publication and its postlude share one admission. A
-            # same-session registration must not grant that old operation a new epoch.
+            # Publication after an explicit command or manual launch uses the
+            # generation observed before that operation started.
             self.generation = self.initial_owner.get("generation")
 
     def _owner_snapshot(self) -> dict[str, Any]:

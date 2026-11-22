@@ -425,7 +425,11 @@ class LiveBackend:
                 saved = task.get("repair_attempts", {}).get(attempt["id"])
                 if not saved:
                     return None
-                if saved["launch_state"] in {"reserved", "capacity_deferred"}:
+                if saved["launch_state"] in {
+                    "reserved",
+                    "cancelled_unstarted",
+                    "capacity_deferred",
+                }:
                     return {"outcome": "reserved"}
                 command = saved["command"]
                 directory = Path(command[command.index("--run-dir") + 1])
