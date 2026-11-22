@@ -50,7 +50,7 @@ def test_improvement_approval_does_not_resurrect_a_revoked_planning_basis(
     monkeypatch.setattr(
         execution, "human_basis", lambda event: {"kind": "human_agreement"}
     )
-    session = SimpleNamespace(history=history)
+    session = SimpleNamespace(history=history, require_assignment_record=lambda _: None)
     with pytest.raises(execution.ExecutionBasisStale, match="有効な実行根拠"):
         execution._current_basis(session, history=old)
     assert observed == ["fresh-approval", "revocation"]

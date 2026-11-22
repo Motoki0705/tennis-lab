@@ -1166,6 +1166,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
         }:
             # The mutation is durable and its registry lock is released. Sync
             # the caller and unnamed active peers before projecting the name.
+            integration_failed |= "assignment_evidence" in result
             result = {**result, "parent_action_applied": True}
             from board.errors import BoardError
             from board.service import sync_parent

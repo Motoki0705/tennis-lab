@@ -424,9 +424,8 @@ def test_stale_delegation_needs_explicit_parent_result_verification(
         value["basis"]["scope"] = "変更後の範囲"
         record(p, value)
     elif change == "generation":
-        data = json.loads(registry(p).read_text())
-        data["parents"]["o/r#1"]["generation"] += 1
-        registry(p).write_text(json.dumps(data))
+        p.cli("release", "--note-file", p.note("同じセッションで担当を取り直す。"))
+        p.cli("register")
         record(p)
     assert (
         "no recorded run"

@@ -248,12 +248,12 @@ def test_mutations_are_never_replayed_on_disconnect(
 
     def request(
         self: object, actual_method: str, endpoint: str, payload: object
-    ) -> subprocess.CompletedProcess[str]:
+    ) -> object:
         calls.append([actual_method, endpoint])
         assert payload == {"body": "only once"}
-        return disconnected()
+        return api.HTTPResponse(None, {}, "", "error connecting")
 
-    monkeypatch.setattr(api.HTTPClient, "request", request)
+    monkeypatch.setattr(api.HTTPClient, "request_response", request)
     monkeypatch.setattr(api, "time", SimpleNamespace(sleep=sleeps.append))
     monkeypatch.setattr(
         parent_api,

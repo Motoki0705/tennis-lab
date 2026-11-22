@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+import subprocess
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -30,6 +31,7 @@ from issues import (
     validate_body,
 )
 from issues.cli import render_spec
+from issues.format import WORK_STATUS_HEADING
 
 from . import execution, proposals, work_targets, worker_preflight, worker_slots
 from .github import GitHub
@@ -57,6 +59,10 @@ from .state import Store
 TASK_MARKER = re.compile(
     r"(?m)^<!-- parent-task:v1 parent=([1-9][0-9]*) key=([a-z0-9][a-z0-9-]{0,63}) spec=([0-9a-f]{64}) -->$"
 )
+ASSIGNMENT_RETRIES = {
+    "assigned": "retry parent register in the assigned session",
+    "handoff": "retry parent handoff --accept with the original --note-file in the assigned session",
+}
 
 
 @dataclass(frozen=True)
@@ -261,39 +267,87 @@ class ParentSession:
         registration(self.store.parents, self.key, self.session)
         if self.gh.issue(self.parent)["state"] != "open":
             raise ValueError("cannot assign a closed parent issue")
-        if not self.row or self.row["status"] != "active":
-            previous = self.row
-            self.store.parents[self.key] = {
-                **previous,
+        row = self.row
+        new_assignment = row.get("status") != "active"
+        if new_assignment:
+            row = {
+                **row,
                 "session": self.session,
                 "status": "active",
-                "generation": previous.get("generation", 0) + 1,
-                "tasks": previous.get("tasks", {}),
-                "reviews": previous.get("reviews", []),
-                "display_summary": summary,
+                "generation": row.get("generation", 0) + 1,
+                "tasks": row.get("tasks", {}),
+                "reviews": row.get("reviews", []),
             }
-            self.row.pop("owner_runtime", None)
+            for field in (
+                "owner_runtime",
+                "handoff_generation",
+                "handoff_note_sha256",
+                "handoff_recovery",
+            ):
+                row.pop(field, None)
+            self.store.parents[self.key] = row
+        runtime_changed = self.capture_owner_runtime()
+        if new_assignment or runtime_changed or row.get("display_summary") != summary:
+            row["display_summary"] = summary
             self.store.save()
-        if self.capture_owner_runtime():
-            self.store.save()
-        if self.row.get("display_summary") != summary:
-            self.row["display_summary"] = summary
-            self.store.save()
-        self.post(
-            {"event": "assigned", "generation": self.row["generation"]},
+        return self._finish_assignment(
+            {"event": "assigned"},
             "担当開始。担当指定と要件合意は別段階です。要件を確認してから分割・委任します。",
         )
-        # Registration returns its assignment receipt. A full status collection
-        # also traverses family/timelines and worker/completion inputs unrelated
-        # to this mutation; callers request that independent observation via status.
-        return {
+
+    def _finish_assignment(self, event: dict[str, Any], text: str) -> dict[str, Any]:
+        # The owner has already been saved. Reporting a failed evidence step
+        # must still let the CLI confirm the display destination for this owner.
+        row = self.row
+        receipt = {
             "repo": self.gh.repo,
             "parent": self.parent,
-            "assignment": self.row["status"],
-            "display_summary": self.row.get("display_summary"),
-            "current_session_is_owner": self.row["session"] == self.session,
-            "phase": PHASES[phase(self.history())],
+            "assignment": row["status"],
+            "display_summary": row.get("display_summary"),
+            "current_session_is_owner": row["session"] == self.session,
+            "phase": None,
         }
+        try:
+            self.post({**event, "generation": row["generation"]}, text)
+            if event["event"] == "handoff":
+                return self.reconcile()
+            receipt["phase"] = PHASES[phase(self.history())]
+        except (
+            ValueError,
+            OSError,
+            KeyError,
+            TypeError,
+            subprocess.SubprocessError,
+        ) as exc:
+            receipt["assignment_evidence"] = {
+                "status": "error",
+                "error": str(exc),
+                "retry": ASSIGNMENT_RETRIES[event["event"]],
+            }
+        return receipt
+
+    def _missing_assignment_record(self, history: list[dict[str, Any]]) -> str | None:
+        row = self.row
+        if row.get("status") != "active":
+            return None
+        generation = row["generation"]
+        handoff = row.get("handoff_generation") == generation
+        # A dispatcher controller may be rebound without changing assignment.
+        # Require its handoff comment only for an actual manual handoff generation.
+        if row.get("dispatch") is not None and not handoff:
+            return None
+        events = ("handoff",) if handoff else ASSIGNMENT_RETRIES
+        if any(
+            event["event"] in events and event.get("generation") == generation
+            for event in history
+        ):
+            return None
+        event = "handoff" if "handoff_note_sha256" in row else "assigned"
+        return ASSIGNMENT_RETRIES[event]
+
+    def require_assignment_record(self, history: list[dict[str, Any]]) -> None:
+        if retry := self._missing_assignment_record(history):
+            raise execution.ExecutionBasisStale(f"assignment record missing; {retry}")
 
     def capture_owner_runtime(self) -> bool:
         from lib.identity import native_runtime
@@ -333,6 +387,7 @@ class ParentSession:
         row = self.row
         _, items = self.work_items()
         history = self.history()
+        assignment_retry = self._missing_assignment_record(history)
         run_paths = self.run_paths()
         try:
             publications = remaining_publications(
@@ -356,6 +411,16 @@ class ParentSession:
             "display_summary": row.get("display_summary"),
             "current_session_is_owner": bool(row and row["session"] == self.session),
             "phase": PHASES[phase(history)],
+            **(
+                {
+                    "assignment_evidence": {
+                        "status": "missing",
+                        "retry": assignment_retry,
+                    }
+                }
+                if assignment_retry
+                else {}
+            ),
             "notifications": publication_status(
                 self.gh.record_history(self.parent, self.login)
             ),
@@ -462,21 +527,20 @@ class ParentSession:
             row
             and row["status"] == "active"
             and row["session"] == self.session
+            and row.get("handoff_generation", row["generation"]) == row["generation"]
             and row.get("handoff_note_sha256") == digest(note)
         )
         if same_retry:
             if row.get("display_summary") != summary:
                 row["display_summary"] = summary
                 self.store.save()
-            self.post(
+            return self._finish_assignment(
                 {
                     "event": "handoff",
-                    "generation": row["generation"],
                     "recovery": row.get("handoff_recovery", False),
                 },
                 note,
             )
-            return self.reconcile()
         recoverable = bool(
             row
             and row["status"] == "active"
@@ -508,10 +572,12 @@ class ParentSession:
                     None  # Ownership transfers; execution stays suspended.
                 )
         # A retry after a failed comment must keep the claim and reconcile; it must not switch owners.
+        generation = row["generation"] + 1
         row.update(
             session=self.session,
             status="active",
-            generation=row["generation"] + 1,
+            generation=generation,
+            handoff_generation=generation,
             handoff_note_sha256=digest(note),
             handoff_recovery=recover,
             display_summary=summary,
@@ -527,11 +593,7 @@ class ParentSession:
                 }
             transfer_controller(row, inherited_authority, note, takeover=True)
         self.store.save()
-        self.post(
-            {"event": "handoff", "generation": row["generation"], "recovery": recover},
-            note,
-        )
-        return self.reconcile()
+        return self._finish_assignment({"event": "handoff", "recovery": recover}, note)
 
     def checking(self) -> dict[str, Any]:
         self.owner()
@@ -539,6 +601,7 @@ class ParentSession:
 
         require_final(self.gh, self.parent)
         history = self.history()
+        self.require_assignment_record(history)
         latest = next(
             (
                 e
@@ -631,6 +694,7 @@ class ParentSession:
             raise ValueError(f"agreement requires exactly {sorted(fields)}")
         agreement = {k: nonempty(v, k) for k, v in agreement.items()}
         history = self.history()
+        self.require_assignment_record(history)
         sha = digest(agreement)
         last_phase = next(
             (
@@ -1105,6 +1169,8 @@ class ParentSession:
             overrides = None
         if self.row.get("status") != "active":
             blockers.append(reason("parent_assignment", "親の担当がactiveでない。"))
+        elif retry := self._missing_assignment_record(inputs.history):
+            blockers.append(reason("assignment_record_missing", retry))
         if parent.state != "open" and restart_child is None:
             blockers.append(reason("parent_closed", "親issueがopenでない。"))
         if phase(inputs.history) not in {"agreed", "autonomous"}:
@@ -1593,7 +1659,7 @@ class ParentSession:
             + "\n\n".join(f"{key}: {value}" for key, value in detail.items())
         )
         text += f"\n\n<!-- parent-task-status:v1 state={'resumed' if resume else 'stopped'} detail={digest(detail)} -->"
-        current = raw_section(children[child].body, "作業状況・停止事項")
+        current = raw_section(children[child].body, WORK_STATUS_HEADING)
         already_recorded = current.rstrip().endswith(text)
         operation_number = len(
             re.findall(r"(?m)^<!-- parent-task-status:v1 ", current)
@@ -1602,7 +1668,7 @@ class ParentSession:
             child,
             replace_section(
                 children[child].body,
-                "作業状況・停止事項",
+                WORK_STATUS_HEADING,
                 current if already_recorded else current + "\n\n" + text,
             ),
             children[child].body,

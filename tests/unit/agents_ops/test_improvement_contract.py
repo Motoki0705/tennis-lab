@@ -146,6 +146,23 @@ def test_formatting_and_progress_are_safe_but_scope_code_and_unknown_sections_ar
             api.approved(candidate, source, 20, material)
 
 
+def test_self_stop_preserves_approval_contract(api: Any) -> None:
+    source, rows, body = chain(api)
+    candidate = api.read_candidates(comments(api, rows), 12, "owner")[source.key]
+    stopped = (
+        body + "\n## 作業状況・停止事項\n\n停止\n\nreason: 他の作業を先に進める。\n\n"
+        f"<!-- parent-task-status:v1 state=stopped detail={'a' * 64} -->\n"
+    )
+    assert api.contract(stopped) == api.contract(body)
+    assert api.approved(candidate, source, 20, stopped)["id"] == rows[-1]["id"]
+    for edited in (
+        stopped.replace("GPUは対象外", "GPUも実行する"),
+        stopped + "\n## 新しい停止条件\n\n別の完了条件を追加する。\n",
+    ):
+        with pytest.raises(ValueError, match="requirements changed"):
+            api.approved(candidate, source, 20, edited)
+
+
 @pytest.mark.parametrize("kind", ["prose", "supplement", "fence"])
 def test_approved_preamble_is_protected_and_formatting_is_preserved(
     api: Any, kind: str

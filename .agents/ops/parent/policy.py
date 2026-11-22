@@ -10,9 +10,9 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from issues import Issue, parse_sections, task_status
+from issues.format import WORK_STATUS_HEADING, visible_lines
 from issues.format import raw_section as raw_section
 from issues.format import section_span as section_span
-from issues.format import visible_lines
 
 PREFIX = "<!-- parent-session:v1 "
 MAX_NOTE_CHARS = 60_000
@@ -374,7 +374,7 @@ def replace_section(body: str, heading: str, content: str) -> str:
 
 
 def child_stopped(body: str, default: bool = False) -> bool:
-    section = raw_section(body, "作業状況・停止事項")
+    section = raw_section(body, WORK_STATUS_HEADING)
     last = section.splitlines()[-1] if section else ""
     record = re.fullmatch(
         r"<!-- parent-task-status:v1 state=(stopped|resumed) detail=[0-9a-f]{64} -->",

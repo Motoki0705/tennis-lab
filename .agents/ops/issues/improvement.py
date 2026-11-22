@@ -13,7 +13,13 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .format import _scan_markdown, parse_sections, raw_preamble, raw_section
+from .format import (
+    WORK_STATUS_HEADING,
+    _scan_markdown,
+    parse_sections,
+    raw_preamble,
+    raw_section,
+)
 
 EVENT_PREFIX = "<!-- parent-improvement:v1 "
 SOURCE_PREFIX = "<!-- parent-improvement-source:"
@@ -22,6 +28,7 @@ PROGRESS = frozenset(
     {
         "子タスクのチェックリスト",
         "進捗概要",
+        WORK_STATUS_HEADING,
         "成果物・関連PR",
         "次の改善候補",
         "終了記録",
