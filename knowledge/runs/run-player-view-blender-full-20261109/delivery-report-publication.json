@@ -1,0 +1,18 @@
+{
+  "operation": "publish_assembled_render_reports",
+  "reports": [
+    {
+      "player_id": 0,
+      "source": "outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/assembled/player_0/render.json",
+      "target": "outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/artifacts/render_player_0.json",
+      "sha256": "6854a296741f9e10ae8e6c14fefb79266c3497d4b3d2b7aa8114b0bd2f6657a2"
+    },
+    {
+      "player_id": 1,
+      "source": "outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/assembled/player_1/render.json",
+      "target": "outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/artifacts/render_player_1.json",
+      "sha256": "b4f9432d95417f4ae69749988dde36dcb3dac4c57afcef1a42f7feb88a8185d3"
+    }
+  ],
+  "human_acceptance": "pending"
+}

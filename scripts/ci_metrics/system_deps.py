@@ -133,20 +133,32 @@ def install(manifest: Path, cache: Path, output: Path) -> None:
                 _verify(downloaded, row["sha256"])
                 shutil.copyfile(downloaded, archive)
             binary = staged / row["name"]
-            # Extract only the named regular file, never paths, links or archive metadata.
+            # Extract only explicitly named regular binaries from verified archives.
+            # ffprobe is paired with the pinned ffmpeg build, never taken from PATH.
             if row["format"] == "tar.xz":
+                if row["name"] != "ffmpeg" or not row["member"].endswith("/bin/ffmpeg"):
+                    raise ValueError("unexpected ffmpeg archive member path")
+                members = {
+                    "ffmpeg": row["member"],
+                    "ffprobe": row["member"].removesuffix("ffmpeg") + "ffprobe",
+                }
                 with tarfile.open(archive, "r:xz") as tar:
-                    member = tar.getmember(row["member"])
-                    if not member.isfile():
-                        raise ValueError("ffmpeg archive member is not a regular file")
-                    source = tar.extractfile(member)
-                    assert source is not None
-                    with source, binary.open("wb") as destination:
-                        shutil.copyfileobj(source, destination)
+                    for member_name, archive_path in members.items():
+                        member = tar.getmember(archive_path)
+                        if not member.isfile():
+                            raise ValueError(
+                                f"{member_name} archive member is not a regular file"
+                            )
+                        source = tar.extractfile(member)
+                        assert source is not None
+                        destination = staged / member_name
+                        with source, destination.open("wb") as stream:
+                            shutil.copyfileobj(source, stream)
+                        destination.chmod(0o755)
             else:
                 with zipfile.ZipFile(archive) as zipped:
                     binary.write_bytes(zipped.read(row["member"]))
-            binary.chmod(0o755)
+                binary.chmod(0o755)
             version = _command(
                 [str(binary), "-version" if row["name"] == "ffmpeg" else "version"]
             )
@@ -160,6 +172,13 @@ def install(manifest: Path, cache: Path, output: Path) -> None:
                     f"unexpected {row['name']} version: {version.splitlines()[:1]}"
                 )
             print(version.splitlines()[0], flush=True)
+            if row["name"] == "ffmpeg":
+                probe_version = _command([str(staged / "ffprobe"), "-version"])
+                if not probe_version.startswith(f"ffprobe version {row['version']} "):
+                    raise ValueError(
+                        f"unexpected ffprobe version: {probe_version.splitlines()[:1]}"
+                    )
+                print(probe_version.splitlines()[0], flush=True)
             if row["name"] == "ffmpeg" and not re.search(
                 r"\blibx264\b", _command([str(binary), "-encoders"])
             ):

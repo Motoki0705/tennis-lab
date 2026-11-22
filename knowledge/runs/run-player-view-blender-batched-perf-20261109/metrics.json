@@ -1,0 +1,10 @@
+{
+  "rendered_frames": 24.0,
+  "mean_interval_id0_s": 4.207164,
+  "mean_interval_id1_s": 4.202864,
+  "max_valid_interval_id0_s": 4.248469,
+  "max_valid_interval_id1_s": 4.282473,
+  "max_evaluated_pc2_error_m": 0.0,
+  "metadata_crc_passed": 1.0,
+  "throughput_gate_passed": 0.0
+}

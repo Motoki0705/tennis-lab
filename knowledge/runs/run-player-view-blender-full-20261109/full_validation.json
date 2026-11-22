@@ -1,0 +1,133 @@
+{
+  "source_frames": [
+    0,
+    1010
+  ],
+  "fps": 59.94006,
+  "player_ids": [
+    0,
+    1
+  ],
+  "source_digest_matches": {
+    "scene_files": {
+      "ball_3d_valid.npy": true,
+      "ball_positions.npy": true,
+      "manifest.json": true,
+      "player_0.pc2": true,
+      "player_1.pc2": true,
+      "player_smpl_valid.npy": true,
+      "smpl_faces.npy": true,
+      "source_frames.npy": true,
+      "source_time_seconds.npy": true
+    },
+    "camera_files": {
+      "manifest.json": true,
+      "player_0.npz": true,
+      "player_1.npz": true
+    }
+  },
+  "views": {
+    "0": {
+      "audited_frames": 1010,
+      "camera_valid": 1007,
+      "camera_missing_source_frames": [
+        0,
+        1,
+        731
+      ],
+      "visible_opponent_frames": 992,
+      "visible_ball_frames": 854,
+      "max_camera_matrix_error": 4.7626982535575735e-07,
+      "max_ball_position_error_m": 0.0,
+      "max_reported_pc2_error_m": 0.0,
+      "denoising": {
+        "enabled": true,
+        "denoiser": "OPENIMAGEDENOISE",
+        "use_gpu": true
+      },
+      "source_masks_match": true,
+      "viewer_hidden_all_frames": true,
+      "dither_intensity": 0.0
+    },
+    "1": {
+      "audited_frames": 1010,
+      "camera_valid": 993,
+      "camera_missing_source_frames": [
+        0,
+        1,
+        735,
+        741,
+        742,
+        750,
+        751,
+        752,
+        753,
+        754,
+        755,
+        756,
+        757,
+        758,
+        759,
+        760,
+        761
+      ],
+      "visible_opponent_frames": 992,
+      "visible_ball_frames": 849,
+      "max_camera_matrix_error": 4.764382879329787e-07,
+      "max_ball_position_error_m": 0.0,
+      "max_reported_pc2_error_m": 0.0,
+      "denoising": {
+        "enabled": true,
+        "denoiser": "OPENIMAGEDENOISE",
+        "use_gpu": true
+      },
+      "source_masks_match": true,
+      "viewer_hidden_all_frames": true,
+      "dither_intensity": 0.0
+    }
+  },
+  "videos": {
+    "player_0.mp4": {
+      "decoded_frames": 1010,
+      "presentation_timestamps_checked": 1010,
+      "fps": 59.940060001224516,
+      "duration_seconds": 16.850167,
+      "width": 1280,
+      "height": 720,
+      "sha256": "ebf650199181ca05dc58782c297169a71f612fbd6e114c6a1044388c4103ae71"
+    },
+    "player_1.mp4": {
+      "decoded_frames": 1010,
+      "presentation_timestamps_checked": 1010,
+      "fps": 59.940060001224516,
+      "duration_seconds": 16.850167,
+      "width": 1280,
+      "height": 720,
+      "sha256": "02e2a160a803112d8b563a50f02af9ef7aa34825745decea92f6251a7e265f34"
+    },
+    "comparison.mp4": {
+      "decoded_frames": 1010,
+      "presentation_timestamps_checked": 1010,
+      "fps": 59.940060001224516,
+      "duration_seconds": 16.850167,
+      "width": 2560,
+      "height": 720,
+      "sha256": "ca5b1f76b3c3cd4144ff2cc8a49425854b2cdf71dba7d8cc305d6e8236c622f6"
+    },
+    "comparison_short.mp4": {
+      "decoded_frames": 240,
+      "presentation_timestamps_checked": 240,
+      "fps": 59.940060001224516,
+      "duration_seconds": 4.004,
+      "width": 2560,
+      "height": 720,
+      "sha256": "4a8b3af86ad9e5f8dffb2764f04a78ca58afdfe7f0e79debd5612b7c2beab943"
+    }
+  },
+  "human_acceptance": "pending",
+  "short_comparison_source_interval": {
+    "start": 0,
+    "stop": 240
+  },
+  "visibility_count_definition": "Counts of hide_render=False from input masks; screen visibility depends on camera framing and occlusion."
+}

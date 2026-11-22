@@ -107,8 +107,7 @@ Each download has a 15-second connection limit, a 180-second total curl limit an
 no retry. SHA-256 is checked before extracting or executing a binary, including
 archives already present in `.ci-system-deps-cache`. The CI job starts with a cold
 archive directory; local reuse is optional. Bad cached bytes fail rather than
-triggering a different download. Only the named binary member is extracted;
-versions and the libx264 encoder are checked before publishing `bin` to `GITHUB_PATH`.
+triggering a different download. Only the named `ffmpeg` and `ffprobe` regular-file members are extracted from the same SHA-256-verified FFmpeg archive, together with the named `rclone` member. Both FFmpeg tool versions and the libx264 encoder are checked before publishing `bin` to `GITHUB_PATH`.
 There is no sudo/apt, alternate supplier or host-binary fallback. The Actions
 preparation step has an eight-minute limit.
 

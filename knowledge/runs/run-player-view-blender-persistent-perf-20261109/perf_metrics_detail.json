@@ -1,0 +1,171 @@
+{
+  "git_ref": "d8fa68cb2894d6e5036f246a73a83df4103465e1",
+  "package_sha256": "708affe5b630ba50014bf9f3f7a5ff4a730440906c1b1a4f99e920bfe5247280",
+  "source_frames": [
+    16,
+    17,
+    19,
+    731,
+    735
+  ],
+  "players": [
+    {
+      "player_id": 0,
+      "intervals_seconds": [
+        4.211463928222656,
+        4.160458326339722,
+        4.178460121154785,
+        4.251468181610107
+      ],
+      "mean_interval_seconds": 4.200462639331818,
+      "max_interval_seconds": 4.251468181610107,
+      "persistent_data": true,
+      "gpu_devices": [
+        {
+          "name": "NVIDIA L4",
+          "type": "OPTIX"
+        }
+      ],
+      "image_reference_match": true,
+      "images": [
+        {
+          "source_frame": 16,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.27289388020833333,
+          "pixel_span": 182
+        },
+        {
+          "source_frame": 17,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.2728363715277778,
+          "pixel_span": 173
+        },
+        {
+          "source_frame": 19,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.27186885127314814,
+          "pixel_span": 182
+        },
+        {
+          "source_frame": 731,
+          "camera_valid": false,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.45642505787037035,
+          "pixel_span": 2
+        },
+        {
+          "source_frame": 735,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.2755537471064815,
+          "pixel_span": 176
+        }
+      ]
+    },
+    {
+      "player_id": 1,
+      "intervals_seconds": [
+        4.256468772888184,
+        4.1894614696502686,
+        4.239467144012451,
+        4.164458751678467
+      ],
+      "mean_interval_seconds": 4.2124640345573425,
+      "max_interval_seconds": 4.256468772888184,
+      "persistent_data": true,
+      "gpu_devices": [
+        {
+          "name": "NVIDIA L4",
+          "type": "OPTIX"
+        }
+      ],
+      "image_reference_match": true,
+      "images": [
+        {
+          "source_frame": 16,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.27553855613425926,
+          "pixel_span": 183
+        },
+        {
+          "source_frame": 17,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.2757378472222222,
+          "pixel_span": 178
+        },
+        {
+          "source_frame": 19,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.2760814525462963,
+          "pixel_span": 184
+        },
+        {
+          "source_frame": 731,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.27501048900462965,
+          "pixel_span": 175
+        },
+        {
+          "source_frame": 735,
+          "camera_valid": false,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.45642505787037035,
+          "pixel_span": 2
+        }
+      ]
+    }
+  ],
+  "prefix_counts": [
+    388,
+    0
+  ],
+  "metadata_and_crc_passed": true,
+  "image_reference_match": true
+}
