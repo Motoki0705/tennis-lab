@@ -10,7 +10,7 @@ GVHMR FP16 B>1ビルドが異常終了した（終了値 -11）。その最小�
 | ファイル | 役割 |
 |---|---|
 | `rewrite_pred_cam.py` | `pred_cam` clampの `ScatterND` を `Slice` / `Clip` / `Concat` に等価書換えする |
-| `rewrite_attention_mask.py` | exportされた `masked_fill`（`Where(Cast(Expand(mask)), -inf, scores)`）を等価に書き換える。`additive` は `scores + Where(mask, -inf, 0)` |
+| `rewrite_attention_mask.py` | exportされた `masked_fill`（`Where(Cast(Expand(mask)), -inf, scores)`）を書き換える。`additive` は `scores + Where(mask, -inf, 0)`、`additive-finite` は `-inf` の代わりに `-32768` を使う |
 | `pin_precision.py` | 指定したattention演算を12 blockすべてでFP32計算に固定する（診断用。丸めが変わる） |
 | `graph_slices.py` | 境界tensorを入出力にして部分グラフを切り出す |
 | `variant_build.py` | 静的shapeの部分グラフを、指定のbuilder設定で1回ビルドする子プロセス |
@@ -20,9 +20,11 @@ GVHMR FP16 B>1ビルドが異常終了した（終了値 -11）。その最小�
 | `campaign.py` | ScatterND最小グラフの比較、`pred_cam` 書換えのFP32照合、書換え後の動的planの作成 |
 | `campaign_additive.py` | 加算maskのFP32照合とFP16ビット一致、動的plan、境界の拒否、#2335の計測 |
 | `additive_precision.py` | 加算mask attentionとK=2線形層を含むplanの層精度検査 |
+| `run_gvhmr_additive.py` / `experiment_additive.py` | #2305のruntimeと計測harnessを、層精度検査だけ `additive_precision` に替えて呼ぶ |
+| `inspect_outputs.py` | planの出力をshapeごとにONNX Runtimeと比べ、非有限値の数を数える |
 | `check_variant_accuracy.py` | 静的B=2の変種をONNX RuntimeでFP32グラフと比べる（CPU） |
 | `summarize.py` | 診断出力の終了値を `diagnosis-summary.json` に集約する |
-| `diagnosis-summary.json` / `ort-variant-accuracy.json` / `campaign-additive.json` | 記録した結果 |
+| `diagnosis-summary.json` / `ort-variant-accuracy.json` / `records/` | 記録した結果（queue出力の小さなJSON） |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | TensorRT一次資料との照合 |
 
 ## 環境
@@ -104,8 +106,9 @@ FP32 B=2とFP16 B=1も `--dtype` と `--batch` を変えて同じように作る
 
    ```bash
    "$trt_env/bin/python" -B -X faulthandler $bundle/campaign_additive.py \
+     --mask-mode additive-finite \
      --inputs "$gvhmr_inputs" --reference-root "$fp32_reference_root" \
-     --output outputs/trt-gvhmr-i2355/campaign-additive-2
+     --output outputs/trt-gvhmr-i2355/campaign-additive-finite-1
    ```
 
    段階ごとに非ゼロで止まる。FP32静的B=2で加算mask版と元グラフのONNX Runtime出力が
@@ -113,5 +116,13 @@ FP32 B=2とFP16 B=1も `--dtype` と `--batch` を変えて同じように作る
    B=1/2/4 × L=145/177のONNX Runtime出力が書換え前とビット一致すること。planの
    min/opt/maxで110個の主要演算がFP16で計算されること。B=0/5、L=144/178を
    TensorRTが拒否すること。
+
+6. planの出力をshapeごとにONNX Runtimeと比べる（`-inf` 加算maskのL=177の非有限値はこれで数えた）。
+
+   ```bash
+   "$trt_env/bin/python" -B -X faulthandler $bundle/inspect_outputs.py \
+     --inputs "$gvhmr_inputs" --conversion "$campaign/engine-additive" \
+     --shape eval:4:177 --shape eval:1:145 --output "$campaign-inspect.json"
+   ```
 
 各ビルドは別の子プロセスで行い、異常終了（終了値 -11）後も次の比較を続けて記録する。

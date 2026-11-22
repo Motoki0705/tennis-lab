@@ -19,3 +19,12 @@
 したがって、公開一次資料に同じTensorRT 10.14.1 / SM120 / FP16 / B>1の
 ScatterNDビルドSIGSEGVは見つからなかった。GPU campaignで小さいONNXへ切り出した
 結果が同じ終了値を示す場合、そのONNX、builder設定、verboseログを新規報告へ渡せる。
+
+## 切り分け後の範囲（2026-11-22追記）
+
+診断の結果、異常終了（終了値 -11）は `ScatterND` ではなく、最初のblockのattentionで起きていた。
+2つのBool maskとFP16 Softmaxを含むfused attentionで、B≥2のときに限られる
+（[node](../../nodes/tennis_scene/000080-run-i2355-gvhmr-pred-cam-clamp.md)）。
+この範囲では、release notesと公開Issueをまだ照合していない。新規報告に使えるのは
+`diagnosis-attention-1/graphs/source-pv-from-qkv.onnx`（32ノード、静的B=2）と、その
+builder設定・verboseログである。
