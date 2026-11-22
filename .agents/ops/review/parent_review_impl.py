@@ -8,10 +8,18 @@ import sys
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, ExitStack, contextmanager, nullcontext
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
+from dispatcher.runtime import Runtime, alive, capacity_refusal, gate
+from lib.agent_events import runtime_errors_failed
+from lib.d_capacity import CapacityError
 from lib.ops_review.parent_review_policy import marker, parse_output
-from lib.ops_review.progression import read, save
+from lib.ops_review.progression import (
+    read,
+    review_attempt,
+    review_launch_directory,
+    save,
+)
 from lib.ops_review.review_policy import neutralize_markers
 from lib.ops_review.review_workspace import (
     build_prompt,
@@ -41,6 +49,24 @@ RUNTIME_INITIALIZATION_FILES = {
 }
 
 
+def save_execution(
+    path: Path,
+    status: Literal["running", "completed", "capacity_deferred"],
+    attempt: int,
+    *,
+    guarded: bool,
+) -> None:
+    save(
+        path,
+        {
+            "status": status,
+            "agent_invocations": int(status != "capacity_deferred"),
+            "attempt": attempt,
+            "guarded_launch": guarded,
+        },
+    )
+
+
 def saved_request(review_dir: Path, request: dict[str, Any]) -> dict[str, Any]:
     saved = read(review_dir / "request.json")
     if (
@@ -64,6 +90,7 @@ def require_matching_runtime(
 ) -> None:
     runtime = review_dir / "agent-runtime"
     contract = object_value(record.get("contract"))
+    settings = object_value(contract.get("settings"))
     if (
         record.get("final_path") != str(runtime / "final.md")
         or record.get("run_dir") != str(runtime)
@@ -71,16 +98,19 @@ def require_matching_runtime(
         != hashlib.sha256((review_dir / "prompt.md").read_bytes()).hexdigest()
         or contract.get("mode") != "read-only"
         or contract.get("review_selection") != materials["review_selection"]
+        or settings.get("agent") != "codex"
+        or settings.get("profile") != "review"
     ):
         raise ValueError("saved review runtime does not match its request")
 
 
-def ended_runtime(state: dict[str, Any], runtime: Path) -> dict[str, Any]:
-    from dispatcher.runtime import Runtime
-
-    runner = Runtime(
+def review_runner(state: dict[str, Any]) -> Runtime:
+    return Runtime(
         Path(state.get("options", {}).get("agent_exec", OPS / "lib/agent_exec.sh"))
     )
+
+
+def ended_runtime(runner: Runtime, runtime: Path) -> dict[str, Any]:
     evidence = runner.inspect(runtime)
     if not runner.ended(evidence):
         raise ValueError(
@@ -146,10 +176,18 @@ def lock_released(path: Path) -> bool:
     return True
 
 
+def require_launch_ended(launch: Path, guarded: bool) -> None:
+    if guarded:
+        # The controller and its Popen child share this flock across fork/exec.
+        guard = launch / "launch.lock"
+        if not guard.is_file() or guard.is_symlink():
+            raise ValueError("recovery_required: reviewer launch lock is missing")
+        if not lock_released(guard):
+            raise ValueError("recovery_required: reviewer launcher is still active")
+
+
 def initialization_only(review_dir: Path, materials: dict[str, Any]) -> bool:
     """Inspect the common runner's files after its inherited launch lock is free."""
-    from dispatcher.runtime import alive
-
     runtime = review_dir / "agent-runtime"
     output = review_dir / "agent_output.md"
     if output.exists() or output.is_symlink() or runtime.is_symlink():
@@ -196,22 +234,13 @@ def initialization_only(review_dir: Path, materials: dict[str, Any]) -> bool:
 
 
 def retry_failure(
-    state: dict[str, Any], review_dir: Path, materials: dict[str, Any]
+    runner: Runtime, launch: Path, materials: dict[str, Any], *, guarded: bool
 ) -> dict[str, Any]:
-    execution = read(review_dir / "execution.json")
-    guarded = execution.get("guarded_launch") is True
-    runtime = review_dir / "agent-runtime"
-    if guarded:
-        # The controller and its Popen child share this flock across fork/exec.
-        # Even a launcher that has yet to create its runtime directory holds it.
-        guard = review_dir / "launch.lock"
-        if not guard.is_file() or guard.is_symlink():
-            raise ValueError("recovery_required: reviewer launch lock is missing")
-        if not lock_released(guard):
-            raise ValueError("recovery_required: reviewer launcher is still active")
+    runtime = launch / "agent-runtime"
+    require_launch_ended(launch, guarded)
     if (runtime / "result.json").is_file():
-        record = ended_runtime(state, runtime)
-        require_matching_runtime(review_dir, materials, record)
+        record = ended_runtime(runner, runtime)
+        require_matching_runtime(launch, materials, record)
         if record["result"] == "completed":
             raise ValueError("review runtime completed; recover it with merge-continue")
         if record.get("turn_end_reason") not in RETRYABLE_END_REASONS:
@@ -222,7 +251,7 @@ def retry_failure(
             key: record.get(key)
             for key in ("turn_end_reason", "error", "agent_spawned")
         }
-    if not guarded or not initialization_only(review_dir, materials):
+    if not guarded or not initialization_only(launch, materials):
         raise ValueError(
             "recovery_required: reviewer termination or runtime state is unconfirmed"
         )
@@ -256,12 +285,19 @@ def reserve_retry(
     if failed_round >= MAX_REVIEW_ATTEMPTS:
         raise ValueError(f"review attempt limit reached ({MAX_REVIEW_ATTEMPTS})")
     review_dir = directory / f"review-{failed_round}"
-    if not (review_dir / "execution.json").is_file():
+    execution_path = review_dir / "execution.json"
+    if not execution_path.is_file():
         raise ValueError("review retry requires a saved launch intent for this round")
     require_prior_failures(state, directory, review_dir)
     request = state["request"]
-    materials = saved_request(review_dir, request)
-    failure = retry_failure(state, review_dir, materials)
+    launch = review_launch_directory(review_dir, review_attempt(execution_path))
+    materials = saved_request(launch, request)
+    failure = retry_failure(
+        review_runner(state),
+        launch,
+        materials,
+        guarded=read(execution_path).get("guarded_launch") is True,
+    )
     require_clean_workspace(Path(state["checkout"]), request["review_run_id"])
     heads = {str(p["number"]): p["head_sha"] for p in materials["prs"]}
     for target in request["prs"]:
@@ -277,12 +313,8 @@ def reserve_retry(
 
 
 def completed_result(
-    review_dir: Path, materials: dict[str, Any], record: dict[str, Any]
+    review_dir: Path, launch: Path, materials: dict[str, Any], record: dict[str, Any]
 ) -> dict[str, Any]:
-    runtime = review_dir / "agent-runtime"
-    final = runtime / "final.md"
-    from lib.agent_events import runtime_errors_failed
-
     if (
         record.get("result") != "completed"
         or record.get("exit_code") != 0
@@ -290,7 +322,8 @@ def completed_result(
         or runtime_errors_failed(record)
     ):
         raise ValueError("review runtime did not complete and clean up")
-    require_matching_runtime(review_dir, materials, record)
+    require_matching_runtime(launch, materials, record)
+    final = launch / "agent-runtime/final.md"
     result = parse_output(
         final.read_text(), [entry["number"] for entry in materials["prs"]]
     )
@@ -311,8 +344,7 @@ def run_review(
     *,
     retry_launch: Callable[[Callable[[], None]], AbstractContextManager[None]],
 ) -> dict[str, Any]:
-    from dispatcher.runtime import gate
-    from lib.opsproc import run_process_group
+    from lib.opsproc import CommandError, run_process_group
 
     request = state["request"]
     review_dir = directory / f"review-{state['review']['round']}"
@@ -321,23 +353,37 @@ def run_review(
     if result_path.exists():
         return read(result_path)
     execution_path = review_dir / "execution.json"
+    runner = review_runner(state)
+    attempt = 0
     if execution_path.exists():
+        attempt = review_attempt(execution_path)
+        launch = review_launch_directory(review_dir, attempt)
+        runtime = launch / "agent-runtime"
         if (
-            not (review_dir / "request.json").is_file()
-            or not (review_dir / "agent-runtime/result.json").is_file()
+            not (launch / "request.json").is_file()
+            or not (runtime / "result.json").is_file()
         ):
             raise ValueError(
                 "recovery_required: missing review launch or runtime evidence"
             )
-        saved = saved_request(review_dir, request)
-        record = ended_runtime(state, review_dir / "agent-runtime")
-        result = completed_result(review_dir, saved, record)
-        save(execution_path, {**read(execution_path), "status": "completed"})
-        return publish_result(state, directory, gh, saved, result_path, result)
+        guarded = read(execution_path).get("guarded_launch") is True
+        require_launch_ended(launch, guarded)
+        saved = saved_request(launch, request)
+        record = ended_runtime(runner, runtime)
+        if not capacity_refusal(record):
+            result = completed_result(review_dir, launch, saved, record)
+            save_execution(execution_path, "completed", attempt, guarded=guarded)
+            return publish_result(state, directory, gh, saved, result_path, result)
+        require_matching_runtime(launch, saved, record)
+        require_clean_workspace(Path(state["checkout"]), request["review_run_id"])
+        save_execution(execution_path, "capacity_deferred", attempt, guarded=guarded)
+        attempt += 1
     from lib.review_settings import choose, load_policy
 
     policy = load_policy(None)
     require_prior_failures(state, directory, review_dir)
+    launch = review_launch_directory(review_dir, attempt)
+    launch.mkdir(parents=True, exist_ok=True, mode=0o700)
     retry_heads = state["review"].get("retry_heads")
     materials = dict(request)
     materials["review_selection"] = state["review"].get(
@@ -413,13 +459,13 @@ def run_review(
     }
     root = Path(state["checkout"])
     template = (HERE / "prompt_template.md").read_text(encoding="utf-8")
-    prompt = review_dir / "prompt.md"
+    prompt = launch / "prompt.md"
     prompt.write_text(
         build_prompt(materials, context, diffs, template), encoding="utf-8"
     )
-    save(review_dir / "request.json", materials)
-    save(review_dir / "context.json", context)
-    save(review_dir / "review-selection.json", materials["review_selection"])
+    save(launch / "request.json", materials)
+    save(launch / "context.json", context)
+    save(launch / "review-selection.json", materials["review_selection"])
     config = dict(state.get("options", {}))
     if state["review"].get("config_file"):
         config["review_config_file"] = state["review"]["config_file"]
@@ -445,17 +491,16 @@ def run_review(
             "prs": sorted(p["pr"]["number"] for p in prs),
             "ci_heads": sorted({p["pr"]["head"]["sha"] for p in prs}),
         },
-        "journal_dir": str(review_dir / "retrieval"),
+        "journal_dir": str(launch / "retrieval"),
         "cpu_tests": config.get("cpu_tests", {}),
         "isolation_proof": config.get("isolation_proof"),
     }
-    save(review_dir / "retrieval-config.json", retrieval)
+    save(launch / "retrieval-config.json", retrieval)
     from decision_logs.review_capture import reviewed, start_review
 
-    operation, runtime_env = start_review(
-        directory.parents[1], state, review_dir / "agent-runtime"
-    )
-    mcp = review_dir / "mcp-config.json"
+    runtime = launch / "agent-runtime"
+    operation, runtime_env = start_review(directory.parents[1], state, runtime)
+    mcp = launch / "mcp-config.json"
     save(
         mcp,
         {
@@ -465,7 +510,7 @@ def run_review(
                     "-m",
                     "lib.review_tools.review_server",
                     "--config",
-                    str(review_dir / "retrieval-config.json"),
+                    str(launch / "retrieval-config.json"),
                 ],
                 "env": {
                     "PYTHONPATH": str(OPS),
@@ -479,13 +524,7 @@ def run_review(
             }
         },
     )
-    runtime = review_dir / "agent-runtime"
     scratch = workspace_path(root, request["review_run_id"])
-    execution = {
-        "status": "running",
-        "agent_invocations": 1,
-        "guarded_launch": True,
-    }
 
     def verify_heads() -> None:
         for target in request["prs"]:
@@ -494,58 +533,74 @@ def run_review(
     @contextmanager
     def launch_retry() -> Iterator[None]:
         with retry_launch(verify_heads):
-            save(execution_path, execution)
+            save_execution(execution_path, "running", attempt, guarded=True)
             yield
 
-    with ExitStack() as launch:
-        lock_fd = launch.enter_context(gate(review_dir / "launch.lock"))
+    with ExitStack() as lifetime:
+        lock_fd = lifetime.enter_context(gate(launch / "launch.lock"))
         if lock_fd is None:
             raise ValueError("reviewer launcher is already active")
         # The runner inherits the lock even if the controller dies. A retry
         # commits its intent at launch, after the worktrees and final checks.
         if retry_heads is None:
-            save(execution_path, execution)
-        cwd = launch.enter_context(workspace(scratch, materials, context, diffs))
-        run_process_group(
-            [
-                config.get("agent_exec", str(OPS / "lib/agent_exec.sh")),
-                "--agent",
-                "codex",
-                "--profile",
-                "review",
-                "--review-selection-file",
-                str(review_dir / "review-selection.json"),
-                *(
-                    ["--config-file", config["review_config_file"]]
-                    if config.get("review_config_file")
-                    else []
-                ),
-                "--cwd",
-                str(cwd),
-                "--prompt-file",
-                str(prompt),
-                "--out",
-                str(review_dir / "agent_output.md"),
-                "--mcp-config",
-                str(mcp),
-                "--json-schema",
-                str(HERE / "result_schema.json"),
-                "--mode",
-                "read-only",
-                "--log-dir",
-                str(review_dir),
-                "--run-dir",
-                str(runtime),
-            ],
-            cwd=root,
-            timeout=config.get("agent_timeout", 1800),
-            env=runtime_env,
-            pass_fds=(lock_fd,),
-            launch_context=launch_retry if retry_heads is not None else nullcontext,
-        )
-    result = completed_result(review_dir, materials, read(runtime / "result.json"))
+            save_execution(execution_path, "running", attempt, guarded=True)
+        cwd = lifetime.enter_context(workspace(scratch, materials, context, diffs))
+        command = [
+            str(runner.runner),
+            "--agent",
+            "codex",
+            "--profile",
+            "review",
+            "--review-selection-file",
+            str(launch / "review-selection.json"),
+            *(
+                ["--config-file", config["review_config_file"]]
+                if config.get("review_config_file")
+                else []
+            ),
+            "--cwd",
+            str(cwd),
+            "--prompt-file",
+            str(prompt),
+            "--out",
+            str(launch / "agent_output.md"),
+            "--mcp-config",
+            str(mcp),
+            "--json-schema",
+            str(HERE / "result_schema.json"),
+            "--mode",
+            "read-only",
+            "--log-dir",
+            str(launch),
+            "--run-dir",
+            str(runtime),
+        ]
+        try:
+            run_process_group(
+                command,
+                cwd=root,
+                timeout=config.get("agent_timeout", 1800),
+                env=runtime_env,
+                pass_fds=(lock_fd,),
+                launch_context=launch_retry if retry_heads is not None else nullcontext,
+            )
+        except CommandError:
+            if (runtime / "result.json").is_file():
+                record = read(runtime / "result.json")
+                if reason := capacity_refusal(record):
+                    proof = runner.inspect(runtime)
+                    if runner.ended(proof) and proof["record"] == record:
+                        require_matching_runtime(launch, materials, record)
+                        save_execution(
+                            execution_path, "capacity_deferred", attempt, guarded=True
+                        )
+                        raise CapacityError(reason) from None
+            raise
+    result = completed_result(
+        review_dir, launch, materials, read(runtime / "result.json")
+    )
     reviewed(operation, result)
-    save(execution_path, {**execution, "status": "completed"})
+    save_execution(execution_path, "completed", attempt, guarded=True)
     return publish_result(state, directory, gh, materials, result_path, result)
 
 

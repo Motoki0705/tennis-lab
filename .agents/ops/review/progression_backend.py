@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from issues.cli import GitHubHTTPError
+from lib.d_capacity import CapacityError
 from lib.ops_review.merge_gate_policy import auto_merge, python_ci_errors
 from lib.ops_review.progression import RateWait
 from lib.repair_turn import parse_report
@@ -379,6 +380,8 @@ class LiveBackend:
             repair=repair_request(attempt["id"], target["number"]),
         )
         if code:
+            if receipt.get("launch_state") == "capacity_deferred":
+                raise CapacityError(receipt["reason"])
             if receipt.get("launch_state") == "rejected_before_start":
                 return {
                     "outcome": "needs_parent",
@@ -422,7 +425,7 @@ class LiveBackend:
                 saved = task.get("repair_attempts", {}).get(attempt["id"])
                 if not saved:
                     return None
-                if saved["launch_state"] == "reserved":
+                if saved["launch_state"] in {"reserved", "capacity_deferred"}:
                     return {"outcome": "reserved"}
                 command = saved["command"]
                 directory = Path(command[command.index("--run-dir") + 1])

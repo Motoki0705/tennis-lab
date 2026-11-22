@@ -24,6 +24,7 @@ from tests.e2e.agents_ops.test_progression_cli import (
     progression_path,
     request,
 )
+from tests.support.agents_ops.capacity_admission import late_capacity_runner
 
 SERVICE_UNAVAILABLE = "Codex backend 503 Service Unavailable"
 
@@ -48,6 +49,58 @@ def retry_args(
         p.note("一時障害後に前回と同じ対象で続行する。"),
         "--wait",
     )
+
+
+def test_retry_recovers_latest_failure_after_same_round_capacity_deferral(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    numbers, fake, calls = prepared(p)
+    runner, low = late_capacity_runner(p.root, fake)
+    deferred = request(p, numbers, runner)
+    state_file = progression_path(p, deferred)
+    join_controller(state_file)
+    assert deferred["events"][-1]["reason"].startswith("review_capacity_deferred:")
+    assert not calls.read_text()
+
+    low.unlink()
+    failed = json.loads(
+        p.cli(
+            "merge-continue",
+            "--instruction-file",
+            p.note("空き容量が戻ったため続行する。"),
+            "--wait",
+            extra={
+                "REVIEW_AGENT_FINAL_EXIT": "1",
+                "REVIEW_RUNTIME_ERROR_MESSAGE": SERVICE_UNAVAILABLE,
+            },
+        ).stdout
+    )
+    join_controller(state_file)
+    assert failed["status"] == "parent_wait" and failed["review"]["round"] == 1
+    assert len(calls.read_text().splitlines()) == 1
+    assert not any(c[:2] == ["pr", "merge"] for c in p.calls())
+
+    result = json.loads(p.cli(*retry_args(p, failed)).stdout)
+    assert result["status"] == "completed"
+    assert result["review_run_id"] == deferred["review_run_id"]
+    usage = result["review_usage"]
+    assert usage["launch_intents"] == 3 and usage["confirmed_launches"] == 2
+    assert [
+        (
+            entry["round"],
+            entry["attempt"],
+            entry["turn_end_reason"],
+            entry["agent_spawned"],
+        )
+        for entry in usage["rounds"]
+    ] == [
+        (1, 0, "capacity_blocked", False),
+        (1, 1, "runtime_error", True),
+        (2, 0, "completed", True),
+    ]
+    assert usage["rounds"][1]["error"] == SERVICE_UNAVAILABLE
+    assert len(calls.read_text().splitlines()) == 2
 
 
 @pytest.mark.parametrize("ci", ["SUCCESS", "FAILURE"])

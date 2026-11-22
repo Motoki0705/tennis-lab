@@ -1,0 +1,567 @@
+{
+  "schema_version": 1,
+  "queue_job": "0-8204657899186343089_2026-11-22T10-08-20-813656910Z_3253206_i2355-gvhmr-additive-campaign-2",
+  "inputs": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/inputs/gvhmr",
+  "reference_root": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/inputs/fp32-reference",
+  "stages": {
+    "full-dynamic-additive-build": {
+      "exit_code": 0,
+      "wall_seconds": 67.80245457300043,
+      "log": "logs/full-dynamic-additive-build.log"
+    },
+    "probe-valid-b1-l145": {
+      "exit_code": 0,
+      "wall_seconds": 6.30505999199886,
+      "log": "logs/probe-valid-b1-l145.log"
+    },
+    "probe-valid-b4-l177": {
+      "exit_code": 1,
+      "wall_seconds": 6.268393776997982,
+      "log": "logs/probe-valid-b4-l177.log"
+    },
+    "probe-reject-b0": {
+      "exit_code": 1,
+      "wall_seconds": 6.13800239000193,
+      "log": "logs/probe-reject-b0.log"
+    },
+    "probe-reject-b5": {
+      "exit_code": 1,
+      "wall_seconds": 6.117121131999738,
+      "log": "logs/probe-reject-b5.log"
+    },
+    "probe-reject-l144": {
+      "exit_code": 1,
+      "wall_seconds": 6.013178218996472,
+      "log": "logs/probe-reject-l144.log"
+    },
+    "probe-reject-l178": {
+      "exit_code": 1,
+      "wall_seconds": 6.135834216998774,
+      "log": "logs/probe-reject-l178.log"
+    }
+  },
+  "fp32_equivalence": {
+    "batch": 2,
+    "length": 145,
+    "pred_cam_rewrite": {
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/fp32-equivalence/scatter.onnx",
+      "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/fp32-equivalence/concat.onnx",
+      "source_sha256": "043af41853b693d4de166e6aaf25f42bb0f30384857adb449a24e8cc925858f8",
+      "target_sha256": "4de7ab0266b16f4832014a393d97d372b8328356e53956d58e7d071ebe1cf8ae",
+      "pred_cam_dtype": "fp32",
+      "pred_cam_shape": [
+        2,
+        145,
+        3
+      ],
+      "source_nodes": 2128,
+      "target_nodes": 2087,
+      "pruned_nodes": 44,
+      "scatternd_before": 1,
+      "scatternd_after": 0,
+      "replacement": [
+        "Slice",
+        "Clip",
+        "Slice",
+        "Concat"
+      ]
+    },
+    "mask_rewrite": {
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/fp32-equivalence/concat.onnx",
+      "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/fp32-equivalence/additive.onnx",
+      "source_sha256": "4de7ab0266b16f4832014a393d97d372b8328356e53956d58e7d071ebe1cf8ae",
+      "target_sha256": "7486b0800a7a3ca21a2fab1e4e436ea0e53de353659312b647d231548e78d40a",
+      "mode": "additive",
+      "rewritten_masks": 24,
+      "unverified_broadcast": [],
+      "pruned_nodes": 216,
+      "target_nodes": 1895
+    },
+    "bit_equal_to_source_onnx": true,
+    "comparisons": {
+      "pred_x": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 5.0067901611328125e-06,
+          "max_rel": 0.022058823529411766
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      },
+      "pred_cam": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 1.7881393432617188e-07,
+          "max_rel": 5.1404103075507484e-05
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      },
+      "static_conf_logits": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 1.71661376953125e-05,
+          "max_rel": 0.0004889024268502141
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      },
+      "mask_out": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      },
+      "length_out": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      }
+    }
+  },
+  "fp16_dynamic_parity": {
+    "pred_cam_rewrite": {
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive/export-scatter.onnx",
+      "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive/export-concat.onnx",
+      "source_sha256": "2d1ca82640c76adbf01fb331a23ab10b1d89767b23628c18cc0078e22078ae38",
+      "target_sha256": "efcfa0b863d569debf30c1020dedf432fce44f2013e1ada3eebff9785c8aa0a8",
+      "pred_cam_dtype": "fp16",
+      "pred_cam_shape": [
+        null,
+        null,
+        3
+      ],
+      "source_nodes": 4375,
+      "target_nodes": 4315,
+      "pruned_nodes": 63,
+      "scatternd_before": 1,
+      "scatternd_after": 0,
+      "replacement": [
+        "Slice",
+        "Clip",
+        "Slice",
+        "Concat"
+      ]
+    },
+    "mask_rewrite": {
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive/export-concat.onnx",
+      "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive/export.onnx",
+      "source_sha256": "efcfa0b863d569debf30c1020dedf432fce44f2013e1ada3eebff9785c8aa0a8",
+      "target_sha256": "4ceee7134e552466cf66f5ca3d01b4c17ca36fce30ecd70d9d260d996dd4254c",
+      "mode": "additive",
+      "rewritten_masks": 24,
+      "unverified_broadcast": [
+        "/network/blocks.0/attn/Where_1",
+        "/network/blocks.0/attn/Where_3",
+        "/network/blocks.1/attn/Where_1",
+        "/network/blocks.1/attn/Where_3",
+        "/network/blocks.2/attn/Where_1",
+        "/network/blocks.2/attn/Where_3",
+        "/network/blocks.3/attn/Where_1",
+        "/network/blocks.3/attn/Where_3",
+        "/network/blocks.4/attn/Where_1",
+        "/network/blocks.4/attn/Where_3",
+        "/network/blocks.5/attn/Where_1",
+        "/network/blocks.5/attn/Where_3",
+        "/network/blocks.6/attn/Where_1",
+        "/network/blocks.6/attn/Where_3",
+        "/network/blocks.7/attn/Where_1",
+        "/network/blocks.7/attn/Where_3",
+        "/network/blocks.8/attn/Where_1",
+        "/network/blocks.8/attn/Where_3",
+        "/network/blocks.9/attn/Where_1",
+        "/network/blocks.9/attn/Where_3",
+        "/network/blocks.10/attn/Where_1",
+        "/network/blocks.10/attn/Where_3",
+        "/network/blocks.11/attn/Where_1",
+        "/network/blocks.11/attn/Where_3"
+      ],
+      "pruned_nodes": 384,
+      "target_nodes": 3955
+    },
+    "shapes": {
+      "b1-l145": "bit-equal",
+      "b2-l145": "bit-equal",
+      "b4-l145": "bit-equal",
+      "b1-l177": "bit-equal",
+      "b2-l177": "bit-equal",
+      "b4-l177": "bit-equal"
+    }
+  },
+  "full_engine": {
+    "condition": "2",
+    "dynamic_profile": {
+      "length_counts": {
+        "eval": {
+          "177": 4,
+          "145": 4
+        },
+        "calibration": {
+          "117": 4
+        }
+      },
+      "profile_lengths": {
+        "min": 145,
+        "opt": 145,
+        "max": 177
+      },
+      "inputs": {
+        "length": [
+          [
+            1
+          ],
+          [
+            4
+          ],
+          [
+            4
+          ]
+        ],
+        "obs": [
+          [
+            1,
+            145,
+            17,
+            3
+          ],
+          [
+            4,
+            145,
+            17,
+            3
+          ],
+          [
+            4,
+            177,
+            17,
+            3
+          ]
+        ],
+        "f_cliffcam": [
+          [
+            1,
+            145,
+            3
+          ],
+          [
+            4,
+            145,
+            3
+          ],
+          [
+            4,
+            177,
+            3
+          ]
+        ],
+        "f_cam_angvel": [
+          [
+            1,
+            145,
+            6
+          ],
+          [
+            4,
+            145,
+            6
+          ],
+          [
+            4,
+            177,
+            6
+          ]
+        ],
+        "f_imgseq": [
+          [
+            1,
+            145,
+            1024
+          ],
+          [
+            4,
+            145,
+            1024
+          ],
+          [
+            4,
+            177,
+            1024
+          ]
+        ]
+      },
+      "outside_lengths": [
+        144,
+        178
+      ],
+      "representatives": {
+        "177": "clip_000-p0-cam0-s0",
+        "145": "clip_037-p0-cam2-s0"
+      },
+      "profile_batches": {
+        "min": 1,
+        "opt": 4,
+        "max": 4
+      }
+    },
+    "tensors_sha256": "dbf37d8a8320b2ac31c1ddcd9e3c4aee554276a001cedde6bc559eb3be5bdf56",
+    "graph_sha256": "4ceee7134e552466cf66f5ca3d01b4c17ca36fce30ecd70d9d260d996dd4254c",
+    "engine_sha256": "b9a1c688f1748652eb881c3863afe1406133eebe628dbf9e94a24caec322f027",
+    "expected_precision_sha256": "ea4a8e4906d4fcc519ab3cec03bab85bbb7ffe3ea86faa5e3bed83c580844c30",
+    "compute_precision": {
+      "min": {
+        "engine_layers_by_precision": {
+          "fp16": 71
+        },
+        "onnx_operations_by_precision": {
+          "fp16": 109
+        },
+        "additive_mask_attention_layers": 12,
+        "elementwise_small_k_operations": {
+          "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2"
+        },
+        "bound_input_shapes": {
+          "length": [
+            1
+          ],
+          "obs": [
+            1,
+            145,
+            17,
+            3
+          ],
+          "f_cliffcam": [
+            1,
+            145,
+            3
+          ],
+          "f_cam_angvel": [
+            1,
+            145,
+            6
+          ],
+          "f_imgseq": [
+            1,
+            145,
+            1024
+          ]
+        }
+      },
+      "opt": {
+        "engine_layers_by_precision": {
+          "fp16": 71
+        },
+        "onnx_operations_by_precision": {
+          "fp16": 109
+        },
+        "additive_mask_attention_layers": 12,
+        "elementwise_small_k_operations": {
+          "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2"
+        },
+        "bound_input_shapes": {
+          "length": [
+            4
+          ],
+          "obs": [
+            4,
+            145,
+            17,
+            3
+          ],
+          "f_cliffcam": [
+            4,
+            145,
+            3
+          ],
+          "f_cam_angvel": [
+            4,
+            145,
+            6
+          ],
+          "f_imgseq": [
+            4,
+            145,
+            1024
+          ]
+        }
+      },
+      "max": {
+        "engine_layers_by_precision": {
+          "fp16": 71
+        },
+        "onnx_operations_by_precision": {
+          "fp16": 109
+        },
+        "additive_mask_attention_layers": 12,
+        "elementwise_small_k_operations": {
+          "/network/learned_pos_linear/MatMul": "__myl_SlicSlicMulMulAdd_myl0_2"
+        },
+        "bound_input_shapes": {
+          "length": [
+            4
+          ],
+          "obs": [
+            4,
+            177,
+            17,
+            3
+          ],
+          "f_cliffcam": [
+            4,
+            177,
+            3
+          ],
+          "f_cam_angvel": [
+            4,
+            177,
+            6
+          ],
+          "f_imgseq": [
+            4,
+            177,
+            1024
+          ]
+        }
+      }
+    },
+    "native_mask_adapter_parity": [
+      145,
+      177
+    ],
+    "graph_rewrite": {
+      "pred_cam": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive/export-scatter.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive/export-concat.onnx",
+        "source_sha256": "2d1ca82640c76adbf01fb331a23ab10b1d89767b23628c18cc0078e22078ae38",
+        "target_sha256": "efcfa0b863d569debf30c1020dedf432fce44f2013e1ada3eebff9785c8aa0a8",
+        "pred_cam_dtype": "fp16",
+        "pred_cam_shape": [
+          null,
+          null,
+          3
+        ],
+        "source_nodes": 4375,
+        "target_nodes": 4315,
+        "pruned_nodes": 63,
+        "scatternd_before": 1,
+        "scatternd_after": 0,
+        "replacement": [
+          "Slice",
+          "Clip",
+          "Slice",
+          "Concat"
+        ]
+      },
+      "attention_mask": {
+        "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive/export-concat.onnx",
+        "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-2/engine-additive/export.onnx",
+        "source_sha256": "efcfa0b863d569debf30c1020dedf432fce44f2013e1ada3eebff9785c8aa0a8",
+        "target_sha256": "4ceee7134e552466cf66f5ca3d01b4c17ca36fce30ecd70d9d260d996dd4254c",
+        "mode": "additive",
+        "rewritten_masks": 24,
+        "unverified_broadcast": [
+          "/network/blocks.0/attn/Where_1",
+          "/network/blocks.0/attn/Where_3",
+          "/network/blocks.1/attn/Where_1",
+          "/network/blocks.1/attn/Where_3",
+          "/network/blocks.2/attn/Where_1",
+          "/network/blocks.2/attn/Where_3",
+          "/network/blocks.3/attn/Where_1",
+          "/network/blocks.3/attn/Where_3",
+          "/network/blocks.4/attn/Where_1",
+          "/network/blocks.4/attn/Where_3",
+          "/network/blocks.5/attn/Where_1",
+          "/network/blocks.5/attn/Where_3",
+          "/network/blocks.6/attn/Where_1",
+          "/network/blocks.6/attn/Where_3",
+          "/network/blocks.7/attn/Where_1",
+          "/network/blocks.7/attn/Where_3",
+          "/network/blocks.8/attn/Where_1",
+          "/network/blocks.8/attn/Where_3",
+          "/network/blocks.9/attn/Where_1",
+          "/network/blocks.9/attn/Where_3",
+          "/network/blocks.10/attn/Where_1",
+          "/network/blocks.10/attn/Where_3",
+          "/network/blocks.11/attn/Where_1",
+          "/network/blocks.11/attn/Where_3"
+        ],
+        "pruned_nodes": 384,
+        "target_nodes": 3955
+      }
+    },
+    "inputs": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/inputs/gvhmr"
+  },
+  "boundary_probes": {
+    "valid-b1-l145": {
+      "exit_code": 0,
+      "wall_seconds": 6.30505999199886,
+      "log": "logs/probe-valid-b1-l145.log",
+      "batch": 1,
+      "length": 145,
+      "expected_success": true,
+      "marker": "GVHMR executed B=1, L=145",
+      "verified": true
+    },
+    "valid-b4-l177": {
+      "exit_code": 1,
+      "wall_seconds": 6.268393776997982,
+      "log": "logs/probe-valid-b4-l177.log",
+      "batch": 4,
+      "length": 177,
+      "expected_success": true,
+      "marker": "GVHMR executed B=4, L=177",
+      "verified": false
+    },
+    "reject-b0": {
+      "exit_code": 1,
+      "wall_seconds": 6.13800239000193,
+      "log": "logs/probe-reject-b0.log",
+      "batch": 0,
+      "length": 145,
+      "expected_success": false,
+      "marker": "TensorRT rejected input shape length=(0,)",
+      "verified": true
+    },
+    "reject-b5": {
+      "exit_code": 1,
+      "wall_seconds": 6.117121131999738,
+      "log": "logs/probe-reject-b5.log",
+      "batch": 5,
+      "length": 145,
+      "expected_success": false,
+      "marker": "TensorRT rejected input shape length=(5,)",
+      "verified": true
+    },
+    "reject-l144": {
+      "exit_code": 1,
+      "wall_seconds": 6.013178218996472,
+      "log": "logs/probe-reject-l144.log",
+      "batch": 1,
+      "length": 144,
+      "expected_success": false,
+      "marker": "TensorRT rejected input shape obs=(1, 144, 17, 3)",
+      "verified": true
+    },
+    "reject-l178": {
+      "exit_code": 1,
+      "wall_seconds": 6.135834216998774,
+      "log": "logs/probe-reject-l178.log",
+      "batch": 1,
+      "length": 178,
+      "expected_success": false,
+      "marker": "TensorRT rejected input shape obs=(1, 178, 17, 3)",
+      "verified": true
+    }
+  }
+}

@@ -107,6 +107,24 @@ def finish(record: dict[str, Any], directory: Path, exit_code: int) -> int:
     return 0
 
 
+def defer_capacity(
+    record: dict[str, Any],
+    directory: Path,
+    previous: Path | None,
+    *,
+    automatic: bool,
+) -> None:
+    if record["run_dir"] != str(directory):
+        raise ValueError("worker follow-up changed before recording capacity refusal")
+    if automatic:
+        if record["resumptions"][-1:] != [event_key(record["wait"])]:
+            raise ValueError("automatic resume event does not match the deferred turn")
+        record["resumptions"].pop()
+    if record["reason"] != "worker_stopped":
+        record.update(state="needs_parent", reason="capacity_blocked")
+    record["run_dir"] = str(previous) if previous is not None else None
+
+
 def stop(task: dict[str, Any]) -> None:
     record = current(task)
     if record and record["state"] in ACTIVE:

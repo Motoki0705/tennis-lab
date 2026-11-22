@@ -23,6 +23,7 @@ from tests.support.agents_ops.model_pins import (
     WORKER_DEFAULT_MODEL,
     previous_config,
 )
+from tests.support.d_capacity import GIB, set_available
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / ".agents/ops/lib/agent_exec.sh"
@@ -150,6 +151,23 @@ class Harness:
             )
         )
         return path
+
+
+def test_agent_exec_refuses_new_capacity_and_keeps_status_available(
+    h: Harness, fake_d_drive: Path
+) -> None:
+    set_available(fake_d_drive, 20 * GIB - 1)
+    refused = h.run()
+    assert refused.returncode == 75
+    assert "21474836479 bytes available" in refused.stderr
+    assert not Path(h.env["FAKE_ARGS"]).exists()
+    record = h.result()
+    assert record["turn_end_reason"] == "capacity_blocked"
+    assert not record["agent_spawned"]
+    assert record["cleanup_complete"] is True
+    status = h.query("status")
+    assert status.returncode == 0
+    assert json.loads(status.stdout)["agent_alive"] is False
 
 
 @pytest.fixture

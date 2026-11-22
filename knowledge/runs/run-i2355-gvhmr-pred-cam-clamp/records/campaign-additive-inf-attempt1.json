@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "queue_job": "0-8204659032666535563_2026-11-22T09-49-27-333464436Z_3138922_i2355-gvhmr-additive-campaign-1",
+  "inputs": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/inputs/gvhmr",
+  "reference_root": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56/trt-gvhmr-i2355/inputs/fp32-reference",
+  "stages": {
+    "full-dynamic-additive-build": {
+      "exit_code": 1,
+      "wall_seconds": 66.80360697300057,
+      "log": "logs/full-dynamic-additive-build.log"
+    }
+  },
+  "fp32_equivalence": {
+    "batch": 2,
+    "length": 145,
+    "pred_cam_rewrite": {
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-1/fp32-equivalence/scatter.onnx",
+      "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-1/fp32-equivalence/concat.onnx",
+      "source_sha256": "043af41853b693d4de166e6aaf25f42bb0f30384857adb449a24e8cc925858f8",
+      "target_sha256": "4de7ab0266b16f4832014a393d97d372b8328356e53956d58e7d071ebe1cf8ae",
+      "pred_cam_dtype": "fp32",
+      "pred_cam_shape": [
+        2,
+        145,
+        3
+      ],
+      "source_nodes": 2128,
+      "target_nodes": 2087,
+      "pruned_nodes": 44,
+      "scatternd_before": 1,
+      "scatternd_after": 0,
+      "replacement": [
+        "Slice",
+        "Clip",
+        "Slice",
+        "Concat"
+      ]
+    },
+    "mask_rewrite": {
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-1/fp32-equivalence/concat.onnx",
+      "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-1/fp32-equivalence/additive.onnx",
+      "source_sha256": "4de7ab0266b16f4832014a393d97d372b8328356e53956d58e7d071ebe1cf8ae",
+      "target_sha256": "7486b0800a7a3ca21a2fab1e4e436ea0e53de353659312b647d231548e78d40a",
+      "mode": "additive",
+      "rewritten_masks": 24,
+      "unverified_broadcast": [],
+      "pruned_nodes": 216,
+      "target_nodes": 1895
+    },
+    "bit_equal_to_source_onnx": true,
+    "comparisons": {
+      "pred_x": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 5.0067901611328125e-06,
+          "max_rel": 0.022058823529411766
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      },
+      "pred_cam": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 1.7881393432617188e-07,
+          "max_rel": 5.1404103075507484e-05
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      },
+      "static_conf_logits": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 1.71661376953125e-05,
+          "max_rel": 0.0004889024268502141
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      },
+      "mask_out": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      },
+      "length_out": {
+        "rewrite_vs_pytorch": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        },
+        "rewrite_vs_source_onnx": {
+          "max_abs": 0.0,
+          "max_rel": 0.0
+        }
+      }
+    }
+  },
+  "fp16_dynamic_parity": {
+    "pred_cam_rewrite": {
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-1/engine-additive/export-scatter.onnx",
+      "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-1/engine-additive/export-concat.onnx",
+      "source_sha256": "2d1ca82640c76adbf01fb331a23ab10b1d89767b23628c18cc0078e22078ae38",
+      "target_sha256": "efcfa0b863d569debf30c1020dedf432fce44f2013e1ada3eebff9785c8aa0a8",
+      "pred_cam_dtype": "fp16",
+      "pred_cam_shape": [
+        null,
+        null,
+        3
+      ],
+      "source_nodes": 4375,
+      "target_nodes": 4315,
+      "pruned_nodes": 63,
+      "scatternd_before": 1,
+      "scatternd_after": 0,
+      "replacement": [
+        "Slice",
+        "Clip",
+        "Slice",
+        "Concat"
+      ]
+    },
+    "mask_rewrite": {
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-1/engine-additive/export-concat.onnx",
+      "target": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2355-sol56b/trt-gvhmr-i2355/campaign-additive-1/engine-additive/export.onnx",
+      "source_sha256": "efcfa0b863d569debf30c1020dedf432fce44f2013e1ada3eebff9785c8aa0a8",
+      "target_sha256": "4ceee7134e552466cf66f5ca3d01b4c17ca36fce30ecd70d9d260d996dd4254c",
+      "mode": "additive",
+      "rewritten_masks": 24,
+      "unverified_broadcast": [
+        "/network/blocks.0/attn/Where_1",
+        "/network/blocks.0/attn/Where_3",
+        "/network/blocks.1/attn/Where_1",
+        "/network/blocks.1/attn/Where_3",
+        "/network/blocks.2/attn/Where_1",
+        "/network/blocks.2/attn/Where_3",
+        "/network/blocks.3/attn/Where_1",
+        "/network/blocks.3/attn/Where_3",
+        "/network/blocks.4/attn/Where_1",
+        "/network/blocks.4/attn/Where_3",
+        "/network/blocks.5/attn/Where_1",
+        "/network/blocks.5/attn/Where_3",
+        "/network/blocks.6/attn/Where_1",
+        "/network/blocks.6/attn/Where_3",
+        "/network/blocks.7/attn/Where_1",
+        "/network/blocks.7/attn/Where_3",
+        "/network/blocks.8/attn/Where_1",
+        "/network/blocks.8/attn/Where_3",
+        "/network/blocks.9/attn/Where_1",
+        "/network/blocks.9/attn/Where_3",
+        "/network/blocks.10/attn/Where_1",
+        "/network/blocks.10/attn/Where_3",
+        "/network/blocks.11/attn/Where_1",
+        "/network/blocks.11/attn/Where_3"
+      ],
+      "pruned_nodes": 384,
+      "target_nodes": 3955
+    },
+    "shapes": {
+      "b1-l145": "bit-equal",
+      "b2-l145": "bit-equal",
+      "b4-l145": "bit-equal",
+      "b1-l177": "bit-equal",
+      "b2-l177": "bit-equal",
+      "b4-l177": "bit-equal"
+    }
+  }
+}

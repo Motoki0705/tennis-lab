@@ -101,6 +101,9 @@ Ballの専用loop adapterは`integration/tasks/ball_detection/lifecycle_contract
 このテスト専用launcherは、呼出元pytest processが実際の祖先であることを確認し、その `/proc/<pid>/stat` の親PIDだけを1として読む。
 pytestより上の対話エージェントを探索から外し、テスト内のprocess名・PID・開始時刻と親子関係は実物で検証する。本番hookの検出処理は変更しない。
 
+物理D:の判定を通るテストは `support/d_capacity.py` の `fake_d_drive` を使う。測定用ファイルは
+検証対象の作業ディレクトリから離し、独立したPython子プロセスには測定用bootstrapを渡す。
+
 ### 削除・統合・配置変更
 
 旧ケースの node → 守っていた契約 → 存続・拡張する node の対応表を PR に残す。契約を廃止する場合も、廃止理由と影響先を書く。削除数や時間短縮だけで完了としない。

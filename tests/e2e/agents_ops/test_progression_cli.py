@@ -21,6 +21,7 @@ from tests.e2e.agents_ops.test_parent_session import (
 from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
 )
+from tests.support.agents_ops.capacity_admission import late_capacity_runner
 
 
 def prepared(p: ParentEnv, *, count: int = 1) -> tuple[list[int], Path, Path]:
@@ -405,7 +406,9 @@ def test_github_get_count_depends_on_targets_not_repository_size(
     print(json.dumps(measurements))
 
 
-@pytest.mark.parametrize("fault", ["runtime_failure", "cleanup", "output"])
+@pytest.mark.parametrize(
+    "fault", ["runtime_failure", "cleanup", "output", "launched_capacity_exit"]
+)
 def test_failed_or_incomplete_reviewer_does_not_merge(
     parent_env: ParentEnv, fault: str
 ) -> None:
@@ -416,6 +419,10 @@ def test_failed_or_incomplete_reviewer_does_not_merge(
         env["REVIEW_AGENT_FINAL_EXIT"] = "3"
     elif fault == "cleanup":
         env["REVIEW_UNCONFIRMED_CLEANUP"] = "1"
+    elif fault == "launched_capacity_exit":
+        env.update(
+            REVIEW_AGENT_FINAL_EXIT="75", REVIEW_RUNTIME_REASON="capacity_blocked"
+        )
     else:
         Path(p.env["REVIEW_AGENT_OUTPUT"]).write_text("unstructured answer")
     result = request(p, numbers, fake, **env)
@@ -426,6 +433,18 @@ def test_failed_or_incomplete_reviewer_does_not_merge(
     repeated = request(p, numbers, fake)
     assert repeated["status"] == "parent_wait"
     assert len(calls.read_text().splitlines()) == 1
+    if fault == "launched_capacity_exit":
+        continued = json.loads(
+            p.cli(
+                "merge-continue",
+                "--instruction-file",
+                p.note("空き容量が戻った。起動済みのレビューは照合する。"),
+                "--wait",
+            ).stdout
+        )
+        assert continued["status"] == "parent_wait"
+        assert continued["review_usage"]["confirmed_launches"] == 1
+        assert len(calls.read_text().splitlines()) == 1
 
 
 def test_effective_review_settings_are_observations(parent_env: ParentEnv) -> None:
@@ -575,6 +594,50 @@ def test_interrupted_reviewer_never_relaunches(parent_env: ParentEnv) -> None:
     assert "recovery_required" in continued["review"]["error"]
     assert calls.read_text() == ""
     assert not any(c[:2] == ["pr", "merge"] for c in p.calls())
+
+
+def test_capacity_refusal_preserves_the_formal_review_invocation(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    numbers, fake, calls = prepared(p)
+    runner, low = late_capacity_runner(p.root, fake)
+    refused = request(p, numbers, runner)
+    assert refused["status"] == "parent_wait"
+    review_dir = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/progressions"
+        / refused["review_run_id"]
+        / "review-1"
+    )
+    record = json.loads((review_dir / "agent-runtime/result.json").read_text())
+    assert record["agent_spawned"] is False
+    assert record["turn_end_reason"] == "capacity_blocked"
+    assert calls.read_text() == ""
+    assert (
+        json.loads((review_dir / "execution.json").read_text())["agent_invocations"]
+        == 0
+    )
+
+    low.unlink()
+    continued = json.loads(
+        p.cli(
+            "merge-continue",
+            "--instruction-file",
+            p.note("空き容量が戻った。同じレビューを続ける。"),
+            "--wait",
+        ).stdout
+    )
+    assert continued["status"] == "completed", continued
+    assert continued["review_run_id"] == refused["review_run_id"]
+    assert continued["review_usage"]["launch_intents"] == 2
+    assert continued["review_usage"]["confirmed_launches"] == 1
+    assert len(calls.read_text().splitlines()) == 1
+    assert (
+        json.loads((review_dir / "execution.json").read_text())["agent_invocations"]
+        == 1
+    )
+    assert json.loads((review_dir / "agent-runtime/result.json").read_text()) == record
 
 
 def test_private_review_text_is_not_published_or_rereviewed(

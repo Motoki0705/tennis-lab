@@ -20,6 +20,7 @@ from lib.checkout_lock import (
     require_checkout_job,
     source_checkout_barrier,
 )
+from lib.d_capacity import REFUSED, CapacityError
 from parent.github import GitHub
 from parent.policy import nonempty
 from parent.state import state_directory
@@ -182,6 +183,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
     elif args.command == "supervise":
         stopping = False
         pausing = False
+        capacity_blocked = False
 
         def stop(signum: int, frame: object) -> None:
             nonlocal stopping
@@ -213,7 +215,22 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
                             ):
                                 supervisor.reconcile()
                                 supervisor.assign()
-                                supervisor.launch_reserved()
+                                try:
+                                    supervisor.launch_reserved()
+                                except CapacityError as exc:
+                                    if not capacity_blocked:
+                                        print(
+                                            f"dispatcher: D: launch refused: {exc}",
+                                            file=sys.stderr,
+                                        )
+                                    if args.once:
+                                        return {
+                                            "result": "deferred",
+                                            "diagnostic": str(exc),
+                                        }
+                                    capacity_blocked = True
+                                else:
+                                    capacity_blocked = False
                 if args.once:
                     break
                 time.sleep(1)
@@ -237,6 +254,8 @@ def main(argv: list[str] | None = None, *, _supervisor_launcher: bool = False) -
     try:
         result = execute(args)
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        if result.get("result") == "deferred":
+            return REFUSED
         return 2 if result.get("result") in {"failed", "recovery_required"} else 0
     except (
         ValueError,

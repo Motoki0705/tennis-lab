@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
+from lib.d_capacity import REFUSED, CapacityError  # noqa: E402
 from parent.github import GitHub  # noqa: E402
 
 from dispatcher.runtime import Runtime, gate  # noqa: E402
@@ -55,6 +56,9 @@ def main() -> int:
         signal.signal(signal.SIGINT, stop)
         try:
             status = runtime.execute(job, fd)
+        except CapacityError as exc:
+            print(f"dispatcher worker: D: launch refused: {exc}", file=sys.stderr)
+            return REFUSED
         except ValueError:
             # launch_admission records a known rejection before Popen. A
             # different execution failure must retain its ambiguous state.

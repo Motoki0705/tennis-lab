@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from dispatcher.runtime import Runtime, load
+from dispatcher.runtime import Runtime, capacity_refusal, load
 from lib.agent_settings import (
     DEFAULT_CONFIG,
     check_saved_implementation_model,
@@ -21,6 +21,7 @@ from lib.agent_settings import (
     resolve,
     session_contract,
 )
+from lib.d_capacity import REFUSED
 from lib.repair_turn import instruction as repair_instruction
 from lib.repair_turn import validate_contract as validate_repair_contract
 from lib.repair_turn import validate_request as validate_repair_request
@@ -520,7 +521,12 @@ def prepare_run(
                     "repair ID is already bound to another request/delegation"
                 )
             implementation_model(model, previous=task["model"])
-            return list(saved["command"]), task["delegation_id"], saved["instruction"]
+            if saved["launch_state"] != "capacity_deferred":
+                return (
+                    list(saved["command"]),
+                    task["delegation_id"],
+                    saved["instruction"],
+                )
     if replace_session and resume:
         raise ValueError("--replace-session and --resume are mutually exclusive")
     if replace_session:
@@ -939,8 +945,34 @@ def run_worker(
                 repair["repair_id"]
             ]
             return 0, repair_receipt(child, delegation, command, attempt)
-    if not admission.spawned:
-        if repair is not None:
+    refused = None
+    capacity_reason = None
+    if admission.spawned and code == REFUSED and (directory / "result.json").is_file():
+        saved = load(directory / "result.json")
+        if reason := capacity_refusal(saved):
+            runtime = Runtime(RUNNER)
+            proof = runtime.inspect(directory)
+            if runtime.ended(proof) and proof["record"] == saved:
+                model_settings(reserved_task, saved)
+                previous = (
+                    command[command.index("--resume-from") + 1]
+                    if "--resume-from" in command
+                    else None
+                )
+                if (
+                    saved.get("run_dir") != str(directory)
+                    or saved.get("previous_run") != previous
+                    or saved.get("contract", {}).get("repair") != repair
+                    or saved.get("prompt_sha256")
+                    != hashlib.sha256(instruction.encode("utf-8")).hexdigest()
+                ):
+                    raise ValueError(
+                        "capacity refusal does not match the manual reservation"
+                    )
+                refused = {key: proof["summary"][key] for key in SUMMARY_KEYS}
+                capacity_reason = reason
+    if not admission.spawned or capacity_reason:
+        if repair is not None and not capacity_reason:
             with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
                 store.focus(session.key)
                 row = store.parents.get(session.key, {})
@@ -1008,6 +1040,11 @@ def run_worker(
                     "attempt": directory.name,
                     "exit_code": code,
                     "stderr_file": str(failure / "stderr.txt"),
+                    **(
+                        {"runtime_dir": str(directory), "reason": capacity_reason}
+                        if capacity_reason
+                        else {}
+                    ),
                 }
             )
             attempted_turn = turns[-1]
@@ -1022,12 +1059,35 @@ def run_worker(
                 ):
                     decision["delivered_turn_id"] = None
             if not current.get("worker_ended"):
-                current["worker_ended"] = previous_ended or {
-                    "delegation_id": delegation,
-                    "evidence": "Runtime admission rejected this attempt before Popen; no worker started.",
-                }
+                if previous_ended is not None:
+                    current["worker_ended"] = previous_ended
+                elif not capacity_reason:
+                    current["worker_ended"] = {
+                        "delegation_id": delegation,
+                        "evidence": "Runtime admission rejected this attempt before Popen; no worker started.",
+                    }
             followup = worker_followup.current(current)
-            if followup is not None:
+            if capacity_reason:
+                if current.get("manual_launcher", {}).get("directory") == str(
+                    directory
+                ):
+                    current.pop("manual_launcher")
+                if repair is not None:
+                    attempt = current["repair_attempts"][repair["repair_id"]]
+                    if attempt.get("launch_claim") != admission.repair_claim:
+                        raise RegistryConflict(
+                            "repair claim changed after capacity refusal"
+                        )
+                    attempt["launch_state"] = "capacity_deferred"
+                    attempt.pop("launch_claim")
+                elif followup is not None:
+                    worker_followup.defer_capacity(
+                        followup,
+                        directory,
+                        run_directory(store, runs[-2]) if len(runs) > 1 else None,
+                        automatic=automatic is not None,
+                    )
+            elif followup is not None:
                 followup.update(
                     state="needs_parent" if automatic is not None else "error",
                     reason=(
@@ -1047,10 +1107,17 @@ def run_worker(
             "child": child,
             "delegation_id": delegation,
             "exit_code": code,
-            "runner_summary": None,
-            "launch_state": "rejected_before_start",
+            "runner_summary": refused,
+            "launch_state": "capacity_deferred"
+            if capacity_reason
+            else "rejected_before_start",
             "next_action": "retry_same_operation",
             "log_publication": log_result,
+            **(
+                {"reason": capacity_reason, "refused_run_dir": str(directory)}
+                if capacity_reason
+                else {}
+            ),
         }
     if not directory.exists():
         # Popen happened. An exit code and absent directory are not proof that

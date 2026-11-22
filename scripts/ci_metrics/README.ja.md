@@ -66,9 +66,10 @@ GPUと `local_data and not cuda` の手動受入は
 
 ## 固定したシステム実行環境
 
-実ffmpeg/rcloneを使うテストは `system_deps` で宣言します。PR・main push・manualのすべてで、
-通常CPU群に加えて専用の **System dependency tests** jobを必須にします。
-marker付きcaseはfileの通常caseがpath選別で繰延べられても毎回実行します。
+実ffmpeg/rcloneを使うテストは `system_deps` で宣言します。通常のCPU suiteでは、
+CPU分割ジョブに加えて専用の **System dependency tests** jobを実行します。
+[ナレッジ記録専用PR](../../.agents/ops/lib/README.md#ナレッジ記録専用prのci)はマージ前にKnowledge libraryの検査を使います。
+marker付きcaseは、通常CPU suiteで同じfileの通常caseがpath選別で繰延べられても実行します。
 専用へ移すのはmarker付きcaseだけで、依存不要の隣接caseは登録表のfile方針を保ちます。
 Driveのconfig拒否2件はlocal config fixtureで検証し、rcloneを必要としません。
 専用jobも必須 `Python` 集約に含めます。準備失敗、証拠の欠落・重複、誤った経路、skip・xfailを
