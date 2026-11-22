@@ -24,7 +24,7 @@ ScatterNDビルドSIGSEGVは見つからなかった。GPU campaignで小さいO
 
 診断の結果、異常終了（終了値 -11）は `ScatterND` ではなく、最初のblockのattentionで起きていた。
 2つのBool maskとFP16 Softmaxを含むfused attentionで、B≥2のときに限られる
-（[node](../../nodes/tennis_scene/000080-run-i2355-gvhmr-pred-cam-clamp.md)）。
+（[node](../../nodes/tennis_scene/000081-run-i2355-gvhmr-pred-cam-clamp.md)）。
 この範囲では、release notesと公開Issueをまだ照合していない。新規報告に使えるのは
 `diagnosis-attention-1/graphs/source-pv-from-qkv.onnx`（32ノード、静的B=2）と、その
 builder設定・verboseログである。
