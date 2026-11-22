@@ -1,0 +1,131 @@
+{
+  "attempts": [
+    {
+      "build_failure": "IOptimizationProfile.set_shape returns None. The builder interpreted None as rejection before invoking build_serialized_network.",
+      "commit": "3b1e5d60f76059e84ffb30a77d0f2fd582bb603d",
+      "exit_code": 1,
+      "queue_job": "0-8204676305274100327_2026-11-22T05-01-34-725899672Z_632389_i2362-phase2-qualification.job",
+      "run_tag": "phase2-b2-v1",
+      "stages": [
+        {
+          "exit": "0",
+          "model": "clip",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "clip",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "clip",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "vitpose",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "vitpose",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "vitpose",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "hmr2",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "hmr2",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "hmr2",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "dino",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "dino",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "dino",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "gvhmr",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "gvhmr",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "gvhmr",
+          "stage": "compare"
+        },
+        {
+          "exit": "skipped",
+          "model": "pipeline",
+          "stage": "smoke"
+        }
+      ],
+      "verified_exports": {
+        "clip": {
+          "directory": "outputs/tensorrt/clip/256x128/phase2-b2-v1",
+          "export_sha256": "7e8b0c6d9ba781d748443419da16fc7f7a472f0e0093e8a8014466bfeeef679d",
+          "onnx_files": {
+            "model.onnx": "ac738689d8f55fa66e900a257e5fd02e759aac156864a54d7d82591874136aca"
+          }
+        },
+        "dino": {
+          "directory": "outputs/tensorrt/dino/750x1333/phase2-b2-v1",
+          "export_sha256": "acc19d7172a187f1c7c8543c1060878710cc4716ddb07a07cd473ae704227b0c",
+          "onnx_files": {
+            "model.onnx": "010e8868ce59c0f772d6bf00f68836aa2f24e6d4ca96ac5b330ad261182441bf",
+            "model.onnx.data": "a9839bb54d25bb4165d0ff2ca381de6d24a6bcc3272f13758fda3be3b408d4a4"
+          }
+        },
+        "gvhmr": {
+          "directory": "outputs/tensorrt/gvhmr/l2-145-177/phase2-b2-v1",
+          "export_sha256": "671a3fd1e65b6e19ea13654c34d1d953213e1d02cb0401045f1360465fcc587d",
+          "onnx_files": {
+            "model.onnx": "12273a5f52633d4048d275f950b28c13cd69b2174828a0ec1e89fad19aa04d02"
+          }
+        },
+        "hmr2": {
+          "directory": "outputs/tensorrt/hmr2/256x256/phase2-b2-v1",
+          "export_sha256": "1a1f3cfa851b9afd87ad1266ed6221547627995b96f3c894dd583598fc2297a3",
+          "onnx_files": {
+            "model.onnx": "21402a762c5b1f1715452ed36c50dbe8e627eeba5ecff34f261de8ce7ed0a6b9"
+          }
+        },
+        "vitpose": {
+          "directory": "outputs/tensorrt/vitpose/256x192/phase2-b2-v1",
+          "export_sha256": "16af3f0378de48ad390b16c174e7201525d2d27fd49b8527d2b23a52ceab3e4f",
+          "onnx_files": {
+            "model.onnx": "258c162d07161cf66f0cceaf50ef5d53128314461458da32346fc67453f15267"
+          }
+        }
+      }
+    }
+  ]
+}

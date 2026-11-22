@@ -2,11 +2,12 @@
 set -uo pipefail
 
 : "${TENNIS_RUN_ID:?Run through the shared training queue}"
-tag=${1:?Usage: qualify.sh BUILD_TAG PHASE1_OUTPUT_ROOT DINO_EXTENSION}
+tag=${1:?Usage: qualify.sh RUN_TAG PHASE1_OUTPUT_ROOT DINO_EXTENSION [EXPORT_TAG]}
 phase1_root=${2:?Supply the directory containing the existing Phase 1 outputs}
 export TENNIS_LAB_DINO_EXTENSION=${3:?Supply the Phase 1 DINO extension}
-if [[ ! $tag =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-    printf 'Invalid engine build tag: %s\n' "$tag" >&2
+export_tag=${4:-$tag}
+if [[ ! $tag =~ ^[a-z0-9][a-z0-9-]*$ || ! $export_tag =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    printf 'Invalid run or export tag: %s %s\n' "$tag" "$export_tag" >&2
     exit 2
 fi
 jobs=knowledge/runs/run-i2362-tensorrt-pipeline
@@ -67,10 +68,17 @@ for model in clip vitpose hmr2 dino gvhmr; do
             build_args=(--frames 2 145 177)
             ;;
     esac
-    relative="tensorrt/$model/$shape/$tag"
+    relative="tensorrt/$model/$shape/$export_tag"
     directory="outputs/$relative"
     smoke_args+=(--engine "$model=$relative")
-    if ! run "$model" export "$python" -B -m src.tennis_scene.scripts.tensorrt export "$model" "$directory" "${export_args[@]}"; then
+    if [[ $export_tag == "$tag" ]]; then
+        export_stage=export
+        export_command=("$python" -B -m src.tennis_scene.scripts.tensorrt export "$model" "$directory" "${export_args[@]}")
+    else
+        export_stage=reuse-export
+        export_command=(test -f "$directory/export.json")
+    fi
+    if ! run "$model" "$export_stage" "${export_command[@]}"; then
         plans_ready=0
         printf '%s\tbuild\tskipped\n%s\tcompare\tskipped\n' "$model" "$model" >> "$out/status.tsv"
         continue

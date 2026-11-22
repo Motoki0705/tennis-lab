@@ -86,6 +86,17 @@ def export_bundle(
     write_json_atomic(directory / EXPORT_MANIFEST, manifest.model_dump(mode="json"))
 
 
+def set_profile_shapes(profile: Any, profiles: Mapping[str, InputProfile]) -> None:
+    """Check the registered dimensions after the TensorRT setter returns."""
+    for name, spec in profiles.items():
+        profile.set_shape(name, *spec.shapes)
+        actual = tuple(tuple(shape) for shape in profile.get_shape(name))
+        if actual != spec.shapes:
+            raise ValueError(
+                f"TensorRT profile {name}={actual} differs from {spec.shapes}"
+            )
+
+
 def build_bundle(
     directory: Path,
     profiles: dict[str, InputProfile],
@@ -126,11 +137,7 @@ def build_bundle(
         config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, workspace_bytes)
         if any(-1 in spec.shape for spec in export.inputs.values()):
             profile = builder.create_optimization_profile()
-            for name, shapes in profiles.items():
-                if not profile.set_shape(name, *shapes.shapes):
-                    raise ValueError(
-                        f"TensorRT rejected profile for {name}: {shapes.shapes}"
-                    )
+            set_profile_shapes(profile, profiles)
             if config.add_optimization_profile(profile) != 0:
                 raise RuntimeError(
                     "TensorRT did not accept the first optimization profile"

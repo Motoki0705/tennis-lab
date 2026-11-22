@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Annotated, Literal, Protocol, TypeVar, cast
 
@@ -31,7 +31,9 @@ _Model = TypeVar("_Model")
 
 
 class _AfterValidator(Protocol):
-    def __call__(self, function: Callable[[_Model], _Model]) -> Callable[[_Model], _Model]: ...
+    def __call__(
+        self, function: Callable[[_Model], _Model]
+    ) -> Callable[[_Model], _Model]: ...
 
 
 _after_validator = cast(_AfterValidator, model_validator(mode="after"))
@@ -50,6 +52,12 @@ class TensorSpec(_Manifest):
         if not self.shape or any(dim < -1 or dim == 0 for dim in self.shape):
             raise ValueError(f"Invalid tensor dimensions: {self.shape}")
         return self
+
+    def matches_shape(self, shape: Shape, *, allow_unknown: bool = False) -> bool:
+        return len(shape) == len(self.shape) and all(
+            (dim == -1 and allow_unknown) or (dim > 0 and expected in (-1, dim))
+            for dim, expected in zip(shape, self.shape, strict=True)
+        )
 
 
 class InputProfile(_Manifest):
@@ -152,6 +160,7 @@ class EngineBundle:
     root: Path
     export: ExportManifest
     engine: EngineManifest
+    output_contract: Mapping[str, TensorSpec] | None = None
 
     @classmethod
     def read(cls, root: Path, *, digest: AssetDigest = dual_sha256) -> EngineBundle:
@@ -180,7 +189,15 @@ class EngineBundle:
             )
         )
 
-    def require_model(
+    @property
+    def outputs(self) -> Mapping[str, TensorSpec]:
+        return (
+            self.export.outputs
+            if self.output_contract is None
+            else self.output_contract
+        )
+
+    def for_model(
         self,
         *,
         model: str,
@@ -188,16 +205,28 @@ class EngineBundle:
         sources: Mapping[str, str],
         inputs: Mapping[str, TensorSpec],
         outputs: Mapping[str, TensorSpec],
-    ) -> None:
+    ) -> EngineBundle:
         for name, actual, expected in (
             ("model", self.export.model, model),
             ("export settings", self.export.settings, settings),
             ("source assets", self.export.sources, sources),
             ("inputs", self.export.inputs, inputs),
-            ("outputs", self.export.outputs, outputs),
         ):
             if actual != expected:
                 raise ValueError(f"TensorRT {name} mismatch for {self.root}")
+        if self.export.outputs.keys() != outputs.keys():
+            raise ValueError(f"TensorRT output names mismatch for {self.root}")
+        for name, expected in outputs.items():
+            declared = self.export.outputs[name]
+            # ONNX exporters can leave static output axes symbolic. The model
+            # contract still applies when TensorRT resolves the actual shape.
+            if declared.dtype != expected.dtype or not expected.matches_shape(
+                declared.shape, allow_unknown=True
+            ):
+                raise ValueError(
+                    f"TensorRT output {name} for {self.root}: exported {declared}, expected {expected}"
+                )
+        return replace(self, output_contract=dict(outputs))
 
     def require_environment(self, current: EngineEnvironment) -> None:
         if self.engine.environment != current:

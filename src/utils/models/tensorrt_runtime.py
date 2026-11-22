@@ -37,7 +37,7 @@ def engine_environment(device: torch.device, trt: ModuleType) -> EngineEnvironme
 
 
 def require_engine_contract(bundle: EngineBundle, engine: Any, trt: ModuleType) -> None:
-    inputs, outputs = bundle.export.inputs, bundle.export.outputs
+    inputs, outputs = bundle.export.inputs, bundle.outputs
     names = {engine.get_tensor_name(i) for i in range(engine.num_io_tensors)}
     if names != inputs.keys() | outputs.keys() or engine.num_optimization_profiles != 1:
         raise ValueError(
@@ -45,14 +45,23 @@ def require_engine_contract(bundle: EngineBundle, engine: Any, trt: ModuleType) 
         )
     for name, spec in {**inputs, **outputs}.items():
         mode = trt.TensorIOMode.INPUT if name in inputs else trt.TensorIOMode.OUTPUT
+        shape = tuple(engine.get_tensor_shape(name))
+        matches = (
+            shape == spec.shape
+            if name in inputs
+            else spec.matches_shape(shape, allow_unknown=True)
+        )
         if (
             engine.get_tensor_mode(name) != mode
             or engine.get_tensor_location(name) != trt.TensorLocation.DEVICE
             or engine.get_tensor_dtype(name) != getattr(trt, spec.dtype)
-            or tuple(engine.get_tensor_shape(name)) != spec.shape
+            or not matches
             or engine.get_tensor_format(name) != trt.TensorFormat.LINEAR
         ):
-            raise ValueError(f"Unexpected TensorRT binding {name}: {bundle.root}")
+            raise ValueError(
+                f"Unexpected TensorRT binding {name}={shape} "
+                f"({engine.get_tensor_dtype(name)}), expected {spec}: {bundle.root}"
+            )
     for name, spec in inputs.items():
         if -1 in spec.shape:
             observed = tuple(
@@ -114,12 +123,9 @@ class TensorRTRunner:
             if unresolved := self._context.infer_shapes():
                 raise RuntimeError(f"Unresolved TensorRT tensors: {unresolved}")
             outputs = {}
-            for name, spec in self.bundle.export.outputs.items():
+            for name, spec in self.bundle.outputs.items():
                 shape = tuple(self._context.get_tensor_shape(name))
-                if len(shape) != len(spec.shape) or any(
-                    dim <= 0 or (expected != -1 and dim != expected)
-                    for dim, expected in zip(shape, spec.shape, strict=True)
-                ):
+                if not spec.matches_shape(shape):
                     raise RuntimeError(
                         f"Unexpected TensorRT output shape {name}={shape}"
                     )

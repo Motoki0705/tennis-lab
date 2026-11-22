@@ -36,3 +36,14 @@ bash .agents/skills/training-queue/scripts/training_queue.sh add "$command" \
 `outputs/tensorrt/qualification/<tag>/status.tsv`にモデル別のexport・build・比較と
 pipeline smokeの終了状態を記録します。同じ場所に個別ログ、比較指標とsmokeの証跡を保存します。
 ビルドしたONNXとplanは `outputs/tensorrt/<model>/<shape>/<tag>/` に残します。
+
+## 初回の結果と再実行
+
+`phase2-b2-v1` では5モデルのONNX exportが完了しました。全buildはprofile登録で終了値1になりました。
+TensorRT 10.14.1の `IOptimizationProfile.set_shape` は戻り値が `None` で、
+初回実装はこれを失敗と判定していました。修正後はmin/opt/maxを読み戻して照合します。
+初回の出力照合とsmokeは未実施です。 [終了状態とONNXのdigest](attempts.json)
+
+前回のONNXを再利用するには、再現コマンドの `qualify.sh` の第4引数にexportタグを渡し、
+`BUILD_TAG` に今回のログ用タグを指定します。buildは既存ONNXとその外部重みのdigestを再照合します。
+初回からの再実行では第4引数に `phase2-b2-v1` を指定します。

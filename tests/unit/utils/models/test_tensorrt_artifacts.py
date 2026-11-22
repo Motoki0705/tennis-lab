@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from src.utils.models.tensorrt_artifacts import (
     PLAN_FILE,
     EngineBundle,
     EngineEnvironment,
+    TensorSpec,
 )
 
 
@@ -122,3 +124,38 @@ def test_profile_bounds_include_tail_and_reject_oversize(bundle_path: Path) -> N
     profile.require((4, 3, 32, 64), tensor="pixels")
     with pytest.raises(ValueError, match="outside profile"):
         profile.require((5, 3, 32, 64), tensor="pixels")
+
+
+@pytest.mark.parametrize("export_width", [-1, 1024])
+def test_static_model_output_axis_is_checked_even_if_onnx_leaves_it_symbolic(
+    bundle_path: Path, export_width: int
+) -> None:
+    original = EngineBundle.read(bundle_path)
+    export = original.export.model_copy(
+        update={
+            "outputs": {
+                "features": TensorSpec(dtype="float16", shape=(-1, export_width))
+            },
+        }
+    )
+    bundle = replace(original, export=export)
+    expected = {"features": TensorSpec(dtype="float16", shape=(-1, 512))}
+
+    def bind() -> EngineBundle:
+        return bundle.for_model(
+            model="example",
+            settings={"variant": "v1"},
+            sources={"checkpoint": "b" * 64},
+            inputs=original.export.inputs,
+            outputs=expected,
+        )
+
+    if export_width == -1:
+        bound = bind()
+        assert bound.export.outputs["features"].shape == (-1, -1)
+        assert bound.outputs["features"].matches_shape((2, 512))
+        assert not bound.outputs["features"].matches_shape((2, -1))
+        assert not bound.outputs["features"].matches_shape((2, 1024))
+    else:
+        with pytest.raises(ValueError, match="TensorRT output features"):
+            bind()

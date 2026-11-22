@@ -26,8 +26,7 @@ class TensorRTModel:
         def digest(path: Path) -> str:
             return str(file_identity(path)["sha256"])
 
-        bundle = EngineBundle.read(root, digest=digest)
-        bundle.require_model(
+        bundle = EngineBundle.read(root, digest=digest).for_model(
             model=self.model,
             settings=self.settings,
             sources={name: digest(path) for name, path in self.assets.items()},
