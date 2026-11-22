@@ -5,15 +5,11 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Mapping
-from functools import cache
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from urllib.parse import unquote
 
 from .errors import BoardError
-
-if TYPE_CHECKING:
-    from markdown_it import MarkdownIt
-    from markdown_it.rules_inline.state_inline import StateInline
+from .prose import single_backtick_openers
 
 MAX_SUBJECT_LENGTH = 200
 
@@ -40,7 +36,6 @@ _CODE_IDENTIFIER_LIST = re.compile(
     # Punctuation can end a sentence when followed by a real boundary.
     rf"(?=[{_SENTENCE_PUNCTUATION}]*(?:$|[\s)）」』、。]))"
 )
-_SOURCE_LINE = re.compile(r"[^\r\n]*(?:\r\n?|\n)|[^\r\n]+$")
 SESSION_TOKEN = re.compile(
     r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"
     r"|\b(?:session|thread)[_-]?id\s*[:=]",
@@ -48,60 +43,10 @@ SESSION_TOKEN = re.compile(
 )
 
 
-@cache
-def _markdown() -> MarkdownIt:
-    from markdown_it import MarkdownIt
-    from markdown_it.rules_inline import backtick
-
-    def backtick_with_offset(state: StateInline, silent: bool) -> bool:
-        start, count = state.pos, len(state.tokens)
-        handled: bool = backtick(state, silent)
-        if len(state.tokens) > count and state.tokens[-1].markup == "`":
-            state.tokens[-1].meta["source_start"] = start
-        return handled
-
-    parser = MarkdownIt("commonmark")
-    parser.inline.ruler.at("backticks", backtick_with_offset)
-    return parser
-
-
-def _single_backtick_openers(value: str) -> set[int]:
-    """Locate real inline spans in the raw input, including within containers."""
-    lines = list(_SOURCE_LINE.finditer(value))
-    openers: set[int] = set()
-    for block in _markdown().parse(value):
-        if block.type != "inline" or block.map is None:
-            continue
-        starts = {
-            child.meta["source_start"]
-            for child in block.children or ()
-            if "source_start" in child.meta
-        }
-        if not starts:
-            continue
-        offset = 0
-        for raw, line in zip(
-            lines[block.map[0] : block.map[1]], block.content.split("\n"), strict=False
-        ):
-            # Block parsing strips container markers and can expand an indent tab.
-            # Only map back to a unique, literal occurrence on the source line.
-            content = line.lstrip()
-            column = raw[0].find(content)
-            if column >= 0 and raw[0].rfind(content) == column:
-                start = offset + len(line) - len(content)
-                openers.update(
-                    raw.start() + column + tick.start()
-                    for tick in re.finditer("`", content)
-                    if start + tick.start() in starts
-                )
-            offset += len(line) + 1
-    return openers
-
-
 def _path_view(value: str) -> str:
     if not _CODE_IDENTIFIER_LIST.search(value):
         return value
-    openers = _single_backtick_openers(value)
+    openers = single_backtick_openers(value)
 
     def separators(match: re.Match[str]) -> str:
         if all(
