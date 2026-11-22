@@ -138,7 +138,17 @@ def record_exit(
         revision = None
     remaining_complete = True
     try:
-        remaining = remaining_publications(repo, parent, state_dir=state_dir)
+        inventory = remaining_publications(repo, parent, state_dir=state_dir)
+        # Termination records keep their fixed public schema. An unreadable
+        # namespace makes the inventory incomplete, with details in status.
+        remaining = [
+            {k: v for k, v in item.items() if k != "next_action"}
+            for item in inventory
+            if "journal_reason" not in item
+        ]
+        remaining_complete = len(remaining) == len(inventory)
+        if not remaining_complete:
+            publication_error = "journal_unavailable"
     except (ValueError, OSError, KeyError, TypeError):
         remaining = []
         remaining_complete = False

@@ -3,15 +3,46 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
+from collections.abc import Callable
 from contextlib import nullcontext
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 from . import journal, schema
 from .journal import PublicationError, require
 from .sources import guard_for, render
+
+PR_HEAD_RETRY_DELAYS = (0.25, 0.5, 1.0)
+
+
+def pr_head(pr: dict[str, Any]) -> str | None:
+    head = pr.get("head")
+    sha = head.get("sha") if isinstance(head, dict) else None
+    return sha if isinstance(sha, str) else None
+
+
+def read_pr_at_head(
+    fetch: Callable[[int], dict[str, Any]],
+    number: int,
+    heads: set[str],
+    *,
+    initial: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Wait briefly for a pinned HEAD before the caller validates PR identity."""
+    detail = "PR identity mismatch: head.sha"
+    require(bool(heads), "pr_identity_changed", detail)
+    pr = initial if initial is not None else fetch(number)
+    for delay in PR_HEAD_RETRY_DELAYS:
+        if pr_head(pr) in heads:
+            return pr
+        sleep(delay)
+        pr = fetch(number)
+    require(pr_head(pr) in heads, "pr_identity_changed", detail)
+    return pr
 
 
 class GitHubHTTPError(PublicationError):
@@ -250,35 +281,36 @@ class Publisher:
                 self.git("show", f"{head}:{target}") == raw, "committed_content_changed"
             )
 
-    def commit(self, row: dict[str, Any], files: dict[str, bytes]) -> None:
-        tree = self.worktree(row)
-        if not tree.exists():
-            tree.parent.mkdir(parents=True, exist_ok=True)
-            branch_exists = (
-                subprocess.run(
-                    [
-                        "git",
-                        "show-ref",
-                        "--verify",
-                        "--quiet",
-                        f"refs/heads/{row['branch']}",
-                    ],
-                    cwd=self.root,
-                    capture_output=True,
-                    check=False,
-                ).returncode
-                == 0
-            )
-            if branch_exists:
-                head = self.git("rev-parse", row["branch"]).decode().strip()
+    def add_worktree(
+        self, tree: Path, row: dict[str, Any], files: dict[str, bytes]
+    ) -> None:
+        tree.parent.mkdir(parents=True, exist_ok=True)
+        ref = f"refs/heads/{row['branch']}"
+        branch_exists = (
+            subprocess.run(
+                ["git", "show-ref", "--verify", "--quiet", ref],
+                cwd=self.root,
+                capture_output=True,
+                check=False,
+            ).returncode
+            == 0
+        )
+        if branch_exists:
+            head = self.git("rev-parse", ref).decode().strip()
+            if head != row["base"]:
                 self.verify(row, files, head)
-                self.git("worktree", "add", str(tree), row["branch"])
-            else:
-                self.git("worktree", "add", "-b", row["branch"], str(tree), row["base"])
+            self.git("worktree", "add", str(tree), row["branch"])
+        else:
+            self.git("worktree", "add", "-b", row["branch"], str(tree), row["base"])
+
+    def worktree_head(self, tree: Path, branch: str) -> str:
+        gitfile = tree / ".git"
         require(
             not tree.is_symlink()
+            and gitfile.is_file()
+            and not gitfile.is_symlink()
             and self.git("branch", "--show-current", cwd=tree).decode().strip()
-            == row["branch"],
+            == branch,
             "worktree_changed",
         )
         require(
@@ -288,13 +320,43 @@ class Publisher:
             == self.git("rev-parse", "--path-format=absolute", "--git-common-dir"),
             "worktree_changed",
         )
+        return self.git("rev-parse", "HEAD", cwd=tree).decode().strip()
+
+    def interrupted_checkout(self, tree: Path, row: dict[str, Any]) -> bool:
+        # The journal lock serializes publishers. An empty checkout with only
+        # its Git link has no user files for a forced worktree removal to erase.
+        if list(tree.iterdir()) != [tree / ".git"] or self.git(
+            "ls-files", "-z", cwd=tree
+        ):
+            return False
+        expected = b"\0".join(
+            [
+                b"worktree " + os.fsencode(tree),
+                f"HEAD {row['base']}".encode(),
+                f"branch refs/heads/{row['branch']}".encode(),
+                b"locked initializing",
+            ]
+        )
+        return expected in self.git("worktree", "list", "--porcelain", "-z").split(
+            b"\0\0"
+        )
+
+    def commit(self, row: dict[str, Any], files: dict[str, bytes]) -> None:
+        tree = self.worktree(row)
+        require(not tree.is_symlink(), "worktree_changed")
+        current = self.worktree_head(tree, row["branch"]) if tree.exists() else None
+        if current == row["base"] and self.interrupted_checkout(tree, row):
+            self.git("worktree", "remove", "--force", "--force", str(tree))
+            current = None
+        if current is None:
+            self.add_worktree(tree, row, files)
+            current = self.worktree_head(tree, row["branch"])
         require(
             not self.git(
-                "status", "--porcelain", "--untracked-files=all", cwd=tree
+                "status", "--porcelain", "--untracked-files=all", "--ignored", cwd=tree
             ).strip(),
             "worktree_dirty",
         )
-        current = self.git("rev-parse", "HEAD", cwd=tree).decode().strip()
         if current != row["base"]:
             self.verify(row, files, current)
         else:
@@ -330,7 +392,7 @@ class Publisher:
 
     def pr(self, row: dict[str, Any]) -> dict[str, Any]:
         assert self.github is not None
-        value = self.github.get(row["pr_number"])
+        value = read_pr_at_head(self.github.get, row["pr_number"], {row["head"]})
         schema.identity(value, row, self.github.repo)
         require(
             value["number"] == row["pr_number"],
@@ -403,7 +465,7 @@ class Publisher:
             and not tree.is_symlink()
             and self.git("rev-parse", "HEAD", cwd=tree).decode().strip() == row["head"]
             and not self.git(
-                "status", "--porcelain", "--untracked-files=all", cwd=tree
+                "status", "--porcelain", "--untracked-files=all", "--ignored", cwd=tree
             ).strip()
         ):
             self.git("worktree", "remove", str(tree))
@@ -411,6 +473,8 @@ class Publisher:
     def publish(self, *, dry_run: bool = False, retry: bool = False) -> dict[str, Any]:
         with nullcontext() if dry_run else journal.locked(self.path):
             row = journal.read(self.path)
+            if row["state"] == "blocked" and not retry:
+                return {**journal.view(row), **({"dry_run": True} if dry_run else {})}
             try:
                 if (
                     retry
@@ -541,8 +605,21 @@ class Publisher:
                             else f"workerログ: #{meta['issue']} turn {meta['turn']['sequence']}",
                             row["pr_body"],
                         )
-                    schema.identity(created, row, self.github.repo)
-                    row.update(pr_number=created["number"], stage="pr_open")
+                    number = created.get("number")
+                    if type(number) is not int or number <= 0:
+                        raise PublicationError(
+                            "pr_identity_changed", "PR identity mismatch: number"
+                        )
+                    observed = read_pr_at_head(
+                        self.github.get, number, {row["head"]}, initial=created
+                    )
+                    schema.identity(observed, row, self.github.repo)
+                    require(
+                        observed["number"] == number,
+                        "pr_identity_changed",
+                        "PR identity mismatch: number",
+                    )
+                    row.update(pr_number=number, stage="pr_open")
                     journal.atomic(self.path, row)
                 pr = self.pr(row)
                 if pr.get("merged") is True:
@@ -612,7 +689,9 @@ class Publisher:
                 )
                 if dry_run:
                     return {**journal.view(row), "dry_run": True, "error": code}
-                if isinstance(exc, PublicationError) and exc.detail:
+                if code == "publication_failed":
+                    row["diagnostic"] = journal.failure_diagnostic(exc)
+                elif isinstance(exc, PublicationError) and exc.detail:
                     row["diagnostic"] = exc.detail
                 if isinstance(exc, GitHubHTTPError):
                     row["merge_http_status"] = exc.status

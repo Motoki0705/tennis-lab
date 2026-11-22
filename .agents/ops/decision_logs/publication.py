@@ -11,7 +11,13 @@ from typing import Any, cast
 from worker_logs.journal import PublicationError, atomic, require
 from worker_logs.ownership import require_owner
 from worker_logs.publication import GitHub as WorkerGitHub
-from worker_logs.publication import GitHubHTTPError, MergeRejected, canonical_remote
+from worker_logs.publication import (
+    GitHubHTTPError,
+    MergeRejected,
+    canonical_remote,
+    pr_head,
+    read_pr_at_head,
+)
 from worker_logs.publication import Publisher as GitTransport
 from worker_logs.safety import Guard
 from worker_logs.schema import digest, integer, json_bytes, sha
@@ -397,6 +403,16 @@ class Publisher:
         batch.update(stage="pushed", state="pending", error=None)
         self.save()
 
+    def observed_pr(
+        self, batch: dict[str, Any], *, any_revision: bool = False
+    ) -> dict[str, Any]:
+        revisions = batch["revisions"] if any_revision else batch["revisions"][-1:]
+        heads = {r["head"] for r in revisions if r["head"] is not None}
+        number = batch["pr_number"]
+        pr = read_pr_at_head(self.github.get, number, heads)
+        require(pr.get("number") == number, "pr_identity_changed")
+        return pr
+
     def pull_request(
         self, batch: dict[str, Any], diff: dict[str, str]
     ) -> dict[str, Any]:
@@ -419,20 +435,14 @@ class Publisher:
             require(integer(pr.get("number")), "github_invalid_response")
             batch["pr_number"] = pr["number"]
             self.save()
-        pr = self.github.get(batch["pr_number"])
+        pr = self.observed_pr(batch)
         policy.identity(pr, batch, batch["revisions"][-1]["head"], len(diff))
         return dict(pr)
 
     def reconcile_pr(self, batch: dict[str, Any]) -> dict[str, Any]:
-        pr = self.github.get(batch["pr_number"])
-        observed = (pr.get("head") or {}).get("sha")
-        known = next(
-            (r for r in batch["revisions"] if r["head"] and r["head"] == observed),
-            None,
-        )
-        if known is None:
-            raise PublicationError("pr_identity_changed")
-        policy.identity(pr, batch, observed)
+        pr = self.observed_pr(batch, any_revision=True)
+        known = next(r for r in batch["revisions"] if r["head"] == pr_head(pr))
+        policy.identity(pr, batch, known["head"])
         if pr.get("merged") is True:
             # Confirmation still requires the latest revision. Never rewrite a
             # closed PR or forget a revision that was not applied to it.
@@ -449,7 +459,6 @@ class Publisher:
             diff = self.verify(batch, latest)
             self.push(batch)
             return self.pull_request(batch, diff)
-        policy.identity(pr, batch, latest["head"])
         return dict(pr)
 
     def note(
@@ -637,14 +646,14 @@ class Publisher:
                 status[p["record"]["id"]]["publication_status"] != "published"
                 for p in batch["payloads"]
             ):
-                reconciled = self.confirm(batch, self.github.get(batch["pr_number"]))
+                reconciled = self.confirm(batch, self.observed_pr(batch))
                 if reconciled["state"] != "merged":
                     return reconciled
         self.publication_actor = self.batch_actor(active) if active else None
         if active and active["pr_number"] is not None:
             # A lost response can leave a merged PR in a pending batch. Check
             # that fixed publication before recording any fresh request too.
-            observed = self.github.get(active["pr_number"])
+            observed = self.observed_pr(active, any_revision=True)
             if observed.get("merged") is True:
                 reconciled = self.confirm(active, self.reconcile_pr(active))
                 if (
@@ -723,7 +732,7 @@ class Publisher:
                     self.document["batches"][-1] if self.document["batches"] else None
                 )
                 if last:
-                    return self.confirm(last, self.github.get(last["pr_number"]))
+                    return self.confirm(last, self.observed_pr(last))
                 return self.view()
             key = new_id()
             require_owner(self.owner_check)
@@ -756,7 +765,7 @@ class Publisher:
             # The merge succeeded but a last-boundary main update changed the
             # deterministic view. Preserve that PR and fixed envelopes; only an
             # explicit retry can create a README repair under a distinct branch.
-            pr = self.github.get(active["pr_number"])
+            pr = self.observed_pr(active)
             observed = self.confirm(active, pr)
             if observed["state"] == "merged":
                 return observed
@@ -817,7 +826,7 @@ class Publisher:
             require(pr.get("mergeable") is not False, "merge_conflict")
             self.verify(active, revision)
             policy.pr_changes(self.github.files(active["pr_number"]), diff)
-            fresh = self.github.get(active["pr_number"])
+            fresh = self.observed_pr(active)
             policy.identity(fresh, active, revision["head"], len(diff))
             if fresh.get("merged") is True:
                 return self.confirm(active, fresh)
@@ -834,7 +843,7 @@ class Publisher:
             require_owner(self.owner_check)
             self.github.merge(active["pr_number"], revision["head"])
             active["merge_http_status"] = 200
-            return self.confirm(active, self.github.get(active["pr_number"]))
+            return self.confirm(active, self.observed_pr(active))
         active.update(stage="main_advanced", state="pending", error=None)
         self.save()
         return self.view(active)

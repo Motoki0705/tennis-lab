@@ -19,6 +19,7 @@ PUBLICATION_FIELDS = (
     "state",
     "stage",
     "error",
+    "diagnostic",
     "pr_number",
     "branch",
     "base",
@@ -117,6 +118,8 @@ def publish(
                 manifest = entry
         if manifest is None:
             require("publication_batch" not in row, "journal_unavailable")
+            if row["state"] == "blocked" and not retry:
+                return {**journal.view(row), **({"dry_run": True} if dry_run else {})}
             if (
                 retry
                 and row["state"] == "blocked"
