@@ -51,6 +51,15 @@ if os.environ.get("MANUAL_PUBLICATION_HANDOFF"):
         logs.Publisher = UnsafePublisher
         return finish(*args, **kwargs)
     logs.finish_manual = finish_after_handoff
+if storage_config := os.environ.get("MANUAL_WORKER_STORAGE_CONFIG"):
+    import subprocess
+    original_run = subprocess.run
+    def run_with_storage_fixture(command, *args, **kwargs):
+        if "storage_tier" in command and "prepare-worktree" in command:
+            at = command.index("storage_tier") + 1
+            command = [*command[:at], "--config", storage_config, *command[at:]]
+        return original_run(command, *args, **kwargs)
+    subprocess.run = run_with_storage_fixture
 if os.environ.get("MANUAL_ADMISSION_FAILURE"):
     import subprocess
     original_popen = subprocess.Popen
@@ -1335,6 +1344,17 @@ def test_from_commit_prepares_and_starts_separate_manual_workers(
     p.child("worker")
     for name in ("data", "outputs", "ckpt", ".venv"):
         (p.repo / name).mkdir(exist_ok=True)
+    mirror = p.root / "mirror"
+    mirror_outputs = mirror / p.repo.relative_to("/") / ".worktree-outputs"
+    mirror_outputs.mkdir(parents=True)
+    (p.repo / ".worktree-outputs").symlink_to(
+        mirror_outputs, target_is_directory=True
+    )
+    config = p.root / "worktree-storage.toml"
+    config.write_text(
+        f"mirror_mount = {json.dumps(str(mirror), ensure_ascii=False)}\n"
+        "dataset_containers = []\ndataset_units = []\nworktree_outputs_on_mirror = true\n"
+    )
     base = run_git(p.repo, "rev-parse", "HEAD")
     for worker in ("primary", "quality"):
         args = (
@@ -1348,9 +1368,13 @@ def test_from_commit_prepares_and_starts_separate_manual_workers(
             "--prompt-file",
             p.note("Compare recorded observations."),
         )
-        manual(p, *args)
-        assert "already" in manual(p, *args, ok=False).stderr
+        manual(p, *args, MANUAL_WORKER_STORAGE_CONFIG=str(config))
+        duplicate = manual(
+            p, *args, ok=False, MANUAL_WORKER_STORAGE_CONFIG=str(config)
+        )
+        assert "already" in duplicate.stderr
         checkout = p.repo / ".claude/worktrees" / f"parent-1-issue-10-{worker}"
         assert run_git(checkout, "rev-parse", "HEAD") == base
         assert (checkout / ".venv").resolve() == p.repo / ".venv"
+        assert (checkout / "outputs").resolve() == mirror_outputs / checkout.name
     assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2
