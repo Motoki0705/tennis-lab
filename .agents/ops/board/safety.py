@@ -33,9 +33,12 @@ ABSOLUTE_PATH = re.compile(
     re.IGNORECASE,
 )
 _CODE_IDENTIFIER = re.compile(r"`[A-Za-z_][A-Za-z0-9_]*`")
+_SENTENCE_PUNCTUATION = ".,:;!?．，：；！？"
 _CODE_IDENTIFIER_LIST = re.compile(
-    rf"(?<![^\s(（「『、。]){_CODE_IDENTIFIER.pattern}(?:[/／]{_CODE_IDENTIFIER.pattern})+"
-    r"(?=$|[\s)）」』、。])"
+    rf"(?<![^\s(（「『、。{_SENTENCE_PUNCTUATION}])"
+    rf"{_CODE_IDENTIFIER.pattern}(?:[/／]{_CODE_IDENTIFIER.pattern})+"
+    # Punctuation can end a sentence when followed by a real boundary.
+    rf"(?=[{_SENTENCE_PUNCTUATION}]*(?:$|[\s)）」』、。]))"
 )
 _SOURCE_LINE = re.compile(r"[^\r\n]*(?:\r\n?|\n)|[^\r\n]+$")
 SESSION_TOKEN = re.compile(

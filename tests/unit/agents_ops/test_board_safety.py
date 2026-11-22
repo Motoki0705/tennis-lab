@@ -29,6 +29,10 @@ def board_safety(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         "`start/stop` と 観測/補間",
         "Use ``literal`` and `start`/`stop`",
         "> A list:\n> - First line\n>   `start`/`stop`",
+        "Use `start`/`stop`.",
+        "Use:`start`/`stop`?! Next",
+        "Use `start`/`stop`, `pause`/`resume`; `yes`/`no`:",
+        "Use `start`/`stop`．",
     ],
 )
 def test_public_accepts_identifier_separators(
@@ -52,6 +56,11 @@ def test_public_accepts_identifier_separators(
         "`_state_dir`／`user`%2Ffile",
         "`_state_dir`%2F`user`",
         "`_state_dir`／`_issue_lock` を参照（`/home/user/x`）",
+        "Use `a`/`b`.txt",
+        "Use `a`/`b`./file",
+        "Use `a`/`b`.%2Ffile",
+        "Use `a`/etc/passwd",
+        "Use `/a`",
     ],
 )
 def test_public_rejects_paths_next_to_or_inside_code(

@@ -1767,15 +1767,21 @@ def test_invalid_queries_have_no_input_in_errors(
     ("body", "status"),
     [
         ("`cli.py`（`_state_dir`／`_issue_lock` 付近）", 200),
+        ("Use `start`/`stop`.", 200),
         ("保存先：`／資料/x`", 503),
         ("```text\n/ `reports`/`plan` draft.txt\n```", 503),
         ("`` / `reports`/`plan` draft.txt ``", 503),
+        ("Use `a`/`b`/file", 503),
+        ("Use `a`/`b`.txt", 503),
     ],
     ids=[
         "legacy-identifier-separator",
+        "sentence-ending",
         "private-path",
         "fenced-path",
         "long-span-path",
+        "attached-path",
+        "attached-extension",
     ],
 )
 def test_saved_post_is_checked_before_web_publication(
