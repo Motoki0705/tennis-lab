@@ -18,9 +18,6 @@ from .state import RegistryConflict
 if TYPE_CHECKING:
     from .session import ParentSession
 
-# Auth, resource and validation rejections of the create-comment request.
-COMMENT_REJECTIONS = frozenset({401, 403, 404, 410, 422, 429})
-
 
 def post_once(
     session: ParentSession,
@@ -106,10 +103,7 @@ def post_once(
             except RegistryConflict:
                 raise
             except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
-                if (
-                    isinstance(exc, GitHubWriteError)
-                    and exc.status in COMMENT_REJECTIONS
-                ):
+                if isinstance(exc, GitHubWriteError) and exc.creation_rejected:
                     # This request was explicitly rejected. A caller retry can
                     # prepare a new POST after another duplicate check.
                     path.unlink()

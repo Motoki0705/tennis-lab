@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from issues.evidence import EVIDENCE_LABEL, EVIDENCE_PREFIX, is_evidence_issue
 from worker_logs.journal import atomic, locked
 
+from .github import GitHubWriteError
 from .judgement_comments import read_json
 from .policy import digest, nonempty, number, object_value
 from .state import RegistryConflict
@@ -214,6 +215,9 @@ class EvidenceIssues:
                 except RegistryConflict:
                     raise
                 except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
+                    if isinstance(exc, GitHubWriteError) and exc.creation_rejected:
+                        path.unlink()
+                        raise
                     raise ValueError(
                         "evidence issue creation uncertain; retry only to reconcile"
                     ) from exc

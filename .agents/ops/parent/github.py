@@ -26,9 +26,17 @@ if TYPE_CHECKING:
 
 
 class GitHubWriteError(ValueError):
+    """Write failure with a status only when the HTTP response was complete."""
+
     def __init__(self, message: str, *, status: int | None) -> None:
         super().__init__(message)
         self.status = status
+
+    @property
+    def creation_rejected(self) -> bool:
+        # Issue and comment creation can be retried after these rejections.
+        # A transport failure or an unclassified status leaves the write uncertain.
+        return self.status in {400, 401, 403, 404, 410, 422, 429}
 
 
 class GitHub(IssueGitHub):

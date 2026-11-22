@@ -78,6 +78,26 @@ def test_uncertain_creation_without_remote_match_never_posts_again(
     assert len([c for c in env.calls() if "POST" in c and "repos/o/r/issues" in c]) == 1
 
 
+def test_register_recovers_after_an_explicit_evidence_creation_rejection(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    failed = p.cli("register", extra={"PARENT_REJECT_EVIDENCE_CREATE": "1"}, ok=False)
+    receipt = json.loads(failed.stdout)
+    assert receipt["parent_action_applied"] is True
+    assert "register" in receipt["assignment_evidence"]["retry"]
+    assert "HTTP 403" in receipt["assignment_evidence"]["error"]
+    assert len(p.state()["issues"]) == 2
+    assert not p.comments()
+
+    p.cli("register")
+    p.cli("register")
+    assert len(p.state()["issues"]) == 3
+    [assigned] = evidence_comments(p.state())
+    assert '"event": "assigned", "generation": 1' in assigned["body"].splitlines()[0]
+    assert len([c for c in p.calls() if "POST" in c and "repos/o/r/issues" in c]) == 2
+
+
 def test_register_verifies_evidence_while_labelled_listing_lags(
     parent_env: ParentEnv,
 ) -> None:

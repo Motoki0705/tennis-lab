@@ -239,6 +239,9 @@ if n is None:
         response(paged(rows))
     assert method == "POST", method
     if payload["labels"] == ["parent-evidence"]:
+        if os.environ.get("PARENT_REJECT_EVIDENCE_CREATE"):
+            print("HTTP/1.1 403 Forbidden\n")
+            response({"message": "injected evidence creation rejection"}, 403)
         n = str(state.get("next_evidence", 9000))
         state["next_evidence"] = int(n) + 1
     else:
