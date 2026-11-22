@@ -122,8 +122,10 @@ class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelec
             encoder: AppearanceEncoder = models.borrow("encoder")
             if encoder.name != self.encoder_name:
                 raise ValueError('Selection encoder differs from configured encoder')
+            batch = self.encoder.settings.get("batch_size")
+            kwargs = {} if batch is None else {"batch_size": int(batch)}
             appearances, samples = embed_tracks(video.path, raw.boxes_xyxy, raw.observed,
-                (video.width, video.height), encoder, sampling)
+                (video.width, video.height), encoder, sampling, **kwargs)
             appearance_record.update(encoder=encoder.name, sampling=asdict(sampling),
                 source='recomputed_features', reason='tracked_encoder_identity_mismatch_or_missing',
                 samples=[{'frames': s.frames.tolist(), 'rejected': s.rejected} for s in samples])

@@ -226,7 +226,8 @@ def test_profile_uses_shape_readback_instead_of_set_shape_return():
         set_profile_shapes(profile, shapes)
 
 
-def test_engine_inspection_checks_shifted_window_attention_operands():
+@pytest.mark.parametrize("packed_windows", [168, -1])
+def test_engine_inspection_checks_shifted_window_attention_operands(packed_windows):
     layer = {
         "Name": "shifted_window_attention",
         "LayerType": "kgen",
@@ -234,9 +235,9 @@ def test_engine_inspection_checks_shifted_window_attention_operands():
         "Inputs": [
             {"Name": "mask", "Dimensions": [7, 1, 144], "Format/Datatype": "Half"},
             {"Name": "mask", "Dimensions": [7, 144, 1], "Format/Datatype": "Half"},
-            {"Dimensions": [168, 144, 32], "Format/Datatype": "FP8"},
-            {"Dimensions": [168, 32, 144], "Format/Datatype": "FP8"},
-            {"Dimensions": [168, 144, 32], "Format/Datatype": "FP8"},
+            {"Dimensions": [packed_windows, 144, 32], "Format/Datatype": "FP8"},
+            {"Dimensions": [packed_windows, 32, 144], "Format/Datatype": "FP8"},
+            {"Dimensions": [packed_windows, 144, 32], "Format/Datatype": "FP8"},
         ],
     }
     assert (

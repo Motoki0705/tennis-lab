@@ -1,22 +1,28 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'darwin'",
     "python_full_version == '3.14.*' and sys_platform == 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.14.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 conflicts = [[
@@ -45,7 +51,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "safetensors" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f5/b5/1d3ed029ac71d3f2961346829a268da923698e9fd63f218f78841f216bfd/accelerate-1.15.0.tar.gz", hash = "sha256:5654f8c5eaa0d4fa68b33e287a97765da6849bf6d51dcac874e73fbbddfb6134", size = 422615, upload-time = "2026-09-09T13:04:49.078Z" }
@@ -170,7 +176,7 @@ version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "frozenlist" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/61/62/06741b579156360248d1ec624842ad0edf697050bbaf7c3e46394e106ad1/aiosignal-1.4.0.tar.gz", hash = "sha256:f47eecd9468083c2029cc99945502cb7708b082c232f9aca65da147157b251c7", size = 25007, upload-time = "2025-07-03T22:54:43.528Z" }
 wheels = [
@@ -201,7 +207,7 @@ version = "4.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "idna" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/19/14/2c5dd9f512b66549ae92767a9c7b330ae88e1932ca57876909410251fe13/anyio-4.13.0.tar.gz", hash = "sha256:334b70e641fd2221c1505b3890c69882fe4a2df910cba14d97019b90b24439dc", size = 231622, upload-time = "2026-03-24T12:59:09.671Z" }
 wheels = [
@@ -337,7 +343,7 @@ dependencies = [
     { name = "numpy" },
     { name = "packaging" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 wheels = [
@@ -733,40 +739,40 @@ wheels = [
 
 [package.optional-dependencies]
 cublas = [
-    { name = "nvidia-cublas", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "nvidia-cuda-nvrtc", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cublas", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cuda-nvrtc", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 cudart = [
-    { name = "nvidia-cuda-runtime", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cuda-runtime", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 cufft = [
-    { name = "nvidia-cufft", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cufft", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 cufile = [
-    { name = "nvidia-cufile", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cufile", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 cupti = [
-    { name = "nvidia-cuda-cupti", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cuda-cupti", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 cusolver = [
-    { name = "nvidia-cublas", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "nvidia-cusolver", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "nvidia-cusparse", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cublas", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cusolver", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cusparse", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 cusparse = [
-    { name = "nvidia-cusparse", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cusparse", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 nvjitlink = [
-    { name = "nvidia-nvjitlink", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 nvrtc = [
-    { name = "nvidia-cuda-nvrtc", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cuda-nvrtc", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 nvtx = [
-    { name = "nvidia-nvtx", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-nvtx", marker = "(platform_machine != 'aarch64' and platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (platform_machine == 'aarch64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (platform_machine == 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 
 [[package]]
@@ -912,6 +918,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/b8/00651a0f559862f3bb7d6f7477b192afe3f583cc5e26403b44e59a55ab34/filelock-3.25.2.tar.gz", hash = "sha256:b64ece2b38f4ca29dd3e810287aa8c48182bbecd1ae6e9ae126c9b35f1382694", size = 40480, upload-time = "2026-03-11T20:45:38.487Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/a5/842ae8f0c08b61d6484b52f99a03510a3a72d23141942d216ebe81fefbce/filelock-3.25.2-py3-none-any.whl", hash = "sha256:ca8afb0da15f229774c9ad1b455ed96e85a81373065fb10446672f64444ddf70", size = 26759, upload-time = "2026-03-11T20:45:37.437Z" },
+]
+
+[[package]]
+name = "flatbuffers"
+version = "25.12.19"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl", hash = "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4", size = 26661, upload-time = "2025-12-19T23:16:13.622Z" },
 ]
 
 [[package]]
@@ -1091,7 +1105,7 @@ dependencies = [
     { name = "filelock" },
     { name = "requests", extra = ["socks"] },
     { name = "tqdm" },
-    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "urllib3" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/99/14/db6cbe00c8259b2160e998ebbff3a616409611f5c39364cb667dfc7dd35a/gdown-6.5.1.tar.gz", hash = "sha256:e441b564589b4f9f49855679649b3b04b0d2e056bc1d635691f7e003ca27e5d0", size = 358925, upload-time = "2026-10-29T03:52:53.732Z" }
@@ -1188,8 +1202,8 @@ name = "httpcore2"
 version = "2.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "sys_platform != 'emscripten' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "truststore", marker = "sys_platform != 'emscripten' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c0/61/afa9d6b7452f9eca73f73d45324eb0bb52f098fd5e6049bf6b8263be9b4e/httpcore2-2.16.0.tar.gz", hash = "sha256:c72cd0413563b17e1cd8354677dff887466f8ec2551679759e93126534428643", size = 69886, upload-time = "2026-10-21T07:09:45.31Z" }
 wheels = [
@@ -1201,12 +1215,12 @@ name = "httpx2"
 version = "2.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "anyio", marker = "sys_platform != 'emscripten'" },
-    { name = "httpcore2", marker = "sys_platform != 'emscripten'" },
-    { name = "httpx2-jsfetch", marker = "python_full_version >= '3.12' and sys_platform == 'emscripten'" },
+    { name = "anyio", marker = "sys_platform != 'emscripten' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "httpcore2", marker = "sys_platform != 'emscripten' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "httpx2-jsfetch", marker = "(python_full_version >= '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.12' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "idna" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "truststore", marker = "sys_platform != 'emscripten' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/43/73/5ca2cedf5e4e50423d1c258877865a6b62793633b561c58499f8aeb33b7e/httpx2-2.16.0.tar.gz", hash = "sha256:0d54c98128e8f2ff7fbbde0fca8c359e5f032edeaaaac443cdb7f31f685bcd7f", size = 103116, upload-time = "2026-10-21T07:09:46.348Z" }
 wheels = [
@@ -1230,7 +1244,7 @@ dependencies = [
     { name = "click" },
     { name = "filelock" },
     { name = "fsspec" },
-    { name = "hf-xet", marker = "platform_machine == 'AMD64' or platform_machine == 'ARM64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'" },
+    { name = "hf-xet", marker = "platform_machine == 'AMD64' or platform_machine == 'ARM64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "httpx2" },
     { name = "packaging" },
     { name = "pyyaml" },
@@ -1378,21 +1392,22 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "decorator" },
-    { name = "ipython-pygments-lexers" },
-    { name = "jedi" },
-    { name = "matplotlib-inline" },
-    { name = "pexpect", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "prompt-toolkit" },
-    { name = "pygments" },
-    { name = "stack-data" },
-    { name = "traitlets" },
-    { name = "typing-extensions" },
+    { name = "colorama", marker = "(python_full_version < '3.12' and sys_platform == 'win32') or (python_full_version >= '3.12' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "decorator", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "ipython-pygments-lexers", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "jedi", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "matplotlib-inline", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "pexpect", marker = "(python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32') or (python_full_version >= '3.12' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "prompt-toolkit", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "pygments", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "stack-data", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "traitlets", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "typing-extensions", marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c5/25/daae0e764047b0a2480c7bbb25d48f4f509b5818636562eeac145d06dfee/ipython-9.10.1.tar.gz", hash = "sha256:e170e9b2a44312484415bdb750492699bf329233b03f2557a9692cce6466ada4", size = 4426663, upload-time = "2026-03-27T09:53:26.244Z" }
 wheels = [
@@ -1406,28 +1421,33 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'darwin'",
     "python_full_version == '3.14.*' and sys_platform == 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.14.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "decorator" },
-    { name = "ipython-pygments-lexers" },
-    { name = "jedi" },
-    { name = "matplotlib-inline" },
-    { name = "pexpect", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "prompt-toolkit" },
-    { name = "pygments" },
-    { name = "stack-data" },
-    { name = "traitlets" },
+    { name = "colorama", marker = "(python_full_version >= '3.12' and sys_platform == 'win32') or (python_full_version < '3.12' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "decorator", marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "ipython-pygments-lexers", marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "jedi", marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "matplotlib-inline", marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "pexpect", marker = "(python_full_version >= '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32') or (python_full_version < '3.12' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "prompt-toolkit", marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "pygments", marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "stack-data", marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "traitlets", marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3a/73/7114f80a8f9cabdb13c27732dce24af945b2923dcab80723602f7c8bc2d8/ipython-9.12.0.tar.gz", hash = "sha256:01daa83f504b693ba523b5a407246cabde4eb4513285a3c6acaff11a66735ee4", size = 4428879, upload-time = "2026-03-27T09:42:45.312Z" }
 wheels = [
@@ -1452,8 +1472,8 @@ version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "comm" },
-    { name = "ipython", version = "9.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "ipython", version = "9.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "ipython", version = "9.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "ipython", version = "9.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "jupyterlab-widgets" },
     { name = "traitlets" },
     { name = "widgetsnbextension" },
@@ -1989,6 +2009,52 @@ wheels = [
 ]
 
 [[package]]
+name = "ml-dtypes"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bc/2d/4ce5532f433dfae6dc96ed4abd7a0e18106a63666bce8eb878d9ffdc0610/ml_dtypes-0.7.0.tar.gz", hash = "sha256:67fd890fb09d1e068cfe1b4dc8e204430ae7632102b4a4f854b093b6f02b3950", size = 4353024, upload-time = "2026-11-16T16:21:26.657Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/c2/634f85467e7fc2813ae52165a5e878b8b863ccb25c151b68b3eb40de1a12/ml_dtypes-0.7.0-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:8b50c4b98e4bfde3b86fa8a623658ff5fca13c42d936f8223ad8bcf82d6fa400", size = 737433, upload-time = "2026-11-16T16:20:32.292Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/82/5ccc768d22c4dd2c4869ae0266dbc41c6fcd8198429e401937539d99fd6d/ml_dtypes-0.7.0-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:7c094b42cb01f21e37e602a5cfe502ddaf6b5c60f66a162fd1e61f9a586558cb", size = 438897, upload-time = "2026-11-16T16:20:33.639Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/ce/3e0eaaaca8e60ca12ec0ae396520d85a7ee4a132aa111e054accfa7c568d/ml_dtypes-0.7.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d214c910cabaf80aa1ee37b0f25131e20d7a6474182e5293a68985b0421299da", size = 467165, upload-time = "2026-11-16T16:20:35.069Z" },
+    { url = "https://files.pythonhosted.org/packages/16/e0/b8749babde8d45345cd9a7147f7445794958f9b4a39c9020e0695af76d4f/ml_dtypes-0.7.0-cp311-cp311-win_amd64.whl", hash = "sha256:15fa56d3b2b31fce16c13935ff8693f95c42620fe0f81e93d1f2cdee19425540", size = 462925, upload-time = "2026-11-16T16:20:36.435Z" },
+    { url = "https://files.pythonhosted.org/packages/72/8e/a34e9c490539cbe4806e011c3e5449fb2c243b5be747cbf7421d1db42515/ml_dtypes-0.7.0-cp311-cp311-win_arm64.whl", hash = "sha256:0302deb4c0c69555f29ca6741458155b302f8294e850f04358c8a07bcdb7caf5", size = 589325, upload-time = "2026-11-16T16:20:37.994Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/e4/5c1579cfac55dab603df1870be84fc270df32c1e81b96314976bf5814b26/ml_dtypes-0.7.0-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:3cfe29fc79a00f4555c5319a32c549c10ec075ec888974ab4c0a59598e1f0f48", size = 738779, upload-time = "2026-11-16T16:20:39.543Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/7c/39dd1b5b4458ea1c6d52f5161d92e78e723c05a33c172359dd420ca388be/ml_dtypes-0.7.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:7366e3ac8630e2bb35e67945391889225e2221c581c0831ec01a8cf50de3461a", size = 436741, upload-time = "2026-11-16T16:20:41.443Z" },
+    { url = "https://files.pythonhosted.org/packages/98/cc/d6949ae90ff708e8b9f1889f4e6bdb74c31b2603fa29936a97b52dd784fa/ml_dtypes-0.7.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3c4e47f553a04d33886160a9600e2313e5bee8c1c3da997baa23c8fecbfab189", size = 463670, upload-time = "2026-11-16T16:20:42.875Z" },
+    { url = "https://files.pythonhosted.org/packages/60/21/3ca0cb91c528d6250d356e62645d868dc3276cb701cc194a2ae40ca99a83/ml_dtypes-0.7.0-cp312-cp312-win_amd64.whl", hash = "sha256:0b1d09c91aaa6f38052521d5377cecb1523f50d4aee7783183a955a6544b8ad6", size = 463335, upload-time = "2026-11-16T16:20:44.317Z" },
+    { url = "https://files.pythonhosted.org/packages/61/e0/6d97837f234b658a4f553b59b95e24799a4bd8e544e536435d8e85e0f005/ml_dtypes-0.7.0-cp312-cp312-win_arm64.whl", hash = "sha256:b29d506d51d994efce5e1f214a6cab77d96b796c5ab59a63f23d9a8c5b20e4dd", size = 587991, upload-time = "2026-11-16T16:20:45.95Z" },
+    { url = "https://files.pythonhosted.org/packages/38/64/e435533e50e407cd7f8cb9570f824c3e0e40463715cc6f4bfccf81632107/ml_dtypes-0.7.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:1c442cebb388bbe3bcebda9e3864bdbb719a2611742fdd72687b424b5b3a4080", size = 738753, upload-time = "2026-11-16T16:20:47.393Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/5d/4a429dad9a622aea8135c2bd38b4e8222119b4168292dd030b6df579f0c3/ml_dtypes-0.7.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9e0f30247d011782286f9f5b8b0a3fad3f4f945d2a92cb9964c68d566ed17878", size = 436745, upload-time = "2026-11-16T16:20:49.01Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/9c/7e9eea3d4ef6739b34f3038b910ea42c8655e4eea372d15d7a5601fc1bc6/ml_dtypes-0.7.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5fb56999e1a03f47af5583af4089e00d04b68f87d4fadd659a5927ecd7687c3d", size = 463634, upload-time = "2026-11-16T16:20:50.49Z" },
+    { url = "https://files.pythonhosted.org/packages/05/57/f26eb770c89dd56fe29d6f4458c1c8e496afde034fe74fda403183f11dbc/ml_dtypes-0.7.0-cp313-cp313-win_amd64.whl", hash = "sha256:8251e1bd8f68ebf9be6b0cad5ff6acee0e1768f2f45d55addda1a727e81503bf", size = 463435, upload-time = "2026-11-16T16:20:52.025Z" },
+    { url = "https://files.pythonhosted.org/packages/36/38/3a390b0a6ef3155fa1ebb8de3aa4d547ccb90d00bb9ecd57af011142df85/ml_dtypes-0.7.0-cp313-cp313-win_arm64.whl", hash = "sha256:4fbce28a66691c56bb48620349df20a157b2c1bc949a6a1ce60a395a2b23293c", size = 587907, upload-time = "2026-11-16T16:20:53.764Z" },
+    { url = "https://files.pythonhosted.org/packages/98/71/51867a1a1bcdcbf15cbe905107c0bcff99844d38fba3e92a3fa19ea45e4d/ml_dtypes-0.7.0-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:364d3b29ef3d06cd7f6bdfd7bd235f8dba104d7aa0de77df31b804d47b7b904f", size = 739397, upload-time = "2026-11-16T16:20:55.174Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/9d/159b18f3e34d778dca919cbd029c569ed25db7909cb4eb94459a9192070a/ml_dtypes-0.7.0-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:8be8a421dca82572fd554a026d42f8e7aec6c5c9ddae4bbc118cf04051d13445", size = 436711, upload-time = "2026-11-16T16:20:56.871Z" },
+    { url = "https://files.pythonhosted.org/packages/25/d0/6e0cd52b806a81933e5628834c105147a59f8836e89fe45a29f34d88dca3/ml_dtypes-0.7.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d0e87fdd2d380fa32f45e117687070b0e312b9f9a431bb0555edcd3a7821cb1d", size = 465164, upload-time = "2026-11-16T16:20:58.28Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/39/9f9ba9765f64465d496370624e3027a6b20bf7cc43989c7007db9c58890b/ml_dtypes-0.7.0-cp314-cp314-win_amd64.whl", hash = "sha256:306a494aee4ec6e1fc88cd9d5ce8b84973edb0f05b884fcf3883cf3d79700ba5", size = 477502, upload-time = "2026-11-16T16:20:59.801Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/b5/4090a863b3ca541533a73183b1d561786ac2d793aa15b75c87996d3abfad/ml_dtypes-0.7.0-cp314-cp314-win_arm64.whl", hash = "sha256:f5472be87d269572fe6afe2daa46870ed86d1129270c52734fe8485b91b697b2", size = 603587, upload-time = "2026-11-16T16:21:01.542Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/80/881830499809b4b98e79a825569511bfda092b52b1ad9a4738ac827c1b4a/ml_dtypes-0.7.0-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:dc7ac1da0f25d6deef1b37d5653e0b7df63e5396738d7da967a4f80a202fd51f", size = 759115, upload-time = "2026-11-16T16:21:02.97Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/3d/f2d7d4eace6493d10c4b302abd2e4552f3a378822cb315394857a75acefc/ml_dtypes-0.7.0-cp314-cp314t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:58828e7a44fdafb8380f98427fdccd418c12af2d875e00647439c832a1be5e14", size = 453112, upload-time = "2026-11-16T16:21:04.744Z" },
+    { url = "https://files.pythonhosted.org/packages/89/78/c358bd8756d1a758f54aa8571776e5aef0eeee4b75a08c0883049890e883/ml_dtypes-0.7.0-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a34d838528a531724cfcb1ebd201c308176694e5dfa4fcebcfa2590fb96e7e12", size = 472215, upload-time = "2026-11-16T16:21:06.158Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/18/f614916d281090a598b0fa22004588b0e0bde3acf86675285280d69ef1a3/ml_dtypes-0.7.0-cp314-cp314t-win_amd64.whl", hash = "sha256:3a71fe4a4c323e89058ba828f41d3995203c27c09fed64776173de05e4ad28d1", size = 491626, upload-time = "2026-11-16T16:21:07.678Z" },
+    { url = "https://files.pythonhosted.org/packages/39/0b/c47ba04c7113d3b9d13c56041021cbcbed07650ed7718c878843df2fc20e/ml_dtypes-0.7.0-cp314-cp314t-win_arm64.whl", hash = "sha256:69aeab7864e8a2beae8b4765945d44e826f82f8003a96a7c1cf3365b6abbaf2b", size = 608634, upload-time = "2026-11-16T16:21:09.058Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/2e/73636b53e1e50e530f63fdad2e48928e9fcb40d092f688b3ce2e305c5df2/ml_dtypes-0.7.0-cp315-cp315-macosx_10_15_universal2.whl", hash = "sha256:6cc2f03294ca7fc24f231d6341e1f0afe53067cefa739b8c6d10614eb509c67b", size = 739386, upload-time = "2026-11-16T16:21:10.997Z" },
+    { url = "https://files.pythonhosted.org/packages/36/c2/beb5c38452ea902096410fbe6456512ab31a0116c009f342eee376745981/ml_dtypes-0.7.0-cp315-cp315-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:92d06de5c9ffedb5e4c0809e9a3dec02f5457a9be864a89792f071b07d890a10", size = 436710, upload-time = "2026-11-16T16:21:12.684Z" },
+    { url = "https://files.pythonhosted.org/packages/32/05/6d315f784aa5c0a8b54974dbfd5a9b2c995b1ff14aee48a4cfb9d246bdf7/ml_dtypes-0.7.0-cp315-cp315-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b24d45184f7508a160d69edf78dd2ed20c9b53f9f1064f52d96f3b800ed98371", size = 465156, upload-time = "2026-11-16T16:21:14.215Z" },
+    { url = "https://files.pythonhosted.org/packages/39/78/bc623555aa81a017167f38449faeb57e945e36d9a8de5b5c36b16c695b1b/ml_dtypes-0.7.0-cp315-cp315-win_amd64.whl", hash = "sha256:9a8befe9c3610745515af48696044366b0e15accfcad12350c457fba5443ed21", size = 477450, upload-time = "2026-11-16T16:21:15.853Z" },
+    { url = "https://files.pythonhosted.org/packages/01/36/66e6ced6f35986a504ab838b6c55d71f1b673a533a4993d64a7d80bcd120/ml_dtypes-0.7.0-cp315-cp315-win_arm64.whl", hash = "sha256:e621dfbc9bc7d75ded2782f58ff22f72eb9deb907e9f0fa09147eb3e6f4ae6aa", size = 603759, upload-time = "2026-11-16T16:21:17.283Z" },
+    { url = "https://files.pythonhosted.org/packages/14/82/a848814ddb7c56eb1c6ca3258526a4c878fc68040416c176dc41dca6c55c/ml_dtypes-0.7.0-cp315-cp315t-macosx_10_15_universal2.whl", hash = "sha256:6b1b2c9d2acef9d47f157d47c9bbbe12df5814dd7642cd649ad08b4b6c29bb62", size = 758617, upload-time = "2026-11-16T16:21:18.908Z" },
+    { url = "https://files.pythonhosted.org/packages/14/12/4ec20304ffe541f4e258ddd2b77349a6ee59fb79b66f231684ebbf2d2e9d/ml_dtypes-0.7.0-cp315-cp315t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:313629f5d5d34f419e9b789aa8c8afb4710126449cb12959be2a2f1980a7598a", size = 452397, upload-time = "2026-11-16T16:21:20.619Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/1d/082e098dd715e453fb4e9dcebaae581f9619f6b56f4cae0957335db50444/ml_dtypes-0.7.0-cp315-cp315t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0d0e6250683fe6fd30cdd161102c1c5eb8a04715667fba4e42a4690cbc104620", size = 472148, upload-time = "2026-11-16T16:21:22.031Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/81/5c8b4591b503f68122d08c82fffa58a75de14a4c9a3c61ab0d89830a3728/ml_dtypes-0.7.0-cp315-cp315t-win_amd64.whl", hash = "sha256:0f22e5b28370e2e9c5ce88b66a8ebab28009abbe6fdb8a089a7078c657eb2da9", size = 490371, upload-time = "2026-11-16T16:21:23.791Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/7d/0096f45dbfc6cebfd899bfa166aee40b89c8df121a76346a9ee9816704f2/ml_dtypes-0.7.0-cp315-cp315t-win_arm64.whl", hash = "sha256:118495dabbee38719343ce7bcaa7e33f503378c4694311791389375c1854aec8", size = 608942, upload-time = "2026-11-16T16:21:25.217Z" },
+]
+
+[[package]]
 name = "mpmath"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2120,7 +2186,7 @@ version = "2.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ast-serialize" },
-    { name = "librt", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "librt", marker = "platform_python_implementation != 'PyPy' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "mypy-extensions" },
     { name = "pathspec" },
     { name = "typing-extensions" },
@@ -2354,7 +2420,7 @@ name = "nvidia-cufft"
 version = "12.2.0.57"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/07/8d/f650e6d527f9d22b5ded906c000eaebb037721c06d4ecd906df62f300979/nvidia_cufft-12.2.0.57-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:1ed438568ae1088ba2c25789d10205d4104b8b140b7bd942e39a787947a0fb74", size = 218244742, upload-time = "2026-07-16T09:47:08.76Z" },
@@ -2376,9 +2442,9 @@ name = "nvidia-cusolver"
 version = "12.2.0.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "nvidia-cusparse", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "nvidia-nvjitlink", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cublas", marker = "(platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-cusparse", marker = "(platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/df/9e6b603f1d64040ce3e076e9bce1b78e2d588d0aabc9783f351cecd861ab/nvidia_cusolver-12.2.0.11-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:8be097fca28de6be0990ab216ee9b804dd51077e1d1d83acf6c9850650bdc64d", size = 250383075, upload-time = "2026-07-16T09:50:16.355Z" },
@@ -2391,7 +2457,7 @@ name = "nvidia-cusparse"
 version = "12.7.10.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "nvidia-nvjitlink", marker = "(platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/35/abbd278fb6d039fcfb5175efa10a21007a11878bec59920d84854b47d766/nvidia_cusparse-12.7.10.12-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:597eff2cd83e3ab1d1e3a0dce9c9c879d77cf64ec2659bfdb5af6a5d02e7aaa9", size = 169043093, upload-time = "2026-07-16T09:51:37.058Z" },
@@ -2464,6 +2530,71 @@ wheels = [
 ]
 
 [[package]]
+name = "onnx"
+version = "1.21.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ml-dtypes", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "numpy", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "protobuf", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "typing-extensions", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c5/93/942d2a0f6a70538eea042ce0445c8aefd46559ad153469986f29a743c01c/onnx-1.21.0.tar.gz", hash = "sha256:4d8b67d0aaec5864c87633188b91cc520877477ec0254eda122bef8be43cd764", size = 12074608, upload-time = "2026-03-27T21:33:36.118Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/45/48/32e383aa6bc40b72a9fd419937aaa647078190c9bfccdc97b316d2dee687/onnx-1.21.0-cp311-cp311-macosx_12_0_universal2.whl", hash = "sha256:2aca19949260875c14866fc77ea0bc37e4e809b24976108762843d328c92d3ce", size = 17968053, upload-time = "2026-03-27T21:32:29.558Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/26/5726e8df7d36e96bb3c679912d1a86af42f393d77aa17d6b98a97d4289ce/onnx-1.21.0-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:82aa6ab51144df07c58c4850cb78d4f1ae969d8c0bf657b28041796d49ba6974", size = 17534821, upload-time = "2026-03-27T21:32:32.351Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/2b/021dcd2dd50c3c71b7959d7368526da384a295c162fb4863f36057973f78/onnx-1.21.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:10c3185a232089335581fabb98fba4e86d3e8246b8140f2e406082438100ebda", size = 17616664, upload-time = "2026-03-27T21:32:34.921Z" },
+    { url = "https://files.pythonhosted.org/packages/12/00/afa32a46fa122a7ed42df1cfe8796922156a3725ba8fc581c4779c96e2fc/onnx-1.21.0-cp311-cp311-win32.whl", hash = "sha256:f53b3c15a3b539c16b99655c43c365622046d68c49b680c48eba4da2a4fb6f27", size = 16289035, upload-time = "2026-03-27T21:32:37.783Z" },
+    { url = "https://files.pythonhosted.org/packages/73/8d/483cc980a24d4c0131d0af06d0ff6a37fb08ae90a7848ece8cef645194f1/onnx-1.21.0-cp311-cp311-win_amd64.whl", hash = "sha256:5f78c411743db317a76e5d009f84f7e3d5380411a1567a868e82461a1e5c775d", size = 16443748, upload-time = "2026-03-27T21:32:40.337Z" },
+    { url = "https://files.pythonhosted.org/packages/38/78/9d06fd5aaaed1ec9cb8a3b70fbbf00c1bdc18db610771e96379f0ed58112/onnx-1.21.0-cp311-cp311-win_arm64.whl", hash = "sha256:ab6a488dabbb172eebc9f3b3e7ac68763f32b0c571626d4a5004608f866cc83d", size = 16406123, upload-time = "2026-03-27T21:32:45.159Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/ae/cb644ec84c25e63575d9d8790fdcc5d1a11d67d3f62f872edb35fa38d158/onnx-1.21.0-cp312-abi3-macosx_12_0_universal2.whl", hash = "sha256:fc2635400fe39ff37ebc4e75342cc54450eadadf39c540ff132c319bf4960095", size = 17965930, upload-time = "2026-03-27T21:32:48.089Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/b6/eeb5903586645ef8a49b4b7892580438741acc3df91d7a5bd0f3a59ea9cb/onnx-1.21.0-cp312-abi3-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9003d5206c01fa2ff4b46311566865d8e493e1a6998d4009ec6de39843f1b59b", size = 17531344, upload-time = "2026-03-27T21:32:50.837Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/00/4823f06357892d1e60d6f34e7299d2ba4ed2108c487cc394f7ce85a3ff14/onnx-1.21.0-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a9261bd580fb8548c9c37b3c6750387eb8f21ea43c63880d37b2c622e1684285", size = 17613697, upload-time = "2026-03-27T21:32:54.222Z" },
+    { url = "https://files.pythonhosted.org/packages/23/1d/391f3c567ae068c8ac4f1d1316bae97c9eb45e702f05975fe0e17ad441f0/onnx-1.21.0-cp312-abi3-win32.whl", hash = "sha256:9ea4e824964082811938a9250451d89c4ec474fe42dd36c038bfa5df31993d1e", size = 16287200, upload-time = "2026-03-27T21:32:57.277Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/a6/5eefbe5b40ea96de95a766bd2e0e751f35bdea2d4b951991ec9afaa69531/onnx-1.21.0-cp312-abi3-win_amd64.whl", hash = "sha256:458d91948ad9a7729a347550553b49ab6939f9af2cddf334e2116e45467dc61f", size = 16441045, upload-time = "2026-03-27T21:33:00.081Z" },
+    { url = "https://files.pythonhosted.org/packages/63/c4/0ed8dc037a39113d2a4d66e0005e07751c299c46b993f1ad5c2c35664c20/onnx-1.21.0-cp312-abi3-win_arm64.whl", hash = "sha256:ca14bc4842fccc3187eb538f07eabeb25a779b39388b006db4356c07403a7bbb", size = 16403134, upload-time = "2026-03-27T21:33:03.987Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/89/0e1a9beb536401e2f45ac88735e123f2735e12fc7b56ff6c11727e097526/onnx-1.21.0-cp313-cp313t-macosx_12_0_universal2.whl", hash = "sha256:257d1d1deb6a652913698f1e3f33ef1ca0aa69174892fe38946d4572d89dd94f", size = 17975430, upload-time = "2026-03-27T21:33:07.005Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/46/e6dc71a7b3b317265591b20a5f71d0ff5c0d26c24e52283139dc90c66038/onnx-1.21.0-cp313-cp313t-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:7cd7cb8f6459311bdb557cbf6c0ccc6d8ace11c304d1bba0a30b4a4688e245f8", size = 17537435, upload-time = "2026-03-27T21:33:09.765Z" },
+    { url = "https://files.pythonhosted.org/packages/49/2e/27affcac63eaf2ef183a44fd1a1354b11da64a6c72fe6f3fdcf5571bcee5/onnx-1.21.0-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7b58a4cfec8d9311b73dc083e4c1fa362069267881144c05139b3eba5dc3a840", size = 17617687, upload-time = "2026-03-27T21:33:12.619Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/5c/ac8ed15e941593a3672ce424280b764979026317811f2e8508432bfc3429/onnx-1.21.0-cp313-cp313t-win_amd64.whl", hash = "sha256:1a9baf882562c4cebf79589bebb7cd71a20e30b51158cac3e3bbaf27da6163bd", size = 16449402, upload-time = "2026-03-27T21:33:15.555Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/aa/d2231e0dcaad838217afc64c306c8152a080134d2034e247cc973d577674/onnx-1.21.0-cp313-cp313t-win_arm64.whl", hash = "sha256:bba12181566acf49b35875838eba49536a327b2944664b17125577d230c637ad", size = 16408273, upload-time = "2026-03-27T21:33:18.599Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/0a/8905b14694def6ad23edf1011fdd581500384062f8c4c567e114be7aa272/onnx-1.21.0-cp314-cp314t-macosx_12_0_universal2.whl", hash = "sha256:7ee9d8fd6a4874a5fa8b44bbcabea104ce752b20469b88bc50c7dcf9030779ad", size = 17975331, upload-time = "2026-03-27T21:33:21.69Z" },
+    { url = "https://files.pythonhosted.org/packages/61/28/f4e401e5199d1b9c8b76c7e7ae1169e050515258e877b58fa8bb49d3bdcc/onnx-1.21.0-cp314-cp314t-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5489f25fe461e7f32128218251a466cabbeeaf1eaa791c79daebf1a80d5a2cc9", size = 17537430, upload-time = "2026-03-27T21:33:24.547Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/cf/5d13320eb3660d5af360ea3b43aa9c63a70c92a9b4d1ea0d34501a32fcb8/onnx-1.21.0-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:db17fc0fec46180b6acbd1d5d8650a04e5527c02b09381da0b5b888d02a204c8", size = 17617662, upload-time = "2026-03-27T21:33:27.418Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/50/3eaa1878338247be021e6423696813d61e77e534dccbd15a703a144e703d/onnx-1.21.0-cp314-cp314t-win_amd64.whl", hash = "sha256:19d9971a3e52a12968ae6c70fd0f86c349536de0b0c33922ecdbe52d1972fe60", size = 16463688, upload-time = "2026-03-27T21:33:30.229Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/48/38d46b43bbb525e0b6a4c2c4204cc6795d67e45687a2f7403e06d8e7053d/onnx-1.21.0-cp314-cp314t-win_arm64.whl", hash = "sha256:efba467efb316baf2a9452d892c2f982b9b758c778d23e38c7f44fa211b30bb9", size = 16423387, upload-time = "2026-03-27T21:33:33.446Z" },
+]
+
+[[package]]
+name = "onnxruntime-gpu"
+version = "1.30.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flatbuffers", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "numpy", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "packaging", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "protobuf", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ea/71/b225bd559a718f6cefb058d4f4c4c95e556543f47d4be0e81819681ac347/onnxruntime_gpu-1.30.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:4fbf0c5d7b5fb99266c2e8a802e3e64af68bdc383e0f3c7349b985f1087eedaa", size = 246658419, upload-time = "2026-09-10T16:12:59.168Z" },
+    { url = "https://files.pythonhosted.org/packages/54/21/81371bce6071c18a65c99f20a7943048146a46256aa34b318a21e057d75c/onnxruntime_gpu-1.30.0-cp311-cp311-manylinux_2_34_aarch64.whl", hash = "sha256:6c70b83afd6bfcc34b4b58d6a41f8c439c96811bbb7fe9fb1d2c2c9dd9c881b5", size = 205734826, upload-time = "2026-09-10T15:52:58.62Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/e2/626586334da2356be4a9f0fa9864a9fc6406c6b128887258de091ffbf1be/onnxruntime_gpu-1.30.0-cp311-cp311-win_amd64.whl", hash = "sha256:fea66ebd743717de6f254955293b5f978825be7867c87a99c4a0ac1fe6f1d763", size = 160469661, upload-time = "2026-09-10T15:56:14.173Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/80/d96143329dbe925d434b016c890a5caa785fac8e14a1570e5d6818b63545/onnxruntime_gpu-1.30.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:6acc0f4b3d5ac5f2984432faa59dd8fcce6775f8b43a7140afa0f322c7a703b1", size = 246685715, upload-time = "2026-09-10T16:13:10.1Z" },
+    { url = "https://files.pythonhosted.org/packages/39/2b/97887b3f49ddad0d22b596a1e32a38a8e029cad81c6342da6d709cdc381c/onnxruntime_gpu-1.30.0-cp312-cp312-manylinux_2_34_aarch64.whl", hash = "sha256:12af352b24145b3480794fcf327d313a240550e772a07fb182390872c1a642fc", size = 205731632, upload-time = "2026-09-10T15:53:07.466Z" },
+    { url = "https://files.pythonhosted.org/packages/19/ef/e15db03ea1fce9bc60349add2604df8c39abac10d28d4eef27b621845139/onnxruntime_gpu-1.30.0-cp312-cp312-win_amd64.whl", hash = "sha256:882da66f936e1f560b155118c5953dc45268cd92893abb8d31a940f4d1effb36", size = 160478594, upload-time = "2026-09-10T15:56:21.443Z" },
+    { url = "https://files.pythonhosted.org/packages/31/ae/cfec0c21d039e4125fdc333e2e2032ed0a49eb50f9dd70b7f3819b339018/onnxruntime_gpu-1.30.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:9aba23f903f434cc55d851aeb801afee19e287c202f4ab8f59d02f04caa90aed", size = 246688669, upload-time = "2026-09-10T16:13:21.504Z" },
+    { url = "https://files.pythonhosted.org/packages/07/cd/99171c84362c9a3292ec909c2e8edd922dec21d65e28e83e9d809ad178c6/onnxruntime_gpu-1.30.0-cp313-cp313-manylinux_2_34_aarch64.whl", hash = "sha256:0c68878729527a28202af6c1b7ebc2fc5a687e9f6e02bfb8796e39d1fe775fd7", size = 205732148, upload-time = "2026-09-10T15:53:16.111Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/d3/50fba71f4174f25f1e677ffe4b2ebc9f6c2a2aa8093c12e82c93792fd4e8/onnxruntime_gpu-1.30.0-cp313-cp313-win_amd64.whl", hash = "sha256:cf494da233f3fc02bbeb2a3178e3ace7361b6b4fef7031b19c1e5aed5e9328ce", size = 160479611, upload-time = "2026-09-10T15:56:28.799Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/41/3ebd7b9648259adcf3abd245be862a0cb4c24d4b12f4f7b82d3e9fcf18f0/onnxruntime_gpu-1.30.0-cp313-cp313t-manylinux_2_28_x86_64.whl", hash = "sha256:675d519cab613bc42685ecb998f8e8e8c6d73143496681650d30ef14fedeade7", size = 246684982, upload-time = "2026-09-10T16:13:31.799Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/b0/6187754ea45ce90c116730115e4d856a6107b9e708580093c112def9a567/onnxruntime_gpu-1.30.0-cp313-cp313t-manylinux_2_34_aarch64.whl", hash = "sha256:c6df4b62538f98482dd5cebc91cba668c4b82156e872517c314a383c904a191d", size = 205776779, upload-time = "2026-09-10T15:53:24.926Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/75/09a6c97136c747608867a63114d988384e6ddb5507e08bbe9ced08744a4c/onnxruntime_gpu-1.30.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:5aacc98f394a13f4891c0a07e60479d8fb0b1ea6f3328b6b38cfc88f9dfb05ea", size = 246693192, upload-time = "2026-09-10T16:13:41.775Z" },
+    { url = "https://files.pythonhosted.org/packages/73/93/415e8100a3d7d4754f406fadbe86fa91d03058a9a6d7fa8a692722e9ceb8/onnxruntime_gpu-1.30.0-cp314-cp314-manylinux_2_34_aarch64.whl", hash = "sha256:96cb15cff2f0dffaef3ae636560145d41be47bb73e3230113f2e946ca576014b", size = 205736852, upload-time = "2026-09-10T15:53:34.204Z" },
+    { url = "https://files.pythonhosted.org/packages/50/fe/ed63f743d546fd089f98cfd415790b231ae8d3dba2208df8d22811f788a5/onnxruntime_gpu-1.30.0-cp314-cp314-win_amd64.whl", hash = "sha256:794fc118cdbf340ed02b44c7527e557ea51746002d48105d493ea41f0c9a60d0", size = 161124661, upload-time = "2026-09-10T15:56:36.489Z" },
+    { url = "https://files.pythonhosted.org/packages/75/66/11c43d3d544380271aa14fd55c1e5be65f28fac007128e369f1192c9bfa9/onnxruntime_gpu-1.30.0-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:a4dfbe80d4167ff5bc269f266778ee6d0eb771fd9f3c0c4d83757e7ae42fe3c8", size = 246687044, upload-time = "2026-09-10T16:13:52.095Z" },
+    { url = "https://files.pythonhosted.org/packages/74/3d/33878b36bc473415ff7ed92ba751a5b5181d2779c74441c3584c68261dbc/onnxruntime_gpu-1.30.0-cp314-cp314t-manylinux_2_34_aarch64.whl", hash = "sha256:13d4cf97120882739da8572ba26e2a0f39caed4c69749a147d8f1a77f74a4690", size = 205750897, upload-time = "2026-09-10T15:53:43.295Z" },
+]
+
+[[package]]
 name = "opencv-python"
 version = "5.0.0.93"
 source = { registry = "https://pypi.org/simple" }
@@ -2510,7 +2641,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "python-dateutil" },
-    { name = "tzdata", marker = "sys_platform == 'emscripten' or sys_platform == 'win32'" },
+    { name = "tzdata", marker = "sys_platform == 'emscripten' or sys_platform == 'win32' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/55/b1/a10c0d1a7e3ce44eb42635771004aa503e3b9ddde0bd39c524dda65f7eff/pandas-3.1.0.tar.gz", hash = "sha256:ecb9b2d8a817b1e1ba1fdb90c0abe9eab31b4fdf2562b7a56b86ac66ace17e49", size = 5933421, upload-time = "2026-10-22T11:57:03.087Z" }
 wheels = [
@@ -2596,7 +2727,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "(sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -3134,7 +3265,7 @@ name = "pytest"
 version = "9.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "iniconfig" },
     { name = "packaging" },
     { name = "pluggy" },
@@ -3207,7 +3338,7 @@ dependencies = [
     { name = "packaging" },
     { name = "pyyaml" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "torchmetrics" },
     { name = "tqdm" },
@@ -3280,7 +3411,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "rpds-py" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/22/f5/df4e9027acead3ecc63e50fe1e36aca1523e1719559c499951bb4b53188f/referencing-0.37.0.tar.gz", hash = "sha256:44aefc3142c5b842538163acb373e24cce6632bd54bdb01b21ad5863489f50d8", size = 78036, upload-time = "2025-10-13T15:30:48.871Z" }
 wheels = [
@@ -3686,11 +3817,13 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'darwin'",
     "python_full_version == '3.14.*' and sys_platform == 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.14.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
 ]
@@ -3705,11 +3838,15 @@ version = "81.0.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0d/1c/73e719955c59b8e424d015ab450f51c0af856ae46ea2da83eba51cc88de1/setuptools-81.0.0.tar.gz", hash = "sha256:487b53915f52501f0a79ccfd0c02c165ffe06631443a886740b91af4b7a5845a", size = 1198299, upload-time = "2026-02-06T21:10:39.601Z" }
@@ -3778,7 +3915,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/69/eb/51da17b291fb1221317a1ff65a301fb2cf9c6c0dd87a0caec4cbcd06c1da/smplx-0.1.28.tar.gz", hash = "sha256:c3a1e2c3069cdf7a4b34fd250c2484c8bb1a4fd9c14490da9359af5fbc64fbe6", size = 28500, upload-time = "2021-05-26T12:14:10.194Z" }
@@ -3801,7 +3938,7 @@ version = "0.19"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "importlib-metadata" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2c/c6/9f606d7b9b16ba1d7e7e70394dfdea39f6f268d3d22503b56bebd7a85ac7/spin-0.19.tar.gz", hash = "sha256:708b81ccb578dbe8d83458a3dd240a5801c5922576ec1e0f78483f3e5e212b7e", size = 30968, upload-time = "2026-10-29T00:41:26.825Z" }
@@ -3829,7 +3966,7 @@ version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/eb/e3/7c1dc7381d9f8ab7d854328ebfa884e62cb3f3d8549ddfd37c7814f42afa/starlette-1.3.1.tar.gz", hash = "sha256:05d0213193f2fbaae60e2ecb593b4add4262ad4e46536b54abe36f11a71724e0", size = 2703240, upload-time = "2026-06-12T09:23:11.602Z" }
 wheels = [
@@ -3861,7 +3998,6 @@ wheels = [
 name = "tennis-lab"
 version = "0.1.0"
 source = { editable = "." }
-default-groups = ["dev", "gpu"]
 dependencies = [
     { name = "accelerate" },
     { name = "av" },
@@ -3894,16 +4030,23 @@ dependencies = [
     { name = "termcolor" },
     { name = "timm" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "torchreid" },
     { name = "torchvision", version = "0.29.2", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torchvision", version = "0.29.2", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torchvision", version = "0.29.2", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torchvision", version = "0.29.2+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "tqdm" },
     { name = "transformers" },
     { name = "uvicorn" },
     { name = "yt-dlp" },
+]
+
+[package.optional-dependencies]
+tensorrt = [
+    { name = "onnx", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "onnxruntime-gpu", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "tensorrt-cu13", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'linux' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 
 [package.dev-dependencies]
@@ -3950,6 +4093,8 @@ requires-dist = [
     { name = "markdown-it-py", specifier = ">=4.0.0" },
     { name = "matplotlib", specifier = ">=3.11.1" },
     { name = "omegaconf", specifier = ">=2.3.1" },
+    { name = "onnx", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'tensorrt'", specifier = "==1.21.0" },
+    { name = "onnxruntime-gpu", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'tensorrt'", specifier = "==1.30.0" },
     { name = "opencv-python", specifier = ">=5.0.0.93" },
     { name = "pandas", specifier = ">=3.0.5" },
     { name = "pillow", specifier = ">=12.3.0" },
@@ -3962,6 +4107,7 @@ requires-dist = [
     { name = "smpl", specifier = ">=1.5.7" },
     { name = "smplx", specifier = ">=0.1.28" },
     { name = "tensorboard", specifier = ">=2.21.0" },
+    { name = "tensorrt-cu13", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'tensorrt'", specifier = "==10.14.1.48.post1" },
     { name = "termcolor", specifier = ">=3.2.0" },
     { name = "timm", specifier = ">=1.0.28" },
     { name = "torch", specifier = ">=2.13.0" },
@@ -3972,6 +4118,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.52.3" },
     { name = "yt-dlp", specifier = ">=2026.7.4" },
 ]
+provides-extras = ["tensorrt"]
 
 [package.metadata.requires-dev]
 cpu = [
@@ -4009,8 +4156,8 @@ dependencies = [
     { name = "packaging" },
     { name = "pillow" },
     { name = "protobuf" },
-    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14' or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten')" },
-    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten')" },
+    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform != 'emscripten') or (python_full_version >= '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.12' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.14' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version >= '3.12' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "tensorboard-data-server" },
     { name = "werkzeug" },
 ]
@@ -4027,6 +4174,41 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/85/dabeaf902892922777492e1d253bb7e1264cadce3cea932f7ff599e53fea/tensorboard_data_server-0.7.2-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:9fe5d24221b29625dbc7328b0436ca7fc1c23de4acf4d272f1180856e32f9f60", size = 4823598, upload-time = "2023-10-23T21:23:33.714Z" },
     { url = "https://files.pythonhosted.org/packages/73/c6/825dab04195756cf8ff2e12698f22513b3db2f64925bdd41671bfb33aaa5/tensorboard_data_server-0.7.2-py3-none-manylinux_2_31_x86_64.whl", hash = "sha256:ef687163c24185ae9754ed5650eb5bc4d84ff257aabdc33f0cc6f74d8ba54530", size = 6590363, upload-time = "2023-10-23T21:23:35.583Z" },
 ]
+
+[[package]]
+name = "tensorrt-cu13"
+version = "10.14.1.48.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tensorrt-cu13-bindings", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "tensorrt-cu13-libs", marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9f/c3/2905ffaf789b53d68c84930d081e14cb96b7516a5c13f8e66c5545a47464/tensorrt_cu13-10.14.1.48.post1.tar.gz", hash = "sha256:f667aee4b4b908520820b824ada7b7168f29e2659aacee2d5ae42139c6cb884e", size = 18328, upload-time = "2025-11-07T17:14:39.291Z" }
+
+[[package]]
+name = "tensorrt-cu13-bindings"
+version = "10.14.1.48.post1"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1d/f6/37a3a59fc925b9d9cdd44375468b934adb4906482a42b2228a1967d6146c/tensorrt_cu13_bindings-10.14.1.48.post1-cp311-none-manylinux_2_28_x86_64.whl", hash = "sha256:30e220ec5cd049709270e9c835d2d69ae5b05d5c269fc067e27155d2b1ba8ff5", size = 879697, upload-time = "2025-11-07T17:15:40.107Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/ce/0df4587d1690d615c0fa2a22f7e9c32a5547f66f370c4a0cd789c7ebf965/tensorrt_cu13_bindings-10.14.1.48.post1-cp311-none-manylinux_2_35_aarch64.whl", hash = "sha256:31a6f3d8217fa52533aecbe15073114fa26c2f7835d8d3c8b5371b22899c912a", size = 959312, upload-time = "2025-11-07T18:26:17.172Z" },
+    { url = "https://files.pythonhosted.org/packages/de/2f/a591eb4c6251705896a579c5b0b5b4210d7a547b0fbf867da0ae9221ae1e/tensorrt_cu13_bindings-10.14.1.48.post1-cp311-none-win_amd64.whl", hash = "sha256:83c58af9c32e527567cf4927957126a487d8b89604822c2be2522bf3e348228b", size = 766024, upload-time = "2025-11-07T18:59:17.105Z" },
+    { url = "https://files.pythonhosted.org/packages/65/5a/4101e26fffadc08630dd4850045fdf4ec3d58e0cda6fa67935c0daede5c4/tensorrt_cu13_bindings-10.14.1.48.post1-cp312-none-manylinux_2_28_x86_64.whl", hash = "sha256:1a098123ddf9e69629d66320666efbb2e237db76cd4faf715b7377471b9f4275", size = 879890, upload-time = "2025-11-07T17:17:27.641Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/b1/d8098e73df5e43610408b2726280d5cf36f3b9b2a45250aa1545c8970606/tensorrt_cu13_bindings-10.14.1.48.post1-cp312-none-manylinux_2_35_aarch64.whl", hash = "sha256:e8db2ddd753097b23e13bd29b61e24431db0724f6f143e917ef107a4f58dff43", size = 959698, upload-time = "2025-11-07T18:28:56.083Z" },
+    { url = "https://files.pythonhosted.org/packages/82/75/9032bbef64e0e1bcf35171e6524a4a027e3620ebc0bd8310bfb3b74fd221/tensorrt_cu13_bindings-10.14.1.48.post1-cp312-none-win_amd64.whl", hash = "sha256:c762c813bcaddf88e0aae43f8fad2b8637d1088818e9684de2f5e17f773592b5", size = 768710, upload-time = "2025-11-07T18:59:40.181Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/fc/c2aa0191c579f0ce79a782bc6859673a6baa2fd1fc889ba4f6a21660480f/tensorrt_cu13_bindings-10.14.1.48.post1-cp313-none-manylinux_2_28_x86_64.whl", hash = "sha256:51928aa2c11c08d4aa5425c60c7d866c088cffccd0f20a4c8addca9de930c603", size = 879778, upload-time = "2025-11-07T17:17:50.286Z" },
+    { url = "https://files.pythonhosted.org/packages/90/5d/9c811ab2f8b9f856d2b9947467763819da4a51fa7d851aed7a356490ccdc/tensorrt_cu13_bindings-10.14.1.48.post1-cp313-none-manylinux_2_35_aarch64.whl", hash = "sha256:4984a8f841843a3b23c743a24c5d517cf2e3b5eb0c7186bd96791f011fd1dab1", size = 959675, upload-time = "2025-11-07T18:29:49.568Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/ec/60e294d729515dd67fad47789abe8c41c81ed2f2a72f4d4233317c11ae71/tensorrt_cu13_bindings-10.14.1.48.post1-cp313-none-win_amd64.whl", hash = "sha256:dd8bc2507717a6894d5ef26a4acad003657f8c8781370f45c5be19623d5587ae", size = 768834, upload-time = "2025-11-07T18:58:15.436Z" },
+]
+
+[[package]]
+name = "tensorrt-cu13-libs"
+version = "10.14.1.48.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cuda-toolkit", extra = ["cudart"], marker = "(sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'win32' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/38/7f/98c80315da5b2cf19bd2a47b4b676d66a0cebc95d1b5d277349147b082e4/tensorrt_cu13_libs-10.14.1.48.post1.tar.gz", hash = "sha256:8ffa01f315276bff7c7dd01bf11415d0c8c21c45012abd42f2878153ba312d76", size = 726, upload-time = "2025-11-07T17:21:49.844Z" }
 
 [[package]]
 name = "termcolor"
@@ -4046,10 +4228,10 @@ dependencies = [
     { name = "pyyaml" },
     { name = "safetensors" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "torchvision", version = "0.29.2", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torchvision", version = "0.29.2", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torchvision", version = "0.29.2", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torchvision", version = "0.29.2+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0e/ab/49041213990e48edcb6013463b18ef86d8d3c5d6ac5b408802c480443025/timm-1.0.30.tar.gz", hash = "sha256:1444a3af7e17fdba5440ac2bcf6e4b728da96dd62289ed9e1bcba31a545f5935", size = 2534738, upload-time = "2026-09-22T20:46:13.9Z" }
@@ -4106,8 +4288,8 @@ dependencies = [
     { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (python_full_version < '3.14' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.14' and sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (python_full_version >= '3.14' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "sympy", marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
@@ -4128,37 +4310,43 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'darwin'",
     "python_full_version == '3.14.*' and sys_platform == 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.14.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 dependencies = [
     { name = "cuda-bindings", marker = "(python_full_version < '3.15' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "cuda-toolkit", extra = ["cublas", "cudart", "cufft", "cufile", "cupti", "cusolver", "cusparse", "nvjitlink", "nvrtc", "nvtx"], marker = "(sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "filelock", marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
-    { name = "fsspec", marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
-    { name = "jinja2", marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
-    { name = "networkx", marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "filelock", marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
+    { name = "fsspec", marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
+    { name = "jinja2", marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
+    { name = "networkx", marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "nvidia-cudnn-cu13", marker = "(sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "nvidia-cusparselt-cu13", marker = "(sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "nvidia-nccl-cu13", marker = "(sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "nvidia-nvshmem-cu13", marker = "(sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten' and extra != 'group-10-tennis-lab-cpu') or (python_full_version >= '3.14' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and extra != 'group-10-tennis-lab-cpu') or (python_full_version < '3.12' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "sympy", marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform != 'emscripten' and extra != 'group-10-tennis-lab-cpu') or (python_full_version >= '3.12' and sys_platform == 'emscripten' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.14' and sys_platform != 'emscripten' and extra != 'group-10-tennis-lab-cpu') or (python_full_version < '3.12' and sys_platform == 'emscripten' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "sympy", marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "triton", marker = "(python_full_version < '3.16' and sys_platform == 'linux' and extra != 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "typing-extensions", marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "typing-extensions", marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2d/a5/fa947e2bbb072933f8c0ad5e02bd11126bcfc2b624fe234ac29a7b63600c/torch-2.15.0-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:e808b63d616a43b326e1a5677d45a2e5babe7a8ce27edb03ddb48e7dd9b6d663", size = 138527954, upload-time = "2026-10-28T15:16:30.29Z" },
@@ -4198,24 +4386,30 @@ source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.14.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
     { name = "filelock", marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "fsspec", marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "jinja2", marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "networkx", marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu') or (python_full_version >= '3.12' and sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu') or (python_full_version < '3.12' and sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu') or (python_full_version >= '3.12' and sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu') or (python_full_version < '3.14' and sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
+    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu') or (python_full_version < '3.12' and sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu') or (python_full_version >= '3.14' and sys_platform != 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu') or (sys_platform == 'emscripten' and extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "sympy", marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
     { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
@@ -4260,7 +4454,7 @@ dependencies = [
     { name = "numpy" },
     { name = "packaging" },
     { name = "torch", version = "2.15.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
     { name = "torch", version = "2.15.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/81/34/39b8b749333db56c0585d7a11fa62a283c087bb1dfc897d69fb8cedbefb1/torchmetrics-1.9.0.tar.gz", hash = "sha256:a488609948600df52d3db4fcdab02e62aab2a85ef34da67037dc3e65b8512faa", size = 581765, upload-time = "2026-03-09T17:41:22.443Z" }
@@ -4300,25 +4494,31 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'darwin'",
     "python_full_version == '3.14.*' and sys_platform == 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.14.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
-    { name = "pillow", marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
-    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra != 'group-10-tennis-lab-cpu' or extra == 'group-10-tennis-lab-gpu'" },
+    { name = "numpy", marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
+    { name = "pillow", marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
+    { name = "torch", version = "2.15.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-10-tennis-lab-gpu' or extra != 'group-10-tennis-lab-cpu'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/ec/ce97c46e5322b588b95be388f2c21878d014ca20838478e7aab59edd128a/torchvision-0.29.2-py3-none-macosx_14_0_arm64.whl", hash = "sha256:d412494ff011f24c884a3cffd33eba1cb45a0299d4e26c1e175113f9d3b3ebc7", size = 1823414, upload-time = "2026-10-28T15:21:31.892Z" },
@@ -4334,16 +4534,22 @@ source = { registry = "https://download.pytorch.org/whl/cpu" }
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.15' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'win32'",
     "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.14.*' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
     { name = "numpy", marker = "(sys_platform != 'darwin' and extra == 'group-10-tennis-lab-cpu') or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
@@ -4361,7 +4567,7 @@ name = "tqdm"
 version = "4.70.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'group-10-tennis-lab-cpu' and extra == 'group-10-tennis-lab-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0d/ea/b2a5bd54b28a324dae8211928b2d730b6547500342c7e6c6dea08bd0a485/tqdm-4.70.1.tar.gz", hash = "sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4", size = 171846, upload-time = "2026-09-11T07:25:16.601Z" }
 wheels = [

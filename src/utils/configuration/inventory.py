@@ -407,6 +407,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.clip_studio_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.scripts.tensorrt": (
+        "tennis_scene.tensorrt",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_refiner_3d.scripts.evaluate": (
         "ball_refiner_3d.evaluate",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -614,6 +618,10 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         optional_policy="gvhmr_root is required when installing; --list may omit it, but any supplied checkout is validated",
     ),
     _non_hydra_boundary("src.tennis_scene.clip_studio.__main__", "main", domain="tennis_scene", executable_module=True),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.tensorrt", "main", domain="tennis_scene", executable_module=True,
+        optional_policy="build requires the ONNX export manifest in the caller-selected output directory",
+    ),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.evaluate", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.predict", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.review_dataset", "main", domain="ball_refiner_3d", executable_module=True),

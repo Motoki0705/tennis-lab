@@ -81,7 +81,8 @@ class TennisSceneOrchestrator:
         self.video_court_side: VideoCourtSideArtifact | None = None
         self._video_court_side_key: tuple[object, ...] | None = None
         self.code_identity = document_digest(compatible_source_digests(
-            source_digests(PROJECT_ROOT / "src"), ball_court_side=config.court_side_evidence == "ball"))
+            source_digests(PROJECT_ROOT / "src"), ball_court_side=config.court_side_evidence == "ball",
+            tensorrt=config.people.runtime.uses_tensorrt))
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
@@ -101,10 +102,19 @@ class TennisSceneOrchestrator:
         side = self.prepare_video_court_side(shared)
         settings = json_value(cfg.processing_settings)
         people_runtime = settings.get("people_models", {}).get("runtime", {})
-        for name in ("dino_detector", "vitpose"):
+        for name in ("dino_detector", "vitpose", "hmr2", "clip_reid", "gvhmr"):
             options = people_runtime.get(name, {})
+            if options.get("backend") == "pytorch":
+                del options["backend"]
+            if options.get("engines") == []:
+                del options["engines"]
             if options.get("precision") == "fp32":
                 del options["precision"]
+        if people_runtime.get("dino_detector", {}).get("batch_size") == 1:
+            del people_runtime["dino_detector"]["batch_size"]
+        for name, default in (("clip_reid", 64), ("gvhmr", 1)):
+            if people_runtime.get(name) == {"batch_size": default}:
+                del people_runtime[name]
         identity = {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": settings, "execution": dict(cfg.component_sources),
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
@@ -145,7 +155,8 @@ class TennisSceneOrchestrator:
             video_court_side.verify()
         if self._publication_assets is not None:
             self._publication_assets.assert_unchanged()
-        return executor.finalize_clip(clip_id, memory=memory)
+        scene, archive = executor.finalize_clip(clip_id, memory=memory)
+        return scene, archive
 
     def prepare_video_court(self) -> VideoCourtArtifact | None:
         from src.tennis_scene.pipeline.video_court import prepare_video_court
@@ -231,8 +242,11 @@ class TennisSceneOrchestrator:
                 self.last_receipt["video_court_side"] = side.clip_report(source.clip_id, self.config.court_side_unobservable_policy)
             direct = self.config.direct_annotation
             workflow = None
+            direct_model_identity = None
             if direct is not None:
                 from src.tasks.base.annotation.paths import AnnotationLayout
+                if self.config.people.runtime.uses_tensorrt:
+                    direct_model_identity = document_digest(publication_model_identities(self.config))
                 workflow = direct.workflow(source, self.annotation_layout or AnnotationLayout.production())
                 self.last_receipt.update(
                     annotation={"status": "pending", "request": workflow.reference.model_dump(mode="json")},
@@ -264,7 +278,8 @@ class TennisSceneOrchestrator:
                 self.last_receipt["annotation"]["summary"] = str(store.root / "annotation-summary.json")
                 write_json_atomic(store.root / "run.json", self.last_receipt)
                 if direct.resume == "publication":
-                    scene, saved = saved_scene(store, direct, workflow.reference.digest, people_runtime=self.config.people.runtime)
+                    scene, saved = saved_scene(store, direct, workflow.reference.digest,
+                        people_runtime=self.config.people.runtime, model_identity=direct_model_identity)
                     archive = Path(str(saved["archive"]))
                     self.last_receipt["scene"] = saved
                 else:
@@ -283,7 +298,8 @@ class TennisSceneOrchestrator:
                 scene, archive = self.finalize_clip(runner.executor, runner.clip_id, inputs.snapshot,
                                                    video_court=shared, video_court_side=side)
                 if direct is not None and workflow is not None:
-                    self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive, people_runtime=self.config.people.runtime)
+                    self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive,
+                        people_runtime=self.config.people.runtime, model_identity=direct_model_identity)
             self._scene_export = archive
             if workflow is not None:
                 write_json_atomic(store.root / "run.json", self.last_receipt)

@@ -87,6 +87,9 @@ single_image_batches = detector.predict_batch(requests, batch_size=1)
 だけ保持します。実GPUで確認したbatch値・数値差・速度・VRAMは
 [受入記録](../../knowledge/nodes/tennis_scene/000042-run-dino-batch-api-20261116.md)を参照してください。
 
+ViTPose-H・DINO・CLIP-ReID・HMR2・GVHMRのTensorRT FP16推論、ONNX export、
+エンジンの作成と配置は[シーンのTensorRT設定](../tennis_scene/pipeline/README.md#tensorrt-fp16)を参照してください。
+
 ## デモ
 
 保存済みの入力pose・観測mask・3D身体と配置拒否を同じsource frameで確認する

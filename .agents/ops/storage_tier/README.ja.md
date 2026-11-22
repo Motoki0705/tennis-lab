@@ -214,6 +214,43 @@ D:にないDATA/CHECKPOINT/ARTIFACTを取得CLI付きの明確なエラーにす
 repo外の任意rootや共通境界を通らないconsumerは従来のmissing-fileエラーのまま。
 新しいOUTPUTの作成は許可する。学習入口やqueueコマンドの個別変更はしない。
 
+## 一時的なhot copy
+
+必要な読込速度を満たせる場合はE:の正本を直接使う。一時的にD:へ複製する入力は、メインcheckoutの
+`data/` 配下で版を付け、読取り専用で使う。[config.toml](config.toml) の `dataset_containers` に属する版を使うか、
+独立した版のrootを `dataset_units` に宣言する。複製する前に、日次cycleを動かすcheckoutにも宣言を反映する。
+元データがE:の別の場所にある場合は、対応するE:のrepo相対pathに内容を固定した版を用意し、ファイル一覧と
+SHA-256を元データと照合してからhydrateする。`resident_units` は恒久的にD:へ置く入力に使う。
+2026-11-14に作られた `~/tennis-hot` 約147 GiBは単位の管理外で解放日もなく、
+[容量障害](https://github.com/Motoki0705/tennis-lab/issues/2361)までD:に残った。
+
+1. 複製前に、担当issueへ責任者、jobまたはrun、D:を使う理由、E:の複製元とD:の複製先、見込みbytes、
+   使用期限、解放確認日を記録する。日時にはタイムゾーンを付け、解放確認日は予定する最終利用日の14日後にする。
+   責任者は期限までに利用を終えるか、容量を再確認して期限前に記録を更新する。解放まではコピーの容量を確保する。
+2. [CLI](#cli) の `scan` で意図したE:のデータセット版が見つかり、D:の複製先が存在しないことを確認する。
+   `index --dry-run` でサイズを見積もる。`/mnt/d` がWindowsのD:をmountしていることを確認し、物理D:とguestの空きを測る。
+   コピー全体、ファイルシステムとVHDXの管理領域、他jobが今後書き込む最大量を見込む。guestに収まり、
+   物理D:にwatchdogの閾値（既定20 GiB）以上の空きが残る場合に複製する。
+   watchdogが止めるのは新規起動で、実行中のjobと手動コピーは引き続き容量を使う。
+
+   ```bash
+   unit=data/ball_detection/example-v1
+   "${S[@]}" scan
+   "${S[@]}" index "$unit" --dry-run
+   findmnt --mountpoint /mnt/d
+   df -B1 / /mnt/d
+   ```
+
+3. 容量確認後に `"${S[@]}" hydrate "$unit"` を実行し、`hydrated` の結果と `.storage-tier/audit.jsonl` の
+   該当単位の記録を担当issueに残す。hydrateは両側を照合してmanifestを記録する。処理はコピーを読み、結果をE:のworktree outputsへ書く。
+4. 完了・中止時に、queueの参照と単位外に作った一時hardlinkを外し、最終利用日を担当issueに記録する。
+   別名がブロックを保持している間は、その容量もコピーの使用量として扱う。
+   解放確認日には、日次cycleで削除済みか確認するか、`"${S[@]}" evict "$unit" --dry-run` を実行する。
+   `would_evict` なら `"${S[@]}" evict "$unit"` を実行し、`evicted` または `scan` でE:だけにあることを確認する。
+   使用中・atime条件未達・照合失敗なら、理由と次回の確認日を同じissueに残す。
+   解放には[通常の14日atimeと照合の条件](#照合と除外条件)を使う。LinuxとWindowsの空きは別々に記録する。
+   Windowsの空きを回収するには[trimとcompact](wsl-vhdx.ja.md)が必要な場合がある。
+
 ## 照合と除外条件
 
 `mountpoint`・`findmnt` で異なるext4と所定のatime optionを確認する。E:不在を空のミラーと解釈しない。
@@ -491,7 +528,7 @@ systemのmount unitへの順序依存は張らず、毎回mountを確認する�
    mirror→evict→hydrateを確認する。`statvfs` の空き、記録、consumer読込み、同UID検査、失敗のjournal/auditを確認してtimerを有効化する。
    queue記録と他UIDのプロセスは単位を保護しない。
    外部hardlinkがあれば空きが戻らない場合がある。rollbackはconsumer停止中に保存したsymlink entryを戻すが、
-   D:の新規書込みは別に保持する。ルートVHDXの移設・圧縮は対象外。
+   D:の新規書込みは別に保持する。Windows側のディスク保守は [UbuntuのVHDX保守手順](wsl-vhdx.ja.md)を参照する。
 
 検証は `tests/integration/agents_ops/test_storage_tier.py` の一時実ファイル・擬似mount/procで行い、
 実fdとhardlinkも確認する。CLI/worktreeは `tests/e2e/agents_ops/test_storage_tier_cli.py`、

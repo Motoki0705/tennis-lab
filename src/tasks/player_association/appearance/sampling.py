@@ -150,10 +150,11 @@ def embed_samples(video: Path, boxes: NDArray[np.floating], samples: list[TrackS
 
 
 def embed_tracks(video: Path, boxes: NDArray[np.floating], observed: NDArray[np.bool_], image_size: tuple[int, int],
-                 encoder: AppearanceEncoder, config: CropSamplingConfig) -> tuple[tuple[TrackAppearance, ...], list[TrackSamples]]:
+                 encoder: AppearanceEncoder, config: CropSamplingConfig, *,
+                 batch_size: int = DEFAULT_BATCH_SIZE) -> tuple[tuple[TrackAppearance, ...], list[TrackSamples]]:
     """Appearance of every track of one camera and the samples it was built from (with rejection counts)."""
     samples = sample_tracks(boxes, observed, image_size, config)
-    embedded = embed_samples(video, boxes, samples, [encoder])[encoder.name]
+    embedded = embed_samples(video, boxes, samples, [encoder], batch_size=batch_size)[encoder.name]
     appearances = tuple(TrackAppearance(track.frames, embedded[row].astype(np.float32) if len(track.frames) else np.zeros((0, 0), np.float32))
                         for row, track in enumerate(samples))
     return appearances, samples

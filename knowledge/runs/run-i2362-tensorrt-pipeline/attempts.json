@@ -1,0 +1,465 @@
+{
+  "attempts": [
+    {
+      "build_failure": "IOptimizationProfile.set_shape returns None. The builder interpreted None as rejection before invoking build_serialized_network.",
+      "commit": "3b1e5d60f76059e84ffb30a77d0f2fd582bb603d",
+      "exit_code": 1,
+      "queue_job": "0-8204676305274100327_2026-11-22T05-01-34-725899672Z_632389_i2362-phase2-qualification.job",
+      "run_tag": "phase2-b2-v1",
+      "stages": [
+        {
+          "exit": "0",
+          "model": "clip",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "clip",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "clip",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "vitpose",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "vitpose",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "vitpose",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "hmr2",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "hmr2",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "hmr2",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "dino",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "dino",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "dino",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "gvhmr",
+          "stage": "export"
+        },
+        {
+          "exit": "1",
+          "model": "gvhmr",
+          "stage": "build"
+        },
+        {
+          "exit": "skipped",
+          "model": "gvhmr",
+          "stage": "compare"
+        },
+        {
+          "exit": "skipped",
+          "model": "pipeline",
+          "stage": "smoke"
+        }
+      ],
+      "verified_exports": {
+        "clip": {
+          "directory": "outputs/tensorrt/clip/256x128/phase2-b2-v1",
+          "export_sha256": "7e8b0c6d9ba781d748443419da16fc7f7a472f0e0093e8a8014466bfeeef679d",
+          "onnx_files": {
+            "model.onnx": "ac738689d8f55fa66e900a257e5fd02e759aac156864a54d7d82591874136aca"
+          }
+        },
+        "dino": {
+          "directory": "outputs/tensorrt/dino/750x1333/phase2-b2-v1",
+          "export_sha256": "acc19d7172a187f1c7c8543c1060878710cc4716ddb07a07cd473ae704227b0c",
+          "onnx_files": {
+            "model.onnx": "010e8868ce59c0f772d6bf00f68836aa2f24e6d4ca96ac5b330ad261182441bf",
+            "model.onnx.data": "a9839bb54d25bb4165d0ff2ca381de6d24a6bcc3272f13758fda3be3b408d4a4"
+          }
+        },
+        "gvhmr": {
+          "directory": "outputs/tensorrt/gvhmr/l2-145-177/phase2-b2-v1",
+          "export_sha256": "671a3fd1e65b6e19ea13654c34d1d953213e1d02cb0401045f1360465fcc587d",
+          "onnx_files": {
+            "model.onnx": "12273a5f52633d4048d275f950b28c13cd69b2174828a0ec1e89fad19aa04d02"
+          }
+        },
+        "hmr2": {
+          "directory": "outputs/tensorrt/hmr2/256x256/phase2-b2-v1",
+          "export_sha256": "1a1f3cfa851b9afd87ad1266ed6221547627995b96f3c894dd583598fc2297a3",
+          "onnx_files": {
+            "model.onnx": "21402a762c5b1f1715452ed36c50dbe8e627eeba5ecff34f261de8ce7ed0a6b9"
+          }
+        },
+        "vitpose": {
+          "directory": "outputs/tensorrt/vitpose/256x192/phase2-b2-v1",
+          "export_sha256": "16af3f0378de48ad390b16c174e7201525d2d27fd49b8527d2b23a52ceab3e4f",
+          "onnx_files": {
+            "model.onnx": "258c162d07161cf66f0cceaf50ef5d53128314461458da32346fc67453f15267"
+          }
+        }
+      }
+    },
+    {
+      "commit": "f5bbcb0c2f2953eb28e8f700b62f80081655aad8",
+      "comparison": "DINO exceeds the Phase 1 provisional distance and score limits. GVHMR was rejected by the initial gravity-aligned threshold; camera-space criteria pass on the captured metrics.",
+      "engine_manifests": {
+        "clip": {
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "device_name": "NVIDIA GeForce RTX 5060 Ti",
+            "tensorrt_version": "10.14.1.48.post1"
+          },
+          "export_sha256": "7e8b0c6d9ba781d748443419da16fc7f7a472f0e0093e8a8014466bfeeef679d",
+          "manifest_sha256": "4ab10abc9385e0713f83d50b77e2d8acdebc40df31906b21f4b8b9cc0cf55a0d",
+          "plan_sha256": "9acbfe51a92aedd8b5033b2ea18e97a17c9e0ec48973c8130b31a6a4792951ee",
+          "profiles": {
+            "pixels": {
+              "maximum": [
+                2,
+                3,
+                256,
+                128
+              ],
+              "minimum": [
+                1,
+                3,
+                256,
+                128
+              ],
+              "optimum": [
+                2,
+                3,
+                256,
+                128
+              ]
+            }
+          },
+          "version": 1
+        },
+        "dino": {
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "device_name": "NVIDIA GeForce RTX 5060 Ti",
+            "tensorrt_version": "10.14.1.48.post1"
+          },
+          "export_sha256": "acc19d7172a187f1c7c8543c1060878710cc4716ddb07a07cd473ae704227b0c",
+          "manifest_sha256": "f9d0d183961243ef0bbfa2a9b770852e897182373fa9de3351f19198f42d050b",
+          "plan_sha256": "ab910d326ea2006d5de7f740025cff0c817dc05b397fef612641b2223272e3f1",
+          "profiles": {
+            "pixels": {
+              "maximum": [
+                2,
+                3,
+                750,
+                1333
+              ],
+              "minimum": [
+                1,
+                3,
+                750,
+                1333
+              ],
+              "optimum": [
+                2,
+                3,
+                750,
+                1333
+              ]
+            }
+          },
+          "version": 1
+        },
+        "gvhmr": {
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "device_name": "NVIDIA GeForce RTX 5060 Ti",
+            "tensorrt_version": "10.14.1.48.post1"
+          },
+          "export_sha256": "671a3fd1e65b6e19ea13654c34d1d953213e1d02cb0401045f1360465fcc587d",
+          "manifest_sha256": "0c44ce4c6c804a7cb03f0de4dffbf94a764835baff011570b7d19983bcdff11c",
+          "plan_sha256": "0ffcbd76066be9b29d3e6d71b9e57bd33b300782d09f567ea69d4a1ff1b07a3a",
+          "profiles": {
+            "f_cam_angvel": {
+              "maximum": [
+                1,
+                177,
+                6
+              ],
+              "minimum": [
+                1,
+                2,
+                6
+              ],
+              "optimum": [
+                1,
+                145,
+                6
+              ]
+            },
+            "f_cliffcam": {
+              "maximum": [
+                1,
+                177,
+                3
+              ],
+              "minimum": [
+                1,
+                2,
+                3
+              ],
+              "optimum": [
+                1,
+                145,
+                3
+              ]
+            },
+            "f_imgseq": {
+              "maximum": [
+                1,
+                177,
+                1024
+              ],
+              "minimum": [
+                1,
+                2,
+                1024
+              ],
+              "optimum": [
+                1,
+                145,
+                1024
+              ]
+            },
+            "length": {
+              "maximum": [
+                1
+              ],
+              "minimum": [
+                1
+              ],
+              "optimum": [
+                1
+              ]
+            },
+            "obs": {
+              "maximum": [
+                1,
+                177,
+                17,
+                3
+              ],
+              "minimum": [
+                1,
+                2,
+                17,
+                3
+              ],
+              "optimum": [
+                1,
+                145,
+                17,
+                3
+              ]
+            }
+          },
+          "version": 1
+        },
+        "hmr2": {
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "device_name": "NVIDIA GeForce RTX 5060 Ti",
+            "tensorrt_version": "10.14.1.48.post1"
+          },
+          "export_sha256": "1a1f3cfa851b9afd87ad1266ed6221547627995b96f3c894dd583598fc2297a3",
+          "manifest_sha256": "cc8d4889957edf730824ebbb0ab84fe34abedd84db53971ddc890b910a799a5d",
+          "plan_sha256": "32308f8874dab5cd95ba0f90cb574cbb6ac722a651dbdfeaf34f9576343333f7",
+          "profiles": {
+            "pixels": {
+              "maximum": [
+                2,
+                3,
+                256,
+                256
+              ],
+              "minimum": [
+                1,
+                3,
+                256,
+                256
+              ],
+              "optimum": [
+                2,
+                3,
+                256,
+                256
+              ]
+            }
+          },
+          "version": 1
+        },
+        "vitpose": {
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "device_name": "NVIDIA GeForce RTX 5060 Ti",
+            "tensorrt_version": "10.14.1.48.post1"
+          },
+          "export_sha256": "16af3f0378de48ad390b16c174e7201525d2d27fd49b8527d2b23a52ceab3e4f",
+          "manifest_sha256": "a3aee95f142d510d475ddd17a124cc49134dc2854c2da466895a35689dcd86c5",
+          "plan_sha256": "416227038a6ee44cac43b54a8a41b51f0350fa453698254fe0c4dcd8655f5a48",
+          "profiles": {
+            "pixels": {
+              "maximum": [
+                4,
+                3,
+                256,
+                192
+              ],
+              "minimum": [
+                2,
+                3,
+                256,
+                192
+              ],
+              "optimum": [
+                4,
+                3,
+                256,
+                192
+              ]
+            }
+          },
+          "version": 1
+        }
+      },
+      "exit_code": 1,
+      "export_tag": "phase2-b2-v1",
+      "queue_job": "0-8204663892298719542_2026-11-22T08-28-27-701280457Z_2349504_i2362-phase2-rebuild.job",
+      "run_tag": "phase2-b2-v2",
+      "stages": [
+        {
+          "exit": "0",
+          "model": "clip",
+          "stage": "reuse-export"
+        },
+        {
+          "exit": "0",
+          "model": "clip",
+          "stage": "build"
+        },
+        {
+          "exit": "0",
+          "model": "clip",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "vitpose",
+          "stage": "reuse-export"
+        },
+        {
+          "exit": "0",
+          "model": "vitpose",
+          "stage": "build"
+        },
+        {
+          "exit": "0",
+          "model": "vitpose",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "hmr2",
+          "stage": "reuse-export"
+        },
+        {
+          "exit": "0",
+          "model": "hmr2",
+          "stage": "build"
+        },
+        {
+          "exit": "0",
+          "model": "hmr2",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "dino",
+          "stage": "reuse-export"
+        },
+        {
+          "exit": "0",
+          "model": "dino",
+          "stage": "build"
+        },
+        {
+          "exit": "1",
+          "model": "dino",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "gvhmr",
+          "stage": "reuse-export"
+        },
+        {
+          "exit": "0",
+          "model": "gvhmr",
+          "stage": "build"
+        },
+        {
+          "exit": "1",
+          "model": "gvhmr",
+          "stage": "compare"
+        },
+        {
+          "exit": "0",
+          "model": "pipeline",
+          "stage": "smoke"
+        }
+      ]
+    }
+  ]
+}
