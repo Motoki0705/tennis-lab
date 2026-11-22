@@ -242,28 +242,25 @@ def _runtime_state(
         return "unknown"
     if token != expected and (token or runtime is None):
         return "unknown"
+
     engine, _, conversation = identity.partition(":")
-    if engine == "agy":
-        if runtime is None or "processes" not in runtime:
-            return "unknown"
+    if runtime is not None and "processes" in runtime:
         try:
             stamps = process_stamp(client, agent)
         except (ForegroundAgentUnavailable, FileNotFoundError, ProcessLookupError):
             return "unknown"
         if stamps != runtime["processes"]:
             return "unknown"
-        try:
-            if (
-                AgyTui(stamps[0]["pid"], stamps[0]["start"]).conversation()
-                != conversation
-            ):
+        if engine == "agy":
+            try:
+                if (
+                    AgyTui(stamps[0]["pid"], stamps[0]["start"]).conversation()
+                    != conversation
+                ):
+                    return "unknown"
+            except (ValueError, FileNotFoundError, ProcessLookupError):
                 return "unknown"
-        except (ValueError, FileNotFoundError, ProcessLookupError):
-            return "unknown"
-    elif runtime is not None and "processes" in runtime:
-        if process_stamp(client, agent) != runtime["processes"]:
-            return "unknown"
-    elif token != expected:
+    elif engine == "agy" or token != expected:
         return "unknown"
     # Native references, when available, fence a replaced conversation even if
     # its terminal still has old display metadata. Never expose the reference.
