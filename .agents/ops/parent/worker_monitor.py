@@ -242,7 +242,9 @@ class Monitor:
                 self.store,
             )
             lease = pr_lease(self.store.directory, self.repo, request["pr"])
-            observe = partial(ci_result, backend, request, task["branch"])
+            observe = partial(
+                ci_result, backend, request, task["branch"], root=Path(task["worktree"])
+            )
             deadline = time.monotonic() + CI_TIMEOUT
         else:
             configured = os.environ.get("TRAINING_QUEUE_DIR")
@@ -400,6 +402,7 @@ class Monitor:
 
 
 def resume_prompt(wait: dict[str, Any], result: dict[str, Any]) -> str:
+    workflow = result.get("workflow", "Python")
     if wait["kind"] == "queue":
         action = (
             "全jobが終端した。成果物を検証し、指定された記録を更新する。"
@@ -407,12 +410,12 @@ def resume_prompt(wait: dict[str, Any], result: dict[str, Any]) -> str:
         )
     elif result["status"] == "failure":
         action = (
-            "対象HEADのPython CIが失敗した。失敗job・step・ログ要点を参照し、"
+            f"対象HEADの{workflow} CIが失敗した。失敗job・step・ログ要点を参照し、"
             "同じbranchとPRで修正する。修正をpushしたら新HEADを宣言する。"
         )
     else:
         action = (
-            "対象HEADのPython CIが成功した。宣言した後続作業を行う。\n"
+            f"対象HEADの{workflow} CIが成功した。宣言した後続作業を行う。\n"
             + wait["next_step"]
         )
     return (

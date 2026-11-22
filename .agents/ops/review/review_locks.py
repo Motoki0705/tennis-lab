@@ -9,7 +9,7 @@ from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any
 
-from lib.ops_review.progression import read, save
+from lib.ops_review.progression import KNOWLEDGE_MERGE, read, save
 from parent.policy import digest
 
 
@@ -20,7 +20,10 @@ class PRLeaseConflict(ValueError):
 
 
 def lease_targets(state: dict[str, Any]) -> list[dict[str, Any]]:
-    return sorted(state["targets"].values(), key=lambda target: target["number"])
+    return sorted(
+        (t for t in state["targets"].values() if t["stage"] != "transferred"),
+        key=lambda target: target["number"],
+    )
 
 
 @contextmanager
@@ -51,11 +54,20 @@ def targets(directory: Path, state: dict[str, Any]) -> Iterator[None]:
                 previous = read(receipt)["progression"]
                 if previous != state["id"]:
                     prior = read(directory / "progressions" / previous / "state.json")
-                    if (
-                        state["request"].get("kind") != "post_merge_confirmation"
-                        or prior["targets"][str(target["number"])]["stage"]
-                        != "completed"
-                    ):
+                    old_stage = prior["targets"][str(target["number"])]["stage"]
+                    confirmation = (
+                        state["request"].get("kind") == "post_merge_confirmation"
+                        and old_stage == "completed"
+                    )
+                    transferred = (
+                        prior["request"].get("kind") == KNOWLEDGE_MERGE
+                        and old_stage == "transferred"
+                        and prior["request"]["parent_issue"]
+                        == state["request"]["parent_issue"]
+                        and prior["request"]["repo"].casefold()
+                        == state["request"]["repo"].casefold()
+                    )
+                    if not (confirmation or transferred):
                         raise PRLeaseConflict(
                             target["number"],
                             "PR has an unfinished progression; continue that request",

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.ops_review.progression import (
+    KNOWLEDGE_MERGE,
     Engine,
     new_state,
     read,
@@ -50,7 +51,18 @@ def controller_lock(path: Path) -> Iterator[None]:
         yield
 
 
-def registered(session: ParentSession, prs: list[int]) -> dict[str, Any] | None:
+def knowledge_states(store: Store, row: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    for identifier in row.get("knowledge_merges", []):
+        yield read(state_path(store, identifier))
+
+
+def registered(
+    session: ParentSession,
+    prs: list[int],
+    *,
+    kind: str = "review_and_merge",
+    allow_knowledge_transfer: bool = False,
+) -> dict[str, Any] | None:
     if not prs or len(set(prs)) != len(prs):
         raise ValueError("review needs a nonempty set of unique PRs")
     # Reusing the request cannot restart a paused controller. That always needs
@@ -59,14 +71,31 @@ def registered(session: ParentSession, prs: list[int]) -> dict[str, Any] | None:
     for key, owner in session.store.parents.items():
         if key.rpartition("#")[0] != session.gh.repo.casefold():
             continue
-        for prior in reversed(owner.get("reviews", [])):
-            request = prior["request"]
-            if request.get("schema_version") != 4:
-                continue
-            numbers = {p["number"] for p in request["prs"]}
+        requests = [
+            (prior["request"], {p["number"] for p in prior["request"]["prs"]})
+            for prior in owner.get("reviews", [])
+            if prior["request"].get("schema_version") == 4
+        ]
+        if not (key == session.key and allow_knowledge_transfer):
+            requests.extend(
+                (
+                    state["request"],
+                    {
+                        t["number"]
+                        for t in state["targets"].values()
+                        if t["stage"] != "transferred"
+                    },
+                )
+                for state in knowledge_states(session.store, owner)
+            )
+        for request, numbers in reversed(requests):
             if not wanted.intersection(numbers):
                 continue
-            if key != session.key or wanted != numbers:
+            if (
+                key != session.key
+                or wanted != numbers
+                or request.get("kind", "review_and_merge") != kind
+            ):
                 raise ValueError(
                     f"PR is already managed by another progression: {request['review_run_id']}"
                 )
@@ -87,12 +116,15 @@ def register(
     selection: dict[str, Any],
     options: dict[str, Any],
 ) -> dict[str, Any]:
+    from lib.ops_review import knowledge_records
+    from lib.ops_review.knowledge_progression import transfer_parked
+
     timeout = options.get("agent_timeout", 1800)
     if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("agent timeout must be positive and finite")
     session.gh.targeted_history = True
     row = session.agreed()
-    existing = registered(session, prs)
+    existing = registered(session, prs, allow_knowledge_transfer=True)
     if existing:
         return existing
     auth = authorization(session)
@@ -111,6 +143,11 @@ def register(
         ):
             raise ValueError("review requires same-repository PRs")
         with session.gh.io_scope():
+            scope, _ = knowledge_records.assess(Path.cwd(), session.gh.repo, pr)
+            if scope.records_only:
+                raise ValueError(
+                    f"PR #{n}: knowledge records only; use merge-knowledge --prs {n}"
+                )
             entry, _ = snapshot(pr)
         entry["issues"] = issues
         deps = sorted(
@@ -188,6 +225,7 @@ def register(
                 child=worker["child"],
                 pr=entry["number"],
             )
+    transfer_parked(session, entries)
     # Network reads released the registry lock. Recheck all owners immediately
     # before publishing the reservation, under the same lock as the registry save.
     existing = registered(session, prs)
@@ -214,6 +252,7 @@ def latest(store: Store, repo: str, parent: int, identifier: str | None = None) 
             if r["request"].get("schema_version") == 4
         ]
         found.extend(row.get("post_merge_confirmations", []))
+        found.extend(row.get("knowledge_merges", []))
     if identifier is None:
         if not found:
             raise ValueError("no automatic progression is registered")
@@ -310,6 +349,11 @@ def view(path: Path) -> dict[str, Any]:
         "review_run_id": state["id"],
         "status": state["status"],
         "kind": state["request"].get("kind", "review_and_merge"),
+        **(
+            {"evidence": state["request"]["evidence"]}
+            if state["request"].get("kind") == KNOWLEDGE_MERGE
+            else {}
+        ),
         "review": state["review"],
         "review_history": state.get("review_history", []),
         "prs": [
@@ -363,6 +407,7 @@ def continue_progression(
     prs: list[int] | None = None,
     retry_review: int | None = None,
 ) -> None:
+    from lib.ops_review.knowledge_progression import refresh_evidence
     from lib.ops_review.parent_review_impl import reserve_retry
     from lib.ops_review.progression_backend import LiveBackend
     from lib.ops_review.progression_workers import refresh
@@ -403,15 +448,19 @@ def continue_progression(
                 state.update(owner=identity, generation=current["generation"])
                 state["request"]["authorization"] = current
         backend.authorize()
+        engine = Engine(path, backend, state=state)
+        if engine.knowledge and retry_review is not None:
+            raise ValueError("--retry-review requires a formal review run")
 
         def prepare(value: dict[str, Any]) -> None:
-            if retry_review is not None:
-                reserve_retry(value, path.parent, backend.gh, retry_review)
-            refresh(backend, value, prs, instruction)
+            if engine.knowledge:
+                refresh_evidence(backend, value, prs, instruction)
+            else:
+                if retry_review is not None:
+                    reserve_retry(value, path.parent, backend.gh, retry_review)
+                refresh(backend, value, prs, instruction)
 
-        Engine(path, backend, state=state).continue_run(
-            instruction, prs=prs, prepare=prepare
-        )
+        engine.continue_run(instruction, prs=prs, prepare=prepare)
     start(path)
 
 
@@ -421,10 +470,10 @@ def wait(path: Path, *, after: int = 0, timeout: float | None = None) -> dict[st
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
         state = read(path)
-        if (
-            any(e["id"] > after for e in state["events"])
-            or state["status"] == "completed"
-        ):
+        if any(e["id"] > after for e in state["events"]) or state["status"] in {
+            "completed",
+            "transferred",
+        }:
             return view(path)
         if deadline is not None and time.monotonic() >= deadline:
             return {**view(path), "wait_timed_out": True}
@@ -439,13 +488,21 @@ def completion(store: Store, repo: str, parent: int, pr: int) -> dict[str, Any]:
         if r["request"].get("schema_version") == 4
     ]
     identifiers.extend(row.get("post_merge_confirmations", []))
+    identifiers.extend(row.get("knowledge_merges", []))
     for identifier in reversed(identifiers):
         state = read(state_path(store, identifier))
         target = state["targets"].get(str(pr))
         if (
             target
             and target["stage"] == "completed"
-            and target.get("issues_confirmed")
+            and (
+                target.get("issues_confirmed")
+                or (
+                    state["request"].get("kind") == KNOWLEDGE_MERGE
+                    and target.get("implementation_pr")
+                    and not target["issues"]
+                )
+            )
             and target.get("main_ci", {}).get("status") == "success"
         ):
             return object_value(target)

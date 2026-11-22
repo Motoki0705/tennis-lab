@@ -74,6 +74,7 @@ MUTATIONS = {
     "improvement-extract",
     "improvement-decide",
     "review-request",
+    "merge-knowledge",
     "merge-continue",
     "retry-decision-capture",
     "release",
@@ -296,6 +297,7 @@ class Continuation:
                         exclude.add((s["issue"], "d-" + s["public_key"], s["sequence"]))
             milestone = allow_batch and command in {
                 "review-request",
+                "merge-knowledge",
                 "release",
                 "handoff",
                 "workflow-report",
@@ -354,8 +356,11 @@ class Continuation:
     def failed(self) -> Any:
         """A durable assignment change still needs reconciliation on API failure."""
         if self.args.command not in {"release", "handoff"}:
-            # A rejected review request does not reach a batch publication milestone.
-            self.sweep(allow_batch=self.args.command != "review-request")
+            # A rejected progression request does not reach a batch milestone.
+            self.sweep(
+                allow_batch=self.args.command
+                not in {"review-request", "merge-knowledge"}
+            )
             return None
         observed = None
         try:

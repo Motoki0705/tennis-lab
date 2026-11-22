@@ -116,8 +116,8 @@ if args[:2] == ["pr", "merge"]:
         fail()
     response({"merged": True})
 assert args[0] == "api", args
-method = args[args.index("--method") + 1]
-endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
+endpoint = next(a for a in args if a in ("user", "graphql") or a.startswith("repos/"))
+method = "POST" if endpoint == "graphql" else args[args.index("--method") + 1]
 if os.environ.get("PARENT_FAIL_PATH") == endpoint and method != "GET" and not (os.environ.get("PARENT_FAIL_AFTER_CHILD_RELATION") and state["parents"].get("10") != 1):
     fail()
 if os.environ.get("PARENT_FAIL_GET_PATH") == endpoint and method == "GET":
@@ -130,6 +130,35 @@ def paged(rows):
     return rows[(page-1)*100:page*100]
 if endpoint == "user":
     response({"login": "operator"})
+def knowledge_closing(pr):
+    return [
+        [m[1] or m[3] or "o/r", int(m[2] or m[4])]
+        for m in re.finditer(
+            r"\b(?:clos(?:e|es|ed)|fix(?:es|ed)?|resolv(?:e|es|ed))[: ]+"
+            r"(?:<?https://github.com/([\w.-]+/[\w.-]+)/issues/(\d+)|"
+            r"([\w.-]+/[\w.-]+)?#(\d+))",
+            pr["body"], re.I,
+        )
+    ]
+if endpoint == "graphql":
+    assert method == "POST" and "query KnowledgeClosingIssues" in payload["query"]
+    variables = payload["variables"]
+    assert variables["after"] is None
+    assert (variables["owner"], variables["name"]) == ("o", "r")
+    pr = next(p for p in state["prs"] if p["number"] == variables["number"])
+    refs = pr.get("closing_refs", knowledge_closing(pr))
+    nodes = [{"number": n, "repository": {"nameWithOwner": repo}} for repo, n in refs]
+    observation = {"data": {"repository": {"nameWithOwner": "o/r", "pullRequest": {
+        "number": pr["number"], "state": pr["state"].upper(), "isDraft": pr["draft"],
+        "headRefOid": pr["head"]["sha"], "baseRefOid": pr["base"]["sha"],
+        "baseRefName": pr["base"]["ref"], "title": pr.get("title"), "body": pr["body"],
+        "closingIssuesReferences": {"nodes": nodes, "totalCount": len(nodes),
+                                    "pageInfo": {"hasNextPage": False, "endCursor": None}},
+    }}}}
+    if "after_first_closing_read" in pr:
+        pr.update(pr.pop("after_first_closing_read"))
+        save()
+    response(observation)
 if path == "repos/o/r/labels/parent-evidence":
     response({"name": "parent-evidence"})
 if path == "repos/o/r/actions/variables/issue_supplement_enabled_since":
@@ -145,8 +174,50 @@ if path == "repos/o/r/actions/workflows/issue-supplement.yml/runs":
     response({"workflow_runs": paged(state.get("supplement_runs", []))}, state.get("supplement_workflow_status", 200))
 if path == "repos/o/r":
     response({"default_branch": state["default_branch"]})
+if path == "repos/o/r/branches/main":
+    import subprocess
+    tip = subprocess.check_output(["git", "rev-parse", "main"], text=True).strip()
+    response({"name": "main", "commit": {"sha": tip}})
+if path == "repos/o/r/actions/workflows/knowledge.yml/runs":
+    head = parse_qs(query)["head_sha"][0]
+    assert parse_qs(query)["event"] == ["pull_request"]
+    rows = [run for run in state["knowledge_runs"] if run["head_sha"] == head]
+    response({"total_count": len(rows), "workflow_runs": paged(rows)})
+artifacts = re.fullmatch(r"repos/o/r/actions/runs/(\d+)/artifacts", path)
+if artifacts:
+    rows = state["knowledge_artifacts"].get(artifacts[1], [])
+    response({"total_count": len(rows), "artifacts": paged(rows)})
+artifact_zip = re.fullmatch(r"repos/o/r/actions/artifacts/(\d+)/zip", path)
+if artifact_zip:
+    from pathlib import Path
+    sys.stdout.buffer.write(Path(state["artifact_zips"][artifact_zip[1]]).read_bytes())
+    sys.exit(0)
+knowledge_merge = re.fullmatch(r"repos/o/r/pulls/(\d+)/merge", path)
+if knowledge_merge:
+    import subprocess
+    assert method == "PUT" and payload["merge_method"] == "merge"
+    pr = next(p for p in state["prs"] if p["number"] == int(knowledge_merge[1]))
+    if os.environ.get("PARENT_KNOWLEDGE_SEND_FAILURE"):
+        fail()
+    if pr["state"] != "open" or pr["head"]["sha"] != payload["sha"]:
+        response({"message": "HEAD changed"}, 409)
+    subprocess.run(["git", "merge", "--no-edit", "--no-ff", payload["sha"]], check=True, capture_output=True)
+    merge = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    pr.update(state="closed", merged=True, merged_at="2026-11-22T00:00:00Z", merge_commit_sha=merge)
+    for repo, child in pr.get("closing_refs", knowledge_closing(pr)):
+        assert repo.casefold() == "o/r"
+        state["issues"][str(child)].update(state="closed", state_reason="completed")
+    state.setdefault("knowledge_merges", []).append({"number": pr["number"], "payload": payload})
+    save()
+    if os.environ.get("PARENT_KNOWLEDGE_LOST_RESPONSE"):
+        fail()
+    response({"sha": merge, "merged": True})
 commit = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})", path)
 if commit:
+    if state.get("knowledge_merges"):
+        import subprocess
+        parents = subprocess.check_output(["git", "show", "-s", "--format=%P", commit[1]], text=True).split()
+        response({"sha": commit[1], "parents": [{"sha": sha} for sha in parents]})
     response({"sha": commit[1]})
 checks = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})/check-runs", path)
 if checks:
@@ -200,7 +271,10 @@ if pull:
             if state["pull_reads"] == 2:
                 state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
             save()
-    response(next(p for p in state["prs"] if p["number"] == int(pull[1])))
+    pr = next(p for p in state["prs"] if p["number"] == int(pull[1]))
+    if pr.get("merged") and os.environ.get("PARENT_KNOWLEDGE_LOST_RESPONSE"):
+        fail()
+    response(pr)
 comment_edit = re.fullmatch(r"repos/o/r/issues/comments/(\d+)", path)
 if comment_edit:
     assert method == "PATCH"

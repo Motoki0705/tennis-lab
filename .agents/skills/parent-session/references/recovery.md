@@ -9,7 +9,7 @@
 | `creation uncertain`、通知の応答喪失 | 親番号・repo、証拠Issueのbinding、通知keyと保存済みspec | `evidence` とGitHubで既存記録を照合する。同一通知が `pending` なら同じspecで続行。送信済みで対象を確認できない場合はjournalを保全し、重複POSTを防ぐ。 |
 | 手動ワーカーの結果が返らない | `status` の担当名・委任IDと `inspect-worker` のrun | `wait-worker` の124は待機時間満了。2で `liveness_unknown` / `cleanup_unconfirmed` なら、runnerと子孫の終了・回収を照合する。終了が確認できてから同じ担当を再開する。[runnerの回収手順](../../../ops/lib/README.md#状態確認停止中断からの復旧) |
 | 自律親の予約だけ残った | `reconcile` とdispatcherのjob・起動記録 | 委任IDだけが保存されていてjobが未作成なら、そのIDで `dispatcher start-child` を使う。起動済みか不明なら元jobを照合する。[registry欠落時の復旧](../../../ops/dispatcher/README.md#registry欠落からの復旧) |
-| 正式レビュー・マージが中断した | `merge-status --run-id RUN`、対象PRの現在のHEAD・merged状態 | 同じrunの `merge-continue` で有効な保存結果と終了を回収する。一時障害なら下記の手順を使う。マージ応答を失ったときはmerge commitを照合して後確認へ進む。切替前にすでにマージ済みのPRには `merge-confirm --prs` を使う。 |
+| 正式レビュー・専用マージが中断した | `merge-status --run-id RUN`、対象PRの現在のHEAD・merged状態 | 同じrunの `merge-continue` で有効な保存結果と終了を回収する。正式レビューの一時障害には下記の手順を使う。記録専用runの送信前は [受入確認JSON](review.md#記録専用prをマージする) を渡す。マージ応答を失ったときはmerge commitを照合して後確認へ進む。切替前にすでにマージ済みのPRには `merge-confirm --prs` を使う。 |
 | ログの公開だけが未完了 | `worker-log-status` / `decision-log-status` の対象と理由 | `pending` は同じ記録から公開を続ける。`blocked` は原因を直して再照合。担当終了時の残件は保存された再開コマンドで回収する。[ワーカーログ](../../../ops/worker_logs/README.md#状態と復旧cli)・[判断ログ](../../../ops/decision_logs/README.ja.md#捕捉失敗と復旧) |
 
 ### 正式レビューの再試行

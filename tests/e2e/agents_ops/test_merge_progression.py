@@ -421,3 +421,80 @@ def test_dependency_wait_preserves_independent_progress_and_merge_order(
     assert [c[1] for c in backend.calls if c[0] == "merge"] == [12, 13, 11]
     assert backend.review_count == 1 and not any(backend.repair_count.values())
     assert clock.sleeps == [60]
+
+
+class KnowledgeBackend(Backend):
+    def knowledge_ci(self, pr: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "status": self.next(self.checks[11]),
+            "head": pr["head"]["sha"],
+            "base_sha": "b" * 40,
+            "reasons": ["Knowledge library result unavailable"],
+        }
+
+    def merge_knowledge(
+        self,
+        state: dict[str, Any],
+        target: dict[str, Any],
+        ci: dict[str, Any],
+        record_intent: Any,
+    ) -> None:
+        record_intent()
+        self.merge(target, ci["head"])
+
+    def confirm_knowledge(self, target: dict[str, Any], pr: dict[str, Any]) -> None:
+        self.calls.append(("confirm_knowledge", target["number"]))
+
+    def issue_states(self, issues: list[int]) -> dict[str, Any]:
+        return {
+            str(n): {"state": "closed", "state_reason": "completed"} for n in issues
+        }
+
+
+def knowledge_setup(tmp_path: Path) -> tuple[Path, KnowledgeBackend, Clock]:
+    path, _, clock = setup(tmp_path)
+    request = read(path)["request"]
+    request.update(kind="knowledge_merge", evidence="受入と実行結果を照合済み")
+    request["prs"][0]["related_issues"] = [111]
+    save(path, new_state(request, owner="codex:test", generation=1))
+    return path, KnowledgeBackend(), clock
+
+
+@pytest.mark.parametrize(
+    ("status", "stage"), [("pending", "ci_wait"), ("failure", "parent_wait")]
+)
+def test_unsuccessful_knowledge_ci_does_not_merge_or_repair(
+    tmp_path: Path, status: str, stage: str
+) -> None:
+    path, backend, clock = knowledge_setup(tmp_path)
+    backend.checks[11] = [status]
+    engine = Engine(path, backend, clock=clock, sleep=clock.sleep)
+    engine.step(engine.state["targets"]["11"])
+    target = read(path)["targets"]["11"]
+    assert target["stage"] == stage
+    assert target["ci"]["reasons"] == ["Knowledge library result unavailable"]
+    assert not backend.merged and backend.repair_count[11] == 0
+
+
+def test_knowledge_merge_recovers_main_ci_wait_without_another_submission(
+    tmp_path: Path,
+) -> None:
+    path, backend, clock = knowledge_setup(tmp_path)
+    backend.main_ci = "pending"
+
+    def interrupted(delay: float) -> None:
+        clock.sleep(delay)
+        raise InterruptedError("controller interrupted while waiting")
+
+    with pytest.raises(InterruptedError):
+        Engine(path, backend, clock=clock, sleep=interrupted).run()
+    saved = read(path)["targets"]["11"]
+    assert saved["stage"] == "post_merge_wait"
+    assert saved["main_ci"]["status"] == "pending"
+    assert not saved.get("issues_confirmed")
+    backend.main_ci = "success"
+    verified = Engine(path, backend, clock=clock, sleep=clock.sleep).run()
+    assert verified["status"] == "completed"
+    assert verified["targets"]["11"]["main_ci"]["head"] == saved["merge_commit"]
+    assert [c[0] for c in backend.calls].count("merge") == 1
+    assert backend.review_count == 0
