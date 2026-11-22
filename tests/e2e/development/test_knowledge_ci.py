@@ -449,7 +449,7 @@ def test_light_checks_validate_the_merged_tree_and_record_the_outcomes(
         }
         assert (
             knowledge_ci.verify_result(
-                result, run, pr_number=12, head_sha=head, base_sha=base
+                result, run, pr_number=12, head_sha=head, base_sha=base, merge_sha=merge
             )
             is None
         )

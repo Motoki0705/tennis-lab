@@ -44,9 +44,10 @@ PRのHEAD、現在のマージ先、GitHubのテスト用マージコミット�
 2. 対象runの `GET /repos/{repo}/actions/runs/{id}/artifacts` から、その最新attemptの
    `artifact_name(run_id: int, run_attempt: int) -> str`（`knowledge-records-<run>-<attempt>`）に一致する
    有効なartifactを一意に選び、`knowledge-records.json` を取得する。
-3. `verify_result(data: bytes | None, run: Mapping[str, object], *, pr_number: int, head_sha: str, base_sha: str) -> None`
-   にファイルのバイト列とREST APIのrunオブジェクト、現在のPR番号・HEAD・マージ先SHAを渡す。
-   `ValueError` は拒否理由を示す。runと個々の検査の成功、PR番号、HEAD、比較元、run ID、attemptを照合する。
+3. `verify_result(data: bytes | None, run: Mapping[str, object], *, pr_number: int, head_sha: str, base_sha: str, merge_sha: str) -> None`
+   に結果ファイルのバイト列、REST APIのrunオブジェクト、現在のPR番号・HEAD・マージ先SHAを渡す。
+   `merge_sha` には `classify_pr` で使ったテスト用マージSHAを指定する。runと個々の検査の成功、
+   PR番号、HEAD、比較元、テスト用マージSHA、run ID、attemptを照合する。`ValueError` は拒否理由を示す。
 
 JSONの `schema_version` は `1`。`scope` は `records-only`。識別情報は `pr_number`、`head_sha`、`base_sha`、
 `merge_sha`、`run_id`、`run_attempt`。`checks` に `kg_validate` と `kg_repro_paths` のstep outcomeを、

@@ -1,4 +1,4 @@
-"""A successful Actions check must match the current PR and target branch."""
+"""A successful Actions check must match the pinned PR and test merge."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import pytest
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 HEAD = "a" * 40
 BASE = "b" * 40
+MERGE = "c" * 40
 
 
 @pytest.fixture
@@ -35,7 +36,7 @@ def record() -> dict[str, object]:
         "pr_number": 12,
         "head_sha": HEAD,
         "base_sha": BASE,
-        "merge_sha": "c" * 40,
+        "merge_sha": MERGE,
         "run_id": 141,
         "run_attempt": 2,
         "checks": {"kg_validate": "success", "kg_repro_paths": "success"},
@@ -54,6 +55,12 @@ def verify(monkeypatch: pytest.MonkeyPatch) -> Any:
     [
         ("head_sha", "d" * 40, "head_sha does not match"),
         ("base_sha", "d" * 40, "base_sha does not match"),
+        pytest.param(
+            "merge_sha",
+            "d" * 40,
+            "merge_sha does not match",
+            id="different-test-merge-sha",
+        ),
         ("pr_number", 13, "pr_number does not match"),
         ("run_attempt", 1, "run_attempt does not match"),
         ("run_id", 140, "run_id does not match"),
@@ -84,6 +91,7 @@ def test_rejects_invalid_or_stale_artifact(
             pr_number=12,
             head_sha=HEAD,
             base_sha=BASE,
+            merge_sha=MERGE,
         )
 
 
@@ -114,6 +122,7 @@ def test_rejects_unsuccessful_or_unrelated_run_even_with_a_successful_artifact(
             pr_number=12,
             head_sha=HEAD,
             base_sha=BASE,
+            merge_sha=MERGE,
         )
 
 
@@ -131,4 +140,11 @@ def test_rejects_missing_or_unreadable_result(
     error: str,
 ) -> None:
     with pytest.raises(ValueError, match=error):
-        verify(data, workflow_run, pr_number=12, head_sha=HEAD, base_sha=BASE)
+        verify(
+            data,
+            workflow_run,
+            pr_number=12,
+            head_sha=HEAD,
+            base_sha=BASE,
+            merge_sha=MERGE,
+        )

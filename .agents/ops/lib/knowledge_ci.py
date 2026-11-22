@@ -125,16 +125,18 @@ def verify_result(
     pr_number: int,
     head_sha: str,
     base_sha: str,
+    merge_sha: str,
 ) -> None:
     """Require a successful artifact from the exact Knowledge library PR run attempt.
 
     The caller supplies REST run metadata and the result file from that run's
-    artifact, then compares against the current PR and target branch. Raises
-    ValueError with the failed check. This function performs no network I/O.
+    artifact, then compares against the PR, target branch and test merge used
+    for scope classification. Raises ValueError with the failed check.
     """
     _positive_int(pr_number, "PR number")
     _sha(head_sha, "expected HEAD")
     _sha(base_sha, "expected base")
+    _sha(merge_sha, "expected test merge")
     if run.get("event") != "pull_request" or run.get("path") != WORKFLOW_PATH:
         raise ValueError("expected a Knowledge library pull_request run")
     if run.get("head_sha") != head_sha:
@@ -160,6 +162,7 @@ def verify_result(
         ("pr_number", pr_number),
         ("head_sha", head_sha),
         ("base_sha", base_sha),
+        ("merge_sha", merge_sha),
         ("run_id", run_id),
         ("run_attempt", attempt),
     ):
@@ -168,7 +171,6 @@ def verify_result(
             raise ValueError(
                 f"knowledge records result {field} does not match {expected}"
             )
-    _sha(result.get("merge_sha"), "result test merge")
     if result.get("conclusion") != "success" or result.get("checks") != dict.fromkeys(
         _CHECKS, "success"
     ):
