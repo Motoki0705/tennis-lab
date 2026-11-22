@@ -348,6 +348,7 @@ def shot_reports(inputs: Inputs, tmp_path: Path) -> tuple[Path, Path]:
     return shot, renders
 
 
+@pytest.mark.system_deps
 def test_video_publication_preserves_all_source_frames_and_missing_camera_slots(
     shot_reports: tuple[Path, Path], tmp_path: Path
 ) -> None:
@@ -405,7 +406,13 @@ def test_publication_rejects_incorrect_blender_audit(
 
 
 @pytest.mark.parametrize(
-    "fault", ["truncated", "missing-png", "bad-png", "nonblank-camera"]
+    "fault",
+    [
+        "truncated",
+        "missing-png",
+        pytest.param("bad-png", marks=pytest.mark.system_deps),
+        pytest.param("nonblank-camera", marks=pytest.mark.system_deps),
+    ],
 )
 def test_video_publication_refuses_missing_frames_and_cleans_failed_encoding(
     shot_reports: tuple[Path, Path], tmp_path: Path, fault: str
