@@ -104,3 +104,54 @@ def test_empty_body_selection_needs_no_weights(tmp_path: Path) -> None:
     empty = replace(inputs, selection=BodyViewSelectionOutput(()), features=HMR2FeaturesOutput('clip', ()))
     result = GVHMRModule(make_people_config(tmp_path)).process(empty)
     assert not result.bodies
+
+
+def test_gvhmr_batches_equal_lengths_and_preserves_person_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = selected(tmp_path)
+    choice = first.selection.selections[0]
+    body = first.features.bodies[0]
+    segment = body.segments[0]
+    last = replace(choice.requests[0], source_frames=np.array([3, 7], np.int64),
+                   keypoints=choice.requests[0].keypoints[:2], boxes_xys=choice.requests[0].boxes_xys[:2])
+    choices = (choice, replace(choice, person_id=2), replace(choice, person_id=9, requests=(last,), observed_samples=(2,)))
+    bodies = (
+        body,
+        replace(body, person_id=2, segments=(replace(segment, features=segment.features + 100),)),
+        replace(body, person_id=9, segments=(replace(segment, source_frames=last.source_frames, features=segment.features[:2] + 200),)),
+    )
+    calls: list[list[tuple[int, float]]] = []
+
+    class Mesh:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+
+        def load(self) -> None:
+            pass
+
+        def unload(self) -> None:
+            pass
+
+        def predict_batch(self, requests: list[Any]) -> list[Any]:
+            calls.append([(len(row.kp2d), float(row.f_imgseq[0, 0])) for row in requests])
+            return [
+                SimpleNamespace(smpl_params_incam={
+                    name: row.f_imgseq[:, :1].repeat(1, width)
+                    for name, width in (("body_pose", 63), ("global_orient", 3), ("betas", 10), ("transl", 3))
+                })
+                for row in requests
+            ]
+
+        def predict(self, request: Any) -> Any:
+            return self.predict_batch([request])[0]
+
+    monkeypatch.setattr("src.tennis_scene.pipeline.components.gvhmr.GvhmrMeshRecovery", Mesh)
+    config = make_people_config(tmp_path)
+    runtime = replace(config.runtime, gvhmr=replace(config.runtime.gvhmr, batch_size=2))
+    module = materialize_model_weights(GVHMRModule(replace(config, runtime=runtime)))
+    result = module.process(GVHMRInput(first.source, BodyViewSelectionOutput(choices), replace(first.features, bodies=bodies)))
+    assert calls == [[(3, 3), (3, 103)], [(2, 203)]]
+    assert [value.person_id for value in result.bodies] == [7, 2, 9]
+    for value, expected in zip(result.bodies, [[3, 8, 17], [103, 108, 117], [203, 208]], strict=True):
+        np.testing.assert_array_equal(value.segments[0].parameters.transl[:, 0], expected)

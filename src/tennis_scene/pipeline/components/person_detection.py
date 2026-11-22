@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Generator, Sequence
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,10 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_resources import dino_tensorrt
+from src.tennis_scene.pipeline.tensorrt_assets import tensorrt_identity
+from src.utils.io import json_value
+from src.utils.models.tensorrt_artifacts import EXPORT_MANIFEST, ExportManifest
 from src.utils.video import OpenCVVideoFrameReader
 
 
@@ -84,23 +89,47 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
         config = self.config
         if not self.enabled:
             return {}
-        extension = os.environ.get("TENNIS_LAB_DINO_EXTENSION")
+        runtime = config.runtime.dino_detector
+        extension = None if runtime.engines else os.environ.get("TENNIS_LAB_DINO_EXTENSION")
         native = {} if extension is None else {"extension": Path(extension)}
         if extension is not None and not Path(extension).is_absolute():
             raise ValueError("TENNIS_LAB_DINO_EXTENSION must be an absolute binary path")
         def initialize(model: DinoPersonDetector) -> None:
-            if os.environ.get("TENNIS_LAB_DINO_EXTENSION") != extension:
+            if not runtime.engines and os.environ.get("TENNIS_LAB_DINO_EXTENSION") != extension:
                 raise ValueError("DINO extension selection changed since its model declaration")
             model.load()
+
+        assets = {"checkpoint": config.dino_checkpoint, **dino_source_assets(config.dino_repository), **native}
+        options = json_value(runtime)
+        del options["engines"]
+        if runtime.batch_size == 1:
+            del options["batch_size"]
+        settings = {"runtime": options, "extension": extension}
+        kwargs = {}
+        if runtime.engines:
+            bundles = []
+            shapes: set[tuple[int, int]] = set()
+            for root in runtime.engines:
+                export = ExportManifest.model_validate_json((root / EXPORT_MANIFEST).read_bytes())
+                _, _, height, width = export.inputs["pixels"].shape
+                if (height, width) in shapes:
+                    raise ValueError(f"Duplicate DINO TensorRT input shape: {height}x{width}")
+                shapes.add((height, width))
+                bundles.append(dino_tensorrt(config, height, width).bind(
+                    root, device=config.runtime.device, batch_size=runtime.batch_size))
+            engine_assets, identity = tensorrt_identity(tuple(bundles), batch_size=runtime.batch_size)
+            assets.update(engine_assets)
+            settings.update(identity)
+            kwargs["engines"] = tuple(bundles)
         return {"detector": ModelSpec(
-            "dino", {"checkpoint": config.dino_checkpoint, **dino_source_assets(config.dino_repository), **native},
+            "dino", assets,
             "dino_4scale_swin_l", config.runtime.device,
-            {"fp32": "float32", "bf16": "bfloat16", "fp16": "float16"}[config.runtime.dino_detector.precision],
-            {"runtime": config.runtime.dino_detector, "extension": extension},
+            {"fp32": "float32", "bf16": "bfloat16", "fp16": "float16"}[runtime.precision],
+            settings,
             lambda: DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
-                device=config.runtime.device, confidence=config.runtime.dino_detector.confidence,
-                short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side,
-                precision=config.runtime.dino_detector.precision),
+                device=config.runtime.device, confidence=runtime.confidence,
+                short_side=runtime.short_side, max_long_side=runtime.max_long_side,
+                precision=runtime.precision, **kwargs),
             initialize=initialize, release=lambda model: model.unload())}
 
     def process_with_models(self, inputs: PersonDetectionInput, models: ModelBorrower) -> PersonDetectionOutput:
@@ -109,8 +138,17 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
                 np.zeros((0, 4), np.float32), np.zeros(0, np.float32), np.empty(0, np.int64))
         detector: DinoPersonDetector = models.borrow("detector")
         output = _DetectionRows(inputs.video, self.merge_duplicates)
-        for packet in OpenCVVideoFrameReader(inputs.video.path, max_frames=inputs.video.num_frames):
-            output.write(packet.index, detector.predict(PersonDetectionRequest(packet.frame)))
+        packets = iter(OpenCVVideoFrameReader(inputs.video.path, max_frames=inputs.video.num_frames))
+        batch_size = self.config.runtime.dino_detector.batch_size
+        if batch_size == 1:
+            for packet in packets:
+                output.write(packet.index, detector.predict(PersonDetectionRequest(packet.frame)))
+        else:
+            while batch := list(islice(packets, batch_size)):
+                results = detector.predict_batch(
+                    [PersonDetectionRequest(packet.frame) for packet in batch], batch_size=batch_size)
+                for packet, result in zip(batch, results, strict=True):
+                    output.write(packet.index, result)
         return output.finish()
 
     def batch_adapter(self) -> BatchAdapter | None:

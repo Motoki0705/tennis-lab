@@ -113,7 +113,8 @@ def camera_track_appearances(
                     yield track, frame, crop(image, box, borrow_encoder().input_size)
 
     misses = missing_crops()
-    while batch := list(islice(misses, DEFAULT_BATCH_SIZE)):
+    batch_size = int(encoder.settings.get("batch_size", DEFAULT_BATCH_SIZE))
+    while batch := list(islice(misses, batch_size)):
         pixels = torch.from_numpy(np.stack([patch for _, _, patch in batch]))
         encoded = borrow_encoder().embed(pixels).detach().cpu().numpy().astype(np.float32)
         for (track, frame, _), value in zip(batch, encoded, strict=True):

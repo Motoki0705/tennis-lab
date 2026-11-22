@@ -16,6 +16,8 @@ from src.submodules.smpl_assets import require_smpl_asset
 from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
 from src.utils.inference_recording import span
+from src.utils.models.tensorrt_artifacts import PLAN_FILE, EngineBundle
+from src.utils.models.tensorrt_runtime import TensorRTRunner
 
 
 @dataclass(frozen=True)
@@ -50,6 +52,7 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
         device: str | torch.device,
         batch_size: int,
         mean_params_path: str | Path,
+        engine: EngineBundle | None = None,
     ) -> None:
         super().__init__(device)
         if type(batch_size) is not int:
@@ -63,11 +66,18 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
         )
         self.batch_size = batch_size
         self._model: torch.nn.Module | None = None
+        self._engine = engine
+        self._runner: TensorRTRunner | None = None
 
     def recording_assets(self) -> dict[str, Path]:
+        if self._engine is not None:
+            return {"engine": self._engine.root / PLAN_FILE}
         return {"checkpoint": self.checkpoint, "mean_params": self.mean_params_path}
 
     def _load_impl(self) -> None:
+        if self._engine is not None:
+            self._runner = TensorRTRunner(self._engine, self.device)
+            return
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"HMR2 checkpoint not found: {self.checkpoint}")
         require_smpl_asset(self.mean_params_path, "hmr2_mean_params")
@@ -82,10 +92,9 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
 
     def _unload_impl(self) -> None:
         self._model = None
+        self._runner = None
 
     def _predict_impl(self, request: ImageFeatureRequest) -> ImageFeatureResult:
-        if self._model is None:
-            raise RuntimeError("HMR2 model did not load before prediction.")
         batches: Iterator[tuple[torch.Tensor, torch.Tensor]]
         if request.frame_indices is None:
             imgs, _ = get_batch(str(request.video_path), request.bbx_xys, img_ds=0.5)
@@ -107,11 +116,14 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
             return ImageFeatureResult(self._predict_crop_batch(images).float())
 
     def _predict_crop_batch(self, images: torch.Tensor) -> torch.Tensor:
-        if self._model is None:
-            raise RuntimeError("HMR2 model did not load before prediction.")
         with span("transfer", model="HMR2"):
             imgs_batch = images.to(self._device)
         with span("inference", model="HMR2", batch_shape=list(imgs_batch.shape)):
-            feature = self._model({"img": imgs_batch})
+            if self._runner is not None:
+                feature = self._runner({"pixels": imgs_batch})["features"].float()
+            elif self._model is not None:
+                feature = self._model({"img": imgs_batch})
+            else:
+                raise RuntimeError("HMR2 model did not load before prediction.")
         with span("postprocess", model="HMR2"):
             return feature.detach().cpu()

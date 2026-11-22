@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
@@ -131,6 +131,19 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
     """Preflight the fixed inputs, then drain the plan using explicit batch limits."""
     cfg = orchestrator.config
     batching = BatchConfig() if batching is None else batching
+    if batching.enabled and cfg.people.runtime.uses_tensorrt:
+        runtime = cfg.people.runtime
+        sizes = {
+            name: size
+            for name, size, engines in (
+                ("dino", runtime.dino_detector.batch_size, runtime.dino_detector.engines),
+                ("vitpose", runtime.vitpose.batch_size, runtime.vitpose.engines),
+                ("clip", runtime.clip_reid.batch_size, runtime.clip_reid.backend.engines),
+                ("hmr2", runtime.hmr2.batch_size, runtime.hmr2.backend.engines),
+            )
+            if engines
+        }
+        batching = replace(batching, sizes=replace(batching.sizes, **sizes))
     store_cache = ClipStoreCache(batching.store_cache_bytes)
     if cfg.max_frames is not None or cfg.direct_annotation is not None:
         raise ValueError("Video batches require complete clips and the model pipeline")
