@@ -367,6 +367,9 @@ async function main() {
   );
   assert.ok(drawer().textContent.includes("Issue 未完了（OPEN）"));
   assert.ok(drawer().textContent.includes("PR #88"));
+  nodeButton(childKey(14)).events.click();
+  assert.ok(drawer().textContent.includes("GitHubの停止記録"));
+  assert.ok(!drawer().textContent.includes("ローカルの停止記録"));
   // Completion comes from GitHub only: merged PR (#12) and closed Issue (#17).
   assert.ok(graphText().includes("+2 完了"), graphText());
   assert.ok(nodeButton(childKey(19)));

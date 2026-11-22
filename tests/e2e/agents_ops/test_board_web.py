@@ -237,8 +237,8 @@ def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                             "dependencies": [],
                             "reasons": [],
                         },
-                        "stopped": False,
-                        "stop_record": {},
+                        "stopped": child["status"] == "stopped",
+                        "stop_record": child["stop_record"],
                     }
                     # The real collector's last step on every child.
                     task_view.prefer_local_title(child)

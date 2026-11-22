@@ -766,12 +766,14 @@ class ExecutionView {
           "execution-warning",
         ),
       );
-    if (github.status === "observed" && github.stopped)
-      nodes.push(this.stopRecord(github.stop_record, "GitHubの停止記録"));
-    nodes.push(
-      this.stopRecord(child.stop_record, "ローカルの停止記録"),
-      this.actionSummaries(child.summary),
-    );
+    const remoteStop = github.status === "observed" && github.stopped
+      ? github.stop_record : null;
+    if (remoteStop)
+      nodes.push(this.stopRecord(remoteStop, "GitHubの停止記録"));
+    // The collector can also project the GitHub reason into stop_record.
+    if (JSON.stringify(child.stop_record) !== JSON.stringify(remoteStop))
+      nodes.push(this.stopRecord(child.stop_record, "ローカルの停止記録"));
+    nodes.push(this.actionSummaries(child.summary));
     return nodes;
   }
 }
