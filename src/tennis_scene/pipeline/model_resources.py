@@ -13,6 +13,7 @@ from src.submodules.models.dino.architecture import (
     DINO_NUM_QUERIES,
     dino_source_assets,
 )
+from src.submodules.models.gvhmr.onnx_attention import ATTENTION_MASK_ENCODING
 from src.tasks.player_association.appearance.encoders import (
     CLIP_REID_PROFILE,
     AppearanceEncoder,
@@ -78,24 +79,26 @@ def dino_tensorrt(config: PeopleModelConfig, height: int, width: int) -> TensorR
     )
 
 
-def gvhmr_tensorrt(config: PeopleModelConfig) -> TensorRTModel:
+def gvhmr_tensorrt(config: PeopleModelConfig, *, legacy: bool = False) -> TensorRTModel:
+    batch = 1 if legacy else -1
+    settings = {"attention_window": 120, "max_rotary_frames": 4096}
     return TensorRTModel(
         "gvhmr_siga24_denoiser",
         {"checkpoint": config.gvhmr_checkpoint},
-        {"attention_window": 120, "max_rotary_frames": 4096},
+        settings if legacy else {**settings, "attention_mask": ATTENTION_MASK_ENCODING},
         {
-            "length": TensorSpec(dtype="int64", shape=(1,)),
-            "obs": TensorSpec(dtype="float16", shape=(1, -1, 17, 3)),
-            "f_cliffcam": TensorSpec(dtype="float16", shape=(1, -1, 3)),
-            "f_cam_angvel": TensorSpec(dtype="float16", shape=(1, -1, 6)),
-            "f_imgseq": TensorSpec(dtype="float16", shape=(1, -1, 1024)),
+            "length": TensorSpec(dtype="int64", shape=(batch,)),
+            "obs": TensorSpec(dtype="float16", shape=(batch, -1, 17, 3)),
+            "f_cliffcam": TensorSpec(dtype="float16", shape=(batch, -1, 3)),
+            "f_cam_angvel": TensorSpec(dtype="float16", shape=(batch, -1, 6)),
+            "f_imgseq": TensorSpec(dtype="float16", shape=(batch, -1, 1024)),
         },
         {
-            "pred_x": TensorSpec(dtype="float16", shape=(1, -1, 151)),
-            "pred_cam": TensorSpec(dtype="float16", shape=(1, -1, 3)),
-            "static_conf_logits": TensorSpec(dtype="float16", shape=(1, -1, 6)),
-            "mask_out": TensorSpec(dtype="bool", shape=(1, -1)),
-            "length_out": TensorSpec(dtype="int64", shape=(1,)),
+            "pred_x": TensorSpec(dtype="float16", shape=(batch, -1, 151)),
+            "pred_cam": TensorSpec(dtype="float16", shape=(batch, -1, 3)),
+            "static_conf_logits": TensorSpec(dtype="float16", shape=(batch, -1, 6)),
+            "mask_out": TensorSpec(dtype="bool", shape=(batch, -1)),
+            "length_out": TensorSpec(dtype="int64", shape=(batch,)),
         },
     )
 

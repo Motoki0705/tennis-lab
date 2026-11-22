@@ -28,6 +28,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.tennis_scene.pipeline.model_resources import gvhmr_tensorrt
 from src.tennis_scene.pipeline.tensorrt_assets import tensorrt_identity
+from src.utils.models.tensorrt_artifacts import EXPORT_MANIFEST, ExportManifest
 
 
 @dataclass(frozen=True)
@@ -90,8 +91,10 @@ class GVHMRModule(InferenceComponent[GVHMRInput, GVHMROutput]):
         dtype = "float32"
         kwargs = {}
         if runtime.backend.engines:
-            engine = gvhmr_tensorrt(config).bind(
-                runtime.backend.engines[0], device=config.runtime.device, batch_size=runtime.batch_size)
+            root = runtime.backend.engines[0]
+            manifest = ExportManifest.model_validate_json((root / EXPORT_MANIFEST).read_bytes())
+            engine = gvhmr_tensorrt(config, legacy="attention_mask" not in manifest.settings).bind(
+                root, device=config.runtime.device, batch_size=runtime.batch_size)
             engine_assets, identity = tensorrt_identity((engine,), batch_size=runtime.batch_size)
             assets.update(engine_assets)
             settings.update(identity)

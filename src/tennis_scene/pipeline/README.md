@@ -352,11 +352,11 @@ uv sync --locked --extra tensorrt
 | `dino_detector` | 同じresize後shapeのフレーム | H×Wごとに1ディレクトリ。MSDAは標準GridSample |
 | `clip_reid` | RGBの人物crop | 256×128。追跡特徴と人物対応のCLIP-ReIDで共用 |
 | `hmr2` | 身体viewのcrop | 256×256 |
-| `gvhmr` | 人物系列 | TensorRTでは1人。系列長はprofileの範囲。復号・静止カメラ補正・IKはFP32 |
+| `gvhmr` | 同じ長さの人物系列 | 人数・系列長はprofileの範囲。復号・静止カメラ補正・IKはFP32 |
 
 TensorRTを選んだモデルの `batch_size` は単一clipと横断バッチで共通です。
 横断バッチを有効にしたとき、PyTorchのモデルには既存の `batching.sizes` が適用されます。
-各バッチの端数を処理します。PyTorch GVHMRでは連続する同じ系列長をまとめ、人物ごとに復号します。
+各バッチの端数を処理します。GVHMRは連続する同じ長さの人物系列をまとめ、人物ごとに復号します。
 
 ### DINO GridSampleの単体精度
 
@@ -385,7 +385,19 @@ bundle=outputs/tensorrt/vitpose/256x192/example-b2
 ローカルの変換・ビルドは[共有training queue](../../../.agents/skills/training-queue/SKILL.md)で実行します。
 exportはcheckpointやViTPose headの設定を `pipeline.yaml` から読みます。
 個別設定は `--override KEY=VALUE` で渡し、DINOにはresize後の `--image-size HEIGHT WIDTH` を指定します。
-GVHMRのbuildには `--frames MIN OPT MAX` が必要です。
+GVHMRのbuildには `--frames MIN OPT MAX` が必要です。長さのprofileに加えて
+`--opt-batch` と `--max-batch` で人数を指定します。
+新しいONNX exportはattention maskを `scores + Where(mask, -32768, 0)` に書き換えます。
+加算mask導入前のB=1 planは、元の設定とprofileを照合したうえでB=1の実行に使えます。
+新しいplanを検証する場合は `export gvhmr` に `--keep-mask-reference` を追加し、
+build後に次を実行します。ONNX Runtimeで書換え前後の全出力をバイト比較し、
+TensorRTでprofile境界とL=177（範囲内の場合）の有限性・層精度を調べます。
+`--progress` で実行receiptに含まれる全shapeを追加できます。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.qualify_gvhmr_tensorrt "$bundle" outputs/gvhmr-qualification.json
+```
+
 画像モデルの最小バッチは1です。profile内のバッチサイズは設定だけで変更できます。
 
 ```yaml

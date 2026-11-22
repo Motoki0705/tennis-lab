@@ -78,7 +78,7 @@ def test_explicit_tensorrt_fp16_and_batch_configuration(name: str, tmp_path: Pat
     mapping["device"] = "cuda:0"
     options = mapping.setdefault(name, {})
     assert isinstance(options, dict)
-    batch_size = 1 if name == "gvhmr" else 3
+    batch_size = 3
     options.update(backend="tensorrt", precision="fp16",
                    engines=[str(tmp_path / name)], batch_size=batch_size)
     runtime = SubmoduleRuntimeConfig.from_mapping(mapping)
@@ -96,7 +96,6 @@ def test_explicit_tensorrt_fp16_and_batch_configuration(name: str, tmp_path: Pat
         ({"backend": "pytorch"}, "engines require"),
         ({"precision": "fp32"}, "requires fp16"),
         ({"engines": []}, "explicit engine directories"),
-        ({"batch_size": 2}, "GVHMR TensorRT requires batch_size=1"),
         ({"batch_size": 0}, "batch_size must be positive"),
         ({"batch_size": True}, "expected int"),
     ],
