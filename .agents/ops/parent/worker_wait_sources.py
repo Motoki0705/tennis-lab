@@ -30,13 +30,23 @@ def require_ci_target(
 
 
 def ci_result(
-    backend: LiveBackend, request: dict[str, Any], branch: str
+    backend: LiveBackend, request: dict[str, Any], branch: str, *, root: Path
 ) -> dict[str, Any] | None:
     pr, head = request["pr"], request["head"]
-    require_ci_target(backend.pr(pr), backend.repo, branch, request)
+    current = backend.pr(pr)
+    require_ci_target(current, backend.repo, branch, request)
     ci = backend.ci(pr, head)
     if "ci_python_head_mismatch" in ci["reasons"]:
         raise ValueError("CI check was returned for a different HEAD")
+    if ci["reasons"] and set(ci["reasons"]) <= {
+        "ci_python_missing",
+        "ci_python_skipped",
+    }:
+        from lib.ops_review import knowledge_records
+
+        _, comparison = knowledge_records.assess(root, backend.repo, current)
+        if comparison is not None:
+            ci = knowledge_records.observe_ci(backend, current, comparison)
     if ci["status"] == "pending":
         return None
     result = {
@@ -46,6 +56,14 @@ def ci_result(
         "status": ci["status"],
         "reasons": ci["reasons"],
     }
+    if "workflow" in ci:
+        result.update(
+            {
+                key: ci[key]
+                for key in ("workflow", "base_sha", "merge_sha", "run")
+                if key in ci
+            }
+        )
     if ci["status"] == "failure":
         failure = backend.failure({"number": pr}, ci)
         result.update(

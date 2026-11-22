@@ -97,10 +97,15 @@ def progression_event(
 ) -> None:
     """Capture a persisted notification once; never call it parent verification."""
     path = directory / "progressions" / state["id"] / "decision-capture.json"
-    from lib.ops_review.progression import read, save
+    from lib.ops_review.progression import KNOWLEDGE_MERGE, read, save
 
     op = None
-    confirmation = state["request"].get("kind") == "post_merge_confirmation"
+    kind = state["request"].get("kind")
+    confirmation = kind == "post_merge_confirmation"
+    summary = {
+        "post_merge_confirmation": "Confirm existing merged artifacts",
+        KNOWLEDGE_MERGE: "Verify knowledge records CI and merge",
+    }.get(kind, "CLI automatic review, CI, repair and merge")
     try:
         if path.exists():
             op = Operation.load(Path(read(path)["operation"]))
@@ -122,12 +127,7 @@ def progression_event(
             with op.transaction():
                 op.row["review_run_id"] = state["id"]
                 op.row["private"]["runs"] = [state["id"]]
-                op.action(
-                    "running",
-                    "Confirm existing merged artifacts"
-                    if confirmation
-                    else "CLI automatic review, CI, repair and merge",
-                )
+                op.action("running", summary)
             save(path, {"operation": str(op.path)})
         with op.transaction():
             op.result(

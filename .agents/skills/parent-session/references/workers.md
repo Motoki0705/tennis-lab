@@ -46,10 +46,18 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --chi
 - `launch_plan` の `action=ready`、既存予約、依存・枠の待機理由を確認する。別の担当を同じIssueへ追加するときは、成果PRがopenでも新しい名前とworktreeを指定できる。複数人になったら、既存担当への操作にも `--worker primary` または補助担当名を付ける。
 - 手動runの登録を `inspect-worker` で確認したら、`wait-worker --child 1217 --worker quality` を会話のシェルツールで背景実行して終了通知を受ける（`agy` 手動親では `setsid` / `&` を付けず `run_command` の非同期タスクとして直接起動する）。`wait_state=ended` は、宣言を受けた監視と自動再開がある場合はその一連の終了まで含む。最後のrunの成否は `runner_summary`、成果は `final_file`、監視の成否・親の判断・再開回数は `followup` で確認する。終了コード124は読取側の時間満了。同じ処理をもう一度待てる。終了コード2は異常。保存済みの理由を読んで [復旧](recovery.md) へ進む。
 - 調査だけを任せるターンは `--planning`。結果から次の方針を決め、必要に応じて `decide-worker-plan` で回答を結び付ける。同じ担当に続きやmajor修正を頼むときは、終了・回収を照合して手動の `run-worker --resume` または自律の `continue-worker` を使う。
-- 補助担当はcommitまたは測定結果を返す。統合担当が競合を解消して統合HEADを検証し、担当Issueを閉じるPRに `Closes #1217` を書く。親はPRのbranch・HEADと条件ごとの証拠を確かめ、[正式レビュー](review.md) の `review-request` へ一度渡す。個別に受入だけを記録する場合は `record-result`。
+- 補助担当はcommitまたは測定結果を返す。統合担当が競合を解消して統合HEADを検証し、担当Issueを閉じるPRに `Closes #1217` を書く。親はPRのbranch・HEADと条件ごとの証拠を確かめ、[レビューとマージ](review.md) の手順に進む。個別に受入だけを記録する場合は `record-result`。
 - 複数担当の一人を止めるには `stop-worker --worker 名前`。Issue全体の保留は `stop` を使う。自律親で担当が一人のときの `stop-worker` は、対象Issueを保留し、依存して保留されたjobにも停止を要求する。影響先は `launch_plan` で確認する。停止要求だけでは終了・枠解放は確定しない。[終了が不明な場合](recovery.md)
 
 **未マージの依存PRを土台にする場合**は、`stacked_on` の全headを取り込み、実際に積んだ境界commitを保存する。依存先が一つなら先行branchを後続PRのbaseにする。先行PRのマージ後、cleanな後続worktreeでその境界から後続のcommitだけをmainへ載せ替え、PRのbase・差分・CIを新HEADで確認する。先行がsquash mergeされても、保存した境界を使える。
+
+## ナレッジ記録PRの作成
+
+作業者は、独立した実験・文献の記録と、run同梱の再現専用Python・シェルを、最初から記録専用PRにまとめる。実行結果が受入条件なら、実行コマンドと結果の証拠をPR本文に添える。
+
+- 記録だけで受入条件を満たすIssueは、記録PRに `Closes #<issue>` を書く。
+- 実装に付随する記録PRは、`Refs #<issue>, #<実装PR>` のように対象Issueと実装PRを参照する。受入条件を満たす実装PRにclosingを置く。
+- 実装と混在する差分、Web UI・検査器・スキーマ・レジストリ（`deployments.yaml` 等）・保存規則・CI設定の変更、本番チェックポイントと一体の採用根拠は、通常PRの正式レビューで扱う。
 
 ## CI・ローカルqueueの待機
 
@@ -59,7 +67,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --chi
 - 悪い例「pushしたら、このターンでPython成功を確認してドラフトを解除する」
 - 計測の例「条件AとBを共有queueに投入し、両方のjob IDを宣言して終了。結果を受け取ったターンで集計して記録する」
 
-手動委任では `run-worker` が宣言を検査する。監視はユーザーのsystemd transient serviceで実行する。GitHubとCodexのCLI認証は、そのユーザーの設定を使う。CIは宣言したPR・HEADのPythonの結果を使う。失敗したときと、成功後の後続作業があるときは同じsessionを再開する。queueは宣言した全jobの終端を待ち、終了状態・ログ・取得できた出力先をまとめて一度だけ渡す。再開が必要で枠が埋まっているときは、CLIが結果を保存し、空き枠を取得して再開する。再開は担当ごとに3回まで。上限や人間の判断が返ったら、理由と成果を照合する。
+手動委任では `run-worker` が宣言を検査する。監視はユーザーのsystemd transient serviceで実行する。GitHubとCodexのCLI認証は、そのユーザーの設定を使う。CIは宣言したPR・HEADのPythonを照合する。Pythonが未登録またはskipで、Git差分が記録専用と確定した場合は [Knowledge library の結果](../../../ops/lib/README.md#ナレッジ記録専用prのci) を照合する。失敗したときと、成功後の後続作業があるときは同じsessionを再開する。queueは宣言した全jobの終端を待ち、終了状態・ログ・取得できた出力先をまとめて一度だけ渡す。再開が必要で枠が埋まっているときは、CLIが結果を保存し、空き枠を取得して再開する。再開は担当ごとに3回まで。上限や人間の判断が返ったら、理由と成果を照合する。
 
 共有queueの `worker: RUNNING` は親側が委任前に確認する。停止中なら親側の独立したサービスで `training_queue.sh serve` を起動する。委任した子はworktreeから `add` を行い、queue workerを起動しない。子の共通ランナーは終了時に子孫を回収するため、子から起動したqueue workerと実行中jobも停止する。終了値143では、子の終了とqueue workerの停止が同時刻か確認する。専用のqueueを使うなら、親CLIの `TRAINING_QUEUE_DIR` を起動前に指定して子と共有する。
 

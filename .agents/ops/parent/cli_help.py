@@ -23,7 +23,7 @@ TOPICS = {
     ),
     "review": (
         "正式レビューとマージ",
-        "review-request review-inspect merge-status wait-merge merge-continue merge-confirm",
+        "review-request review-inspect merge-knowledge merge-status wait-merge merge-continue merge-confirm",
     ),
     "finish": (
         "記録と終了",
@@ -52,6 +52,7 @@ EXAMPLES = {
     "record-worker-ended": "record-worker-ended --child 1217 --worker quality --delegation-id DELEGATION_ID --evidence-file ended.md\nstatusで対象IDを取得し、runnerと子孫の終了・回収を照合した根拠を書く。",
     "record-result": "record-result --child 1217 --evidence-file verified.md\n統合HEAD、受入条件、対応するテスト結果を書く。",
     "review-request": "review-request --prs 1250 --instruction 品質比較を確認 --evidence-file - --wait\n検証結果をstdinで渡す。保存済みnoteは --evidence-ref SHA（またはURL）。成果の記録もこの操作が行う。同じPRの再送は既存runを返す。",
+    "merge-knowledge": "merge-knowledge --prs 1250 --evidence-file verified.md --wait\n記録専用PRの現HEADの受入・実行証拠を渡す。保存済みnoteは --evidence-ref SHA（またはURL）。専用CIの結果を待ってマージする。",
     "merge-continue": "merge-continue --run-id RUN --instruction-file fixes.md --wait\nmajorごとの修正commit・検証結果・親の判断を記す。同じrunで現HEADのマージ条件へ進む。",
     "merge-status": "merge-status --run-id RUN\nPRの段階・停止理由・review_usageを確認する。RUN省略時はこの親の最新run。",
     "wait-merge": "wait-merge --run-id RUN --after 1\n最後に受け取った通知ID以降のイベントを待つ。",
@@ -84,7 +85,7 @@ DESCRIPTIONS = {
     "agreement-ignore-comments": "確認済みのコメント分類を明示記録する。",
     "configure-delegation": "この親の並列予約枠を変更する。補助担当も各1枠を使う。",
     "decide-worker-plan": "調査報告への回答を保存する。approve / investigate / reject を選ぶ。",
-    "review-inspect": "対象PRのレビュー時と現在のHEAD、指摘、修正履歴を読み取る。",
+    "review-inspect": "対象PRの正式レビュー候補、レビュー時と現在のHEAD、指摘、修正履歴を読み取る。",
     "note": "自由文の判断根拠を証拠用Issueへ保存する。",
     "sync": "正式な子・PR・停止理由を親Issueの進捗概要に反映する。",
     "decide": "観測結果に親の判断と次の操作を結び付け、判断IDを返す。",

@@ -2,23 +2,26 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import subprocess
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 from issues.cli import GitHubHTTPError
 from lib.d_capacity import CapacityError
+from lib.ops_review import knowledge_records
 from lib.ops_review.merge_gate_policy import auto_merge, python_ci_errors
-from lib.ops_review.progression import RateWait
+from lib.ops_review.progression import KNOWLEDGE_MERGE, MergeHold, RateWait
 from lib.repair_turn import parse_report
 from lib.repair_turn import request as repair_request
 from parent.execution import authorization
 from parent.github import GitHub
-from parent.policy import child_stopped, closing_issues, object_value
+from parent.policy import child_stopped, closing_issues, digest, object_value
 from parent.session import ParentSession
 from parent.state import Store
 
@@ -185,9 +188,10 @@ class LiveBackend:
 
     def human(self, state: dict[str, Any], target: dict[str, Any]) -> str | None:
         bodies = {}
+        issues = target.get("related_issues", target["issues"])
         for resource, n in [
             ("issues", self.parent),
-            *[("issues", n) for n in target["issues"] if n != self.parent],
+            *[("issues", n) for n in issues if n != self.parent],
             ("pulls", target["number"]),
         ]:
             row = object_value(self.gh.get(f"repos/{self.repo}/{resource}/{n}"))
@@ -203,7 +207,10 @@ class LiveBackend:
             check_task_adoptions(self.gh, body)
         with self.store.consistent_snapshot():
             row = self.store.parents.get(self.key, {})
-            for n in target["issues"]:
+            stopped_targets = set(issues)
+            if state["request"].get("kind") == KNOWLEDGE_MERGE:
+                stopped_targets.add(self.parent)
+            for n in sorted(stopped_targets):
                 task = row.get("tasks", {}).get(str(n), {})
                 if child_stopped(bodies[n], task.get("stopped", False)):
                     return f"target_stopped: #{n}"
@@ -281,10 +288,17 @@ class LiveBackend:
         raise ValueError("GitHub pagination exceeded limit")
 
     def failure(self, target: dict[str, Any], ci: dict[str, Any]) -> dict[str, Any]:
-        suites = {
-            c["check_suite"]["id"] for c in ci["checks"] if c.get("name") == "Python"
-        }
-        runs = [r for r in self.runs(ci["head"]) if r.get("check_suite_id") in suites]
+        if ci.get("run"):
+            runs = [ci["run"]]
+        else:
+            suites = {
+                c["check_suite"]["id"]
+                for c in ci["checks"]
+                if c.get("name") == "Python"
+            }
+            runs = [
+                r for r in self.runs(ci["head"]) if r.get("check_suite_id") in suites
+            ]
         jobs = []
         for run in runs:
             endpoint = f"repos/{self.repo}/actions/runs/{run['id']}/attempts/{run['run_attempt']}/jobs"
@@ -311,7 +325,7 @@ class LiveBackend:
             "failed_jobs": jobs,
             "missing_details": None
             if jobs
-            else "No failed jobs found for the observed Python check suites",
+            else f"No failed jobs found for the observed {ci.get('workflow', 'Python')} CI",
         }
 
     def dispatcher(self) -> Any:
@@ -435,26 +449,146 @@ class LiveBackend:
             raise ValueError("repair report head differs from pushed PR head")
         return report
 
+    @contextmanager
+    def merge_slot(self) -> Iterator[None]:
+        # Serializes merge submissions across the PR controllers sharing this
+        # parent registry. Do not hold the registry lock during a remote write.
+        path = self.store.directory / f"merge-{digest(self.repo.casefold())}.lock"
+        with path.open("a") as lock:
+            os.chmod(path, 0o600)
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise MergeHold(
+                    "another merge submission is active", retry=True
+                ) from exc
+            yield
+
     def merge(self, target: dict[str, Any], head: str) -> None:
-        result = subprocess.run(
-            [
-                "gh",
-                "pr",
-                "merge",
-                str(target["number"]),
-                "--repo",
-                self.repo,
-                "--merge",
-                "--match-head-commit",
-                head,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
-        )
+        with self.merge_slot():
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "merge",
+                    str(target["number"]),
+                    "--repo",
+                    self.repo,
+                    "--merge",
+                    "--match-head-commit",
+                    head,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
         if result.returncode:
             raise ValueError("gh pr merge failed: " + result.stderr.strip())
+
+    def knowledge_ci(self, pr: dict[str, Any]) -> dict[str, Any]:
+        scope, comparison = knowledge_records.assess(
+            Path(self.state["checkout"]), self.repo, pr
+        )
+        if comparison is None:
+            return {
+                "status": "failure",
+                "head": pr["head"]["sha"],
+                "workflow": knowledge_records.WORKFLOW,
+                "reasons": [f"knowledge records scope unavailable: {scope.reason}"],
+            }
+        return knowledge_records.observe_ci(self, pr, comparison)
+
+    def merge_knowledge(
+        self,
+        state: dict[str, Any],
+        target: dict[str, Any],
+        ci: dict[str, Any],
+        record_intent: Callable[[], None],
+    ) -> None:
+        with self.merge_slot():
+            pr = self.pr(target["number"])
+            if reason := self.shape(target, pr):
+                raise MergeHold(reason)
+            if pr["head"]["sha"] != ci["head"]:
+                raise MergeHold("knowledge PR HEAD changed; confirm new evidence")
+            if target.get("implementation_pr"):
+                implementation = self.pr(target["implementation_pr"])
+                linked = set(target["related_issues"])
+                if not (
+                    linked | {implementation["number"]}
+                ) <= knowledge_records.references(
+                    pr.get("body") or "", self.repo
+                ) or not linked <= closing_issues(
+                    implementation.get("body") or "", self.repo
+                ):
+                    raise MergeHold("knowledge PR references changed")
+            comparison = knowledge_records.Comparison.from_pr(pr)
+            if (comparison.base, comparison.merge) != (ci["base_sha"], ci["merge_sha"]):
+                raise MergeHold("knowledge PR comparison changed", retry=True)
+            run = knowledge_records.latest_run(self, pr, comparison.head)
+            if run is None or any(
+                run.get(key) != value for key, value in ci["run"].items()
+            ):
+                raise MergeHold("Knowledge library run or attempt changed", retry=True)
+            if reason := self.local(state) or self.human(state, target):
+                raise MergeHold(reason)
+            current = self.pr(target["number"])
+            if reason := self.shape(target, current):
+                raise MergeHold(reason)
+            if "needs-human" in {label["name"] for label in current["labels"]}:
+                raise MergeHold(f"needs-human: pulls/{target['number']}")
+            if knowledge_records.Comparison.from_pr(
+                current
+            ) != comparison or current.get("body") != pr.get("body"):
+                raise MergeHold("knowledge PR changed while checking merge", retry=True)
+            if knowledge_records.base_tip(self.gh, "main") != comparison.base:
+                raise MergeHold("main advanced after knowledge CI", retry=True)
+            record_intent()
+            # Submit a synchronous merge. The request fixes HEAD and cannot
+            # enqueue a later merge against a different comparison.
+            result = self.gh.write(
+                "PUT",
+                f"repos/{self.repo}/pulls/{target['number']}/merge",
+                {"sha": comparison.head, "merge_method": "merge"},
+            )
+            if result.get("merged") is not True:
+                raise ValueError("GitHub did not confirm the knowledge merge request")
+
+    def confirm_knowledge(self, target: dict[str, Any], pr: dict[str, Any]) -> None:
+        if (
+            pr.get("state") != "closed"
+            or not pr.get("merged_at")
+            or pr["base"]["ref"] != "main"
+        ):
+            raise ValueError("knowledge PR is not confirmed merged into main")
+        commit = knowledge_records.commit_sha(
+            pr.get("merge_commit_sha"), "merge commit"
+        )
+        actual = object_value(self.gh.get(f"repos/{self.repo}/commits/{commit}"))
+        if actual.get("sha") != commit or [
+            parent.get("sha") for parent in actual.get("parents", [])
+        ] != [target["merge_base"], target["merge_head"]]:
+            raise ValueError(
+                "knowledge merge parents differ from the verified comparison"
+            )
+        main = knowledge_records.base_tip(self.gh, "main")
+        if commit != main:
+            comparison = object_value(
+                self.gh.get(f"repos/{self.repo}/compare/{commit}...{main}")
+            )
+            if object_value(comparison.get("merge_base_commit")).get("sha") != commit:
+                raise ValueError("knowledge merge commit is not on main")
+
+    def issue_states(self, issues: list[int]) -> dict[str, Any]:
+        states = {}
+        for n in issues:
+            row = self.gh.issue(n)
+            states[str(n)] = {
+                "state": row["state"],
+                "state_reason": row.get("state_reason"),
+            }
+        return states
 
     def issues_completed(self, target: dict[str, Any]) -> bool:
         for n in target["issues"]:

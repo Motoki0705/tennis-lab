@@ -137,6 +137,8 @@ def requirements(session: ParentSession) -> dict[str, Any]:
 
 
 def status(session: ParentSession) -> dict[str, Any]:
+    from lib.ops_review.merge_gate_impl import state_path, view
+
     try:
         result = {"available": True, **requirements(session)}
     except ValueError as exc:
@@ -169,6 +171,10 @@ def status(session: ParentSession) -> dict[str, Any]:
         if applies
         else "unverified",
         "applies_to_current_basis": applies,
+        "knowledge_merges": [
+            view(state_path(session.store, identifier))
+            for identifier in session.row.get("knowledge_merges", [])
+        ],
     }
 
 

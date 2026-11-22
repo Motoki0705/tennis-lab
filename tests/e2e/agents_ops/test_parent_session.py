@@ -145,8 +145,47 @@ if path == "repos/o/r/actions/workflows/issue-supplement.yml/runs":
     response({"workflow_runs": paged(state.get("supplement_runs", []))}, state.get("supplement_workflow_status", 200))
 if path == "repos/o/r":
     response({"default_branch": state["default_branch"]})
+if path == "repos/o/r/branches/main":
+    import subprocess
+    tip = subprocess.check_output(["git", "rev-parse", "main"], text=True).strip()
+    response({"name": "main", "commit": {"sha": tip}})
+if path == "repos/o/r/actions/workflows/knowledge.yml/runs":
+    head = parse_qs(query)["head_sha"][0]
+    assert parse_qs(query)["event"] == ["pull_request"]
+    rows = [run for run in state["knowledge_runs"] if run["head_sha"] == head]
+    response({"total_count": len(rows), "workflow_runs": paged(rows)})
+artifacts = re.fullmatch(r"repos/o/r/actions/runs/(\d+)/artifacts", path)
+if artifacts:
+    rows = state["knowledge_artifacts"].get(artifacts[1], [])
+    response({"total_count": len(rows), "artifacts": paged(rows)})
+artifact_zip = re.fullmatch(r"repos/o/r/actions/artifacts/(\d+)/zip", path)
+if artifact_zip:
+    from pathlib import Path
+    sys.stdout.buffer.write(Path(state["artifact_zips"][artifact_zip[1]]).read_bytes())
+    sys.exit(0)
+knowledge_merge = re.fullmatch(r"repos/o/r/pulls/(\d+)/merge", path)
+if knowledge_merge:
+    import subprocess
+    assert method == "PUT" and payload["merge_method"] == "merge"
+    pr = next(p for p in state["prs"] if p["number"] == int(knowledge_merge[1]))
+    if pr["state"] != "open" or pr["head"]["sha"] != payload["sha"]:
+        response({"message": "HEAD changed"}, 409)
+    subprocess.run(["git", "merge", "--no-edit", "--no-ff", payload["sha"]], check=True, capture_output=True)
+    merge = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    pr.update(state="closed", merged=True, merged_at="2026-11-22T00:00:00Z", merge_commit_sha=merge)
+    for child in re.findall(r"Closes #(\d+)", pr["body"]):
+        state["issues"][child].update(state="closed", state_reason="completed")
+    state.setdefault("knowledge_merges", []).append({"number": pr["number"], "payload": payload})
+    save()
+    if os.environ.get("PARENT_KNOWLEDGE_LOST_RESPONSE"):
+        fail()
+    response({"sha": merge, "merged": True})
 commit = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})", path)
 if commit:
+    if state.get("knowledge_merges"):
+        import subprocess
+        parents = subprocess.check_output(["git", "show", "-s", "--format=%P", commit[1]], text=True).split()
+        response({"sha": commit[1], "parents": [{"sha": sha} for sha in parents]})
     response({"sha": commit[1]})
 checks = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})/check-runs", path)
 if checks:
@@ -200,7 +239,10 @@ if pull:
             if state["pull_reads"] == 2:
                 state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
             save()
-    response(next(p for p in state["prs"] if p["number"] == int(pull[1])))
+    pr = next(p for p in state["prs"] if p["number"] == int(pull[1]))
+    if pr.get("merged") and os.environ.get("PARENT_KNOWLEDGE_LOST_RESPONSE"):
+        fail()
+    response(pr)
 comment_edit = re.fullmatch(r"repos/o/r/issues/comments/(\d+)", path)
 if comment_edit:
     assert method == "PATCH"

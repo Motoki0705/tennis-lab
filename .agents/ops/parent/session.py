@@ -737,6 +737,8 @@ class ParentSession:
         return parent, {n: family[n] for n in parent.children}
 
     def reviewed_targets(self) -> set[int]:
+        from lib.ops_review.merge_gate_impl import knowledge_states
+
         reviewed_targets: set[int] = set()
         for review in self.row.get("reviews", []):
             if review["request"].get("schema_version") == 4:
@@ -747,6 +749,10 @@ class ParentSession:
             requirements = {int(n) for n in review["request"].get("requirements", {})}
             if requirements:
                 reviewed_targets.update(requirements - {self.parent} or {self.parent})
+        for state in knowledge_states(self.store, self.row):
+            reviewed_targets.update(
+                n for pr in state["request"]["prs"] for n in pr["related_issues"]
+            )
         return reviewed_targets
 
     def work_items(

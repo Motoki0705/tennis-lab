@@ -376,6 +376,14 @@ def parser() -> argparse.ArgumentParser:
     request.add_argument("--cpu-tests-file", type=Path)
     request.add_argument("--isolation-proof", type=Path)
     review_choice_arguments(request)
+    knowledge = commands.add_parser("merge-knowledge")
+    knowledge.add_argument("--prs", type=int, nargs="+", required=True)
+    knowledge_evidence = knowledge.add_mutually_exclusive_group(required=True)
+    knowledge_evidence.add_argument("--evidence-ref", help="この親のnoteのSHAまたはURL")
+    knowledge_evidence.add_argument(
+        "--evidence-file", help="現HEADの受入条件・実行証拠を記したファイル"
+    )
+    knowledge.add_argument("--wait", action="store_true")
     status = commands.add_parser("merge-status")
     status.add_argument("--run-id")
     confirmation = commands.add_parser("merge-confirm")
@@ -1096,6 +1104,18 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                     review_selection=review_choice(session, args),
                     options=options,
                 )
+            elif command == "merge-knowledge":
+                from lib.ops_review.knowledge_progression import (
+                    register as merge_knowledge,
+                )
+
+                result = merge_knowledge(
+                    session,
+                    args.prs,
+                    saved_note(session, args.evidence_ref)
+                    if args.evidence_ref is not None
+                    else read_text(args.evidence_file),
+                )
             elif command == "merge-confirm":
                 from lib.ops_review.post_merge import register as confirm_merged
 
@@ -1108,7 +1128,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 "basis-revoke",
             }:
                 session.sync_progress()
-        if command in {"review-request", "merge-confirm"}:
+        if command in {"review-request", "merge-knowledge", "merge-confirm"}:
             from lib.ops_review.merge_gate_impl import start, state_path, wait
 
             path = state_path(store, result["review_run_id"])

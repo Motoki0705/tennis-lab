@@ -76,6 +76,7 @@ def request(
 ) -> dict[str, Any]:
     session.gh.targeted_history = True
     session.agreed()
+    from lib.ops_review import knowledge_records
     from lib.ops_review.merge_gate_impl import registered
 
     previous = registered(session, prs)
@@ -88,6 +89,14 @@ def request(
         pr = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
         from .work_targets import require_separate_self_prs
 
+        if pr.get("number") != n:
+            raise ValueError("PR identity differs from request")
+        with session.gh.io_scope():
+            scope, _ = knowledge_records.assess(Path.cwd(), session.gh.repo, pr)
+        if scope.records_only:
+            raise ValueError(
+                f"PR #{n}: knowledge records only; use merge-knowledge --prs {n}"
+            )
         require_separate_self_prs(parent, [pr], session.gh.repo)
         relevant = closing_issues(pr.get("body") or "", session.gh.repo) & targets
         if pr.get("number") != n or not relevant or pr.get("state") != "open":

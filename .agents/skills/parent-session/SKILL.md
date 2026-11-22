@@ -24,6 +24,6 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 status
 | 人間への質問、判断・成果の記録、担当終了 | [記録と終了](references/finish.md) — 通知先、完了と取消の区別、全条件の受入、次回改善 |
 | CLIが非ゼロ終了した、応答や元のrunが見つからない | [復旧](references/recovery.md) — 保存済みの何を照合し、どの操作から再開するか |
 
-一つの成果なら同じIssueで直接実装するか、統合担当を決めて並行作業を委任する。前段の結果で次の目標が決まる地点が子Issueの境界。成果PRの正式レビューは1回。親がmajorの対処を確認したら、マージ条件の照合へ進む。
+一つの成果なら同じIssueで直接実装するか、統合担当を決めて並行作業を委任する。前段の結果で次の目標が決まる地点が子Issueの境界。正式レビューは対象PRごとに1回。親がmajorの対処を確認したら、マージ条件の照合へ進む。[記録専用PR](references/review.md) は専用CIを照合する。
 
 担当表示の修復は [Herdr](../herdr-session-label/SKILL.md)、親同士の連絡は [掲示板](../parent-board/SKILL.md) を使う。

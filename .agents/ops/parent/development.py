@@ -622,6 +622,7 @@ def verify_completion(session: ParentSession) -> list[int]:
                     ended(job)
     check_task_adoptions(session.gh, parent.body)
     from lib.ops_review.merge_gate_impl import completion as merge_completion
+    from lib.ops_review.merge_gate_impl import knowledge_states
 
     merged: set[int] = set()
     pulls = session.gh.pulls()
@@ -694,7 +695,26 @@ def verify_completion(session: ParentSession) -> list[int]:
         raise ValueError(
             "no completed implementation targets; cancellation is not success"
         )
-    return sorted(merged)
+    companions = set()
+    for state in knowledge_states(session.store, session.row):
+        for target in state["targets"].values():
+            if target.get("implementation_pr") not in merged:
+                continue
+            n = target["number"]
+            confirmed = merge_completion(
+                session.store, session.gh.repo, session.parent, n
+            )
+            pr = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
+            if (
+                pr.get("number") != n
+                or pr.get("merged") is not True
+                or pr.get("state") != "closed"
+                or confirmed["merge_commit"] != pr.get("merge_commit_sha")
+                or confirmed["merge_head"] != pr["head"]["sha"]
+            ):
+                raise ValueError(f"PR #{n}: companion knowledge merge is not confirmed")
+            companions.add(n)
+    return sorted(merged | companions)
 
 
 def report(

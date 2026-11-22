@@ -20,12 +20,19 @@ from parent.state import Store, unique_object
 POLL_SECONDS = 60
 CI_TIMEOUT = 6 * 3600
 REPAIR_LIMIT = 3
+KNOWLEDGE_MERGE = "knowledge_merge"
 
 
 class RateWait(Exception):
     def __init__(self, resume_at: float, reason: str) -> None:
         super().__init__(reason)
         self.resume_at = resume_at
+
+
+class MergeHold(ValueError):
+    def __init__(self, reason: str, *, retry: bool = False) -> None:
+        super().__init__(reason)
+        self.retry = retry
 
 
 class Backend(Protocol):
@@ -45,6 +52,16 @@ class Backend(Protocol):
     ) -> dict[str, Any] | None: ...
     def merge(self, target: dict[str, Any], head: str) -> None: ...
     def issues_completed(self, target: dict[str, Any]) -> bool: ...
+    def knowledge_ci(self, pr: dict[str, Any]) -> dict[str, Any]: ...
+    def merge_knowledge(
+        self,
+        state: dict[str, Any],
+        target: dict[str, Any],
+        ci: dict[str, Any],
+        record_intent: Callable[[], None],
+    ) -> None: ...
+    def confirm_knowledge(self, target: dict[str, Any], pr: dict[str, Any]) -> None: ...
+    def issue_states(self, issues: list[int]) -> dict[str, Any]: ...
     def changes(self, state: dict[str, Any]) -> dict[str, Any]: ...
     def notification_changes(
         self, state: dict[str, Any], pr: int | None
@@ -81,6 +98,7 @@ def new_state(
 ) -> dict[str, Any]:
     if request.get("schema_version") != 4 or not request.get("prs"):
         raise ValueError("automatic progression requires a nonempty version 4 request")
+    knowledge = request.get("kind") == KNOWLEDGE_MERGE
     return {
         "schema_version": 1,
         "id": request["review_run_id"],
@@ -88,7 +106,9 @@ def new_state(
         "owner": owner,
         "generation": generation,
         "status": "requested",
-        "review": {"stage": "requested", "round": 1},
+        "review": {"stage": "not_required", "round": 0}
+        if knowledge
+        else {"stage": "requested", "round": 1},
         "targets": {
             str(p["number"]): {
                 **copy.deepcopy(p),
@@ -145,13 +165,26 @@ class Engine:
             }:
                 raise ValueError("unknown progression target or stage")
         confirmation = self.state["request"].get("kind") == "post_merge_confirmation"
-        if (self.state["review"]["stage"] == "not_required") != confirmation:
-            raise ValueError("only post-merge confirmation may omit review")
+        self.knowledge = self.state["request"].get("kind") == KNOWLEDGE_MERGE
+        if (self.state["review"]["stage"] == "not_required") != (
+            confirmation or self.knowledge
+        ):
+            raise ValueError("unexpected review omission")
         if confirmation and any(
             t["stage"] not in {"post_merge_wait", "parent_wait", "completed"}
             for t in self.state["targets"].values()
         ):
             raise ValueError("confirmation cannot authorize review, repair or merge")
+        if self.knowledge and (
+            not self.state["request"].get("evidence", "").strip()
+            or any(
+                t["stage"] == "repair_pending" or t["attempts"]
+                for t in self.state["targets"].values()
+            )
+        ):
+            raise ValueError(
+                "knowledge merge requires evidence and forbids repair runs"
+            )
 
     def save(self) -> None:
         save(self.path, self.state)
@@ -433,6 +466,9 @@ class Engine:
         if stage == "post_merge_wait":
             self.post_merge(target)
             return
+        if self.knowledge:
+            self.step_knowledge(target)
+            return
         reason = self.backend.local(self.state)
         if reason:
             self.pause(target, reason)
@@ -486,10 +522,82 @@ class Engine:
         self.save()
         try:
             self.backend.merge(target, head)
+        except MergeHold:
+            target.pop("merge_head")
+            target["stage"] = "ci_wait"
+            self.later(target)
+            return
         except Exception as exc:
             target["merge_error"] = str(exc)
             self.save()
         self.confirm_merge(target)
+
+    def step_knowledge(self, target: dict[str, Any]) -> None:
+        reason = self.backend.local(self.state) or self.backend.human(
+            self.state, target
+        )
+        if reason:
+            self.pause(target, reason)
+            return
+        pr = self.backend.pr(target["number"])
+        if reason := self.backend.shape(target, pr):
+            self.pause(target, reason, resume="ci_wait")
+            return
+        head = pr["head"]["sha"]
+        if head != target.get("evidence_head", target["head_sha"]):
+            self.pause(
+                target,
+                "knowledge PR HEAD changed; confirm new evidence",
+                resume="ci_wait",
+            )
+            return
+        if target["ci_since"] is None:
+            target.update(ci_head=head, ci_since=self.clock())
+        ci = self.backend.knowledge_ci(pr)
+        target["ci"] = ci
+        if ci["status"] == "failure":
+            self.pause(target, "; ".join(ci["reasons"]), resume="ci_wait")
+            return
+        if ci["status"] == "pending":
+            self.wait_knowledge_ci(target, "; ".join(ci["reasons"]))
+            return
+        if ci["status"] != "success":
+            raise ValueError("unknown knowledge CI observation")
+        if not self.backend.dependency(target):
+            target["stage"] = "dependency_wait"
+            self.later(target)
+            return
+
+        def record_intent() -> None:
+            target.update(
+                stage="merge_pending", merge_head=head, merge_base=ci["base_sha"]
+            )
+            self.save()
+
+        try:
+            self.backend.merge_knowledge(self.state, target, ci, record_intent)
+        except MergeHold as exc:
+            if exc.retry:
+                self.wait_knowledge_ci(target, str(exc))
+            else:
+                self.pause(target, str(exc), resume="ci_wait")
+            return
+        except RateWait:
+            raise
+        except Exception as exc:
+            if target["stage"] != "merge_pending":
+                raise
+            target["merge_error"] = str(exc)
+            self.save()
+        self.confirm_merge(target)
+
+    def wait_knowledge_ci(self, target: dict[str, Any], reason: str) -> None:
+        target["ci"].update(status="pending", reasons=[reason])
+        if self.clock() - target["ci_since"] >= CI_TIMEOUT:
+            self.pause(target, f"knowledge CI timeout: {reason}", resume="ci_wait")
+        else:
+            target["stage"] = "ci_wait"
+            self.later(target)
 
     def start_repair(
         self, target: dict[str, Any], reason: str, *, ci: dict[str, Any] | None = None
@@ -536,6 +644,8 @@ class Engine:
         ):
             self.pause(target, "recovery_required")
             return
+        if self.knowledge:
+            self.backend.confirm_knowledge(target, pr)
         target.update(
             stage="post_merge_wait",
             merge_commit=pr["merge_commit_sha"],
@@ -548,19 +658,40 @@ class Engine:
         if target.get("merged_at") is None:
             target["merged_at"] = self.clock()
             self.save()
-        if not self.backend.issues_completed(target):
+        if self.knowledge:
+            states = self.backend.issue_states(target["related_issues"])
+            target["issue_states"] = states
+            issues_closed = all(
+                states[str(n)] == {"state": "closed", "state_reason": "completed"}
+                for n in target["issues"]
+            )
+        elif not self.backend.issues_completed(target):
             self.pause(target, "issue_not_completed")
             return
+        else:
+            issues_closed = True
         ci = self.backend.ci(target["number"], target["merge_commit"], main=True)
         target["main_ci"] = ci
-        if ci["status"] == "success":
-            target.update(stage="completed", issues_confirmed=True)
+        if ci["status"] == "success" and issues_closed:
+            if self.knowledge:
+                pr = self.backend.pr(target["number"])
+                if (
+                    pr.get("merged") is not True
+                    or pr.get("merge_commit_sha") != target["merge_commit"]
+                    or pr["head"]["sha"] != target["merge_head"]
+                ):
+                    self.pause(target, "knowledge merge result changed")
+                    return
+                self.backend.confirm_knowledge(target, pr)
+            target.update(stage="completed", issues_confirmed=bool(target["issues"]))
             self.save()
         elif ci["status"] == "failure":
             self.pause(target, "main_ci_failed")
-        elif ci["status"] != "pending":
+        elif ci["status"] not in {"pending", "success"}:
             raise ValueError("unknown main CI observation")
         elif self.clock() - target["merged_at"] >= CI_TIMEOUT:
-            self.pause(target, "main_ci_timeout")
+            self.pause(
+                target, "main_ci_timeout" if issues_closed else "issue_not_completed"
+            )
         else:
             self.later(target)

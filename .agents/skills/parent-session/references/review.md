@@ -6,6 +6,16 @@
 
 親は [wait-worker](workers.md#待つ追加する受け入れる) で統合担当の終了と回収を確認し、PRのclosing対象・branch・HEADを元の受入条件と照合する。原要件・影響先を `--instruction` または `--instruction-file` で渡す。対象HEADの検証結果・未確認事項は `--evidence-file -` で標準入力から、保存済みnoteは `--evidence-ref` にSHAまたはURLで指定する。依頼と同時に成果を記録する。`review-request --prs … --wait` で依頼すると、最初の通知または完了まで待つ。正式reviewerはSol。複数PRをまとめる場合も各PRの起動は1回で、再送には既存runが返る。
 
+## 記録専用PRをマージする
+
+[作業者が分けた記録PR](workers.md#ナレッジ記録prの作成) は `review-inspect --prs …` の `review_candidates` から除外される。`review-request` でも専用操作を案内する。比較を確定できないPRは正式レビュー候補に残り、理由は `scope.reason` に出る。
+
+記録専用PRは `merge-knowledge --prs … --evidence-file verified.md --wait` に、現HEADの受入・実行証拠を渡す。保存済みnoteは `--evidence-ref` に指定できる。現HEADと最新mainで成功した [Knowledge library](../../../ops/lib/README.md#ナレッジ記録専用prのci) を待ち、実行根拠、`AGENT_AUTO_MERGE`、`needs-human`、停止指定を照合する。
+
+待機と続行には同じrun IDで `merge-status`、`wait-merge`、`merge-continue` を使う。mainが進んだら、新しい比較元でのPRイベントの検査結果を待つ。HEADを更新した場合は、新HEADの完全SHAと検証証拠を続行指示に添える。マージ応答喪失時は同じrunで結果を照合する。
+
+マージ後はmerge commit、mainの `Python`、関連Issueの状態を `status.completion.knowledge_merges` で参照できる。Issueを閉じるPRでは `closed/completed` の確認が必要。実装PRに付随する記録PRでは、参照したIssueの観測状態を表示する。
+
 ## 通知を受けたら
 
 | 観測 | 次の操作 |
