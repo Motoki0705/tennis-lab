@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import selectors
 import time
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
@@ -31,7 +32,8 @@ def test_cancel_and_timeout_reap_the_group_and_keep_current(
 ) -> None:
     env = editor_env
     monkeypatch.setenv("FAKE_EXPLAIN_CASE", "hang")
-    os.mkfifo(env.root / "ready")
+    ready = env.root / "ready"
+    os.mkfifo(ready)
     cancel = Event()
     offset = [0.0]
     clock = SimpleNamespace(
@@ -47,18 +49,31 @@ def test_cancel_and_timeout_reap_the_group_and_keep_current(
             writer_timeout=3600,
             cancel=cancel,
         )
-        with (env.root / "ready").open() as ready:
-            pids = json.load(ready)
-        assert opsproc.process_identity(pids["leader"]) is not None
-        assert opsproc.process_identity(pids["tool"]) is not None
-        if termination == "cancelled":
+        try:
+            # Keep the FIFO open even when the CLI exits before writing.
+            fd = os.open(ready, os.O_RDWR | os.O_NONBLOCK)
+            try:
+                with selectors.DefaultSelector() as selector:
+                    selector.register(fd, selectors.EVENT_READ)
+                    if not selector.select(timeout=15):
+                        if pending.done():
+                            pending.result()
+                        pytest.fail("fake writer did not report its processes")
+                pids = json.loads(os.read(fd, 4096))
+            finally:
+                os.close(fd)
+            assert opsproc.process_identity(pids["leader"]) is not None
+            assert opsproc.process_identity(pids["tool"]) is not None
+            if termination == "cancelled":
+                cancel.set()
+            else:
+                offset[0] = (
+                    7200  # Advance the deadline only after both processes are ready.
+                )
+            with pytest.raises(schema.ContractError, match=termination):
+                pending.result(timeout=10)
+        finally:
             cancel.set()
-        else:
-            offset[0] = (
-                7200  # Advance the deadline only after both processes are ready.
-            )
-        with pytest.raises(schema.ContractError, match=termination):
-            pending.result(timeout=10)
     assert opsproc.process_identity(pids["leader"]) is None
     assert opsproc.process_identity(pids["tool"]) is None
     assert env.store.current("geometry") == env.current

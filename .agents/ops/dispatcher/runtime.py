@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.checkout_lock import checkout_subprocess_options
+from lib.d_capacity import REFUSED
 from parent.policy import object_value
 
 from .records import read_json
@@ -28,6 +29,30 @@ def load(path: Path) -> dict[str, Any]:
 
 def alive(identity: dict[str, Any] | None) -> bool:
     return identity is not None and process_identity(identity["pid"]) == identity
+
+
+def capacity_refusal(record: dict[str, Any]) -> str | None:
+    """Identify a terminal capacity refusal with affirmative evidence of no CLI launch."""
+    reason = record.get("error")
+    if (
+        type(record.get("schema_version")) is int
+        and record["schema_version"] == 1
+        and record.get("result") == "failed"
+        and record.get("turn_end_reason") == "capacity_blocked"
+        and type(record.get("exit_code")) is int
+        and record.get("exit_code") == REFUSED
+        and record.get("cli_exit_code", False) is None
+        and record.get("cli_exit_signal", False) is None
+        and record.get("agent_spawned") is False
+        and "process" in record
+        and record["process"] is None
+        and record.get("cleanup_complete") is True
+        and not record.get("runner_lost")
+        and isinstance(reason, str)
+        and reason
+    ):
+        return reason
+    return None
 
 
 @contextmanager

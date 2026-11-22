@@ -14,7 +14,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from lib.agent_events import capacity_refusal
 from lib.agent_settings import check_saved_implementation_model, implementation_model
 from lib.d_capacity import REFUSED, CapacityError, require_capacity
 from parent import worker_preflight, worker_slots
@@ -42,7 +41,7 @@ from .collect import (
     source_references,
 )
 from .outcomes import read_result
-from .runtime import Runtime, alive, gate, load, process_identity
+from .runtime import Runtime, alive, capacity_refusal, gate, load, process_identity
 from .schedule import Schedule, latest_slot, next_slot
 from .state import DispatchStore, client_for, progression_reads, require_client
 

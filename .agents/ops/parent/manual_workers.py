@@ -12,8 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from dispatcher.runtime import Runtime, load
-from lib.agent_events import capacity_refusal
+from dispatcher.runtime import Runtime, capacity_refusal, load
 from lib.agent_settings import (
     DEFAULT_CONFIG,
     check_saved_implementation_model,
