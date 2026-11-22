@@ -1754,8 +1754,15 @@ def test_invalid_queries_have_no_input_in_errors(
     [
         ("`cli.py`（`_state_dir`／`_issue_lock` 付近）", 200),
         ("保存先：`／資料/x`", 503),
+        ("```text\n/ `reports`/`plan` draft.txt\n```", 503),
+        ("`` / `reports`/`plan` draft.txt ``", 503),
     ],
-    ids=["legacy-identifier-separator", "private-path"],
+    ids=[
+        "legacy-identifier-separator",
+        "private-path",
+        "fenced-path",
+        "long-span-path",
+    ],
 )
 def test_saved_post_is_checked_before_web_publication(
     world: World, client: TestClient, body: str, status: int
@@ -1779,7 +1786,13 @@ def test_saved_post_is_checked_before_web_publication(
     thread = client.get(f"/api/thread/{saved_id}")
     assert changes.status_code == thread.status_code == status
     if status == 503:
-        assert "資料" not in changes.text + thread.text
+        assert (
+            changes.json()
+            == thread.json()
+            == {
+                "detail": "Board data unavailable or inconsistent; check the local configuration."
+            }
+        )
         return
 
     posts = {post["id"]: post["body"] for post in changes.json()["posts"]}

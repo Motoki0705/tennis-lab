@@ -1642,6 +1642,27 @@ def test_standard_run_directory_name_does_not_mask_the_run_kind(fixture: Any) ->
     assert child["status"] == "turn_completed" and child["run"]["kind"] == "initial"
 
 
+@pytest.mark.parametrize(
+    "value",
+    [
+        "```text\n/ `reports`/`plan` draft.txt\n```",
+        "`` / `reports`/`plan` draft.txt ``",
+    ],
+    ids=["fence", "long-span"],
+)
+def test_worker_status_hides_quoted_paths_inside_code(fixture: Any, value: str) -> None:
+    f = fixture
+    f.record()
+    f.events([item("agent_message", text=value)])
+    assert f.child()["summary"]["message"] == {
+        "status": "hidden",
+        "text": None,
+        "truncated": False,
+        "received_at": NOW.isoformat(),
+        "time_status": "observed",
+    }
+
+
 def test_structural_private_field_fails_without_partial_stdout(fixture: Any) -> None:
     f = fixture
     f.task.update(stopped=True, last_status={"/private/key": "安全な内容"})

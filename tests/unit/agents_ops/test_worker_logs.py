@@ -124,6 +124,19 @@ def test_local_paths_are_detected_then_masked(
 
 @pytest.mark.parametrize(
     "value",
+    [
+        "```text\n/ `reports`/`plan` draft.txt\n```",
+        "`` / `reports`/`plan` draft.txt ``",
+        "Use `reports`/`plan`",
+    ],
+)
+def test_worker_log_guard_keeps_its_path_check_for_markdown(value: str) -> None:
+    with pytest.raises(journal.PublicationError, match="absolute_path"):
+        safety.Guard().check(value)
+
+
+@pytest.mark.parametrize(
+    "value",
     ["パスは/home/user/x", "参照先：/private/state", "設定は~/.ssh", "設定は~/.config"],
 )
 def test_board_keeps_rejecting_real_paths_next_to_japanese(value: str) -> None:

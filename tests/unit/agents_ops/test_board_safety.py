@@ -27,6 +27,8 @@ def board_safety(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         "`start`/`stop`",
         "（`start`／`stop`/`status`）",
         "`start/stop` と 観測/補間",
+        "Use ``literal`` and `start`/`stop`",
+        "> A list:\n> - First line\n>   `start`/`stop`",
     ],
 )
 def test_public_accepts_identifier_separators(
@@ -57,3 +59,44 @@ def test_public_rejects_paths_next_to_or_inside_code(
 ) -> None:
     with pytest.raises(board_safety.error, match="private path"):
         board_safety.public(text, {}, {})
+
+
+@pytest.mark.parametrize(
+    "wrapper",
+    [
+        "```text\n{}\n```",
+        "> - ~~~text\n>   {}\n>   ~~~",
+        "```\n{}",
+        "    {}",
+        "`` {} ``",
+        "``\n{}\n``",
+        r"\``` {} ``",
+        "`{} `",
+        "<!--\n{}\n-->",
+    ],
+    ids=[
+        "fence",
+        "nested-tilde-fence",
+        "unclosed-fence",
+        "indented",
+        "long-span",
+        "multiline-span",
+        "partly-escaped-opener",
+        "neighboring-opener",
+        "raw-html",
+    ],
+)
+def test_public_rejects_a_quoted_path_inside_literal_markdown(
+    board_safety: SimpleNamespace, wrapper: str
+) -> None:
+    value = wrapper.format("/ `reports`/`plan` draft.txt")
+    with pytest.raises(board_safety.error, match="private path"):
+        board_safety.public(value, {}, {})
+
+
+def test_public_does_not_exempt_an_identical_list_inside_a_code_block(
+    board_safety: SimpleNamespace,
+) -> None:
+    value = "Use `reports`/`plan`\n\n```\n/ `reports`/`plan` draft.txt\n```"
+    with pytest.raises(board_safety.error, match="private path"):
+        board_safety.public(value, {}, {})
