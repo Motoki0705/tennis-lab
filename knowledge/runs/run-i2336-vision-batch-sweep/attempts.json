@@ -69,5 +69,44 @@
         }
       ]
     }
+  },
+  "retry_2": {
+    "commit": "8f8bd508b43f32a5f469c44b2c632edccfc6e4a1",
+    "verified_timing_accuracy_nsys_cases_total": 52,
+    "verified_trt_engines": 6,
+    "verified_trt_rejections": 12,
+    "verified_ncu_cases": 9,
+    "ncu_timeouts": [
+      {
+        "artifact": "retry-2/hmr2-ncu-3a/ncu.json",
+        "job": "0-8204680322695779406_2026-11-22T03-54-37-304220593Z_131443_i2336-r2-hmr2-ncu-3a.job",
+        "exit_code": 3,
+        "replay_mode": "kernel",
+        "timeout_s": 1320,
+        "nsys_kernels": 386,
+        "ncu_kernel_rows": 0,
+        "ncu_csv_sha256": "e4f8672b8b9210ca5293889eed9f032e5b64433e4d4460c7a0f24446e2fa8f53"
+      },
+      {
+        "artifact": "retry-2/dino-ncu-2/ncu.json",
+        "job": "0-8204680322062664314_2026-11-22T03-54-37-937335685Z_131601_i2336-r2-dino-ncu-2.job",
+        "exit_code": 3,
+        "replay_mode": "kernel",
+        "timeout_s": 1560,
+        "nsys_kernels": 574,
+        "ncu_kernel_rows": 0,
+        "ncu_csv_sha256": "0bf905daac22b2eb301cdd462dc33ac422906bb394d8988c9291a13e34d8a15d"
+      },
+      {
+        "artifact": "retry-2/dino-ncu-2-plugin/ncu.json",
+        "job": "0-8204680321780621081_2026-11-22T03-54-38-219378918Z_131673_i2336-r2-dino-ncu-2-plugin.job",
+        "exit_code": 3,
+        "replay_mode": "kernel",
+        "timeout_s": 1560,
+        "nsys_kernels": 562,
+        "ncu_kernel_rows": 0,
+        "ncu_csv_sha256": "d52a15a824eea3320d69c6fe9817b836d17dd630a3548ea718c4f0515609079b"
+      }
+    ]
   }
 }

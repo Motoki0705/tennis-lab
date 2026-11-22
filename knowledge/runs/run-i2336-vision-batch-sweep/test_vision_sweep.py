@@ -7,7 +7,8 @@ import pytest
 import sweep_vision
 from benchmark import write_json
 from convert_vit_batch import simplify_hmr2_token_output
-from vision_inputs import VITPOSE, read
+from summarize_vision import verify_timing, within_draft
+from vision_inputs import DINO, VITPOSE, read
 
 
 @pytest.mark.parametrize("failure", ["build", "range"])
@@ -141,3 +142,45 @@ def test_hmr2_ptq_export_lowers_only_the_singleton_token_squeeze():
         token = np.arange(batch * 1024, dtype=np.float32).reshape(batch, 1, 1024)
         expected = original.run(None, {source: token})[0]
         np.testing.assert_array_equal(lowered.run(None, {source: token})[0], expected)
+
+
+def test_timing_verification_requires_item_throughput_and_full_sample_count(tmp_path):
+    per_block = {"iqr_ms": 0.0, "mad_ms": 0.0}
+    measurement = {
+        "warmup": 30,
+        "latency_samples_ms": [[2.0] * 100, [4.0] * 100, [8.0] * 100],
+        "median_ms": 4.0,
+        "p95_ms": 8.0,
+        "iqr_ms": 6.0,
+        "mad_ms": 2.0,
+        "images_per_second": 1200000 / 1400,
+        "blocks": [
+            {**per_block, "median_ms": ms, "p95_ms": ms, "images_per_second": items}
+            for ms, items in [(2.0, 2000.0), (4.0, 1000.0), (8.0, 500.0)]
+        ],
+    }
+    assert (
+        verify_timing(measurement, 4, tmp_path)["images_per_second"] == 1200000 / 1400
+    )
+    measurement["images_per_second"] /= 4
+    with pytest.raises(ValueError, match="item throughput"):
+        verify_timing(measurement, 4, tmp_path)
+    measurement["latency_samples_ms"][-1].pop()
+    with pytest.raises(ValueError, match="timing sample series"):
+        verify_timing(measurement, 4, tmp_path)
+
+
+def test_dino_precision_applies_extra_limit_to_candidate_box_count():
+    accuracy = {
+        "overall": {
+            "iou": {"p05": 0.98},
+            "score_abs_error": {"p95": 0.01},
+            "missing": 0,
+            "reference_boxes": 98,
+            "extra": 1,
+            "candidate_boxes": 99,
+        }
+    }
+    assert not within_draft(DINO, accuracy)
+    accuracy["overall"].update(reference_boxes=99, candidate_boxes=100)
+    assert within_draft(DINO, accuracy)

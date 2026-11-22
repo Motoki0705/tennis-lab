@@ -57,6 +57,31 @@ DINO GridSampleの初回はworkspace上限512 MiBで約948 MiBを要求したtac
 
 再開時は `--condition` で条件を選び、初回の `c0-b1` を `--reference` に指定する。ViTPose-HのFP16は `--condition 1 --batch 32`、HMR2のFP16とDINO各方式は、保存済みtyped ONNXのディレクトリを `--build-from` で指定する。ncuは各条件のnsysが記録されたケースを `--profile-from` に指定する。
 
+### ncuの時間切れからの再開
+
+HMR2 INT8 B=16とDINO FP16両方式のB=4でkernel replayが時間切れになった。3件ともCSVにカーネル行が0件だったため、同じ計測ケースを指定し、`--ncu-replay application` で取り直す。パス間の照合は `all`・`strict` を使う。計測済みのnsysから件数とグリッド・ブロック寸法の並びを読み直して確認する。B=1との比較には先行runのkernel replayを使用し、replay方式とTensorRTのprofileの違いを記録する。 [終了値とCSVの記録](attempts.json)・[Nsight Compute仕様](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html)
+
+```bash
+retry="$out/retry-2"
+enqueue hmr2-ncu-3a-app hmr2 "$vit_inputs/hmr2" 22m "$out/retry-3/hmr2-ncu-3a" \
+    --profile-from "$retry/hmr2-3a/c3a-b16" --ncu-replay application --ncu-timeout 1200
+for condition in 2 2-plugin; do
+    enqueue "dino-ncu-$condition-app" dino_4scale_swin_l "$dino_inputs" 22m "$out/retry-3/dino-ncu-$condition" \
+        --profile-from "$retry/dino-$condition/c$condition-b4" --ncu-replay application --ncu-timeout 1200
+done
+```
+
+## 集計の再生成
+
+各ケースの元の `measurement.json`、`result.json`、予測、nsys SQLite、ncu CSVとエンジン記録から [metrics.json](metrics.json) を生成する。`artifact` は `outputs/trt-batch-i2336/` からの相対パス。計時の全標本とブロック別統計、精度のカメラ別集計、HMR2の次元別誤差、各実行shapeのinspectorは元の出力に残る。
+
+```bash
+CUDA_VISIBLE_DEVICES="" PYTHONPATH="$PWD:$core:$vit:$dino:$sweep" \
+    "$trt_exp_env/bin/python" -B "$bundle/summarize_vision.py" \
+    --source "$out" --vit-inputs "$vit_inputs" --dino-inputs "$dino_inputs" \
+    --output "$bundle/metrics.json"
+```
+
 ## CPU検証
 
 ```bash
