@@ -16,6 +16,7 @@ CHILD_LABEL = "issue:child"
 STANDALONE_LABEL = "issue:standalone"
 PROPOSAL_LABEL = "issue:proposal"
 TASKS_HEADING = "子タスクのチェックリスト"
+WORK_STATUS_HEADING = "作業状況・停止事項"
 NO_CHILDREN = "未分割（子issue未作成）"
 PARENT_REQUIRED = (
     "目的・背景",
@@ -31,7 +32,7 @@ CHILD_REQUIRED = (
     "具体的な変更内容・対象範囲",
     "対象外",
     "依存関係",
-    "作業状況・停止事項",
+    WORK_STATUS_HEADING,
     "Acceptance checklist",
 )
 ACCEPTANCE_FIELDS = ("文脈", "下流への影響", "検証方法・証拠")

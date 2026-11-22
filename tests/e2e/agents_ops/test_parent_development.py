@@ -2001,6 +2001,64 @@ def test_handoff_transfers_control_before_publication_and_old_parent_completion(
     assert observed
 
 
+def test_register_after_dispatcher_handoff_requires_its_own_assignment_record(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, session, _ = workflow(d, monkeypatch, family=True)
+    parent = importlib.import_module("parent.session")
+    write_error = importlib.import_module("parent.github").GitHubWriteError
+    successor = parent.ParentSession(d.h.gh, session.store, 1, "claude:next-owner")
+
+    def reject() -> None:
+        raise write_error("injected assignment rejection (HTTP 403)", status=403)
+
+    with session.store.locked():
+        session.lifecycle("handoff_pending", "旧親runtimeも含めて引き継ぐ。")
+        successor.accept("保存済み作業を引き継ぐ。", summary="保存済み作業の引継ぎ")
+        successor.lifecycle("released", "同じセッションで手動担当を取り直す。")
+        previous = copy.deepcopy(successor.row)
+        with pytest.raises(
+            ValueError, match="reconcile the previous dispatcher runtimes"
+        ):
+            successor.register()
+        assert successor.row == previous
+
+    d.runtime(d.job(), live=False)
+    d.control.reconcile()
+    with session.store.locked():
+        previous = copy.deepcopy(successor.row)
+
+        d.h.gh.on_write = reject
+        failed = successor.register()
+        assert failed["assignment"] == "active"
+        assert "HTTP 403" in failed["assignment_evidence"]["error"]
+        d.h.gh.on_write = None
+        current = successor.status()
+        assert current["assignment_evidence"]["status"] == "missing"
+        assert successor.row["generation"] == previous["generation"] + 1
+        assert "dispatch" not in successor.row
+        assert successor.row["dispatch_history"][-1] == previous["dispatch"]
+
+        with pytest.raises(ValueError, match="assignment record missing"):
+            successor.agree(
+                {
+                    "purpose": "回収の検証",
+                    "scope": "現在の世代",
+                    "behavior": "担当記録を照合する",
+                    "acceptance": "担当記録が1件ある",
+                    "human_confirmation": "現在の担当で合意する。",
+                }
+            )
+        with pytest.raises(ValueError, match="assignment record missing"):
+            successor.create_child({})
+
+        assert "assignment_evidence" not in successor.register()
+        assert "assignment_evidence" not in successor.register()
+        [assigned] = [e for e in successor.history() if e["event"] == "assigned"]
+        assert assigned["generation"] == successor.row["generation"]
+        successor.agreed()
+
+
 @pytest.mark.parametrize("operation", ["inspect", "stop"])
 def test_worker_commands_wait_for_runner_outside_registry(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, operation: str

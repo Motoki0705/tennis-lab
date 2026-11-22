@@ -12,7 +12,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock
-from typing import Any, NoReturn, TextIO
+from typing import Any, Literal, NoReturn, TextIO
 
 from lib.identity import session_identity as session_identity
 from lib.state_files import (
@@ -74,6 +74,44 @@ class _RegistryFiles:
         if path.parent.absolute() != self.root.path / "parents":
             raise ValueError("unexpected parent registry record path")
         return self.parent_directory(create=create)
+
+
+def start_fresh_assignment(
+    previous: dict[str, Any],
+    session: str,
+    generation: int,
+    *,
+    origin: Literal["register", "dispatcher"],
+) -> dict[str, Any]:
+    """Start a new owner generation while retaining prior work and ended jobs."""
+    row = {
+        **previous,
+        "session": session,
+        "status": "active",
+        "generation": generation,
+        "assignment_origin": origin,
+        "tasks": previous.get("tasks", {}),
+        "reviews": previous.get("reviews", []),
+    }
+    for field in (
+        "owner_runtime",
+        "handoff_generation",
+        "handoff_note_sha256",
+        "handoff_recovery",
+    ):
+        row.pop(field, None)
+    dispatch = row.pop("dispatch", None)
+    if dispatch is not None:
+        # The supervisor can only reconcile jobs and exit publications while
+        # their dispatcher assignment is current.
+        if row.get("publication_exit_pending") or any(
+            job["phase"] != "ended" for job in dispatch["jobs"].values()
+        ):
+            raise ValueError(
+                "reconcile the previous dispatcher runtimes and exit publication before starting a new assignment"
+            )
+        row["dispatch_history"] = [*previous.get("dispatch_history", []), dispatch]
+    return row
 
 
 @dataclass(frozen=True)
@@ -262,6 +300,11 @@ class Store:
                 or not isinstance(row["reviews"], list)
                 or type(row["generation"]) is not int
                 or row["generation"] < 1
+                or (
+                    "assignment_origin" in row
+                    and row["assignment_origin"]
+                    not in ("register", "handoff", "dispatcher")
+                )
             ):
                 raise ValueError(f"invalid parent-session data types: {key}")
             for task in row["tasks"].values():

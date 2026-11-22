@@ -25,6 +25,7 @@ from .agreement_comments import record_ignored
 from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
 from .log_publication import BEFORE_WORKER, Continuation, read_only
+from .manual_workers import RunnerEnvironmentUnavailable, require_runner_environment
 from .policy import issue_number, nonempty, number, object_value
 from .proposals import receive
 from .session import ParentSession
@@ -299,6 +300,9 @@ def parser() -> argparse.ArgumentParser:
         "--model-reason-file",
         help="optional note retained with the worker record",
     )
+    cancel_launch = commands.add_parser("cancel-worker-launch")
+    cancel_launch.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
+    cancel_launch.add_argument("--run-dir", type=Path, required=True)
     run_record = commands.add_parser("record-worker-run")
     run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
@@ -306,6 +310,11 @@ def parser() -> argparse.ArgumentParser:
         "wait-worker", help="指定ワーカーの終了・回収と手動委任の後続処理を待つ"
     )
     wait.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
+    wait.add_argument(
+        "--after-run",
+        metavar="RUN_DIR|none",
+        help="手動担当の次のrunを待つ。初回は none、再開時は直前の run_dir",
+    )
     wait.add_argument(
         "--timeout", type=float, help="finite positive seconds; default: no limit"
     )
@@ -388,7 +397,14 @@ def parser() -> argparse.ArgumentParser:
         required=True,
         help="majorごとの対処・検証または続行理由を記したファイル",
     )
-    resume.add_argument("--prs", nargs="+", type=int)
+    resume_scope = resume.add_mutually_exclusive_group()
+    resume_scope.add_argument("--prs", nargs="+", type=int)
+    resume_scope.add_argument(
+        "--retry-review",
+        type=int,
+        metavar="ROUND",
+        help="失敗した正式レビューのラウンドを指定して再試行（--run-id 必須）",
+    )
     resume.add_argument("--wait", action="store_true")
     waiting = commands.add_parser("wait-merge")
     waiting.add_argument("--run-id")
@@ -397,6 +413,7 @@ def parser() -> argparse.ArgumentParser:
     for name in (
         "delegate",
         "run-worker",
+        "cancel-worker-launch",
         "wait-worker",
         "record-worker-ended",
         "record-worker-run",
@@ -433,6 +450,8 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
     capture_token = None
     continuation = None
     try:
+        if args.command == "run-worker":
+            require_runner_environment()
         if args.command == "publish-worker-log":
             if (args.source_parent and not args.all_parents) or (
                 args.pr and not args.adopt_orphan_prs
@@ -568,6 +587,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 number(args.child),
                 timeout=args.timeout,
                 worker=args.worker,
+                after_run=args.after_run,
             )
             print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
             return code
@@ -682,11 +702,12 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
             capture_source = capture_source and (
                 owner.get("status") == "active" and owner.get("session") == identity
             )
-        capture_token = CURRENT.set(
-            decision_capture.begin(args, store, gh.repo, parent)
-            if capture_source
-            else None
-        )
+        if args.command != "run-worker":
+            capture_token = CURRENT.set(
+                decision_capture.begin(args, store, gh.repo, parent)
+                if capture_source
+                else None
+            )
         if args.command == "merge-continue":
             from lib.ops_review.merge_gate_impl import (
                 continue_progression,
@@ -695,6 +716,8 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 wait,
             )
 
+            if args.retry_review is not None and args.run_id is None:
+                raise ValueError("--retry-review requires --run-id")
             path = latest(store, gh.repo, parent, args.run_id)
             after = len(view(path)["events"])
             continue_progression(
@@ -703,6 +726,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 nonempty(identity, "parent identity"),
                 read_text(args.instruction_file),
                 prs=args.prs,
+                retry_review=args.retry_review,
             )
             value = wait(path, after=after) if args.wait else view(path)
             value = continuation.complete(args, value)
@@ -727,7 +751,15 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
             code = (
                 2
                 if log_result["unavailable_logs"]
-                or any(r.get("error") for r in log_result["logs"])
+                or any(
+                    r.get("error")
+                    and not (
+                        args.command == "publish-worker-log"
+                        and r.get("stage") == "not_started"
+                        and r["error"] == "runner_not_started"
+                    )
+                    for r in log_result["logs"]
+                )
                 else 0
             )
             log_result = continuation.complete(args, log_result, exit_code=code)
@@ -748,32 +780,56 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
 
             from .manual_workers import run_worker
 
-            code, worker_result = run_worker(
-                gh,
-                store,
-                parent,
-                nonempty(identity, "parent identity"),
-                child=number(args.child),
-                prompt=args.prompt_file,
-                base_ref=args.base_ref,
-                resume=args.resume,
-                worker=args.worker,
-                repair=repair_request(args.repair_id, args.repair_pr)
-                if args.repair_id is not None or args.repair_pr is not None
-                else None,
-                replace_session=args.replace_session,
-                planning=args.planning,
-                model=args.model,
-                model_reason=read_text(args.model_reason_file)
-                if args.model_reason_file
-                else None,
-                additional=read_original(args.additional_instruction_file)
-                if args.additional_instruction_file
-                else None,
-                restart_evidence=read_text(args.restart_evidence_file)
-                if args.restart_evidence_file
-                else None,
-            )
+            capture_started = False
+
+            def begin_capture() -> None:
+                nonlocal capture_token, capture_started
+                if not capture_started:
+                    capture_started = True
+                    capture_token = CURRENT.set(
+                        decision_capture.begin(args, store, gh.repo, parent)
+                    )
+
+            try:
+                code, worker_result = run_worker(
+                    gh,
+                    store,
+                    parent,
+                    nonempty(identity, "parent identity"),
+                    child=number(args.child),
+                    prompt=args.prompt_file,
+                    base_ref=args.base_ref,
+                    resume=args.resume,
+                    worker=args.worker,
+                    repair=repair_request(args.repair_id, args.repair_pr)
+                    if args.repair_id is not None or args.repair_pr is not None
+                    else None,
+                    replace_session=args.replace_session,
+                    planning=args.planning,
+                    model=args.model,
+                    model_reason=read_text(args.model_reason_file)
+                    if args.model_reason_file
+                    else None,
+                    additional=read_original(args.additional_instruction_file)
+                    if args.additional_instruction_file
+                    else None,
+                    restart_evidence=read_text(args.restart_evidence_file)
+                    if args.restart_evidence_file
+                    else None,
+                    begin_capture=begin_capture,
+                )
+            except RunnerEnvironmentUnavailable:
+                raise
+            except (
+                ValueError,
+                OSError,
+                KeyError,
+                TypeError,
+                subprocess.TimeoutExpired,
+            ):
+                begin_capture()
+                raise
+            begin_capture()
             worker_result = continuation.complete(args, worker_result, exit_code=code)
             print(
                 json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
@@ -994,6 +1050,10 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 from .manual_workers import record_worker_run
 
                 result = record_worker_run(session, number(args.child), args.run_dir)
+            elif command == "cancel-worker-launch":
+                from .manual_workers import cancel_worker_launch
+
+                result = cancel_worker_launch(session, number(args.child), args.run_dir)
             elif command == "delegate":
                 result = session.delegate(
                     number(args.child),
@@ -1166,6 +1226,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
         }:
             # The mutation is durable and its registry lock is released. Sync
             # the caller and unnamed active peers before projecting the name.
+            integration_failed |= "assignment_evidence" in result
             result = {**result, "parent_action_applied": True}
             from board.errors import BoardError
             from board.service import sync_parent
@@ -1252,6 +1313,9 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
         )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 1 if integration_failed else 0
+    except RunnerEnvironmentUnavailable as exc:
+        print(f"parent-session: {exc}", file=sys.stderr)
+        return 2
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
         decision_capture.failed(exc)
         if continuation is not None:

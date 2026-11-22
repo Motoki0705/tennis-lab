@@ -1626,14 +1626,9 @@ def test_task_provenance_requires_separate_autonomous_basis_and_current_adoption
     execution: Any = importlib.import_module("parent.execution")
     proposals_module: Any = importlib.import_module("parent.proposals")
     with h.store.locked() as store:
-        store.parents["o/r#101"] = {
-            "status": "active",
-            "session": "claude:fixture",
-            "generation": 1,
-            "tasks": {},
-            "reviews": [],
-        }
         session = sessions.ParentSession(h.gh, store, 101, "claude:fixture")
+        registration = session.register("採用提案の担当表示")
+        assert "assignment_evidence" not in registration, registration
         with pytest.raises(ValueError, match="実行根拠"):
             proposals_module.require_source(session, source)
         monkeypatch.setattr(

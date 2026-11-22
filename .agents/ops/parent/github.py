@@ -25,6 +25,20 @@ if TYPE_CHECKING:
     from .state import Store
 
 
+class GitHubWriteError(ValueError):
+    """Write failure with a status only when the HTTP response was complete."""
+
+    def __init__(self, message: str, *, status: int | None) -> None:
+        super().__init__(message)
+        self.status = status
+
+    @property
+    def creation_rejected(self) -> bool:
+        # Issue and comment creation can be retried after these rejections.
+        # A transport failure or an unclassified status leaves the write uncertain.
+        return self.status in {400, 401, 403, 404, 410, 422, 429}
+
+
 class GitHub(IssueGitHub):
     _read_only_cache = False
 
@@ -290,14 +304,20 @@ class GitHub(IssueGitHub):
             started = time.monotonic()
             metrics.count("github_requests")
             try:
-                result = self._http.request(method, endpoint, payload)
+                response = self._http.request_response(method, endpoint, payload)
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
-        if result.returncode:
-            raise ValueError(
-                f"gh {method} {self._http.redact(endpoint)} failed: {self._http.redact(result.stderr.strip())}"
+        if (
+            response.error
+            or response.status is None
+            or not 200 <= response.status < 300
+        ):
+            detail = response.error or response.http_error()
+            raise GitHubWriteError(
+                f"gh {method} {self._http.redact(endpoint)} failed: {self._http.redact(detail)}",
+                status=None if response.error else response.status,
             )
-        return object_value(json.loads(self._http.redact_json(result.stdout)))
+        return object_value(json.loads(self._http.redact_json(response.body)))
 
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         """Read GraphQL without caching or holding the registry lock remotely."""

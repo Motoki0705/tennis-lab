@@ -146,6 +146,82 @@ def test_formatting_and_progress_are_safe_but_scope_code_and_unknown_sections_ar
             api.approved(candidate, source, 20, material)
 
 
+def test_self_stop_preserves_approval_contract(api: Any) -> None:
+    source, rows, body = chain(api)
+    candidate = api.read_candidates(comments(api, rows), 12, "owner")[source.key]
+    stopped = body + "\n## 作業状況・停止事項\n\n" + legacy_stop_record(api)
+    assert api.contract(stopped) == api.contract(body)
+    assert api.approved(candidate, source, 20, stopped)["id"] == rows[-1]["id"]
+    for edited in (
+        stopped.replace("GPUは対象外", "GPUも実行する"),
+        stopped + "\n## 新しい停止条件\n\n別の完了条件を追加する。\n",
+    ):
+        with pytest.raises(ValueError, match="requirements changed"):
+            api.approved(candidate, source, 20, edited)
+
+
+def legacy_stop_record(api: Any) -> str:
+    detail = {
+        "reason": "他の作業を先に進める。",
+        "facts": "再現済み。\n\n元の記録を確認した。",
+        "impact": "現在の親作業を保留。",
+        "resume_condition": "依存の完了を確認する。",
+        "next_action": "子へ分ける。",
+    }
+    fields = "\n\n".join(f"{key}: {value}" for key, value in detail.items())
+    return (
+        f"停止\n\n{fields}\n\n"
+        f"<!-- parent-task-status:v1 state=stopped detail={api.fingerprint(detail)} -->\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "manual", ["追加で100本処理する。", "### 追加要件\n\n100本処理する。"]
+)
+def test_stop_section_protects_handwritten_requirements(api: Any, manual: str) -> None:
+    source, rows, body = chain(api)
+    candidate = api.read_candidates(comments(api, rows), 12, "owner")[source.key]
+    heading = body + "\n## 作業状況・停止事項\n\n"
+    stop = legacy_stop_record(api)
+    for edited in (
+        heading + manual,
+        heading + manual + "\n\n" + stop,
+        heading + stop + "\n" + manual,
+        heading
+        + stop.replace("依存の完了を確認する。", f"依存の完了を確認する。\n\n{manual}"),
+        heading
+        + manual
+        + f"\n\n<!-- parent-task-status:v1 state=stopped detail={'a' * 64} -->",
+    ):
+        with pytest.raises(ValueError, match="requirements changed"):
+            api.approved(candidate, source, 20, edited)
+
+
+def test_structured_stop_and_resume_keep_multiline_details_inside_the_record(
+    api: Any,
+) -> None:
+    _, _, body = chain(api)
+    status = importlib.import_module("issues.work_status")
+    detail = {
+        "reason": "判断待ち。\n## 根拠の見出し",
+        "facts": "引用したログ\n\n```text\n<!-- 断片 & 続き\n```\n次の行。",
+        "impact": "現在の親作業を保留。",
+        "resume_condition": "依存の完了を確認する。",
+        "next_action": "子へ分ける。",
+    }
+    approved = body + "\n## 作業状況・停止事項\n\n承認済みの引継ぎ要件。"
+    stop = status.render(detail, "stopped")
+    resume = status.render(detail, "resumed")
+    section = stop + "\n\n" + resume
+    assert api.contract(approved + "\n\n" + section) == api.contract(approved)
+    assert [(record.state, record.detail) for record in status.records(section)] == [
+        ("stopped", detail),
+        ("resumed", detail),
+    ]
+    altered = stop.replace("> 次の行。", "### ここに要件を追記")
+    assert api.contract(approved + "\n\n" + altered) != api.contract(approved)
+
+
 @pytest.mark.parametrize("kind", ["prose", "supplement", "fence"])
 def test_approved_preamble_is_protected_and_formatting_is_preserved(
     api: Any, kind: str

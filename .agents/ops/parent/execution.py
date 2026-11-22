@@ -297,10 +297,12 @@ def _current_basis(
         # observe a newer revocation or needs-human label; never carry the
         # earlier planning inputs across that boundary for authorization.
         history, parent = None, None
+    history = session.history() if history is None else history
+    session.require_assignment_record(history)
     current = next(
         (
             e
-            for e in reversed(session.history() if history is None else history)
+            for e in reversed(history)
             if e["event"] in {"agreed", "execution_basis", "basis_revoked"}
         ),
         None,
@@ -404,6 +406,7 @@ def record_autonomous(session: ParentSession, value: dict[str, Any]) -> dict[str
     if session.row and session.row["status"] not in {"released", "ended"}:
         session.owner()  # A judgment job may not overwrite another active parent's basis.
     history = session.history()
+    session.require_assignment_record(history)
     if phase(history) not in {"assigned", "autonomous"}:
         raise ValueError(
             "human checking/agreement/revocation cannot be overridden autonomously"

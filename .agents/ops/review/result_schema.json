@@ -18,6 +18,7 @@
         "properties": {
           "prs": {
             "type": "array",
+            "description": "Include at least one affected review target. Additional PR numbers are retained as references.",
             "items": {
               "type": "integer"
             }

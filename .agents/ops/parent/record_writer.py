@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from worker_logs.journal import atomic, locked
 
 from . import comment_journal
+from .github import GitHubWriteError
 from .history import comment_url, parse_history
 from .policy import digest, number
 from .state import RegistryConflict
@@ -102,6 +103,11 @@ def post_once(
             except RegistryConflict:
                 raise
             except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
+                if isinstance(exc, GitHubWriteError) and exc.creation_rejected:
+                    # This request was explicitly rejected. A caller retry can
+                    # prepare a new POST after another duplicate check.
+                    path.unlink()
+                    raise
                 raise ValueError(
                     "comment publication uncertain; retry only to reconcile"
                 ) from exc

@@ -250,7 +250,7 @@ def remaining_publications(
                 _unavailable_journal(path.relative_to(state_dir), reason, parent=parent)
             )
             continue
-        if row["state"] in {"merged", "legacy"}:
+        if row["state"] in {"merged", "legacy"} or journal.unstarted(row):
             continue
         source = row["source"]
         item: RemainingPublication = {
@@ -373,6 +373,7 @@ def continue_workers(
                 or only is not None
                 and key not in only
                 or row["state"] in {"merged", "legacy"}
+                or journal.unstarted(row)
             ):
                 continue
             if row.get("publication_mode") == "delegation_batch" and not milestone:

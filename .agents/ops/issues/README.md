@@ -336,6 +336,7 @@ parent_body = render_parent_body(
 `issues.creation.create_issue_once` は固定draft・送信前receipt・出典照合を共有する。
 呼出側が一致条件・永続化・排他を提供する。応答不明で一致先も未観測なら再POSTしない。
 `issues.improvement.contract` は進捗以外の要件（前文・未知節・fence内も含む）を保護し、`execution_terms` が実行合意へ変換する。
+「作業状況・停止事項」では、停止・再開記録の書式と詳細ハッシュを照合した範囲だけを進捗として扱う。
 `_preamble` は予約済みで、同名見出しによる上書きを拒否する。
 `issues check` は `label.proposal` で役割ラベル混在、`relationship.proposal` で正式関係や親子の役割hintとの矛盾を報告する。
 提案本文に親子の必須節は要求しない。

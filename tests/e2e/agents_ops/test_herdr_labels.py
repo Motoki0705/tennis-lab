@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, evidence_number
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.hook_process import hook_command
 
@@ -1736,3 +1736,96 @@ def test_parent_success_and_display_failure_are_distinguished(
     assert result.returncode == 0, result.stderr
     expected_owner = hashlib.sha256(b"claude:private-session-a-unique").hexdigest()
     assert labels.read()["panes"]["w1:p1"]["tokens"]["tl_owner"] == expected_owner
+
+
+@pytest.mark.parametrize("event", ["assigned", "handoff"])
+def test_rejected_assignment_comment_still_syncs_and_can_be_retried(
+    parent_env: ParentEnv,
+    labels: Labels,
+    parent_display: dict[str, str],
+    event: str,
+) -> None:
+    p = parent_env
+    extra = dict(parent_display)
+    agreement = p.spec(
+        {
+            "purpose": "担当の証拠を照合する。",
+            "scope": "親の担当開始。",
+            "behavior": "欠落を回収する。",
+            "acceptance": "開始記録が一件ある。",
+            "human_confirmation": "この範囲で進めてください。",
+        }
+    )
+    command: tuple[str, ...]
+    if event == "handoff":
+        note = p.note()
+        p.cli("register", extra=extra)
+        p.cli("agree", "--spec", agreement, extra=extra)
+        p.cli("handoff", "--note-file", note, extra=extra)
+        command = ("handoff", "--accept", "--note-file", note)
+        extra.update(
+            HERDR_PANE_ID="w1:p2",
+            CLAUDE_CODE_SESSION_ID="",
+            CODEX_SESSION_ID="new-parent",
+            CODEX_THREAD_ID="new-parent",
+        )
+        generation = 2
+    else:
+        command = ("register",)
+        generation = 1
+
+    failure = p.cli(*command, ok=None, extra={**extra, "PARENT_REJECT_COMMENT": "9000"})
+    assert failure.returncode == 1, failure.stderr
+    receipt = json.loads(failure.stdout)
+    assert receipt["assignment"] == "active"
+    assert receipt["parent_action_applied"] is True
+    assert "HTTP 403" in receipt["assignment_evidence"]["error"]
+    retry = "register" if event == "assigned" else "handoff --accept"
+    assert retry in receipt["assignment_evidence"]["retry"]
+    assert receipt["board_sync"]["status"] in {"assigned", "retained"}
+    name = receipt["board_sync"]["name"]
+    assert receipt["display_sync"]["name"] == name
+
+    pane = extra["HERDR_PANE_ID"]
+    assert labels.read()["panes"][pane]["tokens"]["tl_name"] == name
+    synced = labels.run("sync", env={**p.env, **extra})
+    assert synced.returncode == 0, synced.stderr
+    assert json.loads(synced.stdout)["name"] == name
+
+    status = json.loads(p.cli("status", extra=extra).stdout)
+    assert status["assignment"] == "active" and status["current_session_is_owner"]
+    assert status["assignment_evidence"]["status"] == "missing"
+    assert (
+        "assignment record missing"
+        in p.cli("agree", "--spec", agreement, ok=False, extra=extra).stderr
+    )
+    if event == "handoff":
+        # The first owner's agreement remains in history. The successor still
+        # needs the record of the current generation before it can act on it.
+        blocked = p.cli("create-child", "--spec", agreement, ok=False, extra=extra)
+        assert "assignment record missing" in blocked.stderr
+        offset = len(p.calls())
+        wrong_retry = p.cli("register", ok=False, extra=extra)
+        retry_receipt = json.loads(wrong_retry.stdout)
+        assert "handoff --accept" in retry_receipt["assignment_evidence"]["retry"]
+        assert not any("POST" in call for call in p.calls()[offset:])
+
+    endpoint = f"repos/o/r/issues/{evidence_number(p.state())}/comments"
+    offset = len(p.calls())
+    p.cli(*command, extra=extra)
+    p.cli(*command, extra=extra)
+    assert sum("POST" in c and endpoint in c for c in p.calls()[offset:]) == 1
+    records = [
+        json.loads(
+            c["body"]
+            .splitlines()[0]
+            .removeprefix("<!-- parent-session:v1 ")
+            .removesuffix(" -->")
+        )
+        for c in p.comments()
+    ]
+    assert [e["generation"] for e in records if e["event"] == event] == [generation]
+    if event == "handoff":
+        p.cli("register", extra=extra)
+        assert sum("POST" in c and endpoint in c for c in p.calls()[offset:]) == 1
+    p.cli("agree", "--spec", agreement, extra=extra)

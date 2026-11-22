@@ -6,7 +6,8 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from issues import Issue
+from issues import Issue, work_status
+from issues.format import WORK_STATUS_HEADING
 
 from .policy import closing_issues, dependencies, nonempty, progress, raw_section
 from .worker_slots import workers
@@ -92,10 +93,13 @@ def plan_launches(
                 )
             )
         elif states[n] == "stopped":
-            notes = re.findall(
-                r"(?m)^reason: (.+)$", raw_section(child.body, "作業状況・停止事項")
-            )
-            summary = notes[-1].strip() if notes else "停止中"
+            section = raw_section(child.body, WORK_STATUS_HEADING)
+            latest = work_status.last_record(section)
+            if latest is not None:
+                summary = latest.detail["reason"].splitlines()[0].strip()
+            else:
+                notes = re.findall(r"(?m)^reason: (.+)$", section)
+                summary = notes[-1].strip() if notes else "停止中"
             reasons.append(
                 reason(
                     "stopped",

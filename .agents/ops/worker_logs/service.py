@@ -121,16 +121,31 @@ def finish(
         }
 
 
-def reject_unstarted(path: str | None) -> dict[str, Any]:
+def reject_unstarted(path: str | None, directory: Path) -> dict[str, Any]:
     """Retain a captured instruction without waiting for an impossible final."""
     if path is not None:
         try:
             target = Path(path)
             with journal.locked(target):
                 row = journal.read(target)
-                row["stage"] = "not_started"
-                journal.fail(target, row, "runner_not_started", state="worker_failed")
-                result: dict[str, Any] = journal.view(row)
+                require(
+                    row["source"].get("run_directory") == str(directory),
+                    "runtime_changed",
+                )
+                if (
+                    journal.unstarted(row)
+                    or row.get("stage") not in {None, "awaiting_final"}
+                    or row["state"] not in {"captured", "blocked"}
+                    or "receipt" in row
+                ):
+                    return journal.view(row)
+                row.update(
+                    state="worker_failed",
+                    stage="not_started",
+                    error="runner_not_started",
+                )
+                result = journal.view(row)
+                journal.atomic(target, row)
             from decision_logs.observations import worker_log
 
             worker_log(target, result, entrypoint="worker_logs.reject-unstarted")
@@ -253,7 +268,7 @@ def _command(
                         }
                     )
                     break
-            if row.get("stage") == "not_started":
+            if journal.unstarted(row):
                 results.append(journal.view(row))
                 continue
             if row["state"] == "captured" or retry and "receipt" not in row:

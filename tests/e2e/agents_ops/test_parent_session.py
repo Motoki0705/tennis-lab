@@ -234,9 +234,14 @@ if n is None:
         if "labels" in params:
             labels = set(params["labels"][0].split(","))
             rows = [r for r in rows if labels <= {label["name"] for label in r["labels"]}]
+            if "parent-evidence" in labels:
+                rows = [r for r in rows if r["number"] not in state.get("unlisted_evidence", [])]
         response(paged(rows))
     assert method == "POST", method
     if payload["labels"] == ["parent-evidence"]:
+        if os.environ.get("PARENT_REJECT_EVIDENCE_CREATE"):
+            print("HTTP/1.1 403 Forbidden\n")
+            response({"message": "injected evidence creation rejection"}, 403)
         n = str(state.get("next_evidence", 9000))
         state["next_evidence"] = int(n) + 1
     else:
@@ -270,6 +275,9 @@ if tail == "sub_issues":
 if tail == "comments":
     if method == "GET":
         response(paged(state["comments"].get(n, [])))
+    if os.environ.get("PARENT_REJECT_COMMENT") == n:
+        print("HTTP/1.1 403 Forbidden\n")
+        response({"message": "injected comment rejection"}, 403)
     comment = {"id": 1 + max((c["id"] for rows in state["comments"].values() for c in rows), default=0), "user": {"login": "operator"}, "body": payload["body"]}
     state["comments"].setdefault(n, []).append(comment)
     save()
@@ -1533,7 +1541,14 @@ def test_handoff_retries_do_not_lose_claim_or_repeat_notice(
     p.cli("handoff", "--note-file", p.note())
     second = {"CLAUDE_CODE_SESSION_ID": "private-session-b-unique"}
     p.env["PARENT_FAIL_AFTER_COMMENT"] = str(evidence_number(p.state()))
-    p.cli("handoff", "--accept", "--note-file", p.note(), ok=False, extra=second)
+    failed = p.cli(
+        "handoff", "--accept", "--note-file", p.note(), ok=None, extra=second
+    )
+    assert failed.returncode == 1
+    receipt = json.loads(failed.stdout)
+    assert receipt["parent_action_applied"] is True
+    assert receipt["assignment_evidence"]["status"] == "error"
+    assert "uncertain" in receipt["assignment_evidence"]["error"]
     p.env.pop("PARENT_FAIL_AFTER_COMMENT")
     p.cli("handoff", "--accept", "--note-file", p.note(), extra=second)
     assert json.loads(p.cli("status", extra=second).stdout)["current_session_is_owner"]
@@ -2085,9 +2100,10 @@ events = [
     {"type":"item.completed", "item":{"type":"agent_message", "text":event_text}},
     {"type":"turn.completed", "usage":{"input_tokens":1,"output_tokens":1}},
 ]
+error = os.environ.get("REVIEW_RUNTIME_ERROR_MESSAGE")
 errors = []
 if exit_code and reason != "cli_error":
-    errors = [{"type":"error", "message":"transport failed after completed review"}]
+    errors = [{"type":"error", "message":error or "transport failed after completed review"}]
     events.extend(errors)
 (runtime / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
 choice = request.get("review_selection")
@@ -2098,7 +2114,7 @@ if os.environ.get("REVIEW_EFFECTIVE_UNAVAILABLE"):
 (runtime / "result.json").write_text(json.dumps({
     "schema_version": 1, "run_id": "review-" + request["review_run_id"],
     "result": "failed" if exit_code else "completed", "exit_code": exit_code, "cli_exit_code": exit_code,
-    "turn_end_reason": reason,
+    "turn_end_reason": reason, "error": error,
     "agent_spawned": True, "cleanup_complete": not bool(os.environ.get("REVIEW_UNCONFIRMED_CLEANUP")), "finished_at": 1,
     "prompt_sha256": hashlib.sha256(pathlib.Path(opt("--prompt-file")).read_bytes()).hexdigest(),
     "run_dir": str(runtime), "output_path": opt("--out"), "final_path": str(runtime / "final.md"),
