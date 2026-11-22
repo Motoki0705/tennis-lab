@@ -1068,7 +1068,9 @@ def test_blender_frame_selection_rejects_silent_truncation(
     assert not shot.exists()
 
 
-@pytest.mark.parametrize("fault", [None, "dof", "projection"])
+@pytest.mark.parametrize(
+    "fault", [pytest.param(None, marks=pytest.mark.system_deps), "dof", "projection"]
+)
 def test_wide_lens_render_requires_actual_pinhole_and_color_audit(
     shot_reports: tuple[Path, Path], fault: str | None
 ) -> None:
