@@ -47,6 +47,31 @@ def test_publication_admission_rechecks_its_frozen_owner(
     assert store.path.read_bytes() == before
 
 
+def test_inventory_preserves_an_unreadable_namespace_without_entering_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reconciliation = importlib.import_module("worker_logs.reconciliation")
+    relative = Path("worker-logs") / schema.sha(b"o/r") / "12"
+    parent = tmp_path / relative
+    parent.mkdir(parents=True)
+    iterdir = Path.iterdir
+
+    def list_directory(path: Path) -> Any:
+        if path == parent:
+            raise PermissionError("private storage location")
+        return iterdir(path)
+
+    monkeypatch.setattr(Path, "iterdir", list_directory)
+    inventory = reconciliation.remaining_publications("o/r", 12, state_dir=tmp_path)
+    assert len(inventory) == 1
+    row = inventory[0]
+    assert row["parent"] == 12 and row["journal_identity"] == "unknown"
+    assert row["state"] == "blocked" and row["error"] == "journal_unavailable"
+    assert row["namespace_sha256"] == schema.sha(str(relative).encode())
+    assert row["journal_reason"] == "journal_access_denied"
+    assert "private storage location" not in json.dumps(inventory)
+
+
 @pytest.mark.parametrize(
     "value",
     [
