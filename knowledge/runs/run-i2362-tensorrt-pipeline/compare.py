@@ -207,6 +207,21 @@ def dino(args, cfg):
     return metrics, passed
 
 
+def gvhmr_passes(metrics):
+    """Apply the Phase 1 camera-space thresholds and check sequence coverage."""
+    return bool(metrics) and all(
+        row["mask_matches_input"]
+        and row["length_matches_input"]
+        and row["mask_matches_fp32"]
+        and row["length_matches_fp32"]
+        and row["compared_frames"] == row["expected_frames"]
+        and row["incam"]["body_pose_deg"]["p95"] <= 1
+        and row["incam"]["global_orient_deg"]["p95"] <= 1
+        and row["incam"]["coco17_l2_mm"]["p95"] <= 10
+        for row in metrics.values()
+    )
+
+
 def gvhmr(args, cfg):
     from accuracy_gvhmr import SPACES, compare
     from locked_inputs import checked_segments, sha256_file
@@ -277,29 +292,15 @@ def gvhmr(args, cfg):
             model.unload()
         return {name: np.stack(value) for name, value in values.items()}
 
-    metrics, passed = {}, True
+    metrics = {}
     for length in sorted({row["length"] for row, _ in eval_segments}):
         selected = [
             (row, arrays) for row, arrays in eval_segments if row["length"] == length
         ]
         before, after = infer(None, selected), infer(bundle, selected)
-        measured = compare(after, before, [row for row, _ in selected])
-        metrics[str(length)] = measured
-        passed &= (
-            measured["mask_matches_fp32"]
-            and measured["length_matches_fp32"]
-            and all(
-                measured[space][field]["p95"] <= limit
-                for space in SPACES
-                for field, limit in (
-                    ("body_pose_deg", 1),
-                    ("global_orient_deg", 1),
-                    ("coco17_l2_mm", 10),
-                )
-            )
-        )
+        metrics[str(length)] = compare(after, before, [row for row, _ in selected])
     reconstructor.unload()
-    return metrics, passed
+    return metrics, gvhmr_passes(metrics)
 
 
 @torch.no_grad()

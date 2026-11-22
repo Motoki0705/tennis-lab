@@ -47,3 +47,11 @@ TensorRT 10.14.1の `IOptimizationProfile.set_shape` は戻り値が `None` で�
 前回のONNXを再利用するには、再現コマンドの `qualify.sh` の第4引数にexportタグを渡し、
 `BUILD_TAG` に今回のログ用タグを指定します。buildは既存ONNXとその外部重みのdigestを再照合します。
 初回からの再実行では第4引数に `phase2-b2-v1` を指定します。
+
+`phase2-b2-v2` で5モデルのbuildと4カメラ・292フレームのsmokeが完了しました。
+DINOはPhase 1の暫定基準を超え、比較が終了値1になりました。
+GVHMRの元の終了値1は重力整列座標にも10 mmを適用した判定です。
+保存済みデータはカメラ座標でPhase 1の条件を満たしています。
+エンジンのdigest、元の終了値と再集計結果を記録しました。
+[比較表と考察](../../nodes/tennis_scene/000081-run-i2362-tensorrt-pipeline.md)・
+[buildと終了状態](attempts.json)・[出力照合](metrics.json)・[smoke](smoke.json)
