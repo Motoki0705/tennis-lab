@@ -10,9 +10,28 @@
 
 [作業者が分けた記録PR](workers.md#ナレッジ記録prの作成) は `review-inspect --prs …` の `review_candidates` から除外される。`review-request` でも専用操作を案内する。比較を確定できないPRは正式レビュー候補に残り、理由は `scope.reason` に出る。
 
-記録専用PRは `merge-knowledge --prs … --evidence-file verified.md --wait` に、現HEADの受入・実行証拠を渡す。保存済みnoteは `--evidence-ref` に指定できる。現HEADと最新mainで成功した [Knowledge library](../../../ops/lib/README.md#ナレッジ記録専用prのci) を待ち、実行根拠、`AGENT_AUTO_MERGE`、`needs-human`、停止指定を照合する。
+親は対象Issueの受入条件をPRの現差分と照合し、[PR本文の実行証拠](workers.md#ナレッジ記録prの作成) を確認する。実行が必要ならコマンドと結果を現HEADで確認し、`execution` を `verified` とする。実行を伴わない受入は `not_required` とする。選択した各PRの番号・完全SHA・確認結果を次の形式で保存し、`merge-knowledge --prs 1250 --evidence-file verified.json --wait` で渡す。保存済みnoteには同じJSONを記し、`--evidence-ref` で参照できる。
 
-待機と続行には同じrun IDで `merge-status`、`wait-merge`、`merge-continue` を使う。mainが進んだら、新しい比較元でのPRイベントの検査結果を待つ。HEADを更新した場合は、新HEADの完全SHAと検証証拠を続行指示に添える。マージ応答喪失時は同じrunで結果を照合する。
+```json
+{
+  "schema_version": 1,
+  "prs": [
+    {
+      "pr_number": 1250,
+      "head_sha": "0123456789abcdef0123456789abcdef01234567",
+      "acceptance": "verified",
+      "execution": "verified",
+      "summary": "指定した評価32件の出力をPR本文のログと照合した。"
+    }
+  ]
+}
+```
+
+CLIは本文の閉鎖指定とGitHubが認識する閉鎖対象を照合し、すべてが担当範囲内であることを確認する。別リポジトリへの閉鎖、未解決の指定、本文にない閉鎖対象、実装付随PRの閉鎖指定があれば保留する。現HEADと最新mainで成功した [Knowledge library](../../../ops/lib/README.md#ナレッジ記録専用prのci) を待つ。マージ直前に、実行根拠、`AGENT_AUTO_MERGE`、`needs-human`、停止指定、閉鎖対象とPR本文を再照合し、同じHEADと比較元の成功run・attemptを確認する。
+
+待機と続行には同じrun IDで `merge-status`、`wait-merge`、`merge-continue` を使う。mainが進んだら、新しい比較元でのPRイベントの検査結果を待つ。送信前の専用runを続行するときは、選択した対象の現HEADと最新の本文を確認し、同じ形式のJSONを `merge-continue --run-id RUN --instruction-file verified.json --wait` に渡す。マージ応答喪失やmain CI待機の再照合だけを続けるときは、同じrunに続行理由を渡す。
+
+保留中のPRが実装混在に変わったら、`review-inspect` で候補になったことを確認し、通常どおり `review-request` を行う。CLIはPRがopenで未マージ、専用controllerが停止済み、マージ送信の記録がないことを確認したうえで、そのPRの専用予約を `transferred` として終え、正式レビューに渡す。送信済みの場合は専用runでマージ結果を照合する。
 
 マージ後はmerge commit、mainの `Python`、関連Issueの状態を `status.completion.knowledge_merges` で参照できる。Issueを閉じるPRでは `closed/completed` の確認が必要。実装PRに付随する記録PRでは、参照したIssueの観測状態を表示する。
 

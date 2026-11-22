@@ -14,7 +14,7 @@ from typing import Any
 
 from issues.cli import GitHubHTTPError
 from lib.d_capacity import CapacityError
-from lib.ops_review import knowledge_records
+from lib.ops_review import knowledge_evidence, knowledge_records
 from lib.ops_review.merge_gate_policy import auto_merge, python_ci_errors
 from lib.ops_review.progression import KNOWLEDGE_MERGE, MergeHold, RateWait
 from lib.repair_turn import parse_report
@@ -526,11 +526,6 @@ class LiveBackend:
             comparison = knowledge_records.Comparison.from_pr(pr)
             if (comparison.base, comparison.merge) != (ci["base_sha"], ci["merge_sha"]):
                 raise MergeHold("knowledge PR comparison changed", retry=True)
-            run = knowledge_records.latest_run(self, pr, comparison.head)
-            if run is None or any(
-                run.get(key) != value for key, value in ci["run"].items()
-            ):
-                raise MergeHold("Knowledge library run or attempt changed", retry=True)
             if reason := self.local(state) or self.human(state, target):
                 raise MergeHold(reason)
             current = self.pr(target["number"])
@@ -542,8 +537,29 @@ class LiveBackend:
                 current
             ) != comparison or current.get("body") != pr.get("body"):
                 raise MergeHold("knowledge PR changed while checking merge", retry=True)
+            root = Path(state["checkout"])
+            try:
+                closing = knowledge_records.closing_targets(
+                    self.gh, root, current, comparison
+                )
+                knowledge_evidence.require_current(
+                    root, current, comparison, target.get("verified_evidence")
+                )
+            except ValueError as exc:
+                raise MergeHold(str(exc)) from exc
+            if closing != set(target["issues"]):
+                raise MergeHold("GitHub closing targets changed")
             if knowledge_records.base_tip(self.gh, "main") != comparison.base:
                 raise MergeHold("main advanced after knowledge CI", retry=True)
+            # Last remote observation before recording intent and submitting.
+            run = knowledge_records.latest_run(self, current, comparison.head)
+            if (
+                run is None
+                or run.get("status") != "completed"
+                or run.get("conclusion") != "success"
+                or any(run.get(key) != ci["run"][key] for key in ("id", "run_attempt"))
+            ):
+                raise MergeHold("Knowledge library run or attempt changed", retry=True)
             record_intent()
             # Submit a synchronous merge. The request fixes HEAD and cannot
             # enqueue a later merge against a different comparison.

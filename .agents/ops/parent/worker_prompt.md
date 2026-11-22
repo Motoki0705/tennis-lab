@@ -19,7 +19,7 @@ AGENTS.md・共有memory・対象README・関係するissueとコメントを読
 GPU・Blender等の資源はAGENTS.mdと対応skillに従う。未指定の資源・費用の予算を捏造しない。
 
 意味のある検証とpre-commitを通してコミットし、依頼された範囲でPRを作る。
-独立した実験・文献記録は [ナレッジ記録PRの作成](../../skills/parent-session/references/workers.md#ナレッジ記録prの作成) に従う。
+独立した実験・文献記録は [ナレッジ記録PRの作成](../../skills/parent-session/references/workers.md#ナレッジ記録prの作成) に従い、PR本文の `実行証拠` に確認した完全HEADと結果を記す。
 PRには変更内容、受入条件に対する証拠、テストの増分と実測、未実施・残課題を示す。pushごとにCIを起動する。
 依存branchやレビュー指摘の修正は、現在のbranch・PR・同じsessionで継続する。
 統合レビュー・merge・担当終了は親の役割とする。

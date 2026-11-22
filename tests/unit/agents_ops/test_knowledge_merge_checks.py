@@ -38,6 +38,66 @@ def pr() -> dict[str, Any]:
     }
 
 
+def test_closing_reference_parser_includes_all_github_keywords(records: Any) -> None:
+    body = (
+        "Close #1, closes O/R#2, CLOSED #3\n"
+        "fix #4, Fixes: o/r#5, FIXED https://github.com/O/R/issues/6\n"
+        "Resolve #7, resolves <https://github.com/o/r/issues/8>, RESOLVED other/repo#9\n"
+        "```text\nCloses #10\n```\n"
+    )
+    assert records.closing_references(body, "o/r") == {
+        *(("o/r", n) for n in range(1, 9)),
+        ("other/repo", 9),
+    }
+
+
+@pytest.mark.parametrize("second_head", [HEAD, "d" * 40])
+def test_closing_issue_pages_must_describe_the_same_pr(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    records: Any,
+    pr: dict[str, Any],
+    second_head: str,
+) -> None:
+    pr["body"] = "Closes #10\nCloses O/R#11"
+    comparison = records.Comparison.from_pr(pr)
+
+    def page(n: int, head: str, next_page: bool) -> dict[str, Any]:
+        repo = {"nameWithOwner": "o/r"}
+        return {
+            "repository": {
+                **repo,
+                "pullRequest": {
+                    "number": pr["number"],
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "body": pr["body"],
+                    "headRefOid": head,
+                    "baseRefName": "main",
+                    "baseRefOid": BASE,
+                    "closingIssuesReferences": {
+                        "totalCount": 2,
+                        "nodes": [{"number": n, "repository": repo}],
+                        "pageInfo": {
+                            "hasNextPage": next_page,
+                            "endCursor": "next" if next_page else None,
+                        },
+                    },
+                },
+            }
+        }
+
+    graphql = Mock(side_effect=[page(10, HEAD, True), page(11, second_head, False)])
+    gh = SimpleNamespace(repo="o/r", graphql=graphql)
+    monkeypatch.setattr(records, "git", Mock(return_value=b""))
+    if second_head == HEAD:
+        assert records.closing_targets(gh, tmp_path, pr, comparison) == {10, 11}
+    else:
+        with pytest.raises(ValueError, match="different PR snapshot"):
+            records.closing_targets(gh, tmp_path, pr, comparison)
+    assert [call.args[1]["after"] for call in graphql.call_args_list] == [None, "next"]
+
+
 @pytest.mark.parametrize(
     ("fault", "status", "reason"),
     [
@@ -141,7 +201,10 @@ def test_merge_rechecks_the_last_observation_before_recording_intent(
 ) -> None:
     live = importlib.import_module("lib.ops_review.progression_backend")
     store = importlib.import_module("parent.state").Store(tmp_path)
-    backend = live.LiveBackend({"request": {"repo": "o/r", "parent_issue": 1}}, store)
+    backend = live.LiveBackend(
+        {"request": {"repo": "o/r", "parent_issue": 1}, "checkout": str(tmp_path)},
+        store,
+    )
     target = {
         "number": 12,
         "branch": "codex/records",
@@ -164,6 +227,8 @@ def test_merge_rechecks_the_last_observation_before_recording_intent(
     )
     monkeypatch.setattr(records, "latest_run", Mock(return_value=run))
     monkeypatch.setattr(records, "base_tip", Mock(return_value=tip))
+    monkeypatch.setattr(records, "closing_targets", Mock(return_value={10}))
+    monkeypatch.setattr(live.knowledge_evidence, "require_current", Mock())
     write = Mock()
     monkeypatch.setattr(backend.gh, "write", write)
     intent = Mock()
@@ -171,6 +236,84 @@ def test_merge_rechecks_the_last_observation_before_recording_intent(
         backend.merge_knowledge(backend.state, target, ci, intent)
     write.assert_not_called()
     intent.assert_not_called()
+
+
+def test_requeued_attempt_during_human_check_returns_to_ci_wait(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    records: Any,
+    pr: dict[str, Any],
+) -> None:
+    live = importlib.import_module("lib.ops_review.progression_backend")
+    loop = importlib.import_module("lib.ops_review.progression")
+    store = importlib.import_module("parent.state").Store(tmp_path)
+    target = {
+        "number": 12,
+        "branch": "codex/records",
+        "base_ref": "main",
+        "head_sha": HEAD,
+        "issues": [10],
+    }
+    request = {
+        "schema_version": 4,
+        "kind": "knowledge_merge",
+        "review_run_id": "fixture",
+        "repo": "o/r",
+        "parent_issue": 1,
+        "evidence": "fixture attestation",
+        "prs": [target],
+    }
+    state = loop.new_state(request, owner="fixture", generation=1)
+    state["checkout"] = str(tmp_path)
+    path = tmp_path / "progressions" / state["id"] / "state.json"
+    path.parent.mkdir(parents=True)
+    loop.save(path, state)
+    backend = live.LiveBackend(state, store)
+    current_run = {
+        "id": 1,
+        "run_attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+    }
+    monkeypatch.setattr(backend, "pr", Mock(return_value=pr))
+    monkeypatch.setattr(backend, "local", Mock(return_value=None))
+    monkeypatch.setattr(backend, "dependency", Mock(return_value=True))
+    monkeypatch.setattr(records, "base_tip", Mock(return_value=BASE))
+    monkeypatch.setattr(records, "closing_targets", Mock(return_value={10}))
+    monkeypatch.setattr(live.knowledge_evidence, "require_current", Mock())
+    observed_attempts = []
+
+    def observe_run(*_args: Any) -> dict[str, Any]:
+        observed_attempts.append(current_run["run_attempt"])
+        return dict(current_run)
+
+    def observe_ci(_pr: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "status": "success",
+            "head": HEAD,
+            "base_sha": BASE,
+            "merge_sha": "c" * 40,
+            "run": observe_run(),
+        }
+
+    def requeue_on_merge_check(_state: dict[str, Any], _target: dict[str, Any]) -> None:
+        if observed_attempts:
+            current_run.update(run_attempt=2, status="queued", conclusion=None)
+
+    monkeypatch.setattr(backend, "human", requeue_on_merge_check)
+    monkeypatch.setattr(backend, "knowledge_ci", observe_ci)
+    monkeypatch.setattr(records, "latest_run", observe_run)
+    write = Mock()
+    monkeypatch.setattr(backend.gh, "write", write)
+    engine = loop.Engine(path, backend, clock=lambda: 10)
+    engine.step(engine.state["targets"]["12"])
+    saved = loop.read(path)["targets"]["12"]
+    assert observed_attempts == [1, 2]
+    assert saved["stage"] == "ci_wait"
+    assert saved["ci"]["status"] == "pending"
+    assert saved["ci"]["reasons"] == ["Knowledge library run or attempt changed"]
+    assert "merge_head" not in saved
+    write.assert_not_called()
 
 
 @pytest.mark.parametrize("python", ["success", "missing", "skipped"])
@@ -213,12 +356,11 @@ def test_worker_ci_preserves_python_and_recognizes_knowledge_results(
         knowledge_ci.assert_called_once()
 
 
-def test_continuing_for_a_new_head_requires_evidence_for_that_head(
+def test_continuing_premerge_on_same_head_requires_current_evidence(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, records: Any, pr: dict[str, Any]
 ) -> None:
     progression = importlib.import_module("lib.ops_review.knowledge_progression")
-    old_head = "d" * 40
-    target = {"number": 12, "stage": "ci_wait", "head_sha": old_head}
+    target = {"number": 12, "stage": "ci_wait", "head_sha": HEAD}
     state = {"checkout": str(tmp_path), "targets": {"12": target}}
     backend = SimpleNamespace(
         repo="o/r", pr=Mock(return_value=pr), shape=Mock(return_value=None)
@@ -226,8 +368,6 @@ def test_continuing_for_a_new_head_requires_evidence_for_that_head(
     monkeypatch.setattr(
         records, "assess", Mock(return_value=(None, records.Comparison.from_pr(pr)))
     )
-    with pytest.raises(ValueError, match=f"include new HEAD {HEAD}"):
-        progression.refresh_evidence(backend, state, None, f"Verified {old_head}")
+    with pytest.raises(ValueError, match="requires a JSON object"):
+        progression.refresh_evidence(backend, state, None, f"Verified {HEAD}")
     assert "evidence_head" not in target
-    progression.refresh_evidence(backend, state, None, f"Verified {HEAD}")
-    assert target["evidence_head"] == HEAD

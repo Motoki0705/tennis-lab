@@ -79,7 +79,7 @@ def request(
     from lib.ops_review import knowledge_records
     from lib.ops_review.merge_gate_impl import registered
 
-    previous = registered(session, prs)
+    previous = registered(session, prs, allow_knowledge_transfer=True)
     if previous:
         return previous
     parent, children = session.work_items()

@@ -324,17 +324,27 @@ def progress(
     return result
 
 
+_REPOSITORY = r"[a-z0-9_.-]+/[a-z0-9_.-]+"
+_CLOSING_REFERENCE = re.compile(
+    rf"\b(?:close[sd]?|fix(?:es|ed)?|resolve[sd]?)(?:\s*:\s*|\s+)"
+    rf"(?:<?https://github\.com/({_REPOSITORY})/(?:issues|pull)/([1-9][0-9]*)"
+    rf"|(?:({_REPOSITORY}))?#([1-9][0-9]*))\b",
+    re.I,
+)
+
+
+def closing_references(
+    body: str, repo: str, *, markdown: bool = True
+) -> set[tuple[str, int]]:
+    text = "\n".join(visible_lines(body)) if markdown else body
+    return {
+        ((match[1] or match[3] or repo).casefold(), int(match[2] or match[4]))
+        for match in _CLOSING_REFERENCE.finditer(text)
+    }
+
+
 def closing_issues(body: str, repo: str) -> set[int]:
-    # Require a closing instruction, not an incidental issue mention or branch name.
-    result = set()
-    for match in re.finditer(
-        r"\b(?:close[sd]?|fix(?:es|ed)?|resolve[sd]?)\s+(?:(https://github\.com/[^\s]+/issues/)([1-9][0-9]*)|#([1-9][0-9]*))\b",
-        "\n".join(visible_lines(body)),
-        re.I,
-    ):
-        if match[1] is None or match[1] == f"https://github.com/{repo}/issues/":
-            result.add(int(match[2] or match[3]))
-    return result
+    return {n for name, n in closing_references(body, repo) if name == repo.casefold()}
 
 
 def select_prs(

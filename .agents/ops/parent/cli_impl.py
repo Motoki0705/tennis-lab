@@ -379,9 +379,11 @@ def parser() -> argparse.ArgumentParser:
     knowledge = commands.add_parser("merge-knowledge")
     knowledge.add_argument("--prs", type=int, nargs="+", required=True)
     knowledge_evidence = knowledge.add_mutually_exclusive_group(required=True)
-    knowledge_evidence.add_argument("--evidence-ref", help="この親のnoteのSHAまたはURL")
     knowledge_evidence.add_argument(
-        "--evidence-file", help="現HEADの受入条件・実行証拠を記したファイル"
+        "--evidence-ref", help="受入確認JSONを記録したこの親のnoteのSHAまたはURL"
+    )
+    knowledge_evidence.add_argument(
+        "--evidence-file", help="PR番号・完全HEAD・受入確認を記したversion 1 JSON"
     )
     knowledge.add_argument("--wait", action="store_true")
     status = commands.add_parser("merge-status")
@@ -394,7 +396,7 @@ def parser() -> argparse.ArgumentParser:
     resume.add_argument(
         "--instruction-file",
         required=True,
-        help="majorごとの対処・検証または続行理由を記したファイル",
+        help="majorの対処・検証または続行理由。記録専用のマージ送信前は受入確認JSON",
     )
     resume.add_argument("--prs", nargs="+", type=int)
     resume.add_argument("--wait", action="store_true")

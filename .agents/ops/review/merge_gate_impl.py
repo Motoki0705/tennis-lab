@@ -57,7 +57,11 @@ def knowledge_states(store: Store, row: dict[str, Any]) -> Iterator[dict[str, An
 
 
 def registered(
-    session: ParentSession, prs: list[int], *, kind: str = "review_and_merge"
+    session: ParentSession,
+    prs: list[int],
+    *,
+    kind: str = "review_and_merge",
+    allow_knowledge_transfer: bool = False,
 ) -> dict[str, Any] | None:
     if not prs or len(set(prs)) != len(prs):
         raise ValueError("review needs a nonempty set of unique PRs")
@@ -68,15 +72,23 @@ def registered(
         if key.rpartition("#")[0] != session.gh.repo.casefold():
             continue
         requests = [
-            prior["request"]
+            (prior["request"], {p["number"] for p in prior["request"]["prs"]})
             for prior in owner.get("reviews", [])
             if prior["request"].get("schema_version") == 4
         ]
-        requests.extend(
-            state["request"] for state in knowledge_states(session.store, owner)
-        )
-        for request in reversed(requests):
-            numbers = {p["number"] for p in request["prs"]}
+        if not (key == session.key and allow_knowledge_transfer):
+            requests.extend(
+                (
+                    state["request"],
+                    {
+                        t["number"]
+                        for t in state["targets"].values()
+                        if t["stage"] != "transferred"
+                    },
+                )
+                for state in knowledge_states(session.store, owner)
+            )
+        for request, numbers in reversed(requests):
             if not wanted.intersection(numbers):
                 continue
             if (
@@ -105,13 +117,14 @@ def register(
     options: dict[str, Any],
 ) -> dict[str, Any]:
     from lib.ops_review import knowledge_records
+    from lib.ops_review.knowledge_progression import transfer_parked
 
     timeout = options.get("agent_timeout", 1800)
     if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("agent timeout must be positive and finite")
     session.gh.targeted_history = True
     row = session.agreed()
-    existing = registered(session, prs)
+    existing = registered(session, prs, allow_knowledge_transfer=True)
     if existing:
         return existing
     auth = authorization(session)
@@ -212,6 +225,7 @@ def register(
                 child=worker["child"],
                 pr=entry["number"],
             )
+    transfer_parked(session, entries)
     # Network reads released the registry lock. Recheck all owners immediately
     # before publishing the reservation, under the same lock as the registry save.
     existing = registered(session, prs)
@@ -440,10 +454,10 @@ def wait(path: Path, *, after: int = 0, timeout: float | None = None) -> dict[st
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
         state = read(path)
-        if (
-            any(e["id"] > after for e in state["events"])
-            or state["status"] == "completed"
-        ):
+        if any(e["id"] > after for e in state["events"]) or state["status"] in {
+            "completed",
+            "transferred",
+        }:
             return view(path)
         if deadline is not None and time.monotonic() >= deadline:
             return {**view(path), "wait_timed_out": True}

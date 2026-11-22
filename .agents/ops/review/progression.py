@@ -21,6 +21,7 @@ POLL_SECONDS = 60
 CI_TIMEOUT = 6 * 3600
 REPAIR_LIMIT = 3
 KNOWLEDGE_MERGE = "knowledge_merge"
+INACTIVE_STAGES = {"parent_wait", "completed", "transferred"}
 
 
 class RateWait(Exception):
@@ -153,19 +154,24 @@ class Engine:
             "not_required",
         }:
             raise ValueError("unknown review stage")
+        self.knowledge = self.state["request"].get("kind") == KNOWLEDGE_MERGE
         for n, target in self.state["targets"].items():
-            if str(target["number"]) != n or target["stage"] not in {
-                "ci_wait",
-                "dependency_wait",
-                "repair_pending",
-                "merge_pending",
-                "post_merge_wait",
-                "parent_wait",
-                "completed",
-            }:
+            stage = target["stage"]
+            if (
+                str(target["number"]) != n
+                or stage
+                not in INACTIVE_STAGES
+                | {
+                    "ci_wait",
+                    "dependency_wait",
+                    "repair_pending",
+                    "merge_pending",
+                    "post_merge_wait",
+                }
+                or (stage == "transferred" and not self.knowledge)
+            ):
                 raise ValueError("unknown progression target or stage")
         confirmation = self.state["request"].get("kind") == "post_merge_confirmation"
-        self.knowledge = self.state["request"].get("kind") == KNOWLEDGE_MERGE
         if (self.state["review"]["stage"] == "not_required") != (
             confirmation or self.knowledge
         ):
@@ -218,20 +224,17 @@ class Engine:
         target.update(
             resume_stage=resume or target["stage"], stage="parent_wait", reason=reason
         )
-        if all(
-            t["stage"] in {"parent_wait", "completed"}
-            for t in self.state["targets"].values()
-        ):
+        if all(t["stage"] in INACTIVE_STAGES for t in self.state["targets"].values()):
             self.state["status"] = "parent_wait"
         self.emit("parent_wait", pr=target["number"], reason=reason)
 
     def block_start(self, pr: int, reason: str) -> None:
-        if self.state["status"] == "completed":
+        if self.state["status"] in {"completed", "transferred"}:
             return
         # No step ran. Preserve each active stage for an explicit continuation
         # and leave already-paused peers and completed targets as they were.
         for target in self.state["targets"].values():
-            if target["stage"] not in {"parent_wait", "completed"}:
+            if target["stage"] not in INACTIVE_STAGES:
                 target.update(
                     resume_stage=target["stage"], stage="parent_wait", reason=reason
                 )
@@ -247,6 +250,8 @@ class Engine:
     ) -> None:
         if not evidence.strip():
             raise ValueError("continuation requires the parent's instruction")
+        if self.state["status"] == "transferred":
+            raise ValueError("knowledge merge targets transferred to formal review")
         if prs is not None:
             selected = {str(n) for n in prs}
             if (
@@ -297,6 +302,8 @@ class Engine:
         self.save()
 
     def run(self) -> dict[str, Any]:
+        if self.state["status"] == "transferred":
+            return self.state
         self.deliver()
         if self.state["status"] == "completed":
             return self.state
@@ -378,7 +385,7 @@ class Engine:
         while True:
             for target in self.state["targets"].values():
                 if (
-                    target["stage"] in {"completed", "parent_wait"}
+                    target["stage"] in INACTIVE_STAGES
                     or target["next_poll"] > self.clock()
                 ):
                     continue
@@ -404,11 +411,12 @@ class Engine:
             active = [
                 t
                 for t in self.state["targets"].values()
-                if t["stage"] not in {"completed", "parent_wait"}
+                if t["stage"] not in INACTIVE_STAGES
             ]
             if not active:
                 completed = all(
-                    t["stage"] == "completed" for t in self.state["targets"].values()
+                    t["stage"] in {"completed", "transferred"}
+                    for t in self.state["targets"].values()
                 )
                 self.state["status"] = "completed" if completed else "parent_wait"
                 if completed:

@@ -15,7 +15,7 @@ from urllib.parse import quote
 
 from issues.format import visible_lines
 from lib import knowledge_ci
-from parent.policy import number, object_value
+from parent.policy import closing_references, nonempty, number, object_value
 from parent.snapshot import git
 
 if TYPE_CHECKING:
@@ -24,6 +24,21 @@ if TYPE_CHECKING:
 
 WORKFLOW = "Knowledge library"
 RESULT_SIZE_LIMIT = 65536
+_CLOSING_ISSUES_QUERY = """
+query KnowledgeClosingIssues($owner: String!, $name: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    nameWithOwner
+    pullRequest(number: $number) {
+      number state isDraft title body headRefOid baseRefName baseRefOid
+      closingIssuesReferences(first: 100, after: $after) {
+        totalCount
+        nodes { number repository { nameWithOwner } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}
+"""
 
 
 def commit_sha(value: object, what: str) -> str:
@@ -91,12 +106,113 @@ def assess(
 def references(body: str, repo: str) -> set[int]:
     pattern = (
         rf"https://github\.com/{re.escape(repo)}/(?:issues|pull)/([1-9][0-9]*)\b"
-        r"|(?<![\w./#-])#([1-9][0-9]*)\b"
+        rf"|(?<![\w./#-])(?:{re.escape(repo)})?#([1-9][0-9]*)\b"
     )
     return {
         int(m[1] or m[2])
         for m in re.finditer(pattern, "\n".join(visible_lines(body)), re.I)
     }
+
+
+def closing_targets(
+    gh: GitHub, root: Path, pr: dict[str, Any], comparison: Comparison
+) -> set[int]:
+    """Require GitHub and the PR description to name the same closing issues."""
+    owner, name = gh.repo.split("/")
+    repo = gh.repo.casefold()
+    body = pr.get("body") or ""
+    declared = closing_references(body, repo)
+    if any(name != repo for name, _ in declared):
+        raise ValueError("PR body declares a closing target in another repository")
+    expected = {
+        "number": pr["number"],
+        "state": "OPEN",
+        "isDraft": False,
+        "title": pr.get("title"),
+        "body": body,
+        "headRefOid": comparison.head,
+        "baseRefName": "main",
+        "baseRefOid": comparison.base,
+    }
+    after = None
+    seen_cursors = set()
+    actual: set[tuple[str, int]] = set()
+    total = None
+    while True:
+        data = gh.graphql(
+            _CLOSING_ISSUES_QUERY,
+            {"owner": owner, "name": name, "number": pr["number"], "after": after},
+        )
+        repository = object_value(data.get("repository"))
+        pull = object_value(repository.get("pullRequest"))
+        if nonempty(
+            repository.get("nameWithOwner"), "repository"
+        ).casefold() != repo or any(
+            pull.get(key) != value for key, value in expected.items()
+        ):
+            raise ValueError(
+                "GitHub closing issues were read for a different PR snapshot"
+            )
+        connection = object_value(pull.get("closingIssuesReferences"))
+        count = connection.get("totalCount")
+        nodes = connection.get("nodes")
+        if (
+            type(count) is not int
+            or count < 0
+            or (total is not None and count != total)
+            or not isinstance(nodes, list)
+        ):
+            raise ValueError("GitHub closing issue list is incomplete or changed")
+        total = count
+        for raw in nodes:
+            node = object_value(raw)
+            identifier = (
+                nonempty(
+                    object_value(node.get("repository")).get("nameWithOwner"),
+                    "closing issue repository",
+                ).casefold(),
+                number(node.get("number")),
+            )
+            if identifier[0] != repo:
+                raise ValueError(
+                    "GitHub reports a closing target in another repository"
+                )
+            if identifier in actual:
+                raise ValueError("GitHub closing issue list changed during pagination")
+            actual.add(identifier)
+        page = object_value(connection.get("pageInfo"))
+        if page.get("hasNextPage") is False and len(actual) == total:
+            break
+        if page.get("hasNextPage") is not True or not nodes or len(actual) >= total:
+            raise ValueError("GitHub closing issue list is incomplete or changed")
+        after = nonempty(page.get("endCursor"), "closing issue cursor")
+        if after in seen_cursors:
+            raise ValueError("GitHub repeated a closing issue cursor")
+        seen_cursors.add(after)
+    if actual != declared:
+        raise ValueError(
+            "GitHub closing targets differ from PR body "
+            f"(GitHub only: {sorted(n for _, n in actual - declared)}, "
+            f"body only: {sorted(n for _, n in declared - actual)})"
+        )
+    # Commit messages can close an issue on the default branch independently
+    # of the PR's closingIssuesReferences connection.
+    messages = git(
+        "--no-replace-objects",
+        "log",
+        "-z",
+        "--format=%B",
+        f"{comparison.base}..{comparison.head}",
+        cwd=root,
+    ).decode(errors="replace")
+    extra = closing_references(messages, repo, markdown=False) | closing_references(
+        pr.get("title") or "", repo, markdown=False
+    )
+    if extra - declared:
+        raise ValueError(
+            "commit or PR title declares a closing target missing from the PR body"
+        )
+    return {n for _, n in actual}
 
 
 def base_tip(gh: GitHub, branch: str) -> str:

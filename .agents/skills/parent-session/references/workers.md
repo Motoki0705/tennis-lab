@@ -53,11 +53,25 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --chi
 
 ## ナレッジ記録PRの作成
 
-作業者は、独立した実験・文献の記録と、run同梱の再現専用Python・シェルを、最初から記録専用PRにまとめる。実行結果が受入条件なら、実行コマンドと結果の証拠をPR本文に添える。
+作業者は、独立した実験・文献の記録と、run同梱の再現専用Python・シェルを、最初から記録専用PRにまとめる。
 
 - 記録だけで受入条件を満たすIssueは、記録PRに `Closes #<issue>` を書く。
 - 実装に付随する記録PRは、`Refs #<issue>, #<実装PR>` のように対象Issueと実装PRを参照する。受入条件を満たす実装PRにclosingを置く。
 - 実装と混在する差分、Web UI・検査器・スキーマ・レジストリ（`deployments.yaml` 等）・保存規則・CI設定の変更、本番チェックポイントと一体の採用根拠は、通常PRの正式レビューで扱う。
+
+記録専用PRの本文に `## 実行証拠` 見出しを置き、直下に `json` のコードブロックを1つ書く。`head_sha` は検証したPR HEADの完全SHA。run同梱の再現スクリプトを追加・変更した場合や、実行結果が受入条件の場合は、実際のコマンド、終了値、結果を書く。`result` には受入条件に対応する測定値・出力や実行ログの参照を含める。
+
+```json
+{
+  "head_sha": "0123456789abcdef0123456789abcdef01234567",
+  "status": "passed",
+  "command": "bash knowledge/runs/example/repro.sh",
+  "exit_code": 0,
+  "result": "評価32件が完了し、指定された全出力を生成した。"
+}
+```
+
+実行を伴わない受入では `{"head_sha":"0123456789abcdef0123456789abcdef01234567","status":"not_required"}` を同じ形式で記載する。HEADを更新したら、実行や受入の照合を新HEADで済ませてから、この節を更新する。
 
 ## CI・ローカルqueueの待機
 
