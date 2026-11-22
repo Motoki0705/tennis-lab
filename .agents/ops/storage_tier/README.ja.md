@@ -105,7 +105,9 @@ Linuxでは `O_PATH|O_NOFOLLOW` のfdからの `readlinkat(fd, "")` でも古い
 初回の移行では過去outputsをE:だけに保持し、D:のoutputs rootは空から始める。
 常駐入力をhash照合して取得し、許可したE:参照を作る。Clip Studio利用者と切替中の停止・再開時刻を調整し、
 D:の元のdata相対pathからraw動画とprocessedの `projects.json` を開けることを確認する。
-容量の受入はLinux側の空きで判定し、Windows物理D:の差は別記録とする。VHDXのsparse化・圧縮は今回に含めない。
+移行の容量受入はLinux側の空きを使う。新規起動の可否は
+[物理D:の容量watchdog](../d_capacity/README.md)がWindows側の空きを使って判定する。
+VHDXのsparse化・圧縮はこの移行の対象外。
 
 ## checkpoint単位とCI assets
 

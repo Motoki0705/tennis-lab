@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.agent_settings import check_saved_implementation_model, implementation_model
+from lib.d_capacity import CapacityError, require_capacity
 from parent import worker_preflight, worker_slots
 from parent.adopted_tasks import check_task_adoptions
 from parent.execution import (
@@ -499,8 +500,14 @@ class Supervisor:
             ]
         assert_material_fresh(snapshot, current, session.parent, sources)
 
-    def _cancel_admission(
-        self, key: str, expected: dict[str, Any], reason: str, *, claimed: bool = False
+    def _rollback_admission(
+        self,
+        key: str,
+        expected: dict[str, Any],
+        reason: str,
+        *,
+        claimed: bool = False,
+        retry: bool = False,
     ) -> None:
         """Rollback only this unstarted job, using no remote authorization."""
         with (
@@ -532,6 +539,13 @@ class Supervisor:
                 if (Path(job["directory"]) / "runtime").exists():
                     self.store.conflict("launch evidence appeared during admission")
                 job["worker"] = None
+            if retry:
+                if not unstarted(job):
+                    self.store.conflict("launch evidence appeared during capacity refusal")
+                job.update(phase="reserved", diagnostic=reason)
+                event(dispatch, "runtime_deferred", job_id=job["id"], reason=reason)
+                self.store.save()
+                return
             self.cancel_reservation(row, job, reason)
             if (
                 job["role"] == "parent"
@@ -577,7 +591,7 @@ class Supervisor:
         ) as exc:
             if expected is None:
                 raise
-            self._cancel_admission(
+            self._rollback_admission(
                 key, expected, f"{exc}; 次の予定回または明示実行で再判断する"
             )
             if isinstance(exc, RegistryConflict):
@@ -628,6 +642,7 @@ class Supervisor:
                     require_repair_labels(session, job["child"], job["repair"]["pr"])
                 if not self.schedule.read()["enabled"]:
                     self.store.conflict("dispatcher disabled before launch")
+                require_capacity()
                 admitted = True
                 yield
         except (
@@ -638,7 +653,13 @@ class Supervisor:
             subprocess.SubprocessError,
         ) as exc:
             if not admitted and expected is not None:
-                self._cancel_admission(key, expected, str(exc), claimed=True)
+                self._rollback_admission(
+                    key,
+                    expected,
+                    str(exc),
+                    claimed=True,
+                    retry=isinstance(exc, CapacityError),
+                )
             raise
 
     def resume_source(
@@ -1629,6 +1650,7 @@ class Supervisor:
         for key, job in jobs:
             # The worker itself rechecks enable/configuration, capacity, owner
             # and delegation at claim and again at final Popen admission.
+            require_capacity()
             Runtime(Path(job["runner"])).spawn(
                 self.store.directory.resolve(),
                 key,

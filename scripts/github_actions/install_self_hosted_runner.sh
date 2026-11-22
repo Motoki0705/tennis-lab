@@ -13,6 +13,8 @@ readonly GPU_GATE_FILE="${GPU_LOCK_FILE}.gate"
 readonly GPU_SLOT_0_FILE="${GPU_LOCK_FILE}.slot-0"
 readonly GPU_SLOT_1_FILE="${GPU_LOCK_FILE}.slot-1"
 readonly RUNNER_HOME="$STATE_ROOT/home"
+readonly CAPACITY_STATE_DIR="/run/tennis-lab-d-capacity"
+readonly CAPACITY_TMPFILES="/etc/tmpfiles.d/tennis-lab-d-capacity.conf"
 readonly REPOSITORY_URL="https://github.com/Motoki0705/tennis-lab"
 readonly RUNNER_LABELS="local-gpu,cuda,wsl2,tennis-lab"
 readonly SERVICE_PATH="/etc/systemd/system"
@@ -44,8 +46,8 @@ for mount_path in /mnt/?; do
     windows_mount_paths+=("$mount_path")
   fi
 done
-if [ "${#windows_mount_paths[@]}" -eq 0 ]; then
-  echo "No Windows drive mounts were found under /mnt; refusing to weaken runner isolation." >&2
+if [ ! -d /mnt/d ]; then
+  echo "/mnt/d is missing; refusing to install a runner without D: isolation." >&2
   exit 1
 fi
 inaccessible_paths="${windows_mount_paths[*]}"
@@ -98,6 +100,17 @@ done
 install -d -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0750 "$RUNNER_ROOT"
 install -d -o root -g root -m 0755 "$TOOL_ROOT/bin"
 
+# The user watchdog owns the publication directory. Only root can provision
+# it under /run and the CI user can only read the watchdog's verdict.
+watchdog_uid="$(stat -c %u "$main_repo_root")"
+if [ "$watchdog_uid" -eq 0 ] || [ "$watchdog_uid" -eq "$(id -u "$RUNNER_USER")" ]; then
+  echo "The main checkout must be owned by the user running the D: watchdog, separate from the runner user." >&2
+  exit 1
+fi
+install -m 0644 /dev/stdin "$CAPACITY_TMPFILES" <<EOF
+d $CAPACITY_STATE_DIR 0755 $watchdog_uid root -
+EOF
+systemd-tmpfiles --create "$CAPACITY_TMPFILES"
 
 download_release_asset() {
   local repository="$1" asset_name="$2" destination="$3"
@@ -179,7 +192,7 @@ install -m 0644 /dev/stdin "$SERVICE_PATH/tennis-lab-training-queue.service" <<E
 [Unit]
 Description=tennis-lab logical two-slot GPU training queue
 Requires=tennis-lab-actions-assets.service
-After=network-online.target tennis-lab-actions-assets.service
+After=network-online.target tennis-lab-actions-assets.service systemd-tmpfiles-setup.service
 Wants=network-online.target
 
 [Service]
@@ -191,6 +204,7 @@ Environment=HOME=$RUNNER_HOME
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:/usr/lib/wsl/lib
 Environment=TRAINING_QUEUE_DIR=$STATE_ROOT/training-queue
 Environment=TRAINING_QUEUE_LOCK_FILE=$GPU_LOCK_FILE
+Environment=TRAINING_QUEUE_CAPACITY_STATUS_FILE=$CAPACITY_STATE_DIR/status.json
 ExecStart=$TOOL_ROOT/bin/training_queue.sh serve --idle-timeout 2147483647
 KillMode=control-group
 KillSignal=SIGTERM
@@ -204,7 +218,7 @@ PrivateTmp=true
 ProtectHome=true
 ProtectProc=invisible
 ProtectSystem=strict
-ReadOnlyPaths=$STATE_ROOT/assets
+ReadOnlyPaths=$STATE_ROOT/assets -$CAPACITY_STATE_DIR
 ReadWritePaths=$RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $GPU_LOCK_FILE $GPU_GATE_FILE $GPU_SLOT_0_FILE $GPU_SLOT_1_FILE
 InaccessiblePaths=$inaccessible_paths
 RestrictSUIDSGID=true

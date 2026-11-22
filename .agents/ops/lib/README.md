@@ -557,6 +557,9 @@ resumeで別の選択を指定すると起動前に拒否する。通常の許�
 
 ## 起動・継続
 
+新しいターンの起動直前に[物理D:の空き](../d_capacity/README.md)を確認する。容量不足・測定エラーは
+`capacity_blocked` と終了コード75になり、理由をstderrと `result.json` に残す。`status` と `stop` は利用できる。
+
 呼出元は既存worker/PR/担当と実行枠を先に照合し、各ターンに新しい `--run-dir` を割り当てる。
 `--task-id` は同じ作業を表す安定した呼出元のキー。指定時はgit worktreeを必須とする。
 `--branch` は任意の期待branchで、不一致なら起動前に拒否する。detached checkoutは

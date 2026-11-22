@@ -92,6 +92,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             "git_sync",
             "worktree_cleanup",
             "storage_tier",
+            "d_capacity",
         ):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
@@ -239,6 +240,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "git-sync",
         "worktree-cleanup",
         "storage-tier",
+        "d-capacity",
     }
     report = next(row for row in data["targets"] if row["target"] == "report")
     units = {unit["unit"]: unit for unit in report["units"]}
@@ -840,3 +842,18 @@ def test_storage_timer_only_installs_service_and_timer_without_notification(
     assert f"{stem}-failure.service" not in state["units"]
     assert not (source / f"{stem}-failure.service").exists()
     checked(control, "off", "storage-tier")
+
+
+def test_d_capacity_installs_and_controls_the_watchdog(
+    control: ControlEnv,
+) -> None:
+    target, unit = "d-capacity", "tennis-lab-d-capacity.service"
+    result = control.run("install", target)
+    assert result.returncode == 0, result.stderr
+    linked = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user" / unit
+    assert linked.is_symlink()
+    assert "-m d_capacity.watchdog" in linked.read_text()
+    checked(control, "on", target)
+    assert control.read()["units"][unit]["ActiveState"] == "active"
+    assert control.run("logs", target).returncode == 0
+    checked(control, "off", target)

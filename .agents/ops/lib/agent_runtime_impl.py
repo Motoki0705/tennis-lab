@@ -42,6 +42,7 @@ from opsproc import (
     terminate_descendants,
 )
 
+from lib.d_capacity import REFUSED, CapacityError, require_capacity  # noqa: E402
 from lib.review_settings import read_object as read_review_selection  # noqa: E402
 
 VERSION = 1
@@ -597,6 +598,7 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         status: int = 1
         reason: str | None = "invalid_output"
         try:
+            require_capacity()
             enable_child_subreaper()
             out.parent.mkdir(parents=True, exist_ok=True)
             out.unlink(missing_ok=True)
@@ -667,6 +669,10 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
                     result["error"] = (
                         f"CLI exited with status {status}; stderr: {stderr_head or '(empty)'}"
                     )
+        except CapacityError as exc:
+            status, reason = REFUSED, "capacity_blocked"
+            result["cleanup_complete"] = True
+            result["error"] = str(exc)
         except FileNotFoundError:
             status, reason = 127, "startup_failed"
             result["error"] = "required executable or runtime file is missing"
@@ -699,7 +705,9 @@ def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
         )
         if result["error"]:
             message = (
-                "empty final message"
+                result["error"]
+                if reason == "capacity_blocked"
+                else "empty final message"
                 if "empty final message" in result["error"]
                 else "inspect local result.json and stderr.log for details"
             )

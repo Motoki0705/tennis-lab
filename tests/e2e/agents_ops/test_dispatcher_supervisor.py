@@ -32,6 +32,7 @@ from tests.support.agents_ops.model_pins import (
     WORKER_DEFAULT_MODEL,
     previous_config,
 )
+from tests.support.d_capacity import GIB, set_available
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -900,6 +901,42 @@ def test_worker_claim_validates_inside_registry_lock_and_starts_only_once(
     calls = invoke_worker(d, monkeypatch, job["id"])
     assert len(calls) == 1 and calls[0]["phase"] == "starting"
     assert invoke_worker(d, monkeypatch, job["id"]) == []
+
+
+def test_dispatcher_refuses_before_spawn_and_before_runner_popen(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, fake_d_drive: Path
+) -> None:
+    d.prepare()
+    d.control.assign()
+    job_id = d.job()["id"]
+    spawned = MagicMock()
+    monkeypatch.setattr(d.mod.Runtime, "spawn", spawned)
+
+    low = 20 * GIB - 1
+    set_available(fake_d_drive, low)
+    with pytest.raises(d.mod.CapacityError, match="21474836479 bytes available"):
+        d.control.launch_reserved()
+    spawned.assert_not_called()
+    assert d.job()["phase"] == "reserved"
+
+    set_available(fake_d_drive, 20 * GIB)
+    d.control.launch_reserved()
+    spawned.assert_called_once()
+    assert d.control.claim("o/r#1", job_id)
+
+    set_available(fake_d_drive, low)
+    with (
+        pytest.raises(d.mod.CapacityError, match="21474836479 bytes available"),
+        d.control.launch_admission("o/r#1", job_id),
+    ):
+        pytest.fail("low physical D: reached Popen admission")
+    assert d.job()["phase"] == "reserved" and d.job()["worker"] is None
+    assert not (Path(d.job()["directory"]) / "runtime").exists()
+    set_available(fake_d_drive, 20 * GIB)
+    assert d.control.claim("o/r#1", job_id)
+    with d.control.launch_admission("o/r#1", job_id):
+        pass
+    assert d.job()["phase"] == "starting"
 
 
 def test_worker_claim_preserves_explicit_parent_stop(

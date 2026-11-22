@@ -152,8 +152,9 @@ Initial migration leaves all previous outputs on E: and starts D: output roots
 empty. Copy/hash resident inputs, create the declared external references, and
 pause/restart Clip Studio around the switch; verify both raw videos and processed
 `projects.json` through their original data-relative paths on D:. Capacity acceptance
-uses Linux filesystem free space; record Windows D: separately. VHDX sparse/compact
-operations remain outside this migration.
+for this migration uses Linux filesystem free space. The [physical D: capacity
+watchdog](../d_capacity/README.md) controls new starts and reads the Windows
+volume's free space. VHDX sparse/compact operations remain outside this migration.
 
 ## Checkpoint units and CI assets
 
