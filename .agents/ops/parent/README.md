@@ -25,12 +25,13 @@
 
 ## agyの手動親
 
-手動起動したAntigravity CLIの対話ルートで `register`、`status`、`handoff`、`release` を使える。
+手動起動したAntigravity CLIの対話ルートで `register`、`status`、`agree`、`run-worker`、`inspect-worker`、`wait-worker`、`handoff`、`release` などの手動親操作を使える。
 ホスト側の `run_command` から実行すると、[共通identity](../lib/identity.py)が環境の会話IDを
 単一の前景TUI祖先とその排他ロックに照合する。[agy_session.py](../lib/agy_session.py)はさらに
 そのTUIのローカル読み取りRPCでルート会話IDと実行trajectoryを照合する。
 子会話を別paneで開き直した場合も、ルートの確認に通らなければ担当操作を拒否する。
-print、ACP、入れ子、子agent、workflowからの担当操作、ホスト祖先を確認できないterminal sandboxは対象外。
+print、ACP、入れ子、子agent、workflowからの担当操作、ホスト祖先を確認できないterminal sandboxや `setsid ... &` で切り離したシェルは対象外。
+`run-worker` / `wait-worker` の直接非同期起動と `inspect-worker` 確認手順は[ワーカーの委任と統合（agy手動親での起動と監視）](../../skills/parent-session/references/workers.md#agy手動親での起動と監視)を参照。
 担当登録・引継ぎ受領に使う起動と再開の手順は[手動親ランチャー](../herdr_labels/README.md#agyの手動起動と表示)を参照。
 agyの識別情報がある `status` は、ホスト祖先・会話ロック・trajectoryの照合異常をエラーとして返す。
 自律親の起動範囲は[dispatcher](../dispatcher/README.md#担当実行枠中断復旧)を参照。

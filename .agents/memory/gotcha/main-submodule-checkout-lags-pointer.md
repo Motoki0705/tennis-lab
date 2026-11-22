@@ -1,22 +1,20 @@
 ---
-title: "PRで submodule の pointer が進んでも、メインtreeの submodule の checkout は古いまま残る"
-summary: "メインcheckoutの定期同期後もNHTのsubmoduleは古いcommitを指すことがある。checkoutのずれと作業中の変更を区別する。"
+title: NHTのsubmodule checkoutが古いと学習・描画で古いコードを使うことがある
+summary: NHTのgitlinkと実checkoutのずれは実行版に影響する。submodule内の未追跡設定を整理する前にsceneの参照を確かめる。
 applies_to: all
-source: "third_party/nht の M 表示の調査（2026-10-16）"
+source: third_party/nht の M 表示の調査（2026-10-16）
 created: 2026-10-16
 last_verified: 2026-11-20
-evidence: "メインtreeで `git submodule status --recursive third_party/nht` を実行し、行頭が `+` なら記録された pointer と checkout がずれている"
+evidence: git submodule status --recursive third_party/nht の行頭+はgitlinkとのずれを表す。setup-nhtはpublic toolをeditableで導入し、専用trainerをsubmodule内に作る。NHT設定の読込は参照ファイルの存在を要求する。
 citations:
-  - path: ".agents/ops/git_sync/README.md"
-    symbol: "#更新の契約"
-  - path: ".spin/cmds.py"
-    symbol: "NHT_ROOT_RELATIVE"
+- path: .agents/ops/git_sync/README.md
+  symbol: '#更新の契約'
+- path: src/synthetic_data_generation/README.md
+  symbol: '#set-up-nht-with-spin'
+- path: src/synthetic_data_generation/configuration.py
+  symbol: def _nht_pipeline_config
 ---
 
-`deps(third-party): bump third_party/nht` のようなPRで固定commitが進んでも、メインcheckoutの定期更新はsubmoduleを同期しない。メインtreeの `third_party/nht`（と入れ子の `gsplat`）は古いcommitのまま残り、`git status` に ` M third_party/nht` が出ることがある。2026-10-16には手動pull後も2回分のbumpが反映されていなかった。
+2026-10-16はメインcheckoutのpull後も `third_party/nht` の実checkoutに2回分のgitlink更新が反映されていなかった。公開コマンドのeditable installや専用trainerがこのsubmoduleを使っていれば、メインのコードを更新してもNHTの修正は実行されない。`git submodule status --recursive third_party/nht` の行頭 `+` を見て、gitlinkのずれとsubmodule内の実変更を区別する。
 
-`nht-render` と NHT trainer は、メインtreeの `third_party/nht` から editable install されている。そのため、このずれは「mainにあるはずのNHTの修正が実行時に使われない」という静かな食い違いになる。
-
-submodule 内の未追跡ファイルにも、scene の `resolved-config.yaml` から参照されているものがある（例: `nht.pipeline_config_path` が指す派生config）。消すと、その scene の再実行が fail-closed で止まる。
-
-**使い方:** submodule の `M` を見たら、`git submodule status --recursive` で `+`（pointer とのずれ）を確認し、submodule内の変更有無も調べる。ずれだけなら、同期の要否を判断する材料として報告する。未追跡ファイルを整理する前に、`rg -l <ファイル名> data/synthetic_data_generation/scenes -g resolved-config.yaml` で設定からの参照を確かめる。
+submodule内の未追跡ファイルが `resolved-config.yaml` の `nht.pipeline_config_path` から参照されている場合、そのファイルを消すとsceneの再実行が止まる。整理前に `data/synthetic_data_generation/scenes` の保存設定から該当ファイルの参照を調べる。

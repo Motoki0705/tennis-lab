@@ -23,3 +23,7 @@ unmanaged_data_links = [
   "data/tennis_multiview/processed/tennis_clip",
   "data/tennis_multiview/processed/tennis_clip_source",
 ]
+# Persistent worktree outputs live only on E: (D: capacity, 2026-11-22). D: keeps
+# `.worktree-outputs` as a symlink to its exact E: counterpart; these outputs are
+# never mirror/evict/hydrate units, and hardlinks between them and D: data fail.
+worktree_outputs_on_mirror = true

@@ -34,6 +34,8 @@ E: 是挂载到 `/mnt/wsl/tennis-data` 的 HDD ext4（`noatime`），保存权�
 Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必须在 readlink 前拒绝，以保持 dry-run 只读。
 管理 payload 应使用实际文件或硬链接；本工具不改写已有链接。
 
+[config.toml](config.toml) 设置 `worktree_outputs_on_mirror = true` 时，worktree 持久输出只放在 E:。此时 D: 的 `<main>/.worktree-outputs` 必须是字面目标恰为其 E: 对应路径的 symlink，目标是挂载上的实际目录；D: 实际目录、其他目标或缺失链接都报错。worktree 的 `outputs` 链接仍指向 `<main>/.worktree-outputs/<name>`。由于 D: 与 E: 经由链接指向同一份 bytes，这些输出在两层都不作为 mirror/evict/hydrate 单元，与 D: data 之间的 hardlink 以 `EXDEV` 失败。未设置该键时要求上述 D: 布局并拒绝链接化的 root。
+
 硬链接只能用于 D: 内或 E: 内，不能跨 tier。复制保留**单位内**硬链接，单位之间、tier 之间使用独立 inode。
 清理只删除目标单位的名字。审计区分逻辑大小、去重后的分配量、外部硬链接、预计可回收量与文件系统空闲差值。
 其他名字仍存在时，磁盘块可能完全不释放。hydrate 创建新的 D: inode，不恢复跨单位硬链接。
@@ -190,6 +192,41 @@ S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/pytho
 仅存于 E: 的 DATA/CHECKPOINT/ARTIFACT 给出明确错误和 hydrate 命令。只用 stat 诊断 E: 是否存在，不读取或自动取回 payload。
 未挂载会单独报错。repo 外的自定义根和绕过公共边界的 consumer 继续使用原有 missing-file 错误。
 新 OUTPUT 路径仍可创建；不逐个修改训练入口或 queue 命令。
+
+## 临时热副本
+
+读取速度足够时直接使用 E: 上的原件。需要临时复制到 D: 时，在主 checkout 的 `data/` 下使用带版本的只读输入。
+复用 [config.toml](config.toml) 中 `dataset_containers` 下的版本，或用 `dataset_units` 声明独立版本的根目录。
+复制前，先将声明部署到运行日常 `cycle` 的 checkout。若源数据位于 E: 的其他位置，先在 E: 对应的仓库相对路径
+准备固定版本，核对文件清单与源数据的 SHA-256，再 hydrate。`resident_units` 用于需要长期保留在 D: 的输入。
+2026-11-14 创建的 `~/tennis-hot` 占用约 147 GiB，未纳入单元清单且没有释放日期，一直留在 D: 直到
+[容量故障](https://github.com/Motoki0705/tennis-lab/issues/2361)。
+
+1. 复制前，在负责该工作的 issue 中记录负责人、job 或 run、使用 D: 的原因、E: 源路径和 D: 目标路径、
+   预计字节数、使用期限和释放检查日期。日期时间注明时区，将检查安排在计划最后使用的 14 天后。
+   负责人应在期限内结束使用，或重新核算容量并在到期前更新记录。为副本保留空间直至释放。
+2. 用 [CLI](#cli) 的 `scan` 确认能找到预期的 E: 数据集版本，且 D: 目标路径尚未占用，再用 `index --dry-run`
+   估算大小。确认 `/mnt/d` 挂载的是 Windows D:，分别查看物理 D: 和 guest 的可用容量。将整个副本、文件系统和
+   VHDX 开销，以及其他任务后续写入的峰值计入预算。guest 必须容纳这些写入，物理 D: 必须仍留有 watchdog 阈值
+   （默认 20 GiB）以上的可用空间。watchdog 拦截新启动，运行中的任务和手动复制仍会使用空间。
+
+   ```bash
+   unit=data/ball_detection/example-v1
+   "${S[@]}" scan
+   "${S[@]}" index "$unit" --dry-run
+   findmnt --mountpoint /mnt/d
+   df -B1 / /mnt/d
+   ```
+
+3. 容量检查通过后运行 `"${S[@]}" hydrate "$unit"`，把 `hydrated` 结果和 `.storage-tier/audit.jsonl` 中该单元的记录
+   留在负责该工作的 issue。hydrate 校验两端并记录 manifest。任务读取副本，将结果写到 E: 上的 worktree outputs。
+4. 完成或取消时，解除排队任务的引用，移除临时创建的单元外硬链接，在 issue 中记录最后使用日期。
+   其他硬链接仍保留数据块时，继续把该空间计入副本用量。
+   到了释放检查日，确认日常 `cycle` 已回收副本，或运行 `"${S[@]}" evict "$unit" --dry-run`。
+   若结果为 `would_evict`，运行 `"${S[@]}" evict "$unit"`，并确认输出为 `evicted`，或用 `scan` 确认副本仅在 E:。
+   若仍在使用、atime 未到期或校验失败，在同一 issue 中记录原因和下次检查日期。
+   释放遵循[常规的 14 天 atime 和校验规则](#校验与排除条件)。分别记录 Linux 和 Windows 的可用空间。
+   回收 Windows 空间可能需要 [trim 和 compact](wsl-vhdx.zh-CN.md)。
 
 ## 校验与排除条件
 
@@ -439,7 +476,7 @@ user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。失败仅�
 5. 由对应 session 更新活动、等待命令。先做只读 cycle，再以可丢弃单位执行 mirror→evict→hydrate。
    检查 `statvfs` 空闲量、审计、consumer 读取、同 UID 检查和失败 journal/audit，之后才启用 timer。
    queue 记录和其他 UID 不保护单位。外部硬链接可能阻止容量回收。
-   rollback 仅在 consumer 暂停时恢复旧链接，并独立保留 D: 新写入。根 VHDX 迁移、压缩不在范围内。
+   rollback 仅在 consumer 暂停时恢复旧链接，并独立保留 D: 新写入。Windows 磁盘维护参见 [Ubuntu VHDX 维护](wsl-vhdx.zh-CN.md)。
 
 `tests/integration/agents_ops/test_storage_tier.py` 使用临时真实文件与模拟 mount/proc，并覆盖真实 fd 和硬链接。
 CLI/worktree 由 `tests/e2e/agents_ops/test_storage_tier_cli.py` 验证；扩展既有 ops-control 安装测试与 configuration path 错误测试。

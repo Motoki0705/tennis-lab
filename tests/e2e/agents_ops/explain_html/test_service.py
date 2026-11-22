@@ -316,9 +316,29 @@ def test_public_cli_start_stop_restart_and_offline_export(editor_env: Any) -> No
             "reviewed_evidence_ids": ["baseline", "cameras"],
         },
     )
+    validator_root = env.root / "validator_pkg"
+    package = validator_root / "local_validator"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "checks.py").write_text(
+        "from collections.abc import Mapping\n"
+        "from threading import Event\n"
+        "from typing import Any\n"
+        "from explain_html import schema\n\n"
+        "def fake_rendering(\n"
+        "    candidate: Any, assets: Mapping[str, bytes], *, cancel: Event\n"
+        ") -> Any:\n"
+        "    assert 'data-content-id' in candidate.document.html\n"
+        "    assert not assets\n"
+        "    assert not cancel.is_set()\n"
+        "    return schema.CheckResult(status='passed')\n",
+        encoding="utf-8",
+    )
     process_env = {
         **os.environ,
-        "PYTHONPATH": os.pathsep.join([str(REPO / ".agents/ops"), str(REPO)]),
+        "PYTHONPATH": os.pathsep.join(
+            [str(REPO / ".agents/ops"), str(validator_root)]
+        ),
     }
 
     def cli(command: str, *args: str) -> Any:
@@ -351,7 +371,7 @@ def test_public_cli_start_stop_restart_and_offline_export(editor_env: Any) -> No
             "--agy",
             str(env.root / "agy"),
             "--validator",
-            "tests.support.agents_ops.explain_jobs:fake_rendering",
+            "local_validator.checks:fake_rendering",
         )
 
     first = start()

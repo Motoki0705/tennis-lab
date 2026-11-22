@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextlib
 import ctypes
+import errno
 import logging
 import os
 import shlex
@@ -49,6 +50,43 @@ def process_identity(pid: int) -> dict[str, str | int] | None:
         "start_ticks": fields[19],
         "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
     }
+
+
+def pidfd_open(pid: int) -> int:
+    """Return a Linux pidfd for ``pid``, falling back to libc when omitted by Python."""
+    native = getattr(os, "pidfd_open", None)
+    if native is not None:
+        return int(native(pid))
+    call = getattr(ctypes.CDLL(None, use_errno=True), "pidfd_open", None)
+    if call is None:
+        raise OSError(errno.ENOSYS, "pidfd_open is unavailable")
+    call.argtypes = [ctypes.c_int, ctypes.c_uint]
+    call.restype = ctypes.c_int
+    descriptor = int(call(pid, 0))
+    if descriptor < 0:
+        code = ctypes.get_errno()
+        if code == errno.ESRCH:
+            raise ProcessLookupError(code, os.strerror(code))
+        raise OSError(code, os.strerror(code))
+    return descriptor
+
+
+def pidfd_send_signal(descriptor: int, sig: int) -> None:
+    """Send ``sig`` to ``descriptor``, falling back to libc when omitted by Python."""
+    native = getattr(signal, "pidfd_send_signal", None)
+    if native is not None:
+        native(descriptor, sig)
+        return
+    call = getattr(ctypes.CDLL(None, use_errno=True), "pidfd_send_signal", None)
+    if call is None:
+        raise OSError(errno.ENOSYS, "pidfd_send_signal is unavailable")
+    call.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
+    call.restype = ctypes.c_int
+    if call(descriptor, sig, None, 0) != 0:
+        code = ctypes.get_errno()
+        if code == errno.ESRCH:
+            raise ProcessLookupError(code, os.strerror(code))
+        raise OSError(code, os.strerror(code))
 
 
 def enable_child_subreaper() -> None:

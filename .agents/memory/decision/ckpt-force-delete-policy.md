@@ -1,24 +1,22 @@
 ---
-title: "test推論をbackfillできない古いckptは、結果がknowledgeノードにあれば削除してよい（ユーザー判断）"
-summary: "backfillできない古いckptでも、指標がknowledgeにあれば整理できる。再現用の記録や検証済み予測は保全する。"
+title: 2026-06-21のPLCS整理では、指標記録済みでbackfill不能な旧ckptの手動削除が認められた
+summary: 2026-06-21のPLCSローカル整理では、指標記録済みでbackfill不能な旧ckptの手動削除を人間が認めた。通常のpruneは検証済み予測を要求する。
 applies_to: all
-source: "ユーザー判断（2026-06-21、PLCS ckpt 約111GBの整理）"
+source: ユーザー判断（2026-06-21、PLCS ckpt 約111GBの整理）
 created: 2026-06-21
 last_verified: 2026-11-20
-evidence: ".agents/skills/training-queue/scripts/prune_ckpts.py の --repro-dir / --delete の条件（検証済み pred_test.npz）。knowledge/runs には予測配列を置かない（knowledge/README.md の保存基準）"
+evidence: 2026-06-21の人間の判断記録。現行のprune_ckpts.pyは通常モードと--repro-dirの両方でpred_test.npzを検証し、knowledge READMEは削除記録と採用根拠の登録先を定める。
 citations:
-  - path: ".agents/skills/training-queue/scripts/prune_ckpts.py"
-    symbol: "--repro-dir"
-  - path: "knowledge/README.md"
-    symbol: "#削除した成果物の記録"
+- path: .agents/skills/training-queue/scripts/prune_ckpts.py
+  symbol: def verify_npz
+  note: 通常のpruneが要求する予測検証
+- path: knowledge/README.md
+  symbol: '#削除した成果物の記録'
+- path: knowledge/README.md
+  symbol: '`deployments.yaml`'
+  note: 採用checkpointの登録先
 ---
 
-ディスクを空けることを優先するユーザー判断である。ckpt は次の順で分類して消す。
+2026-06-21のPLCSローカル整理（約111GB）で、人間は空き容量の確保を優先した。保存configが当時のモデルコードと合わずtest推論をbackfillできない旧runでも、指標がknowledgeノードに残っていれば手動でckptを整理してよいと判断した。上書き済みの中間runやsmoke runも当時の整理対象だった。指標のない実験runは保全し、削除は `*.ckpt` に絞り、TensorBoard event・qualitative GIF・`hparams.yaml`・検証済み予測を残す条件だった。
 
-1. test推論済みのrun（queueのrepro bundle `.training_queue/repro/<jobid>/predictions/`、またはckpt隣の `predictions/` に検証済みの `pred_test.npz` がある）: ckpt を削除する。予測配列はknowledgeへコピーされず、このローカルbundleにだけ残るので、bundleは消さない。
-2. 最近のrunで、まだ推論していないがbackfillできるもの: `prune_ckpts.py --backfill --delete` を使う（モデルのコードがworktreeにしかなければ、そのworktreeから実行する）。
-3. 古くてbackfillできない（保存したconfigが現行のモデルコードと合わない）が、指標がknowledgeノードに記録済みのもの、上書きされた中間runやsmoke run: そのまま削除してよい。
-
-削除対象を `*.ckpt` に絞り、TensorBoard のイベント、qualitative の gif、`hparams.yaml` は残す。指標が無い場合は ckpt を保全する。再現に影響する削除は [knowledgeの保存基準](../../../knowledge/README.md#削除した成果物の記録) に従って記録する。
-
-**使い方:** backfill は GPU を使うので、training queue が学習している間は実行しない。
+この先例を参照するときは対象の採用状況と保存済み指標を照合する。通常の `prune_ckpts.py` とqueueの削除経路には検証済み `pred_test.npz` が必要。再現に関わる承認済みの削除は [knowledgeの削除記録](../../../knowledge/README.md#削除した成果物の記録) に従って記録する。
