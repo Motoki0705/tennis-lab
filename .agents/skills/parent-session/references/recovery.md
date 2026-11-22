@@ -5,6 +5,7 @@
 | 症状 | 最初に照合するもの | 再開条件と操作 |
 |---|---|---|
 | 登録・引継ぎ後の表示エラー | `status` の担当と、失敗した操作の応答 `parent_action_applied` | 担当が適用済みなら `display_sync.repair` で表示だけを修復する。 |
+| 登録・引継ぎ後の証拠エラー | 応答の `parent_action_applied` と `assignment_evidence` | `assignment_evidence.retry` に従い、担当を保存したセッションで `register` または同じ `--note-file` の `handoff --accept` を再実行する。送信結果が不明な場合は証拠Issueとjournalを照合する。 |
 | `creation uncertain`、通知の応答喪失 | 親番号・repo、証拠Issueのbinding、通知keyと保存済みspec | `evidence` とGitHubで既存記録を照合する。同一通知が `pending` なら同じspecで続行。送信済みで対象を確認できない場合はjournalを保全し、重複POSTを防ぐ。 |
 | 手動ワーカーの結果が返らない | `status` の担当名・委任IDと `inspect-worker` のrun | `wait-worker` の124は待機時間満了。2で `liveness_unknown` / `cleanup_unconfirmed` なら、runnerと子孫の終了・回収を照合する。終了が確認できてから同じ担当を再開する。[runnerの回収手順](../../../ops/lib/README.md#状態確認停止中断からの復旧) |
 | 自律親の予約だけ残った | `reconcile` とdispatcherのjob・起動記録 | 委任IDだけが保存されていてjobが未作成なら、そのIDで `dispatcher start-child` を使う。起動済みか不明なら元jobを照合する。[registry欠落時の復旧](../../../ops/dispatcher/README.md#registry欠落からの復旧) |

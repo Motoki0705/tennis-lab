@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+import subprocess
 import uuid
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -28,8 +29,10 @@ from issues import (
     render_child_tasks,
     task_status,
     validate_body,
+    work_status,
 )
 from issues.cli import render_spec
+from issues.format import WORK_STATUS_HEADING
 
 from . import execution, proposals, work_targets, worker_preflight, worker_slots
 from .github import GitHub
@@ -52,11 +55,15 @@ from .policy import (
     registration,
     replace_section,
 )
-from .state import Store
+from .state import Store, start_fresh_assignment
 
 TASK_MARKER = re.compile(
     r"(?m)^<!-- parent-task:v1 parent=([1-9][0-9]*) key=([a-z0-9][a-z0-9-]{0,63}) spec=([0-9a-f]{64}) -->$"
 )
+ASSIGNMENT_RETRIES = {
+    "assigned": "retry parent register in the assigned session",
+    "handoff": "retry parent handoff --accept with the original --note-file in the assigned session",
+}
 
 
 @dataclass(frozen=True)
@@ -262,39 +269,110 @@ class ParentSession:
         registration(self.store.parents, self.key, self.session)
         if self.gh.issue(self.parent)["state"] != "open":
             raise ValueError("cannot assign a closed parent issue")
-        if not self.row or self.row["status"] != "active":
-            previous = self.row
-            self.store.parents[self.key] = {
-                **previous,
-                "session": self.session,
-                "status": "active",
-                "generation": previous.get("generation", 0) + 1,
-                "tasks": previous.get("tasks", {}),
-                "reviews": previous.get("reviews", []),
-                "display_summary": summary,
-            }
-            self.row.pop("owner_runtime", None)
+        row = self.row
+        new_assignment = row.get("status") != "active"
+        if new_assignment:
+            row = start_fresh_assignment(
+                row, self.session, row.get("generation", 0) + 1, origin="register"
+            )
+            self.store.parents[self.key] = row
+        runtime_changed = self.capture_owner_runtime()
+        if new_assignment or runtime_changed or row.get("display_summary") != summary:
+            row["display_summary"] = summary
             self.store.save()
-        if self.capture_owner_runtime():
-            self.store.save()
-        if self.row.get("display_summary") != summary:
-            self.row["display_summary"] = summary
-            self.store.save()
-        self.post(
-            {"event": "assigned", "generation": self.row["generation"]},
+        if self._assignment_record_event() != "assigned":
+            return self._finish_assignment()
+        return self._finish_assignment(
+            {"event": "assigned"},
             "担当開始。担当指定と要件合意は別段階です。要件を確認してから分割・委任します。",
         )
-        # Registration returns its assignment receipt. A full status collection
-        # also traverses family/timelines and worker/completion inputs unrelated
-        # to this mutation; callers request that independent observation via status.
-        return {
+
+    def _finish_assignment(
+        self, event: dict[str, Any] | None = None, text: str = ""
+    ) -> dict[str, Any]:
+        # The owner has already been saved. Reporting a failed evidence step
+        # must still let the CLI confirm the display destination for this owner.
+        row = self.row
+        receipt = {
             "repo": self.gh.repo,
             "parent": self.parent,
-            "assignment": self.row["status"],
-            "display_summary": self.row.get("display_summary"),
-            "current_session_is_owner": self.row["session"] == self.session,
-            "phase": PHASES[phase(self.history())],
+            "assignment": row["status"],
+            "display_summary": row.get("display_summary"),
+            "current_session_is_owner": row["session"] == self.session,
+            "phase": None,
         }
+        try:
+            if event is not None:
+                self.post({**event, "generation": row["generation"]}, text)
+                if event["event"] == "handoff":
+                    return self.reconcile()
+            history = self.history()
+            self.require_assignment_record(history)
+            receipt["phase"] = PHASES[phase(history)]
+        except (
+            ValueError,
+            OSError,
+            KeyError,
+            TypeError,
+            subprocess.SubprocessError,
+        ) as exc:
+            receipt["assignment_evidence"] = {
+                "status": "error",
+                "error": str(exc),
+                "retry": ASSIGNMENT_RETRIES[
+                    self._assignment_record_event() or "assigned"
+                ],
+            }
+        return receipt
+
+    def _assignment_record_event(
+        self, history: list[dict[str, Any]] | None = None
+    ) -> str | None:
+        row = self.row
+        origin = row.get("assignment_origin")
+        if origin is not None:
+            return {"register": "assigned", "handoff": "handoff", "dispatcher": None}[
+                origin
+            ]
+        generation = row["generation"]
+        handoff = row.get("handoff_generation")
+        if handoff == generation:
+            return "handoff"
+        if handoff is None and "handoff_note_sha256" in row:
+            # Older registers could retain an earlier handoff's note. Use
+            # current-generation history to recognize a completed re-register.
+            events = {
+                e["event"] for e in history or () if e.get("generation") == generation
+            }
+            return (
+                "assigned"
+                if "assigned" in events and "handoff" not in events
+                else "handoff"
+            )
+        dispatch = row.get("dispatch")
+        if (
+            dispatch is not None
+            and dispatch.get("candidate", {}).get("generation", generation)
+            == generation
+        ):
+            return None
+        return "assigned"
+
+    def _missing_assignment_record(self, history: list[dict[str, Any]]) -> str | None:
+        row = self.row
+        if row.get("status") != "active":
+            return None
+        required = self._assignment_record_event(history)
+        if required is not None and not any(
+            event["event"] == required and event.get("generation") == row["generation"]
+            for event in history
+        ):
+            return ASSIGNMENT_RETRIES[required]
+        return None
+
+    def require_assignment_record(self, history: list[dict[str, Any]]) -> None:
+        if retry := self._missing_assignment_record(history):
+            raise execution.ExecutionBasisStale(f"assignment record missing; {retry}")
 
     def capture_owner_runtime(self) -> bool:
         from lib.identity import native_runtime
@@ -334,6 +412,7 @@ class ParentSession:
         row = self.row
         _, items = self.work_items()
         history = self.history()
+        assignment_retry = self._missing_assignment_record(history)
         run_paths = self.run_paths()
         try:
             publications = remaining_publications(
@@ -361,6 +440,16 @@ class ParentSession:
             "display_summary": row.get("display_summary"),
             "current_session_is_owner": bool(row and row["session"] == self.session),
             "phase": PHASES[phase(history)],
+            **(
+                {
+                    "assignment_evidence": {
+                        "status": "missing",
+                        "retry": assignment_retry,
+                    }
+                }
+                if assignment_retry
+                else {}
+            ),
             "notifications": publication_status(
                 self.gh.record_history(self.parent, self.login)
             ),
@@ -467,21 +556,20 @@ class ParentSession:
             row
             and row["status"] == "active"
             and row["session"] == self.session
+            and self._assignment_record_event() == "handoff"
             and row.get("handoff_note_sha256") == digest(note)
         )
         if same_retry:
             if row.get("display_summary") != summary:
                 row["display_summary"] = summary
                 self.store.save()
-            self.post(
+            return self._finish_assignment(
                 {
                     "event": "handoff",
-                    "generation": row["generation"],
                     "recovery": row.get("handoff_recovery", False),
                 },
                 note,
             )
-            return self.reconcile()
         recoverable = bool(
             row
             and row["status"] == "active"
@@ -513,14 +601,17 @@ class ParentSession:
                     None  # Ownership transfers; execution stays suspended.
                 )
         # A retry after a failed comment must keep the claim and reconcile; it must not switch owners.
+        generation = row["generation"] + 1
         row.update(
             session=self.session,
             status="active",
-            generation=row["generation"] + 1,
+            generation=generation,
+            assignment_origin="handoff",
             handoff_note_sha256=digest(note),
             handoff_recovery=recover,
             display_summary=summary,
         )
+        row.pop("handoff_generation", None)
         self.capture_owner_runtime()
         if row.get("dispatch") is not None:
             from .development import transfer_controller
@@ -532,11 +623,7 @@ class ParentSession:
                 }
             transfer_controller(row, inherited_authority, note, takeover=True)
         self.store.save()
-        self.post(
-            {"event": "handoff", "generation": row["generation"], "recovery": recover},
-            note,
-        )
-        return self.reconcile()
+        return self._finish_assignment({"event": "handoff", "recovery": recover}, note)
 
     def checking(self) -> dict[str, Any]:
         self.owner()
@@ -544,6 +631,7 @@ class ParentSession:
 
         require_final(self.gh, self.parent)
         history = self.history()
+        self.require_assignment_record(history)
         latest = next(
             (
                 e
@@ -636,6 +724,7 @@ class ParentSession:
             raise ValueError(f"agreement requires exactly {sorted(fields)}")
         agreement = {k: nonempty(v, k) for k, v in agreement.items()}
         history = self.history()
+        self.require_assignment_record(history)
         sha = digest(agreement)
         last_phase = next(
             (
@@ -1110,6 +1199,8 @@ class ParentSession:
             overrides = None
         if self.row.get("status") != "active":
             blockers.append(reason("parent_assignment", "親の担当がactiveでない。"))
+        elif retry := self._missing_assignment_record(inputs.history):
+            blockers.append(reason("assignment_record_missing", retry))
         if parent.state != "open" and restart_child is None:
             blockers.append(reason("parent_closed", "親issueがopenでない。"))
         if phase(inputs.history) not in {"agreed", "autonomous"}:
@@ -1588,27 +1679,32 @@ class ParentSession:
             raise ValueError(
                 "stop/resume requires an open target or a completed target with an existing worker"
             )
-        required = {"reason", "facts", "impact", "resume_condition", "next_action"}
+        required = set(work_status.DETAIL_FIELDS)
         if set(detail) != required:
             raise ValueError(f"stop/resume requires exactly {sorted(required)}")
-        detail = {key: nonempty(value, key) for key, value in detail.items()}
+        detail = {
+            key: "\n".join(nonempty(value, key).splitlines())
+            for key, value in detail.items()
+        }
         task = self.row["tasks"].setdefault(str(child), {})
-        operation = {"resume": resume, "detail_sha256": digest(detail)}
+        detail_sha = work_status.detail_sha256(detail)
+        operation = {"resume": resume, "detail_sha256": detail_sha}
         if (
             resume
             and not child_stopped(children[child].body, task.get("stopped", False))
             and task.get("last_operation") != operation
         ):
             raise ValueError("child is not stopped")
-        action = "再開" if resume else "停止"
-        text = (
-            action
-            + "\n\n"
-            + "\n\n".join(f"{key}: {value}" for key, value in detail.items())
+        state = "resumed" if resume else "stopped"
+        action = work_status.ACTIONS[state]
+        current = raw_section(children[child].body, WORK_STATUS_HEADING)
+        latest = work_status.last_record(current)
+        already_recorded = (
+            latest is not None
+            and latest.end == len(current.splitlines())
+            and latest.state == state
+            and latest.detail == detail
         )
-        text += f"\n\n<!-- parent-task-status:v1 state={'resumed' if resume else 'stopped'} detail={digest(detail)} -->"
-        current = raw_section(children[child].body, "作業状況・停止事項")
-        already_recorded = current.rstrip().endswith(text)
         operation_number = len(
             re.findall(r"(?m)^<!-- parent-task-status:v1 ", current)
         ) + (0 if already_recorded else 1)
@@ -1616,8 +1712,12 @@ class ParentSession:
             child,
             replace_section(
                 children[child].body,
-                "作業状況・停止事項",
-                current if already_recorded else current + "\n\n" + text,
+                WORK_STATUS_HEADING,
+                current
+                if already_recorded
+                else "\n\n".join(
+                    filter(None, (current, work_status.render(detail, state)))
+                ),
             ),
             children[child].body,
         )
@@ -1639,7 +1739,7 @@ class ParentSession:
             {
                 "event": "child_resumed" if resume else "child_stopped",
                 "child": child,
-                "detail_sha256": digest(detail),
+                "detail_sha256": detail_sha,
                 "operation": operation_number,
             },
             f"{action}: #{child} — {detail['reason']}\n\n全体への影響: 依存保留 {held}。継続 {continuing}。\n\n次の対応: {detail['next_action']}。詳細・再開条件は #{child}。",

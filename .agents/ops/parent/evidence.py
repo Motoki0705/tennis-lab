@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from issues.evidence import EVIDENCE_LABEL, EVIDENCE_PREFIX, is_evidence_issue
 from worker_logs.journal import atomic, locked
 
+from .github import GitHubWriteError
 from .judgement_comments import read_json
 from .policy import digest, nonempty, number, object_value
 from .state import RegistryConflict
@@ -67,10 +68,9 @@ class EvidenceIssues:
             or row["parent"] != parent
             or row["publisher"] != login
             or row["state"] not in {"sent", "bound"}
-            or (row["state"] == "sent" and row["number"] is not None)
         ):
             raise ValueError("invalid evidence creation journal")
-        if row["state"] == "bound":
+        if row["state"] == "bound" or row["number"] is not None:
             number(row["number"])
         return row
 
@@ -101,6 +101,10 @@ class EvidenceIssues:
             self.gh.repo.casefold(), parent, n, url, login, raw["state"]
         )
 
+    def _read_binding(self, issue: int, login: str) -> EvidenceIssue:
+        raw = object_value(self.gh.get(f"repos/{self.gh.repo}/issues/{issue}"))
+        return self._binding(raw, login)
+
     def find_bound(
         self, parent: int, login: str, *, required: bool = True
     ) -> EvidenceIssue | None:
@@ -112,24 +116,12 @@ class EvidenceIssues:
             raise ValueError(
                 "automatic progression requires a saved evidence issue binding; use evidence --create first"
             )
-        pinned = self._binding(
-            object_value(self.gh.get(f"repos/{self.gh.repo}/issues/{saved['number']}")),
-            login,
-        )
+        pinned = self._read_binding(saved["number"], login)
         if pinned.parent != parent or pinned.number != saved["number"]:
             raise ValueError("saved evidence issue binding changed")
         return pinned
 
-    def find(self, parent: int, login: str) -> EvidenceIssue | None:
-        """Inspect labelled issues in all states; never create or repair on read.
-
-        Unlabelled marker-only issues are outside discovery. A saved binding is
-        still fetched and checked even when it disappears from the listing.
-        """
-        number(parent)
-        saved = self._saved(parent, login)
-        if self.gh.targeted_history:
-            return self.find_bound(parent, login)
+    def _listed(self, parent: int, login: str) -> EvidenceIssue | None:
         matches = []
         for raw in self.gh.evidence_rows():
             if "pull_request" not in raw and is_evidence_issue(raw):
@@ -140,23 +132,31 @@ class EvidenceIssues:
             raise ValueError(
                 f"duplicate evidence issues for parent #{parent}; inspect explicitly"
             )
-        if saved and saved["state"] == "bound":
-            # Do not trust an index, a local number, or a missing old-success copy.
-            raw = object_value(
-                self.gh.get(f"repos/{self.gh.repo}/issues/{saved['number']}")
-            )
-            pinned = self._binding(raw, login)
+        return matches[0] if matches else None
+
+    def find(self, parent: int, login: str) -> EvidenceIssue | None:
+        """Inspect labelled issues in all states; never create or repair on read."""
+        number(parent)
+        if self.gh.targeted_history:
+            return self.find_bound(parent, login)
+        saved = self._saved(parent, login)
+        listed = self._listed(parent, login)
+        if saved and saved["number"] is not None:
+            # A validated direct read covers listing lag. Any visible competitor
+            # or disagreement between the two representations still fails closed.
+            pinned = self._read_binding(saved["number"], login)
             if (
                 pinned.number != saved["number"]
                 or pinned.parent != parent
-                or matches != [pinned]
+                or listed not in (None, pinned)
             ):
                 raise ValueError("evidence issue binding changed or disappeared")
-        if saved and not matches:
+            return pinned
+        if saved and listed is None:
             raise ValueError(
                 "evidence issue creation uncertain; reconcile GitHub before any new POST"
             )
-        return matches[0] if matches else None
+        return listed
 
     def needs_binding(self, parent: int, login: str) -> bool:
         """Keep first-time binding and lost-creation recovery under ensure's lock."""
@@ -215,12 +215,21 @@ class EvidenceIssues:
                 except RegistryConflict:
                     raise
                 except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
+                    if isinstance(exc, GitHubWriteError) and exc.creation_rejected:
+                        path.unlink()
+                        raise
                     raise ValueError(
                         "evidence issue creation uncertain; retry only to reconcile"
                     ) from exc
-                # Inspect authoritative GitHub state, including duplicates, before binding.
-                if self.find(parent, login) != found:
+                # Retain the POST identity if detail or duplicate checks are
+                # interrupted while GitHub's labelled listing is incomplete.
+                atomic(path, {**sent, "number": found.number})
+                if self._read_binding(found.number, login) != found:
                     raise ValueError("evidence creation could not be verified")
+                if self._listed(parent, login) not in (None, found):
+                    raise ValueError(
+                        f"duplicate evidence issues for parent #{parent}; inspect explicitly"
+                    )
             atomic(path, {**sent, "state": "bound", "number": found.number})
             return found
 

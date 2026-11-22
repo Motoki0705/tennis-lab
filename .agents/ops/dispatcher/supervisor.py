@@ -26,7 +26,12 @@ from parent.execution import (
 from parent.github import GitHub
 from parent.policy import closing_issues, digest, nonempty, number
 from parent.session import ParentSession
-from parent.state import RegistryConflict, Store, session_identity
+from parent.state import (
+    RegistryConflict,
+    Store,
+    session_identity,
+    start_fresh_assignment,
+)
 from parent.worker_instruction import prepare_instruction
 from worker_logs import service as worker_logs
 from worker_logs import sources as log_sources
@@ -572,9 +577,13 @@ class Supervisor:
         try:
             with self.store.locked(), self.gh.fresh_reads():
                 row = self.store.parents[key]
-                dispatch = row["dispatch"]
-                job: dict[str, Any] = dispatch["jobs"][job_id]
-                if job["phase"] != "reserved" or not self.schedule.read()["enabled"]:
+                dispatch = managed(row)
+                job = dispatch["jobs"].get(job_id) if dispatch else None
+                if (
+                    job is None
+                    or job["phase"] != "reserved"
+                    or not self.schedule.read()["enabled"]
+                ):
                     return None
                 expected = job_snapshot(row, job)
                 self._validate_start(key, row, job)
@@ -970,20 +979,19 @@ class Supervisor:
                         continue
                     assignment_id = uuid.uuid4().hex
                     reservation = f"dispatcher-reservation:{assignment_id}"
-                    previous = row
-                    row = {
-                        **(previous or {}),
-                        "session": reservation,
-                        "status": "active",
-                        "generation": candidate["generation"],
-                        "tasks": previous["tasks"] if previous else {},
-                        "reviews": previous["reviews"] if previous else [],
-                        "launch_policy": {
+                    row = start_fresh_assignment(
+                        row or {},
+                        reservation,
+                        candidate["generation"],
+                        origin="dispatcher",
+                    )
+                    row.update(
+                        launch_policy={
                             "schema_version": 1,
                             "max_parallel_children": state["config"]["max_children"],
                             "reason": "自律ループの実行枠に合わせた予約上限。実runtime上限はdispatcherが別途検査する。",
                         },
-                        "dispatch": {
+                        dispatch={
                             "schema_version": 1,
                             "assignment_id": assignment_id,
                             "source_run": run["id"],
@@ -997,12 +1005,7 @@ class Supervisor:
                             "events": [],
                             "reason": "起動予約済み",
                         },
-                    }
-                    if previous:
-                        row["dispatch_history"] = [
-                            *previous.get("dispatch_history", []),
-                            previous["dispatch"],
-                        ]
+                    )
                     self._job(key, row)
                     self.store.parents[key] = row
                     self.store.save()
@@ -1518,8 +1521,9 @@ class Supervisor:
     ) -> tuple[Path, Callable[[], bool]] | None:
         with self.store.locked():
             row = self.store.parents[key]
-            job = row["dispatch"]["jobs"][identifier]
-            if job["phase"] in {"ended", "reserved"}:
+            dispatch = managed(row)
+            job = dispatch["jobs"].get(identifier) if dispatch else None
+            if job is None or job["phase"] in {"ended", "reserved"}:
                 return None
             if job.get("capacity_refusal"):
                 self._requeue_capacity_refusal(key, row, job, stop=stop)
@@ -1629,7 +1633,9 @@ class Supervisor:
             with self.store.locked(), self.gh.fresh_reads():
                 state = self.schedule.read()
                 row = self.store.parents[key]
-                dispatch = row["dispatch"]
+                dispatch = managed(row)
+                if dispatch is None:
+                    continue  # An ended dispatcher assignment may have been archived.
                 if (
                     not stop
                     and state["enabled"]

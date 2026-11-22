@@ -234,9 +234,14 @@ if n is None:
         if "labels" in params:
             labels = set(params["labels"][0].split(","))
             rows = [r for r in rows if labels <= {label["name"] for label in r["labels"]}]
+            if "parent-evidence" in labels:
+                rows = [r for r in rows if r["number"] not in state.get("unlisted_evidence", [])]
         response(paged(rows))
     assert method == "POST", method
     if payload["labels"] == ["parent-evidence"]:
+        if os.environ.get("PARENT_REJECT_EVIDENCE_CREATE"):
+            print("HTTP/1.1 403 Forbidden\n")
+            response({"message": "injected evidence creation rejection"}, 403)
         n = str(state.get("next_evidence", 9000))
         state["next_evidence"] = int(n) + 1
     else:
@@ -270,6 +275,9 @@ if tail == "sub_issues":
 if tail == "comments":
     if method == "GET":
         response(paged(state["comments"].get(n, [])))
+    if os.environ.get("PARENT_REJECT_COMMENT") == n:
+        print("HTTP/1.1 403 Forbidden\n")
+        response({"message": "injected comment rejection"}, 403)
     comment = {"id": 1 + max((c["id"] for rows in state["comments"].values() for c in rows), default=0), "user": {"login": "operator"}, "body": payload["body"]}
     state["comments"].setdefault(n, []).append(comment)
     save()
@@ -1533,7 +1541,14 @@ def test_handoff_retries_do_not_lose_claim_or_repeat_notice(
     p.cli("handoff", "--note-file", p.note())
     second = {"CLAUDE_CODE_SESSION_ID": "private-session-b-unique"}
     p.env["PARENT_FAIL_AFTER_COMMENT"] = str(evidence_number(p.state()))
-    p.cli("handoff", "--accept", "--note-file", p.note(), ok=False, extra=second)
+    failed = p.cli(
+        "handoff", "--accept", "--note-file", p.note(), ok=None, extra=second
+    )
+    assert failed.returncode == 1
+    receipt = json.loads(failed.stdout)
+    assert receipt["parent_action_applied"] is True
+    assert receipt["assignment_evidence"]["status"] == "error"
+    assert "uncertain" in receipt["assignment_evidence"]["error"]
     p.env.pop("PARENT_FAIL_AFTER_COMMENT")
     p.cli("handoff", "--accept", "--note-file", p.note(), extra=second)
     assert json.loads(p.cli("status", extra=second).stdout)["current_session_is_owner"]

@@ -19,6 +19,7 @@ import yaml
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
+    evidence_comments,
     evidence_number,
     untracked_legacy_fixture,
 )
@@ -75,6 +76,92 @@ def test_uncertain_creation_without_remote_match_never_posts_again(
     again = env.cli("evidence", "--create", ok=False)
     assert "uncertain" in again.stderr
     assert len([c for c in env.calls() if "POST" in c and "repos/o/r/issues" in c]) == 1
+
+
+def test_register_recovers_after_an_explicit_evidence_creation_rejection(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    failed = p.cli("register", extra={"PARENT_REJECT_EVIDENCE_CREATE": "1"}, ok=False)
+    receipt = json.loads(failed.stdout)
+    assert receipt["parent_action_applied"] is True
+    assert "register" in receipt["assignment_evidence"]["retry"]
+    assert "HTTP 403" in receipt["assignment_evidence"]["error"]
+    assert len(p.state()["issues"]) == 2
+    assert not p.comments()
+
+    p.cli("register")
+    p.cli("register")
+    assert len(p.state()["issues"]) == 3
+    [assigned] = evidence_comments(p.state())
+    assert '"event": "assigned", "generation": 1' in assigned["body"].splitlines()[0]
+    assert len([c for c in p.calls() if "POST" in c and "repos/o/r/issues" in c]) == 2
+
+
+def test_register_verifies_evidence_while_labelled_listing_lags(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    state = p.state()
+    state["unlisted_evidence"] = [9000]
+    p.save(state)
+
+    first = json.loads(p.cli("register").stdout)
+    assert first["assignment"] == "active"
+    assert first["parent_action_applied"] is True
+    assert json.loads(p.cli("evidence").stdout)["number"] == 9000
+    p.cli("register")
+    [assigned] = evidence_comments(p.state())
+    assert '"event": "assigned"' in assigned["body"].splitlines()[0]
+
+    calls = p.calls()
+    creation = [
+        i for i, c in enumerate(calls) if "POST" in c and "repos/o/r/issues" in c
+    ]
+    assert len(creation) == 1
+    assert any(
+        "GET" in c and "repos/o/r/issues/9000" in c for c in calls[creation[0] + 1 :]
+    )
+
+    state = p.state()
+    state["issues"]["9"] = evidence_issue(p)
+    p.save(state)
+    assert "evidence issue binding changed" in p.cli("evidence", ok=False).stderr
+
+
+def test_evidence_creation_requires_a_verified_direct_issue_read(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    state = p.state()
+    state["unlisted_evidence"] = [9000]
+    p.save(state)
+    failed = p.cli(
+        "register",
+        extra={"PARENT_FAIL_GET_PATH": "repos/o/r/issues/9000"},
+        ok=None,
+    )
+    assert failed.returncode == 1, failed.stderr
+    receipt = json.loads(failed.stdout)
+    assert receipt["parent_action_applied"] is True
+    assert "HTTP 503" in receipt["assignment_evidence"]["error"]
+    assert receipt["board_sync"]["status"] == "assigned"
+    assert receipt["display_sync"]["status"] == "not_configured"
+    assert not any(p.state()["comments"].values())
+
+    state = p.state()
+    state["issues"]["9"] = evidence_issue(p)
+    p.save(state)
+    conflict = json.loads(p.cli("register", ok=False).stdout)
+    assert "evidence issue binding changed" in conflict["assignment_evidence"]["error"]
+    assert not any(p.state()["comments"].values())
+
+    del state["issues"]["9"]
+    p.save(state)
+    p.cli("register")
+    assert json.loads(p.cli("evidence").stdout)["number"] == 9000
+    assert len(evidence_comments(p.state())) == 1
+    assert len([c for c in p.calls() if "POST" in c and "repos/o/r/issues" in c]) == 1
 
 
 def _ensure_in_process(

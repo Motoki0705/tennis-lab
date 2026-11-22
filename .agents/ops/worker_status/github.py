@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from issues import work_status
+from issues.format import WORK_STATUS_HEADING
 from parent.github import GitHub
 from parent.policy import child_stopped, closing_issues, raw_section
 from parent.session import ParentSession, task_title
@@ -35,7 +37,10 @@ class ReadOnlyGitHub(GitHub):
 def stop_detail(body: str, guard: Guard) -> dict[str, Any]:
     import re
 
-    section = raw_section(body, "作業状況・停止事項")
+    section = raw_section(body, WORK_STATUS_HEADING)
+    latest = work_status.last_record(section)
+    if latest is not None:
+        return {key: guard.text(value) for key, value in latest.detail.items()}
     records = list(
         re.finditer(
             r"(?m)^<!-- parent-task-status:v1 state=(?:stopped|resumed) detail=[0-9a-f]{64} -->$",
@@ -47,7 +52,7 @@ def stop_detail(body: str, guard: Guard) -> dict[str, Any]:
     start = records[-2].end() if len(records) > 1 else 0
     latest = section[start : records[-1].start()]
     result = {}
-    for key in ("reason", "facts", "impact", "resume_condition", "next_action"):
+    for key in work_status.DETAIL_FIELDS:
         match = re.search(
             rf"(?ms)^{key}: (.*?)(?=\n\n(?:reason|facts|impact|resume_condition|next_action): |\Z)",
             latest,
