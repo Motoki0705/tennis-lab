@@ -465,6 +465,10 @@ spin ops off dispatcher
 
 再開時はinitを繰り返さず、status/実プロセスを照合して `spin ops on dispatcher` を実行する。
 停止後に管理job・子・判定の照合が残ると非0を返す。既存の復旧手順で確認してから再開する。
+状態ファイルの失敗では `spin ops logs dispatcher` に理由・対象種別・復旧手順が出る。
+表示する `dispatcher/schedule.json` などは既定の保存先に対する識別子で、override 時は指定した状態ディレクトリを確認する。
+同じ所有者の通常の一時ファイルは残っていても次の書き込みが進む。危険な一時ファイルを拒否した場合は
+dispatcher と書き手の停止を確認し、リンクを辿らずに該当エントリを確認・退避してから status を照合する。
 timerはPersistent=trueで復帰時を1回へ集約する。ランダム遅延はなく、精度は1秒。
 supervisorは1秒ごとにruntime/イベントを照合するが、判定agentを呼ばない。
 

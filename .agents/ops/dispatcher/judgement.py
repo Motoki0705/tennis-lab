@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.checkout_lock import require_checkout_job
+from lib.state_files import StateFileError
 from parent.execution import POLICY_VERSION, execution_input, record_autonomous, sha256
 from parent.github import GitHub
 from parent.policy import digest, nonempty, number, object_value
@@ -32,6 +33,7 @@ from .collect import (
     material,
     source_references,
 )
+from .diagnostics import report_failure
 from .records import DETAIL_KEYS, comment_body, owned_comment, read_json
 from .schema import REQUIREMENTS, execution_context, source_url, strings, validate
 from .state import client_for, repository_scope, require_client
@@ -373,6 +375,8 @@ def run(
         KeyError,
         TypeError,
     ) as exc:
+        if isinstance(exc, StateFileError):
+            report_failure(exc)
         result["result"] = "failed"
         result["candidates"] = []
         result["diagnostics"].append(f"{type(exc).__name__}: {exc}")
@@ -413,6 +417,8 @@ def main(argv: list[str] | None = None) -> int:
             runner=args.agent_exec.resolve(),
         )
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
+        if isinstance(exc, StateFileError):
+            report_failure(exc)
         result = {
             "schema_version": RESULT_VERSION,
             "result": "failed",

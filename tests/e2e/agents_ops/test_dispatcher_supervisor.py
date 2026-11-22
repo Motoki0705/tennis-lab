@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import errno
 import hashlib
 import importlib
 import json
@@ -1984,49 +1985,50 @@ def test_installer_disabled_install_and_main_source_only(tmp_path: Path) -> None
     assert refusal.returncode == 2 and "linked worktree" in refusal.stderr
 
 
+def dispatcher_cli(
+    repo: Path, schedule: Path, parent: Path, *args: str
+) -> subprocess.CompletedProcess[str]:
+    command = [
+        sys.executable,
+        str(ROOT / ".agents/ops/dispatcher/dispatch.py"),
+        "--state-dir",
+        str(schedule),
+        "--parent-state-dir",
+        str(parent),
+        *args,
+    ]
+    if args[0] == "run":
+        command = [
+            sys.executable,
+            str(ROOT / ".agents/ops/checkout_job.py"),
+            "--repo",
+            str(repo),
+            "--",
+            *command,
+        ]
+    elif args[0] == "supervise":
+        command = [
+            sys.executable,
+            str(ROOT / ".agents/ops/checkout_job.py"),
+            "--repo",
+            str(repo),
+            "--supervisor",
+            "--state-dir",
+            str(schedule),
+            "--parent-state-dir",
+            str(parent),
+            "--",
+            *args[1:],
+        ]
+    return subprocess.run(command, capture_output=True, text=True, check=False)
+
+
 def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) -> None:
     schedule = d.h.root / "cli-schedule"
     parent = d.h.root / "cli-registry"
 
     def cli(*args: str) -> subprocess.CompletedProcess[str]:
-        command = [
-            sys.executable,
-            str(ROOT / ".agents/ops/dispatcher/dispatch.py"),
-            "--state-dir",
-            str(schedule),
-            "--parent-state-dir",
-            str(parent),
-            *args,
-        ]
-        if args[0] == "run":
-            command = [
-                sys.executable,
-                str(ROOT / ".agents/ops/checkout_job.py"),
-                "--repo",
-                str(d.h.work),
-                "--",
-                *command,
-            ]
-        elif args[0] == "supervise":
-            command = [
-                sys.executable,
-                str(ROOT / ".agents/ops/checkout_job.py"),
-                "--repo",
-                str(d.h.work),
-                "--supervisor",
-                "--state-dir",
-                str(schedule),
-                "--parent-state-dir",
-                str(parent),
-                "--",
-                *args[1:],
-            ]
-        return subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        return dispatcher_cli(d.h.work, schedule, parent, *args)
 
     initial = cli(
         "init",
@@ -2049,6 +2051,15 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
     assert state["max_development_parents"] == 2
     assert state["default_max_implementation_children"] == 3
     assert cli("enable").returncode == 0
+    temporary = schedule / "schedule.json.tmp"
+    temporary.write_text('{"interrupted":')
+    schedule_path = schedule / "schedule.json"
+    previous_inode = schedule_path.stat().st_ino
+    supervised = cli("supervise", "--once")
+    assert supervised.returncode == 0, supervised.stderr
+    assert json.loads(supervised.stdout)["result"] == "supervise"
+    assert schedule_path.stat().st_ino != previous_inode
+    assert temporary.read_text() == '{"interrupted":'
     assert cli("disable").returncode == 0
     error = cli("configure", "--max-parents", "0", "--max-children", "3")
     assert error.returncode == 2
@@ -2062,6 +2073,74 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
         assert "registry" in error.stderr and "README" in error.stderr
         assert not (parent / "registry.json").exists()
         assert (schedule / "schedule.json").read_bytes() == before
+
+
+@pytest.mark.parametrize("entry", ["schedule.json", "schedule.json.tmp"])
+def test_supervisor_journal_identifies_unsafe_state_without_private_values(
+    d: DispatchHarness, entry: str
+) -> None:
+    path = d.schedule.directory / entry
+    target = d.h.root / "private-link-target.json"
+    content = d.schedule.path.read_bytes().replace(b'"o/r"', b'"private/session"')
+    target.write_bytes(content)
+    path.unlink(missing_ok=True)
+    path.symlink_to(target)
+
+    result = dispatcher_cli(
+        d.h.work, d.schedule.directory, d.h.store.directory, "supervise", "--once"
+    )
+
+    assert result.returncode == 2
+    failure = json.loads(result.stdout)
+    assert failure["result"] == "failed"
+    assert failure["reason"] == "symlink"
+    assert failure["state_path"] == f"dispatcher/{entry}"
+    assert "symbolic link" in result.stderr
+    assert "spin ops off dispatcher" in failure["recovery"]
+    assert "inspect" in failure["recovery"].lower()
+    journal = result.stdout + result.stderr
+    for private in (str(d.h.root), target.name, "private/session"):
+        assert private not in journal
+    assert path.is_symlink()
+    assert target.read_bytes() == content
+
+
+def test_dispatcher_cli_reports_disk_full_and_preserves_state(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    cli = importlib.import_module("dispatcher.cli_impl")
+    before = d.schedule.path.read_bytes()
+    leftover = d.schedule.path.with_suffix(".json.tmp")
+    leftover.write_text("earlier interrupted write")
+    entries = set(d.schedule.directory.iterdir())
+
+    def fail_sync(_fd: int) -> None:
+        raise OSError(errno.ENOSPC, "private session ID", str(d.h.root / "secret"))
+
+    args = [
+        "--state-dir",
+        str(d.schedule.directory),
+        "--parent-state-dir",
+        str(d.h.store.directory),
+        "disable",
+    ]
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "fsync", fail_sync)
+        assert cli.main(args) == 2
+
+    capture = capsys.readouterr()
+    failure = json.loads(capture.out)
+    assert failure["result"] == "failed"
+    assert failure["reason"] == "write_failed"
+    assert failure["state_path"] == "dispatcher/schedule.json"
+    assert "ENOSPC" in capture.err and "free space" in failure["recovery"].lower()
+    for private in (str(d.h.root), "private session ID"):
+        assert private not in capture.out + capture.err
+    assert d.schedule.path.read_bytes() == before
+    assert set(d.schedule.directory.iterdir()) == entries
+    assert leftover.read_text() == "earlier interrupted write"
+    assert cli.main(args) == 0
+    assert d.schedule.read()["enabled"] is False
 
 
 def test_supervisor_never_reconciles_or_launches_while_checkout_is_locked(

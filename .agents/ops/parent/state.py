@@ -14,6 +14,7 @@ from threading import RLock
 from typing import Any, NoReturn, TextIO
 
 from lib.identity import session_identity as session_identity
+from lib.state_files import atomic_state_writer, open_state_lock, read_state_text
 
 from . import metrics
 from .execution import validate_authorization
@@ -103,11 +104,7 @@ class Store:
     @contextmanager
     def operation(self, key: str) -> Iterator[None]:
         """Serialize a parent's mutations while its registry lock is released."""
-        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with (self.directory / f"operation-{digest(key)}.lock").open(
-            "a", encoding="utf-8"
-        ) as lock:
-            os.chmod(lock.name, 0o600)
+        with open_state_lock(self.directory / f"operation-{digest(key)}.lock") as lock:
             metrics.flock(lock, fcntl.LOCK_EX)
             yield
 
@@ -133,9 +130,7 @@ class Store:
                 raise ValueError(
                     "ownership fence must precede the registry transaction"
                 )
-        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with (self.directory / "ownership.lock").open("a", encoding="utf-8") as lock:
-            os.chmod(lock.name, 0o600)
+        with open_state_lock(self.directory / "ownership.lock") as lock:
             metrics.flock(lock, fcntl.LOCK_EX)
             yield
 
@@ -217,10 +212,8 @@ class Store:
         """
         from lib.checkout_lock import registry_checkout_lock
 
-        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         with registry_checkout_lock():
-            with (self.directory / "registry.lock").open("a", encoding="utf-8") as lock:
-                os.chmod(lock.name, 0o600)
+            with open_state_lock(self.directory / "registry.lock") as lock:
                 metrics.flock(lock, fcntl.LOCK_SH)
                 try:
                     data = self.read_data()
@@ -244,9 +237,7 @@ class Store:
 
     @contextmanager
     def _locked(self) -> Iterator[Store]:
-        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with (self.directory / "registry.lock").open("a", encoding="utf-8") as lock:
-            os.chmod(lock.name, 0o600)
+        with open_state_lock(self.directory / "registry.lock") as lock:
             metrics.flock(lock, fcntl.LOCK_EX)
             self.transaction_epoch += 1
             self._write_invalid = False
@@ -340,13 +331,11 @@ class Store:
         return object_value(self.data["parents"])
 
     def read_data(self) -> dict[str, Any]:
-        if not self.path.exists() and not self.path.is_symlink():
+        try:
+            raw = read_state_text(self.path)
+        except FileNotFoundError:
             return {"version": 1, "parents": {}}
-        data = object_value(
-            json.loads(
-                self.path.read_text(encoding="utf-8"), object_pairs_hook=unique_object
-            )
-        )
+        data = object_value(json.loads(raw, object_pairs_hook=unique_object))
         if data.get("version") != 2:
             return data
         if set(data) != {"version", "parents"} or type(data["version"]) is not int:
@@ -355,9 +344,7 @@ class Store:
         for key, owner in object_value(data["parents"]).items():
             path = self.directory / "parents" / (digest(key) + ".json")
             row = object_value(
-                json.loads(
-                    path.read_text(encoding="utf-8"), object_pairs_hook=unique_object
-                )
+                json.loads(read_state_text(path), object_pairs_hook=unique_object)
             )
             if {
                 field: row.get(field) for field in ("session", "status", "generation")
@@ -374,13 +361,15 @@ class Store:
         if self.data["version"] == 2:
             return
         backup = self.directory / "registry-v1.backup.json"
-        if backup.exists():
-            if json.loads(backup.read_text()) != self.data:
+        try:
+            previous = read_state_text(backup)
+        except FileNotFoundError:
+            self.write_json(backup, self.data)
+        else:
+            if json.loads(previous) != self.data:
                 raise ValueError(
                     "migration backup exists for different state; inspect before retry"
                 )
-        else:
-            self.write_json(backup, self.data)
         self.data["version"] = 2
         self.save()
 
@@ -410,22 +399,16 @@ class Store:
                     field: row[field] for field in ("session", "status", "generation")
                 }
             index = {"version": 2, "parents": ownership_index}
-            if not self.path.exists() or json.loads(self.path.read_text()) != index:
+            try:
+                raw_index = read_state_text(self.path)
+            except FileNotFoundError:
+                raw_index = None
+            if raw_index is None or json.loads(raw_index) != index:
                 self.write_json(self.path, index)
         self._saved = copy.deepcopy(self.data)
 
     @staticmethod
     def write_json(path: Path, value: Any) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        temporary = path.with_name(path.name + ".tmp")
-        # State is private; never follow a pre-existing temporary symlink.
-        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as stream:
-                json.dump(value, stream, ensure_ascii=False, indent=2, sort_keys=True)
-                stream.write("\n")
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temporary, path)
-        finally:
-            temporary.unlink(missing_ok=True)
+        with atomic_state_writer(path) as stream:
+            json.dump(value, stream, ensure_ascii=False, indent=2, sort_keys=True)
+            stream.write("\n")

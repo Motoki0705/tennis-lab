@@ -553,24 +553,22 @@ def test_malformed_registry_never_becomes_an_empty_assignment(
     assert len(p.calls()) == calls
 
 
-def test_interrupted_migration_requires_recovery_without_losing_old_state(
+def test_parent_cli_saves_legacy_registry_with_interrupted_write_residue(
     parent_env: ParentEnv,
 ) -> None:
     p = parent_env
-    p.agreed()
+    p.cli("register")
     path = registry(p)
     data = json.loads(path.read_text())
     data["version"] = 1
     path.write_text(json.dumps(data))
     temporary = path.with_name("registry.json.tmp")
-    temporary.write_text("interrupted migration")
-    before = path.read_bytes()
-    p.cli("release", "--note-file", p.note(), ok=False)
-    assert path.read_bytes() == before
-    assert temporary.read_text() == "interrupted migration"
-    temporary.unlink()  # Simulate explicit recovery after inspecting the old state.
+    temporary.write_text("interrupted write")
     p.cli("release", "--note-file", p.note())
-    assert json.loads(path.read_text())["version"] == 1
+    saved = json.loads(path.read_text())
+    assert saved["version"] == 1
+    assert saved["parents"]["o/r#1"]["status"] == "released"
+    assert temporary.read_text() == "interrupted write"
 
 
 def test_missing_registry_symlink_target_is_not_an_empty_assignment(

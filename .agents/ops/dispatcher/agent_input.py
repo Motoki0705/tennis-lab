@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
+from lib.state_files import atomic_state_writer
 from parent.state import Store
 
 from .collect import related
@@ -31,16 +31,8 @@ def _write_index(path: Path, index: dict[str, Any]) -> None:
         else:
             encoded = encode(value)
         fields.append(f"  {encode(key)}:{encoded}")
-    temporary = path.with_name(path.name + ".tmp")
-    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            stream.write("{\n" + ",\n".join(fields) + "\n}\n")
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    with atomic_state_writer(path) as stream:
+        stream.write("{\n" + ",\n".join(fields) + "\n}\n")
 
 
 def write_agent_input(snapshot: dict[str, Any], directory: Path) -> Path:
