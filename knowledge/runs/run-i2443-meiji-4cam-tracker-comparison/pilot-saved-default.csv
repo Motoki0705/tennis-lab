@@ -1,0 +1,9 @@
+condition,stratum,frames,clips,stopped_clips,labelled_camera_units,raw_idf1,raw_id_switches,raw_fragments,group_idf1,group_id_switches,group_fragments,selection_precision,selection_recall,pair_f1,matched_decided_pair_f1,3d_coverage,valid_player_frames,labelled_player_frames,checked_boxes,annotation_box_error_rate
+saved_default/clipreid_vitb16_market1501,all,16,3,1,250,0.8483516483516483,0,0,0.8527472527472527,0,0,0.9853658536585366,0.808,0.5333333333333333,0.6997635933806147,0.53125,34,64,,
+saved_default/clipreid_vitb16_market1501,doubt_any,12,2,1,188,0.7915407854984894,0,0,0.8096676737160121,0,0,0.9790209790209791,0.7446808510638298,0.48,0.7407407407407407,0.375,18,48,,
+saved_default/clipreid_vitb16_market1501,selection_rejected_near_court,0,0,0,0,,0,0,,0,0,,,,,,0,0,,
+saved_default/clipreid_vitb16_market1501,single_view_no_3d,6,1,0,96,0.8070175438596491,0,0,0.7719298245614035,0,0,0.96,0.75,0.7407407407407407,0.7407407407407407,0.75,18,24,,
+saved_default/clipreid_vitb16_market1501,unassigned_or_reprojection,0,0,0,0,,0,0,,0,0,,,,,,0,0,,
+saved_default/clipreid_vitb16_market1501,switch_or_fragment,3,1,1,44,0.8421052631578947,0,0,0.8421052631578947,0,0,1.0,0.7272727272727273,0.0,,0.0,0,12,,
+saved_default/clipreid_vitb16_market1501,stopped_clip,6,1,1,92,0.775,0,0,0.85,0,0,1.0,0.7391304347826086,0.0,,0.0,0,24,,
+saved_default/clipreid_vitb16_market1501,high_confidence_random,4,1,0,62,1.0,0,0,0.967741935483871,0,0,1.0,1.0,0.6444444444444445,0.6444444444444445,1.0,16,16,,

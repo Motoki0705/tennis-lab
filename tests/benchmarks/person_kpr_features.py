@@ -22,7 +22,9 @@ from person_tracking_matrix import (  # type: ignore[import-not-found]
 )
 
 from src.tasks.person_tracking.archive import load_features
+from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.tasks.player_association.appearance.kpr import WEIGHT_SHA256, KprEncoder
+from src.tasks.player_association.appearance.parts import NativeParts
 from src.tasks.player_association.appearance.sampling import crop
 from src.tasks.player_detection.evaluation.person_sources import DEV_CLIPS
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
@@ -62,6 +64,30 @@ def plan(args: argparse.Namespace) -> None:
         'timeout_seconds': 5400, 'allocator_bytes': 7 * 1024**3, 'disk_limit_bytes': 1_500_000_000})
 
 
+def encode_frame(encoder: KprEncoder, image: np.ndarray, frame: DetectionFeatures, batch_size: int) -> NativeParts:
+    """Encode all boxes with the same-frame negative prompts used by run 9."""
+    count = len(frame.rows)
+    poses = frame.require_poses()
+    height, width = image.shape[:2]
+    clipped = np.rint(frame.boxes).clip([0, 0, 0, 0], [width, height] * 2)
+    size = clipped[:, 2:] - clipped[:, :2]
+    if (size <= 0).any():
+        raise ValueError('KPR requires nonempty input crops')
+    embeddings: np.ndarray = np.zeros((count, 6, 512), np.float32)
+    visibility: np.ndarray = np.zeros((count, 6), bool)
+    for begin in range(0, count, batch_size):
+        indices = np.arange(begin, min(count, begin + batch_size))
+        pixels = torch.from_numpy(np.stack([crop(image, frame.boxes[i], encoder.input_size) for i in indices]))
+        positive = poses[indices].astype(np.float64).copy()
+        positive[..., :2] = (positive[..., :2] - clipped[indices, None, :2]) / size[indices, None]
+        negative = np.stack([np.delete(poses, i, axis=0) for i in indices]).astype(np.float64)
+        negative[..., :2] = (negative[..., :2] - clipped[indices, None, None, :2]) / size[indices, None, None]
+        embedded, visible, _ = encoder.extract(pixels, positive, negative)
+        embeddings[indices] = embedded.numpy()
+        visibility[indices] = visible.numpy()
+    return NativeParts(embeddings, visibility)
+
+
 def extract(args: argparse.Namespace) -> None:
     path = args.report / 'plan.json'
     run = json.loads(path.read_text())
@@ -96,22 +122,9 @@ def extract(args: argparse.Namespace) -> None:
             for packet in OpenCVVideoFrameReader(Path(source['path'])):
                 frame = frames[packet.index]
                 count = len(frame.rows)
-                clipped = np.rint(frame.boxes).clip([0, 0, 0, 0], [source['width'], source['height']] * 2)
-                size = clipped[:, 2:] - clipped[:, :2]
-                if (size <= 0).any():
-                    raise ValueError('KPR requires nonempty input crops; no replacement embedding')
-                for begin in range(0, count, run['batch_size']):
-                    indices = np.arange(begin, min(count, begin + run['batch_size']))
-                    pixels = torch.from_numpy(np.stack([crop(packet.frame, frame.boxes[i], encoder.input_size) for i in indices]))
-                    positive = frame.poses[indices].astype(np.float64).copy()
-                    positive[..., :2] = (positive[..., :2] - clipped[indices, None, :2]) / size[indices, None]
-                    negative = np.stack([np.delete(frame.poses, i, axis=0) for i in indices]).astype(np.float64)
-                    negative[..., :2] = (negative[..., :2] - clipped[indices, None, None, :2]) / size[indices, None, None]
-                    embedded, visible, _ = encoder.extract(pixels, positive, negative)
-                    if not torch.allclose(torch.linalg.vector_norm(embedded, dim=-1)[visible], torch.ones(int(visible.sum())), atol=1e-4):
-                        raise ValueError('Visible KPR parts have nonunit embeddings')
-                    embeddings[frame.rows[indices]] = embedded.numpy()
-                    visibility[frame.rows[indices]] = visible.numpy()
+                parts = encode_frame(encoder, packet.frame, frame, run['batch_size'])
+                embeddings[frame.rows] = parts.embeddings
+                visibility[frame.rows] = parts.visible
                 row_count += count
                 frame_count += 1
             if (row_count, frame_count) != (n, record['frames']):

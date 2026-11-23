@@ -96,3 +96,14 @@ sourceとdestinationは絶対パスとし、destinationは未作成の別ファ�
 `features` phaseが元検出artifactのhash、ViTPose/CLIP重みのSHA-256、feature config、source動画、出力hashを保存し、
 `track` phaseは同じNPZをCPUで使い、`--method deep_ocsort_pose`で比較する。
 `--max-frames`を指定したrunはsmokeであり全clipの評価ではない。
+
+
+## 部分注釈での新旧経路の比較
+
+[比較スコア](comparison.py)は、同じ `ClipLabels` と明示したsource frame群を使う。カメラ内のraw IDは選別後も元trackerのIDを使い、group IDは連結後の実観測から測る。同一選手の重複boxはカメラ・frameにつき一つのunitにまとめる。既知の選手・非選手をIoU 0.5で1対1照合し、選別precisionの分母は照合した選手unitと非選手box、recallの分母は全ラベル付き選手unit。曖昧・未照合の予測数は別に記録する。IDF1の最適ID置換はclip・camera・層ごとに求め、クリップをまたいでカウントを合算して比率を出す。switchとfragmentは各層の連続注釈区間で計数する。
+
+camera間の主表のpair F1は、同一frameの別カメラにラベル付きboxがある同一選手の組を分母に含む。片方の追跡や対応が欠ければFN。旧#933方式の `matched_decided_pairs` は実boxが両方照合し、対応が確定したclipで集計する。3D coverageは、少なくとも一視点にラベル付きboxのある選手・frameを分母とする。1関節以上有効な3D IDと、box照合で対応したラベル付き選手をframeごとに1対1で結び、その選手を被覆と数える。停止clipでもラベル付きpairと選手・frameは分母に残る。
+
+3D経路は [`project_3d_prediction`](projection.py) にclip内で一意なID、COCO17の世界座標・有効性mask、選手mask、校正K/R/t、元検出box及び2D poseを渡す。投影した関節のうち正の奥行きと画像内にあるものを、confidence .3以上で画像内の2D観測と照合する。共通関節が4点以上、その過半が元box内、同じ関節のRMS距離が40 px以下（画像対角に応じて換算）なら割当候補とする。カメラ・frameごとに対応数を最大化し、次に正規化RMSを100万分の1単位に丸めて合計を最小化する。同点では小さいIDを優先し、残る同点はID・元row順のSciPy割当を使う。採点には割り当てた元boxと3Dの同じIDをraw/groupの両方に渡す。選手maskで選別し、割り当たらないviewは欠測として数える。
+
+[meiji_4camの比較条件と再実行手順](../../../knowledge/runs/run-i2443-meiji-4cam-tracker-comparison/README.md)。

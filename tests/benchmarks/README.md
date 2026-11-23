@@ -75,6 +75,10 @@ camera内の全割当/元検出と診断専用のpose/appearance除去を保存�
 KPRは各検出の6×512特徴・可視性と元row/box/score/poseを保存し、同frameの他検出poseをnegative promptにする。
 検出/pose再推論やtracking/評価は行わず、完了manifestと全値の保存読戻しを記録する。
 
+## meiji_4camの人物追跡比較
+
+`person_tracking_meiji.py` は、固定済み検出・ViTPoseと#2442の明示されたラベルframeを使う。CPUの `preflight`、共有training queueでの `features`（CLIP、SOLIDER、KPR）、CPUの `track`、CPUの `score` を順に実行できる。保存済み現行経路は `--variant saved_default` で採点する。追跡・選別・対応付けはclip全体、数値の集計はラベルのあるframeで行う。 [比較条件とコマンド](../../knowledge/runs/run-i2443-meiji-4cam-tracker-comparison/README.md)
+
 ## Meiji ball holdout
 
 `ball_detection/detection_holdout.py` はball frame storeのMeiji test全体で、ft-e13と
