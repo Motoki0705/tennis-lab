@@ -1,0 +1,41 @@
+{
+  "record": {
+    "data": {
+      "decision_id": null,
+      "decision_missing_reason": "parent decision not recorded for this operation",
+      "operation": "review",
+      "plan_id": null,
+      "previous_action_id": "a6226d5f31f947379c726339bcd167e9",
+      "result_ids": [],
+      "state": "running",
+      "summary": "One broad Codex review"
+    },
+    "id": "fe29766330684205a311cc47438b53a7",
+    "kind": "action",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "fa81f2c9f5f54166aba17529554ae6e1",
+      "delegation": null,
+      "issue": null,
+      "parent": 2361,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "df65a02bb0c74e74ac2ce7d41d1034d6"
+    },
+    "time": {
+      "occurred_at": {
+        "status": "observed",
+        "value": "2026-11-22T09:08:41.959958+00:00"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-22T09:08:41.959984+00:00"
+      },
+      "recorded_at": "2026-11-22T09:08:41.959986+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

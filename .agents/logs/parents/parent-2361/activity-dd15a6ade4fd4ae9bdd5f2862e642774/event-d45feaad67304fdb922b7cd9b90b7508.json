@@ -1,0 +1,133 @@
+{
+  "record": {
+    "data": {
+      "action_id": "e003b0a717be4d759f429de230e33f20",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=worker_logs.publish; artifact=worker-log journal publication view; content_sha256=9ea9eadcbb2b413f88ddfdfc80cdbf84608b8f0f3c37f9b597d74ad654d76d2f; private evidence"
+        },
+        {
+          "content_sha256": "2807d9118b6bcc28117b05e53ea305856d8c8fca43a1fbda03b82e8a022cb316",
+          "kind": "public",
+          "revision": "9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f",
+          "url": "https://github.com/Motoki0705/tennis-lab/blob/9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f/.agents/logs/parents/parent-2361/child-2368/d-6fa3ebefb9ba43e8893ce8290edd305d/0001-initial/meta.json"
+        }
+      ],
+      "final_report": {
+        "status": "observed",
+        "value": {
+          "content_sha256": "1a9e8a977d3e866f53d5689eeef23ec95ba80f8a6611532e3494127aac5ffe52",
+          "kind": "public",
+          "revision": "9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f",
+          "url": "https://github.com/Motoki0705/tennis-lab/blob/9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f/.agents/logs/parents/parent-2361/child-2368/d-6fa3ebefb9ba43e8893ce8290edd305d/0001-initial/final.md"
+        }
+      },
+      "observation": {
+        "execution": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.observation; artifact=fixed worker journal snapshot; content_sha256=c802973b32691b712eb463f5df31a8db6a1dfae7da4c1662a8c35d360563b3a3; private evidence"
+            }
+          ],
+          "state": "ended"
+        },
+        "final": {
+          "evidence": [
+            {
+              "content_sha256": "1a9e8a977d3e866f53d5689eeef23ec95ba80f8a6611532e3494127aac5ffe52",
+              "kind": "public",
+              "revision": "9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f",
+              "url": "https://github.com/Motoki0705/tennis-lab/blob/9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f/.agents/logs/parents/parent-2361/child-2368/d-6fa3ebefb9ba43e8893ce8290edd305d/0001-initial/final.md"
+            }
+          ],
+          "state": "present"
+        },
+        "kind": "worker_turn",
+        "publication": {
+          "error": null,
+          "evidence": [
+            {
+              "content_sha256": "2807d9118b6bcc28117b05e53ea305856d8c8fca43a1fbda03b82e8a022cb316",
+              "kind": "public",
+              "revision": "9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f",
+              "url": "https://github.com/Motoki0705/tennis-lab/blob/9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f/.agents/logs/parents/parent-2361/child-2368/d-6fa3ebefb9ba43e8893ce8290edd305d/0001-initial/meta.json"
+            }
+          ],
+          "main_revision": "c519ef9401f904928c51a075ebbeb7a7b715b4d1",
+          "pr_head": "9c7d0da3d8aafcfc44c0e34ddd2b23af9a69c67f",
+          "pr_url": "https://github.com/Motoki0705/tennis-lab/pull/2375",
+          "stage": "merged",
+          "state": "main"
+        },
+        "version": 1
+      },
+      "observer": "machine",
+      "previous_result_id": "835b68f4257a4057b0c1e6aa094b2e0d",
+      "repeat": null,
+      "status": "success",
+      "summary": "worker_logs.publish: delegation_key=d-6fa3ebefb9ba43e8893ce8290edd305d; turn=1; state=merged; stage=merged; saved_to_main=True; error=None",
+      "verifies": []
+    },
+    "id": "d45feaad67304fdb922b7cd9b90b7508",
+    "kind": "result",
+    "schema_version": 2,
+    "scope": {
+      "activity_key": "dd15a6ade4fd4ae9bdd5f2862e642774",
+      "delegation": {
+        "key": "d-6fa3ebefb9ba43e8893ce8290edd305d",
+        "turn": 1
+      },
+      "issue": 2368,
+      "parent": 2361,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-22T08:54:38.273094+00:00"
+      },
+      "recorded_at": "2026-11-22T08:54:38.273108+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

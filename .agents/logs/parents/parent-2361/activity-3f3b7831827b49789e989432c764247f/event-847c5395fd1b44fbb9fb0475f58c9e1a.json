@@ -1,0 +1,56 @@
+{
+  "record": {
+    "data": {
+      "basis": [],
+      "evaluation": "handoff",
+      "inputs": [
+        "19a1ff32cde14825a40670637f5fad50"
+      ],
+      "next_actions": [],
+      "reason": "See existing improvement reason in referenced evidence",
+      "recheck_scope": [],
+      "resume_conditions": [],
+      "reuse_scope": [],
+      "source": {
+        "actor_key": "59699064dd6d42458ead48afe9ab78cd",
+        "evidence": [
+          {
+            "content_sha256": "2ff54bacf49af39b220199cb0d8a7d34c90b11c8e99a06a661e4cd3ca0d4b537",
+            "kind": "public",
+            "revision": null,
+            "url": "https://github.com/motoki0705/tennis-lab/issues/2365#issuecomment-7087732653"
+          }
+        ],
+        "kind": "parent_choice"
+      },
+      "unresolved": []
+    },
+    "id": "847c5395fd1b44fbb9fb0475f58c9e1a",
+    "kind": "decision",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "3f3b7831827b49789e989432c764247f",
+      "delegation": null,
+      "issue": null,
+      "parent": 2361,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-22T23:39:12.775729+00:00"
+      },
+      "recorded_at": "2026-11-22T23:39:12.775748+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
