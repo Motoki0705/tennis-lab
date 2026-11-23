@@ -71,8 +71,8 @@ dependencies = [
 [project.optional-dependencies]
 tensorrt = [
     "tensorrt-cu13==10.14.1.48.post1; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "onnx==1.21.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "onnxruntime-gpu==1.30.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "onnx==1.23.2; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "onnxruntime-gpu==1.32.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
 
 [project.urls]
