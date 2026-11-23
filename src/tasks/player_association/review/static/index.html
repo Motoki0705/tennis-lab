@@ -6,9 +6,9 @@
 <main>
   <section class="notice" id="scope"></section>
   <div class="layout">
-    <aside><div class="section-label">DATASET / MEIJI 3 CAM</div><div id="counts"></div><div id="clips"></div><div class="legend"><span class="dot a"></span>選手A <span class="dot b"></span>選手B<br><span class="dot excluded"></span>除外対象 <span class="dot ambiguous"></span>曖昧box <span class="dot unknown"></span>未対応</div><details><summary>現在の方式と研究記録</summary><p id="method"></p><p id="research"></p><p>未ラベルclipは負例にしません。足元はbox下端のz=0逆投影による推定、GTではありません。</p></details></aside>
+    <aside><div class="section-label" id="dataset-name"></div><div id="counts"></div><div id="clips"></div><div class="legend"><span id="legend-players"></span><br><span class="dot excluded"></span>除外対象 <span class="dot ambiguous"></span>曖昧box <span class="dot unknown"></span>未対応</div><details><summary>現在の方式と研究記録</summary><p id="method"></p><p id="research"></p><p>未ラベルclipは負例にしません。足元はbox下端のz=0逆投影による推定、GTではありません。</p></details></aside>
     <article>
-      <section class="panel controls"><div class="row"><h2 id="clip-title"></h2><span id="reference" class="muted"></span></div><div class="row seek"><button id="previous" aria-label="前frame">‹</button><button id="next" aria-label="次frame">›</button><label>frame <input id="frame-number" type="number" min="0" value="0"></label><input id="seek" type="range" min="0" value="0" aria-label="frame slider"><span id="time"></span></div><div id="coverage" class="coverage"></div><div id="track-preview"></div></section>
+      <section class="panel controls"><div class="row"><h2 id="clip-title"></h2><span id="reference" class="muted"></span></div><div class="row seek"><button id="previous" aria-label="前frame">‹</button><button id="next" aria-label="次frame">›</button><label>frame <input id="frame-number" type="number" min="0" value="0"></label><input id="seek" type="range" min="0" value="0" aria-label="frame slider"><span id="time"></span><select id="annotated-frames" aria-label="注釈済みframe" hidden></select><span id="annotation-state" class="muted"></span></div><div id="coverage" class="coverage"></div><div id="track-preview"></div></section>
       <div id="error" role="alert" hidden></div>
       <section id="views" class="views" aria-label="同期camera全景とcrop"></section>
       <div class="inspection">

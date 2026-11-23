@@ -1,11 +1,26 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const state = {clip:params.get("clip"), frame:Number(params.get("frame") || 0), camera:params.get("camera"), track:params.has("track") ? Number(params.get("track")) : null, report:params.has("report") ? Number(params.get("report")) : null, filter:"all", serial:0, loadingClip:false};
+const state = {clip:params.get("clip"), frame:params.has("frame") ? Number(params.get("frame")) : null, camera:params.get("camera"), track:params.has("track") ? Number(params.get("track")) : null, report:params.has("report") ? Number(params.get("report")) : null, filter:"all", serial:0, loadingClip:false};
 let catalog, detail, current;
 function el(tag, cls, text) { const node=document.createElement(tag); if(cls) node.className=cls; if(text !== undefined) node.textContent=text; return node; }
 function replace(id, ...children) { $(id).replaceChildren(...children); }
-function color(observation) { return observation.label_state==="player" ? (observation.person_id==="A" ? "#047d8d" : "#ac4f00") : ({non_player:"#777d86", ambiguous:"#a85ca9", unmatched:"#ae7820"}[observation.label_state] || "#999"); }
+const playerColors = {A:"#047d8d",B:"#ac4f00",P1:"#047d8d",P2:"#ac4f00",P3:"#7549ad",P4:"#26733e"};
+function color(o) { return o.label_state === "player" ? (playerColors[o.person_id] || "#436999") : ({non_player:"#777d86", ambiguous:"#a85ca9", unmatched:"#ae7820"}[o.label_state] || "#999"); }
+function boxName(o) { return o.track_id === null ? `B${o.box_index}` : `t${o.track_id}`; }
+function cropPreview(image, box) {
+  const tile=el("canvas","label-crop");
+  const ready=image.decode().then(()=>{
+    const x=Math.max(0,Math.floor(box[0])), y=Math.max(0,Math.floor(box[1]));
+    const width=Math.min(image.naturalWidth,Math.ceil(box[2]))-x;
+    const height=Math.min(image.naturalHeight,Math.ceil(box[3]))-y;
+    if(width<=0 || height<=0)return;
+    tile.width=width;
+    tile.height=height;
+    tile.getContext("2d").drawImage(image,x,y,width,height,0,0,width,height);
+  });
+  return {tile,ready};
+}
 function stateName(observation) { return {player:"選手",non_player:"除外対象",ambiguous:"曖昧・採点外",unmatched:"ラベル未対応"}[observation.label_state]; }
 function imageUrl(camera, track) { const query=new URLSearchParams({clip:state.clip,camera,frame:state.frame}); if(track !== null && track !== undefined) query.set("track",track); return "/api/image?"+query; }
 async function api(path, query) { const response=await fetch(path+"?"+new URLSearchParams(query)); const value=await response.json(); if(!response.ok) throw new Error(value.detail || response.statusText); return value; }
@@ -36,15 +51,15 @@ async function renderViews() {
     const card=el("div","camera-card");card.dataset.camera=camera;
     const heading=el("div","camera-heading");heading.append(el("b","",camera),el("span","",`f${state.frame} · ${all.length} boxes`));card.append(heading);
     const wrap=el("div","image-wrap"), img=el("img"), canvas=el("canvas");img.alt=`${state.clip} ${camera} frame ${state.frame} 全景`;canvas.width=detail.width;canvas.height=detail.height;
-    loaded.push(new Promise((resolve,reject)=>{img.onload=()=>{const ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);for(const o of all){const [x1,y1,x2,y2]=o.box;ctx.strokeStyle=color(o);ctx.lineWidth=linked(o)||o.camera===state.camera&&o.track_id===state.track ? 6 : 3;ctx.strokeRect(x1,y1,x2-x1,y2-y1);ctx.font="27px system-ui";const text=o.track_id===null?"?":`t${o.track_id}`;const y=Math.max(28,y1-6);ctx.fillStyle="rgba(0,0,0,.65)";ctx.fillRect(x1,y-27,ctx.measureText(text).width+8,31);ctx.fillStyle="#fff";ctx.fillText(text,x1+4,y);}resolve();};img.onerror=()=>reject(new Error(`${camera}: source RGB unavailable`));}));
+    loaded.push(new Promise((resolve,reject)=>{img.onload=()=>{const ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);for(const o of all){const [x1,y1,x2,y2]=o.box;ctx.strokeStyle=color(o);ctx.lineWidth=linked(o)||o.camera===state.camera&&o.track_id===state.track ? 6 : 3;ctx.strokeRect(x1,y1,x2-x1,y2-y1);ctx.font="27px system-ui";const text=o.track_id===null?`${boxName(o)} ${o.person_id ?? "?"}`:boxName(o);const y=Math.max(28,y1-6);ctx.fillStyle="rgba(0,0,0,.65)";ctx.fillRect(x1,y-27,ctx.measureText(text).width+8,31);ctx.fillStyle="#fff";ctx.fillText(text,x1+4,y);}resolve();};img.onerror=()=>reject(new Error(`${camera}: source RGB unavailable`));}));
     img.src=imageUrl(camera,null);wrap.append(img,canvas);
     canvas.onclick=(event)=>{const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)*detail.width/rect.width,y=(event.clientY-rect.top)*detail.height/rect.height;const hit=all.filter(o=>o.track_id!==null && x>=o.box[0] && x<=o.box[2] && y>=o.box[1] && y<=o.box[3]).sort((a,b)=>(a.box[2]-a.box[0])*(a.box[3]-a.box[1])-(b.box[2]-b.box[0])*(b.box[3]-b.box[1]))[0];if(hit)choose(camera,hit.track_id);};card.append(wrap);
     const crops=el("div","crop-grid");
     for(const o of visible) {
       const crop=el("div","crop"+(o.camera===state.camera&&o.track_id===state.track?" selected":linked(o)?" linked":""));crop.dataset.track=o.track_id;crop.tabIndex=0;crop.setAttribute("role","button");crop.onclick=()=>{if(o.track_id!==null)choose(camera,o.track_id);};crop.onkeydown=(event)=>{if(event.key==="Enter")crop.click();};
       if(o.track_id!==null){const picture=el("img");picture.src=imageUrl(camera,o.track_id);picture.alt=`${camera} raw t${o.track_id} f${state.frame} crop`;crops.append(crop);crop.append(picture);loaded.push(picture.decode());}
-      else{crops.append(crop);}
-      const text=el("div","crop-text");text.append(el("b","",`t${o.track_id ?? "?"} → ${o.person_id ?? "?"}`),el("span","badge "+(o.label_state==="player"?(o.person_id==="A"?"player-a":"player-b"):o.label_state),stateName(o)));
+      else{const {tile,ready}=cropPreview(img,o.box);crop.append(tile);crops.append(crop);loaded.push(ready);}
+      const text=el("div","crop-text"), badge=el("span","badge",stateName(o));badge.style.background=color(o);text.append(el("b","",`${boxName(o)} → ${o.person_id ?? "?"}`),badge);
       if(o.footpoint)text.append(el("div","coordinate",`x ${o.footpoint[0].toFixed(1)} m`),el("div","coordinate",`y ${o.footpoint[1].toFixed(1)} m`));else text.append(el("div","reason",o.footpoint_reason));crop.append(text);
     }
     if(!visible.length)card.append(el("div","empty",all.length?"このfilterに該当するboxなし":"このframeの実観測boxなし（人物不在とは断定しない）"));else card.append(crops);
@@ -89,11 +104,24 @@ async function loadFrame() {
   const serial=++state.serial;document.body.dataset.ready="loading";$("error").hidden=true;
   state.frame=Math.max(0,Math.min(detail.frames-1,Math.floor(state.frame)));
   const query={clip:state.clip,frame:state.frame};if(state.report !== null)query.report=state.report;if(state.camera && state.track !== null){query.camera=state.camera;query.track=state.track;}
-  try{const data=await api("/api/frame",query);if(serial!==state.serial)return;current=data;$("seek").value=state.frame;$("frame-number").value=state.frame;$("time").textContent=`${data.seconds.toFixed(3)} s / ${detail.frames}f`;renderTimelines();renderInspector();renderCourt();renderScores();updateUrl();await renderViews();if(serial===state.serial)document.body.dataset.ready="true";}catch(error){if(serial===state.serial)showError(error);}
+  try{const data=await api("/api/frame",query);if(serial!==state.serial)return;current=data;$("seek").value=state.frame;$("frame-number").value=state.frame;$("time").textContent=`${data.seconds.toFixed(3)} s / ${detail.frames}f`;$("annotated-frames").value=data.annotated?String(state.frame):"";$("annotation-state").textContent=data.annotated===null?"":data.annotated?(data.strata.join(" / ") || "注釈済み"):"未注釈";renderTimelines();renderInspector();renderCourt();renderScores();updateUrl();await renderViews();if(serial===state.serial)document.body.dataset.ready="true";}catch(error){if(serial===state.serial)showError(error);}
 }
 async function loadClip() {
   const clip=state.clip, serial=++state.serial;state.loadingClip=true;document.body.dataset.ready="loading";
   try{const loaded=await api("/api/clip",{clip});if(serial!==state.serial)return;detail=loaded;state.loadingClip=false;$("clip-title").textContent=state.clip;$("reference").textContent=catalog.clips.find(c=>c.id===state.clip).reference;$("seek").max=detail.frames-1;$("frame-number").max=detail.frames-1;
+    state.frame=state.frame ?? detail.annotated_frames?.[0] ?? 0;
+    $("views").classList.toggle("four-camera",detail.camera_ids.length===4);
+    const annotated=$("annotated-frames");
+    annotated.hidden=detail.annotated_frames===null;
+    replace("annotated-frames",el("option","","注釈済みframe"),...(detail.annotated_frames || []).map(frame=>el("option","",String(frame))));
+    annotated.options[0].value="";
+    annotated.onchange=()=>{if(annotated.value!==""){state.frame=Number(annotated.value);loadFrame();}};
+    replace("legend-players",...detail.people.filter(person=>person.role==="player").map(person=>{
+      const label=el("span","player-legend"), dot=el("span","dot");
+      dot.style.background=playerColors[person.id] || "#436999";
+      label.append(dot,document.createTextNode(person.id));
+      return label;
+    }));
     document.querySelectorAll(".clip-button").forEach(button=>button.classList.toggle("active",button.dataset.clip===state.clip));
     replace("coverage",...detail.coverage.map(c=>{const item=el("span");item.append(el("b","",c.camera+" "),document.createTextNode(`参照box照合 ${c.label_coverage===null?"不明":(c.label_coverage*100).toFixed(1)+"%"} · ${c.matched_boxes}/${c.label_boxes}`));return item;}));
     replace("coverage-detail",...detail.coverage.map(c=>el("p","muted",`${c.camera}: ラベルbox ${c.label_boxes} / raw実観測 ${c.raw_observed_boxes} / 照合 ${c.matched_boxes} (うち曖昧 ${c.ambiguous_matches}) / raw未対応 ${c.unmatched_raw_boxes??"不明"} / 参照未照合 ${c.unmatched_label_boxes??"不明"}。人物全体のrecallではない。`)));
@@ -101,8 +129,8 @@ async function loadClip() {
   }catch(error){if(serial===state.serial){state.loadingClip=false;showError(error);}}
 }
 async function init() {
-  try{catalog=await api("/api/catalog",{});$("scope").textContent=catalog.label_scope;$("counts").append(document.createTextNode(`${catalog.labelled_clips} / ${catalog.source_clips} clips`),el("small","",`${catalog.label_boxes.toLocaleString()} box labels · ${catalog.unlabelled_clips} clipsはラベルなし`));$("method").textContent=catalog.current_method;$("research").textContent=catalog.research;
-    replace("clips",...catalog.clips.map(clip=>{const button=el("button","clip-button");button.dataset.clip=clip.id;button.append(el("strong","",clip.id),el("small","",`${clip.frames}f · ${clip.boxes.toLocaleString()} boxes`),el("small","",clip.reference));button.onclick=()=>{state.clip=clip.id;state.frame=0;state.camera=null;state.track=null;loadClip();};return button;}));
+  try{catalog=await api("/api/catalog",{});$("scope").textContent=catalog.label_scope;$("dataset-name").textContent=catalog.dataset;$("counts").append(document.createTextNode(`${catalog.labelled_clips} / ${catalog.source_clips} clips`),el("small","",`${catalog.label_boxes.toLocaleString()} box labels · ${catalog.unlabelled_clips} clipsはラベルなし`));$("method").textContent=catalog.current_method;$("research").textContent=catalog.research;
+    replace("clips",...catalog.clips.map(clip=>{const button=el("button","clip-button");button.dataset.clip=clip.id;button.append(el("strong","",clip.id),el("small","",`${clip.frames}f · ${clip.boxes.toLocaleString()} boxes`),el("small","",clip.reference));button.onclick=()=>{state.clip=clip.id;state.frame=null;state.camera=null;state.track=null;loadClip();};return button;}));
     const select=$("report");select.append(el("option","","未指定 / 新規推論なし"));select.options[0].value="";for(const report of catalog.score_reports){const option=el("option","",report.name);option.value=report.id;select.append(option);}if(state.report===null&&catalog.score_reports.length)state.report=0;select.value=state.report===null?"":String(state.report);select.onchange=()=>{state.report=select.value===""?null:Number(select.value);loadFrame();};
     state.clip=state.clip||catalog.clips[0].id;$("previous").onclick=()=>{state.frame--;loadFrame();};$("next").onclick=()=>{state.frame++;loadFrame();};$("seek").onchange=()=>{state.frame=Number($("seek").value);loadFrame();};$("frame-number").onchange=()=>{state.frame=Number($("frame-number").value);loadFrame();};$("clear-selection").onclick=()=>{state.camera=null;state.track=null;loadFrame();};await loadClip();
   }catch(error){showError(error);}

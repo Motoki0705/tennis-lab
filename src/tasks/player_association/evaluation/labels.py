@@ -20,6 +20,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 SCHEMA = "player_association_labels_v1"
+PSEUDO_PROVENANCE = "pseudo_annotation"
 ROLES = ("player", "non_player")
 AMBIGUOUS = -1
 """``person_index`` of a box that covers two people or mostly background; evaluation ignores it."""
@@ -69,11 +70,40 @@ class ClipLabels:
     def __post_init__(self) -> None:
         if len({person.person_id for person in self.people}) != len(self.people):
             raise ValueError("Labelled person IDs must be unique")
+        frames = self.annotated_frames
+        covered = None if frames is None else np.asarray(frames, np.int64)
         for camera, labels in self.cameras.items():
             if len(labels.frames) and (labels.frames[0] < 0 or labels.frames[-1] >= self.num_frames):
                 raise ValueError(f"{camera} labels fall outside the clip timeline")
             if ((labels.person_index < AMBIGUOUS) | (labels.person_index >= len(self.people))).any():
                 raise ValueError(f"{camera} labels reference an unknown person")
+            if covered is not None and not np.isin(labels.frames, covered).all():
+                raise ValueError(f"{camera} has boxes outside the annotated frame set")
+
+    @property
+    def annotated_frames(self) -> tuple[int, ...] | None:
+        """Explicit source-frame coverage in pseudo-annotation provenance. Legacy labels omit it."""
+        if PSEUDO_PROVENANCE not in self.provenance:
+            return None
+        metadata = self.provenance[PSEUDO_PROVENANCE]
+        if not isinstance(metadata, dict) or type(metadata.get("schema_version")) is not int or metadata["schema_version"] != 1:
+            raise ValueError("Unsupported pseudo-annotation provenance version")
+        frames = metadata.get("annotated_frames")
+        if (not isinstance(frames, list) or not frames
+                or any(type(frame) is not int or not 0 <= frame < self.num_frames for frame in frames)
+                or frames != sorted(set(frames))):
+            raise ValueError("Pseudo-annotation frames must be nonempty, sorted, unique and on the source timeline")
+        return tuple(frames)
+
+    def annotated_spans(self) -> NDArray[np.int64] | None:
+        """Per-frame IDs of contiguous covered spans, with -1 for unannotated frames."""
+        frames = self.annotated_frames
+        if frames is None:
+            return None
+        span: NDArray[np.int64] = np.full(self.num_frames, -1, np.int64)
+        indices = np.asarray(frames, np.int64)
+        span[indices] = np.cumsum(np.r_[False, np.diff(indices) != 1])
+        return span
 
     @property
     def roles(self) -> NDArray[np.str_]:

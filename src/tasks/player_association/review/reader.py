@@ -11,7 +11,7 @@ import numpy as np
 import yaml
 from numpy.typing import NDArray
 
-from src.tasks.player_association.evaluation.labels import ClipLabels
+from src.tasks.player_association.evaluation.labels import PSEUDO_PROVENANCE, ClipLabels
 from src.tasks.player_association.evaluation.metrics import (
     CameraPrediction,
     match_to_labels,
@@ -227,7 +227,16 @@ def load_review_clip(
         or set(labels.cameras) != set(clip.camera_ids)
     ):
         raise ValueError("Labels disagree with the canonical clip manifest")
-    store, layout = observation_location(clip, artifact_root)
+    if labels.annotated_frames is None:
+        store, layout = observation_location(clip, artifact_root)
+    else:
+        partial = labels.provenance[PSEUDO_PROVENANCE]
+        if (partial["dataset_id"] != clip.dataset_id
+                or partial["clip_manifest_sha256"] != dual_sha256(clip.clip_dir / "clip.json")
+                or partial["media_sha256"] != {camera: dual_sha256(clip.media_path(camera)) for camera in clip.camera_ids}):
+            raise ValueError("Pseudo-annotation source identity differs from the review clip")
+        # Inspect every annotated detection, including boxes that never became a track.
+        store, layout = None, "pseudo_annotation_detection_boxes"
     provenance: dict[str, Any] = {
         "layout": layout,
         "labels_provenance": labels.provenance,

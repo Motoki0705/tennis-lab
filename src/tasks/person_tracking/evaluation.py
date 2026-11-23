@@ -23,17 +23,27 @@ def tracking_units(tracks: CameraTracks, selected: np.ndarray, labels: ClipLabel
         raise ValueError('Selection must contain only real observations on the labelled timeline')
     camera = tracks.camera.camera_id
     reference = labels.cameras[camera]
+    spans = labels.annotated_spans()
     units = []
     unlabelled = 0
     for frame in range(labels.num_frames):
+        if spans is not None and spans[frame] < 0:
+            continue
         at = reference.at(frame)
         people = reference.person_index[at]
         boxes = reference.boxes_xyxy[at]
-        identities = np.unique(people[people != AMBIGUOUS])
+        groups = [(p, np.flatnonzero(people == p)) for p in np.unique(people[people != AMBIGUOUS])]
+        if spans is not None:
+            # The pseudo reference labels the non-player role per box. Preserve
+            # each box while grouping duplicate observations of a named player.
+            groups = [(p, rows) for p, rows in groups if labels.people[p].role == 'player'] + [
+                (p, np.asarray([row])) for row, p in enumerate(people)
+                if p != AMBIGUOUS and labels.people[p].role == 'non_player'
+            ]
         predicted = sorted(np.flatnonzero(selected[:, frame]), key=lambda r: tracks.track_ids[r])
         overlap = pairwise_iou(tracks.boxes_xyxy[predicted, frame], boxes)
-        iou = np.column_stack([overlap[:, people == p].max(1) for p in identities]) \
-            if len(identities) else np.empty((len(predicted), 0))
+        iou = np.column_stack([overlap[:, rows].max(1) for _, rows in groups]) \
+            if groups else np.empty((len(predicted), 0))
         admissible = iou >= .5
         # One extra valid match must outweigh every possible IoU-sum gain.
         reward = np.where(admissible, min(iou.shape) + 1. + iou, 0.)
@@ -41,19 +51,22 @@ def tracking_units(tracks: CameraTracks, selected: np.ndarray, labels: ClipLabel
         matches = {int(g): int(tracks.track_ids[predicted[p]]) for p, g in zip(pi, gi, strict=True) if admissible[p, g]}
         unlabelled += len(predicted) - len(matches)
         player_bottoms = {}
-        for g, p in enumerate(identities):
+        for g, (p, rows) in enumerate(groups):
             if labels.people[p].role == 'player':
-                candidates = boxes[people == p]
+                candidates = boxes[rows]
                 biggest = int(np.prod(candidates[:, 2:] - candidates[:, :2], axis=1).argmax())
                 player_bottoms[g] = float(candidates[biggest, 3])
         two = len(player_bottoms) == 2 and len(set(player_bottoms.values())) == 2
-        for g, p in enumerate(identities):
+        for g, (p, _) in enumerate(groups):
             stratum = 'unknown'
             if two and g in player_bottoms:
                 stratum = 'near' if player_bottoms[g] == max(player_bottoms.values()) else 'far'
-            units.append({'clip': labels.clip_id, 'camera': camera, 'frame': frame,
-                          'person': labels.people[p].person_id, 'role': labels.people[p].role,
-                          'near_far': stratum, 'track_id': matches.get(g)})
+            unit = {'clip': labels.clip_id, 'camera': camera, 'frame': frame,
+                    'person': labels.people[p].person_id, 'role': labels.people[p].role,
+                    'near_far': stratum, 'track_id': matches.get(g)}
+            if spans is not None:
+                unit['annotated_span'] = int(spans[frame])
+            units.append(unit)
     return units, unlabelled
 
 
@@ -86,8 +99,12 @@ def score_units(units: list[dict[str, Any]]) -> dict[str, Any]:
     for rows in trajectories.values():
         previous_id = None
         previous_frame = -2
+        previous_span = None
         ever_matched = missed = False
         for row in sorted(rows, key=lambda r: r['frame']):
+            span = row.get('annotated_span')
+            if span != previous_span:
+                previous_id = None
             if row['frame'] != previous_frame + 1:
                 ever_matched = missed = False  # unknown reference gap, not a tracker miss
             track = row['track_id']
@@ -101,6 +118,7 @@ def score_units(units: list[dict[str, Any]]) -> dict[str, Any]:
             elif ever_matched:
                 missed = True
             previous_frame = row['frame']
+            previous_span = span
     denominator = 2 * idtp + idfp + idfn
     return {'idtp': idtp, 'idfp': idfp, 'idfn': idfn, 'idf1': 2 * idtp / denominator if denominator else None,
             'player_units': len(players), 'player_units_kept': kept,
@@ -114,7 +132,8 @@ def score_units(units: list[dict[str, Any]]) -> dict[str, Any]:
 
 def stratified_scores(units: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows = []
-    for camera in ('all', 'cam0', 'cam1', 'cam2'):
+    cameras = {'cam0', 'cam1', 'cam2'} | {unit['camera'] for unit in units}
+    for camera in ('all', *sorted(cameras)):
         for near_far in ('all', 'near', 'far', 'unknown'):
             subset = [u for u in units if (camera == 'all' or u['camera'] == camera)
                       and (near_far == 'all' or u['near_far'] == near_far)]

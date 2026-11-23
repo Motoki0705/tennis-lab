@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any, cast
 
 import cv2
@@ -12,13 +14,57 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+from src.tasks.player_association.pseudo_annotation import runner
+from src.tasks.player_association.pseudo_annotation.images import prepare_images
+from src.tasks.player_association.pseudo_annotation.job import Candidate
 from src.tasks.player_association.review.reader import identity_spans
 from src.tasks.player_association.review.service import AssociationReviewService
 from src.tasks.player_association.review.web import create_app
 from src.tasks.player_association.scripts.review_dataset import PATH_BOUNDARY
+from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathDirection
 from src.utils.configuration.inventory import EXPECTED_RUNTIME_BOUNDARIES
+
+
+def test_render_validated_annotation_for_human_review(
+    review_inputs: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clip = ClipManifest.load(review_inputs["clip"])
+    candidates = {3: {"cam0": [Candidate(box=[5., 5., 18., 45.])], "cam1": []}}
+    packet_dir, run_dir = tmp_path / "packet", tmp_path / "annotation"
+    prepare_images(clip, candidates, {3: ["stopped_clip"]}, packet_dir, player_count=4,
+                   input_snapshot_sha256="a" * 64, show_prior_association=False)
+    monkeypatch.setattr(runner, "LOCK_ROOT", tmp_path / "locks")
+
+    def codex(command: list[str], **options: Any) -> subprocess.CompletedProcess[str]:
+        assert command[:6] == ["codex", "exec", "-m", "gpt-6.1-terra", "-c", 'model_reasoning_effort="xhigh"']
+        assert command[command.index("--image") + 1] == str(packet_dir / "frame_000003.jpg")
+        assert "P4" in options["input"]
+        Path(command[command.index("-o") + 1]).write_text(json.dumps({
+            "input_sha256": dual_sha256(packet_dir / "packet.json"),
+            "player_descriptions": ["unseen", "unseen", "unseen", "white shirt"],
+            "frames": [{"frame": 3, "panels": [
+                {"camera": "cam0", "labels": ["P4"]}, {"camera": "cam1", "labels": []},
+            ]}],
+        }))
+        options["stdout"].write('{"type":"turn.completed","usage":{"input_tokens":100,"output_tokens":12}}\n')
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(runner.subprocess, "run", codex)
+    assert runner.run_annotation(packet_dir, run_dir)["status"] == "accepted"
+    review_inputs["label"].unlink()
+    path = runner.publish(packet_dir, run_dir, review_inputs["dataset"])
+    assert runner.publish(packet_dir, run_dir, review_inputs["dataset"]) == path
+    assert path == review_inputs["label"]
+    service = AssociationReviewService(review_inputs["dataset"], review_inputs["artifacts"])
+    client = TestClient(create_app(service))
+    assert client.get("/api/clip", params={"clip": clip.clip_id}).json()["annotated_frames"] == [3]
+    annotated = client.get("/api/frame", params={"clip": clip.clip_id, "frame": 3}).json()
+    other = client.get("/api/frame", params={"clip": clip.clip_id, "frame": 2}).json()
+    assert annotated["annotated"] and annotated["strata"] == ["stopped_clip"]
+    assert [(o["camera"], o["box_index"], o["person_id"]) for o in annotated["observations"]] == [("cam0", 0, "P4")]
+    assert not other["annotated"] and other["observations"] == []
 
 
 def test_same_raw_id_changes_anonymous_person_and_preserves_gaps(

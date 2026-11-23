@@ -14,7 +14,7 @@ from src.tasks.player_association.evaluation.dataset_labels import (
     discover_labels,
     label_path,
 )
-from src.tasks.player_association.evaluation.labels import ClipLabels
+from src.tasks.player_association.evaluation.labels import PSEUDO_PROVENANCE, ClipLabels
 from src.tasks.player_association.review.diagnostics import SavedDiagnostics
 from src.tasks.player_association.review.reader import (
     ReviewClip,
@@ -102,9 +102,13 @@ class AssociationReviewService:
                     "boxes": sum(
                         len(x.frames) for x in self.labels[key].cameras.values()
                     ),
-                    "reference": "追加部分参照 / Codex目視・第2注釈者なし"
-                    if self.labels[key].provenance.get("blind_to_association")
-                    else "旧dev参照 / 設計・評価に使用済み",
+                    "reference": (
+                        "Terra 疑似正解"
+                        if self.labels[key].annotated_frames is not None
+                        else "追加部分参照 / Codex目視・第2注釈者なし"
+                        if self.labels[key].provenance.get("blind_to_association")
+                        else "旧dev参照 / 設計・評価に使用済み"
+                    ),
                 }
                 for key in sorted(self.labels)
             ],
@@ -203,6 +207,7 @@ class AssociationReviewService:
             "width": clip.manifest.width,
             "height": clip.manifest.height,
             "camera_ids": list(clip.manifest.camera_ids),
+            "annotated_frames": clip.labels.annotated_frames,
             "people": [
                 {"id": x.person_id, "role": x.role, "description": x.description}
                 for x in clip.labels.people
@@ -239,22 +244,24 @@ class AssociationReviewService:
         ):
             raise ValueError("Unknown selected camera/raw track ID")
         observations = []
+        annotated_frames = clip.labels.annotated_frames
         for camera_id in clip.manifest.camera_ids:
             track = clip.tracks.get(camera_id)
             if track is None:
                 rows = clip.labels.cameras[camera_id].at(frame)
-                for person_index, box in zip(
+                for box_index, (person_index, box) in enumerate(zip(
                     clip.labels.cameras[camera_id].person_index[rows],
                     clip.labels.cameras[camera_id].boxes_xyxy[rows],
                     strict=True,
-                ):
+                )):
                     observations.append(
                         {
                             "camera": camera_id,
                             "track_id": None,
+                            "box_index": box_index,
                             "box": box.tolist(),
                             "footpoint": None,
-                            "footpoint_reason": "raw観測なし: ラベルboxのみ",
+                            "footpoint_reason": "注釈済み検出box" if annotated_frames is not None else "raw観測なし: ラベルboxのみ",
                             **label_state(clip, int(person_index)),
                         }
                     )
@@ -297,6 +304,8 @@ class AssociationReviewService:
             "seconds": frame / clip.manifest.fps,
             "time_basis": "同期clip manifestのframe / fps",
             "observations": observations,
+            "annotated": None if annotated_frames is None else frame in annotated_frames,
+            "strata": clip.labels.provenance.get(PSEUDO_PROVENANCE, {}).get("frame_strata", {}).get(str(frame), []),
             "scores": scores,
         }
 

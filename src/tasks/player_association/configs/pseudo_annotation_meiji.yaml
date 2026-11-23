@@ -1,0 +1,20 @@
+schema_version: 1
+max_abs_x_m: 6.5
+max_abs_y_m: 18.0
+footpoint_bottom_border_px: 4.0
+switch_window_s: 0.25
+switch_jump_m: 3.0
+switch_context_frames: 2
+fragment_max_duration_s: 0.5
+fragment_max_gap_s: 0.25
+reprojection_px: 24.0
+reprojection_min_joints: 3
+confident_min_views: 2
+confident_min_valid_joints: 12
+stopped_reasons:
+  - player_association_player_not_found
+  - player_association_ambiguous_players
+seed: 2442
+doubt_blocks_per_clip_stratum: 2
+doubt_block_frames: 3
+confident_frames_per_clip: 4

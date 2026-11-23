@@ -91,16 +91,18 @@ def _f1(tp: int, fp: int, fn: int) -> dict[str, Any]:
     return {"tp": tp, "fp": fp, "fn": fn, "precision": precision, "recall": recall, "f1": f1}
 
 
-def _events(sequence: list[tuple[int, int]]) -> list[int]:
-    """Frames where the value changes between consecutive entries of ``[(frame, value)]``."""
-    return [frame for (_, before), (frame, after) in zip(sequence, sequence[1:], strict=False) if before != after]
+def _events(sequence: list[tuple[int, int]], spans: NDArray[np.int64] | None) -> list[int]:
+    """Changes between consecutive entries within the same annotated span."""
+    return [frame for (previous, before), (frame, after) in zip(sequence, sequence[1:], strict=False)
+            if before != after and (spans is None or spans[previous] == spans[frame])]
 
 
-def _match_events(truth: list[int], predicted: list[int], tolerance: int) -> int:
+def _match_events(truth: list[int], predicted: list[int], tolerance: int, spans: NDArray[np.int64] | None) -> int:
     free = sorted(predicted)
     hits = 0
     for frame in sorted(truth):
-        near = [candidate for candidate in free if abs(candidate - frame) <= tolerance]
+        near = [candidate for candidate in free if abs(candidate - frame) <= tolerance
+                and (spans is None or spans[frame] == spans[candidate])]
         if near:
             free.remove(min(near, key=lambda candidate: abs(candidate - frame)))
             hits += 1
@@ -111,6 +113,7 @@ def evaluate(labels: ClipLabels, predictions: dict[str, CameraPrediction], *, mi
              switch_tolerance: int = 15) -> dict[str, Any]:
     """Association metrics of one clip; see the module docstring."""
     matched = match_to_labels(labels, predictions, min_iou)
+    spans = labels.annotated_spans()
     roles = labels.roles
     cameras = sorted(predictions)
     pair_tp = pair_fp = pair_fn = 0
@@ -170,13 +173,14 @@ def evaluate(labels: ClipLabels, predictions: dict[str, CameraPrediction], *, mi
     coverage: dict[str, Any] = {}
     for camera in cameras:
         prediction, camera_match = predictions[camera], matched[camera]
+        observed = prediction.observed if spans is None else prediction.observed & (spans >= 0)
         confusion[camera] = {}
         for row, track in enumerate(prediction.track_ids.tolist()):
-            frames = np.flatnonzero(prediction.observed[row])
+            frames = np.flatnonzero(observed[row])
             labelled = [(int(f), int(camera_match[row, f])) for f in frames if camera_match[row, f] >= 0]
             predicted_sequence = [(int(f), int(prediction.player_ids[row, f])) for f in frames]
-            true_events, predicted_events = _events(labelled), _events(predicted_sequence)
-            hits += _match_events(true_events, predicted_events, switch_tolerance)
+            true_events, predicted_events = _events(labelled, spans), _events(predicted_sequence, spans)
+            hits += _match_events(true_events, predicted_events, switch_tolerance, spans)
             switches_true += [{"camera": camera, "track_id": track, "frame": f} for f in true_events]
             switches_predicted += [{"camera": camera, "track_id": track, "frame": f} for f in predicted_events]
             counts = Counter((labels.people[p].person_id if p >= 0 else ("ambiguous" if p == AMBIGUOUS else "unmatched"),
@@ -185,8 +189,8 @@ def evaluate(labels: ClipLabels, predictions: dict[str, CameraPrediction], *, mi
         label_boxes = len(labels.cameras[camera].frames)
         covered = int((camera_match >= 0).sum() + (camera_match == AMBIGUOUS).sum())
         coverage[camera] = {"label_boxes": label_boxes, "matched_label_boxes": covered,
-                            "unmatched_predicted_boxes": int((prediction.observed & (camera_match == -2)).sum()),
-                            "unmatched_predicted_boxes_with_id": int((prediction.observed & (camera_match == -2) & (prediction.player_ids >= 0)).sum())}
+                            "unmatched_predicted_boxes": int((observed & (camera_match == -2)).sum()),
+                            "unmatched_predicted_boxes_with_id": int((observed & (camera_match == -2) & (prediction.player_ids >= 0)).sum())}
     return {"pairs": _f1(pair_tp, pair_fp, pair_fn),
             "group_accuracy": {"frames_scored": frames_scored, "frames_correct": frames_correct,
                                "accuracy": _ratio(frames_correct, frames_scored)},

@@ -28,6 +28,10 @@ OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 \
 切替frameからシークできる。URLの`clip/frame/camera/track/report`で表示条件を再現できる。
 画像取得は指定frameをCPU decodeするため、大きくシークした際は待ち時間がある。
 
+## Terra の部分注釈を確認する
+
+`--dataset-root` に注釈が公開された同期 dataset、`--artifact-root` に試行の出力ディレクトリを指定する。clip を開くと注釈済み frame に移動する。frame の選択欄と URL の `clip/frame` で抜き取り表の箇所を開き、全カメラの検出番号・crop・P1〜P4 と層を照合する。追跡に採用されなかった検出 box も表示する。試行の保存先と抜き取り表は [Meiji の試行記録](../../../../knowledge/runs/run-i2442-meiji-pseudo-association-pilot/README.md) を参照。
+
 ## 現物と現行reader（2026-10-04調査）
 
 | family / schema | 用途・入力 → 参照 | 出自・単位 | split / size・現物 | 現在の位置付け |
