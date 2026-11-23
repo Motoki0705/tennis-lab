@@ -34,9 +34,12 @@ artifacts:
   meiji4: knowledge/runs/run-multiview-pose-link-recall-20261124/meiji4.json
   losses: knowledge/runs/run-multiview-pose-link-recall-20261124/losses.json
   holdout_inputs: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-inputs.json
+  holdout_camera_recovery: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-camera-recovery.json
+  holdout_pose_preparation: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-pose-preparation.json
 parents:
 - run-multiview-pose-meiji-20261124
 - run-i964-unseen-r16-20261001
+- run-slcs-meiji-court-visual-qc-v1
 relations: []
 papers: []
 tags:
@@ -54,3 +57,5 @@ repro:
 Meiji 3camの開発4 clipでは、初回全身版の取りこぼし増分1,478件が、2,458件の消失と980件の新規採用から生じた。骨長で1,280件、MILP競合で1,142件失った。肩・腰のスコアと全身の品質判定を分けると、micro pair F1は0.8050から0.8515、FPは906から1,045件になった。試作のF1 0.8485とFP上限1,102件を満たした。未使用視点で採点できる関節は増え、P90再投影誤差は27.81 pxから43.64 pxに上がった。
 
 meiji_4camは全69 clip・46,228フレームで候補を生成し、85.90%のDINO行を割り当てた。4 CPUプロセスで367.68秒。未見3 clipには追跡前のViTPoseが欠け、うち1 clipは校正と向きも欠けるため入力点検の段階。標準パイプラインの採用判断は据え置く。 [設定選択と実データ結果](../../runs/run-multiview-pose-link-recall-20261124/README.md)
+
+同じ映像の過去のCourt投影点を使ったcam0の復元はRMSE 3.13 pxで校正上限を通過した。r18のcam1・cam2と組み合わせると、同一clipのボール注釈でhalf-turnが `[false, false, true]`、次点との差が0.475となった。ViTPoseは3 clip・9視点の38,421行を固定した計画まで。人物ラベルの採点は0回。

@@ -10,7 +10,7 @@ output=${2:-outputs/i2444/refine/qualified}
 
 case "$mode" in
     meiji3|meiji4) bash "$previous/reproduce.sh" "$mode" "$output" ;;
-    all|trace|holdout-inputs)
+    all|trace|holdout-inputs|holdout-recovery|holdout-plan)
         export CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
         export PYTHONPATH="$run:$previous:knowledge/runs/run-i2444-multiview-pose-probe:."
         dataset=data/tennis_multiview/processed/meiji_3cam/dataset
@@ -23,12 +23,21 @@ case "$mode" in
                 --archive "$archives/person_tracking/evaluate/i964-unseen-r16-20261001" \
                 --output "$output/holdout-inputs.json"
         fi
+        if [[ "$mode" == holdout-recovery ]]; then
+            .venv/bin/python -B "$run/recover_holdout_camera.py" --dataset "$dataset" \
+                --archives "$archives" --output "$output/recovery.json"
+        fi
+        if [[ "$mode" == holdout-plan ]]; then
+            .venv/bin/python -B "$run/holdout_pose.py" plan --dataset "$dataset" \
+                --archive "$archives/person_tracking/evaluate/i964-unseen-r16-20261001" \
+                --output "$output/pose-plan.json"
+        fi
         if [[ "$mode" == all ]]; then
             bash "$previous/reproduce.sh" all "$output"
         fi
         ;;
     *)
-        printf 'Usage: bash %s/reproduce.sh [all|trace|meiji3|meiji4|holdout-inputs] [output-directory]\n' "$run" >&2
+        printf 'Usage: bash %s/reproduce.sh [all|trace|meiji3|meiji4|holdout-inputs|holdout-recovery|holdout-plan] [output-directory]\n' "$run" >&2
         exit 2
         ;;
 esac

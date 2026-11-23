@@ -57,7 +57,13 @@
 
 ## 予約した未見3 clip
 
-#964 r18の保存物を点検した。3 clipとも全画面DINOと部分参照ラベルのファイルがあり、追跡前のViTPoseのポートは全9カメラで欠けていた。video_000/clip_002 と video_002/clip_003 は、固定されたボール参照と3視点の校正がある。計22,939行のViTPoseを補えば新経路で評価できる。video_001/clip_003 はcam0校正とボール参照の向きが欠けている。未見の採点にはこの実装と `meiji3.json` の `config` を固定した。採点回数は0。 [予約入力の点検](holdout-inputs.json)
+#964 r18の保存物を点検した。3 clipとも全画面DINOと部分参照ラベルのファイルがあり、追跡前のViTPoseのポートは全9カメラで欠けていた。video_000/clip_002 と video_002/clip_003 は、固定されたボール参照と3視点の校正がある。計22,939行のViTPoseを補えば新経路で評価できる。r18のvideo_001/clip_003はcam0校正とボール参照の向きが欠測だった。未見の採点にはこの実装と `meiji3.json` の `config` を固定した。採点回数は0。 [予約入力の点検](holdout-inputs.json)
+
+`video_001/clip_003` には、9フレームから作った別runのCourt投影点が残っていた。3本の動画SHA-256を照合し、cam0の14投影点から既存の平面pinhole fitで校正を復元した。RMSEは3.13 px、既存の校正上限は11.01 px。cam1・cam2はr18の校正を使った。このRMSEは保存済みhomographyからの投影点に対する値で、Court診断で元の検出点と比較したP95残差は15.84 pxだった。
+
+同じclipのボール注釈から実際に見える点を選び、#932の設定で1,249フレームを採点した。cam0を基準にcam0／cam1／cam2のhalf-turnは `[false, false, true]`、最良仮説の支持は91.35%、次点との差は0.475。人物ラベルを使う採点より前に、この校正と向きを使う可否を確認する。 [保存済みCourt投影点](../run-slcs-meiji-court-visual-qc-v1/results.json) [復元した行列とボール判定](holdout-camera-recovery.json)
+
+3 clip・9カメラの38,421検出行を、開発用と同じcheckpoint・FP32・flip test・bbox拡張率で処理する計画を作成した。GPUの本推論は共有training queueから `holdout_pose.py infer` を実行し、固定した `pose-plan.json` のSHA-256を渡す。公開先には `person_detections` とその行を保持した `person_pose_features` のみを保存する。9カメラの読み戻し後に `complete.json` ができる。CPUの実モデル確認では1フレームの3行が入力行と一致した。模擬出力では1カメラを保存後に中断し、続きから9カメラ・38,421行を読み戻した。 [計画のdigestと検証結果](holdout-pose-preparation.json)
 
 ## 再現
 
@@ -68,6 +74,8 @@ bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh trace
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh meiji3
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh meiji4
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-inputs
+bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-recovery outputs/i2444/holdout
+bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-plan outputs/i2444/holdout
 ```
 
 公開するのは再現コードと指標・digest。元映像と骨格配列はローカルに保存する。
