@@ -39,8 +39,10 @@ from src.tennis_scene.pipeline.execution_plan import (
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
 from src.tennis_scene.schema import SceneResult
 from src.utils.configuration import PathRole
+from src.utils.inference_recording import InferenceRecorder
 from src.utils.io import save_json_atomic
 from src.utils.video.reader import OpenCVVideoFrameReader, probe_video_decoder
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
@@ -140,6 +142,43 @@ def test_existing_entries_and_multi_clip_plan_publish_the_same_scene(tmp_path: P
     assert all(stage.calls == 1 for stage in stages.values())
     second = generate_pseudo_annotations(dataset, run, pipeline_config_yaml="device: cpu\n", publication_identity={"fixture": "fixed"})
     assert second[0].status == "skipped" and calls == [1]
+
+
+def test_recording_preserves_dataset_publication_identity_and_scene_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch)
+    materialize_assets(enabled_model_assets(pipeline.config).values(), tmp_path, court=pipeline.config.court_kp)
+    dataset, clip, _ = _register_clip(tmp_path, paths)
+    clip_id = "video_000/clip_000"
+    store = clip / "annotations/tennis_scene"
+
+    def run(videos: Sequence[Path], cameras: Sequence[str], directory: Path) -> SceneResult:
+        return pipeline.run(videos, video_role=PathRole.DATA, camera_ids=cameras,
+                            store_root=directory / "annotations/tennis_scene", clip_id=clip_id)
+
+    def publish() -> tuple[str, bytes, bytes]:
+        outcome, = generate_pseudo_annotations(
+            dataset, run, pipeline_config_yaml="device: cpu\n",
+            publication_identity=pipeline.publication_identity(), continue_on_error=False,
+            scene_export=pipeline.completed_scene_export,
+        )
+        assert outcome.status == "generated" and outcome.annotation_path is not None
+        marker = json.loads(outcome.annotation_path.read_text())
+        scene = annotation_scene_path(store, marker)
+        return str(marker["publication_identity_sha256"]), scene.read_bytes(), scene.with_suffix(".metadata.json").read_bytes()
+
+    baseline = publish()
+    store.rename(clip / "annotations/plain")
+    trace = tmp_path / "recording.json"
+    with InferenceRecorder(trace, synchronize_cuda=False):
+        recorded = publish()
+
+    assert recorded == baseline
+    assert all(stage.calls == 2 for stage in stages.values())
+    data = json.loads(trace.read_text())
+    assert data["status"] == "complete"
+    assert any(event["stage"] == "publication" for event in data["events"])
 
 
 @pytest.mark.parametrize("change", ["backend", "capture_property", "capture_options", "crop"])
