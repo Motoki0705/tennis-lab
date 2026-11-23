@@ -20,9 +20,35 @@ from src.submodules.models.gvhmr.tensorrt_validation import (
     verify_outputs,
 )
 from src.utils.checksum import dual_sha256
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathContractError,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
 from src.utils.io import write_json_atomic
 from src.utils.models.tensorrt_artifacts import ONNX_FILE, EngineBundle
 from src.utils.models.tensorrt_runtime import TensorRTRunner
+from src.utils.paths import PROJECT_ROOT
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.gvhmr_tensorrt_qualification",
+    fields=(
+        BoundaryPathField(
+            "bundle", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.DIRECTORY,
+            must_exist=True, allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "progress", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, many=True, required=False,
+        ),
+        BoundaryPathField("report", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE),
+    ),
+)
 
 Shape = tuple[int, int]
 
@@ -65,15 +91,39 @@ def main() -> None:
     if args.ort_threads < 1:
         parser.error("--ort-threads must be positive")
 
-    root = args.bundle.resolve(strict=True)
+    report_path = PROJECT_ROOT / args.report.expanduser()
+    roots = RuntimePathRoots(
+        project_root=PROJECT_ROOT,
+        data_root=PROJECT_ROOT,
+        checkpoint_root=PROJECT_ROOT,
+        artifact_root=PROJECT_ROOT,
+        output_root=report_path.parent.resolve(),
+        cache_root=PROJECT_ROOT,
+        external_asset_root=PROJECT_ROOT,
+    )
+    arguments: dict[str, object] = {
+        "bundle": PROJECT_ROOT / args.bundle.expanduser(),
+        "report": report_path,
+    }
+    if args.progress:
+        arguments["progress"] = [PROJECT_ROOT / path.expanduser() for path in args.progress]
+    paths = PATH_BOUNDARY.validate(
+        arguments, resolver=PathResolver(roots), independent_artifact_inputs=True,
+    )
+    root = paths.declared("bundle").path
+    report_path = paths.declared("report").path
+    if report_path.exists() and not report_path.is_file():
+        raise PathContractError(f"Qualification report output must be a file: {report_path}")
+
     bundle = EngineBundle.read(root)
     if bundle.export.settings.get("attention_mask") != ATTENTION_MASK_ENCODING:
         raise ValueError("Qualification requires the finite additive mask GVHMR export")
     mask_reference = root / MASK_REFERENCE_FILE
     profile = bundle.engine.profiles["obs"]
     used = {tuple(shape) for shape in args.shape}
-    for progress in args.progress:
-        used.update(_recorded_shapes(progress))
+    if "progress" in paths:
+        for progress in paths.declared_many("progress"):
+            used.update(_recorded_shapes(progress.path))
     boundaries = {(batch, frames) for batch, frames, *_ in profile.shapes}
     boundaries.update((batch, frames) for batch in (profile.minimum[0], profile.maximum[0])
                       for frames in (profile.minimum[1], profile.maximum[1]))
@@ -120,7 +170,7 @@ def main() -> None:
                 verify_outputs(outputs, batch=batch, frames=frames)
                 row["tensorrt_finite"] = True
                 layers = runner.inspect_layers()
-                inspector = args.report.with_name(f"{args.report.stem}-{shape}-layers.json")
+                inspector = report_path.with_name(f"{report_path.stem}-{shape}-layers.json")
                 write_json_atomic(inspector, layers)
                 row["inspector"] = inspector.name
                 row["tensorrt_layer_precision"] = verify_fp16_layers(layers, operations, attention_blocks=attention_blocks)
@@ -129,9 +179,9 @@ def main() -> None:
             row["error"] = f"{type(error).__name__}: {error}"
             raise
         finally:
-            write_json_atomic(args.report, report)
+            write_json_atomic(report_path, report)
     report["status"] = "complete"
-    write_json_atomic(args.report, report)
+    write_json_atomic(report_path, report)
 
 
 if __name__ == "__main__":
