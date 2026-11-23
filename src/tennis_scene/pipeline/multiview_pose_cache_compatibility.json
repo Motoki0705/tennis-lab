@@ -7,7 +7,7 @@
     },
     "tennis_scene/multiview_pose/__main__.py": {
       "before": null,
-      "after": "fecd4cb0aa822972ede6ad492fff7f8f593b9e9ea95ffc786f7ab71ad1fb5905"
+      "after": "c3056d2019731fd608e0a1e4dd46051899736b7e4e4d00d8a3136d58bdb63eed"
     },
     "tennis_scene/multiview_pose/assignment.py": {
       "before": null,
@@ -44,6 +44,10 @@
     "tennis_scene/pipeline/video_court_side/prepare.py": {
       "before": "3864447fd3e1f67b70b77afceac258ade1c16fe498bbfdc06a320e18624e3e45",
       "after": "1e8087cf5a42de07ecba863f4e3cd1ab018a1c4831b50e8f282a77b8beaf29f8"
+    },
+    "utils/configuration/inventory.py": {
+      "before": "e952cad30dd7a330ed4611082ed4503539ba3b72afb6e0dbeb253d6f4ed22a52",
+      "after": "d1f78faac1ef561bfff0d6fe594ad93c8ea17804b7cd28067d5d43608c13a4eb"
     }
   }
 }

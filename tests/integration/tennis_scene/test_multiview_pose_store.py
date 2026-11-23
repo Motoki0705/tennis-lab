@@ -21,6 +21,7 @@ from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, unpack_value
 from src.tennis_scene.pipeline.video_artifact import publish_document
+from src.utils.configuration import PathContractError
 from tests.integration.tennis_scene.test_video_court_side import build, prefix_stores
 from tests.unit.tennis_scene.multiview_pose.test_reconstruct import person
 
@@ -130,6 +131,43 @@ def test_cli_writes_candidates_from_only_raw_ports_and_pinned_side(
     evidence = result_store.descriptor(ref)["provenance"]
     assert evidence["court_side"]["digest"] == decision.digest
     assert "camera_alignment" not in evidence["observations"]
+
+
+@pytest.mark.parametrize(
+    ("invalid_field", "error"),
+    [
+        ("--drift-store", r"drift_store must be an existing directory"),
+        ("--output", r"Pose output must be a directory"),
+    ],
+)
+def test_cli_rejects_non_directory_before_loading_side(
+    invalid_field: str, error: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "pose-result"
+    file = tmp_path / "not-a-store"
+    file.write_text("keep this file")
+    paths = {
+        "--clip-store": tmp_path,
+        "--side-store": tmp_path,
+        "--court-store": tmp_path,
+        "--output": output,
+        invalid_field: file,
+    }
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            argv[0],
+            "--side-digest",
+            "0" * 64,
+            *(arg for flag, path in paths.items() for arg in (flag, str(path))),
+        ],
+    )
+
+    with pytest.raises(PathContractError, match=error):
+        main()
+
+    assert not output.exists()
+    assert file.read_text() == "keep this file"
 
 
 def test_output_publication_rejects_an_existing_store_with_other_components(
