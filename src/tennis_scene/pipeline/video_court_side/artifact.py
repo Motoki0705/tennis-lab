@@ -15,8 +15,12 @@ from src.tasks.court_side.hypothesis import (
     evidence_kind,
     judge_side_evidence,
 )
-from src.tennis_scene.pipeline.artifacts import json_value
+from src.tennis_scene.pipeline.artifacts import document_digest, json_value
+from src.tennis_scene.pipeline.components.court_calibration import (
+    CourtCalibrationOutput,
+)
 from src.tennis_scene.pipeline.components.court_side import CourtSideOutput
+from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.storage.codec import restore_type
 from src.tennis_scene.pipeline.video_artifact import load_document
@@ -32,6 +36,24 @@ from src.tennis_scene.pipeline.video_court.store import VideoCourtArtifact
 
 SCHEMA = "video_court_side_v1"
 DIAGNOSTICS_SCHEMA = "video_court_side_diagnostics_v1"
+
+
+def shared_calibration_digest(source: ClipSource, calibration: CourtCalibrationOutput, court: VideoCourtArtifact) -> str:
+    diagnostics = calibration.court.diagnostics or {}
+    refs = diagnostics.get("shared_courts", [])
+    scope = court.manifest
+    expected = [(scope["dataset_id"], scope["video_id"], camera, scope["cameras"][camera]) for camera in source.camera_ids]
+    if (diagnostics.get("temporal_policy") != "static_video_shared_broadcast"
+            or [(r["dataset_id"], r["video_id"], r["camera_id"], r["artifact_digest"]) for r in refs] != expected):
+        raise ValueError("Court side inputs require calibration from the pinned video_shared court")
+    drift = drift_identity(court).get("camera_digests", {})
+    if any(r["drift_digest"] != drift.get(r["camera_id"]) for r in refs):
+        raise ValueError("Frozen calibration disagrees with the selected court drift evidence")
+    for view in calibration.calibration.views:
+        if not 0 <= view.source_index < len(expected) or source.camera_ids[view.source_index] != view.camera.camera_id:
+            raise ValueError("Calibrated court side cameras disagree with the source view order")
+    digest: str = document_digest({"cameras": [v.camera for v in calibration.calibration.views], "reference": calibration.reference_camera})
+    return digest
 
 
 def require_accepted_courts(court: VideoCourtArtifact, clips: Iterable[str], policy: str) -> None:

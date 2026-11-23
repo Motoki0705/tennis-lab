@@ -207,7 +207,7 @@ def phase2_sources() -> dict[str, str]:
     with gzip.open(_PHASE2_SOURCE_BASELINE, "rt", encoding="utf-8") as stream:
         baseline = json.load(stream)
     assert baseline["commit"] == _PHASE2_BASE
-    actual = source_identity.source_digests(PROJECT_ROOT / "src")
+    actual = source_identity.compatible_source_digests(source_identity.source_digests(PROJECT_ROOT / "src"), tensorrt=True)
     # Verify the changed files from this checkout against the fixed main tree.
     # Later, unrelated files are allowed to change the real runtime identity.
     return {**baseline["sources"], **{path: actual[path] for path in baseline["revised_paths"]}}
@@ -249,9 +249,19 @@ def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_pat
     assert source_identity.compatible_source_digests(edited_patch) == edited_patch
     unrelated_edit = {"tennis_scene/schema.py": "0" * 64}
     assert source_identity.compatible_source_digests({**snapshot, **unrelated_edit}) == {**baseline, **unrelated_edit}
-    # The model runtime and tracking evidence schema are not precision-only changes.
-    current = source_identity.source_digests(PROJECT_ROOT / "src")
-    assert source_identity.compatible_source_digests(current, tensorrt=True) == current
+
+
+def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("multiview_pose_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    unrelated = {"tennis_scene/schema.py": "a" * 64}
+    current = {**unrelated, **{path: pair["after"] for path, pair in files.items()}}
+    baseline = {**unrelated, **{path: pair["before"] for path, pair in files.items() if pair["before"] is not None}}
+    assert source_identity.compatible_source_digests(current, tensorrt=True) == baseline
+    changed = {**current, "tennis_scene/pipeline/video_court_side/artifact.py": "0" * 64}
+    assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
 
 
 def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:

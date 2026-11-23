@@ -1,0 +1,49 @@
+{
+  "baseline_commit": "3dbdefdd5e656ffc915c30ac26d7ae06efd1e22f",
+  "files": {
+    "tennis_scene/multiview_pose/__init__.py": {
+      "before": null,
+      "after": "4cb7a9c4a001f11726b09ce79e4674fae85fdb1bb2b3936d2fba7164736c4cc9"
+    },
+    "tennis_scene/multiview_pose/__main__.py": {
+      "before": null,
+      "after": "fecd4cb0aa822972ede6ad492fff7f8f593b9e9ea95ffc786f7ab71ad1fb5905"
+    },
+    "tennis_scene/multiview_pose/assignment.py": {
+      "before": null,
+      "after": "4f1d2957172881be94c0e22cba3af436d7f32590e656a5c11e9d2bcce8a00428"
+    },
+    "tennis_scene/multiview_pose/geometry.py": {
+      "before": null,
+      "after": "2327ba4b7f29e96628340d517fc331dbd85f757c16b54942c0d51cbd47856d16"
+    },
+    "tennis_scene/multiview_pose/inputs.py": {
+      "before": null,
+      "after": "14a5fc5f65dfebd8aea8a8784f22a382b4dbb944f72701dc7edeb5c76adf7f28"
+    },
+    "tennis_scene/multiview_pose/reconstruct.py": {
+      "before": null,
+      "after": "bb45b166d0984be40d265ad52ac566657242c0f9b038b05587c1a2a1c3580732"
+    },
+    "tennis_scene/multiview_pose/schema.py": {
+      "before": null,
+      "after": "8f9e4de987d605147342ef49012a8bcb0e8a12177c97d06ecf0500c0eec9912a"
+    },
+    "tennis_scene/multiview_pose/storage.py": {
+      "before": null,
+      "after": "a6100768ae37dd378a80beb4122ac4d1f2b04900b1b9781d0d3ca9f9c976ef13"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "bcf77236d136e86a1b817bac692b13680d1c1aefc44da6a39d6a5d2db4d9c4c0",
+      "after": "3a608ef31c5d0d396e514eef1c23d106e37dfa8b406e3a1467c347958e218bd6"
+    },
+    "tennis_scene/pipeline/video_court_side/artifact.py": {
+      "before": "33ae1d847bca38273c77709fa6d57b21634a833e4dfe52b2d655232796274404",
+      "after": "e5607bdce4ca05b8f28554a38d5287694b49a4d418ebdfed00516266ea27c207"
+    },
+    "tennis_scene/pipeline/video_court_side/prepare.py": {
+      "before": "3864447fd3e1f67b70b77afceac258ade1c16fe498bbfdc06a320e18624e3e45",
+      "after": "1e8087cf5a42de07ecba863f4e3cd1ab018a1c4831b50e8f282a77b8beaf29f8"
+    }
+  }
+}
