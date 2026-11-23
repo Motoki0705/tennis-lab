@@ -1,0 +1,22 @@
+[
+  {
+    "policy_id": "temporal-overview",
+    "version": "1",
+    "instructions": "Prefer plain temporal overview pages with a spread of same-camera frames to identify the live-ball path. Choose temporal batches, anchors, crops, zoom and revisits as useful; no adjacent-frame viewing order is prescribed. Resolve remaining frames with honest observations or context-supported inference, preserving breaks and provenance."
+  },
+  {
+    "policy_id": "full-frame-zoom",
+    "version": "1",
+    "instructions": "Prefer a few plain full-frame views to locate the live ball and relevant regions, then request native crops or zoom chosen from the images. Choose which times and regions to inspect and revisit; do not assume a fixed adjacent-frame sequence. Use context-supported inference with honest provenance and revise when context changes."
+  },
+  {
+    "policy_id": "sparse-anchor",
+    "version": "1",
+    "instructions": "Prefer a sparse set of same-camera temporal anchors and use their visible motion to infer intermediate positions. Add anchors and crops where uncertainty, bounces, hits, occlusion or continuity changes make the inference weak. Choose all viewing order and sampling adaptively. Do not interpolate across a discontinuity or call an inferred point observed."
+  },
+  {
+    "policy_id": "adaptive",
+    "version": "1",
+    "instructions": "Choose your own exploration: temporal overviews, selected native crops, sparse anchors and interpolation, or adaptive revisits. Revise your judgments when context improves them."
+  }
+]
