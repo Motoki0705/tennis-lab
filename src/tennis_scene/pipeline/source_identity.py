@@ -17,6 +17,7 @@ def compatible_source_digests(
 ) -> dict[str, str]:
     """Keep the baseline identity for exact, compatible source changes."""
     if not tensorrt:
+        sources = _compatible_patch(sources, "batched_tensorrt_fp32_cache_compatibility.json")
         sources = _compatible_patch(sources, "tensorrt_fp32_cache_compatibility.json")
     if ball_court_side:
         sources = _compatible_patch(sources, "ball_court_side_cache_compatibility.json")

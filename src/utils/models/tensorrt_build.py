@@ -103,6 +103,7 @@ def build_bundle(
     *,
     device: torch.device,
     workspace_bytes: int,
+    detailed_profiling: bool = False,
 ) -> EngineManifest:
     """Build the typed export on the selected GPU and publish its checked plan."""
     export_digest = dual_sha256(directory / EXPORT_MANIFEST)
@@ -133,6 +134,8 @@ def build_bundle(
                 f"TensorRT failed to parse {directory / ONNX_FILE}\n{errors}"
             )
         config = builder.create_builder_config()
+        if detailed_profiling:
+            config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
         config.clear_flag(trt.BuilderFlag.TF32)
         config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, workspace_bytes)
         if any(-1 in spec.shape for spec in export.inputs.values()):

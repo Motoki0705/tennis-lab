@@ -1,0 +1,301 @@
+{
+  "job_id": "0-8204647824645612917_2026-11-22T12-56-15-354387082Z_3961356_i2363-trt-qualification-v1.job",
+  "commit": "d640589ef2913455aa0c294531a6cb8f129d7bcd",
+  "output_directory": "outputs/i2363/i2363-qualification-v1",
+  "job_exit_code": 1,
+  "engines": {
+    "directories": {
+      "clip": "tensorrt/clip/256x128/i2363-qualification-v1",
+      "dino": "tensorrt/dino/750x1333/i2363-qualification-v1",
+      "gvhmr": "tensorrt/gvhmr/l2-177-1055/i2363-qualification-v1",
+      "hmr2": "tensorrt/hmr2/256x256/i2363-qualification-v1",
+      "vitpose": "tensorrt/vitpose/256x192/i2363-qualification-v1"
+    },
+    "manifests": {
+      "clip": {
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "export_sha256": "7e8b0c6d9ba781d748443419da16fc7f7a472f0e0093e8a8014466bfeeef679d",
+        "plan_sha256": "7dbe850f271f6df5458e6c8f35a657e7dc6654781533c177466f9e9e89eea279",
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              16,
+              3,
+              256,
+              128
+            ],
+            "minimum": [
+              1,
+              3,
+              256,
+              128
+            ],
+            "optimum": [
+              16,
+              3,
+              256,
+              128
+            ]
+          }
+        },
+        "version": 1
+      },
+      "dino": {
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "export_sha256": "acc19d7172a187f1c7c8543c1060878710cc4716ddb07a07cd473ae704227b0c",
+        "plan_sha256": "ab910d326ea2006d5de7f740025cff0c817dc05b397fef612641b2223272e3f1",
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              2,
+              3,
+              750,
+              1333
+            ],
+            "minimum": [
+              1,
+              3,
+              750,
+              1333
+            ],
+            "optimum": [
+              2,
+              3,
+              750,
+              1333
+            ]
+          }
+        },
+        "version": 1
+      },
+      "gvhmr": {
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "export_sha256": "5f42b379c7c2fd2400503553bcfd2bedfa60dffa544772ebb4861153298187ac",
+        "plan_sha256": "a9fd68e29a5be557bf4ca1e31d87605dcba8c808072acafe436feb15bb74c556",
+        "profiles": {
+          "f_cam_angvel": {
+            "maximum": [
+              4,
+              1055,
+              6
+            ],
+            "minimum": [
+              1,
+              2,
+              6
+            ],
+            "optimum": [
+              4,
+              177,
+              6
+            ]
+          },
+          "f_cliffcam": {
+            "maximum": [
+              4,
+              1055,
+              3
+            ],
+            "minimum": [
+              1,
+              2,
+              3
+            ],
+            "optimum": [
+              4,
+              177,
+              3
+            ]
+          },
+          "f_imgseq": {
+            "maximum": [
+              4,
+              1055,
+              1024
+            ],
+            "minimum": [
+              1,
+              2,
+              1024
+            ],
+            "optimum": [
+              4,
+              177,
+              1024
+            ]
+          },
+          "length": {
+            "maximum": [
+              4
+            ],
+            "minimum": [
+              1
+            ],
+            "optimum": [
+              4
+            ]
+          },
+          "obs": {
+            "maximum": [
+              4,
+              1055,
+              17,
+              3
+            ],
+            "minimum": [
+              1,
+              2,
+              17,
+              3
+            ],
+            "optimum": [
+              4,
+              177,
+              17,
+              3
+            ]
+          }
+        },
+        "version": 1
+      },
+      "hmr2": {
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "export_sha256": "1a1f3cfa851b9afd87ad1266ed6221547627995b96f3c894dd583598fc2297a3",
+        "plan_sha256": "c5da603c765fc45dd2d34a5215270df734e4731a4b4af9f21a06431a537d31ed",
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              16,
+              3,
+              256,
+              256
+            ],
+            "minimum": [
+              1,
+              3,
+              256,
+              256
+            ],
+            "optimum": [
+              16,
+              3,
+              256,
+              256
+            ]
+          }
+        },
+        "version": 1
+      },
+      "vitpose": {
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "export_sha256": "16af3f0378de48ad390b16c174e7201525d2d27fd49b8527d2b23a52ceab3e4f",
+        "plan_sha256": "e67fd615d17ed7c8cb56f62b7f5491601dca260f3913f6cb5303a003684e8366",
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              16,
+              3,
+              256,
+              192
+            ],
+            "minimum": [
+              2,
+              3,
+              256,
+              192
+            ],
+            "optimum": [
+              16,
+              3,
+              256,
+              192
+            ]
+          }
+        },
+        "version": 1
+      }
+    }
+  },
+  "gvhmr": {
+    "exit_code": 0,
+    "wall_seconds": 33.57263829300064,
+    "onnx_bit_equal_shapes": [
+      "B1_L2",
+      "B1_L119",
+      "B1_L120",
+      "B1_L121",
+      "B1_L145",
+      "B1_L177",
+      "B1_L1055",
+      "B2_L119",
+      "B2_L120",
+      "B2_L121",
+      "B2_L145",
+      "B2_L177",
+      "B3_L119",
+      "B3_L120",
+      "B3_L121",
+      "B3_L145",
+      "B3_L177",
+      "B4_L2",
+      "B4_L119",
+      "B4_L120",
+      "B4_L121",
+      "B4_L145",
+      "B4_L177",
+      "B4_L1055"
+    ],
+    "finite_tensorrt_shapes": [
+      "B1_L1055",
+      "B1_L177",
+      "B1_L2",
+      "B4_L1055",
+      "B4_L177",
+      "B4_L2"
+    ],
+    "log": "gvhmr-qualification.log",
+    "evidence": "Per-shape report was overwritten by the command receipt. The qualification exit code, log and raw TensorRT inspectors were preserved."
+  },
+  "representative": {
+    "exit_code": 1,
+    "wall_seconds": 9.750263301000814,
+    "stage": "hydra.run.dir interpolation, before pipeline execution",
+    "reason": "Derived output path parts must be relative.",
+    "log": "host/pipeline.log"
+  }
+}

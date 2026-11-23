@@ -140,7 +140,7 @@ def _export_model(args: argparse.Namespace, cfg: PipelineRuntimeConfig) -> None:
             )
             return
         if args.model == "gvhmr":
-            export_gvhmr_onnx(config.gvhmr_checkpoint, path)
+            export_gvhmr_onnx(config.gvhmr_checkpoint, path, keep_mask_reference=args.keep_mask_reference)
             return
         model: torch.nn.Module
         if args.model == "vitpose":
@@ -178,8 +178,8 @@ def _profile(
         raise ValueError("Expected 1 <= opt-batch <= max-batch")
     batches = (1, args.opt_batch, args.max_batch)
     is_gvhmr = export.model == "gvhmr_siga24_denoiser"
-    if is_gvhmr and (args.max_batch != 1 or args.frames is None):
-        raise ValueError("GVHMR TensorRT requires batch 1 and --frames MIN OPT MAX")
+    if is_gvhmr and args.frames is None:
+        raise ValueError("GVHMR TensorRT requires --frames MIN OPT MAX")
     if not is_gvhmr and args.frames is not None:
         raise ValueError("--frames is used only for GVHMR")
     if args.frames is not None:
@@ -191,7 +191,8 @@ def _profile(
     profiles = {}
     for name, spec in export.inputs.items():
         if is_gvhmr and name != "length":
-            dims = tuple((1, frames, *spec.shape[2:]) for frames in args.frames)
+            dims = tuple((batch, frames, *spec.shape[2:])
+                         for batch, frames in zip(batches, args.frames, strict=True))
         else:
             dims = tuple(
                 (batch_multiplier * batch, *spec.shape[1:]) for batch in batches
@@ -209,6 +210,7 @@ def main() -> None:
     export.add_argument("model", choices=("vitpose", "hmr2", "clip", "dino", "gvhmr"))
     export.add_argument("directory", type=Path)
     export.add_argument("--image-size", type=int, nargs=2, metavar=("HEIGHT", "WIDTH"))
+    export.add_argument("--keep-mask-reference", action="store_true", help="Retain the original GVHMR ONNX graph for ORT comparison")
     export.add_argument(
         "--override", action="append", default=[], help="Pipeline Hydra override"
     )
@@ -240,6 +242,8 @@ def main() -> None:
     paths = PATH_BOUNDARY.validate(path_values, resolver=PathResolver(roots))
     args.directory = paths.declared("directory").path
     if args.action == "export":
+        if args.keep_mask_reference and args.model != "gvhmr":
+            parser.error("--keep-mask-reference is used only for GVHMR")
         with initialize_config_dir(
             config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"),
             version_base="1.3",
@@ -257,6 +261,7 @@ def main() -> None:
             _profile(args, manifest),
             device=torch.device(args.device),
             workspace_bytes=args.workspace_mib * 1024**2,
+            detailed_profiling=manifest.model == "gvhmr_siga24_denoiser",
         )
         print(result.model_dump_json(indent=2))
 

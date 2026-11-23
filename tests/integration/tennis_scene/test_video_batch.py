@@ -214,7 +214,12 @@ def test_one_plan_reuses_each_model_once_and_records_real_batch_sizes(tmp_path: 
 
 
 def test_explicit_clip_passes_reload_and_record_models(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.utils.inference_recording import InferenceRecorder
+
     pipeline, dataset, _, _, events = harness(tmp_path, monkeypatch)
+    checkpoint = InferenceRecorder.checkpoint_events
+    monkeypatch.setattr(InferenceRecorder, "checkpoint_events",
+                        lambda self, **kwargs: checkpoint(self, minimum_events=10, **kwargs))
     result = execute(pipeline, dataset, batching=BatchConfig(enabled=True, clips_per_pass=1))
     assert [outcome.status for outcome in result.outcomes] == ["generated", "generated"]
     receipt = json.loads(result.progress_path.read_text())
@@ -222,8 +227,11 @@ def test_explicit_clip_passes_reload_and_record_models(tmp_path: Path, monkeypat
     assert Counter(events) == {("load", "fake_ball"): 2, ("unload", "fake_ball"): 2,
                                ("load", "fake_pose"): 2, ("unload", "fake_pose"): 2}
     recorder = json.loads(result.progress_path.with_name("recording.json").read_text())
+    assert recorder["timing"]["event_checkpoints"] > 1
     assert recorder["model_loads_by_pass"] == {"0": {"fake_ball": 1, "fake_pose": 1},
                                               "1": {"fake_ball": 1, "fake_pose": 1}}
+    assert sum(1 for event in receipt["models"] if event["stage"] == "model_load") == 4
+    assert receipt["batch_shapes"]["fake_ball"]["[16, 3, 4, 6]"]["succeeded"] == 6
     assert 0 < recorder["metadata"]["budget"]["working_peak_bytes"] <= receipt["batching"]["max_working_bytes"]
     assert recorder["metadata"]["budget"]["store_cache_peak_bytes"] == 0
 

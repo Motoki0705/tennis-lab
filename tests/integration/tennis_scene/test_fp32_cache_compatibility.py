@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import runpy
 import sys
@@ -18,10 +19,6 @@ from src.tennis_scene.pipeline.components.ball_detection import BallDetectionMod
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.components.identity import PlayerAssociationModule
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
-from src.tennis_scene.pipeline.components.person_features import (
-    PersonAppearanceFeaturesModule,
-    PersonPoseFeaturesModule,
-)
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingModule
 from src.tennis_scene.pipeline.components.player_selection import PlayerSelectionModule
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
@@ -38,11 +35,15 @@ from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
 
 _BASELINE = "dcd6534594f73cca12a45c2d9afaa8ac09d48bc7"
+_PHASE2_BASE = "603823383cd941941556cafdcbc98ff67a19f51f"
+# Computed through the archived main source identity contract at _PHASE2_BASE.
+_PHASE2_MAIN_FP32_CODE_SHA256 = "6022ecaab6f2e390e842acf55b258521ee372cf097a6046bcbca77e56c7e7539"
 _BASELINE_STORE = Path(__file__).with_name("fixtures") / "main_fp32_cache.tar.gz"
+_PHASE2_SOURCE_BASELINE = Path(__file__).with_name("fixtures") / "phase2_main_source_digests.json.gz"
 _FIXTURE_HELPERS = "tests/unit/tennis_scene/pipeline/test_auto_pipeline.py"
 _CAMERAS = ("cam0", "cam1", "cam2")
-_CAMERA_STAGES = (CourtKPModule, BallDetectionModule, PersonDetectionModule, PersonPoseFeaturesModule, PersonAppearanceFeaturesModule, PersonTrackingModule,
-                  PlayerSelectionModule, PoseEstimationModule)
+_CAMERA_STAGES = (CourtKPModule, BallDetectionModule, PersonDetectionModule,
+                  PersonTrackingModule, PlayerSelectionModule, PoseEstimationModule)
 
 
 def _portable_inputs(root: Path, patch: pytest.MonkeyPatch, fixture: dict[str, Any]) -> tuple[Path, ...]:
@@ -100,8 +101,27 @@ def _write_baseline(root: Path, destination: Path) -> None:
 
 
 def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
+    from src.tennis_scene.pipeline.clip_inputs import (
+        resolve_dataset_clip,
+        select_dataset_clips,
+    )
+    from src.tennis_scene.pipeline.components.person_features import (
+        PersonAppearanceFeaturesModule,
+        PersonPoseFeaturesModule,
+    )
+    from src.tennis_scene.pipeline.dataset_publication import (
+        ANNOTATION_RELATIVE_DIR,
+        completed_annotation,
+        publish_annotation,
+    )
+    from tests.support.tennis_scene.video_dataset import add_clip
+
     fixture = runpy.run_path(str(PROJECT_ROOT / _FIXTURE_HELPERS))
-    paths = fixture["patch_video_probe"](root, patch)
+    fixture["patch_video_probe"](root, patch)
+    dataset = root / "dataset"
+    add_clip(dataset, "video_000/clip_000")
+    record, = select_dataset_clips(dataset)
+    bound = resolve_dataset_clip(dataset, record)
     cfg = fixture["runtime"](root, overrides=("device=cuda",))
     fixture["materialize_assets"](enabled_model_assets(cfg).values(), root, court=cfg.court_kp)
     results = fixture["camera_stages"](*fixture["inputs"]())
@@ -117,18 +137,23 @@ def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
                            preprocessing_identity=document_digest(component.preprocessing_settings()))
         return value
 
-    for stage in _CAMERA_STAGES:
+    camera_stages = (*_CAMERA_STAGES, PersonPoseFeaturesModule, PersonAppearanceFeaturesModule)
+    for stage in camera_stages:
         if stage is PersonTrackingModule:
             patch.setattr(stage, "process", lambda component, request: results[f"{component.io.name}/{request.video.camera_id}"].result)
         else:
             patch.setattr(stage, "process_with_models", process)
     patch.setattr(PlayerAssociationModule, "process_with_models", lambda _, request, models: association.process(request))
-    store_root = root / "store"
+    store_root = bound.clip_dir / ANNOTATION_RELATIVE_DIR
     pipeline = TennisSceneOrchestrator(cfg)
-    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=_CAMERAS, store_root=store_root)
+    pipeline.code_identity = _PHASE2_MAIN_FP32_CODE_SHA256
+    publication = pipeline.publication_identity()
+    scene = pipeline.run(bound.video_paths, video_role=PathRole.DATA, camera_ids=bound.camera_ids,
+                         store_root=store_root, clip_id=record.clip_id)
     assert pipeline.last_runner is not None
     assert set(pipeline.last_runner.statuses.values()) == {"executed"}
-    publication = pipeline.publication_identity()
+    marker = publish_annotation(bound, scene, pipeline_config_yaml="device: cuda\n",
+                                publication_identity=publication, expected_scene=pipeline.completed_scene_export())
     store = pipeline.last_store
     assert store is not None
     legacy_refs = store.references()
@@ -136,16 +161,20 @@ def _assert_cache_compatibility(root: Path, patch: pytest.MonkeyPatch) -> None:
     def no_prediction(*args: Any, **kwargs: Any) -> None:
         pytest.fail("FP32 is expected to adopt the main artifact from disk")
 
-    for stage in (*_CAMERA_STAGES, PlayerAssociationModule):
+    for stage in (*camera_stages, PlayerAssociationModule):
         patch.setattr(stage, "process" if stage is PersonTrackingModule else "process_with_models", no_prediction)
 
     for explicit in ((), _precision("fp32")):
         cfg = fixture["runtime"](root, overrides=("device=cuda", *explicit))
         pipeline = TennisSceneOrchestrator(cfg)
-        assert pipeline.publication_identity() == publication
+        observed_publication = pipeline.publication_identity()
+        assert observed_publication["code_sha256"] == _PHASE2_MAIN_FP32_CODE_SHA256
+        assert observed_publication == publication
+        assert completed_annotation(bound, observed_publication, overwrite=False) == marker
         for source, status in (("execute", "cached"), ("load", "loaded")):
             pipeline.config = replace(cfg, cache_source=source)
-            pipeline.run(paths, video_role=PathRole.DATA, camera_ids=_CAMERAS, store_root=store_root)
+            pipeline.run(bound.video_paths, video_role=PathRole.DATA, camera_ids=bound.camera_ids,
+                         store_root=store_root, clip_id=record.clip_id)
             assert pipeline.last_runner is not None
             assert set(pipeline.last_runner.statuses.values()) == {status}
             assert pipeline.last_runner.references == legacy_refs
@@ -171,8 +200,36 @@ def _precision(precision: str) -> tuple[str, ...]:
     return tuple(f"people_models.runtime.{model}.precision={precision}" for model in ("dino_detector", "vitpose"))
 
 
-def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.fixture(scope="module")
+def phase2_sources() -> dict[str, str]:
+    from src.tennis_scene.pipeline import source_identity
+
+    with gzip.open(_PHASE2_SOURCE_BASELINE, "rt", encoding="utf-8") as stream:
+        baseline = json.load(stream)
+    assert baseline["commit"] == _PHASE2_BASE
+    actual = source_identity.source_digests(PROJECT_ROOT / "src")
+    # Verify the changed files from this checkout against the fixed main tree.
+    # Later, unrelated files are allowed to change the real runtime identity.
+    return {**baseline["sources"], **{path: actual[path] for path in baseline["revised_paths"]}}
+
+
+def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, phase2_sources: dict[str, str],
+) -> None:
+    monkeypatch.setattr("src.tennis_scene.pipeline.orchestrator.source_digests", lambda _: phase2_sources)
     _assert_cache_compatibility(tmp_path, monkeypatch)
+
+
+def test_batched_tensorrt_fp32_compatibility_requires_the_exact_sources(phase2_sources: dict[str, str]) -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    compatible = source_identity.compatible_source_digests(phase2_sources)
+    assert document_digest(compatible) == _PHASE2_MAIN_FP32_CODE_SHA256
+    assert source_identity.compatible_source_digests(phase2_sources, tensorrt=True) == phase2_sources
+    changed = {**phase2_sources, "utils/video/prefetch.py": "0" * 64}
+    assert source_identity.compatible_source_digests(changed) == changed
+    unrelated = {"tennis_scene/schema.py": "a" * 64}
+    assert source_identity.compatible_source_digests({**phase2_sources, **unrelated}) == {**compatible, **unrelated}
 
 
 def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_path: Path) -> None:

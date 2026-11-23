@@ -30,7 +30,8 @@ def main(cfg: DictConfig) -> int:
         pipeline_config_yaml=OmegaConf.to_yaml(pipeline_cfg, resolve=True), clip_ids=generation.clip_ids,
         overwrite=generation.overwrite, continue_on_error=generation.continue_on_error,
         progress_directory=runtime.progress_directory, batching=runtime.batching,
-        recording_devices=(pipeline.device,) if runtime.record_cuda else ())
+        recording_devices=(pipeline.device,) if runtime.record_cuda else (),
+        recording_sample_interval=runtime.record_sample_interval, synchronize_cuda=runtime.record_cuda_synchronize)
     for outcome in result.outcomes:
         LOGGER.log(logging.ERROR if outcome.status in {"failed", "blocked"} else logging.INFO,
                    "%s %s%s", outcome.clip_id, outcome.status, "" if outcome.error is None else f" {outcome.error}")

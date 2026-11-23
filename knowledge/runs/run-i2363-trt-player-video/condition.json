@@ -1,0 +1,15 @@
+{
+  "dataset_id": "meiji_4cam",
+  "video_id": "video_000",
+  "clip_count": 69,
+  "representative": "video_000/clip_037",
+  "court_digest": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "court_drift_digest": "7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+  "models": {
+    "vitpose": {"pipeline_key": "vitpose", "shape": "256x192", "batch_size": 8},
+    "hmr2": {"pipeline_key": "hmr2", "shape": "256x256", "batch_size": 16},
+    "dino": {"pipeline_key": "dino_detector", "shape": "750x1333", "batch_size": 1},
+    "clip": {"pipeline_key": "clip_reid", "shape": "256x128", "batch_size": 16},
+    "gvhmr": {"pipeline_key": "gvhmr", "shape": "l2-177-1055", "batch_size": 4}
+  }
+}

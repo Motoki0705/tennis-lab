@@ -85,8 +85,9 @@ class _TensorRTDenoiser(torch.nn.Module):
 def _adapt_tensorrt_denoiser_output(
     length: torch.Tensor, outputs: dict[str, torch.Tensor]
 ) -> dict[str, torch.Tensor]:
-    if not torch.equal(outputs.pop("length_out"), length) or not bool(outputs.pop("mask_out").all()):
-        raise ValueError("GVHMR TensorRT changed the complete sequence length or mask")
+    with span("cuda_sync", operation="validate_sequence", model="GVHMR"):
+        if not torch.equal(outputs.pop("length_out"), length) or not bool(outputs.pop("mask_out").all()):
+            raise ValueError("GVHMR TensorRT changed the complete sequence length or mask")
     return {name: value.float() for name, value in outputs.items()}
 
 
@@ -139,8 +140,9 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
     def _predict_impl(self, request: GvhmrRequest) -> GvhmrResult:
         if self._model is None:
             raise RuntimeError("GVHMR model did not load before prediction.")
-        data = self._prepare(request)
-        with span("inference", model="GVHMR", batch_shape=[1, len(request.kp2d), 1024]):
+        with span("preprocess", model="GVHMR", operation="prepare_sequence"):
+            data = self._prepare(request)
+        with span("postprocess", model="GVHMR", operation="recover_body"):
             pred = self._model.predict(data, static_cam=request.static_cam)
         return self._result(pred, data["K_fullimg"])
 
@@ -149,16 +151,15 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
             return []
         if len(requests) == 1:
             return [self.predict(requests[0])]
-        if self.engine is not None:
-            raise ValueError("GVHMR TensorRT requires batch_size=1")
         frames, static = len(requests[0].kp2d), requests[0].static_cam
         if any(len(request.kp2d) != frames or request.static_cam != static for request in requests):
             raise ValueError("A GVHMR batch requires equal lengths and a shared camera mode")
-        data = [self._prepare(request) for request in requests]
+        with span("preprocess", model="GVHMR", operation="prepare_sequence"):
+            data = [self._prepare(request) for request in requests]
         self.load()
         if self._model is None:
             raise RuntimeError("GVHMR model did not load before prediction.")
-        with span("inference", model="GVHMR", batch_shape=[len(requests), frames, 1024]):
+        with span("postprocess", model="GVHMR", operation="recover_body"):
             predictions = self._model.predict_batch(data, static_cam=static)
         return [self._result(pred, row["K_fullimg"]) for pred, row in zip(predictions, data, strict=True)]
 
@@ -190,16 +191,16 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
             "f_imgseq": request.f_imgseq.float(),
         }
 
-    @staticmethod
-    def _result(pred: dict[str, Any], K_fullimg: torch.Tensor) -> GvhmrResult:
+    def _result(self, pred: dict[str, Any], K_fullimg: torch.Tensor) -> GvhmrResult:
         def to_cpu(params: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
             return {k: v.detach().float().cpu() for k, v in params.items()}
 
-        return GvhmrResult(
-            smpl_params_incam=to_cpu(pred["smpl_params_incam"]),
-            smpl_params_global=to_cpu(pred["smpl_params_global"]),
-            K_fullimg=K_fullimg,
-        )
+        with span("transfer", model="GVHMR", operation="output_to_host", device=str(self.device)):
+            return GvhmrResult(
+                smpl_params_incam=to_cpu(pred["smpl_params_incam"]),
+                smpl_params_global=to_cpu(pred["smpl_params_global"]),
+                K_fullimg=K_fullimg,
+            )
 
 
 def _validate_gvhmr_request(request: GvhmrRequest) -> None:

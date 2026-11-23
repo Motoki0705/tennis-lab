@@ -20,6 +20,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
 )
 from src.tennis_scene.pipeline.model_assets import asset_hashes
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
+from src.utils.inference_recording import measured
 
 NodeKey = tuple[str, str]
 
@@ -220,6 +221,7 @@ class ExecutionPlan:
         self.statuses.update(dict.fromkeys(blocked, "blocked"))
         return blocked
 
+    @measured("planning")
     def decide(self, key: NodeKey) -> NodeDecision:
         """Inspect a node's adopted artifact once, after all its inputs exist."""
         if key in self.decisions:

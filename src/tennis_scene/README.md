@@ -139,9 +139,12 @@ componentの強制再計算には`pipeline_overrides=["cache.overwrite=true"]`�
 
 OUTPUT配下の`progress_directory/<実行ID>/progress.json`へ対象・設定・node状態・clipの
 成功／skip／失敗／blocked、モデルload/unload、実batch shapeごとの件数を保存します。
-隣の`recording.json`には[C1 recorder](../utils/inference_recording.md)が充填率、
-clipをまたいだbatch数、実行passごとのモデルload回数・動画open回数、作業量のピークを記録します。
-`record_cuda=true`で同期付きCUDA計測とVRAMピークを有効にできます。
+隣の`recording.json`には[推論計測](../utils/inference_recording.md)がCPU時間、資源サンプル、
+stage・node・モデル別の集計、横断バッチの充填率、モデルload・動画open回数を記録します。
+`record_cuda=true`で同期付きCUDA計時、NVMLのGPU使用率、VRAMピークを取得します。
+`record_cuda_synchronize=false`でCUDA計時用の同期を省き、同じ資源サンプルを取得できます。
+`record_sample_interval`はサンプル間隔の秒数で、既定は0.5秒です。
+間隔を短くするとCPU・NVML照会の負荷が増えます。サンプルごとの取得時間も記録します。
 再開時は新しい進捗記録を作り、component storeから状態を照合します。
 datasetの完成判定にはclipごとの`annotation.json`と採用中scene exportを使います。
 

@@ -133,6 +133,7 @@ def test_valid_request_reaches_vendor_with_documented_shapes() -> None:
     model = GvhmrMeshRecovery.__new__(GvhmrMeshRecovery)
     model._model = cast(Any, vendor)
 
+    model._device = torch.device("cpu")
     result = model._predict_impl(request)
 
     assert isinstance(result, GvhmrResult)
@@ -147,13 +148,15 @@ def test_tensorrt_sequence_validation_precedes_fp32_decode(
     corrupted: str | None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def run(inputs: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        torch.testing.assert_close(inputs["length"], torch.tensor([3]))
+        torch.testing.assert_close(inputs["length"], torch.tensor([3, 3]))
+        torch.testing.assert_close(inputs["f_imgseq"][:, 0, 0], torch.tensor([0.0, 4.0]))
+        camera = torch.tensor([1.5, 3.5], dtype=torch.float16).view(2, 1, 1).expand(2, 3, 3)
         return {
-            "length_out": torch.tensor([2 if corrupted == "length" else 3]),
-            "mask_out": torch.tensor([[True, corrupted != "mask", True]]),
-            "pred_x": torch.full((1, 3, 151), 0.25, dtype=torch.float16),
-            "pred_cam": torch.full((1, 3, 3), 1.5, dtype=torch.float16),
-            "static_conf_logits": torch.full((1, 3, 6), 2.0, dtype=torch.float16),
+            "length_out": torch.tensor([3, 2 if corrupted == "length" else 3]),
+            "mask_out": torch.tensor([[True, True, True], [True, corrupted != "mask", True]]),
+            "pred_x": torch.full((2, 3, 151), 0.25, dtype=torch.float16),
+            "pred_cam": camera,
+            "static_conf_logits": torch.full((2, 3, 6), 2.0, dtype=torch.float16),
         }
 
     decoder_calls: list[dict[str, torch.Tensor]] = []
@@ -197,12 +200,17 @@ def test_tensorrt_sequence_validation_precedes_fp32_decode(
     model.engine = cast(EngineBundle, object())
     model._device = torch.device("cpu")
     model._load_impl()
+    monkeypatch.setattr(model, "load", lambda: None)
+    first, second = _request(), _request()
+    first.f_imgseq.zero_()
+    second.f_imgseq.fill_(4.0)
 
     if corrupted is not None:
         with pytest.raises(ValueError, match="changed the complete sequence length or mask"):
-            model._predict_impl(_request())
+            model.predict_batch((first, second))
         assert decoder_calls == []
     else:
-        result = model._predict_impl(_request())
-        assert len(decoder_calls) == 1
-        torch.testing.assert_close(result.smpl_params_incam["transl"], torch.full((3, 3), 1.5))
+        results = model.predict_batch((first, second))
+        assert len(decoder_calls) == 2
+        for result, value in zip(results, (1.5, 3.5), strict=True):
+            torch.testing.assert_close(result.smpl_params_incam["transl"], torch.full((3, 3), value))

@@ -1,0 +1,125 @@
+{
+  "base_commit": "603823383cd941941556cafdcbc98ff67a19f51f",
+  "files": {
+    "submodules/configuration.py": {
+      "after": "e3dda479d67402a1e6135f00d2dc85e78f2b98c915e34b9bfdbd0d23ca7504fb",
+      "before": "a2624e062ff06a2f47a36edf3ed051a44b0052f6ff21f649e342bdd76a0e2b2c"
+    },
+    "submodules/models/dino/person_detector.py": {
+      "after": "4fcd815f6c3afce240a4aae481c5187555d0f1a183783317b82a65a1d3ebc457",
+      "before": "79b4eabe03f51c10b2b7183f37344210236230c4e8d190ce0795f534de0c14ad"
+    },
+    "submodules/models/gvhmr/mesh_recovery.py": {
+      "after": "f015985e6ef4c1e4f2d408593f7e9fb7eded7076fda8cda90ffe18b76f7d7e0e",
+      "before": "4d0373c8694f7ed67151450d944a82461936d6bb2a7cd39cc8a06b7b2cc76fda"
+    },
+    "submodules/models/gvhmr/onnx_attention.py": {
+      "after": "6f9e72c94c485c7fd9d85379b618561a7bc77f96053d08bd8981c1e3c691fe72",
+      "before": null
+    },
+    "submodules/models/gvhmr/onnx_export.py": {
+      "after": "1b19d901f25e0cac2bede850a764b091fd8658bad52f955b1599b3431f11c515",
+      "before": "bd5b99580f910b26e56e960e6521dc468450d6fb11e26853ab451f10c4d51558"
+    },
+    "submodules/models/gvhmr/tensorrt_validation.py": {
+      "after": "9d15cc04bba728b770e95be96fb9fb3f7d7b4b4df11404691cb5ce04d5b73533",
+      "before": null
+    },
+    "submodules/models/hmr2/feature_extractor.py": {
+      "after": "24b172f2b0dbfc2df507f61b1345d6122482368fadf255ebd60a478343b4fe97",
+      "before": "76eb6daa55469bb7264745b969a7dd73579d8b55f920392837d551444aba58ba"
+    },
+    "submodules/models/vitpose/pose2d.py": {
+      "after": "ee7cec64d9e90d6bd1a03ac123a1293e8da37b4500745cf092c48aff7b53b482",
+      "before": "161aacd012f6b20520319ae27d4f835096140cb015db7ffb9f21bc4de3e53848"
+    },
+    "submodules/vendor/gvhmr/pipeline.py": {
+      "after": "5219fa50259598c3f50ca42ce94abeb9675f51fed4b9c37ede5ab28e17588694",
+      "before": "ac7892ad5c5338cfb782ea7c5d7388a2da51ab98022230f1d9e263e13c8bcb07"
+    },
+    "tasks/player_association/appearance/encoders.py": {
+      "after": "638f60b5768489aced314607fe572ccf94b70670f1ac948c77a5ecb091c7ac6a",
+      "before": "b0cdf7b864aa4a783bddcb6d2cd9e5549cd5f43dfc02f715373f6bbe9723dd80"
+    },
+    "tennis_scene/configuration.py": {
+      "after": "36b09b3a6a4c1b5c89d4eb7aaad23b52419096753e7b7e57740157b5600dce64",
+      "before": "262e642c940bb61e8f069528af5168011b0a6b743a9935d24dd3a014db23b353"
+    },
+    "tennis_scene/pipeline/batching.py": {
+      "after": "0f2acf2699a37db4d3c205f99f50af0e2bd8762bdc621e70862ff637f41d074a",
+      "before": "b90ebe7095658dcd3571d987f3b51849c008538824fd730f2f1c5a5d73e27f22"
+    },
+    "tennis_scene/pipeline/components/ball_detection.py": {
+      "after": "d76a008500feafe43faf258a24e31e15c58ade0c01f552f62a164b6c153559ef",
+      "before": "15451f5c4550a59889fd5ecdc0eb2e08d80d7f8ab1f2dfd4724279dd9566a9ce"
+    },
+    "tennis_scene/pipeline/components/gvhmr.py": {
+      "after": "ac26710baf72b267f81e61dfbf1237f8013aad0e8a4590e570bcfb590a05b01f",
+      "before": "cbd7144ce94f39ca979a9745c0cb79750f8d8e73f10ad77b52deaa1a30ca1118"
+    },
+    "tennis_scene/pipeline/components/person_detection.py": {
+      "after": "a8268b3a60f65c2d6bb3fadb888ee866ce5d043e0280d55b44bc25602083c505",
+      "before": "b556fa0996b4ac20ebf82d721a40148e5f5ea5f7cd9af8d040826febb88c3a51"
+    },
+    "tennis_scene/pipeline/execution_plan.py": {
+      "after": "54818c03da35ea2262ea3aca6f8c7d9e51f7b96dc0f4c93949d0cada391d8546",
+      "before": "f3edaee0b46a857dc6bc0b896490aa1eddae43388595da99e7613f84b40e70bf"
+    },
+    "tennis_scene/pipeline/model_resources.py": {
+      "after": "024d92addcdbad69f3b0c121c13c6d6d16c546e497c7235fb8ca7ad8fe2bf5af",
+      "before": "cca88c2e2f74b480dccdfdf9fa8f382a7ef239fd89da962f425254a843622b88"
+    },
+    "tennis_scene/pipeline/runner.py": {
+      "after": "dbdfe2e86ec7fa8603f8a3e8f4709a7079a8a5f32849bf528cc83c891e894a9b",
+      "before": "82cda94b33441d7c134db408d36575d6b6d5d0d2b0fcda555a6107e477197200"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "after": "bcf77236d136e86a1b817bac692b13680d1c1aefc44da6a39d6a5d2db4d9c4c0",
+      "before": "829dfc03554b0d137450b6542f840db262d87a7223a0d7529d931d36680f562f"
+    },
+    "tennis_scene/pipeline/video_batch.py": {
+      "after": "c5648e92a8669e15a30a965f2be9f11f900ed4f6a4e65e615589b563e78291e0",
+      "before": "60e09f428c9745674657fc84d891ec4843541e3dda6224dadf76698e4696c661"
+    },
+    "tennis_scene/scripts/qualify_gvhmr_tensorrt.py": {
+      "after": "3b6a819a20635935a1f10abae6baf11ee0ce653ddd606f7fe6f5da6edc1ca4e3",
+      "before": null
+    },
+    "tennis_scene/scripts/run_video_batch.py": {
+      "after": "2455f5f878477039aef6352f17ea918b5eb2173060c675afb6ce5c30fc30ca1a",
+      "before": "0d9baefedc23bd3b19a250eb42297b8e76760ba6b74c1bdddca2dade38b86037"
+    },
+    "tennis_scene/scripts/tensorrt.py": {
+      "after": "7010a8f122c705484c44f98d9e5ed5eef0458935b20dc233377cee1cf4e6b5c8",
+      "before": "f1e465fc33237bc114360c85fe436981b77c417f20f069d8d22a300d45070129"
+    },
+    "utils/configuration/inventory.py": {
+      "after": "e952cad30dd7a330ed4611082ed4503539ba3b72afb6e0dbeb253d6f4ed22a52",
+      "before": "fd2a87977aeaeda5e1b53fb3b914738c96aa2e7bbe06ba75d5d9b8c6acec10ee"
+    },
+    "utils/inference_recording.py": {
+      "after": "526ea97d45d854e685a7ded38dbb4158566908ada905530eb70b6bf5497af0c7",
+      "before": "a1bfe52bf1c764b7c863852c0b6f642285f9a895ae3cb303a9d3dc09350c2888"
+    },
+    "utils/inference_resources.py": {
+      "after": "cbc491e3540206b3ceed907792f5bad675f7c6b06c9ad06d5f51d10f65e9bf71",
+      "before": null
+    },
+    "utils/inference_timing.py": {
+      "after": "b1076fa13f5f6cab76c31a497f61689d3c20dd3532b48711803806678dcbe6ab",
+      "before": null
+    },
+    "utils/models/tensorrt_build.py": {
+      "after": "3491311b1bcd41f5cb82eb321462c425d8d2c71d04966ea6d05bf9063c2812f1",
+      "before": "d91fe44a312b899991e2e88b41916ef89b8e2aebafd41f13dbafd2f4acf75a4e"
+    },
+    "utils/models/tensorrt_runtime.py": {
+      "after": "162dfdf27cff7a92acc24b4ab3c63cae7fe73005060f446d4e33737691069ac8",
+      "before": "97dbb925357a396e9f4d7705321fa57def8e732a1ebd3a9280b587ca6e4270c8"
+    },
+    "utils/video/prefetch.py": {
+      "after": "21b2258d118af44b33426db162c61672309acc844f7c6ec3e3539489fe6122be",
+      "before": "e73c30a705cb86be4aa02466c9b49694698a65382c85c86d6193e68d7bc954ba"
+    }
+  }
+}

@@ -82,8 +82,9 @@ def _make_bundle(
     (root / ENGINE_MANIFEST).write_text(engine.model_dump_json())
 
 
+@pytest.mark.parametrize("legacy_gvhmr", [False, True])
 def test_all_tensorrt_model_declarations_reach_publication(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, legacy_gvhmr: bool,
 ) -> None:
     overrides = ("device=cuda", "gvhmr.enabled=true")
     base = runtime(tmp_path, overrides=overrides)
@@ -120,7 +121,7 @@ def test_all_tensorrt_model_declarations_reach_publication(
             2,
         ),
         "hmr2": ("hmr2_features", "features", hmr2_tensorrt(people), 2),
-        "gvhmr": ("gvhmr", "mesh", gvhmr_tensorrt(people), 1),
+        "gvhmr": ("gvhmr", "mesh", gvhmr_tensorrt(people, legacy=legacy_gvhmr), 1 if legacy_gvhmr else 4),
     }
     config_overrides = list(overrides)
     for name, (_, _, model, batch) in models.items():
@@ -152,6 +153,9 @@ def test_all_tensorrt_model_declarations_reach_publication(
         )
         assert fp32["models"][stage][alias]["dtype"] == "float32"
         assert "engine_0/engine.plan" not in fp32["models"][stage][alias]["assets"]
+    too_large = runtime(tmp_path, overrides=(*config_overrides, "people_models.runtime.gvhmr.batch_size=5"))
+    with pytest.raises(ValueError, match="outside profile"):
+        standard_model_components(too_large, ())["gvhmr"].model_specs()
 
     # Four logical crops require eight engine images because flip is enabled.
     pose_batch = "people_models.runtime.vitpose.batch_size="

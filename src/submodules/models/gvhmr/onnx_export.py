@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -11,12 +12,14 @@ import torch
 from torch import nn
 from torch.onnx import symbolic_helper, symbolic_opset9, symbolic_opset11
 
+from src.submodules.models.gvhmr.onnx_attention import rewrite_attention_masks
 from src.submodules.vendor.gvhmr.network.relative_transformer import NetworkEncoderRoPE
 from src.submodules.vendor.gvhmr.utils.net_utils import length_to_mask
 
 ATTENTION_WINDOW = 120
 ROTARY_MAX_FRAMES = 4096
 OPSET = 19
+MASK_REFERENCE_FILE = "model.masked-fill.onnx"
 
 
 # The legacy exporter needs two explicit lowerings for TensorRT's typed graph.
@@ -116,7 +119,7 @@ class _DenoiserBindings(nn.Module):
         )
 
 
-def export_gvhmr_onnx(checkpoint: Path, path: Path) -> None:
+def export_gvhmr_onnx(checkpoint: Path, path: Path, *, keep_mask_reference: bool = False) -> None:
     checkpoint_state = torch.load(checkpoint, map_location="cpu", weights_only=True)
     prefix = "pipeline.denoiser3d."
     network = NetworkEncoderRoPE().eval()
@@ -157,9 +160,13 @@ def export_gvhmr_onnx(checkpoint: Path, path: Path) -> None:
                 input_names=list(inputs),
                 output_names=list(outputs),
                 dynamic_axes={
-                    name: {1: "frames"} for name in (*inputs[1:], *outputs[:-1])
+                    name: {0: "batch"} if name in {"length", "length_out"} else {0: "batch", 1: "frames"}
+                    for name in (*inputs, *outputs)
                 },
             )
     finally:
         for operator in symbolics:
             torch.onnx.unregister_custom_op_symbolic(operator, OPSET)
+    if keep_mask_reference:
+        shutil.copyfile(path, path.with_name(MASK_REFERENCE_FILE))
+    rewrite_attention_masks(path, blocks=len(network.blocks))

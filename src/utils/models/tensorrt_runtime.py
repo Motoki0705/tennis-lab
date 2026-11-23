@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 from collections.abc import Mapping
 from hashlib import sha256
 from types import ModuleType
@@ -97,6 +98,14 @@ class TensorRTRunner:
             self._context = self._engine.create_execution_context()
             if self._context is None:
                 raise RuntimeError(f"Could not create TensorRT context: {bundle.root}")
+
+    def inspect_layers(self) -> dict[str, Any]:
+        """Return the builder's layer metadata at the current input shape."""
+        trt = tensorrt_module()
+        inspector = self._engine.create_engine_inspector()
+        inspector.execution_context = self._context
+        details: dict[str, Any] = json.loads(inspector.get_engine_information(trt.LayerInformationFormat.JSON))
+        return details
 
     def __call__(self, inputs: Mapping[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         specs = self.bundle.export.inputs

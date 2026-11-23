@@ -72,8 +72,6 @@ def _backend_config(
         )
     if device != "auto" and not device.startswith("cuda"):
         raise SemanticConfigurationError(f"{model} TensorRT requires CUDA")
-    if model == "gvhmr" and value["batch_size"] != 1:
-        raise SemanticConfigurationError("GVHMR TensorRT requires batch_size=1")
     engines = tuple(
         require_absolute_path(path, name=f"{model} engine")
         if resolver is None

@@ -36,6 +36,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.tennis_scene.pipeline.model_resources import dino_tensorrt
 from src.tennis_scene.pipeline.tensorrt_assets import tensorrt_identity
+from src.utils.inference_recording import span
 from src.utils.io import json_value
 from src.utils.models.tensorrt_artifacts import EXPORT_MANIFEST, ExportManifest
 from src.utils.video import OpenCVVideoFrameReader
@@ -201,8 +202,9 @@ class _DetectionRows:
             raise ValueError("DINO frame order changed")
         rows: NDArray[np.int64] = np.arange(self.source_offset, self.source_offset + len(detections.scores), dtype=np.int64)
         self.source_offset += len(rows)
-        keep, dropped = merge_person_boxes(frame, rows, detections.boxes_xyxy,
-                                            detections.scores, enabled=self.merge_duplicates)
+        with span("postprocess", operation="merge_person_boxes", model="DINO"):
+            keep, dropped = merge_person_boxes(frame, rows, detections.boxes_xyxy,
+                                                detections.scores, enabled=self.merge_duplicates)
         self.source_rows.append(rows[keep])
         self.merges.extend(dropped)
         self.boxes.append(detections.boxes_xyxy[keep])

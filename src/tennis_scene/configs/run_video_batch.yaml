@@ -23,6 +23,8 @@ batching:
   store_cache_bytes: 0
   clips_per_pass: null
 record_cuda: false
+record_cuda_synchronize: true
+record_sample_interval: 0.5
 progress_directory: ${tennis_output:tennis_scene,generate,video_batch,${tennis_run_id:}}
 hydra:
   run:

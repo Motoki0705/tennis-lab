@@ -27,7 +27,12 @@ artifacts. Real model/GPU acceptance is separate from this CPU contract.
 
 このfixtureはC3以前の追跡v5・選別v2を保持する。C3ではencoderの完全identityを追跡証拠へ保存するため、
 追跡v6・選別v3への再生成を要求する。過去fixtureは変更せず、この拒否条件を検証する。
-既定FP32と明示FP32の再利用は、現行schemaで生成したstoreで別に検証する。
+既定FP32と明示FP32の再利用には、固定main `603823383cd941941556cafdcbc98ff67a19f51f` の
+コミット済みソースから計算したcode digestを使う。現行schemaの小型storeとdatasetの公開マーカーをそのdigestで保存し、
+現行のorchestratorで既存componentをexecute/loadから再利用し、公開済みannotationを `overwrite=false` で受理できることを調べる。
+`phase2_main_source_digests.json.gz` の `sources` は `git archive` で取り出した固定mainの全 `src/**/*.py` のSHA-256。
+`revised_paths` は固定mainからバッチ化・記録のPRで変わったPythonファイルの一覧で、実行時の互換manifestからは生成しない。
+テストではそのファイルだけをcheckoutの実ハッシュで上書きし、後続の変更で無関係なソースが変わっても固定mainへの互換性を検査できるようにする。
 
 過去fixtureを再生成する場合は、このテストを含むworktreeから実行する。
 

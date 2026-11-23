@@ -1,0 +1,284 @@
+{
+  "artifacts": {
+    "gvhmr-all-video-shapes.json": {
+      "bytes": 4847,
+      "path": "gvhmr-all-video-shapes.json",
+      "sha256": "b1654e2a27f943ca584c8000a32eb3cda5ed18e3cc200a9f9808917bd7bd6c9e"
+    },
+    "outcome.json": {
+      "bytes": 5594,
+      "path": "all/outcome.json",
+      "sha256": "4d9ef0af9d03f25219b54db5d3b6c089fcdb49c29f07f05a80b136577b739f44"
+    },
+    "pipeline.log": {
+      "bytes": 28300,
+      "path": "all/pipeline.log",
+      "sha256": "1e47d6ccf58763a661ddac745659878902b361dd0dcc5890421e291e88317348"
+    },
+    "progress.json": {
+      "bytes": 909614,
+      "path": "all/progress/d1df39596d4f47f1896cb535191e7040/progress.json",
+      "sha256": "4686dc79649d7b16b9cc33fd13c6a9ad36776adf515796153886ddcecc95f426"
+    },
+    "recording.json": {
+      "bytes": 6565201315,
+      "path": "all/progress/d1df39596d4f47f1896cb535191e7040/recording.json",
+      "sha256": "666f52b8dbceeb240500cb4f795acb060cc049751f4590277f52dd5bf9bf22a4"
+    }
+  },
+  "commit": "fef1d626dd0c40ea8ce69705eda777fec4801021",
+  "dataset": {
+    "id": "meiji_4cam",
+    "input_frames": 46228,
+    "manifest_sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099",
+    "target_clips": 69,
+    "video_id": "video_000"
+  },
+  "engines": {
+    "clip": {
+      "directory": "tensorrt/clip/256x128/i2363-qualification-v1",
+      "export_sha256": "7e8b0c6d9ba781d748443419da16fc7f7a472f0e0093e8a8014466bfeeef679d",
+      "plan_sha256": "7dbe850f271f6df5458e6c8f35a657e7dc6654781533c177466f9e9e89eea279",
+      "profile": {
+        "pixels": {
+          "maximum": [
+            16,
+            3,
+            256,
+            128
+          ],
+          "minimum": [
+            1,
+            3,
+            256,
+            128
+          ],
+          "optimum": [
+            16,
+            3,
+            256,
+            128
+          ]
+        }
+      }
+    },
+    "dino": {
+      "directory": "tensorrt/dino/750x1333/i2363-qualification-v1",
+      "export_sha256": "acc19d7172a187f1c7c8543c1060878710cc4716ddb07a07cd473ae704227b0c",
+      "plan_sha256": "ab910d326ea2006d5de7f740025cff0c817dc05b397fef612641b2223272e3f1",
+      "profile": {
+        "pixels": {
+          "maximum": [
+            2,
+            3,
+            750,
+            1333
+          ],
+          "minimum": [
+            1,
+            3,
+            750,
+            1333
+          ],
+          "optimum": [
+            2,
+            3,
+            750,
+            1333
+          ]
+        }
+      }
+    },
+    "gvhmr": {
+      "directory": "tensorrt/gvhmr/l2-177-1055/i2363-qualification-v1",
+      "export_sha256": "5f42b379c7c2fd2400503553bcfd2bedfa60dffa544772ebb4861153298187ac",
+      "plan_sha256": "a9fd68e29a5be557bf4ca1e31d87605dcba8c808072acafe436feb15bb74c556",
+      "profile": {
+        "f_cam_angvel": {
+          "maximum": [
+            4,
+            1055,
+            6
+          ],
+          "minimum": [
+            1,
+            2,
+            6
+          ],
+          "optimum": [
+            4,
+            177,
+            6
+          ]
+        },
+        "f_cliffcam": {
+          "maximum": [
+            4,
+            1055,
+            3
+          ],
+          "minimum": [
+            1,
+            2,
+            3
+          ],
+          "optimum": [
+            4,
+            177,
+            3
+          ]
+        },
+        "f_imgseq": {
+          "maximum": [
+            4,
+            1055,
+            1024
+          ],
+          "minimum": [
+            1,
+            2,
+            1024
+          ],
+          "optimum": [
+            4,
+            177,
+            1024
+          ]
+        },
+        "length": {
+          "maximum": [
+            4
+          ],
+          "minimum": [
+            1
+          ],
+          "optimum": [
+            4
+          ]
+        },
+        "obs": {
+          "maximum": [
+            4,
+            1055,
+            17,
+            3
+          ],
+          "minimum": [
+            1,
+            2,
+            17,
+            3
+          ],
+          "optimum": [
+            4,
+            177,
+            17,
+            3
+          ]
+        }
+      }
+    },
+    "hmr2": {
+      "directory": "tensorrt/hmr2/256x256/i2363-qualification-v1",
+      "export_sha256": "1a1f3cfa851b9afd87ad1266ed6221547627995b96f3c894dd583598fc2297a3",
+      "plan_sha256": "c5da603c765fc45dd2d34a5215270df734e4731a4b4af9f21a06431a537d31ed",
+      "profile": {
+        "pixels": {
+          "maximum": [
+            16,
+            3,
+            256,
+            256
+          ],
+          "minimum": [
+            1,
+            3,
+            256,
+            256
+          ],
+          "optimum": [
+            16,
+            3,
+            256,
+            256
+          ]
+        }
+      }
+    },
+    "vitpose": {
+      "directory": "tensorrt/vitpose/256x192/i2363-qualification-v1",
+      "export_sha256": "16af3f0378de48ad390b16c174e7201525d2d27fd49b8527d2b23a52ceab3e4f",
+      "plan_sha256": "e67fd615d17ed7c8cb56f62b7f5491601dca260f3913f6cb5303a003684e8366",
+      "profile": {
+        "pixels": {
+          "maximum": [
+            16,
+            3,
+            256,
+            192
+          ],
+          "minimum": [
+            2,
+            3,
+            256,
+            192
+          ],
+          "optimum": [
+            16,
+            3,
+            256,
+            192
+          ]
+        }
+      }
+    }
+  },
+  "failure_reasons": {
+    "court_side_no_consistent_hypothesis": 1,
+    "player_association_ambiguous_association": 2,
+    "player_association_ambiguous_players": 9,
+    "player_association_player_not_found": 2
+  },
+  "finished_at": "2026-11-23T02:08:38.340048+00:00",
+  "gvhmr": {
+    "ort_bit_equal_shapes_by_batch": {
+      "1": 12,
+      "2": 3,
+      "3": 1,
+      "4": 48
+    },
+    "successful_forwards": 67,
+    "used_length_range": [
+      2,
+      1054
+    ]
+  },
+  "job_id": "0-8204644184801783846_2026-11-22T13-56-55-198216153Z_507741_i2363-trt-all-v1.job",
+  "node_status_counts": {
+    "blocked": 99,
+    "executed": 2509,
+    "failed": 14
+  },
+  "output_directory": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2363-primary/i2363/i2363-all-v1",
+  "performance": {
+    "reconstruction_wall_seconds": 43858.458501909,
+    "shape_qualification_wall_seconds": 85.12118833800196
+  },
+  "queue_exit_code": 1,
+  "queue_log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/0-8204644184801783846_2026-11-22T13-56-55-198216153Z_507741_i2363-trt-all-v1.log",
+  "queue_state": "failed",
+  "started_at": "2026-11-22T13:57:56.639001+00:00",
+  "status_counts": {
+    "blocked": 0,
+    "failed": 14,
+    "generated": 55
+  },
+  "trt_environment": {
+    "compute_capability": [
+      12,
+      0
+    ],
+    "device_name": "NVIDIA GeForce RTX 5060 Ti",
+    "tensorrt_version": "10.14.1.48.post1"
+  }
+}

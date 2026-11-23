@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
+from collections.abc import Iterator
+from contextlib import closing
+from contextvars import copy_context
 from pathlib import Path
 from typing import Any
 
 import pytest
+import torch
 
 from src.utils.inference_recording import (
     InferenceRecorder,
@@ -18,6 +23,7 @@ from src.utils.inference_recording import (
     temporary_directory,
     wall_breakdown,
 )
+from src.utils.inference_timing import timing_summary
 from src.utils.video.prefetch import PrefetchIterator
 
 
@@ -48,6 +54,10 @@ def test_failure_keeps_model_pair_context_batch_and_valid_json(tmp_path: Path) -
     assert record["models"][0]["load_count"] == record["models"][0]["unload_count"] == 1
     assert sum(record["stage_wall_seconds"].values()) == pytest.approx(record["total_wall_seconds"])
     assert all(0 <= e["start_ns"] <= e["end_ns"] for e in record["events"])
+    assert all(0 <= e["thread_cpu_ns"] <= e["end_ns"] - e["start_ns"] for e in record["events"])
+    assert all(e["process_cpu_ns"] >= 0 and e["native_thread_id"] == threading.get_native_id()
+               for e in record["events"])
+    assert record["timings"]["by_node"]["pose/cam3"]["wall_seconds"] > 0.
 
 
 def test_wall_breakdown_partitions_nested_and_prefetched_work() -> None:
@@ -66,6 +76,32 @@ def test_wall_breakdown_partitions_nested_and_prefetched_work() -> None:
         {"stage": "postprocess", "start_ns": 0, "end_ns": 10_000_000_000, "depth": 1},
         {"stage": "decode", "start_ns": 2_000_000_000, "end_ns": 2_000_000_000, "depth": 2},
     ], 10_000_000_000) == {"postprocess": 10., "unattributed": 0.}
+
+
+def test_checkpoints_preserve_parent_order_and_complete_recording(tmp_path: Path) -> None:
+    destination = tmp_path / "recording.json"
+    with InferenceRecorder(destination, sample_interval=60) as recorder:
+        with span("video_pass"), recording_context(clip_id="clip", node="detection/cam0"):
+            with span("preprocess", model="detector"), span("decode"):
+                assert not recorder.checkpoint_events(minimum_events=1)
+            assert recorder.checkpoint_events(minimum_events=1)
+            with span("inference", model="detector", batch_shape=[1, 3]):
+                pass
+        assert recorder.checkpoint_events(minimum_events=1)
+        with span("save"):
+            pass
+    record = json.loads(destination.read_text())
+    assert record["timing"]["event_checkpoints"] == 2
+    assert record["batch_shapes"] == {"detector": {"[1, 3]": 1}}
+    events = record["events"]
+    assert [event["id"] for event in events] == list(range(len(events)))
+    pass_event = next(event for event in events if event["stage"] == "video_pass")
+    inference = next(event for event in events if event["stage"] == "inference")
+    assert inference["parent_id"] == pass_event["id"]
+    assert record["stage_wall_seconds"] == pytest.approx(
+        wall_breakdown(events, round(record["total_wall_seconds"] * 1e9)))
+    assert record["timings"] == timing_summary(events, record["resource_samples"], {})
+    assert not list(tmp_path.glob(".recording-*"))
 
 
 def test_disabled_recording_never_reads_assets_or_creates_files(tmp_path: Path) -> None:
@@ -96,6 +132,114 @@ def test_prefetch_carries_context_and_ends_spans_before_yield(tmp_path: Path) ->
     assert len(decode) == 3
     assert all(e["parent_id"] == node_event["id"] and e["attributes"]["clip_id"] == "clip-2" for e in decode)
     assert all(e["thread_id"] != node_event["thread_id"] for e in decode)
+    assert {e["thread_role"] for e in decode} == {"decode_prefetch"}
+    waits = [e for e in recorder.events if e["stage"] == "decode_queue_wait"]
+    assert {e["thread_role"] for e in waits if e["attributes"]["operation"] == "read"} == {"main"}
+    assert {e["thread_role"] for e in waits if e["attributes"]["operation"] == "write"} == {"decode_prefetch"}
+    samples = recorder.samples
+    assert min(s["rss_bytes"] for s in samples) > 0
+    assert samples[0]["process_cpu_percent"] is None and samples[-1]["process_cpu_percent"] >= 0.
+    assert any(t["role"] == "main" for t in samples[-1]["threads"])
+
+
+def test_prefetch_closes_a_full_queue_when_prediction_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    waiting = threading.Event()
+    source_closed = threading.Event()
+
+    def frames() -> Iterator[int]:
+        try:
+            yield from (1, 2, 3)
+        finally:
+            source_closed.set()
+
+    destination = tmp_path / "record.json"
+    with InferenceRecorder(destination) as recorder:
+        prefetch = PrefetchIterator(frames(), max_prefetch=1)
+        put = prefetch._queue.put
+
+        def observe_put(item: Any) -> None:
+            if item.value == 3 and prefetch._queue.full():
+                waiting.set()
+            put(item)
+
+        monkeypatch.setattr(prefetch._queue, "put", observe_put)
+        with pytest.raises(ValueError, match="prediction failed"), closing(iter(prefetch)) as batches:
+            assert next(batches) == 1
+            assert waiting.wait(timeout=5), "Producer did not reach the full queue"
+            raise ValueError("prediction failed")
+
+        assert source_closed.is_set() and not prefetch._thread.is_alive()
+        assert recorder.checkpoint_events(minimum_events=1)
+
+    record = json.loads(destination.read_text())
+    assert record["status"] == "complete" and record["measurement_errors"] == []
+    events = record["events"]
+    assert [event["id"] for event in events] == list(range(len(events)))
+    interrupted, = [event for event in events if event["attributes"].get("outcome") == "interrupted"]
+    assert interrupted["stage"] == "decode_queue_wait"
+    assert interrupted["attributes"]["operation"] == "write"
+    assert interrupted["thread_role"] == "decode_prefetch"
+
+
+def test_unfinished_span_fails_the_recording_at_exit(tmp_path: Path) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+
+    def decode() -> None:
+        with span("decode"):
+            entered.set()
+            release.wait()
+
+    destination = tmp_path / "record.json"
+    worker = None
+    try:
+        with pytest.raises(RuntimeError, match="unfinished spans"), InferenceRecorder(destination) as recorder:
+            worker = threading.Thread(target=copy_context().run, args=(decode,), daemon=True)
+            worker.start()
+            assert entered.wait(timeout=5)
+    finally:
+        release.set()
+        if worker is not None:
+            worker.join(timeout=5)
+
+    record = json.loads(destination.read_text())
+    assert record["status"] == "failed"
+    assert any("decode" in error for error in record["measurement_errors"])
+    assert not any(event["stage"] == "decode" for event in recorder.events)
+
+
+@pytest.mark.parametrize("synchronize", [True, False])
+def test_nvml_sampling_is_independent_of_cuda_timing_synchronization(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, synchronize: bool,
+) -> None:
+    from types import SimpleNamespace
+
+    from src.utils import inference_resources
+
+    calls = []
+    gpu = {"cuda:0": {"utilization_percent": 25, "used_bytes": 1000, "total_bytes": 2000}}
+    nvml = SimpleNamespace(sample=lambda: gpu, close=lambda: calls.append("nvml_close"))
+    monkeypatch.setattr(inference_resources, "NvmlSampler", lambda devices: nvml)
+    monkeypatch.setattr(torch.cuda, "init", lambda: None)
+    monkeypatch.setattr(torch.cuda, "get_device_properties", lambda _: SimpleNamespace(uuid="test_device"))
+    monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda _: None)
+    monkeypatch.setattr(torch.cuda, "max_memory_allocated", lambda _: 10)
+    monkeypatch.setattr(torch.cuda, "max_memory_reserved", lambda _: 20)
+    monkeypatch.setattr(torch.cuda, "synchronize", lambda device: calls.append(device))
+    output = tmp_path / "record.json"
+    with InferenceRecorder(output, devices=("cuda:0",), synchronize_cuda=synchronize), span("inference", model="fake"):
+        calls.append("forward")
+    trace = json.loads(output.read_text())
+    assert trace["resources"]["nvml"]["cuda:0"] == {"used_peak_bytes": 1000, "total_bytes": 2000}
+    assert all(sample["gpu"] == gpu for sample in trace["resource_samples"])
+    syncs = [e for e in trace["events"] if e["stage"] == "cuda_sync"]
+    if synchronize:
+        inference = next(e for e in trace["events"] if e["stage"] == "inference")
+        assert [e["attributes"]["boundary"] for e in syncs] == ["before", "after"]
+        assert all(e["parent_id"] == inference["id"] for e in syncs)
+        assert calls == ["cuda:0", "forward", "cuda:0", "nvml_close"]
+    else:
+        assert syncs == [] and calls == ["forward", "nvml_close"]
 
 
 def test_temporary_peak_includes_short_lived_files(tmp_path: Path) -> None:
@@ -144,6 +288,7 @@ def test_initialization_failure_restores_the_execution_context(tmp_path: Path, m
     monkeypatch.setattr(broken, "_sample", unavailable)
     with pytest.raises(OSError, match="resource source unavailable"), broken:
         pytest.fail("Initialization must fail before running inference")
+    assert json.loads((tmp_path / "broken.json").read_text())["status"] == "failed"
     with InferenceRecorder(tmp_path / "next.json"):
         pass
     assert json.loads((tmp_path / "next.json").read_text())["status"] == "complete"

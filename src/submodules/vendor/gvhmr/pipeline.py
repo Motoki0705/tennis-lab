@@ -234,13 +234,15 @@ class GvhmrDemoModel(nn.Module):
         }
         """
         device = self._device()
-        batch = self._batch_inputs(data)
         from src.utils.inference_recording import span
 
-        with span("transfer", model="GVHMR"):
+        with span("preprocess", model="GVHMR", operation="normalize_keypoints"):
+            batch = self._batch_inputs(data)
+        with span("transfer", model="GVHMR", operation="input_to_device", device=str(device)):
             batch = {k: v.to(device) for k, v in batch.items()}
-        with span("inference", model="GVHMR-network", batch_shape=list(batch["f_imgseq"].shape)):
+        with span("inference", model="GVHMR-network", device=str(device), batch_shape=list(batch["f_imgseq"].shape)):
             prediction = self._predict_denoiser(batch)
+        with span("postprocess", model="GVHMR", operation="decode_body", device=str(device)):
             outputs = self.pipeline.decode_prediction(batch, prediction, static_cam=static_cam)
 
         return self._prediction(data, outputs)
@@ -260,11 +262,14 @@ class GvhmrDemoModel(nn.Module):
         from src.utils.inference_recording import span
 
         device = self._device()
-        inputs = [self._batch_inputs(row) for row in rows]
-        with span("transfer", model="GVHMR"):
-            batch = {name: torch.cat([item[name] for item in inputs]).to(device) for name in inputs[0]}
-        with span("inference", model="GVHMR-network", batch_shape=list(batch["f_imgseq"].shape)):
+        with span("preprocess", model="GVHMR", operation="normalize_and_stack_sequences"):
+            inputs = [self._batch_inputs(row) for row in rows]
+            prepared = {name: torch.cat([item[name] for item in inputs]) for name in inputs[0]}
+        with span("transfer", model="GVHMR", operation="input_to_device", device=str(device)):
+            batch = {name: values.to(device) for name, values in prepared.items()}
+        with span("inference", model="GVHMR-network", device=str(device), batch_shape=list(batch["f_imgseq"].shape)):
             predictions = self._predict_denoiser(batch)
+        with span("postprocess", model="GVHMR", operation="decode_body", device=str(device)):
             return [
                 self._prediction(row, self.pipeline.decode_prediction(
                     {name: value[i:i + 1] for name, value in batch.items()},
