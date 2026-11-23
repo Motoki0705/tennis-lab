@@ -417,7 +417,9 @@ people_models:
 各入力のmin/opt/maxを固定します。実行前にこれらを照合し、ロード後にplanのbindingsとprofileを再確認します。
 ファイル欠落、識別不一致、未登録shape、profile範囲外のバッチや系列長はエラーになります。
 バックエンド・精度・バッチサイズ・エンジンの識別は `ModelSpec` とcomponent・publicationのidentityに含まれます。
-既定のFP32では、`tensorrt_fp32_cache_compatibility.json` に一致するソース変更を導入前のハッシュで表します。
+既定のFP32では、バッチ化・計測の `batched_tensorrt_fp32_cache_compatibility.json`、初回導入の
+`tensorrt_fp32_cache_compatibility.json` の順に照合します。各manifestの変更ファイルがすべて一致した場合に、
+その変更を導入前のソースハッシュで表します。
 
 ## ball検出証拠
 
