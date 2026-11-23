@@ -36,8 +36,10 @@ from src.utils.paths import PROJECT_ROOT
 
 _BASELINE = "dcd6534594f73cca12a45c2d9afaa8ac09d48bc7"
 _PHASE2_BASE = "603823383cd941941556cafdcbc98ff67a19f51f"
+_PHASE2_REVISION = "a42c9f6e75ea982af391010280161ef353cd9dd5"
 # Computed through the archived main source identity contract at _PHASE2_BASE.
 _PHASE2_MAIN_FP32_CODE_SHA256 = "6022ecaab6f2e390e842acf55b258521ee372cf097a6046bcbca77e56c7e7539"
+_PHASE2_REVISED_CODE_SHA256 = "7d2e49f6cc2b3d8eed7390c04bec93f75d89c50aefe185cdb2ebb62da351a90f"
 _BASELINE_STORE = Path(__file__).with_name("fixtures") / "main_fp32_cache.tar.gz"
 _PHASE2_SOURCE_BASELINE = Path(__file__).with_name("fixtures") / "phase2_main_source_digests.json.gz"
 _FIXTURE_HELPERS = "tests/unit/tennis_scene/pipeline/test_auto_pipeline.py"
@@ -202,18 +204,17 @@ def _precision(precision: str) -> tuple[str, ...]:
 
 @pytest.fixture(scope="module")
 def phase2_sources() -> dict[str, str]:
-    from src.tennis_scene.pipeline import source_identity
-
     with gzip.open(_PHASE2_SOURCE_BASELINE, "rt", encoding="utf-8") as stream:
         baseline = json.load(stream)
     assert baseline["commit"] == _PHASE2_BASE
-    actual = source_identity.source_digests(PROJECT_ROOT / "src")
-    # Verify the changed files from this checkout against the fixed main tree.
-    # Later, unrelated files are allowed to change the real runtime identity.
-    return {**baseline["sources"], **{path: actual[path] for path in baseline["revised_paths"]}}
+    assert baseline["revised_commit"] == _PHASE2_REVISION
+    # Replay the exact reviewed patch even when later work edits one of its files.
+    sources = {**baseline["sources"], **baseline["revised_sources"]}
+    assert document_digest(sources) == _PHASE2_REVISED_CODE_SHA256
+    return sources
 
 
-def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(
+def test_phase2_fp32_cache_is_adopted_in_execute_and_load_modes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, phase2_sources: dict[str, str],
 ) -> None:
     monkeypatch.setattr("src.tennis_scene.pipeline.orchestrator.source_digests", lambda _: phase2_sources)
@@ -226,8 +227,9 @@ def test_batched_tensorrt_fp32_compatibility_requires_the_exact_sources(phase2_s
     compatible = source_identity.compatible_source_digests(phase2_sources)
     assert document_digest(compatible) == _PHASE2_MAIN_FP32_CODE_SHA256
     assert source_identity.compatible_source_digests(phase2_sources, tensorrt=True) == phase2_sources
-    changed = {**phase2_sources, "utils/video/prefetch.py": "0" * 64}
-    assert source_identity.compatible_source_digests(changed) == changed
+    for path in ("utils/video/prefetch.py", "utils/configuration/inventory.py"):
+        changed = {**phase2_sources, path: "0" * 64}
+        assert source_identity.compatible_source_digests(changed) == changed
     unrelated = {"tennis_scene/schema.py": "a" * 64}
     assert source_identity.compatible_source_digests({**phase2_sources, **unrelated}) == {**compatible, **unrelated}
 

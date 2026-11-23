@@ -31,8 +31,9 @@ artifacts. Real model/GPU acceptance is separate from this CPU contract.
 コミット済みソースから計算したcode digestを使う。現行schemaの小型storeとdatasetの公開マーカーをそのdigestで保存し、
 現行のorchestratorで既存componentをexecute/loadから再利用し、公開済みannotationを `overwrite=false` で受理できることを調べる。
 `phase2_main_source_digests.json.gz` の `sources` は `git archive` で取り出した固定mainの全 `src/**/*.py` のSHA-256。
-`revised_paths` は固定mainからバッチ化・記録のPRで変わったPythonファイルの一覧で、実行時の互換manifestからは生成しない。
-テストではそのファイルだけをcheckoutの実ハッシュで上書きし、後続の変更で無関係なソースが変わっても固定mainへの互換性を検査できるようにする。
+`revised_sources` は同じ固定mainから `revised_commit`（`a42c9f6e75ea982af391010280161ef353cd9dd5`）までに変わった
+PythonファイルのSHA-256。両コミット間の `git diff --name-only` と導入時の `git show` から生成する。
+テストはこの2時点の指紋で互換パッチを再現し、台帳などの対象ファイルに後続の編集が入った場合の非互換も検査する。
 
 過去fixtureを再生成する場合は、このテストを含むworktreeから実行する。
 
