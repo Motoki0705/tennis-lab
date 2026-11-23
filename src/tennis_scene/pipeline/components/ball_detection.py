@@ -312,10 +312,11 @@ class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOu
             batch_size=int(self.config.batch_size), pin_memory=bool(self.config.pin_memory))
         prefetched_batches = PrefetchIterator(batches, max_prefetch=int(self.config.prefetch_batches))
         output = BallWindowEvidence(video, aggregation=self.config.overlap_aggregation, tail_policy=self.config.tail_policy)
-        for batch in prefetched_batches:
-            prediction = predictor.predict(batch.tensor, candidate_config=self.config.candidates)
-            for index, window in enumerate(batch.windows):
-                output.add(window.frame_indices, window.start_index, prediction, index)
+        with closing(iter(prefetched_batches)) as stream:
+            for batch in stream:
+                prediction = predictor.predict(batch.tensor, candidate_config=self.config.candidates)
+                for index, window in enumerate(batch.windows):
+                    output.add(window.frame_indices, window.start_index, prediction, index)
         uv, confidence, evidence = output.finish()
         return uv, confidence, evidence
 

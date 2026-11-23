@@ -66,6 +66,10 @@ added synchronization as a `cuda_sync` child span. Use `synchronize_cuda=False`
 to time the host without the added barriers, while retaining CUDA allocator
 and NVML measurements. `transfer` includes implicit waits in host reads of CUDA
 tensors. `decode_queue_wait` labels prefetch queue reads and writes separately.
+Closing the prefetch consumer frees a queue slot and joins the producer before
+returning. A write released by cancellation records `outcome=interrupted`.
+If a producer fails to stop within five seconds, or any span remains open at
+recorder exit, the recording is marked failed with a `measurement_errors` entry.
 Eager
 CLIP unload events describe the existing reference-drop and memory-cleanup
 boundary; other local owners may retain tensors until their function returns.

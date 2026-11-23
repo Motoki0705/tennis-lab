@@ -5,6 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
+from collections.abc import Iterator
+from contextlib import closing
+from contextvars import copy_context
 from pathlib import Path
 from typing import Any
 
@@ -137,6 +140,72 @@ def test_prefetch_carries_context_and_ends_spans_before_yield(tmp_path: Path) ->
     assert min(s["rss_bytes"] for s in samples) > 0
     assert samples[0]["process_cpu_percent"] is None and samples[-1]["process_cpu_percent"] >= 0.
     assert any(t["role"] == "main" for t in samples[-1]["threads"])
+
+
+def test_prefetch_closes_a_full_queue_when_prediction_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    waiting = threading.Event()
+    source_closed = threading.Event()
+
+    def frames() -> Iterator[int]:
+        try:
+            yield from (1, 2, 3)
+        finally:
+            source_closed.set()
+
+    destination = tmp_path / "record.json"
+    with InferenceRecorder(destination) as recorder:
+        prefetch = PrefetchIterator(frames(), max_prefetch=1)
+        put = prefetch._queue.put
+
+        def observe_put(item: Any) -> None:
+            if item.value == 3 and prefetch._queue.full():
+                waiting.set()
+            put(item)
+
+        monkeypatch.setattr(prefetch._queue, "put", observe_put)
+        with pytest.raises(ValueError, match="prediction failed"), closing(iter(prefetch)) as batches:
+            assert next(batches) == 1
+            assert waiting.wait(timeout=5), "Producer did not reach the full queue"
+            raise ValueError("prediction failed")
+
+        assert source_closed.is_set() and not prefetch._thread.is_alive()
+        assert recorder.checkpoint_events(minimum_events=1)
+
+    record = json.loads(destination.read_text())
+    assert record["status"] == "complete" and record["measurement_errors"] == []
+    events = record["events"]
+    assert [event["id"] for event in events] == list(range(len(events)))
+    interrupted, = [event for event in events if event["attributes"].get("outcome") == "interrupted"]
+    assert interrupted["stage"] == "decode_queue_wait"
+    assert interrupted["attributes"]["operation"] == "write"
+    assert interrupted["thread_role"] == "decode_prefetch"
+
+
+def test_unfinished_span_fails_the_recording_at_exit(tmp_path: Path) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+
+    def decode() -> None:
+        with span("decode"):
+            entered.set()
+            release.wait()
+
+    destination = tmp_path / "record.json"
+    worker = None
+    try:
+        with pytest.raises(RuntimeError, match="unfinished spans"), InferenceRecorder(destination) as recorder:
+            worker = threading.Thread(target=copy_context().run, args=(decode,), daemon=True)
+            worker.start()
+            assert entered.wait(timeout=5)
+    finally:
+        release.set()
+        if worker is not None:
+            worker.join(timeout=5)
+
+    record = json.loads(destination.read_text())
+    assert record["status"] == "failed"
+    assert any("decode" in error for error in record["measurement_errors"])
+    assert not any(event["stage"] == "decode" for event in recorder.events)
 
 
 @pytest.mark.parametrize("synchronize", [True, False])

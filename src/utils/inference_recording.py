@@ -110,9 +110,11 @@ class InferenceRecorder:
         self._lock = threading.RLock()
         self._stop = threading.Event()
         self._sample_errors: list[str] = []
+        self._span_errors: list[str] = []
         self._started_ns: int | None = None
         self._next_id = 0
-        self._live_spans = 0
+        self._open_spans: dict[int, str] = {}
+        self._events_sealed = False
         self._event_directory: Path | None = None
         self._event_chunks: list[tuple[int, Path]] = []
         self._video_pass_spans: list[dict[str, Any]] = []
@@ -177,7 +179,14 @@ class InferenceRecorder:
             self._sample_errors.append(f"{type(exc).__name__}: {exc}")
         finally:
             self._close_nvml()
+        with self._lock:
+            self._events_sealed = True
+            if self._open_spans:
+                pending = ", ".join(f"{identifier}:{stage}" for identifier, stage in self._open_spans.items())
+                self._span_errors.append(f"unfinished spans at recorder exit: {pending}")
         self._write_record(kind, error)
+        if self._span_errors and error is None:
+            raise RuntimeError(f"Inference span recording failed: {self._span_errors}")
         if self._sample_errors and error is None:
             raise RuntimeError(f"Inference resource sampling failed: {self._sample_errors}")
 
@@ -192,7 +201,8 @@ class InferenceRecorder:
                           consume_pending: Callable[[], None] | None = None) -> bool:
         """Spill completed spans between video-batch nodes or dispatch groups."""
         with self._lock:
-            if len(self.events) < minimum_events or self._live_spans or self.destination is None:
+            if (len(self.events) < minimum_events or self.destination is None or self._events_sealed
+                    or any(stage != "video_pass" for stage in self._open_spans.values())):
                 return False
             if consume_pending is not None:
                 consume_pending()
@@ -294,9 +304,10 @@ class InferenceRecorder:
                     component = str(attrs.get("node", "unknown")).split("/")[0]
                     video_reads[str(attrs.get("video_pass", "outside_plan"))][component] += 1
         self.resources["ram_process_lifetime_peak_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
+        measurement_errors = [*self._sample_errors, *self._span_errors]
         document = {
             "schema": "inference_recording_v1", "started_at": self._started_at,
-            "status": "failed" if error is not None or self._sample_errors else "complete",
+            "status": "failed" if error is not None or measurement_errors else "complete",
             "error_type": None if kind is None else kind.__name__, "metadata": self.metadata,
             "timing": {"clock": "perf_counter_ns", "gpu": self._gpu_timing(),
                        "wall_attribution": "deepest_span_then_gpu_then_latest", "sample_interval_seconds": self.sample_interval,
@@ -307,7 +318,7 @@ class InferenceRecorder:
             "batch_shapes": dict(batches), "batch_dispatches": dispatches, "resources": self.resources,
             "video_reads_by_pass": video_reads, "model_loads_by_pass": pass_loads,
             "resource_samples": self.samples, "timings": timeline.result(),
-            "measurement_errors": self._sample_errors,
+            "measurement_errors": measurement_errors,
         }
         self.destination.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=self.destination.parent, delete=False) as stream:
@@ -433,6 +444,15 @@ def recording_thread(role: str) -> Iterator[None]:
                 recorder._roles[tid] = previous
 
 
+def recording_error(message: str) -> None:
+    """Fail the active recording if a background span could not be collected."""
+    recorder = _ACTIVE.get()
+    if recorder is not None:
+        with recorder._lock:
+            if not recorder._events_sealed:
+                recorder._span_errors.append(message)
+
+
 @contextmanager
 def span(stage: str, **attributes: Any) -> Iterator[dict[str, Any]]:
     """Record a completed/error span; yielded attributes may receive outcomes."""
@@ -450,12 +470,16 @@ def span(stage: str, **attributes: Any) -> Iterator[dict[str, Any]]:
         attributes.setdefault("batch_items", shape[0])
     stack = _STACK.get()
     native_thread_id = threading.get_native_id()
+    identifier = None
     with recorder._lock:
-        identifier = recorder._next_id
-        recorder._next_id += 1
-        if stage != "video_pass":
-            recorder._live_spans += 1
-        role = recorder._roles.get(native_thread_id, "native")
+        if not recorder._events_sealed:
+            identifier = recorder._next_id
+            recorder._next_id += 1
+            recorder._open_spans[identifier] = stage
+            role = recorder._roles.get(native_thread_id, "native")
+    if identifier is None:
+        yield {}
+        return
     assert recorder._started_ns is not None
     event: dict[str, Any] = {"id": identifier, "parent_id": stack[-1] if stack else None, "depth": len(stack),
              "thread_id": threading.get_ident(), "native_thread_id": native_thread_id, "thread_role": role, "stage": stage,
@@ -476,9 +500,9 @@ def span(stage: str, **attributes: Any) -> Iterator[dict[str, Any]]:
         event["end_ns"] = time.perf_counter_ns() - recorder._started_ns
         _STACK.reset(token)
         with recorder._lock:
-            recorder.events.append(event)
-            if stage != "video_pass":
-                recorder._live_spans -= 1
+            del recorder._open_spans[identifier]
+            if not recorder._events_sealed:
+                recorder.events.append(event)
 
 
 def measured(stage: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
