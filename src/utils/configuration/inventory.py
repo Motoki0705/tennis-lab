@@ -526,6 +526,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "player_association.dataset_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.player_association.pseudo_annotation.__main__": (
+        "player_association.pseudo_annotation",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.plcs.scripts.serve_inference_ui": (
         "plcs.inference_ui",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -758,6 +762,13 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "main",
         domain="player_association",
         executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.player_association.pseudo_annotation.__main__",
+        "main",
+        domain="player_association",
+        executable_module=True,
+        optional_policy="each subcommand declares its required paths; extract uses the checked-in sampling config unless --config is supplied",
     ),
     _non_hydra_boundary(
         "src.tasks.plcs.scripts.serve_inference_ui",
