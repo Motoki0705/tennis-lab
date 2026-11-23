@@ -1,0 +1,42 @@
+{
+  "complete": true,
+  "payload_files": 2925,
+  "complete_file_set": 2926,
+  "payload_bytes": 157028755547,
+  "hardlinked_shards": 1537,
+  "hardlinked_bytes": 156770864484,
+  "additional_payload_bytes": 257891063,
+  "source_split_counts": {
+    "train": {
+      "clips": 1370,
+      "frames": 762004
+    },
+    "test": {
+      "clips": 230,
+      "frames": 159496
+    },
+    "val": {
+      "clips": 200,
+      "frames": 144449
+    }
+  },
+  "distribution_split_counts": {
+    "train": {
+      "clips": 1342,
+      "frames": 759799
+    },
+    "val": {
+      "clips": 195,
+      "frames": 144008
+    }
+  },
+  "omitted_train_val_clips": 33,
+  "omissions": "test split and train/val clips shorter than 128 frames",
+  "changed_clip_metadata_fields": {
+    "index": 1535,
+    "annotation_path": 1379
+  },
+  "scientific_clip_metadata_exact": true,
+  "all_sha256_verified": true,
+  "verified_at": "2026-11-12T13:41:02Z"
+}
