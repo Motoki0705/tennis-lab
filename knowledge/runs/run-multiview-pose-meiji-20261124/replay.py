@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Iterable
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import replace
 from multiprocessing import get_context
@@ -54,7 +55,8 @@ from src.utils.io import write_json_atomic
 
 
 def _read(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text())
+    result: dict[str, Any] = json.loads(path.read_text())
+    return result
 
 
 def _read_human_eval_inputs(
@@ -107,7 +109,7 @@ def _read_human_eval_inputs(
         detection, joints = read_all_pose_rows(
             archives, clip, video, plan, features, plan_sha
         )
-        rows = np.arange(len(joints), dtype=np.int64)
+        rows: NDArray[np.int64] = np.arange(len(joints), dtype=np.int64)
         detections.append(
             PersonDetectionOutput(
                 video.camera_id,
@@ -147,15 +149,21 @@ def _read_human_eval_inputs(
     )
 
 
-def _predictions(
-    inputs: PoseInputs, result: FramePoseCandidates
+def predictions_from_rows(
+    detections: tuple[PersonDetectionOutput, ...], result: FramePoseCandidates
 ) -> dict[str, CameraPrediction]:
-    frames = np.repeat(
-        np.arange(inputs.source.num_frames), np.diff(result.frame_offsets)
+    """Adapt the original DINO rows and frame-local assignments to the box evaluator."""
+    frames: NDArray[np.int64] = np.repeat(
+        np.arange(len(result.frame_offsets) - 1), np.diff(result.frame_offsets)
     )
     predictions = {}
-    for index, detection in enumerate(inputs.detections):
-        axis = detection.frame_offsets
+    for index, (camera, axis, detection) in enumerate(
+        zip(result.camera_ids, result.detection_offsets, detections, strict=True)
+    ):
+        if detection.camera_id != camera or not np.array_equal(
+            axis, detection.frame_offsets
+        ):
+            raise ValueError(f"Detection and candidate row axes differ: {camera}")
         counts = np.diff(axis)
         observed = np.arange(counts.max())[:, None] < counts
         boxes = np.zeros((*observed.shape, 4), np.float64)
@@ -168,6 +176,22 @@ def _predictions(
             np.arange(len(boxes), dtype=np.int64), boxes, observed, ids
         )
     return predictions
+
+
+def micro_pairs(scores: Iterable[dict[str, Any]]) -> dict[str, int | float | None]:
+    tp = fp = fn = 0
+    for score in scores:
+        tp += score["tp"]
+        fp += score["fp"]
+        fn += score["fn"]
+    return {
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "precision": tp / (tp + fp) if tp + fp else None,
+        "recall": tp / (tp + fn) if tp + fn else None,
+        "f1": 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else None,
+    }
 
 
 def _label_rows(
@@ -305,7 +329,7 @@ def evaluate_3cam(dataset: Path, archives: Path) -> dict[str, Any]:
         start = perf_counter()
         result = reconstruct(inputs)
         reconstruction_seconds = perf_counter() - start
-        preds = _predictions(inputs, result)
+        preds = predictions_from_rows(inputs.detections, result)
         legacy = evaluate(labels, preds)
         matched = match_to_labels(labels, preds, 0.5)
         labelled = _label_rows(inputs, labels, matched)

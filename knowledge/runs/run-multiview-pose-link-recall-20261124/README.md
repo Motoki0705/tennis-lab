@@ -53,7 +53,25 @@
 | 4 CPUプロセスの経過時間 | 329.00秒 | 367.68秒 |
 | clipごとの復元時間の中央値 | 24.84 ms/frame | 28.55 ms/frame |
 
-開発用評価・pytestと並行した試行の経過は571.58秒だった。このworkerの他の評価を終えてから同じ4プロセスで再計測し、表に採用した。2回の成果物のID、記述子SHA、候補数および行の診断は69 clipすべてで一致した。旧測定は当時の同時負荷を含む。#2442のダブルス疑似正解での精度は未採点。 [clip別の版と再計測結果](meiji4.json)
+開発用評価・pytestと並行した試行の経過は571.58秒だった。このworkerの他の評価を終えてから同じ4プロセスで再計測し、表に採用した。2回の成果物のID、記述子SHA、候補数および行の診断は69 clipすべてで一致した。旧測定は当時の同時負荷を含む。 [clip別の版と再計測結果](meiji4.json)
+
+## meiji_4camのダブルス疑似正解
+
+#2442の公開済み69 clipをすべて採点した。候補の記述子と元のDINO行、疑似正解のラベルと抽出計画、元動画SHAを照合した。各clipの疑似正解には4選手が定義され、1,205フレームの34,664 boxすべてがIoU 0.5以上で観測行に対応した。曖昧ラベル328 boxはpair採点から除外した。抽出層は評価側で使い、候補は固定測定版を読み込んだ。 [#2442の全体実行](https://github.com/Motoki0705/tennis-lab/issues/2442) [層別・clip別の採点と入力SHA](pseudo4cam.json)
+
+既存採点器のTP・FP・FNをフレーム間で合計した。疑似正解は選手4人の視点間IDを持ち、それ以外の人物のIDは持たない。既存指標では非選手を含むリンクもFPと数えるため、選手同士に絞った指標を併記した。既存指標のFP 14,339件のうち13,561件は非選手を含む。層に重複があり、各層の分母は延べ1,217フレーム。全体の分母は重複を除いた1,205フレーム。**疑似正解の人手誤り率は未記録のため、以下は暫定値。**
+
+| #2442の層 | フレーム数 | 既存のpair F1 | 選手同士のpair F1 |
+|---|---:|---:|---:|
+| 選別外れ・コート近く | 399 | 0.7524 | 0.9574 |
+| 1視点・3Dなし | 71 | 0.7429 | 0.9811 |
+| 未割当・再投影不一致 | 187 | 0.7422 | 0.9469 |
+| ID switch・断片化 | 350 | 0.7400 | 0.9481 |
+| 停止 clip | 66 | 0.7396 | 0.9722 |
+| 高確信から無作為 | 144 | 0.7434 | 0.9466 |
+| 全体 | 1,205 | **0.7468** | **0.9544** |
+
+全体のTP／FP／FNは既存指標で23,277／14,339／1,448件、選手同士で23,277／778／1,448件。保存済み候補の読み込みと採点はCPUで17.67秒、再実行は12.18秒で結果JSONがバイト一致した。元フレーム番号のまま評価した1 clip全体とその3層でも、フレームを抽出した集計と両指標が一致した。
 
 ## 予約した未見3 clip
 
@@ -61,9 +79,28 @@
 
 `video_001/clip_003` には、9フレームから作った別runのCourt投影点が残っていた。3本の動画SHA-256を照合し、cam0の14投影点から既存の平面pinhole fitで校正を復元した。RMSEは3.13 px、既存の校正上限は11.01 px。cam1・cam2はr18の校正を使った。このRMSEは保存済みhomographyからの投影点に対する値で、Court診断で元の検出点と比較したP95残差は15.84 pxだった。
 
-同じclipのボール注釈から実際に見える点を選び、#932の設定で1,249フレームを採点した。cam0を基準にcam0／cam1／cam2のhalf-turnは `[false, false, true]`、最良仮説の支持は91.35%、次点との差は0.475。人物ラベルを使う採点より前に、この校正と向きを使う可否を確認する。 [保存済みCourt投影点](../run-slcs-meiji-court-visual-qc-v1/results.json) [復元した行列とボール判定](holdout-camera-recovery.json)
+同じclipのボール注釈から実際に見える点を選び、#932の設定で1,249フレームを採点した。cam0を基準にcam0／cam1／cam2のhalf-turnは `[false, false, true]`、最良仮説の支持は91.35%、次点との差は0.475。親は2026-11-24にこの校正と向きを予約評価に使うことを承認した。 [保存済みCourt投影点](../run-slcs-meiji-court-visual-qc-v1/results.json) [復元した行列とボール判定](holdout-camera-recovery.json)
 
 3 clip・9カメラの38,421検出行を、開発用と同じcheckpoint・FP32・flip test・bbox拡張率で処理する計画を作成した。GPUの本推論は共有training queueから `holdout_pose.py infer` を実行し、固定した `pose-plan.json` のSHA-256を渡す。公開先には `person_detections` とその行を保持した `person_pose_features` のみを保存する。9カメラの読み戻し後に `complete.json` ができる。CPUの実モデル確認では1フレームの3行が入力行と一致した。模擬出力では1カメラを保存後に中断し、続きから9カメラ・38,421行を読み戻した。 [計画のdigestと検証結果](holdout-pose-preparation.json)
+
+`ls /var/lib/tennis-lab-actions` は `Permission denied` を返した。共有GPUロックのACL復旧が再開条件。今回のqueue投入は0件で、予約人物ラベルはr18のSHA照合まで行った。模擬poseと模擬ラベルで、完了前の拒否、9視点と補完校正の読み戻し、3 clipと2 clipの集計、二度目の採点の拒否を確認した。実データの人物採点は0回。
+
+復旧後の継続ターンでは、同じworktreeで `ls` と親が管理する共有queueの稼働を確認し、固定計画を一度投入する。 `CODEX_THREAD_ID` はその継続セッションのIDを指定する。
+
+```bash
+ls /var/lib/tennis-lab-actions &&
+  TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue \
+  bash .agents/skills/training-queue/scripts/training_queue.sh add \
+    'PYTHONPATH=.:knowledge/runs/run-i2444-multiview-pose-probe .venv/bin/python -B knowledge/runs/run-multiview-pose-link-recall-20261124/holdout_pose.py infer --plan outputs/i2444/holdout/pose-plan.json --plan-sha256 6043c92a2f0cb58a5e3583bb6230e75d40e5695de9e40549f47e5d4ca8d33be9 --output outputs/i2444/holdout/vitpose' \
+    --name i2444-holdout-vitpose --provider codex --session "$CODEX_THREAD_ID" \
+    --issue 2444 --resource all --idempotency-key i2444/holdout-pose/acl-recovered
+```
+
+共有queueから返る `.job` IDを親CLIに渡す。 `lock-namespace` で失敗した場合は親にその状態を返す。成功の継続指示を受けたターンで、次のCPU採点を実行する。採点器は全入力と復元を確認してから `scoring-attempt.json` を作り、固定設定で全3 clipを一括採点する。 `pair-score.json` に全3 clipと補完clipを除く2 clipの指標を保存する。採点後は設定を固定する。
+
+```bash
+bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-score outputs/i2444/holdout
+```
 
 ## 再現
 
@@ -76,6 +113,9 @@ bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh meiji4
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-inputs
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-recovery outputs/i2444/holdout
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-plan outputs/i2444/holdout
+bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh pseudo4cam outputs/i2444/refine/pseudo-score
 ```
+
+疑似正解の採点には `MEIJI_POSE_4CAM_PREDICTIONS` で保存済み候補のルートを指定できる。既定は `outputs/i2444/refine/timing/meiji4`。候補を作り直す場合は `meiji4` の出力先に `outputs/i2444/refine/timing` を指定する。
 
 公開するのは再現コードと指標・digest。元映像と骨格配列はローカルに保存する。
