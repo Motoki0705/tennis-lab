@@ -26,6 +26,8 @@ class PoseConfig:
     height_range_m: tuple[float, float] = (-0.4, 4.0)
     max_abs_xy_m: float = 40.0
     ambiguity_relative_gap: float = 0.05
+    joint_localization_px: float = 8.0  # 1080p uncertainty budget for bone checks.
+    torso_height_range_m: tuple[float, float] = (-0.2, 3.0)
 
     def __post_init__(self) -> None:
         if (
@@ -40,6 +42,8 @@ class PoseConfig:
                     *self.height_range_m,
                     self.max_abs_xy_m,
                     self.ambiguity_relative_gap,
+                    self.joint_localization_px,
+                    *self.torso_height_range_m,
                 )
             )
             or not 0 < self.min_joint_score <= self.strong_joint_score
@@ -48,6 +52,13 @@ class PoseConfig:
             or self.height_range_m[0] >= self.height_range_m[1]
             or self.max_abs_xy_m <= 0
             or not 0 <= self.ambiguity_relative_gap < 1
+            or not 0 < self.joint_localization_px <= self.reprojection_px
+            or not (
+                self.height_range_m[0]
+                <= self.torso_height_range_m[0]
+                < self.torso_height_range_m[1]
+                <= self.height_range_m[1]
+            )
         ):
             raise ValueError("Invalid multiview pose thresholds")
 

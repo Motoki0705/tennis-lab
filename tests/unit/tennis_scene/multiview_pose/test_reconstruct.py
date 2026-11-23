@@ -121,21 +121,30 @@ def test_sparse_native_timeline_reconstructs_all_people_with_stable_source_rows(
         replace(result, source_rows=wrong_frame)
 
 
-def test_mixed_arm_in_one_view_rejects_that_row_and_preserves_independent_support():
+@pytest.mark.parametrize("mixed_joints", [(9,), (7, 9)])
+def test_localized_mix_keeps_the_person_rows_and_masks_the_affected_joints(
+    mixed_joints,
+):
     first, second = person() + [-1.2, -3.0, 0.0], person() + [2.3, 3.2, 0.0]
     people = np.stack((first, second))
     mixed = people.copy()
-    mixed[0, [7, 9]] = second[[7, 9]]
+    mixed[0, list(mixed_joints)] = second[list(mixed_joints)]
     result = reconstruct(observed_inputs(cameras(), [[people], [mixed], [people]]))
-    matches = {
-        tuple(rows): pts
-        for rows, pts in zip(result.source_rows, result.positions_m, strict=True)
-    }
-    assert set(matches) == {(0, -1, 0), (1, 1, 1)}
-    np.testing.assert_allclose(matches[0, -1, 0], first, atol=1e-5)
-    assert result.row_rejection_codes[1][0] == RowRejection.MIXED_POSE
-    bad_view = int(np.flatnonzero(result.source_rows[:, 1] < 0)[0])
-    assert not result.reprojection_valid[bad_view, 1].any()
+    matches = {tuple(rows): i for i, rows in enumerate(result.source_rows)}
+    assert set(matches) == {(0, 0, 0), (1, 1, 1)}
+    index = matches[0, 0, 0]
+    expected: NDArray[np.bool_] = np.ones(17, bool)
+    expected[list(mixed_joints)] = False
+    np.testing.assert_array_equal(result.joint_valid[index], expected)
+    np.testing.assert_allclose(
+        result.positions_m[index, expected], first[expected], atol=1e-5
+    )
+    np.testing.assert_array_equal(result.positions_m[index, ~expected], 0)
+    assert not result.inlier_mask[index, :, ~expected].any()
+    assert not result.reprojection_valid[index, :, ~expected].any()
+    np.testing.assert_array_equal(
+        result.joint_rejection_codes[index, ~expected], PointRejection.REPROJECTION
+    )
 
 
 def test_agreeing_wrong_arm_is_rejected_by_bone_length_even_with_low_pixel_error():
@@ -147,6 +156,26 @@ def test_agreeing_wrong_arm_is_rejected_by_bone_length_even_with_low_pixel_error
     np.testing.assert_array_equal(result.frame_offsets, [0, 0])
     for code in result.row_rejection_codes:
         np.testing.assert_array_equal(code, [RowRejection.MIXED_POSE])
+
+
+def test_excessive_torso_bones_mask_the_shared_endpoint_and_preserve_other_anchors():
+    same_side = (
+        _camera("cam0", [-0.75, -32.0, 6.0]),
+        _camera("cam1", [0.75, -32.0, 6.0]),
+    )
+    actual = person()
+    uncertain = actual.copy()
+    uncertain[12, 1] += 2.5  # Right hip moves along the nearly parallel viewing rays.
+    result = reconstruct(observed_inputs(same_side, [[uncertain[None]]] * 2))
+    np.testing.assert_array_equal(result.source_rows, [[0, 0]])
+    assert not result.joint_valid[0, 12]
+    assert result.joint_rejection_codes[0, 12] == PointRejection.OUTSIDE_BOUNDS
+    # Both shoulder joints and the left hip remain measured from both cameras.
+    anchors = [5, 6, 11]
+    assert result.inlier_mask[0, :, anchors].all()
+    np.testing.assert_allclose(
+        result.positions_m[0, anchors], actual[anchors], atol=1e-4
+    )
 
 
 def test_joint_dropout_keeps_other_joints_and_marks_the_missing_joint():

@@ -90,6 +90,7 @@ def _reconstruct_frame(
             cameras[right],
             config,
             config.reprojection_px * pixel_scale,
+            torso_height_range_m=config.torso_height_range_m,
         )
         pairs[(left, right)] = pair
         possible = pair.observed[..., torso].sum(axis=-1) >= 3
