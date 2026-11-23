@@ -357,6 +357,7 @@ uv sync --locked --extra tensorrt
 TensorRTを選んだモデルの `batch_size` は単一clipと横断バッチで共通です。
 横断バッチを有効にしたとき、PyTorchのモデルには既存の `batching.sizes` が適用されます。
 各バッチの端数を処理します。GVHMRは連続する同じ長さの人物系列をまとめ、人物ごとに復号します。
+5モデルを同時に使った評価時の `batch_size`、必要なprofile、メモリ実測は[全クリップ評価](../../../knowledge/runs/run-i2363-trt-player-video/README.md#バッチサイズの根拠)に記録しています。
 
 ### DINO GridSampleの単体精度
 

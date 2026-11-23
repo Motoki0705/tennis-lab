@@ -1,0 +1,393 @@
+{
+  "engine": {
+    "environment": {
+      "compute_capability": [
+        12,
+        0
+      ],
+      "device_name": "NVIDIA GeForce RTX 5060 Ti",
+      "tensorrt_version": "10.14.1.48.post1"
+    },
+    "export_sha256": "5f42b379c7c2fd2400503553bcfd2bedfa60dffa544772ebb4861153298187ac",
+    "plan_sha256": "a9fd68e29a5be557bf4ca1e31d87605dcba8c808072acafe436feb15bb74c556",
+    "profiles": {
+      "f_cam_angvel": {
+        "maximum": [
+          4,
+          1055,
+          6
+        ],
+        "minimum": [
+          1,
+          2,
+          6
+        ],
+        "optimum": [
+          4,
+          177,
+          6
+        ]
+      },
+      "f_cliffcam": {
+        "maximum": [
+          4,
+          1055,
+          3
+        ],
+        "minimum": [
+          1,
+          2,
+          3
+        ],
+        "optimum": [
+          4,
+          177,
+          3
+        ]
+      },
+      "f_imgseq": {
+        "maximum": [
+          4,
+          1055,
+          1024
+        ],
+        "minimum": [
+          1,
+          2,
+          1024
+        ],
+        "optimum": [
+          4,
+          177,
+          1024
+        ]
+      },
+      "length": {
+        "maximum": [
+          4
+        ],
+        "minimum": [
+          1
+        ],
+        "optimum": [
+          4
+        ]
+      },
+      "obs": {
+        "maximum": [
+          4,
+          1055,
+          17,
+          3
+        ],
+        "minimum": [
+          1,
+          2,
+          17,
+          3
+        ],
+        "optimum": [
+          4,
+          177,
+          17,
+          3
+        ]
+      }
+    },
+    "version": 1
+  },
+  "export": {
+    "inputs": {
+      "f_cam_angvel": {
+        "dtype": "float16",
+        "shape": [
+          -1,
+          -1,
+          6
+        ]
+      },
+      "f_cliffcam": {
+        "dtype": "float16",
+        "shape": [
+          -1,
+          -1,
+          3
+        ]
+      },
+      "f_imgseq": {
+        "dtype": "float16",
+        "shape": [
+          -1,
+          -1,
+          1024
+        ]
+      },
+      "length": {
+        "dtype": "int64",
+        "shape": [
+          -1
+        ]
+      },
+      "obs": {
+        "dtype": "float16",
+        "shape": [
+          -1,
+          -1,
+          17,
+          3
+        ]
+      }
+    },
+    "model": "gvhmr_siga24_denoiser",
+    "onnx_files": {
+      "model.onnx": "2f2bac501e49c3fbe4ea7e59a3507ad69a7fb37690d25b67f56b480c4480fd3d"
+    },
+    "outputs": {
+      "length_out": {
+        "dtype": "int64",
+        "shape": [
+          -1
+        ]
+      },
+      "mask_out": {
+        "dtype": "bool",
+        "shape": [
+          -1,
+          -1
+        ]
+      },
+      "pred_cam": {
+        "dtype": "float16",
+        "shape": [
+          -1,
+          -1,
+          3
+        ]
+      },
+      "pred_x": {
+        "dtype": "float16",
+        "shape": [
+          -1,
+          -1,
+          -1
+        ]
+      },
+      "static_conf_logits": {
+        "dtype": "float16",
+        "shape": [
+          -1,
+          -1,
+          6
+        ]
+      }
+    },
+    "precision": "fp16",
+    "settings": {
+      "attention_mask": "additive-finite",
+      "attention_window": 120,
+      "max_rotary_frames": 4096
+    },
+    "sources": {
+      "checkpoint": "4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91"
+    },
+    "version": 1
+  },
+  "mask_reference_sha256": "b1beedeb5b1b25e97d53ac3fc145465163b164ee07ed876ecf9b9b4fc6dcd115",
+  "onnxruntime": "1.30.0",
+  "ort_provider": "CPUExecutionProvider",
+  "shapes": {
+    "B1_L133": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L2": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L22": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L230": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L261": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L308": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L398": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L52": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L6": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L626": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L93": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B1_L94": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B2_L230": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B2_L308": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B2_L626": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B3_L156": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L1054": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L117": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L142": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L145": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L149": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L160": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L170": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L171": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L177": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L181": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L184": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L198": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L200": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L207": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L208": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L212": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L214": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L225": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L234": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L237": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L243": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L252": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L256": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L257": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L271": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L272": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L273": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L280": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L284": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L306": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L313": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L345": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L354": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L381": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L384": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L390": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L414": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L416": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L422": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L433": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L436": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L487": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L495": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L522": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L562": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L573": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L607": {
+      "onnx_mask_parity": "bit_equal"
+    },
+    "B4_L631": {
+      "onnx_mask_parity": "bit_equal"
+    }
+  },
+  "status": "complete"
+}
