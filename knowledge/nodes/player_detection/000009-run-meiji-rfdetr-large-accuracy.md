@@ -64,10 +64,12 @@ tags:
 
 PT32との差は、PT16で元座標の絶対誤差P95が0.039 px、score差P95が0.00196、対応IoU P05が0.9963。TRT16ではそれぞれ0.404 px、0.00501、0.9620だった。両条件は双方向98%以上の対応率を含む事前の基準を満たした。疑似GTのRecall@0.50の差は各0.012ポイント以内だった。 [予測間の照合と採点指標](../../runs/run-meiji-rfdetr-large-accuracy/results.json)
 
-同一予測と採点対象を保ち、疑似BBoxの各辺余白を5%・15%に変えて再採点した。PT32のRecall@0.75は5%で13.94%、10%で42.06%、15%で56.87%だった。余白による差がbackend間の差より大きい。比較表では同じ余白での値を使い、IoU 0.75の順位を解釈する際はこの感度を考慮する。手順は共通の `load_reference_frames(..., box_margin=margin)` で参照を読み、同じ `score_players` に渡す。 [各backendの感度](../../runs/run-meiji-rfdetr-large-accuracy/results.json)
+同一予測と採点対象を保ち、疑似BBoxの各辺余白を5%・15%に変えて再採点した。PT32のRecall@0.75は5%で13.94%、10%で42.06%、15%で56.87%だった。同じ余白でのRecall@0.50は92.31%、96.81%、97.04%だった。Recall@0.75は疑似BBoxの余白規約に強く依存するため、検出器間の比較の主指標には固定余白でのRecall@0.50を使う。Recall@0.75は余白感度を添えて報告する。再採点は共通の `load_reference_frames(..., box_margin=margin)` で参照を読み、同じ `score_players` に渡す。 [各backendの感度](../../runs/run-meiji-rfdetr-large-accuracy/results.json)
 
 ## 実行と成果物
 
 RTX 5060 Ti、PyTorch 2.13.0+cu130、TensorRT 10.14.1.48.post1を使用した。batch 1のFP16 ONNX構造検査が通り、TensorRTの静的planを96.43秒で構築した。全backendのqueueが `done` を記録し、実行HEADは `64fde00dca465a7c2bb27881805f971d0bbaaee4`。各JSONLの6,844件のキー、元画像の境界内の正面積BBox、score範囲、SHA-256を照合した。保存予測をCPUで再採点すると、全backendで採点JSONと一致した。統合担当のJSONL readerでも全件を読み戻した。 [正確な実行コマンドとファイルのSHA-256](../../runs/run-meiji-rfdetr-large-accuracy/results.json)・[準備と再現手順](../../runs/run-meiji-player-model-comparison/rfdetr.md)
 
-速度・VRAMは #2496 の固定入力を待っている。TRT16の精度実行時に、既定CUDA streamでは追加同期が生じうる旨のTensorRTログが出たため、速度を比較する条件では共通harnessのstream設定を照合する。RF-DETR-2XLの3条件にはPML 1.0とローカル評価を許すRoboflowアカウント・プランの確認、および公式重みが必要。採用判断には共通条件の速度と下流での検証が必要な段階なので、この精度runの記録時点で `summary_impact` は `none`。 [#2496](https://github.com/Motoki0705/tennis-lab/issues/2496)・[2XLの取得条件](../../runs/run-meiji-player-model-comparison/rfdetr.md#checkpoints-and-licenses)
+RF-DETR-2XLは2026-11-24のユーザー判断により、Roboflow PML 1.0の契約・報告・商用自前運用の条件を理由に比較対象外となった。RF-DETR系列の比較対象はApache-2.0のLのみ。 [日付とライセンス上の理由](../../runs/run-meiji-player-model-comparison/rfdetr.md#checkpoints-and-licenses)
+
+RF-DETR-Lの速度・VRAMは #2496 の固定入力を待っている。TRT16の精度実行時に、既定CUDA streamでは追加同期が生じうる旨のTensorRTログが出たため、速度を比較する条件では共通harnessのstream設定を照合する。採用判断には共通条件の速度と下流での検証が必要な段階なので、この精度runの記録時点で `summary_impact` は `none`。 [#2496](https://github.com/Motoki0705/tennis-lab/issues/2496)

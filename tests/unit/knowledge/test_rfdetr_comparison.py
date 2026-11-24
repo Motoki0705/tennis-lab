@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import runpy
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -13,8 +14,17 @@ from numpy.typing import NDArray
 
 from src.tennis_scene.evaluation.player_pose.scoring import FrameKey, Predictions
 from src.utils.checksum import dual_sha256
-from src.utils.inference_benchmark import Backend, ConditionUnavailable, Status
+from src.utils.inference_benchmark import Backend
 from src.utils.io import write_json_atomic
+from src.utils.models.tensorrt_artifacts import (
+    ONNX_FILE,
+    EngineBundle,
+    EngineEnvironment,
+    EngineManifest,
+    ExportManifest,
+    InputProfile,
+    TensorSpec,
+)
 
 _SCRIPT = runpy.run_path(
     str(
@@ -76,10 +86,7 @@ def test_parity_matches_reordered_boxes_and_detects_a_missing_person() -> None:
 def test_pt32_jsonl_pins_empty_frames_and_rejects_modified_predictions(
     tmp_path: Path,
 ) -> None:
-    model = _SCRIPT["Model"](
-        _SCRIPT["VARIANTS"]["rfdetr-l"], tmp_path / "weights.pth", "a" * 64
-    )
-    identity = _SCRIPT["header"]("meiji/cohort", "b" * 64, model, Backend.PT32)
+    identity = _SCRIPT["header"]("meiji/cohort", "b" * 64, Backend.PT32)
     key = FrameKey("video_000/clip_003", "cam0", 120)
     raw = tmp_path / "predictions.jsonl"
     _SCRIPT["write_predictions"](
@@ -87,7 +94,7 @@ def test_pt32_jsonl_pins_empty_frames_and_rejects_modified_predictions(
     )
     write_json_atomic(
         tmp_path / "accuracy.json",
-        {"weights_sha256": model.sha256, "predictions_sha256": dual_sha256(raw)},
+        {"weights_sha256": "a" * 64, "predictions_sha256": dual_sha256(raw)},
     )
     raw_text = raw.read_text()
     _, row = map(json.loads, raw_text.splitlines())
@@ -99,14 +106,79 @@ def test_pt32_jsonl_pins_empty_frames_and_rejects_modified_predictions(
         "scores": [],
         "keypoints_xyc": None,
     }
-    predictions = _SCRIPT["read_pt32_predictions"](tmp_path, identity, model.sha256)
+    predictions = _SCRIPT["read_pt32_predictions"](tmp_path, identity, "a" * 64)
     assert predictions[key].boxes_xyxy.shape == (0, 4)
     raw.write_text(raw_text.replace("120", "121"))
     with pytest.raises(ValueError, match="do not match"):
-        _SCRIPT["read_pt32_predictions"](tmp_path, identity, model.sha256)
+        _SCRIPT["read_pt32_predictions"](tmp_path, identity, "a" * 64)
 
 
-def test_2xl_refuses_access_before_weight_open_without_consent(tmp_path: Path) -> None:
-    with pytest.raises(ConditionUnavailable, match="user acceptance") as caught:
-        _SCRIPT["Model"].open("rfdetr-2xl", tmp_path / "absent.pth")
-    assert caught.value.status is Status.UNAVAILABLE
+def test_cli_rejects_an_excluded_model(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "rfdetr.py",
+            "--model",
+            "rfdetr-2xl",
+            "--weights",
+            str(tmp_path / "absent.pth"),
+            "--output-root",
+            str(tmp_path),
+            "export",
+        ],
+    )
+    with pytest.raises(SystemExit) as caught:
+        _SCRIPT["main"]()
+    assert caught.value.code == 2
+    assert "invalid choice: 'rfdetr-2xl'" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_large_loader_rejects_an_unpinned_checkpoint(tmp_path: Path) -> None:
+    weights = tmp_path / "rf-detr-large-2026.pth"
+    weights.write_bytes(b"unrelated checkpoint")
+    with pytest.raises(ValueError, match="mismatched pinned checkpoint"):
+        _SCRIPT["Model"].open(weights)
+
+
+def test_existing_large_engine_accepts_only_empty_retired_metadata(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    model = _SCRIPT["Model"](tmp_path / "weights.pth")
+    shape = (1, 3, 704, 704)
+    settings = model.export_settings(1) | {
+        "rfdetr_plus_commit": None,
+        "rfdetr_plus_version": None,
+    }
+    export = ExportManifest(
+        model="rfdetr-l",
+        settings=settings,
+        sources={"model": model.sha256},
+        onnx_files={ONNX_FILE: "b" * 64},
+        inputs={"input": TensorSpec(dtype="float32", shape=shape)},
+        outputs={
+            "dets": TensorSpec(dtype="float32", shape=(1, 300, 4)),
+            "labels": TensorSpec(dtype="float32", shape=(1, 300, 91)),
+        },
+    )
+    engine = EngineManifest(
+        export_sha256="c" * 64,
+        plan_sha256="d" * 64,
+        environment=EngineEnvironment(
+            tensorrt_version="10.14.1", device_name="GPU", compute_capability=(12, 0)
+        ),
+        profiles={"input": InputProfile(minimum=shape, optimum=shape, maximum=shape)},
+    )
+    monkeypatch.setattr(
+        EngineBundle, "read", lambda path: EngineBundle(path, export, engine)
+    )
+    assert _SCRIPT["load_engine"](model, tmp_path, 1).engine.plan_sha256 == "d" * 64
+
+    export = export.model_copy(
+        update={"settings": settings | {"rfdetr_plus_version": "nonempty"}}
+    )
+    with pytest.raises(ValueError, match="export settings mismatch"):
+        _SCRIPT["load_engine"](model, tmp_path, 1)

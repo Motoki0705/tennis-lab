@@ -1,4 +1,4 @@
-"""Run the pinned RF-DETR detection models on the Meiji player evaluation."""
+"""Run the pinned RF-DETR-L detector on the Meiji player evaluation."""
 
 from __future__ import annotations
 
@@ -7,10 +7,9 @@ import sys
 import tempfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from hashlib import file_digest
 from importlib import import_module, metadata
 from pathlib import Path
-from typing import Any, TypeAlias, cast
+from typing import Any, ClassVar, TypeAlias, cast
 
 import cv2
 import numpy as np
@@ -56,10 +55,9 @@ from src.utils.video.reader import RandomAccessVideoReader
 
 CORE_VERSION = "1.12.1"
 CORE_REVISION = "f29e2a8bbb7cdcb8920bf74a335062f88a35046d"
-PLUS_VERSION = "1.3.0"
-PLUS_REVISION = "31474876e519dacef3ba320bc8977f1483d69b34"
+MODEL_ID = "rfdetr-l"
+RESOLUTION = 704
 LARGE_SHA256 = "0f4e20e19a99c0f8a62b5685f57f6c8b5c371c59081feda6752a0561a79ccf38"
-XXLARGE_OFFICIAL_MD5 = "e3204689c1f0280427e4c33e6a2ac6cd"
 PERSON_ID = 1
 NUM_QUERIES = 300
 COCO_LOGIT_SLOTS = 91
@@ -73,78 +71,35 @@ Tensors: TypeAlias = dict[str, torch.Tensor]
 
 
 @dataclass(frozen=True)
-class Variant:
-    name: str
-    class_name: str
-    resolution: int
-    license: str
-
-
-VARIANTS = {
-    "rfdetr-l": Variant("rfdetr-l", "RFDETRLarge", 704, "Apache-2.0"),
-    "rfdetr-2xl": Variant("rfdetr-2xl", "RFDETR2XLarge", 880, "PML-1.0"),
-}
-
-
-@dataclass(frozen=True)
 class Model:
-    variant: Variant
     weights: Path
-    sha256: str
+    sha256: ClassVar[str] = LARGE_SHA256
 
     @classmethod
-    def open(
-        cls,
-        name: str,
-        weights: Path,
-        sha256: str | None = None,
-        *,
-        pml_accepted: bool = False,
-    ) -> Model:
-        variant = VARIANTS[name]
-        if variant.license == "PML-1.0" and not pml_accepted:
-            raise ConditionUnavailable(
-                Status.UNAVAILABLE, "RF-DETR-2XL requires user acceptance of PML 1.0"
-            )
-        if name == "rfdetr-l":
-            if sha256 is not None and sha256 != LARGE_SHA256:
-                raise ValueError("RF-DETR-L requires the official 2026 COCO checkpoint")
-            sha256 = LARGE_SHA256
-        if not sha256 or dual_sha256(weights) != sha256:
+    def open(cls, weights: Path, sha256: str | None = None) -> Model:
+        if sha256 is not None and sha256 != cls.sha256:
+            raise ValueError("RF-DETR-L requires the official 2026 COCO checkpoint")
+        if dual_sha256(weights) != cls.sha256:
             raise ValueError(
                 f"Missing or mismatched pinned checkpoint SHA-256: {weights}"
             )
-        if name == "rfdetr-2xl":
-            with weights.open("rb") as checkpoint:
-                if file_digest(checkpoint, "md5").hexdigest() != XXLARGE_OFFICIAL_MD5:
-                    raise ValueError(
-                        "RF-DETR-2XL requires the official COCO checkpoint"
-                    )
-        return cls(variant, weights.resolve(), sha256)
+        return cls(weights.resolve())
 
     def open_upstream(self, device: torch.device) -> Any:
         if metadata.version("rfdetr") != CORE_VERSION:
             raise ValueError(f"Expected rfdetr {CORE_VERSION}")
-        module = "rfdetr"
-        kwargs = {}
-        if self.variant.license == "PML-1.0":
-            module = "rfdetr_plus"
-            if metadata.version("rfdetr-plus") != PLUS_VERSION:
-                raise ValueError(f"Expected rfdetr-plus {PLUS_VERSION}")
-            kwargs["accept_platform_model_license"] = True
-        factory = getattr(import_module(module), self.variant.class_name)
-        model = factory(
-            pretrain_weights=str(self.weights), device=str(device), **kwargs
+        model = import_module("rfdetr").RFDETRLarge(
+            pretrain_weights=str(self.weights), device=str(device)
         )
         labels = import_module("rfdetr.utilities.class_names").prediction_labels(model)
         if (
             labels.class_id_to_name.get(PERSON_ID) != "person"
             or model.model.model.class_embed.out_features != COCO_LOGIT_SLOTS
-            or model.model.resolution != self.variant.resolution
+            or model.model.resolution != RESOLUTION
             or model.model.postprocess.num_select != NUM_QUERIES
         ):
             raise ValueError(
-                f"Unexpected COCO head or input configuration for {self.variant.name}"
+                f"Unexpected COCO head or input configuration for {MODEL_ID}"
             )
         return model
 
@@ -152,14 +107,8 @@ class Model:
         return {
             "rfdetr_version": CORE_VERSION,
             "rfdetr_commit": CORE_REVISION,
-            "rfdetr_plus_version": PLUS_VERSION
-            if self.variant.license == "PML-1.0"
-            else None,
-            "rfdetr_plus_commit": PLUS_REVISION
-            if self.variant.license == "PML-1.0"
-            else None,
-            "license": self.variant.license,
-            "resolution": [self.variant.resolution, self.variant.resolution],
+            "license": "Apache-2.0",
+            "resolution": [RESOLUTION, RESOLUTION],
             "resize": "RGB, float32 bilinear, antialias=False, stretch to square",
             "mean": list(IMAGENET_MEAN),
             "std": list(IMAGENET_STD),
@@ -184,7 +133,7 @@ class Model:
         }
 
     def input_shape(self, batch_size: int) -> tuple[int, ...]:
-        return batch_size, 3, self.variant.resolution, self.variant.resolution
+        return batch_size, 3, RESOLUTION, RESOLUTION
 
 
 def prepare_images(
@@ -226,7 +175,6 @@ class Detector:
         device: torch.device,
         engine: EngineBundle | None,
     ) -> None:
-        self.model = model
         self.backend = backend
         self.device = device
         postprocess = import_module("rfdetr.models.postprocess").PostProcess
@@ -296,15 +244,13 @@ class Detector:
 
     def predict(self, images: Sequence[Image]) -> list[Predictions]:
         with torch.no_grad():
-            inputs, sizes_hw = self.transfer(
-                prepare_images(images, self.model.variant.resolution)
-            )
+            inputs, sizes_hw = self.transfer(prepare_images(images, RESOLUTION))
             return self.finish(self.decode(self.forward(inputs), sizes_hw))
 
     def timed(self, images: Sequence[Image], stages: BatchStages) -> list[Predictions]:
         prepared = stages.stage(
             Stage.PREPROCESS,
-            lambda: prepare_images(images, self.model.variant.resolution),
+            lambda: prepare_images(images, RESOLUTION),
         )
         inputs, sizes_hw = stages.stage(Stage.H2D, lambda: self.transfer(prepared))
         outputs = stages.measure_forward(self.backend, lambda: self.forward(inputs))
@@ -318,9 +264,18 @@ class Detector:
 
 
 def load_engine(model: Model, path: Path, batch_size: int) -> EngineBundle:
-    return EngineBundle.read(path).for_model(
-        model=model.variant.name,
-        settings=model.export_settings(batch_size),
+    bundle = EngineBundle.read(path)
+    settings = model.export_settings(batch_size)
+    # The already measured L plan carries two empty fields in its export manifest.
+    previous_settings = settings | {
+        "rfdetr_plus_version": None,
+        "rfdetr_plus_commit": None,
+    }
+    if bundle.export.settings == previous_settings:
+        settings = previous_settings
+    return bundle.for_model(
+        model=MODEL_ID,
+        settings=settings,
         sources={"model": model.sha256},
         inputs={
             "input": TensorSpec(dtype="float32", shape=model.input_shape(batch_size))
@@ -379,7 +334,7 @@ def export_onnx(model: Model, target: Path, batch_size: int) -> None:
 
         export_bundle(
             stage / "bundle",
-            model=model.variant.name,
+            model=MODEL_ID,
             settings=model.export_settings(batch_size),
             sources={"model": model.weights},
             export=write_graph,
@@ -432,14 +387,12 @@ def prediction_parity(pairs: Iterable[tuple[Predictions, Predictions]]) -> Parit
     )
 
 
-def header(
-    benchmark_id: str, manifest_sha: str, model: Model, backend: Backend
-) -> dict[str, Any]:
+def header(benchmark_id: str, manifest_sha: str, backend: Backend) -> dict[str, Any]:
     return {
         "schema": SCHEMA,
         "benchmark_id": benchmark_id,
         "manifest_sha256": manifest_sha,
-        "model_id": model.variant.name,
+        "model_id": MODEL_ID,
         "backend": backend.value.lower(),
         "has_pose": False,
     }
@@ -513,7 +466,7 @@ def evaluate(
     if backend is not Backend.PT32:
         pt32 = read_pt32_predictions(
             output.parent / "pt32",
-            header(benchmark_id, manifest_sha, model, Backend.PT32),
+            header(benchmark_id, manifest_sha, Backend.PT32),
             model.sha256,
         )
         if pt32.keys() != references.keys():
@@ -539,7 +492,7 @@ def evaluate(
             print(f"Predicted {clip['clip_id']} {media['camera_id']}", flush=True)
     if predictions.keys() != references.keys():
         raise ValueError("Predictions lack the exact set of evaluation frames")
-    identity = header(benchmark_id, manifest_sha, model, backend)
+    identity = header(benchmark_id, manifest_sha, backend)
     output.mkdir(parents=True, exist_ok=True)
     raw = output / "predictions.jsonl"
     write_predictions(raw, identity, predictions)
@@ -578,10 +531,9 @@ def evaluate(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", choices=VARIANTS, default="rfdetr-l")
+    parser.add_argument("--model", choices=(MODEL_ID,), default=MODEL_ID)
     parser.add_argument("--weights", type=Path, required=True)
     parser.add_argument("--weights-sha256")
-    parser.add_argument("--pml-accepted", action="store_true")
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--device", default="cuda:0")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -601,12 +553,7 @@ def main() -> int:
     trt = output / "trt16" / f"batch-{getattr(args, 'batch_size', 1)}"
     engine_path = trt / "engine"
     try:
-        model = Model.open(
-            args.model,
-            args.weights,
-            args.weights_sha256,
-            pml_accepted=args.pml_accepted,
-        )
+        model = Model.open(args.weights, args.weights_sha256)
         device = torch.device(args.device)
         if args.command != "export" and device.type != "cuda":
             parser.error("Evaluation and engine builds require an explicit CUDA device")
