@@ -34,13 +34,7 @@
 
 ## 予約未見Meiji 3cam
 
-対象3本は #2444 の固定済みViTPose計画の完了後に、開発用で固定した設定で採点する。#2444の共有queueにはすでに当該jobが投入されている。この更新時点は全9カメラの `complete.json` 待ちで、採点開始は0回。位置や骨長の設定は開発用で固定した。 [採点器・設定のdigest](reserved-protocol.json)・[前段の固定入力](../run-multiview-pose-link-recall-20261124/README.md#予約した未見3-clip)
-
-完了後に次のコマンドで、3本と補完校正1本を除く2本を一度の採点で集計する。 #2444のplan・pose・ラベル版と採点器を照合し、予測が揃った時点で `outputs/i2445/holdout/scoring-attempt.json` を排他的に作成する。
-
-```bash
-bash knowledge/runs/run-i2445-multiview-tracking/reproduce.sh holdout
-```
+開発用で固定した設定と採点器を使い、#2444のViTPose完了後に予約3本を一度採点した。全3本と校正補完clipを除く2本の指標、開発用との差、実行証拠は後続runにある。 [固定設定のdigest](reserved-protocol.json)・[予約未見の採点結果](../run-i2445-reserved-tracking/README.md)
 
 ## 再現と比較ページへの受け渡し
 
