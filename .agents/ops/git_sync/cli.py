@@ -103,9 +103,8 @@ class Journal:
             "notification": notification,
         }
 
-    def _notify_skip_streak(self, streak: dict[str, Any]) -> None:
+    def _notify_skip_streak(self, path: Path, streak: dict[str, Any]) -> None:
         reason = self.data["reason"]
-        self.event("consecutive_skips", last_reason=reason, **streak)
         holders = []
         for holder in streak["last_lock_holders"]:
             parent = holder.get("parent_issue")
@@ -115,15 +114,19 @@ class Journal:
                 + ")"
             )
         elapsed = timedelta(seconds=streak["elapsed_seconds"])
+        message = (
+            f"{streak['count']} consecutive skips over {elapsed}. Latest: {reason}.\n"
+            + "Last checkout lock holders: "
+            + (", ".join(holders) or "none observed")
+        )
+        # The attempt is ambiguous from this point through the external call.
+        streak["notification"] = "uncertain"
+        self._save_status(path)
         try:
-            send_windows_toast(
-                "tennis-lab git-sync deferred",
-                f"{streak['count']} consecutive skips over {elapsed}. Latest: {reason}.\n"
-                + "Last checkout lock holders: "
-                + (", ".join(holders) or "none observed"),
-            )
+            send_windows_toast("tennis-lab git-sync deferred", message)
         except ToastNotSent as exc:
             streak["notification"] = "pending"
+            self._save_status(path)
             self.event("skip_streak_toast_not_sent", error=str(exc))
         except ToastError as exc:
             self.event("skip_streak_toast_uncertain", error=str(exc))
@@ -147,10 +150,10 @@ class Journal:
                     streak["count"] >= SKIP_NOTICE_COUNT
                     and streak["notification"] == "pending"
                 ):
-                    # Persist the ambiguous outcome before a possible submission.
-                    streak["notification"] = "uncertain"
+                    # Retain a retryable streak while recording the threshold.
                     self._save_status(path)
-                    self._notify_skip_streak(streak)
+                    self.event("consecutive_skips", last_reason=reason, **streak)
+                    self._notify_skip_streak(path, streak)
             self._save_status(path)
             self.event(reason, outcome=outcome, status=self.data)
         return self.data

@@ -49,6 +49,10 @@ command = args[args.index("--") + 1:]
 is_monitor = command[1:3] == ["-m", "parent.worker_monitor"]
 is_local = command[1:4] == ["-m", "parent.local_jobs", "_run"]
 assert is_monitor or is_local, command
+if is_monitor and os.environ.get("FAKE_REQUIRE_PINNED_MONITOR"):
+    rejected = subprocess.run(command, capture_output=True, text=True, timeout=5)
+    assert rejected.returncode == 75, rejected.stderr
+    assert "start the follow-up service from its pinned worktree" in rejected.stderr
 root = Path(os.environ["FAKE_SERVICE_ROOT"])
 env = dict(os.environ)
 working = Path.cwd()
@@ -739,7 +743,11 @@ def test_queue_monitor_pins_main_code_without_holding_checkout_lock(
     marker = "更新後のmainだけにある追加指示。"
     with tempfile.TemporaryDirectory(prefix="queue-pin-") as short:
         pending, stopped = Path(short) / "pending.sock", Path(short) / "stopped.sock"
-        p.env.update(FAKE_QUEUE_PENDING=str(pending), FAKE_SERVICE_STOPPED=str(stopped))
+        p.env.update(
+            FAKE_QUEUE_PENDING=str(pending),
+            FAKE_SERVICE_STOPPED=str(stopped),
+            FAKE_REQUIRE_PINNED_MONITOR="1",
+        )
         with listening(pending) as server, listening(stopped) as cleanup:
             launch(p, waiting("queue", job_ids=[job]), DONE)
             with connected(server) as gate:

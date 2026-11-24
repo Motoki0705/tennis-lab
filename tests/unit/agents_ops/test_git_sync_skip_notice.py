@@ -125,3 +125,67 @@ def test_notice_retries_only_confirmed_non_delivery(
         "sent" if retried else "uncertain"
     )
     assert len(attempts) == (2 if retried else 1)
+
+
+@pytest.mark.parametrize("interrupt_at", ["threshold", "before_send", "send"])
+def test_notice_preserves_retry_until_the_submission_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sync_cli: Any, interrupt_at: str
+) -> None:
+    attempts: list[str] = []
+
+    def skip() -> None:
+        sync_cli.Journal(tmp_path, tmp_path / "repo").finish(
+            "skipped", "checkout_jobs_running", lock_holders=[]
+        )
+
+    for _ in range(2):
+        skip()
+    with monkeypatch.context() as interrupt:
+        if interrupt_at == "threshold":
+            event = sync_cli.Journal.event
+
+            def event_before_write(journal: Any, reason: str, **details: Any) -> None:
+                if reason == "consecutive_skips":
+                    raise KeyboardInterrupt
+                event(journal, reason, **details)
+
+            interrupt.setattr(sync_cli.Journal, "event", event_before_write)
+        elif interrupt_at == "before_send":
+
+            def before_send(*_: Any) -> None:
+                raise KeyboardInterrupt
+
+            interrupt.setattr(sync_cli.Journal, "_notify_skip_streak", before_send)
+        else:
+
+            def during_send(_title: str, body: str) -> None:
+                attempts.append(body)
+                raise KeyboardInterrupt
+
+            interrupt.setattr(sync_cli, "send_windows_toast", during_send)
+        with pytest.raises(KeyboardInterrupt):
+            skip()
+
+    status = tmp_path / "status.json"
+    streak = json.loads(status.read_text())["skip_streak"]
+    assert streak["count"] == 3
+    assert streak["notification"] == (
+        "uncertain" if interrupt_at == "send" else "pending"
+    )
+    thresholds = [
+        json.loads(line)["count"]
+        for line in (tmp_path / "runs.jsonl").read_text().splitlines()
+        if json.loads(line)["reason"] == "consecutive_skips"
+    ]
+    assert thresholds == ([] if interrupt_at == "threshold" else [3])
+
+    monkeypatch.setattr(
+        sync_cli, "send_windows_toast", lambda _, body: attempts.append(body)
+    )
+    skip()
+    assert len(attempts) == 1
+    count = 3 if interrupt_at == "send" else 4
+    assert f"{count} consecutive skips" in attempts[0]
+    streak = json.loads(status.read_text())["skip_streak"]
+    assert streak["count"] == 4
+    assert streak["notification"] == ("uncertain" if interrupt_at == "send" else "sent")

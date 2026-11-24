@@ -47,6 +47,7 @@ RUNNER_LIB = Path(__file__).resolve().parents[1] / "lib"
 RUNNER = RUNNER_LIB / "agent_exec.sh"
 # agent_exec.sh uses the interpreter beside its own checkout, regardless of --cwd.
 RUNNER_PYTHON = RUNNER_LIB.parents[2] / ".venv/bin/python"
+MANUAL_REPAIR_TIMEOUT = 1800
 SUMMARY_KEYS = {
     "schema_version",
     "run_id",
@@ -786,6 +787,8 @@ def prepare_run(
             str(repair["pr"]),
             "--effort",
             "high",
+            "--timeout",
+            str(MANUAL_REPAIR_TIMEOUT),
         ]
         instruction = repair_instruction(repair, original_text(instruction))
     if model_reason is not None:

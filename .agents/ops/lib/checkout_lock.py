@@ -31,6 +31,14 @@ _CAP_DIRECTORY = "TENNIS_LAB_CHECKOUT_PARENT_DIRECTORY"
 _registry_stacks: dict[int, ExitStack] = {}
 
 
+class CheckoutRefused(SystemExit):
+    """Stop the CLI while retaining the reason for durable waiters."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(75)
+        self.reason = reason
+
+
 def _git_environment() -> dict[str, str]:
     # Hooks and callers may select another repository. Our explicit root wins.
     return {
@@ -171,7 +179,11 @@ def _refuse_cli(exc: Exception) -> NoReturn:
         f"checkout CLI refused: {exc}; inspect spin ops status git-sync",
         file=sys.stderr,
     )
-    raise SystemExit(75) from exc
+    raise CheckoutRefused(str(exc)) from exc
+
+
+def interactive_checkout_is_pinned() -> bool:
+    return _cli_context is not None
 
 
 def guard_interactive_cli(

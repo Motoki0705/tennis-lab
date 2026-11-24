@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import copy
 import json
+import sys
 import time
 import uuid
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
 
-from lib.checkout_lock import checkout_wait
+from lib.checkout_lock import CheckoutRefused, checkout_wait
 from lib.d_capacity import CapacityError
 from parent.state import Store, unique_object
 
@@ -200,17 +201,28 @@ class Engine:
     def emit(
         self, kind: str, *, pr: int | None = None, reason: str | None = None
     ) -> None:
+        self._record_event(
+            kind, pr, reason, self.backend.notification_changes(self.state, pr)
+        )
+        self.deliver()
+
+    def _record_event(
+        self,
+        kind: str,
+        pr: int | None,
+        reason: str | None,
+        changes: dict[str, Any],
+    ) -> None:
         event = {
             "id": len(self.state["events"]) + 1,
             "kind": kind,
             "pr": pr,
             "reason": reason,
             "delivered": False,
-            "changes": self.backend.notification_changes(self.state, pr),
+            "changes": changes,
         }
         self.state["events"].append(event)
         self.save()
-        self.deliver()
 
     def deliver(self) -> None:
         for event in self.state["events"]:
@@ -235,13 +247,35 @@ class Engine:
             return
         # No step ran. Preserve each active stage for an explicit continuation
         # and leave already-paused peers and completed targets as they were.
+        self._park_active_targets(reason)
+        self.emit("parent_wait", pr=pr, reason=reason)
+
+    def _park_active_targets(self, reason: str) -> None:
         for target in self.state["targets"].values():
             if target["stage"] not in INACTIVE_STAGES:
                 target.update(
                     resume_stage=target["stage"], stage="parent_wait", reason=reason
                 )
         self.state["status"] = "parent_wait"
-        self.emit("parent_wait", pr=pr, reason=reason)
+
+    def _wait(self, delay: float) -> None:
+        try:
+            with checkout_wait():
+                self.sleep(min(POLL_SECONDS, delay))
+        except CheckoutRefused as exc:
+            # The checkout may now hold incompatible code. Commit only the
+            # interruption and its outbox event using the in-memory state.
+            reason = f"checkout_interrupted: {exc.reason}"
+            self._park_active_targets(reason)
+            self.state["checkout_interrupted"] = True
+            try:
+                self._record_event("parent_wait", None, reason, {})
+            except (OSError, ValueError) as failure:
+                print(
+                    f"checkout interruption could not be saved: {failure}",
+                    file=sys.stderr,
+                )
+            raise
 
     def continue_run(
         self,
@@ -301,13 +335,16 @@ class Engine:
                 target["next_poll"] = 0
                 target["ci_since"] = None
         self.state["status"] = "running"
+        self.state.pop("checkout_interrupted", None)
         self.save()
 
     def run(self) -> dict[str, Any]:
         if self.state["status"] == "transferred":
             return self.state
         self.deliver()
-        if self.state["status"] == "completed":
+        if self.state["status"] == "completed" or self.state.get(
+            "checkout_interrupted"
+        ):
             return self.state
         review = self.state["review"]
         if review["stage"] in {"requested", "running"} and self.state.get(
@@ -428,15 +465,13 @@ class Engine:
                 return self.state
             delay = min(t["next_poll"] for t in active) - self.clock()
             if delay > 0:
-                with checkout_wait():
-                    self.sleep(min(POLL_SECONDS, delay))
+                self._wait(delay)
 
     def wait_rate(self, error: RateWait, target: dict[str, Any]) -> None:
         target["rate_limit"] = {"resume_at": error.resume_at, "reason": str(error)}
         self.save()
         while (delay := error.resume_at - self.clock()) > 0:
-            with checkout_wait():
-                self.sleep(min(POLL_SECONDS, delay))
+            self._wait(delay)
         target.pop("rate_limit", None)
         self.save()
 

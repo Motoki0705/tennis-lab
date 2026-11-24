@@ -128,8 +128,10 @@ importを拒否する。マーカーを手動削除せず、checkoutを修復し
 [共通Windows通知](../d_capacity/README.md) でWindows Terminalの通知先へ送る。
 30分の定期周期だけなら、初回から約1時間で通知する。通知には回数・経過時間・直近の理由と
 最後に取得したlock保持者の入口・PID・判明した親issueを含める。
+送信前の状態は `pending` で保存し、しきい値到達をjournalへ記録してから、通知の呼出直前に `uncertain` を保存する。
+送信前に中断した場合や未送信を確認できた場合は、次の見送りで再試行する。
 送信済みまたは送信結果不明の場合は、その連続見送りの間は1回の送信試行で終える。
-未送信を確認できた場合は、次の見送りで再試行する。送信結果はjournalと `skip_streak.notification` に残す。
+送信結果はjournalと `skip_streak.notification` に残す。
 
 ## 検証
 
