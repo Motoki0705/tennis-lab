@@ -293,6 +293,7 @@ if timeline:
         source = {**issue, **overrides.get(str(issue["number"]), {})}
         body = source.get("body") or ""
         if body.startswith("<!-- parent-evidence:") and references_parent.search(body):
+            source.setdefault("id", source["number"] + 10000)
             rows.append({
                 "event": "cross-referenced", "created_at": source["created_at"],
                 "source": {"type": "issue", "issue": source},
