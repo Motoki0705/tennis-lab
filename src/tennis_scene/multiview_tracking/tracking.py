@@ -13,6 +13,13 @@ from src.tennis_scene.multiview_tracking.association import (
     associate,
     trajectory_motion,
 )
+from src.tennis_scene.multiview_tracking.fragments import (
+    FragmentIntegration,
+    FragmentJoin,
+    PlayerSlot,
+    describe_fragments,
+    player_slots,
+)
 from src.tennis_scene.multiview_tracking.schema import (
     PoseTracks,
     SampleEvent,
@@ -37,6 +44,12 @@ def _identities(predecessor: NDArray[np.int64]) -> NDArray[np.int64]:
 def track(
     candidates: FramePoseCandidates, *, fps: float, config: TrackingConfig
 ) -> PoseTracks:
+    return track_with_diagnostics(candidates, fps=fps, config=config)[0]
+
+
+def track_with_diagnostics(
+    candidates: FramePoseCandidates, *, fps: float, config: TrackingConfig
+) -> tuple[PoseTracks, FragmentIntegration | None]:
     if not isfinite(fps) or fps <= 0:
         raise ValueError("Tracking requires a finite positive source FPS")
     observations = Observations.from_candidates(candidates)
@@ -53,6 +66,64 @@ def track(
         fps=fps,
         players_per_side=config.players_per_side,
     )
+    predecessor = links.predecessor.copy()
+    link_margin = links.margin.copy()
+    link_ambiguous = (link_margin >= 0) & (link_margin <= config.ambiguity_margin)
+    integration = None
+    if (settings := config.fragment_integration) is not None:
+        fragments = describe_fragments(
+            candidates, observations, motion, ids, selection, fps, settings
+        )
+        assignments = player_slots(fragments, selection, fps, settings)
+        joined = []
+        for slot in assignments:
+            joins = []
+            for link, margin in slot.links:
+                before, after = fragments[link.before], fragments[link.after]
+                gap = after.start.frame - before.end.frame - 1
+                ambiguous = margin <= settings.ambiguity_margin
+                predecessor[after.first] = before.last
+                link_margin[after.first] = margin
+                link_ambiguous[after.first] = ambiguous
+                joins.append(
+                    FragmentJoin(
+                        before.index,
+                        after.index,
+                        before.end.frame,
+                        after.start.frame,
+                        gap,
+                        gap / fps > config.max_occlusion_seconds,
+                        1.0 - link.cost,
+                        margin,
+                        ambiguous,
+                        link.position_residual_m,
+                        link.velocity_difference_mps,
+                        link.log_bone_difference,
+                        link.shared_bones,
+                    )
+                )
+            joined.append((slot, tuple(joins)))
+        ids = _identities(predecessor)
+        slots = tuple(
+            PlayerSlot(
+                fragments[slot.core].side,
+                slot.core,
+                int(ids[fragments[slot.core].first]),
+                slot.fragments,
+                joins,
+            )
+            for slot, joins in joined
+        )
+        integration = FragmentIntegration(len(fragments), slots)
+        selection = select_players(
+            frames,
+            ids,
+            observations.centres,
+            num_frames=num_frames,
+            fps=fps,
+            players_per_side=config.players_per_side,
+            player_candidates={slot.track_id for slot in slots},
+        )
     count = len(ids)
     track_count = len(selection.decisions)
     ends: NDArray[np.int64] = np.zeros(track_count, np.int64)
@@ -63,10 +134,8 @@ def track(
         TrackEnd.CLIP_BOUNDARY,
     ).astype(np.uint8)
 
-    reappeared = np.flatnonzero(
-        (links.predecessor >= 0) & (frames - frames[links.predecessor] > 1)
-    )
-    previous = links.predecessor[reappeared]
+    reappeared = np.flatnonzero((predecessor >= 0) & (frames - frames[predecessor] > 1))
+    previous = predecessor[reappeared]
     gap_size = frames[reappeared] - frames[previous] - 1
     gap_steps = (
         np.arange(gap_size.sum())
@@ -96,15 +165,16 @@ def track(
     )
     velocity_prediction[~prediction_motion_valid] = 0
 
-    event = np.where(links.predecessor < 0, SampleEvent.BORN, SampleEvent.OBSERVED)
+    event = np.where(predecessor < 0, SampleEvent.BORN, SampleEvent.OBSERVED)
     event[reappeared] = SampleEvent.REAPPEARED
     all_frames = np.concatenate((frames, gap_frames))
     all_ids = np.concatenate((ids, ids[gap_start]))
     order = np.lexsort((all_ids, all_frames))
     gap_count = len(gap_frames)
-    margins = np.concatenate((links.margin, links.margin[gap_end])).astype(np.float32)
+    margins = np.concatenate((link_margin, link_margin[gap_end])).astype(np.float32)
+    ambiguous_samples = np.concatenate((link_ambiguous, link_ambiguous[gap_end]))
 
-    return PoseTracks(
+    poses = PoseTracks(
         camera_ids=candidates.camera_ids,
         frame_offsets=np.r_[
             0, np.cumsum(np.bincount(all_frames, minlength=num_frames))
@@ -146,8 +216,9 @@ def track(
         ],
         frame_ambiguous=np.r_[candidates.ambiguous, np.zeros(gap_count, bool)][order],
         temporal_margin=margins[order],
-        id_ambiguous=((margins >= 0) & (margins <= config.ambiguity_margin))[order],
+        id_ambiguous=ambiguous_samples[order],
         end_frames=ends,
         end_reasons=end_reasons,
         selection=selection,
     )
+    return poses, integration

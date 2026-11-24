@@ -171,9 +171,20 @@ def test_tracking_cli_pins_candidates_and_preserves_their_source_timeline(
     tracking = ClipStore(output, json_value(source))
     ref = tracking.references()["multiview_tracking"]
     assert (ref.schema, ref.version) == ("multiview_pose_tracks", 1)
-    assert tracking.descriptor(ref)["provenance"][
-        "frame_pose_candidates"
-    ] == json_value(pose_ref)
+    provenance = tracking.descriptor(ref)["provenance"]
+    assert provenance["frame_pose_candidates"] == json_value(pose_ref)
+    assert provenance["fragment_integration"] == {
+        "first_stage_track_count": 1,
+        "slots": [
+            {
+                "side": -1,
+                "core_fragment": 0,
+                "track_id": 0,
+                "fragments": [0],
+                "joins": [],
+            }
+        ],
+    }
     assert result.camera_ids == source.camera_ids
     np.testing.assert_array_equal(result.track_ids, np.zeros(source.num_frames))
     np.testing.assert_array_equal(

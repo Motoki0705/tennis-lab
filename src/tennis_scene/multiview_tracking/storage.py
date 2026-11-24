@@ -19,7 +19,7 @@ from src.tennis_scene.multiview_tracking.selection import (
     COURT_HALF_Y_M,
     MIN_RESIDENCE_FRACTION,
 )
-from src.tennis_scene.multiview_tracking.tracking import track
+from src.tennis_scene.multiview_tracking.tracking import track_with_diagnostics
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.source_identity import source_digests
@@ -112,7 +112,9 @@ def track_store(
     source, ref, frame_poses = read_candidate_store(
         origin, expected_artifact_id=expected_artifact_id
     )
-    tracks = track(frame_poses, fps=source.fps, config=config)
+    tracks, integration = track_with_diagnostics(
+        frame_poses, fps=source.fps, config=config
+    )
     store = ClipStore(destination, json_value(source))
     if store.references().keys() - {NODE}:
         raise ValueError(
@@ -128,6 +130,8 @@ def track_store(
             "min_residence_fraction": MIN_RESIDENCE_FRACTION,
         },
     }
+    if integration is not None:
+        provenance["fragment_integration"] = json_value(integration)
     identity = {
         "schema": SCHEMA,
         "version": VERSION,

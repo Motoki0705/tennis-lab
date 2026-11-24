@@ -46,6 +46,7 @@ def select_players(
     num_frames: int,
     fps: float,
     players_per_side: int,
+    player_candidates: set[int] | None = None,
 ) -> PlayerSelection:
     """Count only reconstructed observations; interpolated samples never enter."""
     minimum_frames = ceil(MIN_RESIDENCE_FRACTION * num_frames)
@@ -80,7 +81,11 @@ def select_players(
                 score,
             )
         )
-        if len(court) >= minimum_frames and side:
+        if (
+            len(court) >= minimum_frames
+            and side
+            and (player_candidates is None or track in player_candidates)
+        ):
             ranked[side].append((-score, track))
     selected = {
         track

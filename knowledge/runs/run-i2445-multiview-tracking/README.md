@@ -2,6 +2,8 @@
 
 [#2444の確定版](../run-multiview-pose-link-recall-20261124/README.md)を入力に、開発用Meiji 3cam 4本を人手ラベルで採点し、meiji_4camの69本で選別と3Dの被覆を確認した。実装と成果物の軸は[時間追跡のREADME](../../../src/tennis_scene/multiview_tracking/README.md)に記載した。
 
+この記録は実装commit `6aecd7bb11a32fd5eb5c8a1491d0092276c133d1` の時間窓追跡を対象にした。選手枠への断片統合と予約採点の現行手順は後続runにある。 [選手枠の断片統合](../run-i2445-player-slot-integration/README.md)
+
 ## 窓と選別規則の根拠
 
 - 4camの000・020・037・058で、選別領域の候補から時間差1フレームの最寄り3D胴体中心までの水平距離を集計した。clip別のP95は0.042〜0.067 m。8フレーム差では0.322〜0.542 m、24フレーム差では0.933〜1.955 mだった。これは最近傍の距離で、異なる人物が最寄りになる場合も含む。
@@ -38,7 +40,7 @@
 
 対象は `video_000/clip_002`、`video_001/clip_003`、`video_002/clip_003`。 #2444が確保した38,421行のViTPose計画と、親が承認した001/003の校正補完を使う。ローカルのGPUロックは `r+b` openで `PermissionError`、9カメラのpose完了記録が欠ける。採点入口は完了前に終了値1で止まり、採点開始記録の作成も人物ラベルの採点も0回だった。 [前段の固定計画と復旧手順](../run-multiview-pose-link-recall-20261124/README.md#予約した未見3-clip)
 
-ViTPose完了後に `reproduce.sh holdout` を1回実行する。 [固定設定と採点器のdigest](reserved-protocol.json) と #2444の入力の版を照合し、全3 clipの予測が揃った時点で `outputs/i2445/holdout/scoring-attempt.json` を排他的に作る。3本全体と校正補完clipを除く2本の採点を同時に記録する。
+初回に設定と採点器を固定し、採点入口の入力不足時の動作を確認した。予約未見の一度きりの採点には、後続runで開発用の比較を終えて固定した断片統合版を使う。 [初回の採点器のdigest](reserved-protocol.json)・[予約採点の現行手順](../run-i2445-player-slot-integration/README.md#予約未見meiji-3cam)
 
 ## 再現と成果物
 
@@ -46,6 +48,6 @@ ViTPose完了後に `reproduce.sh holdout` を1回実行する。 [固定設定�
 bash knowledge/runs/run-i2445-multiview-tracking/reproduce.sh all
 ```
 
-リポジトリrootで実行する。Python 3.11.15、NumPy 2.3.5、SciPy 1.17.1。 #2444 workerの `outputs/i2444` が別の場所にある場合は `MEIJI_POSE_WORKER_OUTPUTS`、Meiji 3camの保存入力を置いた旧outputsのrootは `MEIJI_POSE_ARCHIVED_OUTPUTS` を指定する。
+上記の実装commitのリポジトリrootで実行する。Python 3.11.15、NumPy 2.3.5、SciPy 1.17.1。 #2444 workerの `outputs/i2444` が別の場所にある場合は `MEIJI_POSE_WORKER_OUTPUTS`、Meiji 3camの保存入力を置いた旧outputsのrootは `MEIJI_POSE_ARCHIVED_OUTPUTS` を指定する。
 
 出力は #2445 のworktreeにある `outputs/i2445/meiji3.json` と `outputs/i2445/meiji4/metrics.json`。 #2446が読めるclip storeは `outputs/i2445/meiji4/video_000/<clip>/scene.json` で、`multiview_pose_tracks` v1の記述子と配列はそのstore内にある。Gitには小さな集計と再現コードを保存した。
