@@ -40,6 +40,27 @@ def require_ci_target(
         raise ValueError("CI target differs from the open PR on the reserved HEAD")
 
 
+def _conflict_result(
+    pr: int, head: str, ci: dict[str, Any], latest: dict[str, Any]
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "kind": "ci",
+        "pr": pr,
+        "head": head,
+        "status": "conflict",
+        "reasons": ["pr_conflict", *ci["reasons"]],
+    }
+    base = latest.get("base")
+    if base is not None:
+        base_ref = object_value(base).get("ref")
+        if isinstance(base_ref, str) and base_ref.strip():
+            result["base_ref"] = base_ref
+    mergeable_state = latest.get("mergeable_state")
+    if isinstance(mergeable_state, str) and mergeable_state.strip():
+        result["mergeable_state"] = mergeable_state
+    return result
+
+
 def ci_result(
     backend: LiveBackend, request: dict[str, Any], branch: str, *, root: Path
 ) -> dict[str, Any] | None:
@@ -49,6 +70,7 @@ def ci_result(
     ci = backend.ci(pr, head)
     if "ci_python_head_mismatch" in ci["reasons"]:
         raise ValueError("CI check was returned for a different HEAD")
+    python_missing = "ci_python_missing" in ci["reasons"]
     if ci["reasons"] and set(ci["reasons"]) <= {
         "ci_python_missing",
         "ci_python_skipped",
@@ -59,6 +81,11 @@ def ci_result(
         if comparison is not None:
             ci = knowledge_records.observe_ci(backend, current, comparison)
     if ci["status"] == "pending":
+        if python_missing and current.get("mergeable") is False:
+            latest = backend.pr(pr)
+            require_ci_target(latest, backend.repo, branch, request)
+            if latest.get("mergeable") is False:
+                return _conflict_result(pr, head, ci, latest)
         return None
     result = {
         "kind": "ci",

@@ -345,6 +345,14 @@ class Monitor:
             ):
                 record["state"] = "done"
             else:
+                if request["kind"] == "ci" and observed["status"] not in {
+                    "success",
+                    "failure",
+                    "conflict",
+                }:
+                    raise ValueError(
+                        f"unknown CI observation status: {observed['status']!r}"
+                    )
                 event = worker_followup.event_key(request)
                 if event in record["resumptions"]:
                     record.update(state="needs_parent", reason="event_already_consumed")
@@ -432,16 +440,30 @@ def resume_prompt(wait: dict[str, Any], result: dict[str, Any]) -> str:
             "失敗や取消があれば原因を修正して再実行する。"
             "問題がなければ commit・push・CI待ち、または後続jobの登録へ進む。"
         )
+    elif result["status"] == "conflict":
+        base = result.get("base_ref")
+        target = (
+            f"最新の{base.strip()}"
+            if isinstance(base, str) and base.strip()
+            else "最新のbase branch"
+        )
+        action = (
+            f"対象HEADのPR #{wait['pr']} にmerge conflictがあり、CIが起動していない。"
+            f"同じbranchとPRで{target}を取り込んでコンフリクトを解消し、"
+            "検証してpushしたらPARENT_RESULTで新HEADを宣言する。"
+        )
     elif result["status"] == "failure":
         action = (
             f"対象HEADの{workflow} CIが失敗した。失敗job・step・ログ要点を参照し、"
             "同じbranchとPRで修正する。修正をpushしたら新HEADを宣言する。"
         )
-    else:
+    elif result["status"] == "success":
         action = (
             f"対象HEADの{workflow} CIが成功した。宣言した後続作業を行う。\n"
             + wait["next_step"]
         )
+    else:
+        raise ValueError(f"unknown CI observation status: {result.get('status')!r}")
     return (
         "## parent CLI が確認した待機結果\n\n"
         + action

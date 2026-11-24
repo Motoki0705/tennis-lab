@@ -135,6 +135,16 @@ def local_result(root, job, **kwargs):
                 assert channel.recv(1) == b"C"
     return result
 worker_monitor.local_result = local_result
+original_ci = worker_monitor.ci_result
+def ci_result(backend, request, branch, *, root):
+    result = original_ci(backend, request, branch, root=root)
+    if result is None and (address := os.environ.pop("FAKE_CI_PENDING", None)):
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
+            channel.connect(address)
+            channel.sendall(request["head"].encode())
+            assert channel.recv(1) == b"C"
+    return result
+worker_monitor.ci_result = ci_result
 original_run = manual_workers.run_worker
 def run_worker(*args, **kwargs):
     try:
@@ -363,6 +373,75 @@ def test_ci_resumes_only_for_failure_or_follow_on_work(
             ):
                 assert evidence in prompt
     assert len((p.root / "service-starts.jsonl").read_text().splitlines()) == 1
+
+
+def test_ci_resumes_on_pr_conflict_and_finishes_after_new_head_passes(
+    service: ParentEnv,
+) -> None:
+    p = service
+    resolved_head = "d" * 40
+    pr = p.pr(123, 10, head=HEAD, branch="codex/worker")
+    pr.update(
+        mergeable=None,
+        mergeable_state="unknown",
+        statusCheckRollup=[],
+        labels=[],
+    )
+    p.env["MANUAL_PR_AFTER_START"] = json.dumps(pr)
+    p.env["MANUAL_PR_UPDATES_SEQUENCE"] = json.dumps(
+        {
+            "2": {
+                "number": 123,
+                "head": {**pr["head"], "sha": resolved_head},
+                "mergeable": True,
+                "mergeable_state": "clean",
+                "statusCheckRollup": [
+                    {
+                        "__typename": "CheckRun",
+                        "name": "Python",
+                        "status": "COMPLETED",
+                        "conclusion": "SUCCESS",
+                    }
+                ],
+            }
+        }
+    )
+    with tempfile.TemporaryDirectory(prefix="ci-conflict-") as short:
+        address = Path(short) / "pending.sock"
+        p.env["FAKE_CI_PENDING"] = str(address)
+        with listening(address) as server:
+            launch(
+                p,
+                waiting("ci", pr=123, head=HEAD, resume_on_success=False),
+                waiting("ci", pr=123, head=resolved_head, resume_on_success=False),
+            )
+            with connected(server) as gate:
+                assert gate.recv(1024).decode() == HEAD
+                assert len(runner_calls(p)) == 1
+                state = p.state()
+                state["prs"][0].update(mergeable=False, mergeable_state="dirty")
+                p.save(state)
+                gate.sendall(b"C")
+    result = joined(p)
+    assert result["wait_state"] == "ended"
+    assert result["followup"]["state"] == "done"
+    assert result["followup"]["auto_resumes"] == 1
+    assert result["followup"]["observation"] == {
+        "kind": "ci",
+        "pr": 123,
+        "head": resolved_head,
+        "status": "success",
+        "reasons": [],
+    }
+    assert_same_worker(p, 2)
+    prompt = (latest(p) / "prompt.md").read_text()
+    assert "merge conflict" in prompt
+    assert "最新のmain" in prompt
+    assert "PARENT_RESULT" in prompt
+    assert '"pr_conflict"' in prompt
+    assert '"dirty"' in prompt
+    assert HEAD in prompt
+    assert "CIが成功" not in prompt
 
 
 def test_ci_rejects_stale_head_and_shares_the_review_lease(service: ParentEnv) -> None:
