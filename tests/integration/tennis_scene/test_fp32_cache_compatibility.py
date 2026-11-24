@@ -251,6 +251,23 @@ def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_pat
     assert source_identity.compatible_source_digests({**snapshot, **unrelated_edit}) == {**baseline, **unrelated_edit}
 
 
+def test_exact_pose_comparison_patch_preserves_the_standard_recipe_identity() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name(
+        "pose_comparison_cache_compatibility.json"
+    )
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    unrelated = {"tennis_scene/schema.py": "a" * 64}
+    current = unrelated | {path: pair["after"] for path, pair in files.items()}
+    baseline = unrelated | {
+        path: pair["before"] for path, pair in files.items() if pair["before"] is not None
+    }
+    assert source_identity.compatible_source_digests(current, tensorrt=True) == baseline
+    changed = {**current, "tennis_scene/visualization/pose_comparison/rendering.py": "0" * 64}
+    assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
+
+
 def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> None:
     from src.tennis_scene.pipeline import source_identity
 
