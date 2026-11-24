@@ -22,7 +22,7 @@ class PoseStages(Protocol):
         self, stage: Stage, operation: Callable[[], Value], *, name: str = ""
     ) -> Value: ...
 
-    def forward(
+    def measure_forward(
         self, backend: Backend, operation: Callable[[], Value], *, name: str = ""
     ) -> Value: ...
 

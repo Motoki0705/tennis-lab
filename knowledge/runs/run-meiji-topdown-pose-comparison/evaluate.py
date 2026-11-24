@@ -68,10 +68,10 @@ class AccuracyStages:
         self, stage: Stage, operation: Callable[[], Value], *, name: str = ""
     ) -> Value:
         if stage is Stage.FORWARD:
-            raise ValueError("Declare every forward's backend with forward()")
+            raise ValueError("Declare every forward's backend with measure_forward()")
         return operation()
 
-    def forward(
+    def measure_forward(
         self, backend: Backend, operation: Callable[[], Value], *, name: str = ""
     ) -> Value:
         if backend is not self.backend:
