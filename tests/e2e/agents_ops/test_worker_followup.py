@@ -46,7 +46,9 @@ from pathlib import Path
 args = sys.argv[1:]
 assert all(flag in args for flag in ("--user", "--collect", "--service-type=notify"))
 command = args[args.index("--") + 1:]
-assert command[1:3] == ["-m", "parent.worker_monitor"]
+is_monitor = command[1:3] == ["-m", "parent.worker_monitor"]
+is_local = command[1:4] == ["-m", "parent.local_jobs", "_run"]
+assert is_monitor or is_local, command
 root = Path(os.environ["FAKE_SERVICE_ROOT"])
 env = dict(os.environ)
 working = Path.cwd()
@@ -55,8 +57,12 @@ for flag in args:
     if flag.startswith("--setenv=") and "=" in flag.removeprefix("--setenv="):
         name, _, value = flag.removeprefix("--setenv=").partition("=")
         env[name] = value
+    elif flag.startswith("--setenv="):
+        pass
     elif flag.startswith("--property=WorkingDirectory=-"):
         working = Path(flag.removeprefix("--property=WorkingDirectory=-"))
+    elif flag.startswith("--property=WorkingDirectory="):
+        working = Path(flag.removeprefix("--property=WorkingDirectory="))
     elif flag.startswith("--property=Exec"):
         name, _, value = flag.removeprefix("--property=").partition("=")
         assert value.startswith(":")
@@ -65,18 +71,26 @@ for flag in args:
         )
 for argv in pre:
     subprocess.run(argv, cwd=working if working.exists() else None, check=True)
-env["PYTHONPATH"] += os.pathsep + os.environ["FAKE_SERVICE_HTTP_BOOTSTRAP"]
-env["FAKE_SERVICE_CLEANUP"] = json.dumps(post)
-with (root / "service-starts.jsonl").open("a") as f:
-    f.write(json.dumps({"command": command, "cwd": str(working), "pythonpath": env["PYTHONPATH"]}) + "\n")
+if is_monitor:
+    env["PYTHONPATH"] += os.pathsep + os.environ["FAKE_SERVICE_HTTP_BOOTSTRAP"]
+    env["FAKE_SERVICE_CLEANUP"] = json.dumps(post)
+    with (root / "service-starts.jsonl").open("a") as f:
+        f.write(json.dumps({"command": command, "cwd": str(working), "pythonpath": env["PYTHONPATH"]}) + "\n")
+    launch_argv = [command[0], str(root / "fake-service-entry.py"), *command[3:]]
+    log_name = "controller.log"
+else:
+    with (root / "local-service-starts.jsonl").open("a") as f:
+        f.write(json.dumps({"command": command, "cwd": str(working), "args": args}) + "\n")
+    launch_argv = command
+    log_name = "local-service.log"
 with tempfile.TemporaryDirectory(prefix="followup-notify-") as short:
     address = str(Path(short) / "notify.sock")
     env["NOTIFY_SOCKET"] = address
-    with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as ready, (root / "controller.log").open("ab") as log:
+    with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as ready, (root / log_name).open("ab") as log:
         ready.bind(address)
         ready.settimeout(10)
         process = subprocess.Popen(
-            [command[0], str(root / "fake-service-entry.py"), *command[3:]],
+            launch_argv,
             cwd=working, env=env, start_new_session=True,
             stdin=subprocess.DEVNULL, stdout=log, stderr=log,
         )
@@ -106,6 +120,31 @@ def queue_result(root, job, **kwargs):
             assert channel.recv(1) == b"C"
     return result
 worker_monitor.queue_result = queue_result
+original_local = worker_monitor.local_result
+def local_result(root, job, **kwargs):
+    if os.environ.get("FAKE_LOCAL_ELAPSED") and kwargs["missing_completion_since"]:
+        kwargs["now"] += 10
+    result = original_local(root, job, **kwargs)
+    if result is None and (address := os.environ.get("FAKE_LOCAL_PENDING")):
+        target_job = os.environ.get("FAKE_LOCAL_PENDING_JOB")
+        if target_job is None or job == target_job:
+            os.environ.pop("FAKE_LOCAL_PENDING", None)
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
+                channel.connect(address)
+                channel.sendall(job.encode())
+                assert channel.recv(1) == b"C"
+    return result
+worker_monitor.local_result = local_result
+original_ci = worker_monitor.ci_result
+def ci_result(backend, request, branch, *, root):
+    result = original_ci(backend, request, branch, root=root)
+    if result is None and (address := os.environ.pop("FAKE_CI_PENDING", None)):
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
+            channel.connect(address)
+            channel.sendall(request["head"].encode())
+            assert channel.recv(1) == b"C"
+    return result
+worker_monitor.ci_result = ci_result
 original_run = manual_workers.run_worker
 def run_worker(*args, **kwargs):
     try:
@@ -334,6 +373,75 @@ def test_ci_resumes_only_for_failure_or_follow_on_work(
             ):
                 assert evidence in prompt
     assert len((p.root / "service-starts.jsonl").read_text().splitlines()) == 1
+
+
+def test_ci_resumes_on_pr_conflict_and_finishes_after_new_head_passes(
+    service: ParentEnv,
+) -> None:
+    p = service
+    resolved_head = "d" * 40
+    pr = p.pr(123, 10, head=HEAD, branch="codex/worker")
+    pr.update(
+        mergeable=None,
+        mergeable_state="unknown",
+        statusCheckRollup=[],
+        labels=[],
+    )
+    p.env["MANUAL_PR_AFTER_START"] = json.dumps(pr)
+    p.env["MANUAL_PR_UPDATES_SEQUENCE"] = json.dumps(
+        {
+            "2": {
+                "number": 123,
+                "head": {**pr["head"], "sha": resolved_head},
+                "mergeable": True,
+                "mergeable_state": "clean",
+                "statusCheckRollup": [
+                    {
+                        "__typename": "CheckRun",
+                        "name": "Python",
+                        "status": "COMPLETED",
+                        "conclusion": "SUCCESS",
+                    }
+                ],
+            }
+        }
+    )
+    with tempfile.TemporaryDirectory(prefix="ci-conflict-") as short:
+        address = Path(short) / "pending.sock"
+        p.env["FAKE_CI_PENDING"] = str(address)
+        with listening(address) as server:
+            launch(
+                p,
+                waiting("ci", pr=123, head=HEAD, resume_on_success=False),
+                waiting("ci", pr=123, head=resolved_head, resume_on_success=False),
+            )
+            with connected(server) as gate:
+                assert gate.recv(1024).decode() == HEAD
+                assert len(runner_calls(p)) == 1
+                state = p.state()
+                state["prs"][0].update(mergeable=False, mergeable_state="dirty")
+                p.save(state)
+                gate.sendall(b"C")
+    result = joined(p)
+    assert result["wait_state"] == "ended"
+    assert result["followup"]["state"] == "done"
+    assert result["followup"]["auto_resumes"] == 1
+    assert result["followup"]["observation"] == {
+        "kind": "ci",
+        "pr": 123,
+        "head": resolved_head,
+        "status": "success",
+        "reasons": [],
+    }
+    assert_same_worker(p, 2)
+    prompt = (latest(p) / "prompt.md").read_text()
+    assert "merge conflict" in prompt
+    assert "最新のmain" in prompt
+    assert "PARENT_RESULT" in prompt
+    assert '"pr_conflict"' in prompt
+    assert '"dirty"' in prompt
+    assert HEAD in prompt
+    assert "CIが成功" not in prompt
 
 
 def test_ci_rejects_stale_head_and_shares_the_review_lease(service: ParentEnv) -> None:
@@ -651,3 +759,144 @@ def test_queue_monitor_pins_main_code_without_holding_checkout_lock(
             assert str(checkout) not in run_git(
                 p.repo, "worktree", "list", "--porcelain"
             )
+
+
+def _start_local(
+    p: ParentEnv, name: str, *cmd: str, env_override: dict[str, str] | None = None
+) -> dict[str, Any]:
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "parent.local_jobs",
+            "start",
+            "--name",
+            name,
+            "--",
+            *cmd,
+        ],
+        cwd=p.repo,
+        env={**p.env, **(env_override or {})},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=True,
+    )
+    return cast(dict[str, Any], json.loads(proc.stdout))
+
+
+def test_local_jobs_survive_worker_exit_and_resume_same_worker_once(
+    service: ParentEnv,
+) -> None:
+    p = service
+    custom_root = p.root / "custom-local-jobs"
+    p.env["PARENT_LOCAL_JOBS_DIR"] = str(custom_root)
+    with tempfile.TemporaryDirectory(prefix="local-followup-") as short:
+        gate1_sock = Path(short) / "job1-gate.sock"
+        gate2_sock = Path(short) / "job2-gate.sock"
+        pending_sock = Path(short) / "pending.sock"
+        p.env["FAKE_LOCAL_PENDING"] = str(pending_sock)
+        with (
+            listening(gate1_sock) as gate1_server,
+            listening(gate2_sock) as gate2_server,
+            listening(pending_sock) as pending_server,
+        ):
+
+            def gated_script(sock_path: Path, output: str, exit_code: int) -> str:
+                return (
+                    "import socket, sys\n"
+                    "with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:\n"
+                    f"    s.connect({str(sock_path)!r})\n"
+                    "    s.sendall(b'started')\n"
+                    "    assert s.recv(1) == b'C'\n"
+                    f"print({output!r}, file=sys.stderr if {exit_code} else sys.stdout)\n"
+                    f"sys.exit({exit_code})\n"
+                )
+
+            first = _start_local(
+                p,
+                "fast-pass",
+                sys.executable,
+                "-c",
+                gated_script(gate1_sock, "fast check ok", 0),
+            )["job_id"]
+            second = _start_local(
+                p,
+                "gated-fail",
+                sys.executable,
+                "-c",
+                gated_script(gate2_sock, "ERROR: simulated assertion failure", 3),
+            )["job_id"]
+            p.env["FAKE_LOCAL_PENDING_JOB"] = second
+            with (
+                connected(gate1_server) as job1_gate,
+                connected(gate2_server) as job2_gate,
+            ):
+                assert job1_gate.recv(1024) == b"started"
+                assert job2_gate.recv(1024) == b"started"
+                launch(p, waiting("local", job_ids=[first, second]), DONE)
+                with connected(pending_server) as monitor_gate:
+                    assert monitor_gate.recv(1024).decode() == second
+                    job1_gate.sendall(b"C")
+                    job2_gate.sendall(b"C")
+                    monitor_gate.sendall(b"C")
+    result = joined(p)
+    assert result["wait_state"] == "ended"
+    assert result["followup"]["state"] == "done"
+    assert result["followup"]["auto_resumes"] == 1
+    assert_same_worker(p, 2)
+    observed = result["followup"]["observation"]["jobs"]
+    assert [(j["job_id"], j["state"], j["exit_code"]) for j in observed] == [
+        (first, "done", 0),
+        (second, "failed", 3),
+    ]
+    assert "ERROR: simulated assertion failure" in observed[1]["log_excerpt"]
+    prompt = (latest(p) / "prompt.md").read_text(encoding="utf-8")
+    assert first in prompt and second in prompt
+    assert "ERROR: simulated assertion failure" in prompt
+    assert "exit_code" in prompt
+
+
+def test_local_rejects_unknown_job_instead_of_waiting_forever(
+    service: ParentEnv,
+) -> None:
+    p = service
+    launch(p, waiting("local", job_ids=["20261124T010203Z_0123456789ab_unknown"]))
+    result = joined(p, ok=False)["followup"]
+    assert result["state"] == "error"
+    assert "unknown local job_id" in result["reason"]
+    assert result["auto_resumes"] == 0
+    assert_same_worker(p, 1)
+
+
+def test_local_missing_completion_is_returned_by_wait_worker(
+    service: ParentEnv,
+) -> None:
+    p = service
+    job = "20261124T010203Z_0123456789ab_crashed"
+    # Verify default <state_dir>/local-jobs path when PARENT_LOCAL_JOBS_DIR is unset.
+    job_dir = state_dir(p) / "local-jobs" / job
+    job_dir.mkdir(parents=True, mode=0o700)
+    (job_dir / "meta.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "job_id": job,
+                "name": "crashed",
+                "cwd": str(p.repo),
+                "command": ["echo", "hi"],
+                "started_at": "2026-11-24T01:02:03+00:00",
+                "unit": f"tennis-lab-local-job-{job}",
+                "log_path": str(job_dir / "output.log"),
+                "runner_pid": None,
+                "process": None,
+            }
+        ),
+        encoding="utf-8",
+    )
+    p.env["FAKE_LOCAL_ELAPSED"] = "1"
+    launch(p, waiting("local", job_ids=[job]))
+    result = joined(p, ok=False)["followup"]
+    assert result["state"] == "error"
+    assert result["reason"] == f"local job terminated without completion record: {job}"
+    assert_same_worker(p, 1)
