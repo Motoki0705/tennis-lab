@@ -200,10 +200,12 @@ camera IDと動画を明示的に対応付け、sceneと動画の解像度・FPS
 README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 [LOESS導入後の再生成・比較記録](../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
 
-## フレーム別の3D人物比較ページ
+## 3D人物比較ページ
 
-`pose_comparison` は、meiji_4cam の採用中の `SceneResult` と
-[`frame_pose_candidates` v1](multiview_pose/README.md) を、同じ元フレームの4視点とコート上面図に並べます。
+`pose_comparison` は、meiji_4cam の採用中の `SceneResult` を左に、対応する新経路を右に表示します。
+どちらも同じ元フレームの4視点への投影とコート上面図です。段階1は
+[`frame_pose_candidates` v1](multiview_pose/README.md) の骨格と観測割当、段階2は
+[`multiview_pose_tracks` v1](multiview_tracking/README.md) の時間IDと選手選別を表示します。
 選定は i2363 の初回 `progress.json` を使います。停止14本と、成功55本をID順に並べて seed 42 で抽出した
 `clip_009`・`clip_052` が対象です。候補は割当改善後に再計測した `refine/timing/meiji4` を使います。
 [再計測と成果物の版](../../knowledge/runs/run-multiview-pose-link-recall-20261124/README.md#meiji_4cam全69-clip)
@@ -216,12 +218,15 @@ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
   --progress "$I2363_RUN/all/progress/d1df39596d4f47f1896cb535191e7040/progress.json" \
   --candidates "$POSE_OUTPUT/refine/timing/meiji4" \
   --pose-record knowledge/runs/run-multiview-pose-link-recall-20261124/meiji4.json \
+  --tracks "$TRACK_OUTPUT/meiji4" \
+  --tracking-record knowledge/runs/run-i2445-multiview-tracking/meiji4.json \
   --output outputs/pose-comparison
 ```
 
-`I2363_RUN` は保存済みの `i2363-all-v1`、`POSE_OUTPUT` は #2444 の `outputs/i2444` です。
-`index.html` を開くと、同じディレクトリ内のMP4とポスターを閲覧できます。
-`manifest.json` にclipの選定、表示した `scene_assembly`、対応する候補artifact・版、動画SHA-256、元フレームでの指標を保存します。
+`I2363_RUN` は保存済みの `i2363-all-v1`、`POSE_OUTPUT` は #2444 の `outputs/i2444`、`TRACK_OUTPUT` は #2445 の `outputs/i2445` です。
+`--tracks` と `--tracking-record` を指定すると両段階を描画します。両方を省略すると段階1だけを描画します。
+`index.html` を開くと、同じディレクトリ内のMP4とポスターを閲覧できます。段階の切替時はclipと再生位置を引き継ぎます。
+`manifest.json` にclipの選定、表示した `scene_assembly`、候補と追跡のartifact IDと版、動画SHA-256、元フレームでの指標を保存します。
 `--clip clip_012` などを指定すると、選定済みのclipだけを描画できます。複数指定も可能です。
 
 旧経路は各clipの `annotations/tennis_scene/scene.json` が採用したexportとカメラ成分を照合し、
@@ -231,9 +236,12 @@ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 
 動画は1888×488のH.264、CRF 21、元の3フレームごと（約19.98 fps）で、clipの時間軸全体を表示します。
 容量は1動画15 MB、ページ全体200 MBが上限です。上限を超える入力では `--crf` と `--frame-step` で調整できます。
-コート上面の点は有効な腰関節の中心を使い、腰が欠けた骨格は肩、最後に残存関節の中心を使います。
-新経路の残差は割当済み視点に対して保存されているため、未使用視点の再投影は未計測です。
-段階2の表示は `stages` に同じclip IDで動画と指標を加えられます。
+段階2ではclip内でIDの色を固定し、選手を `P`、選外の人物を `T` で表示します。
+観測による3Dを実線、補間を破線と上面図の中空の点で示します。生成 `+`、再出現 `R`、消失 `X` と、
+観測割当 `A?`・時間ID `ID?` の接戦は0.4秒間表示します。消失は上面図内の最後の位置に記します。
+段階2の新経路の3D被覆と人数分布は、観測による有効な3D関節を持つ選手を元フレームごとに数えます。
+コート上面の点は追跡が保存した胴体中心を使います。旧経路と段階1では腰、肩、残存関節の順に中心を求めます。
+新経路の残差は割当済み視点に対して保存されているため、未使用視点への再投影は未計測です。
 
 ## Blenderアニメーション
 

@@ -13,6 +13,9 @@ from numpy.typing import NDArray
 
 from src.tennis_scene.multiview_pose.schema import NODE, FramePoseCandidates
 from src.tennis_scene.multiview_pose.storage import read_candidates
+from src.tennis_scene.multiview_tracking.schema import NODE as TRACKING_NODE
+from src.tennis_scene.multiview_tracking.schema import PoseTracks
+from src.tennis_scene.multiview_tracking.storage import read_tracks
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.storage.codec import restore_type, unpack_value
@@ -419,3 +422,38 @@ def load_comparison(
             "videos": {v.camera_id: v.sha256 for v in source.videos},
         },
     )
+
+
+def load_tracking(
+    store: StoreReader, data: ComparisonInputs, record: dict[str, Any]
+) -> tuple[PoseTracks, dict[str, Any]]:
+    clip_id = data.source.clip_id
+    expected = record["clips"][clip_id]
+    reference = store.references[TRACKING_NODE]
+    candidate = data.provenance["candidate_artifact"]
+    if (
+        store.source_sha256 != data.provenance["source_sha256"]
+        or expected["source_frames"] != data.source.num_frames
+        or reference["artifact_id"] != expected["tracking_artifact_id"]
+        or reference["sha256"] != expected["tracking_descriptor_sha256"]
+        or candidate["artifact_id"] != expected["candidate_artifact_id"]
+        or candidate["sha256"] != expected["candidate_descriptor_sha256"]
+    ):
+        raise ValueError(
+            f"Tracking store disagrees with the pinned run record: {clip_id}"
+        )
+    descriptor = store.descriptor(TRACKING_NODE)
+    if (
+        descriptor["provenance"]["frame_pose_candidates"] != candidate
+        or descriptor["provenance"]["config"] != record["config"]
+    ):
+        raise ValueError(f"Tracking inputs or settings disagree for {clip_id}")
+    tracks = read_tracks(store.root, expected_artifact_id=reference["artifact_id"])
+    if json.loads(store.index_path.read_text(encoding="utf-8")) != store.document:
+        raise ValueError(f"Scene index changed during loading: {store.index_path}")
+    return tracks, {
+        **data.provenance,
+        "tracking_artifact": reference,
+        "tracking_implementation": descriptor["identity"]["implementation"],
+        "tracking_config": descriptor["provenance"]["config"],
+    }
