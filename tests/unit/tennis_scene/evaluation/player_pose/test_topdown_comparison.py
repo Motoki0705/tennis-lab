@@ -168,7 +168,7 @@ def test_topdown_score_keeps_original_frame_and_player_identity(
                 {"visibility": np.array([row.bbox_xyxy[0] for row in rows])},
             )
 
-        return stages.forward(Backend.PT32, forward)
+        return stages.measure_forward(Backend.PT32, forward, name="pose")
 
     keys, result = evaluate.predict_rows(
         fixed_inputs.pose_inputs([video], refs), infer, Backend.PT32, 2
@@ -228,5 +228,5 @@ def test_accuracy_stages_reject_a_forward_declared_with_another_backend(
         pytest.fail("wrong backend was executed")
 
     with pytest.raises(ConditionUnavailable) as error:
-        stages.forward(Backend.PT16, unexpected)
+        stages.measure_forward(Backend.PT16, unexpected)
     assert error.value.status is Status.BACKEND_MISMATCH
