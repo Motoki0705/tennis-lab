@@ -81,6 +81,7 @@ def _build(
         {"pixels": profile},
         device=torch.device(device),
         workspace_bytes=workspace_mib * 1024**2,
+        detailed_profiling=True,
     )
 
 

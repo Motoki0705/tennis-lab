@@ -32,7 +32,7 @@ from src.utils.models.tensorrt_artifacts import (
     EngineBundle,
     TensorSpec,
 )
-from src.utils.models.tensorrt_runtime import TensorRTRunner
+from src.utils.models.tensorrt_runtime import TensorRTRunner, tensorrt_module
 from src.utils.schema.player import COCO_KP_NAMES
 
 SOURCE_COMMIT = "7e5bae88456ac418ff0e58e74106c9fe192055d4"
@@ -346,6 +346,8 @@ def _engine_forward(
             outputs=TRT_OUTPUTS,
         )
         runner = TensorRTRunner(bundle, device)
+        # Keep the engine's inspector metadata and disable NVTX during inference.
+        runner._context.nvtx_verbosity = tensorrt_module().ProfilingVerbosity.NONE
     except torch.OutOfMemoryError:
         raise
     except (OSError, RuntimeError, ValueError) as error:

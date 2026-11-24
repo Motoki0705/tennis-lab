@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any, TypeVar
 
 import numpy as np
@@ -17,6 +17,7 @@ from numpy.typing import NDArray
 from safetensors.torch import save_file
 
 from src.utils.inference_benchmark import Backend, ConditionUnavailable, Stage, Status
+from src.utils.models.tensorrt_artifacts import InputProfile
 from src.utils.schema.player import COCO_KP_NAMES
 
 Value = TypeVar("Value")
@@ -227,3 +228,37 @@ def test_trt_without_engine_cannot_enter_pytorch(
     with pytest.raises(ConditionUnavailable, match="TensorRT bundle") as error:
         instance.load()
     assert error.value.status is Status.UNAVAILABLE
+
+
+def test_sapiens2_trt_disables_the_builds_detailed_nvtx_at_inference(
+    adapter: ModuleType, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    context = SimpleNamespace(nvtx_verbosity="DETAILED")
+    shape = (1, 3, 2, 2)
+    profile = InputProfile(minimum=shape, optimum=shape, maximum=shape)
+    bound = SimpleNamespace(engine=SimpleNamespace(profiles={"pixels": profile}))
+    artifact = SimpleNamespace(for_model=lambda **_: bound)
+
+    class Runner:
+        _context = context
+
+        def __call__(self, inputs: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+            assert self._context.nvtx_verbosity == "NONE"
+            return {"heatmaps": inputs["pixels"] + 2}
+
+    monkeypatch.setattr(
+        adapter, "EngineBundle", SimpleNamespace(read=lambda _: artifact)
+    )
+    monkeypatch.setattr(adapter, "TensorRTRunner", lambda *_: Runner())
+    monkeypatch.setattr(
+        adapter,
+        "tensorrt_module",
+        lambda: SimpleNamespace(ProfilingVerbosity=SimpleNamespace(NONE="NONE")),
+    )
+    forward = adapter._engine_forward(
+        "sapiens2-1b",
+        adapter.CHECKPOINTS["sapiens2-1b"],
+        tmp_path,
+        torch.device("cuda:0"),
+    )
+    torch.testing.assert_close(forward(torch.zeros(shape)), torch.full(shape, 2.0))

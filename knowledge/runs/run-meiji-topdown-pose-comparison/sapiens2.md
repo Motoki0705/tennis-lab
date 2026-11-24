@@ -59,8 +59,9 @@ to `fp32`. This also fixes the positional coordinate and rotation arithmetic
 for the half-precision conditions. PT16 uses explicit FP16 casts for the
 other model tensors and for the input. TRT16 uses a strongly typed engine
 with FP16 inputs and outputs. FP32 heatmap averaging, CPU UDP decoding and the
-two test views are shared across backends. Report engine layer precision
-from the built engine when available. The adapter's load time includes
+two test views are shared across backends. The build retains TensorRT's
+detailed layer inspector metadata and adapter inference disables NVTX.
+The adapter's load time includes
 source and checkpoint verification. [Official RoPE configuration](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/sapiens/backbones/sapiens2.py#L520-L577)
 
 ## Reproduction
@@ -139,15 +140,15 @@ parity status and the reason the PT32 reference is unavailable.
 
 The isolated runtime preflight passed with Python 3.12.3, PyTorch
 2.13.0+cu130 (CUDA 13.0), TensorRT 10.14.1.48.post1 and ONNX Script 0.7.2.
-The initial 1B ONNX export completed in 163.46 s and passed the ONNX checker.
-Graph inspection found seven BF16 casts in the official RoPE coordinate
-construction. The comparison exports use an explicit FP32 RoPE setting and
-a new output path.
+The comparison exports passed the ONNX checker with FP16 input and output
+bindings. Graph inspection found only FP32, FP16 and INT64 cast targets.
+The 1B export took 138.81 s and the 5B export took 686.88 s.
+[Conversion receipts and SHA-256 values](sapiens2_conversion.json)
 
 | Model | PT32 | PT16 | TRT16 |
 |---|---|---|---|
-| Sapiens2-1B | Pending GPU run | Pending GPU run | Pending conversion and GPU run |
-| Sapiens2-5B | Pending CUDA allocation attempt | Pending GPU run | Pending conversion and GPU run |
+| Sapiens2-1B | Pending GPU run | Pending GPU run | ONNX checked. Pending engine build and GPU run |
+| Sapiens2-5B | Pending CUDA allocation attempt | Pending GPU run | ONNX checked. Pending engine build and GPU run |
 
 The 5B checkpoint contains 20,480,794,652 bytes (19.074 GiB) of FP32
 tensors. The RTX 5060 Ti reported 16,311 MiB. The checkpoint therefore
@@ -159,5 +160,5 @@ The CPU tests exercise the named source joints and left/right reflection
 using asymmetric predictions, the crop inverse and short batch ordering,
 nonpositive peaks with preserved confidence, strict checkpoint binding, and
 TRT availability without a plan. They use synthetic inputs and weights.
-The official model forward, comparison exports, TensorRT builds and fixed-cohort
-measurements are pending.
+The official model forward, TensorRT builds and fixed-cohort measurements
+are pending.
