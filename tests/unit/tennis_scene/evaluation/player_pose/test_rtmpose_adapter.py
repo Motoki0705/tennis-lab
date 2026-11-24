@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from importlib import import_module
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
+from typing import Any
 
 import numpy as np
 import pytest
+import torch
 from numpy.typing import NDArray
 
 from src.utils.inference_benchmark import Backend, ConditionUnavailable, Status
@@ -118,3 +121,65 @@ def test_backend_delta_counts_missing_and_measures_native_pixel_distance() -> No
     assert summary["xy_above_1px"] == 1 and summary["xy_above_5px"] == 0
     assert summary["score_abs_p95"] == 0.5
     assert summary["worst"] == {"row_index": 0, "joint": "left_wrist"}
+
+
+def test_measured_forwards_preserve_original_then_flipped_view(
+    rtmpose: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    contract = import_module("pose_contract")
+    stages = import_module("evaluate").AccuracyStages(Backend.PT32)
+    measured = stages.measure_forward
+    calls: list[tuple[Backend, str]] = []
+    crop_ends: list[list[float]] = []
+
+    def measure(backend: Backend, op: Callable[[], Any], *, name: str = "") -> Any:
+        calls.append((backend, name))
+        return measured(backend, op, name=name)
+
+    monkeypatch.setattr(stages, "measure_forward", measure)
+
+    def affine(sample: dict[str, Any]) -> dict[str, Any]:
+        return {**sample, "input_center": (20, 30), "input_scale": (144, 192)}
+
+    crop_coordinates = np.broadcast_to(np.array([144, 192], np.float32), (1, 26, 2))
+    scores: NDArray[np.float32] = np.ones((1, 26), np.float32)
+    modules = {
+        "mmpose.datasets.transforms": SimpleNamespace(
+            GetBBoxCenterScale=lambda: lambda sample: sample,
+            TopdownAffine=lambda **_: affine,
+        ),
+        "mmpose.registry": SimpleNamespace(
+            KEYPOINT_CODECS=SimpleNamespace(
+                build=lambda _: SimpleNamespace(
+                    decode=lambda x, y: (crop_coordinates, scores)
+                )
+            )
+        ),
+        "mmpose.models.utils.tta": SimpleNamespace(
+            flip_vectors=lambda x, y, **_: (x.flip(-1), y)
+        ),
+    }
+    monkeypatch.setattr(rtmpose, "import_module", modules.__getitem__)
+    config = SimpleNamespace(
+        model=SimpleNamespace(
+            data_preprocessor=SimpleNamespace(mean=[0, 0, 0], std=[1, 1, 1])
+        ),
+        codec={},
+    )
+    recipe = rtmpose.Recipe(
+        Path("weights"), Path("config"), config, {"flip_indices": list(range(26))}
+    )
+
+    def forward(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        crop_ends.append(pixels[0, 0, 0, [0, -1]].tolist())
+        return torch.ones((1, 26, 2)), torch.ones((1, 26, 2))
+
+    image: NDArray[np.uint8] = np.zeros((384, 288, 3), np.uint8)
+    image[:, 0, 2], image[:, -1, 2] = 41, 43
+    row = contract.PoseInput(image, np.array([1, 2, 10, 12], np.float32))
+    infer = rtmpose._make_infer(recipe, Backend.PT32, forward, torch.device("cpu"))
+    result = infer((row,), stages)
+
+    assert calls == [(Backend.PT32, "original"), (Backend.PT32, "horizontal_flip")]
+    assert crop_ends == [[41, 43], [43, 41]]
+    np.testing.assert_array_equal(result.keypoints_xyc[0, 9], [20, 30, 1])

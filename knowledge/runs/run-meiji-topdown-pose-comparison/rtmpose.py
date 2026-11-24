@@ -18,7 +18,6 @@ from pydantic import JsonValue
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import (
     Backend,
-    BatchStages,
     BenchmarkAdapter,
     ConditionUnavailable,
     Stage,
@@ -80,7 +79,7 @@ FloatArray: TypeAlias = NDArray[np.float32]
 SimCC = tuple[torch.Tensor, torch.Tensor]
 Decode = Callable[[FloatArray, FloatArray], tuple[FloatArray, FloatArray]]
 Transform = Callable[[dict[str, Any]], dict[str, Any]]
-Infer = Callable[[tuple[PoseInput, ...], PoseStages | BatchStages], PoseBatch]
+Infer = Callable[[tuple[PoseInput, ...], PoseStages], PoseBatch]
 
 
 @dataclass(frozen=True)
@@ -295,9 +294,7 @@ def _make_infer(
         )
         return _to_native_coco17(coordinates, scores, centers, scales, finite_axes)
 
-    def infer(
-        rows: tuple[PoseInput, ...], stages: PoseStages | BatchStages
-    ) -> PoseBatch:
+    def infer(rows: tuple[PoseInput, ...], stages: PoseStages) -> PoseBatch:
         cpu_pixels, centers, scales = stages.stage(
             Stage.PREPROCESS, lambda: preprocess(rows)
         )
@@ -307,15 +304,10 @@ def _make_infer(
         flipped = stages.stage(
             Stage.PREPROCESS, lambda: pixels.flip(-1), name="horizontal_flip"
         )
-        measure_forward = (
-            stages.measure_forward
-            if isinstance(stages, BatchStages)
-            else stages.forward
-        )
-        original_axes = measure_forward(
+        original_axes = stages.measure_forward(
             backend, lambda: forward(pixels), name="original"
         )
-        flipped_axes = measure_forward(
+        flipped_axes = stages.measure_forward(
             backend, lambda: forward(flipped), name="horizontal_flip"
         )
         x, y = stages.stage(

@@ -12,6 +12,7 @@ MMPose code is Apache-2.0. The official zoo supplies both checkpoints by public 
 - Reuse `test_pose_reports_missing_person_and_missing_joint_in_coverage_denominators` for the treatment of NaN coordinates after scoring, and `test_open_keeps_empty_images_and_rejects_changed_files` for the pinned reference loader. The adapter tests exercise the RTMPose-specific transformations and backend boundaries that those tests do not call.
 - Compare the staged CPU FP32 adapter with the official `inference_topdown` on two real pseudo-BBoxes from one pinned camera frame for each checkpoint. Verify both native positions and raw scores. This covers affine cropping, RGB normalization, flip fusion and the output slice. Report GPU parity separately against CUDA PT32 on the fixed comparison inputs.
 - Verify the six accuracy receipts against the published row order and fixed boxes before pairing outputs. Use an asymmetric CPU fixture with a 3–4–5 pixel displacement and missing joints to check that the backend comparison measures Euclidean distance and counts missing predictions separately. Check the shared benchmark's two declared forwards in an actual timing case.
+- Exercise the common `measure_forward` API with a CPU fixture that has two unequal crop columns. The two model calls must receive the original and then the flipped crop, with both calls registered under the chosen backend. The real-image smoke test continues to verify the official forward and decoder.
 
 ## Inference and export settings
 
@@ -139,12 +140,19 @@ PYTHONPATH="$PWD/$run:$PWD" .venv/bin/python -B "$run/rtmpose_accuracy.py" \
 
 Use the published #2496 speed bundle and digest. This workload supplies predecoded native frames and fixed DINO crop rows. RTMPose reads the raw `xyxy` field before applying its official aspect ratio and padding. The baseline uses the same rows with ViTPose's crop transform. The common batch sizes are 1, 4 and 8. Batch 16 exercises the RTMPose engine's profile maximum when the published cohort fills complete batches. The #2496 default settings use a non-default CUDA stream, 30 warm-up iterations and three blocks of 100 samples. [Speed baseline](https://github.com/Motoki0705/tennis-lab/pull/2497)
 
+The prepared bundle `meiji_4cam/person-model-speed-v1` has SHA-256 `64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62`. It contains 384 ordered crops on 96 frames, with no tail rows. The #2496 prepare job ran on `0ee6f8dde06c078b6ab40324f5416b68a9eaefc0`. The benchmark uses that revision's input reader and pose parity code. Batches 1, 4, 8 and 16 each cover the full crop set.
+
 After merging #2495 and #2496, the focused suite passed 81 tests in 14.43 seconds, including the seven FP32 scene cache tests and a new test for the backend delta and missing counts. With the real RTMPose-M CPU graph and stand-in CUDA events, `BatchStages` received both named forwards. A fixture using #2496's `InputSet` read the original `xyxy` values in frozen order and rejected a changed PT32 reference file.
+
+The updated shared `measure_forward` API passed 89 focused tests in 13.09 seconds, with one new RTMPose test for the original and flipped crop calls. The real-image smoke still matched the official CPU outputs for both models. Re-scoring all 26,276 saved M TRT16 rows with the current #2495 scorer reproduced every saved metric, including the one missing joint. The new scorer adds a field describing its IoU tie policy.
 
 Run each case in its own process in the exclusive training queue. Start each checkpoint with its PT32 batch 1 reference, then use the same manifest and output root for its other results. The shared pose check uses limits of 1 px at P95, 5 px maximum and 0.02 at P95 for the change in same-model raw scores. It also requires identical crop IDs. Use `--engine "$engine"` for TRT16.
 
 ```bash
 speed=knowledge/runs/run-person-model-speed-baseline
+prep_job=0-8204477064386375676_2026-11-24T12-22-15-613624323Z_1489359_person-speed-prepare
+speed_inputs="$(cat "$queue_dir/repro/$prep_job/output_dir.txt")/inputs"
+speed_sha256=64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62
 PYTHONPATH="$PWD/$speed:$PYTHONPATH" OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   .venv/bin/python -B "$run/rtmpose_speed.py" --inputs "$speed_inputs" \
   --input-sha256 "$speed_sha256" --model "$model" --backend PT32 --batch 1 \
