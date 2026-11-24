@@ -8,6 +8,7 @@ from typing import Any, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import linear_sum_assignment
 
 from src.utils.geometry.bbox import match_iou, pairwise_iou
 from src.utils.schema.player import COCO_KP_NAMES, NUM_HUMAN_KP
@@ -161,9 +162,35 @@ class _FrameScores:
     prediction_count: int
 
 
+def _candidate_order(candidate: Predictions) -> NDArray[np.intp]:
+    """Order by descending detection score, xyxy, then COCO17 x/y/confidence."""
+    _, score_rank = np.unique(candidate.scores, return_inverse=True)
+    keys = [-score_rank, *candidate.boxes_xyxy.T]
+    if candidate.keypoints_xyc is not None:
+        poses = candidate.keypoints_xyc.reshape(len(candidate.scores), NUM_HUMAN_KP * 3)
+        keys.extend(poses.T)
+    return np.lexsort(keys[::-1])
+
+
+def _match_candidates(
+    overlaps: NDArray[np.float64], cutoff: float
+) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
+    refs, columns = match_iou(overlaps, cutoff)
+    same_iou = overlaps[refs] == overlaps[refs, columns, None]
+    if (same_iou.sum(axis=1) > 1).any():
+        # Unmatched references can consume early columns in the initial assignment.
+        # Prefer earlier candidates for the matched references at their assigned IoUs.
+        cost = np.where(same_iou, np.arange(overlaps.shape[1]), np.inf)
+        _, preferred = linear_sum_assignment(cost)
+        columns = np.asarray(preferred, dtype=np.int64)
+    return refs, columns
+
+
 def _score_frame(
     reference: ReferenceFrame, candidate: Predictions, policy: ScoringPolicy
 ) -> _FrameScores:
+    order = _candidate_order(candidate)
+    ordered_scores = candidate.scores[order]
     iou_matrix = pairwise_iou(reference.boxes_xyxy, candidate.boxes_xyxy)
     count = len(reference.player_ids)
     reached: NDArray[np.bool_] = np.zeros(
@@ -173,14 +200,10 @@ def _score_frame(
     edges = np.full((count, 4), np.nan)
     errors = np.full((count, NUM_HUMAN_KP), np.nan)
     for level, score in enumerate((None, *policy.score_cutoffs)):
-        selected = (
-            np.arange(len(candidate.scores))
-            if score is None
-            else np.flatnonzero(candidate.scores >= score)
-        )
+        selected = order if score is None else order[ordered_scores >= score]
         overlaps = iou_matrix[:, selected]
         for index, cutoff in enumerate(IOU_CUTOFFS):
-            refs, columns = match_iou(overlaps, cutoff)
+            refs, columns = _match_candidates(overlaps, cutoff)
             reached[refs, level, index] = True
             if level != 0 or index != 0:
                 continue
@@ -335,6 +358,11 @@ def score_players(
     return {
         "policy": {
             "association": "maximum cardinality above the IoU cutoff, then maximum summed IoU",
+            "candidate_order_for_iou_ties": [
+                "detection_score_descending",
+                "boxes_xyxy_lexicographic",
+                "keypoints_xyc_lexicographic",
+            ],
             "iou_cutoffs": IOU_CUTOFFS,
             "pose_match_iou": IOU_CUTOFFS[0],
             "pose_confidence_exclusive_cutoff": policy.min_pose_confidence,
